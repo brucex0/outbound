@@ -18,5 +18,10 @@ export type AppEnv = {
   Variables: {
     auth: AuthContext | null;
     locale: "en" | "es" | "zh-Hans";
+    rewardsAdmin: {
+      id: string;
+      normalizedEmail: string | null;
+      displayName: string;
+    } | null;
   };
 };

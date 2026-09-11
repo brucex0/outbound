@@ -53,6 +53,7 @@ model User {
   runnerBeliefs               RunnerBelief[]
   companionEpisodes           CompanionEpisode[]
   companionConversationStates CompanionConversationState[]
+  adminRewardAuditEvents      AdminRewardAuditEvent[]
   contextManifests            ContextManifest[]
   situationalSignals          SituationalSignal[]
   agentActions                AgentAction[]
@@ -373,6 +374,22 @@ model EntitlementGrantLedger {
 
   @@unique([userId, capability, sourceReferenceHash])
   @@index([userId, capability, expiresAt])
+}
+
+model AdminRewardAuditEvent {
+  id            String   @id @default(cuid())
+  actorUserId   String
+  actor         User     @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  action        String
+  targetType    String
+  targetId      String
+  reason        String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([targetType, targetId, createdAt])
 }
 
 model Activity {
