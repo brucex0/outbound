@@ -371,7 +371,6 @@ private fun SignedInApp(
                                 forceOnboardingReplay = true
                                 onboardingResolved = false
                             },
-                            onActivityHistory = { navController.navigate(ACTIVITY_HISTORY_ROUTE) { launchSingleTop = true } },
                             connections = integration.connections,
                             insights = integration.insights.map { MeInsight(it.id, it.label, it.value, it.confidence.replaceFirstChar(Char::uppercase)) },
                             milestones = buildList {
@@ -394,10 +393,23 @@ private fun SignedInApp(
                             },
                             onMeDestination = settingsViewModel::trackMeDestination,
                             activityContent = {
-                                accountId?.let { id -> RecentActivitiesRoute(id, measurementUnitSystem, { selectedId ->
-                                    activityTarget = selectedId
-                                    navController.navigate(ACTIVITY_HISTORY_ROUTE) { launchSingleTop = true }
-                                }) }
+                                accountId?.let { id ->
+                                    RecentActivitiesRoute(
+                                        accountId = id,
+                                        unitSystem = measurementUnitSystem,
+                                        weightKilograms = integration.weightKilograms,
+                                        onOpenActivity = { selectedId ->
+                                            activityTarget = selectedId
+                                            navController.navigate(ACTIVITY_HISTORY_ROUTE) { launchSingleTop = true }
+                                        },
+                                        onOpenAll = {
+                                            activityTarget = null
+                                            navController.navigate(ACTIVITY_HISTORY_ROUTE) { launchSingleTop = true }
+                                        },
+                                        onImportHealth = { navController.navigate(HEALTH_ROUTE) { launchSingleTop = true } },
+                                        onMessage = { message -> snackbar.showSnackbar(resources.getString(activityMessageResource(message))) },
+                                    )
+                                }
                             },
                             settingsContent = {
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_planned_workouts))

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.ContentValues
 import android.graphics.BitmapFactory
 import android.provider.MediaStore
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -50,6 +52,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Lightbulb
@@ -60,6 +63,7 @@ import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -68,6 +72,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -123,6 +128,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.math.roundToInt
 import com.plainstride.outbound.core.model.activity.ActivityPhoto
 import com.plainstride.outbound.core.model.activity.ActivitySplit
 import com.plainstride.outbound.core.model.activity.ActivityTrackPoint
@@ -143,19 +149,144 @@ import kotlinx.serialization.json.jsonPrimitive
 fun RecentActivitiesRoute(
     accountId: String,
     unitSystem: MeasurementUnitSystem,
+    weightKilograms: Double?,
     onOpenActivity: (String) -> Unit,
+    onOpenAll: () -> Unit,
+    onImportHealth: () -> Unit,
+    onMessage: suspend (ActivityMessage) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ActivityViewModel = hiltViewModel(key = "me_recent_activities"),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var manualEntry by rememberSaveable { mutableStateOf(false) }
+    var trackedCalorieExposure by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(accountId) { viewModel.start(accountId) }
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        state.page.activities.take(3).forEach { activity -> ActivityRow(activity, unitSystem) { onOpenActivity(activity.id) } }
-        if (!state.loading && state.page.activities.isEmpty()) {
-            Text(stringResource(R.string.activity_recent_empty), Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+    LaunchedEffect(viewModel) { viewModel.messages.collect(onMessage) }
+    LaunchedEffect(state.page.activities, weightKilograms) {
+        if (!trackedCalorieExposure && state.page.activities.take(3).any { recentKilocalories(it, weightKilograms) != null }) {
+            viewModel.trackCalorieExposure()
+            trackedCalorieExposure = true
         }
     }
+    OutlinedCard(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f)),
+        elevation = CardDefaults.outlinedCardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.activity_recent_title),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                IconButton(
+                    onClick = {
+                        viewModel.trackMeRecentAction("manual_workout")
+                        manualEntry = true
+                    },
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Icon(Icons.Outlined.Add, stringResource(R.string.activity_add_manual), tint = MaterialTheme.colorScheme.primary)
+                }
+                IconButton(
+                    onClick = {
+                        viewModel.trackMeRecentAction("health_connect")
+                        onImportHealth()
+                    },
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Icon(Icons.Outlined.Download, stringResource(R.string.activity_recent_import), tint = MaterialTheme.colorScheme.primary)
+                }
+                TextButton(
+                    onClick = {
+                        viewModel.trackMeRecentAction("activity_history")
+                        onOpenAll()
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                ) {
+                    Text(stringResource(R.string.activity_recent_all))
+                }
+            }
+            state.page.activities.take(3).forEach { activity ->
+                CompactRecentActivityRow(activity, unitSystem, weightKilograms) { onOpenActivity(activity.id) }
+            }
+            if (state.loading && state.page.activities.isEmpty()) {
+                Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                }
+            } else if (state.page.activities.isEmpty()) {
+                Text(
+                    stringResource(R.string.activity_recent_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+    if (manualEntry) ManualActivityDialog(
+        onDismiss = { manualEntry = false },
+        onSave = { type, title, duration, distance, elevation ->
+            viewModel.createManual(type, title, duration, distance, elevation)
+            manualEntry = false
+        },
+    )
 }
+
+@Composable
+private fun CompactRecentActivityRow(
+    activity: SavedActivity,
+    unitSystem: MeasurementUnitSystem,
+    weightKilograms: Double?,
+    onClick: () -> Unit,
+) {
+    val kilocalories = remember(activity, weightKilograms) {
+        recentKilocalories(activity, weightKilograms)
+    }
+    val minutes = (activity.durationSecs / 60.0).roundToInt().coerceAtLeast(1)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                activity.title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(activityShortDate(activity.startedAt), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                kilocalories?.let { stringResource(R.string.activity_completed_duration_calories_format, minutes, it) }
+                    ?: stringResource(R.string.activity_completed_duration_format, minutes),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(formatRecentDistance(activity.distanceM, unitSystem), style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+private fun recentKilocalories(activity: SavedActivity, weightKilograms: Double?): Int? =
+    activity.energyKilocalories?.takeIf { it > 0 }
+        ?: WorkoutCalorieEstimator.estimate(
+            activityType = activity.type,
+            distanceMeters = activity.distanceM,
+            durationSeconds = activity.durationSecs,
+            elevationGainMeters = activity.elevationGainM ?: 0.0,
+            weightKilograms = weightKilograms,
+        ).kilocalories
 
 @Composable
 fun ActivityHistoryRoute(
@@ -828,6 +959,10 @@ private fun formatDistance(meters: Double, unitSystem: MeasurementUnitSystem): S
     val distance = SessionFormatting.distance(meters, unitSystem)
     return "%.2f %s".format(distance.value, distanceUnit(unitSystem))
 }
+private fun formatRecentDistance(meters: Double, unitSystem: MeasurementUnitSystem): String {
+    val distance = SessionFormatting.distance(meters, unitSystem)
+    return "%.1f %s".format(distance.value, distanceUnit(unitSystem))
+}
 private fun formatDuration(seconds: Int) = if (seconds >= 3_600) "%d:%02d:%02d".format(seconds / 3_600, seconds / 60 % 60, seconds % 60) else "%d:%02d".format(seconds / 60, seconds % 60)
 private fun formatPace(seconds: Double?, unitSystem: MeasurementUnitSystem): String {
     val pace = seconds?.let { SessionFormatting.pace(it, unitSystem) } ?: return "—"
@@ -844,6 +979,10 @@ private fun formatSignedElevation(meters: Double?, unitSystem: MeasurementUnitSy
 private fun distanceUnit(unitSystem: MeasurementUnitSystem) = if (unitSystem == MeasurementUnitSystem.metric) "km" else "mi"
 private fun activityDate(value: String) = runCatching {
     DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT).format(Instant.parse(value).atZone(ZoneId.systemDefault()))
+}.getOrDefault(value)
+
+private fun activityShortDate(value: String) = runCatching {
+    DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).format(Instant.parse(value).atZone(ZoneId.systemDefault()))
 }.getOrDefault(value)
 
 @Composable

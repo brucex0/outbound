@@ -108,6 +108,16 @@ class ActivityViewModel @Inject constructor(
 
     fun closeDetail() { mutableState.value = mutableState.value.copy(selected = null) }
 
+    fun trackMeRecentAction(destination: String) {
+        analytics.record(AnalyticsEvent(
+            "me_destination_opened",
+            mapOf(
+                AnalyticsProperty.Destination to destination,
+                AnalyticsProperty.EntrySource to "me_recent",
+            ),
+        ))
+    }
+
     fun editTitle(title: String) = mutate(ActivityMessage.UPDATED) {
         val current = mutableState.value.selected ?: return@mutate
         val updated = current.copy(title = title.trim(), localUpdatedAt = Instant.now().toString())

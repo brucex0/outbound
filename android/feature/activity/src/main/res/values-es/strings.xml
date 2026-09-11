@@ -5,6 +5,8 @@
     <string name="activity_avg_pace">Ritmo medio</string>
     <string name="activity_back">Atrás</string>
     <string name="activity_cancel">Cancelar</string>
+    <string name="activity_completed_duration_format">%1$d min</string>
+    <string name="activity_completed_duration_calories_format">%1$d min · %2$d cal</string>
     <string name="activity_delete">Eliminar actividad</string>
     <string name="activity_delete_body">Se eliminará de este dispositivo y del historial sincronizado. Esta acción no se puede deshacer.</string>
     <string name="activity_delete_title">¿Eliminar esta actividad?</string>
@@ -45,7 +47,10 @@
     <string name="activity_photo_pending">Esta foto estará disponible cuando termine la sincronización.</string>
     <string name="activity_photo_start">Inicio</string>
     <string name="activity_photos">Fotos</string>
+    <string name="activity_recent_all">Todo</string>
     <string name="activity_recent_empty">Completa tu primera actividad para ver aquí los datos destacados.</string>
+    <string name="activity_recent_import">Importar desde Health Connect</string>
+    <string name="activity_recent_title">RECIENTE</string>
     <string name="activity_reflection">Reflexión</string>
     <string name="activity_route">Ruta</string>
     <string name="activity_route_description">Mapa de la ruta registrada</string>

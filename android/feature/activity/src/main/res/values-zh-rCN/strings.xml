@@ -5,6 +5,8 @@
     <string name="activity_avg_pace">平均配速</string>
     <string name="activity_back">返回</string>
     <string name="activity_cancel">取消</string>
+    <string name="activity_completed_duration_format">%1$d 分钟</string>
+    <string name="activity_completed_duration_calories_format">%1$d 分钟 · %2$d 千卡</string>
     <string name="activity_delete">删除活动</string>
     <string name="activity_delete_body">它将从本设备和同步历史中移除，且无法撤销。</string>
     <string name="activity_delete_title">删除这次活动？</string>
@@ -45,7 +47,10 @@
     <string name="activity_photo_pending">媒体同步完成后即可查看这张照片。</string>
     <string name="activity_photo_start">开始</string>
     <string name="activity_photos">照片</string>
+    <string name="activity_recent_all">全部</string>
     <string name="activity_recent_empty">完成第一次活动后，这里会显示活动亮点。</string>
+    <string name="activity_recent_import">从健康数据同步导入</string>
+    <string name="activity_recent_title">最近</string>
     <string name="activity_reflection">活动感受</string>
     <string name="activity_route">路线</string>
     <string name="activity_route_description">本次活动的记录路线图</string>

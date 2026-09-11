@@ -5,6 +5,8 @@
     <string name="activity_avg_pace">Avg. pace</string>
     <string name="activity_back">Back</string>
     <string name="activity_cancel">Cancel</string>
+    <string name="activity_completed_duration_format">%1$d min</string>
+    <string name="activity_completed_duration_calories_format">%1$d min · %2$d cal</string>
     <string name="activity_delete">Delete activity</string>
     <string name="activity_delete_body">It will be removed from this device and your synced history. This cannot be undone.</string>
     <string name="activity_delete_title">Delete this activity?</string>
@@ -45,7 +47,10 @@
     <string name="activity_photo_pending">This photo is available after media sync completes.</string>
     <string name="activity_photo_start">Start</string>
     <string name="activity_photos">Photos</string>
+    <string name="activity_recent_all">All</string>
     <string name="activity_recent_empty">Complete your first activity to see highlights here.</string>
+    <string name="activity_recent_import">Import from Health Connect</string>
+    <string name="activity_recent_title">RECENT</string>
     <string name="activity_reflection">Reflection</string>
     <string name="activity_route">Route</string>
     <string name="activity_route_description">Map of the recorded route</string>

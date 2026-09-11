@@ -32,7 +32,6 @@ import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.HelpOutline
-import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Policy
@@ -148,7 +147,6 @@ fun MeRoute(
     onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit,
     onReplayOnboarding: () -> Unit,
-    onActivityHistory: () -> Unit,
     connections: List<SocialPerson> = emptyList(),
     insights: List<MeInsight> = emptyList(),
     milestones: List<MeMilestone> = emptyList(),
@@ -175,7 +173,7 @@ fun MeRoute(
     when (page) {
         MePage.Overview -> MeOverview(
             state, onSettings = { page = MePage.Settings }, onRefresh = viewModel::refresh,
-            onActivityHistory, connections, insights, personalMilestones,
+            connections, insights, personalMilestones,
             localWeeklyMinutes, localWeeklyDistanceMeters, localWeeklyActivityCount,
             onConnections = { onMeDestination("connections"); onConnections() },
             onMyRoutes = { onMeDestination("my_routes"); onMyRoutes() },
@@ -210,7 +208,6 @@ private fun MeOverview(
     state: SettingsUiState,
     onSettings: () -> Unit,
     onRefresh: () -> Unit,
-    onActivityHistory: () -> Unit,
     connections: List<SocialPerson>,
     insights: List<MeInsight>,
     milestones: List<PersonalMilestone>,
@@ -291,15 +288,7 @@ private fun MeOverview(
                 }
             }
             item { MilestonesOverviewCard(milestones, onMilestones) }
-            item { SectionTitle(stringResource(R.string.recent)) }
             item { activityContent() }
-            item { OutlinedCard(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onActivityHistory)) {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.activity_history_title)) },
-                    supportingContent = { Text(stringResource(R.string.activity_history_body)) },
-                    leadingContent = { Icon(Icons.Outlined.History, null) },
-                )
-            } }
             item { Button(onClick = onSettings, Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Icon(Icons.Outlined.Settings, null); Text(stringResource(R.string.open_settings), Modifier.padding(start = 8.dp)) } }
             if (state.loading) item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
         }

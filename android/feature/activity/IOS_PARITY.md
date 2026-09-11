@@ -12,6 +12,7 @@
 ## States And Transitions
 
 - A stored activity opens from Me recent activity, activity history, notification, or a Social link to the synchronized personal activity.
+- Me shows the latest three activities as lightweight rows inside the shared recent card: title, abbreviated date, rounded duration with calories when available, and trailing distance. The card exposes manual entry, Health Connect, and full-history actions with localized TalkBack labels and 48dp targets.
 - The map stays full screen behind collapsed, split, and expanded information-sheet positions. Dragging the grabber snaps to the nearest position; tapping it toggles split and expanded states.
 - Activities with no usable route show an accessible no-route state. Multi-segment routes preserve pause gaps; continuous routes use pace-colored segments.
 - GPS-located photos produce map pins. Selecting a photo in the horizontal strip selects and centers its pin; selecting it again opens the full-screen pageable lightbox. Photos without coordinates remain visible without a misleading pin.
@@ -32,7 +33,7 @@
 
 - English, Spanish, and Simplified Chinese copy is generated from `ios/Outbound/Outbound/Localizable.xcstrings`.
 - The grabber, map, photos, lightbox close action, Edit, Share, Back, and Delete expose semantic labels; section headers remain discoverable to TalkBack.
-- Opening detail emits `activity_detail_opened`. A displayed calculated calorie emits privacy-safe `feature_exposed(feature=completed_workout_calories)`.
+- Opening detail emits `activity_detail_opened`. Recent-card actions emit the existing `me_destination_opened` event with a bounded destination and `entry_source=me_recent`. A displayed calculated calorie emits privacy-safe `feature_exposed(feature=completed_workout_calories)`.
 - Share preview and actions emit `activity_share_previewed` and `activity_share_action` with the same bounded `source_type` and `result` values as iOS. Confirmed deletion uses the shared source/count-bucket contract.
 
 ## Reference Scenarios

@@ -8,7 +8,7 @@
 
 ## States And Transitions
 
-- Me presents profile identity, current focus, this-week progress, and recent activities in the same card hierarchy as iOS.
+- Me presents profile identity, current focus, this-week progress, and recent activities in the same card hierarchy as iOS. Recent activities use one compact 20dp-radius card with the section label and Add, Health Connect import, and All actions in its header instead of separate section, activity, and history cards.
 - Profile identity renders the account avatar when available, with initials as an offline/error fallback. This-week totals fall back to the local activity repository while planning data is unavailable.
 - Profile editing, refresh, settings, and activity history remain reachable with cached content visible while refresh is in progress.
 - Settings groups account, reminders, safety, live guidance, appearance, units, health, gear/progress, integrations, legal/help, debug replay, version, and deletion using Android-native destinations.
@@ -29,7 +29,7 @@
 
 ## Current Status
 
-- Core Me hierarchy, profile editing, Connections preview, current focus, My Routes, learned insights, weekly summary, Milestones, recent activity navigation, settings/preferences, integrations, legal links, sign-out, and deletion are implemented.
+- Core Me hierarchy, profile editing, Connections preview, current focus, My Routes, learned insights, weekly summary, Milestones, iOS-aligned recent activity actions and compact rows, settings/preferences, integrations, legal links, sign-out, and deletion are implemented.
 - Settings exposes planned-workout reminders and Safety as named sections matching the iOS hierarchy instead of burying them among integrations.
 - Deterministic visual-reference captures remain open parity work.
 
