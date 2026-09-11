@@ -29,6 +29,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -46,7 +47,7 @@ internal interface SocialAvatarDependencies {
 @Composable
 fun SocialAvatar(person: SocialPerson, size: Dp = 42.dp, modifier: Modifier = Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val source = person.avatarUrl?.trim()?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
+    val source = normalizedAvatarUrl(person.avatarUrl)
     val cachedBitmap = source?.let(AvatarCache.bitmaps::get)
     val bitmap by produceState<Bitmap?>(cachedBitmap, source) {
         source ?: return@produceState
@@ -77,3 +78,11 @@ fun SocialAvatar(person: SocialPerson, size: Dp = 42.dp, modifier: Modifier = Mo
         )
     }
 }
+
+private fun normalizedAvatarUrl(value: String?): String? {
+    val url = value?.trim()?.toHttpUrlOrNull() ?: return null
+    if (url.isHttps || url.host in LocalDevelopmentHosts) return url.toString()
+    return url.newBuilder().scheme("https").build().toString()
+}
+
+private val LocalDevelopmentHosts = setOf("localhost", "127.0.0.1", "10.0.2.2")
