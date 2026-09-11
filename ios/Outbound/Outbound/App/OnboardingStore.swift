@@ -85,7 +85,6 @@ struct PlanBuilderDraft: Codable, Equatable {
     var sessionsPerWeek = 3
     var availableMinutes = 30
     var preferredDays: [String] = []
-    var preferredLongSessionDay: String?
     var eventDistanceMeters: Double?
     var eventDate: Date?
     var constraints = ""

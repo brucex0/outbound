@@ -55,7 +55,7 @@ Treat `docs/new-user-onboarding.md` as the canonical product contract. Preserve 
 5. Accept realistic weekly capacity.
    - Change the range to 1–6 sessions per week.
    - Replace run-specific labels with activity-neutral localized copy.
-   - Make preferred days optional and ask for a long-session day only when relevant; remove the hard-coded Saturday assumption.
+   - Make preferred days optional and let the planner place long sessions automatically; remove the hard-coded Saturday assumption.
    - For a one-session week, create one meaningful anchor session. Any recovery or mobility addition must be optional and must not inflate the stated commitment.
    - Calibration tracks the first three relevant completed sessions regardless of how many calendar weeks they span.
 

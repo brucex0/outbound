@@ -200,13 +200,6 @@ struct SimplifiedOnboardingFlow: View {
                     toggleChip(day.label, selected: draft.preferredDays.contains(day.code)) { togglePreferredDay(day.code) }
                 }
             }
-            if needsLongSessionDay {
-                Picker(String(localized: "plan_builder.week.long_day", defaultValue: "Long-session day (optional)"), selection: $draft.preferredLongSessionDay) {
-                    Text(String(localized: "common.no_preference", defaultValue: "No preference")).tag(nil as String?)
-                    ForEach(Self.weekdays, id: \.code) { Text($0.label).tag($0.code as String?) }
-                }
-                .planBuilderCard()
-            }
             TextField(String(localized: "plan_builder.week.constraints", defaultValue: "Injury, illness, travel, or schedule constraints (optional)"), text: $draft.constraints, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
         }
@@ -482,7 +475,6 @@ struct SimplifiedOnboardingFlow: View {
             targetDistanceMeters: draft.objective == .eventPreparation ? draft.eventDistanceMeters : nil,
             priority: draft.objective == .eventPreparation ? "finish" : "generalHealth",
             preferredDays: draft.preferredDays,
-            preferredLongSessionDay: needsLongSessionDay ? draft.preferredLongSessionDay : nil,
             daysPerWeekTarget: draft.sessionsPerWeek,
             maxSessionMinutes: draft.availableMinutes,
             riskTolerance: draft.baselineContext == .returningAfterBreak ? "conservative" : "balanced",
@@ -648,8 +640,6 @@ struct SimplifiedOnboardingFlow: View {
         if let index = draft.preferredDays.firstIndex(of: day) { draft.preferredDays.remove(at: index) }
         else if draft.preferredDays.count < draft.sessionsPerWeek { draft.preferredDays.append(day) }
     }
-    private var needsLongSessionDay: Bool { draft.sessionsPerWeek > 1 }
-
     private var usesMetric: Bool { measurementPreferences.unitSystem == .metric }
     private var heightLabel: String { usesMetric ? String(localized: "Height (cm)") : String(localized: "Height (in)") }
     private var weightLabel: String { usesMetric ? String(localized: "Weight (kg)") : String(localized: "Weight (lb)") }

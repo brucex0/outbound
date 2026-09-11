@@ -116,7 +116,7 @@ Ask what most weeks can reliably support:
 - `1–6 sessions per week`
 - typical time available
 - preferred days when the user cares about scheduling
-- preferred long-session day only when the plan needs one
+- let the planner place the long session automatically when the plan needs one
 - optional injury, illness, travel, or schedule constraints
 
 One session per week is valid. Create one meaningful anchor session and label any mobility or recovery additions as optional. Never inflate the commitment to make the plan look fuller.

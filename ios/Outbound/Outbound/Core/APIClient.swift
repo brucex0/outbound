@@ -1857,7 +1857,6 @@ struct PlanningGoalRequest: Encodable {
     let targetDistanceMeters: Double?
     let priority: String
     let preferredDays: [String]
-    let preferredLongSessionDay: String?
     let daysPerWeekTarget: Int
     let maxSessionMinutes: Int
     let riskTolerance: String
@@ -1871,7 +1870,6 @@ struct PlanningGoalRequest: Encodable {
         targetDistanceMeters: Double?,
         priority: String,
         preferredDays: [String],
-        preferredLongSessionDay: String?,
         daysPerWeekTarget: Int,
         maxSessionMinutes: Int,
         riskTolerance: String,
@@ -1884,7 +1882,6 @@ struct PlanningGoalRequest: Encodable {
         self.targetDistanceMeters = targetDistanceMeters
         self.priority = priority
         self.preferredDays = preferredDays
-        self.preferredLongSessionDay = preferredLongSessionDay
         self.daysPerWeekTarget = daysPerWeekTarget
         self.maxSessionMinutes = maxSessionMinutes
         self.riskTolerance = riskTolerance
@@ -1901,7 +1898,6 @@ struct PlanningGoalRequest: Encodable {
         targetDistanceMeters = recommendation.template.focus.targetDistanceMeters
         priority = recommendation.template.focus == .comeback ? "rebuild" : "fitness"
         preferredDays = []
-        preferredLongSessionDay = nil
         daysPerWeekTarget = recommendation.sessionsPerWeek
         maxSessionMinutes = recommendation.longSessionMinutes
         riskTolerance = "balanced"
