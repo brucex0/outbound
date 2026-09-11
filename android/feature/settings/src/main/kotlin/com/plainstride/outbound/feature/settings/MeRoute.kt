@@ -1,6 +1,8 @@
 package com.plainstride.outbound.feature.settings
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,10 +15,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.EventAvailable
+import androidx.compose.material.icons.filled.MilitaryTech
+import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.Edit
@@ -24,13 +35,9 @@ import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Map
-import androidx.compose.material.icons.outlined.People
-import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Policy
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Stars
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Straighten
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,7 +67,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -69,17 +80,64 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.plainstride.outbound.core.designsystem.PlainstrideThemeId
 import com.plainstride.outbound.core.designsystem.plainstrideThemeColors
 import com.plainstride.outbound.feature.social.SocialAvatar
 import com.plainstride.outbound.feature.social.SocialConnectionsPreview
 import com.plainstride.outbound.feature.social.SocialPerson
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 private enum class MePage { Overview, Settings, Milestones }
 
 data class MeInsight(val id: String, val label: String, val value: String, val confidence: String)
 data class MeMilestone(val id: String, val label: String)
+
+private enum class PersonalMilestoneFamily(@param:StringRes val title: Int) {
+    Beginnings(R.string.recognition_family_beginnings),
+    Progress(R.string.recognition_family_progress),
+}
+
+private enum class PersonalMilestoneBadge(
+    val wireValue: String,
+    val family: PersonalMilestoneFamily,
+    @param:StringRes val title: Int,
+    @param:StringRes val detail: Int,
+    val priority: Int,
+    val icon: ImageVector? = null,
+    val iconText: String? = null,
+) {
+    FirstStep("firstStep", PersonalMilestoneFamily.Beginnings, R.string.recognition_first_step_title, R.string.recognition_first_step_detail, 70, Icons.AutoMirrored.Filled.DirectionsWalk),
+    BackInMotion("backInMotion", PersonalMilestoneFamily.Beginnings, R.string.recognition_back_in_motion_title, R.string.recognition_back_in_motion_detail, 100, Icons.Default.Replay),
+    WeeklyFocusComplete("weeklyFocusComplete", PersonalMilestoneFamily.Progress, R.string.recognition_weekly_focus_complete_title, R.string.recognition_weekly_focus_complete_detail, 90, Icons.Default.TrackChanges),
+    FourWeekRhythm("fourWeekRhythm", PersonalMilestoneFamily.Progress, R.string.recognition_four_week_rhythm_title, R.string.recognition_four_week_rhythm_detail, 85, Icons.Default.EventAvailable),
+    First5K("first5K", PersonalMilestoneFamily.Progress, R.string.recognition_first_5k_title, R.string.recognition_first_5k_detail, 82, iconText = "5"),
+    First10K("first10K", PersonalMilestoneFamily.Progress, R.string.recognition_first_10k_title, R.string.recognition_first_10k_detail, 84, iconText = "10"),
+    FirstHalfMarathon("firstHalfMarathon", PersonalMilestoneFamily.Progress, R.string.recognition_first_half_marathon_title, R.string.recognition_first_half_marathon_detail, 92, Icons.Default.MilitaryTech),
+    FirstMarathon("firstMarathon", PersonalMilestoneFamily.Progress, R.string.recognition_first_marathon_title, R.string.recognition_first_marathon_detail, 95, Icons.Default.EmojiEvents);
+
+    companion object {
+        fun fromWireValue(value: String): PersonalMilestoneBadge? = entries.firstOrNull { it.wireValue == value }
+    }
+}
+
+private data class PersonalMilestone(
+    val id: String,
+    val badge: PersonalMilestoneBadge,
+    val earnedAt: Instant?,
+)
+
+private fun MeMilestone.asPersonalMilestone(): PersonalMilestone? {
+    val separator = id.indexOf(':')
+    if (separator <= 0) return null
+    val badge = PersonalMilestoneBadge.fromWireValue(id.substring(0, separator)) ?: return null
+    val earnedAt = runCatching { Instant.parse(id.substring(separator + 1)) }.getOrNull()
+    return PersonalMilestone(id, badge, earnedAt)
+}
 
 @Composable
 fun MeRoute(
@@ -106,12 +164,18 @@ fun MeRoute(
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val personalMilestones = remember(milestones) {
+        milestones
+            .mapNotNull(MeMilestone::asPersonalMilestone)
+            .distinctBy(PersonalMilestone::badge)
+            .sortedByDescending { it.earnedAt ?: Instant.EPOCH }
+    }
     var page by rememberSaveable { mutableStateOf(MePage.Overview) }
     LaunchedEffect(viewModel) { viewModel.messages.collect(onMessage) }
     when (page) {
         MePage.Overview -> MeOverview(
             state, onSettings = { page = MePage.Settings }, onRefresh = viewModel::refresh,
-            onActivityHistory, connections, insights, milestones,
+            onActivityHistory, connections, insights, personalMilestones,
             localWeeklyMinutes, localWeeklyDistanceMeters, localWeeklyActivityCount,
             onConnections = { onMeDestination("connections"); onConnections() },
             onMyRoutes = { onMeDestination("my_routes"); onMyRoutes() },
@@ -136,7 +200,7 @@ fun MeRoute(
             settingsContent = settingsContent,
             modifier = modifier,
         )
-        MePage.Milestones -> MilestonesScreen(milestones, onBack = { page = MePage.Overview }, modifier)
+        MePage.Milestones -> MilestonesScreen(personalMilestones, onBack = { page = MePage.Overview }, modifier)
     }
 }
 
@@ -149,7 +213,7 @@ private fun MeOverview(
     onActivityHistory: () -> Unit,
     connections: List<SocialPerson>,
     insights: List<MeInsight>,
-    milestones: List<MeMilestone>,
+    milestones: List<PersonalMilestone>,
     localWeeklyMinutes: Int,
     localWeeklyDistanceMeters: Double,
     localWeeklyActivityCount: Int,
@@ -226,9 +290,7 @@ private fun MeOverview(
                     }
                 }
             }
-            item { NavigationCard(R.string.me_milestones, R.string.me_milestones_body, Icons.Outlined.Stars, onMilestones) {
-                Text(if (milestones.isEmpty()) stringResource(R.string.me_milestones_empty) else stringResource(R.string.me_milestones_count, milestones.size), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } }
+            item { MilestonesOverviewCard(milestones, onMilestones) }
             item { SectionTitle(stringResource(R.string.recent)) }
             item { activityContent() }
             item { OutlinedCard(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onActivityHistory)) {
@@ -257,19 +319,143 @@ private fun NavigationCard(label: Int, body: Int, icon: androidx.compose.ui.grap
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MilestonesScreen(milestones: List<MeMilestone>, onBack: () -> Unit, modifier: Modifier) {
+private fun MilestonesScreen(milestones: List<PersonalMilestone>, onBack: () -> Unit, modifier: Modifier) {
     Scaffold(modifier, topBar = { TopAppBar(
         title = { Text(stringResource(R.string.me_milestones)) },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) } },
     ) }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (milestones.isEmpty()) item { Text(stringResource(R.string.me_milestones_empty), Modifier.padding(vertical = 24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            items(milestones, key = MeMilestone::id) { milestone ->
-                OutlinedCard(Modifier.fillMaxWidth()) { ListItem(headlineContent = { Text(milestone.label) }, leadingContent = { Icon(Icons.Outlined.Stars, null, tint = MaterialTheme.colorScheme.primary) }) }
+        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            item {
+                Text(
+                    stringResource(R.string.recognition_history_intro),
+                    Modifier.padding(horizontal = 4.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (milestones.isEmpty()) {
+                item { MilestoneEmptyCard() }
+            } else {
+                PersonalMilestoneFamily.entries.forEach { family ->
+                    val familyMilestones = milestones
+                        .filter { it.badge.family == family }
+                        .sortedWith(
+                            compareByDescending<PersonalMilestone> { it.earnedAt ?: Instant.EPOCH }
+                                .thenBy { it.badge.priority },
+                        )
+                    if (familyMilestones.isNotEmpty()) {
+                        item(key = family.name) { MilestoneFamilyCard(family, familyMilestones) }
+                    }
+                }
             }
         }
     }
 }
+
+@Composable
+private fun MilestonesOverviewCard(milestones: List<PersonalMilestone>, onClick: () -> Unit) {
+    OutlinedCard(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick)) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(stringResource(R.string.me_milestones), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (milestones.isEmpty()) {
+                    Box(
+                        Modifier.size(40.dp).background(RecognitionOrange.copy(alpha = 0.12f), CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, stringResource(R.string.me_milestones_empty), tint = RecognitionOrange)
+                    }
+                } else {
+                    milestones.take(4).forEach { milestone -> MilestoneOrb(milestone, 40.dp) }
+                }
+                Box(Modifier.weight(1f))
+                Box(
+                    Modifier.size(40.dp).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Default.ChevronRight, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MilestoneFamilyCard(family: PersonalMilestoneFamily, milestones: List<PersonalMilestone>) {
+    OutlinedCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(
+                stringResource(family.title).uppercase(),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            milestones.forEachIndexed { index, milestone ->
+                if (index > 0) HorizontalDivider()
+                MilestoneAwardRow(milestone)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MilestoneAwardRow(milestone: PersonalMilestone) {
+    val locale = LocalConfiguration.current.locales[0]
+    val formatter = remember(locale) { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale) }
+    val earnedDate = milestone.earnedAt?.atZone(ZoneId.systemDefault())?.toLocalDate()?.format(formatter)
+    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        MilestoneOrb(milestone, 42.dp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(stringResource(milestone.badge.title), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            earnedDate?.let {
+                Text(stringResource(R.string.recognition_earned_on, it), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(stringResource(milestone.badge.detail), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun MilestoneOrb(milestone: PersonalMilestone, size: androidx.compose.ui.unit.Dp) {
+    Box(
+        Modifier
+            .size(size)
+            .shadow(6.dp, CircleShape)
+            .background(Brush.linearGradient(listOf(RecognitionOrange, RecognitionYellow)), CircleShape)
+            .border(2.dp, Color.White.copy(alpha = 0.95f), CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        milestone.badge.icon?.let {
+            Icon(it, stringResource(milestone.badge.title), Modifier.size(size * 0.46f), tint = Color.White)
+        } ?: Text(
+            milestone.badge.iconText.orEmpty(),
+            color = Color.White,
+            fontSize = (size.value * 0.31f).sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+@Composable
+private fun MilestoneEmptyCard() {
+    OutlinedCard(Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(18.dp), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(
+                Modifier.size(46.dp).background(RecognitionOrange.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Default.AutoAwesome, null, tint = RecognitionOrange)
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(stringResource(R.string.recognition_empty_title), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.recognition_empty_detail), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+private val RecognitionOrange = Color(0xFFFF9500)
+private val RecognitionYellow = Color(0xFFFFCC00)
 
 private fun formatWeeklyDistance(state: SettingsUiState, localMeters: Double): String = (state.summary?.weeklyDistanceMeters ?: localMeters).let { meters ->
     if (state.preferences.measurement == MeasurementSystem.Metric) "%.1f".format(meters / 1_000)

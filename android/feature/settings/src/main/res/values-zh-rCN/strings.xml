@@ -85,4 +85,26 @@
     <string name="milestone_first_activity">&#x9996;&#x6B21;&#x6D3B;&#x52A8;</string>
     <string name="milestone_ten_activities">&#x5B8C;&#x6210;&#x5341;&#x6B21;&#x6D3B;&#x52A8;</string>
     <string name="milestone_hundred_km">&#x7D2F;&#x8BA1;&#x5B8C;&#x6210; 100 &#x516C;&#x91CC;</string>
+    <string name="recognition_family_beginnings">新的开始</string>
+    <string name="recognition_family_progress">进步</string>
+    <string name="recognition_earned_on">%1$s 获得</string>
+    <string name="recognition_history_intro">这里记录真正重要的开始、距离突破、持续坚持与重新出发。</string>
+    <string name="recognition_empty_title">你的第一个里程碑就在前方</string>
+    <string name="recognition_empty_detail">保存活动后，重要的首次突破、距离、坚持与回归都会记录在这里。</string>
+    <string name="recognition_first_step_title">第一步</string>
+    <string name="recognition_first_step_detail">你让第一次训练真正发生了。</string>
+    <string name="recognition_back_in_motion_title">重新出发</string>
+    <string name="recognition_back_in_motion_detail">你没有等一切都完美才回来。这才是真正的势头。</string>
+    <string name="recognition_weekly_focus_complete_title">完成本周目标</string>
+    <string name="recognition_weekly_focus_complete_detail">你完成了自己为这一周定下的目标。</string>
+    <string name="recognition_four_week_rhythm_title">连续四周</string>
+    <string name="recognition_four_week_rhythm_detail">你连续四周都坚持出发。这份节奏值得继续积累。</string>
+    <string name="recognition_first_5k_title">首次 5 公里</string>
+    <string name="recognition_first_5k_detail">一次完成 5 公里。你现在有了真正的距离标杆。</string>
+    <string name="recognition_first_10k_title">首次 10 公里</string>
+    <string name="recognition_first_10k_detail">完成 10 公里后，下一条终点线有了新的可能。</string>
+    <string name="recognition_first_half_marathon_title">首次半程马拉松</string>
+    <string name="recognition_first_half_marathon_detail">你把这份努力坚持了 21.1 公里。它值得被写进你的记录。</string>
+    <string name="recognition_first_marathon_title">首次马拉松</string>
+    <string name="recognition_first_marathon_detail">从起点到终点，完成 42.2 公里。这个里程碑值得长久铭记。</string>
 </resources>

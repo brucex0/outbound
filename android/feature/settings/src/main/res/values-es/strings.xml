@@ -85,4 +85,26 @@
     <string name="milestone_first_activity">Primera actividad</string>
     <string name="milestone_ten_activities">Diez actividades</string>
     <string name="milestone_hundred_km">100 km completados</string>
+    <string name="recognition_family_beginnings">Comienzos</string>
+    <string name="recognition_family_progress">Progreso</string>
+    <string name="recognition_earned_on">Conseguido el %1$s</string>
+    <string name="recognition_history_intro">Estos hitos marcan comienzos, distancias, constancia y regresos que de verdad importan.</string>
+    <string name="recognition_empty_title">Tu primer hito está por llegar</string>
+    <string name="recognition_empty_detail">Guarda actividades y aquí aparecerán tus primeros logros, distancias, constancia y regresos importantes.</string>
+    <string name="recognition_first_step_title">Primer paso</string>
+    <string name="recognition_first_step_detail">Convertiste esa primera sesión en algo real.</string>
+    <string name="recognition_back_in_motion_title">De vuelta en marcha</string>
+    <string name="recognition_back_in_motion_detail">Volviste antes de que todo fuera perfecto. Eso sí es impulso.</string>
+    <string name="recognition_weekly_focus_complete_title">Objetivo semanal cumplido</string>
+    <string name="recognition_weekly_focus_complete_detail">Cumpliste el objetivo de la semana que querías construir.</string>
+    <string name="recognition_four_week_rhythm_title">Ritmo de cuatro semanas</string>
+    <string name="recognition_four_week_rhythm_detail">Estuviste presente durante cuatro semanas seguidas. Ese es un ritmo sobre el que puedes seguir construyendo.</string>
+    <string name="recognition_first_5k_title">Primeros 5 km</string>
+    <string name="recognition_first_5k_detail">Cinco kilómetros en una actividad. Ya tienes una distancia de referencia.</string>
+    <string name="recognition_first_10k_title">Primeros 10 km</string>
+    <string name="recognition_first_10k_detail">Diez kilómetros cambian lo que puede significar tu próxima meta.</string>
+    <string name="recognition_first_half_marathon_title">Primer medio maratón</string>
+    <string name="recognition_first_half_marathon_detail">Sostuviste el esfuerzo durante 21,1 kilómetros. Eso merece quedar en tu historia.</string>
+    <string name="recognition_first_marathon_title">Primer maratón</string>
+    <string name="recognition_first_marathon_detail">42,2 kilómetros de principio a fin. Alcanzaste un hito para siempre.</string>
 </resources>

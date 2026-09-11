@@ -85,4 +85,26 @@
     <string name="milestone_first_activity">First activity</string>
     <string name="milestone_ten_activities">Ten activities</string>
     <string name="milestone_hundred_km">100 km completed</string>
+    <string name="recognition_family_beginnings">Beginnings</string>
+    <string name="recognition_family_progress">Progress</string>
+    <string name="recognition_earned_on">Earned %1$s</string>
+    <string name="recognition_history_intro">The moments here mark meaningful beginnings, distance, consistency, and comebacks.</string>
+    <string name="recognition_empty_title">Your first milestone is ahead</string>
+    <string name="recognition_empty_detail">Save activities and meaningful firsts, distance, consistency, and comebacks will appear here.</string>
+    <string name="recognition_first_step_title">First Step</string>
+    <string name="recognition_first_step_detail">You turned the first session into something real.</string>
+    <string name="recognition_back_in_motion_title">Back In Motion</string>
+    <string name="recognition_back_in_motion_detail">You came back before it felt perfect. That’s real momentum.</string>
+    <string name="recognition_weekly_focus_complete_title">Weekly Focus Complete</string>
+    <string name="recognition_weekly_focus_complete_detail">You followed through on the week you were trying to build.</string>
+    <string name="recognition_four_week_rhythm_title">Four-Week Rhythm</string>
+    <string name="recognition_four_week_rhythm_detail">You showed up across four straight weeks. That is a rhythm you can build on.</string>
+    <string name="recognition_first_5k_title">First 5K</string>
+    <string name="recognition_first_5k_detail">Five kilometers in one activity. You have a real distance marker now.</string>
+    <string name="recognition_first_10k_title">First 10K</string>
+    <string name="recognition_first_10k_detail">Ten kilometers changes what the next finish line can look like.</string>
+    <string name="recognition_first_half_marathon_title">First Half Marathon</string>
+    <string name="recognition_first_half_marathon_detail">You carried the effort through 21.1 kilometers. That belongs in your history.</string>
+    <string name="recognition_first_marathon_title">First Marathon</string>
+    <string name="recognition_first_marathon_detail">42.2 kilometers, start to finish. You earned a milestone that lasts.</string>
 </resources>
