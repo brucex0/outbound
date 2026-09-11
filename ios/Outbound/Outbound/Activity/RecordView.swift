@@ -29,7 +29,7 @@ private enum PendingCaloriesWeightAction {
 }
 
 enum ActivityLaunchLayout {
-    static let dockHeight: CGFloat = 168
+    static let dockHeight: CGFloat = 148
     static let peerCardGap: CGFloat = 12
     static let goalPillRowHeight: CGFloat = 64
     static let controlWidth: CGFloat = 112
@@ -1709,7 +1709,6 @@ struct RecordView: View {
                         setupUtilityButton(
                             title: String(localized: "record.setup.music", defaultValue: "Music"),
                             value: musicSetupValue,
-                            systemImage: "music.note.list",
                             isConfigured: musicIsConfigured
                         ) {
                             trackFeatureExposure("music")
@@ -1730,7 +1729,6 @@ struct RecordView: View {
                                 : (isVoiceGuideEnabled
                                     ? String(localized: "common.on", defaultValue: "On")
                                     : String(localized: "common.off", defaultValue: "Off")),
-                            systemImage: voiceGuideSpeechEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill",
                             isConfigured: voiceGuideSpeechEnabled
                         ) {
                             tooltipCoordinator.dismiss(.voiceGuide, outcome: "opened")
@@ -1748,7 +1746,6 @@ struct RecordView: View {
                         setupUtilityButton(
                             title: String(localized: "record.setup.cheer_me_on", defaultValue: "Cheer me on"),
                             value: liveTrackValue,
-                            systemImage: liveShareStore.isArmedForNextActivity ? "waveform.circle.fill" : "waveform.circle",
                             isConfigured: liveShareStore.isArmedForNextActivity
                         ) {
                             tooltipCoordinator.dismiss(.cheerMeOn, outcome: "opened")
@@ -1766,7 +1763,6 @@ struct RecordView: View {
                         setupUtilityButton(
                             title: indoorOutdoorLabel,
                             value: indoorOutdoorLabel,
-                            systemImage: isIndoorSession ? "building.2.fill" : "sun.max.fill",
                             isConfigured: true
                         ) {
                             isIndoorSession.toggle()
@@ -1913,46 +1909,32 @@ struct RecordView: View {
     private func setupUtilityButton(
         title: String,
         value: String,
-        systemImage: String,
         isConfigured: Bool,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            VStack(spacing: 4) {
-                utilityButtonIcon(systemImage: systemImage, isConfigured: isConfigured)
-                utilityButtonLabel(title)
-            }
-            .frame(
-                width: ActivityLaunchLayout.controlWidth,
-                height: ActivityLaunchLayout.controlHeight
-            )
-            .background(
-                Color(.secondarySystemBackground),
-                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-            )
+            utilityButtonLabel(title, isConfigured: isConfigured)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
         .accessibilityValue(value)
     }
 
-    private func utilityButtonIcon(systemImage: String, isConfigured: Bool) -> some View {
-        Image(systemName: systemImage)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(isConfigured ? Color.white : theme.accentColor)
-            .frame(width: 30, height: 30)
-            .background(
-                isConfigured ? theme.accentColor : Color.clear,
-                in: RoundedRectangle(cornerRadius: 9, style: .continuous)
-            )
-    }
-
-    private func utilityButtonLabel(_ title: String) -> some View {
+    private func utilityButtonLabel(_ title: String, isConfigured: Bool) -> some View {
         Text(title)
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(.primary)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(isConfigured ? Color.white : Color.primary)
             .lineLimit(1)
-            .minimumScaleFactor(0.72)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+            .background(
+                isConfigured ? theme.accentColor : Color(.secondarySystemBackground),
+                in: Capsule()
+            )
+            .overlay {
+                Capsule()
+                    .stroke(isConfigured ? Color.clear : Color.primary.opacity(0.08), lineWidth: 1)
+            }
     }
 
     private var launchShoeControl: AnyView {
@@ -1960,7 +1942,6 @@ struct RecordView: View {
             AnyView(setupUtilityButton(
                 title: String(localized: "record.setup.shoes", defaultValue: "Shoes"),
                 value: String(localized: "common.none", defaultValue: "None"),
-                systemImage: "shoeprints.fill",
                 isConfigured: false
             ) {
                 tooltipCoordinator.dismiss(.shoes, outcome: "opened")
@@ -1985,20 +1966,9 @@ struct RecordView: View {
                     track(.init(.shoeSelected, properties: [.selectionType: .string("none")]))
                 }
             } label: {
-                VStack(spacing: 4) {
-                    utilityButtonIcon(
-                        systemImage: "shoeprints.fill",
-                        isConfigured: selectedSessionShoe != nil
-                    )
-                    utilityButtonLabel(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
-                }
-                .frame(
-                    width: ActivityLaunchLayout.controlWidth,
-                    height: ActivityLaunchLayout.controlHeight
-                )
-                .background(
-                    Color(.secondarySystemBackground),
-                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                utilityButtonLabel(
+                    String(localized: "record.setup.shoes", defaultValue: "Shoes"),
+                    isConfigured: selectedSessionShoe != nil
                 )
             }
             .accessibilityLabel(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
