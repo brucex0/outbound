@@ -4654,7 +4654,7 @@
       }
     },
     "activity.metric.calories": {
-      "comment": "Label for a calculated completed-workout energy estimate.",
+      "comment": "Label for a calculated completed-workout energy estimate. [android:activity] Generated Android name: activity_metric_calories.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4676,8 +4676,54 @@
         }
       }
     },
+    "activity.metric.elevation_gain": {
+      "comment": "Total elevation gained during a completed activity. [android:activity] Generated Android name: activity_metric_elevation_gain.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elev Gain"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desnivel positivo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "累计爬升"
+          }
+        }
+      }
+    },
+    "activity.metric.moving_time": {
+      "comment": "Elapsed moving time for a completed activity. [android:activity] Generated Android name: activity_metric_moving_time.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moving Time"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiempo en movimiento"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运动时间"
+          }
+        }
+      }
+    },
     "activity.metric.steps": {
-      "comment": "Total step count recorded during a walk.",
+      "comment": "Total step count recorded during a walk. [android:activity] Generated Android name: activity_metric_steps.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -13226,11 +13272,12 @@
       }
     },
     "activity.guide.companion": {
+      "comment": "Companion byline on the completed-activity reflection card. [android:activity] Generated Android name: activity_guide_companion.",
       "extractionState": "extracted_with_value",
       "localizations": {
         "en": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Your companion"
           }
         },
@@ -13248,12 +13295,59 @@
         }
       }
     },
+    "activity.guide.reflection_body": {
+      "comment": "Fallback reflection shown when a completed activity has no generated reflection. [android:activity] Generated Android name: activity_guide_reflection_body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You showed up and added another honest effort to your story. Notice what felt strong and carry that into the next one."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Te presentaste y sumaste otro esfuerzo sincero a tu historia. Fíjate en lo que se sintió fuerte y llévalo contigo a la próxima."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你如约出发，又为自己的故事写下了一次踏实的努力。记住这次表现出色的地方，把它带到下一次训练中。"
+          }
+        }
+      }
+    },
+    "activity.guide.reflection_title": {
+      "comment": "Fallback title for the completed-activity reflection card. [android:activity] Generated Android name: activity_guide_reflection_title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A moment to reflect"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un momento para reflexionar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回顾这一刻"
+          }
+        }
+      }
+    },
     "activity.map.no_route": {
+      "comment": "Empty map state when a completed activity has no route geometry. [android:activity] Generated Android name: activity_map_no_route.",
       "extractionState": "extracted_with_value",
       "localizations": {
         "en": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "No route data"
           }
         },
@@ -13272,13 +13366,13 @@
       }
     },
     "activity.meta.cadence.title": {
-      "comment": "Title for the cadence section in the activity metadata.",
+      "comment": "Title for the cadence section in the activity metadata. [android:activity] Generated Android name: activity_meta_cadence_title.",
       "extractionState": "extracted_with_value",
       "isCommentAutoGenerated": true,
       "localizations": {
         "en": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Cadence"
           }
         },
@@ -13296,14 +13390,60 @@
         }
       }
     },
+    "activity.meta.cadence.average": {
+      "comment": "%d is average steps per minute. [android:activity] Generated Android name: activity_meta_cadence_average.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avg %d spm"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Media %d ppm"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均 %d 步/分钟"
+          }
+        }
+      }
+    },
+    "activity.meta.cadence.maximum": {
+      "comment": "%d is maximum steps per minute. [android:activity] Generated Android name: activity_meta_cadence_maximum.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max %d spm"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Máx. %d ppm"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最高 %d 步/分钟"
+          }
+        }
+      }
+    },
     "activity.meta.indoor_run": {
-      "comment": "Detail for an indoor run activity.",
+      "comment": "Detail for an indoor run activity. [android:activity] Generated Android name: activity_meta_indoor_run.",
       "extractionState": "extracted_with_value",
       "isCommentAutoGenerated": true,
       "localizations": {
         "en": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Indoor run"
           }
         },
@@ -13322,11 +13462,12 @@
       }
     },
     "activity.meta.shoes": {
+      "comment": "Shoes attached to a completed activity. [android:activity] Generated Android name: activity_meta_shoes.",
       "extractionState": "extracted_with_value",
       "localizations": {
         "en": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Shoes"
           }
         },
@@ -13345,13 +13486,13 @@
       }
     },
     "activity.meta.treadmill": {
-      "comment": "Label for the treadmill type of activity.",
+      "comment": "Label for the treadmill type of activity. [android:activity] Generated Android name: activity_meta_treadmill.",
       "extractionState": "extracted_with_value",
       "isCommentAutoGenerated": true,
       "localizations": {
         "en": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Treadmill"
           }
         },
@@ -13390,6 +13531,52 @@
           "stringUnit": {
             "state": "translated",
             "value": "照片"
+          }
+        }
+      }
+    },
+    "activity.photo.finish": {
+      "comment": "Caption for the last photo in an activity. [android:activity] Generated Android name: activity_photo_finish.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finish"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Final"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "结束"
+          }
+        }
+      }
+    },
+    "activity.photo.start": {
+      "comment": "Caption for the first photo in an activity. [android:activity] Generated Android name: activity_photo_start.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicio"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始"
           }
         }
       }
@@ -13624,14 +13811,60 @@
         }
       }
     },
+    "activity.sheet.collapse": {
+      "comment": "Accessibility action for reducing the activity information sheet. [android:activity] Generated Android name: activity_sheet_collapse.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collapse activity details"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contraer los detalles de la actividad"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "收起活动详情"
+          }
+        }
+      }
+    },
+    "activity.sheet.expand": {
+      "comment": "Accessibility action for expanding the activity information sheet. [android:activity] Generated Android name: activity_sheet_expand.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expand activity details"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ampliar los detalles de la actividad"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "展开活动详情"
+          }
+        }
+      }
+    },
     "activity.shared.detail": {
-      "comment": "A description of the shared activity feature.",
+      "comment": "A description of the shared activity feature. [android:activity] Generated Android name: activity_shared_detail.",
       "extractionState": "extracted_with_value",
       "isCommentAutoGenerated": true,
       "localizations": {
         "en": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "This is your personal recording from an activity event. Shared participant results remain in Social."
           }
         },
@@ -13650,13 +13883,13 @@
       }
     },
     "activity.shared.title": {
-      "comment": "The title of the section that shows the user's activity as shared with other participants.",
+      "comment": "The title of the section that shows the user's activity as shared with other participants. [android:activity] Generated Android name: activity_shared_title.",
       "extractionState": "extracted_with_value",
       "isCommentAutoGenerated": true,
       "localizations": {
         "en": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Shared activity"
           }
         },
@@ -13819,11 +14052,12 @@
       }
     },
     "activity.splits.elev": {
+      "comment": "Compact elevation column label in completed-activity splits. [android:activity] Generated Android name: activity_splits_elev.",
       "extractionState": "extracted_with_value",
       "localizations": {
         "en": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Elev"
           }
         },
@@ -13842,11 +14076,12 @@
       }
     },
     "activity.splits.pace": {
+      "comment": "Pace column label in completed-activity splits. [android:activity] Generated Android name: activity_splits_pace.",
       "extractionState": "extracted_with_value",
       "localizations": {
         "en": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Pace"
           }
         },
@@ -13865,13 +14100,13 @@
       }
     },
     "activity.splits.title": {
-      "comment": "The title of the splits section in the activity detail view.",
+      "comment": "The title of the splits section in the activity detail view. [android:activity] Generated Android name: activity_splits_title.",
       "extractionState": "extracted_with_value",
       "isCommentAutoGenerated": true,
       "localizations": {
         "en": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "Splits"
           }
         },
