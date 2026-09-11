@@ -24,7 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
-import android.content.Intent
+import androidx.compose.ui.window.DialogProperties
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.asImageBitmap
@@ -51,7 +51,21 @@ import com.plainstride.outbound.core.designsystem.*
     }
     if (connectionsOpen) ConnectionsDialog(state, viewModel::search, viewModel::openProfile, { invitation -> viewModel.openTarget("invitation", invitation.id) },viewModel::requestConnectionLink) { connectionsOpen = false }
     state.connectionLink?.let{link->ConnectionQrDialog(link,viewModel::closeConnectionLink)}
-    state.selectedProfile?.let { ProfileDialog(it, viewModel::closeProfile, { viewModel.connect(it) }, {it.connectionId?.let(viewModel::acceptConnection)}, {it.connectionId?.let(viewModel::removeConnection)}) }
+    state.selectedProfile?.let { person ->
+        ProfileScreen(
+            person = person,
+            posts = state.home.posts.filter { it.author.id == person.id },
+            close = viewModel::closeProfile,
+            connect = { viewModel.connect(person) },
+            accept = { person.connectionId?.let(viewModel::acceptConnection) },
+            remove = { person.connectionId?.let(viewModel::removeConnection) },
+            openActivity = { activity ->
+                viewModel.closeProfile()
+                selectedActivity = activity
+                viewModel.trackActivityDetailOpened()
+            },
+        )
+    }
     state.selectedCircle?.let { circle -> CircleDetailScreen(circle, viewModel::closeCircle, { recipient, preset -> viewModel.cheerCircle(circle, recipient, preset) }, { mode,target,next->viewModel.setCircleFocus(circle,mode,target,next) }, { viewModel.setCircleArchived(circle,circle.lifecycle!="archived") }, {inviteCircle=circle}, {name->viewModel.renameCircle(circle,name)}, {target,skipped->viewModel.setCircleCommitment(circle,target,skipped)}, {viewModel.setPrimaryCircle(circle)}, {muted->viewModel.muteCircle(circle,muted)}, {viewModel.leaveCircle(circle)}, {userId->viewModel.removeCircleMember(circle,userId)}) }
     state.selectedEvent?.let{event->SocialEventDialog(event,{viewModel.setEventRsvp(event,!event.joined);viewModel.closeTarget()},{inviteEvent=event},viewModel::closeTarget)}
     if(createCircle)CircleCreateScreen(state.home.connections.filter{it.relationship in setOf("accepted","connected")},{createCircle=false}){name,people->viewModel.createCircle(name,people,java.util.TimeZone.getDefault().id);createCircle=false}
@@ -274,10 +288,98 @@ private fun JsonElement?.routeCoordinates(): List<MapCoordinate> {
     val line = if (raw.firstOrNull() is JsonPrimitive) listOf(raw) else raw.mapNotNull { it as? JsonArray }
     return line.mapNotNull { pair -> val lon=(pair.getOrNull(0) as? JsonPrimitive)?.doubleOrNull; val lat=(pair.getOrNull(1) as? JsonPrimitive)?.doubleOrNull; if(lat!=null&&lon!=null) MapCoordinate(lat,lon) else null }
 }
-@Composable private fun ProfileDialog(person:SocialPerson,close:()->Unit,connect:()->Unit,accept:()->Unit,remove:()->Unit){
- val context=LocalContext.current;val shareLabel=stringResource(R.string.social_share_award_text,person.displayName);var confirmsRemoval by remember{mutableStateOf(false)}
- if(confirmsRemoval)AlertDialog(onDismissRequest={confirmsRemoval=false},title={Text(stringResource(R.string.social_remove_connection_confirmation_title))},text={Text(stringResource(R.string.social_remove_connection_confirmation_message,person.displayName))},confirmButton={TextButton({remove();confirmsRemoval=false},colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.error)){Text(stringResource(R.string.social_remove_connection))}},dismissButton={TextButton({confirmsRemoval=false}){Text(stringResource(R.string.social_cancel))}})
- else AlertDialog(onDismissRequest=close,icon={Icon(Icons.Outlined.AccountCircle,null)},title={Text(person.displayName)},text={Column{person.username?.let{Text("@$it")};Text(stringResource(R.string.social_relationship,relationshipLabel(person.relationship)),Modifier.padding(top=8.dp));if(person.recognitions.isNotEmpty()){Text(stringResource(R.string.social_milestones,person.recognitions.size),Modifier.padding(top=12.dp));person.recognitions.filter{it.shareable}.forEach{award->val badge=badgeLabel(award.badgeId);TextButton({context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,"$shareLabel · $badge"),null))}){Icon(Icons.Outlined.Share,null);Spacer(Modifier.width(8.dp));Text(stringResource(R.string.social_share_award_named,badge))}}}}},confirmButton={Row{when{person.relationship=="none"->TextButton(connect){Text(stringResource(R.string.social_connect))};person.relationship=="pending"&&person.connectionDirection=="incoming"->TextButton(accept){Text(stringResource(R.string.social_accept))};else->TextButton({confirmsRemoval=true}){Text(stringResource(R.string.social_remove_connection))}};TextButton(close){Text(stringResource(R.string.social_done))}}})
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProfileScreen(
+    person: SocialPerson,
+    posts: List<SocialPost>,
+    close: () -> Unit,
+    connect: () -> Unit,
+    accept: () -> Unit,
+    remove: () -> Unit,
+    openActivity: (FeedActivity) -> Unit,
+) {
+    var confirmsRemoval by remember { mutableStateOf(false) }
+    Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Scaffold(
+            contentWindowInsets = WindowInsets.safeDrawing,
+            topBar = {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.social_profile)) },
+                    navigationIcon = {
+                        IconButton(close) {
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.social_back))
+                        }
+                    },
+                    actions = {
+                        when {
+                            person.relationship == "none" -> TextButton(connect) { Text(stringResource(R.string.social_connect)) }
+                            person.relationship == "pending" && person.connectionDirection == "incoming" -> TextButton(accept) { Text(stringResource(R.string.social_accept)) }
+                            person.relationship in setOf("accepted", "connected") -> IconButton({ confirmsRemoval = true }) {
+                                Icon(Icons.Outlined.MoreVert, stringResource(R.string.social_profile_actions))
+                            }
+                        }
+                    },
+                )
+            },
+        ) { padding ->
+            LazyColumn(
+                Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                item {
+                    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        SocialAvatar(person, 80.dp)
+                        Spacer(Modifier.height(12.dp))
+                        Text(person.displayName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+                        person.username?.let { Text("@$it", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    }
+                }
+                if (person.recognitions.isNotEmpty()) {
+                    item { SectionHeader(stringResource(R.string.social_profile_milestones)) }
+                    item {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            items(person.recognitions, key = { "${it.badgeId}-${it.awardedAt}" }) { award ->
+                                Column(Modifier.width(86.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+                                        Icon(Icons.Outlined.EmojiEvents, null, Modifier.padding(11.dp), tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                    Spacer(Modifier.height(6.dp))
+                                    Text(badgeLabel(award.badgeId), style = MaterialTheme.typography.labelSmall, maxLines = 2)
+                                }
+                            }
+                        }
+                    }
+                }
+                item { SectionHeader(stringResource(R.string.social_recent_activities)) }
+                if (posts.isEmpty()) {
+                    item { SocialCard { Text(stringResource(R.string.social_no_shared_activities), color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+                } else {
+                    items(posts, key = SocialPost::id) { post ->
+                        post.activity?.let { activity ->
+                            SocialCard(onClick = { openActivity(activity) }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(activity.title, fontWeight = FontWeight.SemiBold)
+                                        Text(formatSocialDate(activity.startedAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (confirmsRemoval) AlertDialog(
+        onDismissRequest = { confirmsRemoval = false },
+        title = { Text(stringResource(R.string.social_remove_connection_confirmation_title)) },
+        text = { Text(stringResource(R.string.social_remove_connection_confirmation_message, person.displayName)) },
+        confirmButton = { TextButton({ remove(); confirmsRemoval = false }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.social_remove_connection)) } },
+        dismissButton = { TextButton({ confirmsRemoval = false }) { Text(stringResource(R.string.social_cancel)) } },
+    )
 }
 @Composable private fun reportReasonLabel(reason:ReportReason)=stringResource(when(reason){ReportReason.HARASSMENT->R.string.social_reason_harassment;ReportReason.HATE->R.string.social_reason_hate;ReportReason.SPAM->R.string.social_reason_spam;ReportReason.SEXUAL->R.string.social_reason_sexual;ReportReason.VIOLENCE->R.string.social_reason_violence;ReportReason.PRIVACY->R.string.social_reason_privacy;ReportReason.OTHER->R.string.social_reason_other})
 @Composable private fun relationshipLabel(value:String)=when(value){"accepted","connected"->stringResource(R.string.social_relationship_connected);"pending"->stringResource(R.string.social_relationship_pending);else->stringResource(R.string.social_relationship_none)}

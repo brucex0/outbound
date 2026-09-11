@@ -38,6 +38,12 @@
     <string name="social_load_more">加载更多</string>
     <string name="social_members">%1$d 位成员</string>
     <string name="social_milestones">%1$d 个公开里程碑</string>
+    <string name="social_profile">个人主页</string>
+    <string name="social_back">返回</string>
+    <string name="social_profile_actions">个人主页操作</string>
+    <string name="social_profile_milestones">里程碑</string>
+    <string name="social_recent_activities">近期活动</string>
+    <string name="social_no_shared_activities">还没有分享过活动。</string>
     <string name="social_more">更多操作</string>
     <string name="social_notifications">通知</string>
     <string name="social_offline">正在显示已保存的动态</string>

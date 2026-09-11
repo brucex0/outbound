@@ -38,6 +38,12 @@
     <string name="social_load_more">Load more</string>
     <string name="social_members">%1$d members</string>
     <string name="social_milestones">%1$d shared milestones</string>
+    <string name="social_profile">Profile</string>
+    <string name="social_back">Back</string>
+    <string name="social_profile_actions">Profile actions</string>
+    <string name="social_profile_milestones">MILESTONES</string>
+    <string name="social_recent_activities">RECENT ACTIVITIES</string>
+    <string name="social_no_shared_activities">No shared activities yet.</string>
     <string name="social_more">More actions</string>
     <string name="social_notifications">Notifications</string>
     <string name="social_offline">Showing saved Social activity</string>
