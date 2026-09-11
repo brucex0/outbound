@@ -1046,7 +1046,7 @@ private struct SimplifiedTodayView: View {
             .onChange(of: todayWorkoutID) { _, _ in
                 Task { await loadCompanionTodayMessage(force: true) }
             }
-            .onChange(of: trainingPlanStore.todaySuggestion?.workout.id) { _, _ in
+            .onChange(of: displayedWorkoutSelectionKey) { _, _ in
                 customizedRunIntent = nil
             }
             .onChange(of: scenePhase) { _, phase in
@@ -1399,7 +1399,16 @@ private struct SimplifiedTodayView: View {
         withAnimation(.snappy) {
             isPlannedWorkoutCardMinimized = isMinimized
         }
-        trackTodayCardDisplay(sourceType: "planned_workout", isMinimized: isMinimized)
+        trackTodayCardDisplay(sourceType: todayCardSourceType, isMinimized: isMinimized)
+    }
+
+    private var todayCardSourceType: String {
+        if currentCalibrationWorkout != nil { return "calibration_workout" }
+        switch trainingPlanStore.activitySuggestion?.relationship {
+        case "optionalRecovery": return "optional_recovery"
+        case "adjustedFromPlan": return "adjusted_from_plan"
+        default: return "planned_workout"
+        }
     }
 
     private func trackTodayCardDisplay(sourceType: String, isMinimized: Bool) {
@@ -1807,7 +1816,18 @@ private struct SimplifiedTodayView: View {
     }
 
     private var currentCalibrationWorkout: CalibrationWorkoutDTO? {
-        personalizationStore.snapshot.currentCalibrationWorkout
+        guard trainingPlanStore.activitySuggestion?.shouldSupersedeCalibration != true else {
+            return nil
+        }
+        return personalizationStore.snapshot.currentCalibrationWorkout
+    }
+
+    private var displayedWorkoutSelectionKey: String {
+        if let workout = currentCalibrationWorkout {
+            return "calibration:\(workout.id)"
+        }
+        let relationship = trainingPlanStore.activitySuggestion?.relationship ?? "plan"
+        return "suggestion:\(trainingPlanStore.todaySuggestion?.workout.id ?? "fallback"):\(relationship)"
     }
 
     private func durationLabel(_ seconds: Int) -> String {

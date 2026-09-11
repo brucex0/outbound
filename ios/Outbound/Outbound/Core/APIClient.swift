@@ -1732,6 +1732,13 @@ struct ActivitySuggestionDecision: Codable, Equatable {
 }
 
 extension ActivitySuggestionResponse {
+    /// Safety- and recovery-oriented suggestions are the canonical Today action,
+    /// even while the runner still has calibration sessions to complete.
+    var shouldSupersedeCalibration: Bool {
+        guard primary != nil else { return false }
+        return ["optionalRecovery", "adjustedFromPlan"].contains(relationship)
+    }
+
     var isPlanLinkedToPlan: Bool {
         planVersionId != nil
             || planContext != nil

@@ -276,9 +276,16 @@ struct MainTabView: View {
     private var defaultTodayIntent: SessionIntent? {
         guard trainingPlanStore.activePlan != nil else { return nil }
         return customizedTodayIntent
-            ?? personalizationStore.snapshot.currentCalibrationWorkout?.sessionIntent
+            ?? currentCalibrationIntent
             ?? trainingPlanStore.todaySuggestion?.suggestedSession.intent
             ?? .freestyleRun
+    }
+
+    private var currentCalibrationIntent: SessionIntent? {
+        guard trainingPlanStore.activitySuggestion?.shouldSupersedeCalibration != true else {
+            return nil
+        }
+        return personalizationStore.snapshot.currentCalibrationWorkout?.sessionIntent
     }
 
     private func prepareTodayLaunchIfNeeded() {

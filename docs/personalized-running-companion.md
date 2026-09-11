@@ -256,7 +256,7 @@ The first shippable learning loop is complete when a new runner can finish intak
 
 - Simplified onboarding captures structured runner facts and shows an editable understanding before calibration.
 - Onboarding and the editable profile persist primary motivation plus a preferred run-goal type. Weight-loss and weight-maintenance choices default eligible easy and recovery runs to calories.
-- Three reviewed calibration workouts are scaled from comfortable duration and take precedence on Today while calibration is active.
+- Three reviewed calibration workouts are scaled from comfortable duration and take precedence on Today while calibration is active, except when the current activity suggestion calls for recovery or a readiness-driven reduction.
 - Today uses backend plan data outside calibration and preserves Open, Distance, and Time Quick Run starts.
 - Readiness and workout feedback are authenticated, idempotent, cached locally, and queued offline.
 - Feedback projects confidence-bearing insights into immutable runner-model versions.
