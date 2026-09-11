@@ -35,6 +35,8 @@ The command prints the redeemable code once. Do not place codes in logs, analyti
 
 `FeatureEntitlement` stores current effective access. `EntitlementGrantLedger` records immutable referral, contribution, and manual admin grants. Earned durations extend the active `earned_plus` expiration instead of replacing subscription, founding, promotional, or independently revocable admin grants.
 
+RevenueCat store purchases use the independent `revenuecat` source. Its `plainstride_pro` entitlement grants the same capability bundle, but never replaces or shortens earned, founding, contribution, or admin access. See `docs/subscriptions.md` for purchase and reconciliation setup.
+
 ## API
 
 - `GET /v1/rewards`: personal code, referral counts, claim state, and effective capability access.

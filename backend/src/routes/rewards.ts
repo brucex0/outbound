@@ -12,6 +12,11 @@ import {
   redeemEntitlementCode,
   RewardCodeError,
 } from "../services/entitlements.js";
+import {
+  reconcileRevenueCatPlus,
+  RevenueCatConfigurationError,
+  RevenueCatUpstreamError,
+} from "../services/revenueCat.js";
 
 const router = new Hono<AppEnv>();
 const codeSchema = z.object({ code: z.string().trim().min(6).max(64) }).strict();
@@ -55,6 +60,23 @@ router.post("/codes/redeem", zValidator("json", codeSchema), async (c) => {
     const result = await redeemEntitlementCode(getPrismaClient(), user.id, c.req.valid("json").code);
     return c.json({ redeemed: true, ...result });
   } catch (error) { return rewardError(c, error); }
+});
+
+router.post("/subscription/reconcile", async (c) => {
+  const unavailable = requireDatabase(c); if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c); if (!user) return c.json({ error: "Authentication required." }, 401);
+  try {
+    const subscription = await reconcileRevenueCatPlus(getPrismaClient(), user.id);
+    return c.json({ reconciled: true, active: subscription.active, expiresAt: subscription.expiresAt });
+  } catch (error) {
+    if (error instanceof RevenueCatConfigurationError) {
+      return c.json({ error: "Subscriptions are not configured.", code: "subscription_not_configured" }, 503);
+    }
+    if (error instanceof RevenueCatUpstreamError) {
+      return c.json({ error: "Subscription status is temporarily unavailable.", code: "subscription_unavailable" }, 502);
+    }
+    throw error;
+  }
 });
 
 function rewardError(c: any, error: unknown) {

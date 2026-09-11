@@ -24,6 +24,7 @@ import circles from "./routes/circles.js";
 import weather from "./routes/weather.js";
 import rewards from "./routes/rewards.js";
 import rewardsAdmin from "./routes/rewardsAdmin.js";
+import revenueCatWebhooks from "./routes/revenueCatWebhooks.js";
 import type { AppEnv } from "./types/hono.js";
 import { localeMiddleware } from "./middleware/locale.js";
 import { rateLimit } from "./middleware/rateLimit.js";
@@ -61,10 +62,12 @@ app.use("/v1/admin/rewards/*", rateLimit({ name: "rewards-admin", limit: 120, wi
 app.use("/v1/feedback/*", rateLimit({ name: "feedback", limit: 10, windowMs: 60_000 }));
 app.use("/v1/transcribe/*", rateLimit({ name: "transcribe", limit: 10, windowMs: 60_000 }));
 app.use("/waitlist/*", rateLimit({ name: "public-waitlist", limit: 5, windowMs: 60_000, key: "ip" }));
+app.use("/webhooks/revenuecat", rateLimit({ name: "revenuecat-webhook", limit: 120, windowMs: 60_000, key: "ip" }));
 
 app.get("/health", (c) => c.json({ status: "ok", version: "0.1.0" }));
 app.route("/", marketing);
 app.route("/", invites);
+app.route("/webhooks/revenuecat", revenueCatWebhooks);
 
 app.route("/v1/auth", auth);
 app.route("/v1/activities", activities);

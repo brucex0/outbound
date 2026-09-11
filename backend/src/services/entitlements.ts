@@ -8,6 +8,7 @@ export const PAID_CAPABILITIES = [
 ] as const;
 export type PaidCapability = typeof PAID_CAPABILITIES[number];
 export const PLUS_BUNDLE = "plus";
+export const REVENUECAT_ENTITLEMENT_SOURCE = "revenuecat";
 export const REFERRAL_REWARD_DAYS = 14;
 export const REFERRAL_CLAIM_WINDOW_DAYS = 7;
 export const REFERRAL_QUALIFYING_ACTIVITY_SECONDS = 10 * 60;
@@ -73,6 +74,39 @@ export async function entitlementSummary(prisma: PrismaClient, userId: string, n
     const expiresAt = permanent ? null : matching.reduce<Date | null>((latest, grant) =>
       !latest || (grant.expiresAt && grant.expiresAt > latest) ? grant.expiresAt : latest, null);
     return { capability, allowed: matching.length > 0, expiresAt, sources: [...new Set(matching.map((grant) => grant.source))] };
+  });
+}
+
+export async function setRevenueCatPlusEntitlement(
+  prisma: PrismaClient,
+  userId: string,
+  subscription: { active: boolean; startsAt: Date; expiresAt: Date | null },
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    for (const capability of PAID_CAPABILITIES) {
+      await tx.featureEntitlement.upsert({
+        where: {
+          userId_capability_source: {
+            userId,
+            capability,
+            source: REVENUECAT_ENTITLEMENT_SOURCE,
+          },
+        },
+        update: {
+          status: subscription.active ? "active" : "expired",
+          startsAt: subscription.startsAt,
+          expiresAt: subscription.expiresAt,
+        },
+        create: {
+          userId,
+          capability,
+          source: REVENUECAT_ENTITLEMENT_SOURCE,
+          status: subscription.active ? "active" : "expired",
+          startsAt: subscription.startsAt,
+          expiresAt: subscription.expiresAt,
+        },
+      });
+    }
   });
 }
 

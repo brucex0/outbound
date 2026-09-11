@@ -159,7 +159,7 @@ export class DatabaseLiveCoachEntitlementResolver implements LiveCoachEntitlemen
   }
 }
 
-const subscriptionSources = new Set(["app_store", "google_play", "verified_subscription"]);
+const subscriptionSources = new Set(["app_store", "google_play", "verified_subscription", "revenuecat"]);
 
 function decision(allowed: boolean, reason: LiveCoachAccessDecision["reason"]): LiveCoachAccessDecision {
   return { capability: "live_coach_dynamic", allowed, reason, paywallAvailable: false };
