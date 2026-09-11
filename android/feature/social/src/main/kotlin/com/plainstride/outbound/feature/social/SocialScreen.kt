@@ -213,7 +213,13 @@ private fun ConnectionsDialog(state: SocialUiState, search: (String) -> Unit, op
 @Composable
 private fun PostCard(post: SocialPost, profile: () -> Unit, openActivity:()->Unit, cheer: () -> Unit, comments:()->Unit, safety: () -> Unit) =
     Card(
-        Modifier.fillMaxWidth(),
+        Modifier
+            .fillMaxWidth()
+            .clickable(
+                enabled = post.activity != null,
+                role = androidx.compose.ui.semantics.Role.Button,
+                onClick = openActivity,
+            ),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(2.dp),
@@ -233,7 +239,7 @@ private fun PostCard(post: SocialPost, profile: () -> Unit, openActivity:()->Uni
             }
             post.activity?.let { activity ->
                 Text(activity.title, fontWeight = FontWeight.SemiBold)
-                Box(Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(16.dp)).clickable(role=androidx.compose.ui.semantics.Role.Button,onClick=openActivity)) {
+                Box(Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(16.dp))) {
                     val route = activity.route.routeCoordinates()
                     if (route.size > 1) {
                         PlainstrideRouteMap(
