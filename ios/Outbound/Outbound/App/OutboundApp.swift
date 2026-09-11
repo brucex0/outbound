@@ -7,6 +7,7 @@ struct OutboundApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let analyticsManager: AnalyticsManager
     @StateObject private var authStore: AuthStore
+    @StateObject private var subscriptionStore = RevenueCatSubscriptionStore.shared
     @StateObject private var guideStore = GuideStore()
     @StateObject private var guideCatalogStore = GuideCatalogStore()
     @StateObject private var activityStore: ActivityStore
@@ -70,6 +71,7 @@ struct OutboundApp: App {
                 .preferredColorScheme(effectiveColorScheme)
                 .task(id: authStore.user?.id) {
                     await analyticsManager.setUserId(userId: authStore.user?.id)
+                    subscriptionStore.activate(userID: authStore.user?.id)
                 }
                 .onChange(of: authStore.user?.id, initial: true) { _, userID in
                     togetherStore.activate(userID: userID)
@@ -199,6 +201,7 @@ struct OutboundApp: App {
             .environmentObject(workoutReminderPreferences)
             .environmentObject(workoutNotificationScheduler)
             .environmentObject(communityRouteStore)
+            .environmentObject(subscriptionStore)
             .task {
                 if let userID = authStore.user?.id {
                     recognitionStore.activate(userID: userID)

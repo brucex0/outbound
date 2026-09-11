@@ -598,6 +598,10 @@ final class APIClient {
         try await post("/rewards/codes/redeem", body: RewardCodeRequestDTO(code: code))
     }
 
+    func reconcileSubscription() async throws -> SubscriptionReconciliationDTO {
+        try await post("/rewards/subscription/reconcile", body: EmptyBody())
+    }
+
     func reactToTogetherPost(postID: String, type: String) async throws -> TogetherReactionDTO {
         try await post("/social/posts/\(postID)/reactions", body: TogetherReactionRequestDTO(type: type))
     }
@@ -2201,6 +2205,12 @@ struct RewardRedemptionDTO: Decodable {
     let rewardDays: Int?
     let durationDays: Int?
     let bundle: String?
+}
+
+struct SubscriptionReconciliationDTO: Decodable {
+    let reconciled: Bool
+    let active: Bool
+    let expiresAt: Date?
 }
 
 struct LiveGroupCreateRequest: Encodable {

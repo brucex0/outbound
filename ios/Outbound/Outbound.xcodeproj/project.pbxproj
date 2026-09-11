@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		AB0000052F9EE18E00F9B729 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000042F9EE18E00F9B729 /* FirebaseMessaging */; };
 		AB0000072F9EE18E00F9B729 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000062F9EE18E00F9B729 /* FirebaseAnalytics */; };
+		C10000012F9EE18E00F9B729 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = C10000032F9EE18E00F9B729 /* RevenueCat */; };
+		C10000022F9EE18E00F9B729 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = C10000042F9EE18E00F9B729 /* RevenueCatUI */; };
 		DB3A923F2F9EE6DA00F9B729 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000022F9EE18E00F9B729 /* FirebaseCore */; };
 		E10000000000000000000004 /* OutboundLiveActivityExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = E10000000000000000000001 /* OutboundLiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -93,6 +95,8 @@
 			files = (
 				AB0000072F9EE18E00F9B729 /* FirebaseAnalytics in Frameworks */,
 				AB0000052F9EE18E00F9B729 /* FirebaseMessaging in Frameworks */,
+				C10000012F9EE18E00F9B729 /* RevenueCat in Frameworks */,
+				C10000022F9EE18E00F9B729 /* RevenueCatUI in Frameworks */,
 				DB3A923F2F9EE6DA00F9B729 /* FirebaseCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -170,6 +174,8 @@
 				AB0000062F9EE18E00F9B729 /* FirebaseAnalytics */,
 				AB0000022F9EE18E00F9B729 /* FirebaseCore */,
 				AB0000042F9EE18E00F9B729 /* FirebaseMessaging */,
+				C10000032F9EE18E00F9B729 /* RevenueCat */,
+				C10000042F9EE18E00F9B729 /* RevenueCatUI */,
 			);
 			productName = Outbound;
 			productReference = DB3A91492F9EE18E00F9B729 /* Outbound.app */;
@@ -256,6 +262,11 @@
 				TargetAttributes = {
 					DB3A91482F9EE18E00F9B729 = {
 						CreatedOnToolsVersion = 26.2;
+						SystemCapabilities = {
+							com.apple.InAppPurchase = {
+								enabled = 1;
+							};
+						};
 					};
 					DB3A91572F9EE18F00F9B729 = {
 						CreatedOnToolsVersion = 26.2;
@@ -283,6 +294,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				AB0000012F9EE18E00F9B729 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				C10000002F9EE18E00F9B729 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DB3A914A2F9EE18E00F9B729 /* Products */;
@@ -527,6 +539,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = plainstride.outbound;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REVENUECAT_PUBLIC_SDK_KEY = test_MnITpspzmjJgKDrvApGBIsSKlWs;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG APPLE_SIGN_IN_ENABLED";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -566,6 +579,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = plainstride.outbound;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REVENUECAT_PUBLIC_SDK_KEY = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = APPLE_SIGN_IN_ENABLED;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -780,6 +794,14 @@
 				minimumVersion = 11.0.0;
 			};
 		};
+		C10000002F9EE18E00F9B729 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.82.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -797,6 +819,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AB0000012F9EE18E00F9B729 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAnalytics;
+		};
+		C10000032F9EE18E00F9B729 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C10000002F9EE18E00F9B729 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCat;
+		};
+		C10000042F9EE18E00F9B729 /* RevenueCatUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C10000002F9EE18E00F9B729 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCatUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

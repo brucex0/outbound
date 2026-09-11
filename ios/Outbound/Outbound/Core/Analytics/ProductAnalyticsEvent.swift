@@ -139,6 +139,9 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case rewardsCenterOpened = "rewards_center_opened"
     case rewardCodeRedeemed = "reward_code_redeemed"
     case referralCodeShared = "referral_code_shared"
+    case subscriptionPaywallOpened = "subscription_paywall_opened"
+    case subscriptionCustomerCenterOpened = "subscription_customer_center_opened"
+    case subscriptionReconciled = "subscription_reconciled"
     case liveGuidanceMomentDetected = "live_guidance_moment_detected"
     case liveGuidanceCueSpoken = "live_guidance_cue_spoken"
     case liveGuidanceCueEvaluated = "live_guidance_cue_evaluated"
@@ -310,6 +313,9 @@ enum ProductAnalyticsSchema {
         .rewardsCenterOpened: [],
         .rewardCodeRedeemed: [.sourceType, .result],
         .referralCodeShared: [.sourceType],
+        .subscriptionPaywallOpened: [.entrySource],
+        .subscriptionCustomerCenterOpened: [.entrySource],
+        .subscriptionReconciled: [.sourceType, .result],
         .circleSectionExposed: [.entrySource, .participantCountBucket],
         .circleCreationStarted: [.entrySource],
         .circleCreationCompleted: [.entrySource, .participantCountBucket],
