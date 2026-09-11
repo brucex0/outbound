@@ -447,6 +447,8 @@ private fun SignedInApp(
                 RecordingRoute(
                     accountId = requireNotNull(accountId) { "Authenticated session is missing its account identifier." },
                     launch = recordingLaunch,
+                    unitSystem = measurementUnitSystem,
+                    weightKilograms = integration.weightKilograms,
                     onSaved = { review: RecordedActivityReview ->
                         suppressRecordingRecovery = true
                         healthViewModel.export(review)

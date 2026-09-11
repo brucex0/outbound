@@ -28,6 +28,7 @@ import com.plainstride.outbound.core.data.RecordedTrackPointDraft
 import com.plainstride.outbound.core.model.activity.ActivityPhoto
 import com.plainstride.outbound.core.model.activity.ActivityReflection
 import com.plainstride.outbound.core.model.activity.ActivityType
+import com.plainstride.outbound.core.model.activity.MeasurementUnitSystem
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -66,12 +67,14 @@ class RecordingViewModel @Inject constructor(
     )
     private var recoveryAccountId: String? = null
     private var preparingCountdown = false
+    private var presentationUnitSystem = MeasurementUnitSystem.metric
     val voiceListening: StateFlow<Boolean> = voice.listening
     init { voice.observe(viewModelScope, snapshot = { snapshot.value }, ::pause, ::resume, ::requestFinish) }
     fun listen(permissionGranted: Boolean) = voice.listen(permissionGranted)
 
-    fun configure(configuration: RecordingLaunchConfiguration) {
+    fun configure(configuration: RecordingLaunchConfiguration, unitSystem: MeasurementUnitSystem = MeasurementUnitSystem.metric) {
         if (mutableState.value.startRequested) return
+        presentationUnitSystem = unitSystem
         val restored=context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).getString(LAUNCH_KEY,null)?.let{runCatching{launchJson.decodeFromString<RecordingLaunchConfiguration>(it)}.getOrNull()}
         val effective=restored?:configuration
         mutableState.value = mutableState.value.copy(launch = effective)
@@ -79,6 +82,7 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.Source to effective.entrySource,
             AnalyticsProperty.ActivityType to effective.activityKind.name.lowercase(),
             AnalyticsProperty.GoalType to effective.goal.type.name.lowercase(),
+            AnalyticsProperty.UnitSystem to unitSystem.name,
         )))
     }
 
@@ -121,6 +125,7 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.GoalType to launch.goal.type.name.lowercase(),
             AnalyticsProperty.Permission to permission.name.lowercase(),
             AnalyticsProperty.VoiceGuideEnabled to launch.voiceGuideEnabled,
+            AnalyticsProperty.UnitSystem to presentationUnitSystem.name,
         )))
     }
 

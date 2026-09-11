@@ -49,6 +49,7 @@ fun PlainstrideRouteMap(
     routeSegments: List<MapRouteSegment> = emptyList(),
     markers: List<MapRouteMarker> = emptyList(),
     bottomContentPadding: Dp = 0.dp,
+    fitRouteOnChange: Boolean = true,
 ) {
     val context = LocalContext.current
     val description = stringResource(R.string.route_map_description)
@@ -80,8 +81,8 @@ fun PlainstrideRouteMap(
                 }
         }
     }
-    LaunchedEffect(points) {
-        if (points.isNotEmpty()) {
+    LaunchedEffect(points, fitRouteOnChange) {
+        if (fitRouteOnChange && points.isNotEmpty()) {
             val bounds = LatLngBounds.builder().also { builder -> points.forEach { builder.include(LatLng(it.latitude, it.longitude)) } }.build()
             runCatching { camera.animate(CameraUpdateFactory.newLatLngBounds(bounds, 64)) }
         }
