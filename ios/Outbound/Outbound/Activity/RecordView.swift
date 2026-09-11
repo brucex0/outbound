@@ -1918,19 +1918,9 @@ struct RecordView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            Group {
-                if isEmbeddedInToday {
-                    HStack(spacing: 8) {
-                        utilityButtonIcon(systemImage: systemImage, isConfigured: isConfigured)
-                        utilityButtonLabel(title)
-                    }
-                    .padding(.horizontal, 12)
-                } else {
-                    VStack(spacing: 4) {
-                        utilityButtonIcon(systemImage: systemImage, isConfigured: isConfigured)
-                        utilityButtonLabel(title)
-                    }
-                }
+            VStack(spacing: 4) {
+                utilityButtonIcon(systemImage: systemImage, isConfigured: isConfigured)
+                utilityButtonLabel(title)
             }
             .frame(
                 width: ActivityLaunchLayout.controlWidth,
@@ -1995,25 +1985,12 @@ struct RecordView: View {
                     track(.init(.shoeSelected, properties: [.selectionType: .string("none")]))
                 }
             } label: {
-                Group {
-                    if isEmbeddedInToday {
-                        HStack(spacing: 8) {
-                            utilityButtonIcon(
-                                systemImage: "shoeprints.fill",
-                                isConfigured: selectedSessionShoe != nil
-                            )
-                            utilityButtonLabel(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
-                        }
-                        .padding(.horizontal, 12)
-                    } else {
-                        VStack(spacing: 4) {
-                            utilityButtonIcon(
-                                systemImage: "shoeprints.fill",
-                                isConfigured: selectedSessionShoe != nil
-                            )
-                            utilityButtonLabel(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
-                        }
-                    }
+                VStack(spacing: 4) {
+                    utilityButtonIcon(
+                        systemImage: "shoeprints.fill",
+                        isConfigured: selectedSessionShoe != nil
+                    )
+                    utilityButtonLabel(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
                 }
                 .frame(
                     width: ActivityLaunchLayout.controlWidth,
