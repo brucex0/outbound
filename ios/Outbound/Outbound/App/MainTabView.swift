@@ -96,7 +96,7 @@ struct MainTabView: View {
             guard activeIntent == nil || activeIntent == previousIntent else { return }
             guard activeIntent != intent else { return }
             activeLaunch = RecordLaunch(intent: intent)
-            preActivityRoute = intent.preparedRoute
+            preActivityRoute = intent?.preparedRoute
             isActivityVisible = true
         }
         .onChange(of: onboardingStore.isPresented) { wasPresented, isPresented in
@@ -264,7 +264,7 @@ struct MainTabView: View {
         if selectedAppTab == .today {
             let intent = defaultTodayIntent
             activeLaunch = RecordLaunch(intent: intent)
-            preActivityRoute = intent.preparedRoute
+            preActivityRoute = intent?.preparedRoute
             isActivityVisible = true
         } else {
             activeLaunch = nil
@@ -273,8 +273,8 @@ struct MainTabView: View {
         }
     }
 
-    private var defaultTodayIntent: SessionIntent {
-        if trainingPlanStore.activePlan == nil { return .freestyleRun }
+    private var defaultTodayIntent: SessionIntent? {
+        guard trainingPlanStore.activePlan != nil else { return nil }
         return customizedTodayIntent
             ?? personalizationStore.snapshot.currentCalibrationWorkout?.sessionIntent
             ?? trainingPlanStore.todaySuggestion?.suggestedSession.intent
@@ -285,13 +285,13 @@ struct MainTabView: View {
         guard selectedAppTab == .today, activeLaunch == nil else { return }
         let intent = defaultTodayIntent
         activeLaunch = RecordLaunch(intent: intent)
-        preActivityRoute = intent.preparedRoute
+        preActivityRoute = intent?.preparedRoute
         isActivityVisible = true
     }
 
     private func prepareTodayLaunchForCurrentPlan() {
         let intent = defaultTodayIntent
-        activeLaunch = RecordLaunch(intent: trainingPlanStore.activePlan == nil ? nil : intent)
+        activeLaunch = RecordLaunch(intent: intent)
         launchGoalMode = trainingPlanStore.activePlan == nil ? .freestyle : .planned
         isActivityVisible = true
     }

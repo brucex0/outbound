@@ -355,6 +355,11 @@ struct SimplifiedAppShell: View {
                             onEndPlan: {
                                 trainingPlanStore.clearActivePlan()
                                 showsPlanDetails = false
+                                Task {
+                                    await analyticsManager?.track(.init(.trainingPlanEnded, properties: [
+                                        .entrySource: .string("plan_details"),
+                                    ]))
+                                }
                             }
                         )
                     } else {

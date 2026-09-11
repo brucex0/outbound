@@ -92,6 +92,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case todayCardDisplayChanged = "today_card_display_changed"
     case todayAdjustmentDecided = "today_adjustment_decided"
     case planningSurfaceOpened = "planning_surface_opened"
+    case trainingPlanEnded = "training_plan_ended"
     case musicAuthorizationRequested = "music_authorization_requested"
     case musicAuthorizationCompleted = "music_authorization_completed"
     case motionAuthorizationRequested = "motion_authorization_requested"
@@ -347,6 +348,7 @@ enum ProductAnalyticsSchema {
         .assistantMeaningfulEngagement: [.destination, .entrySource],
         .todayCardDisplayChanged: [.sourceType, .selectionType],
         .planningSurfaceOpened: [.sourceType, .entrySource],
+        .trainingPlanEnded: [.entrySource],
         .musicAuthorizationRequested: [],
         .musicAuthorizationCompleted: [.result],
         .motionAuthorizationRequested: [],
