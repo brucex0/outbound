@@ -18,6 +18,9 @@ enum SimplifiedAppTab: Hashable {
 }
 
 private struct AssistantLauncherButton: View {
+    static let diameter: CGFloat = 44
+    static let floatingTabBarTopInset: CGFloat = 18
+
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.analyticsManager) private var analyticsManager
     let accentColor: Color
@@ -56,7 +59,7 @@ private struct AssistantLauncherButton: View {
                     .opacity(shimmerOpacity)
                     .blur(radius: 0.8)
             }
-            .frame(width: 48, height: 48)
+            .frame(width: Self.diameter, height: Self.diameter)
             .background(accentColor.gradient, in: Circle())
             .overlay {
                 Circle().strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
@@ -202,6 +205,7 @@ struct SimplifiedAppShell: View {
     @State private var completionCircle: CircleDTO?
     @State private var circleToast: String?
     @State private var connectionToast: String?
+    @State private var tabBarHeight: CGFloat = 83
 
     var body: some View {
         TabView(selection: $selection) {
@@ -248,24 +252,32 @@ struct SimplifiedAppShell: View {
                     && !isActivityFullscreenVisible,
                 actionColor: theme.actionColor,
                 onSelect: selectTabWithoutAnimation,
-                onStart: onContextualStart
+                onStart: onContextualStart,
+                onTabBarHeightChange: { height in
+                    guard abs(tabBarHeight - height) > 0.5 else { return }
+                    tabBarHeight = height
+                }
             )
             .frame(width: 0, height: 0)
         }
         .onChange(of: selection, initial: true) { _, tab in
             feedbackPage = tab.feedbackPageName
         }
-        .overlay(alignment: .bottom) {
-            HStack {
-                assistantLaunchButton
-                    .opacity(isActivityFullscreenVisible ? 0 : 1)
-                    .allowsHitTesting(!isActivityFullscreenVisible)
-                    .accessibilityHidden(isActivityFullscreenVisible)
-
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 18)
-            .padding(.bottom, 40)
+        .overlay(alignment: .bottomLeading) {
+            assistantLaunchButton
+                .opacity(isActivityFullscreenVisible ? 0 : 1)
+                .allowsHitTesting(!isActivityFullscreenVisible)
+                .accessibilityHidden(isActivityFullscreenVisible)
+                .padding(.leading, 12)
+                .padding(
+                    .bottom,
+                    max(
+                        tabBarHeight
+                            - AssistantLauncherButton.floatingTabBarTopInset
+                            - AssistantLauncherButton.diameter,
+                        0
+                    )
+                )
         }
         .overlay(alignment: .top) {
             if let toast = circleToast ?? connectionToast {
@@ -583,6 +595,7 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
     let actionColor: Color
     let onSelect: (SimplifiedAppTab) -> Void
     let onStart: () -> Void
+    let onTabBarHeightChange: (CGFloat) -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -602,7 +615,8 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
             showsStart: showsStart,
             actionColor: UIColor(actionColor),
             onSelect: onSelect,
-            onStart: onStart
+            onStart: onStart,
+            onTabBarHeightChange: onTabBarHeightChange
         )
     }
 
@@ -633,13 +647,15 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
         private var isDeferredApplyScheduled = false
         private var onSelect: ((SimplifiedAppTab) -> Void)?
         private var onStart: (() -> Void)?
+        private var onTabBarHeightChange: ((CGFloat) -> Void)?
 
         func update(
             selectedTab: SimplifiedAppTab,
             showsStart: Bool,
             actionColor: UIColor,
             onSelect: @escaping (SimplifiedAppTab) -> Void,
-            onStart: @escaping () -> Void
+            onStart: @escaping () -> Void,
+            onTabBarHeightChange: @escaping (CGFloat) -> Void
         ) {
             let previousState = VisualState(showsStart: self.showsStart, actionColor: self.actionColor)
             let nextState = VisualState(showsStart: showsStart, actionColor: actionColor)
@@ -648,6 +664,8 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
             self.actionColor = actionColor
             self.onSelect = onSelect
             self.onStart = onStart
+            self.onTabBarHeightChange = onTabBarHeightChange
+            reportTabBarHeight()
             if !nextState.matches(previousState) || appliedVisualState == nil {
                 configureTabBar()
             }
@@ -663,6 +681,7 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
             }
             installSelectionPressRecognizer(on: controller)
             configureTabBar()
+            reportTabBarHeight()
         }
 
         func detach() {
@@ -674,6 +693,7 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
             appliedVisualState = nil
             isDeferredApplyScheduled = false
             selectionPressRecognizer = nil
+            onTabBarHeightChange = nil
         }
 
         private func installSelectionPressRecognizer(on controller: UITabBarController) {
@@ -698,9 +718,11 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
             else { return }
 
             let location = recognizer.location(in: tabBarController.tabBar)
-            let itemWidth = tabBarController.tabBar.bounds.width / CGFloat(itemCount)
-            guard itemWidth > 0 else { return }
-            let targetIndex = min(max(Int(location.x / itemWidth), 0), itemCount - 1)
+            guard let targetIndex = tabIndex(
+                at: location.x,
+                in: tabBarController.tabBar,
+                itemCount: itemCount
+            ) else { return }
 
             if targetIndex == 1, selectedTab == .today, showsStart {
                 onStart?()
@@ -729,12 +751,38 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
 
         private func configureTabBar(allowsDeferredRetry: Bool = true) {
             guard let tabBarController else { return }
+            configureCompactItemLayout(tabBarController.tabBar)
             guard applyCenterItem(to: tabBarController) else {
                 if allowsDeferredRetry {
                     scheduleDeferredApply(on: tabBarController)
                 }
                 return
             }
+        }
+
+        private func configureCompactItemLayout(_ tabBar: UITabBar) {
+            let isSmallScreen = tabBar.bounds.width < 390
+            tabBar.itemPositioning = .centered
+            tabBar.itemWidth = isSmallScreen ? 60 : 68
+            tabBar.itemSpacing = isSmallScreen ? 8 : 14
+        }
+
+        private func tabIndex(at locationX: CGFloat, in tabBar: UITabBar, itemCount: Int) -> Int? {
+            guard itemCount > 0, tabBar.itemWidth > 0 else { return nil }
+            let step = tabBar.itemWidth + tabBar.itemSpacing
+            let contentWidth = tabBar.itemWidth * CGFloat(itemCount)
+                + tabBar.itemSpacing * CGFloat(itemCount - 1)
+            let firstCenter = (tabBar.bounds.width - contentWidth) / 2 + tabBar.itemWidth / 2
+            let index = Int(round((locationX - firstCenter) / step))
+            guard (0..<itemCount).contains(index) else { return nil }
+            return index
+        }
+
+        private func reportTabBarHeight() {
+            guard let height = tabBarController?.tabBar.bounds.height,
+                  height >= AssistantLauncherButton.diameter
+            else { return }
+            onTabBarHeightChange?(height)
         }
 
         private func scheduleDeferredApply(on controller: UITabBarController) {
@@ -782,6 +830,7 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
                 controller.tabBar.setNeedsLayout()
                 controller.tabBar.layoutIfNeeded()
             }
+            reportTabBarHeight()
             appliedItem = item
             appliedVisualState = visualState
             return true
