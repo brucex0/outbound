@@ -16,6 +16,7 @@ import retrofit2.http.PUT
     val id: String,
     val username: String? = null,
     val displayName: String? = null,
+    val avatarUrl: String? = null,
     val normalizedEmail: String? = null,
     val contactEmail: String? = null,
     val bio: String? = null,

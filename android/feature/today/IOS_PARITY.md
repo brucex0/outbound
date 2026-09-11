@@ -15,6 +15,7 @@
 - Weather, inbox, overflow, and assistant controls use opaque elevated surfaces so the map cannot reduce icon contrast.
 - The weather pill shows a localized on-device city or region when Android geocoding can resolve one, followed by temperature. Weather remains usable when naming is unavailable.
 - Existing workout-start and assistant-launch analytics cover the contextual actions; no coordinates or place names enter analytics.
+- Manual calorie goals show estimated distance and duration when the training profile has enough data, using the shared calorie estimator and learned run pace.
 
 ## States Covered
 

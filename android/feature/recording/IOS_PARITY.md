@@ -16,7 +16,7 @@
 - The primary live metric follows the selected distance, time, calorie, structured-workout, or freestyle goal.
 - Recovery returns to the live surface paused; completion stays in the same route for reflection, local save, or confirmed discard. Confirmed discard waits for the recording service to reach idle before navigating away, preventing recovery from reopening the discarded activity.
 - Finish remains disabled while required photo persistence is pending.
-- Post-run review leads with the recorded route (or a non-route activity hero), a contextual motivation reflection, core stats, optional perceived effort, photo review, and Save Activity.
+- Post-run review leads with the recorded route (or a non-route activity hero), overlays the close and Save controls like iOS, and follows with contextual motivation, core stats, optional perceived effort, and photo review.
 - Save is disabled below the shared iOS threshold of five minutes or 500 meters; closing the review always requires destructive confirmation.
 
 ## Resources, Analytics, And Accessibility

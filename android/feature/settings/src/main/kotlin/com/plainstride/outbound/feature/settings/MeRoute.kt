@@ -58,9 +58,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.CircleShape
+import android.graphics.BitmapFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -92,6 +101,9 @@ fun MeRoute(
     connections: List<MeConnection> = emptyList(),
     insights: List<MeInsight> = emptyList(),
     milestones: List<MeMilestone> = emptyList(),
+    localWeeklyMinutes: Int = 0,
+    localWeeklyDistanceMeters: Double = 0.0,
+    localWeeklyActivityCount: Int = 0,
     onConnections: () -> Unit = {},
     onMyRoutes: () -> Unit = {},
     onMeDestination: (String) -> Unit = {},
@@ -107,6 +119,7 @@ fun MeRoute(
         MePage.Overview -> MeOverview(
             state, onSettings = { page = MePage.Settings }, onRefresh = viewModel::refresh,
             onActivityHistory, connections, insights, milestones,
+            localWeeklyMinutes, localWeeklyDistanceMeters, localWeeklyActivityCount,
             onConnections = { onMeDestination("connections"); onConnections() },
             onMyRoutes = { onMeDestination("my_routes"); onMyRoutes() },
             onMilestones = { onMeDestination("milestones"); page = MePage.Milestones },
@@ -144,6 +157,9 @@ private fun MeOverview(
     connections: List<MeConnection>,
     insights: List<MeInsight>,
     milestones: List<MeMilestone>,
+    localWeeklyMinutes: Int,
+    localWeeklyDistanceMeters: Double,
+    localWeeklyActivityCount: Int,
     onConnections: () -> Unit,
     onMyRoutes: () -> Unit,
     onMilestones: () -> Unit,
@@ -160,7 +176,7 @@ private fun MeOverview(
         LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item { OutlinedCard(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onSettings)) {
                 Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Icon(Icons.Outlined.AccountCircle, null, Modifier.size(58.dp), tint = MaterialTheme.colorScheme.primary)
+                    ProfileAvatar(state.account?.avatarUrl, state.account?.displayName ?: stringResource(R.string.runner))
                     Column(Modifier.weight(1f)) {
                         Text(state.account?.displayName ?: stringResource(R.string.runner), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         state.account?.username?.let { Text("@$it", color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -201,13 +217,13 @@ private fun MeOverview(
                 OutlinedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         LinearProgressIndicator(
-                            progress = { (state.summary?.consistencyPercent ?: 0).coerceIn(0, 100) / 100f },
+                            progress = { (state.summary?.consistencyPercent ?: if (localWeeklyActivityCount > 0) (localWeeklyActivityCount * 34).coerceAtMost(100) else 0).coerceIn(0, 100) / 100f },
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            SummaryStat(state.summary?.weeklyMinutes?.toString() ?: "—", stringResource(R.string.minutes))
-                            SummaryStat(formatWeeklyDistance(state), stringResource(if (state.preferences.measurement == MeasurementSystem.Metric) R.string.kilometers else R.string.miles))
-                            SummaryStat(state.summary?.consistencyPercent?.let { "$it%" } ?: "—", stringResource(R.string.consistency))
+                            SummaryStat((state.summary?.weeklyMinutes ?: localWeeklyMinutes).toString(), stringResource(R.string.minutes))
+                            SummaryStat(formatWeeklyDistance(state, localWeeklyDistanceMeters), stringResource(if (state.preferences.measurement == MeasurementSystem.Metric) R.string.kilometers else R.string.miles))
+                            SummaryStat("${state.summary?.consistencyPercent ?: (localWeeklyActivityCount * 34).coerceAtMost(100)}%", stringResource(R.string.consistency))
                         }
                     }
                 }
@@ -257,10 +273,43 @@ private fun MilestonesScreen(milestones: List<MeMilestone>, onBack: () -> Unit, 
     }
 }
 
-private fun formatWeeklyDistance(state: SettingsUiState): String = state.summary?.weeklyDistanceMeters?.let { meters ->
+private fun formatWeeklyDistance(state: SettingsUiState, localMeters: Double): String = (state.summary?.weeklyDistanceMeters ?: localMeters).let { meters ->
     if (state.preferences.measurement == MeasurementSystem.Metric) "%.1f".format(meters / 1_000)
     else "%.1f".format(meters / 1_609.344)
-} ?: "—"
+}
+
+@Composable
+private fun ProfileAvatar(url: String?, name: String) {
+    val bitmap by produceState<android.graphics.Bitmap?>(null, url) {
+        value = withContext(Dispatchers.IO) {
+            url?.takeIf { it.startsWith("https://") || it.startsWith("http://") }
+                ?.let { source ->
+                    runCatching {
+                        java.net.URL(source).openStream().use(BitmapFactory::decodeStream)
+                    }.getOrNull()
+                }
+        }
+    }
+    Box(
+        Modifier.size(58.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap!!.asImageBitmap(),
+                contentDescription = name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        } else {
+            Text(
+                name.trim().split(Regex("\\s+")).take(2).mapNotNull { it.firstOrNull() }.joinToString("").uppercase(),
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
+    }
+}
 
 @Composable private fun SummaryStat(value: String, label: String) = Column(horizontalAlignment = Alignment.CenterHorizontally) {
     Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)

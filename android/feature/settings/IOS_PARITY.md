@@ -9,6 +9,7 @@
 ## States And Transitions
 
 - Me presents profile identity, current focus, this-week progress, and recent activities in the same card hierarchy as iOS.
+- Profile identity renders the account avatar when available, with initials as an offline/error fallback. This-week totals fall back to the local activity repository while planning data is unavailable.
 - Profile editing, refresh, settings, and activity history remain reachable with cached content visible while refresh is in progress.
 - Settings groups account, reminders, safety, live guidance, appearance, units, health, gear/progress, integrations, legal/help, debug replay, version, and deletion using Android-native destinations.
 - Preference writes are local-first and report transient save or retry results through the app snackbar.

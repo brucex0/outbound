@@ -18,6 +18,7 @@ dependencies {
     api(project(":core:model"))
     implementation(project(":core:analytics"))
     implementation(project(":core:database"))
+    implementation(project(":core:data"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:network"))
     implementation(project(":core:weather"))

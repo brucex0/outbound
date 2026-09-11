@@ -369,6 +369,9 @@ private fun SignedInApp(
                             connections = integration.connections.map { MeConnection(it.id, it.displayName) },
                             insights = integration.insights.map { MeInsight(it.id, it.label, it.value, it.confidence.replaceFirstChar(Char::uppercase)) },
                             milestones = integration.recognitions.map { MeMilestone("${it.badgeId}:${it.awardedAt}", it.badgeId.replace('_', ' ').replaceFirstChar(Char::uppercase)) },
+                            localWeeklyMinutes = integration.progress.stats.currentWeek.durationSeconds / 60,
+                            localWeeklyDistanceMeters = integration.progress.stats.currentWeek.distanceMeters,
+                            localWeeklyActivityCount = integration.progress.stats.currentWeek.activityCount,
                             onConnections = {
                                 socialTarget = "connections" to ""
                                 navController.navigate(TopLevelDestination.Social.route) { launchSingleTop = true }

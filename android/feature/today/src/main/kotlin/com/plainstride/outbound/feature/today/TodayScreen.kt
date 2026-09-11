@@ -99,6 +99,7 @@ import com.plainstride.outbound.core.model.AdjustmentProposal
 import com.plainstride.outbound.core.model.StandaloneWorkout
 import com.plainstride.outbound.core.designsystem.PlainstrideRouteMap
 import com.plainstride.outbound.core.designsystem.PlainstrideFloatingAction
+import com.plainstride.outbound.core.model.activity.PlannedCalorieEstimate
 
 enum class TodayActivityChoice { PLANNED, RUN, WALK, HIKE, BIKE }
 enum class TodayGoalChoice { CURATED, FREE, DISTANCE, TIME, CALORIES }
@@ -177,6 +178,7 @@ fun TodayRoute(
         onDecideAdjustment = viewModel::decideAdjustment,
         onCardDisplayChanged = viewModel::trackCardDisplayChanged,
         onLaunchConfigurationChanged = viewModel::trackLaunchConfiguration,
+        calorieEstimate = viewModel::calorieEstimate,
         guidanceContent = guidanceContent,
         startRequest = startRequest,
         initialWorkoutId = initialWorkoutId,
@@ -206,6 +208,7 @@ fun TodayScreen(
     onDecideAdjustment: (String, Boolean) -> Unit,
     onCardDisplayChanged: (Boolean) -> Unit = {},
     onLaunchConfigurationChanged: (String, String) -> Unit = { _, _ -> },
+    calorieEstimate:suspend (TodayActivityChoice,Int)->PlannedCalorieEstimate?={_,_->null},
     guidanceContent: @Composable () -> Unit = {},
     startRequest: Int = 0,
     initialWorkoutId: String? = null,
@@ -227,6 +230,7 @@ fun TodayScreen(
     var distanceMeters by rememberSaveable { mutableStateOf(5_000.0) }
     var durationSeconds by rememberSaveable { mutableStateOf(1_800L) }
     var calories by rememberSaveable { mutableStateOf(300) }
+    var caloriePlan by remember { mutableStateOf<PlannedCalorieEstimate?>(null) }
     var editingGoal by rememberSaveable { mutableStateOf(false) }
     var overflowExpanded by rememberSaveable { mutableStateOf(false) }
     var handledStartRequest by rememberSaveable { mutableStateOf(startRequest) }
@@ -235,6 +239,13 @@ fun TodayScreen(
         if (photo != null) setupPhoto = photo
     }
     val suggestion = state.primarySuggestion
+    LaunchedEffect(activityChoice, calories, goalChoice) {
+        caloriePlan = if (goalChoice == TodayGoalChoice.CALORIES) {
+            calorieEstimate(activityChoice, calories)
+        } else {
+            null
+        }
+    }
     val launchPreparedActivity = {
         if (activityChoice == TodayActivityChoice.PLANNED) {
             suggestion?.let { onStart(it, "today_planned", TodayLaunchOptions(indoor, voiceGuideEnabled)) }
@@ -302,7 +313,7 @@ fun TodayScreen(
                     )
                 }
                 if (activityChoice != TodayActivityChoice.PLANNED && goalChoice != TodayGoalChoice.FREE) {
-                    ManualGoalCard(activityChoice, goalChoice, curatedWorkout, distanceMeters, durationSeconds, calories) {
+                    ManualGoalCard(activityChoice, goalChoice, curatedWorkout, distanceMeters, durationSeconds, calories,caloriePlan) {
                         if (goalChoice == TodayGoalChoice.CURATED) showsCatalog = true else editingGoal = true
                     }
                 }
@@ -411,7 +422,7 @@ private fun WeatherGuidance.compactLabel(useFahrenheit: Boolean): String {
 }
 
 @Composable
-private fun ManualGoalCard(activity: TodayActivityChoice, goal: TodayGoalChoice, curatedWorkout: StandaloneWorkout?, distanceMeters: Double, durationSeconds: Long, calories: Int, onEdit: () -> Unit) {
+private fun ManualGoalCard(activity: TodayActivityChoice, goal: TodayGoalChoice, curatedWorkout: StandaloneWorkout?, distanceMeters: Double, durationSeconds: Long, calories: Int, caloriePlan: PlannedCalorieEstimate?, onEdit: () -> Unit) {
     Card(onClick = onEdit, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .96f))) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -423,7 +434,12 @@ private fun ManualGoalCard(activity: TodayActivityChoice, goal: TodayGoalChoice,
                 TodayGoalChoice.CALORIES -> stringResource(R.string.today_calories_format, calories)
                 TodayGoalChoice.FREE -> stringResource(goal.valueResource())
             }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(stringResource(R.string.today_goal_edit_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            val editHint = if (goal == TodayGoalChoice.CALORIES && caloriePlan != null) {
+                "${stringResource(R.string.today_distance_format, caloriePlan.distanceMeters / 1_000)} · ${stringResource(R.string.today_time_format, caloriePlan.durationSeconds / 60)}"
+            } else {
+                stringResource(R.string.today_goal_edit_hint)
+            }
+            Text(editHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Icon(Icons.Default.ChevronRight, null)
         }

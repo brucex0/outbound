@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.plainstride.outbound.core.analytics.AnalyticsEvent
@@ -26,6 +27,11 @@ import com.plainstride.outbound.core.model.PlanningState
 import com.plainstride.outbound.core.model.StandaloneWorkoutCatalog
 import com.plainstride.outbound.core.model.TrainingStimulus
 import com.plainstride.outbound.core.network.ReadinessCheckInRequest
+import com.plainstride.outbound.core.data.ActivityRepository
+import com.plainstride.outbound.core.model.CalibrationStatus
+import com.plainstride.outbound.core.model.activity.ActivityFacts
+import com.plainstride.outbound.core.model.activity.PlannedCalorieEstimate
+import com.plainstride.outbound.core.model.activity.WorkoutCalorieEstimator
 
 data class WorkoutLaunchIntent(
     val suggestionId: String,
@@ -85,6 +91,7 @@ class TodayViewModel @Inject constructor(
     private val repository: TodayRepository,
     private val analytics: ProductAnalytics,
     private val weatherPolicy: TodayWeatherPolicy,
+    private val activities: ActivityRepository,
 ) : ViewModel() {
     // A single encrypted session is active at a time; account bootstrap can later provide the
     // opaque server account ID without exposing identity details to this feature.
@@ -214,6 +221,43 @@ class TodayViewModel @Inject constructor(
             mapOf(AnalyticsProperty.Source to "today_manual", AnalyticsProperty.ActivityType to activity.name.lowercase(), AnalyticsProperty.GoalType to goal.name.lowercase()),
         ),
     )
+
+    suspend fun calorieEstimate(
+        activity: TodayActivityChoice,
+        target: Int,
+    ): PlannedCalorieEstimate? {
+        val profile = repository.trainingProfile().getOrNull() ?: return null
+        if (activity == TodayActivityChoice.WALK) {
+            return WorkoutCalorieEstimator.plannedWalk(target, profile.weightKilograms)
+        }
+        if (activity != TodayActivityChoice.RUN) return null
+
+        val accountId = accountScope.value.first
+        val saved = activities.observePage(accountId, limit = 30).first().activities.map { item ->
+            ActivityFacts(
+                activityType = item.type,
+                startedAt = Instant.parse(item.startedAt),
+                durationSeconds = item.durationSecs,
+                distanceMeters = item.distanceM,
+                averagePaceSecondsPerKilometer = item.averagePaceSecsPerKm,
+                elevationGainMeters = item.elevationGainM ?: 0.0,
+                energyKilocalories = item.energyKilocalories,
+            )
+        }
+        val calibrationCompleted =
+            (state.value.personalization as? CachedResource.Available)
+                ?.value
+                ?.calibration
+                ?.status == CalibrationStatus.completed
+        val pace = WorkoutCalorieEstimator
+            .resolveLearnedRunPace(saved, calibrationCompleted)
+            .secondsPerKilometer
+        return WorkoutCalorieEstimator.plannedRunByCalories(
+            target,
+            profile.weightKilograms,
+            pace,
+        )
+    }
 
     fun setUpPlan() {
         if (mutationInFlight.value) return

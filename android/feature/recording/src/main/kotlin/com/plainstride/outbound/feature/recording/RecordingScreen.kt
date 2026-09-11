@@ -520,6 +520,13 @@ private fun ReflectionScreen(
                     Surface(shape = CircleShape, tonalElevation = 6.dp, modifier = Modifier.align(Alignment.TopStart).padding(16.dp)) {
                         IconButton(onClick = onClose, enabled = !saving) { Icon(Icons.Default.Close, stringResource(R.string.recording_discard)) }
                     }
+                    Button(
+                        onClick = onSave,
+                        enabled = snapshot.saveEligibility == ActivitySaveEligibility.ELIGIBLE && !saving,
+                        modifier = Modifier.align(Alignment.TopEnd).padding(16.dp).heightIn(min = 48.dp),
+                    ) {
+                        Text(stringResource(if (saving) R.string.recording_saving_activity else R.string.recording_save_activity))
+                    }
                 }
             }
             item {
@@ -576,9 +583,6 @@ private fun ReflectionScreen(
                 }
             }
             item {
-                Button(onClick = onSave, enabled = snapshot.saveEligibility == ActivitySaveEligibility.ELIGIBLE && !saving, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 56.dp)) {
-                    Text(stringResource(if (saving) R.string.recording_saving_activity else if (snapshot.saveEligibility == ActivitySaveEligibility.TOO_SHORT) R.string.recording_too_short_to_save else R.string.recording_save_activity))
-                }
                 if (snapshot.saveEligibility == ActivitySaveEligibility.TOO_SHORT) {
                     Text(stringResource(R.string.recording_save_ineligible_explanation), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp))
                 }
