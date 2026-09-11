@@ -92,6 +92,7 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.ActivityType to launch.activityKind.name.lowercase(),
             AnalyticsProperty.GoalType to launch.goal.type.name.lowercase(),
             AnalyticsProperty.Permission to permission.name.lowercase(),
+            AnalyticsProperty.VoiceGuideEnabled to launch.voiceGuideEnabled,
         )))
     }
 
