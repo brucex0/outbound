@@ -83,7 +83,7 @@ export class LiveCoachSessionService {
           capability: "live_coach_dynamic",
           allowed: false,
           reason: "entitlement_required",
-          paywallAvailable: false,
+          paywallAvailable: feature.paywallAvailable,
         };
         effectiveMode = "fixed_only";
         route = null;
@@ -192,7 +192,8 @@ export class LiveCoachSessionService {
       access: {
         dynamicCoaching: resolvedAccess.allowed ? "allowed" : "unavailable",
         reason: resolvedAccess.reason,
-        paywallAvailable: false,
+        paywallAvailable: resolvedAccess.reason === "entitlement_required"
+          && feature.paywallAvailable,
       },
       audioPack: {
         manifestVersion: feature.catalogVersion,

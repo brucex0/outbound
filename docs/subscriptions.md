@@ -14,8 +14,8 @@ Open this when configuring, releasing, or troubleshooting Plainstride Plus purch
 
 1. Create one RevenueCat project with Apple and Google Play apps.
 2. Create the `plainstride_pro` entitlement.
-3. Create the `monthly`, `yearly`, and `lifetime` products in the RevenueCat Test Store. Before production, create their platform equivalents in App Store Connect and Google Play Console. `lifetime` is a non-consumable; `monthly` and `yearly` are auto-renewing subscriptions.
-4. Attach every platform's `monthly`, `yearly`, and `lifetime` products to `plainstride_pro`. Add them to the Current Offering using the standard Monthly, Annual, and Lifetime package types. The hosted paywall reads that Current Offering, so no product IDs or prices are hard-coded in either client.
+3. Create the `weekly`, `monthly`, and `yearly` auto-renewing subscription products in the RevenueCat Test Store. Before production, create their platform equivalents in App Store Connect and Google Play Console. Plainstride does not offer a lifetime product.
+4. Attach every platform's `weekly`, `monthly`, and `yearly` products to `plainstride_pro`. Add them to the Current Offering using the standard Weekly, Monthly, and Annual package types. The hosted paywall reads that Current Offering, so no product IDs or prices are hard-coded in either client.
 5. Configure and publish the RevenueCat paywall for the Current Offering, including localized terms and restore behavior. The clients use RevenueCat's localized, remotely configured paywall and its default paywall fallback.
 6. Configure Customer Center in RevenueCat. It is shown only after the local `plainstride_pro` entitlement is active; dismissing it triggers backend reconciliation so cancellation, restore, and product-change results reach capability gates promptly.
 7. Configure App Store credentials and the Google Play service account in RevenueCat.
@@ -29,7 +29,8 @@ Open this when configuring, releasing, or troubleshooting Plainstride Plus purch
 - These are public, platform-specific SDK keys, not RevenueCat secret API keys.
 - The supplied `test_` key is compiled only into Debug builds. Release builds must use separate `appl_` and `goog_` keys; never ship the Test Store key. When a Release key is absent, RevenueCat is not configured and purchase UI remains hidden.
 - Configure only after authentication with the known Plainstride account UUID. Do not call RevenueCat logout; purchase surfaces are unavailable while Plainstride is signed out, and the next account is selected with RevenueCat login. This avoids anonymous customers and cross-account entitlement transfer.
-- iOS implementation lives in `Core/Subscriptions/RevenueCatSubscriptionStore.swift` and `App/RewardsCenterView.swift`; Android uses `subscriptions/RevenueCatCoordinator.kt` and `RewardsScreen.kt`. Both subscribe to customer-info updates, check `plainstride_pro`, present RevenueCat's hosted paywall, handle purchase/restore completion, and route active customers to Customer Center.
+- iOS implementation lives in `Core/Subscriptions/RevenueCatSubscriptionStore.swift` and `App/PlusView.swift`; Android uses `subscriptions/RevenueCatCoordinator.kt` and `RewardsScreen.kt`. Both subscribe to customer-info updates, check `plainstride_pro`, present RevenueCat's hosted paywall, handle purchase/restore completion, and route active customers to Customer Center. Plus is a dedicated Settings destination; invitations and contribution codes remain in the separate rewards destination.
+- Live Guidance shows a contextual Plus entry only when `/v1/live-coach/config` returns `paywallAvailable = true`. The backend returns that flag only for an entitlement-required runner and only when `LIVE_COACH_PAID_MODE_READY=true`; fixed guidance continues without interruption.
 
 ## Reconciliation
 
@@ -40,6 +41,7 @@ Open this when configuring, releasing, or troubleshooting Plainstride Plus purch
 
 ## Release Gate
 
+- Confirm the Current Offering contains exactly Weekly, Monthly, and Annual packages, with Annual presented as the best-value default.
 - Test new purchase, renewal, cancellation, billing retry/grace period, refund, restore, account switch, and cross-platform access in store sandboxes.
 - Confirm the webhook test reaches the backend and a purchase activates all three Plus capabilities.
 - Confirm removing the store entitlement expires only the `revenuecat` source.

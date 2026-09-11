@@ -19,6 +19,7 @@ export type LiveCoachFeatureConfig = {
   dynamicRolloutPercent: number;
   foundingUserLimit: number;
   trialRunLimit: number;
+  paywallAvailable: boolean;
   cueValidityMilliseconds: number;
   providerDeadlineMilliseconds: number;
   audioManifestUrl: string;
@@ -66,6 +67,7 @@ export function loadLiveCoachFeatureConfig(env: NodeJS.ProcessEnv = process.env)
     dynamicRolloutPercent: boundedInteger(env.LIVE_COACH_DYNAMIC_ROLLOUT_PERCENT, 0, 0, 100),
     foundingUserLimit: boundedInteger(env.LIVE_COACH_FOUNDING_USER_LIMIT, 1_000, 1, 1_000_000),
     trialRunLimit: boundedInteger(env.LIVE_COACH_TRIAL_RUN_LIMIT, 3, 1, 100),
+    paywallAvailable: env.LIVE_COACH_PAID_MODE_READY === "true",
     cueValidityMilliseconds: boundedInteger(env.LIVE_COACH_CUE_VALIDITY_MILLISECONDS, 5_000, 1_000, 10_000),
     providerDeadlineMilliseconds: boundedInteger(env.LIVE_COACH_PROVIDER_DEADLINE_MILLISECONDS, 1_500, 500, 10_000),
     audioManifestUrl: trimmed(env.LIVE_COACH_AUDIO_MANIFEST_URL),

@@ -20,7 +20,9 @@ export class DatabaseLiveCoachEntitlementResolver implements LiveCoachEntitlemen
     const entitlement = await this.activeEntitlement(userId, now);
     if (entitlement) return decision(true, subscriptionSources.has(entitlement.source) ? "verified_subscription" : "promotion");
 
-    if (config.accessMode === "subscription_required") return decision(false, "entitlement_required");
+    if (config.accessMode === "subscription_required") {
+      return decision(false, "entitlement_required", config.paywallAvailable);
+    }
 
     const foundingEntitlement = await this.ensureFoundingEntitlement(userId, now, config.foundingUserLimit);
     if (foundingEntitlement) return decision(true, "promotion");
@@ -36,7 +38,7 @@ export class DatabaseLiveCoachEntitlementResolver implements LiveCoachEntitlemen
     const consumed = (usage?.successfulCount ?? 0) + (usage?.reservedCount ?? 0);
     return consumed < config.trialRunLimit
       ? decision(true, "open_beta")
-      : decision(false, "entitlement_required");
+      : decision(false, "entitlement_required", config.paywallAvailable);
   }
 
   async reserveTrialRun(userId: string, config: LiveCoachFeatureConfig): Promise<boolean> {
@@ -161,6 +163,10 @@ export class DatabaseLiveCoachEntitlementResolver implements LiveCoachEntitlemen
 
 const subscriptionSources = new Set(["app_store", "google_play", "verified_subscription", "revenuecat"]);
 
-function decision(allowed: boolean, reason: LiveCoachAccessDecision["reason"]): LiveCoachAccessDecision {
-  return { capability: "live_coach_dynamic", allowed, reason, paywallAvailable: false };
+function decision(
+  allowed: boolean,
+  reason: LiveCoachAccessDecision["reason"],
+  paywallAvailable = false
+): LiveCoachAccessDecision {
+  return { capability: "live_coach_dynamic", allowed, reason, paywallAvailable };
 }
