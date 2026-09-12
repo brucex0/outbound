@@ -22,7 +22,7 @@ data class SocialUiState(
     val connectionQrFailed: Boolean = false, val connectionRequestLoading: Boolean = false,
 )
 enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED }
-enum class ConnectionFeedback { REQUESTED, ALREADY_PENDING, INCOMING_PENDING, ALREADY_CONNECTED, SELF, UPDATED, REQUEST_FAILED, INVITE_LINK_FAILED }
+enum class ConnectionFeedback { CHECKING, REQUESTED, ALREADY_PENDING, INCOMING_PENDING, ALREADY_CONNECTED, SELF, UPDATED, REQUEST_FAILED, INVITE_LINK_FAILED }
 sealed interface ConnectionEffect {
     data class Feedback(val value: ConnectionFeedback, val closeScanner: Boolean) : ConnectionEffect
     data class ShareInvitation(val url: String) : ConnectionEffect
@@ -116,10 +116,13 @@ sealed interface ConnectionEffect {
             onFailure = { connectionEffects.emit(ConnectionEffect.Feedback(ConnectionFeedback.INVITE_LINK_FAILED, closeScanner = false)) },
         )
     }
-    fun consumeConnectionCode(code: String) {
+    fun consumeConnectionCode(code: String, showProgressFeedback: Boolean = false) {
         if (mutableState.value.connectionRequestLoading) return
         mutableState.update { it.copy(connectionRequestLoading = true) }
         viewModelScope.launch {
+            if (showProgressFeedback) {
+                connectionEffects.emit(ConnectionEffect.Feedback(ConnectionFeedback.CHECKING, closeScanner = false))
+            }
             repository.consumeConnectionLink(code).fold(
                 onSuccess = { response ->
                     val feedback = when (response.result) {

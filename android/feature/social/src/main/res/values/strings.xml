@@ -9,6 +9,7 @@
     <string name="social_block_confirmation_title">Block this person?</string>
     <string name="social_camera_access_description">Allow camera access in Settings to scan a Plainstride connection code.</string>
     <string name="social_camera_access_needed">Camera access needed</string>
+    <string name="social_checking_qr_code">Checking QR code…</string>
     <string name="social_cancel">Cancel</string>
     <string name="social_cheer">Send a private Cheer</string>
     <string name="social_circle">Your Circle</string>

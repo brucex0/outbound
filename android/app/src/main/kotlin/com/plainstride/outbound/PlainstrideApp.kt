@@ -146,6 +146,8 @@ fun PlainstrideApp(
     onTransferCodeConsumed: () -> Unit = {},
     navigationUri: android.net.Uri? = null,
     onNavigationUriConsumed: () -> Unit = {},
+    connectionCode: String? = null,
+    onConnectionCodeConsumed: () -> Unit = {},
 ) {
     val authViewModel: AuthViewModel = hiltViewModel()
     val authState by authViewModel.state.collectAsStateWithLifecycle()
@@ -164,6 +166,8 @@ fun PlainstrideApp(
             snackbar,
             navigationUri,
             onNavigationUriConsumed,
+            connectionCode,
+            onConnectionCodeConsumed,
         )
     }
 }
@@ -176,6 +180,8 @@ private fun SignedInApp(
     snackbar: SnackbarHostState,
     navigationUri: android.net.Uri?,
     onNavigationUriConsumed: () -> Unit,
+    connectionCode: String?,
+    onConnectionCodeConsumed: () -> Unit,
 ) {
     val settingsState by settingsViewModel.state.collectAsStateWithLifecycle()
     val measurementUnitSystem = if (settingsState.preferences.measurement == com.plainstride.outbound.feature.settings.MeasurementSystem.Imperial) {
@@ -254,6 +260,11 @@ private fun SignedInApp(
             else -> navController.navigate(NOTIFICATIONS_ROUTE)
         }
         onNavigationUriConsumed()
+    }
+    LaunchedEffect(connectionCode) {
+        val code = connectionCode ?: return@LaunchedEffect
+        socialTarget = "connection_link" to code
+        navController.navigate(TopLevelDestination.Social.route) { launchSingleTop = true }
     }
 
     Scaffold(
@@ -434,7 +445,7 @@ private fun SignedInApp(
                             onMessage = { message -> snackbar.showSnackbar(resources.getString(settingsMessageResource(message))) },
                         )
                     } else if (destination == TopLevelDestination.Social && accountId != null) {
-                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.first,socialTarget?.second,onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE)},onActivity={id->activityTarget=id;navController.navigate(ACTIVITY_HISTORY_ROUTE)})
+                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.first,socialTarget?.second,onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE)},onActivity={id->activityTarget=id;navController.navigate(ACTIVITY_HISTORY_ROUTE)},onConnectionLinkConsumed={socialTarget=null;onConnectionCodeConsumed()})
                     } else {
                         FoundationScreen(destination, authState, authViewModel)
                     }

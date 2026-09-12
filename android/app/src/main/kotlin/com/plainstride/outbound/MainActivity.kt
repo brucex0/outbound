@@ -22,12 +22,14 @@ import com.plainstride.outbound.di.SpotifyOAuthClient
 class MainActivity : ComponentActivity() {
     private var transferCode by mutableStateOf<String?>(null)
     private var navigationUri by mutableStateOf<Uri?>(null)
+    private var connectionCode by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         transferCode = intent.transferCode()
         if (intent.action == SpotifyOAuthClient.CALLBACK) SpotifyOAuthClient.complete(intent)
         navigationUri = intent.navigationUri()
+        connectionCode = intent.connectionCode()
         enableEdgeToEdge()
         setContent {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
@@ -44,6 +46,8 @@ class MainActivity : ComponentActivity() {
                     onTransferCodeConsumed = { transferCode = null },
                     navigationUri = navigationUri,
                     onNavigationUriConsumed = { navigationUri = null },
+                    connectionCode = connectionCode,
+                    onConnectionCodeConsumed = { connectionCode = null },
                 )
             }
         }
@@ -55,6 +59,7 @@ class MainActivity : ComponentActivity() {
         transferCode = intent.transferCode()
         if (intent.action == SpotifyOAuthClient.CALLBACK) SpotifyOAuthClient.complete(intent)
         navigationUri = intent.navigationUri()
+        connectionCode = intent.connectionCode()
     }
 
     private fun Intent.transferCode(): String? {
@@ -65,5 +70,13 @@ class MainActivity : ComponentActivity() {
 
     private fun Intent.navigationUri(): Uri? = data?.takeIf { uri ->
         uri.scheme == "plainstride" && uri.host == "notification"
+    }
+
+    private fun Intent.connectionCode(): String? {
+        val uri = data ?: return null
+        val segments = uri.pathSegments
+        if (uri.scheme != "https" || uri.host != "run.plainstride.com") return null
+        if (segments.size != 2 || segments[0] != "connect") return null
+        return segments[1].takeIf { it.isNotBlank() && it.length <= 128 }
     }
 }

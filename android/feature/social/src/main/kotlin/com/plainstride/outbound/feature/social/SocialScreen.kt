@@ -32,7 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.serialization.json.*
 import com.plainstride.outbound.core.designsystem.*
 
-@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
+@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onConnectionLinkConsumed:()->Unit={}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
     var createCircle by rememberSaveable { mutableStateOf(false) };var inviteCircle by remember { mutableStateOf<CircleSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var connectionsOpen by rememberSaveable { mutableStateOf(false) };var selectedActivity by remember { mutableStateOf<FeedActivity?>(null) }
     var connectionQrOpen by rememberSaveable { mutableStateOf(false) }
     var scannerOpen by rememberSaveable { mutableStateOf(false) }
@@ -66,6 +66,10 @@ import com.plainstride.outbound.core.designsystem.*
     }
     LaunchedEffect(targetType,targetId,state.loading){
         if (!state.loading && targetType == "connections") connectionsOpen = true
+        else if (!state.loading && targetType == "connection_link" && !targetId.isNullOrBlank()) {
+            viewModel.consumeConnectionCode(targetId, showProgressFeedback = true)
+            onConnectionLinkConsumed()
+        }
         else if(!state.loading&&targetType!=null&&targetId!=null)viewModel.openTarget(targetType,targetId)
     }
     if (selectedActivity == null) {
@@ -118,6 +122,7 @@ import com.plainstride.outbound.core.designsystem.*
 }
 
 private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value) {
+    ConnectionFeedback.CHECKING -> R.string.social_checking_qr_code
     ConnectionFeedback.REQUESTED -> R.string.social_connection_request_sent
     ConnectionFeedback.ALREADY_PENDING -> R.string.social_connection_request_already_sent
     ConnectionFeedback.INCOMING_PENDING -> R.string.social_connection_request_incoming

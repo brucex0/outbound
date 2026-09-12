@@ -22,6 +22,7 @@
 - Connections' add menu matches iOS with Scan QR code, Show my QR code, and Invite by link actions.
 - The personal QR screen concurrently loads the signed-in profile and the opaque backend connection link, renders only the canonical URL, and provides loading and unavailable states.
 - The scanner uses CameraX with the established ZXing decoder, accepts only `https://run.plainstride.com/connect/:code`, pauses during request submission, and maps self, duplicate, incoming, existing, success, invalid, and retryable failure results to transient localized feedback.
+- Verified `/connect/:code` Android App Links from a QR image route directly to Social, show an immediate checking message, then reuse the same localized request result and analytics event as the camera scanner.
 - Camera first-use permission, denied-with-Settings recovery, and unavailable-hardware states match the corresponding iOS information hierarchy.
 - Invite by link uses Android's native share sheet with one localized plain-text referral invitation, matching iOS `SystemSharePresenter` behavior.
 

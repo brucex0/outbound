@@ -9,6 +9,7 @@
     <string name="social_block_confirmation_title">屏蔽此人？</string>
     <string name="social_camera_access_description">请在“设置”中允许使用相机，以扫描平步青云跑友码。</string>
     <string name="social_camera_access_needed">需要相机权限</string>
+    <string name="social_checking_qr_code">正在检查二维码…</string>
     <string name="social_cancel">取消</string>
     <string name="social_cheer">发送私密鼓励</string>
     <string name="social_circle">你的圈子</string>
