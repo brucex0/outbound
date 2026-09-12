@@ -1,13 +1,16 @@
 package com.plainstride.outbound.core.designsystem
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 
@@ -84,14 +87,81 @@ fun PlainstrideTheme(
     val brand = plainstrideThemeColors(theme, darkTheme)
     val materialColors = if (darkTheme) {
         val background = Color(0xFF101512)
-        darkColorScheme(primary = brand.action, onPrimary = brand.heroForeground, primaryContainer = brand.accent.copy(alpha = .28f).compositeOver(background), onPrimaryContainer = brand.accent, secondary = brand.secondary, tertiary = brand.accent,
-            background = background, surface = Color(0xFF171D19), onSurface = Color(0xFFE0E6E1))
+        val surface = Color(0xFF171D19)
+        val onSurface = Color(0xFFE0E6E1)
+        darkColorScheme(
+            primary = brand.action,
+            onPrimary = brand.heroForeground,
+            primaryContainer = brand.accent.copy(alpha = .28f).compositeOver(background),
+            onPrimaryContainer = brand.accent,
+            secondary = brand.secondary,
+            secondaryContainer = brand.secondary.copy(alpha = .20f).compositeOver(background),
+            onSecondaryContainer = brand.secondary,
+            tertiary = brand.accent,
+            tertiaryContainer = brand.accent.copy(alpha = .20f).compositeOver(background),
+            onTertiaryContainer = brand.accent,
+            background = background,
+            onBackground = onSurface,
+            surface = surface,
+            onSurface = onSurface,
+            surfaceVariant = Color(0xFF29312C),
+            onSurfaceVariant = Color(0xFFBEC8C0),
+            inverseSurface = Color(0xFFE0E6E1),
+            inverseOnSurface = Color(0xFF28312B),
+            outline = Color(0xFF89948C),
+            outlineVariant = Color(0xFF3F4942),
+            scrim = Color.Black,
+            surfaceBright = Color(0xFF353C37),
+            surfaceDim = background,
+            surfaceContainerLowest = Color(0xFF0B100D),
+            surfaceContainerLow = surface,
+            surfaceContainer = Color(0xFF1B211D),
+            surfaceContainerHigh = Color(0xFF252C27),
+            surfaceContainerHighest = Color(0xFF303732),
+        )
     } else {
         val background = Color(0xFFF8FAF7)
-        lightColorScheme(primary = brand.action, onPrimary = brand.heroForeground, primaryContainer = brand.accent.copy(alpha = .16f).compositeOver(background), onPrimaryContainer = brand.action, secondary = brand.secondary, tertiary = brand.accent,
-            background = background, surface = Color.White, onSurface = Color(0xFF18201C))
+        val surface = Color.White
+        val onSurface = Color(0xFF18201C)
+        lightColorScheme(
+            primary = brand.action,
+            onPrimary = brand.heroForeground,
+            primaryContainer = brand.accent.copy(alpha = .16f).compositeOver(background),
+            onPrimaryContainer = brand.action,
+            secondary = brand.secondary,
+            secondaryContainer = brand.secondary.copy(alpha = .12f).compositeOver(background),
+            onSecondaryContainer = Color(0xFF18201C),
+            tertiary = brand.accent,
+            tertiaryContainer = brand.accent.copy(alpha = .12f).compositeOver(background),
+            onTertiaryContainer = Color(0xFF18201C),
+            background = background,
+            onBackground = onSurface,
+            surface = surface,
+            onSurface = onSurface,
+            surfaceVariant = Color(0xFFE5ECE6),
+            onSurfaceVariant = Color(0xFF465149),
+            inverseSurface = Color(0xFF2D3630),
+            inverseOnSurface = Color(0xFFEEF3EF),
+            outline = Color(0xFF707A72),
+            outlineVariant = Color(0xFFBFC8C0),
+            scrim = Color.Black,
+            surfaceBright = background,
+            surfaceDim = Color(0xFFD8DDD8),
+            surfaceContainerLowest = surface,
+            surfaceContainerLow = Color(0xFFF2F5F1),
+            surfaceContainer = Color(0xFFECEFEB),
+            surfaceContainerHigh = Color(0xFFE6EAE5),
+            surfaceContainerHighest = Color(0xFFE0E4DF),
+        )
     }
     CompositionLocalProvider(LocalPlainstrideThemeColors provides brand) {
-        MaterialTheme(colorScheme = materialColors, content = content)
+        MaterialTheme(colorScheme = materialColors) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = materialColors.background,
+                contentColor = materialColors.onBackground,
+                content = content,
+            )
+        }
     }
 }
