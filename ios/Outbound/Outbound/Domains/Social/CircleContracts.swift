@@ -33,6 +33,58 @@ struct CircleDTO: Codable, Identifiable, Sendable {
     let history: [CircleWeekHistoryDTO]?
 }
 
+extension CircleDTO {
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case lifecycle
+        case role
+        case owner
+        case resetWeekday
+        case timeZone
+        case memberLimit
+        case memberCount
+        case eligibleForToday
+        case members
+        case upcomingFocus
+        case week
+        case currentUserMuted
+        case completionPresentationPending
+        case cheers
+        case invitations
+        case upcomingActivities
+        case recentMoments
+        case history
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        lifecycle = try container.decode(String.self, forKey: .lifecycle)
+        role = try container.decodeIfPresent(String.self, forKey: .role)
+        owner = try container.decode(CirclePersonDTO.self, forKey: .owner)
+        resetWeekday = try container.decode(Int.self, forKey: .resetWeekday)
+        timeZone = try container.decode(String.self, forKey: .timeZone)
+        memberLimit = try container.decode(Int.self, forKey: .memberLimit)
+        memberCount = try container.decode(Int.self, forKey: .memberCount)
+        eligibleForToday = try container.decode(Bool.self, forKey: .eligibleForToday)
+        members = try container.decode([CircleMemberDTO].self, forKey: .members)
+        upcomingFocus = try container.decode(CircleUpcomingFocusDTO.self, forKey: .upcomingFocus)
+        week = try container.decode(CircleWeekDTO.self, forKey: .week)
+        currentUserMuted = try container.decode(Bool.self, forKey: .currentUserMuted)
+        completionPresentationPending = try container.decode(Bool.self, forKey: .completionPresentationPending)
+        cheers = try container.decode([CircleCheerDTO].self, forKey: .cheers)
+        invitations = try container.decode([CircleInvitationDTO].self, forKey: .invitations)
+        upcomingActivities = try container.decodeIfPresent(
+            [CircleActivityEventDTO].self,
+            forKey: .upcomingActivities
+        ) ?? []
+        recentMoments = try container.decode([CircleMomentDTO].self, forKey: .recentMoments)
+        history = try container.decodeIfPresent([CircleWeekHistoryDTO].self, forKey: .history)
+    }
+}
+
 struct CircleUpcomingFocusDTO: Codable, Sendable {
     let mode: String
     let focusConfigured: Bool
