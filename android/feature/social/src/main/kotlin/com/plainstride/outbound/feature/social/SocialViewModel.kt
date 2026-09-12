@@ -24,7 +24,7 @@ data class SocialUiState(
     val connectionProfileIsSelf: Boolean = false,
 )
 enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED }
-enum class ConnectionFeedback { CHECKING, REQUESTED, ALREADY_PENDING, INCOMING_PENDING, ALREADY_CONNECTED, SELF, UPDATED, REQUEST_FAILED, PROFILE_LOAD_FAILED, INVITE_LINK_FAILED }
+enum class ConnectionFeedback { REQUESTED, ALREADY_PENDING, INCOMING_PENDING, ALREADY_CONNECTED, SELF, UPDATED, REQUEST_FAILED, PROFILE_LOAD_FAILED, INVITE_LINK_FAILED }
 sealed interface ConnectionEffect {
     data class Feedback(val value: ConnectionFeedback, val closeScanner: Boolean) : ConnectionEffect
     data class ShareInvitation(val url: String) : ConnectionEffect
@@ -162,39 +162,6 @@ sealed interface ConnectionEffect {
                     mutableState.update { it.copy(connectionRequestLoading = false) }
                     analytics.record(AnalyticsEvent("connection_qr_code_request_result", mapOf(AnalyticsProperty.Result to "failure")))
                     connectionEffects.emit(ConnectionEffect.Feedback(ConnectionFeedback.REQUEST_FAILED, closeScanner = false))
-                },
-            )
-        }
-    }
-    fun consumeConnectionCode(code: String, showProgressFeedback: Boolean = false) {
-        if (mutableState.value.connectionRequestLoading) return
-        mutableState.update { it.copy(connectionRequestLoading = true) }
-        viewModelScope.launch {
-            if (showProgressFeedback) {
-                connectionEffects.emit(ConnectionEffect.Feedback(ConnectionFeedback.CHECKING, closeScanner = false))
-            }
-            repository.consumeConnectionLink(code).fold(
-                onSuccess = { response ->
-                    val feedback = connectionFeedback(response.result)
-                    mutableState.update { it.copy(connectionRequestLoading = false) }
-                    analytics.record(AnalyticsEvent("connection_qr_code_request_result", mapOf(
-                        AnalyticsProperty.Result to (response.result.takeIf { it in CONNECTION_RESULTS } ?: "unknown"),
-                    )))
-                    connectionEffects.emit(ConnectionEffect.Feedback(feedback, closeScanner = true))
-                    if (response.result != "self") refresh()
-                },
-                onFailure = { error ->
-                    val reason = (error as? SocialException)?.reason
-                    val terminal = reason != null && reason !in setOf(
-                        SocialError.OFFLINE,
-                        SocialError.SERVER,
-                        SocialError.UNEXPECTED,
-                    )
-                    mutableState.update { it.copy(connectionRequestLoading = false) }
-                    analytics.record(AnalyticsEvent("connection_qr_code_request_result", mapOf(
-                        AnalyticsProperty.Result to if (terminal) "invalid" else "failure",
-                    )))
-                    connectionEffects.emit(ConnectionEffect.Feedback(ConnectionFeedback.REQUEST_FAILED, closeScanner = terminal))
                 },
             )
         }

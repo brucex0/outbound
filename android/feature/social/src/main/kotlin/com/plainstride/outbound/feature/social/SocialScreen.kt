@@ -94,10 +94,15 @@ import com.plainstride.outbound.core.designsystem.*
     )
     if (connectionQrOpen) ConnectionQrScreen(state) { connectionQrOpen = false; viewModel.closeConnectionQr() }
     if (scannerOpen) ConnectionQrScannerScreen(
-        isProcessing = state.connectionRequestLoading,
+        isProcessing = state.connectionProfileLoading,
         serverMessage = scannerFeedback,
         onOpened = viewModel::scannerOpened,
-        onPayload = { payload -> connectionCodeFromPayload(payload)?.let(viewModel::consumeConnectionCode) },
+        onPayload = { payload ->
+            connectionCodeFromPayload(payload)?.let { code ->
+                scannerOpen = false
+                viewModel.openConnectionCodeProfile(code)
+            }
+        },
         onClose = { scannerOpen = false },
     )
     if (state.connectionProfileLoading) ConnectionProfileLoadingScreen()
@@ -129,7 +134,6 @@ import com.plainstride.outbound.core.designsystem.*
 }
 
 private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value) {
-    ConnectionFeedback.CHECKING -> R.string.social_checking_qr_code
     ConnectionFeedback.REQUESTED -> R.string.social_connection_request_sent
     ConnectionFeedback.ALREADY_PENDING -> R.string.social_connection_request_already_sent
     ConnectionFeedback.INCOMING_PENDING -> R.string.social_connection_request_incoming

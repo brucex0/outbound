@@ -269,7 +269,7 @@ internal fun ConnectionQrScannerScreen(
                         ScannerPill(stringResource(R.string.social_scan_friend_qr_code))
                         Spacer(Modifier.weight(1f))
                         when {
-                            isProcessing -> ScannerPill(stringResource(R.string.social_sending_connection_request), loading = true)
+                            isProcessing -> ScannerPill(stringResource(R.string.social_checking_qr_code), loading = true)
                             serverMessage != null -> ScannerPill(serverMessage, error = true)
                             scannerMessage != null -> ScannerPill(scannerMessage.orEmpty(), error = true)
                         }

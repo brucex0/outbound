@@ -88,9 +88,9 @@ Support pull-to-refresh of home, Connections, Circles, Circle invitations, notif
 - Add a Blocked accounts screen with refresh and unblock. Blocking a feed author immediately removes inaccessible data from visible state.
 - The add menu includes Scan QR code, Show my QR code, and Invite by link.
 - Generate/share only canonical `https://run.plainstride.com/connect/:code` URLs based on the opaque connection-link code. The QR must not contain an account ID or username.
-- Implement QR scanning with CameraX/ML Kit or the established Android scanner stack. Accept only the canonical HTTPS host/path, pause scanning during submission, and feed the result through the shared transient Social toast.
+- Implement QR scanning with CameraX/ML Kit or the established Android scanner stack. Accept only the canonical HTTPS host/path, stop scanning after a valid code, and open the read-only Social profile preview.
 - Cover camera first use, denial, permanent denial with Settings recovery, unavailable hardware, invalid code, self-scan, existing/pending/accepted relationships, block conflict, offline/retry, and duplicate scan idempotency.
-- QR/referral consumption creates a normal pending request; it never auto-accepts. Preserve a pending Universal/App Link through authentication and clear it only after a terminal/idempotent result.
+- A QR scan or Universal/App Link preview never mutates the relationship. Only an explicit Connect action creates a normal pending request; it never auto-accepts. Preserve a pending Universal/App Link through authentication and clear it only after a terminal/idempotent preview result.
 - Share a single plain-text invitation containing the canonical URL. Do not attach a second URL/stream item.
 
 ## Active-workout presence and live Cheer entry
