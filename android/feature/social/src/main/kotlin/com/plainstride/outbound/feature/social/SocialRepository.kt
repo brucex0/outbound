@@ -33,7 +33,8 @@ interface SocialRepository {
     suspend fun block(personId: String): Result<Unit>
     suspend fun blockedAccounts(): Result<List<BlockedAccount>>
     suspend fun unblock(personId: String): Result<Unit>
-    suspend fun connectionLink(): Result<ConnectionLink>
+    suspend fun connectionQr(): Result<ConnectionQrContent>
+    suspend fun referralLink(): Result<ConnectionLink>
     suspend fun consumeConnectionLink(code: String): Result<ConnectionLinkResult>
     suspend fun circles(): Result<List<CircleSummary>>
     suspend fun circle(id: String): Result<CircleSummary>
@@ -65,6 +66,7 @@ interface SocialRepository {
 
 class OfflineFirstSocialRepository @Inject constructor(
     private val api: SocialApiService,
+    private val accounts: AccountApiService,
     private val tokens: AccessTokenProvider,
     private val cache: AccountCacheDao,
 ) : SocialRepository {
@@ -113,7 +115,28 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun block(personId: String) = authenticated { apiCall { api.block(it, personId) } }
     override suspend fun blockedAccounts() = authenticated { apiCall { api.blocks(it) } }.map { it.blocks }
     override suspend fun unblock(personId: String) = authenticated { apiCall { api.unblock(it, personId) } }
-    override suspend fun connectionLink() = authenticated { apiCall { api.connectionLink(it) } }
+    override suspend fun connectionQr() = authenticated { auth -> coroutineScope {
+        val accountRequest = async { apiCall { accounts.currentAccount(auth) } }
+        val linkRequest = async { apiCall { api.connectionLink(auth) } }
+        when (val account = accountRequest.await()) {
+            is ApiResult.Failure -> account
+            is ApiResult.Success -> when (val link = linkRequest.await()) {
+                is ApiResult.Failure -> link
+                is ApiResult.Success -> ApiResult.Success(ConnectionQrContent(
+                    owner = SocialPerson(
+                        id = account.value.id,
+                        displayName = account.value.displayName?.takeIf(String::isNotBlank)
+                            ?: account.value.username?.takeIf(String::isNotBlank)
+                            ?: "Plainstride",
+                        username = account.value.username,
+                        avatarUrl = account.value.avatarUrl,
+                    ),
+                    link = link.value,
+                ))
+            }
+        }
+    } }
+    override suspend fun referralLink() = authenticated { apiCall { api.referralLink(it) } }
     override suspend fun consumeConnectionLink(code: String) = authenticated { apiCall { api.consumeConnectionLink(it, code) } }
     override suspend fun circles() = authenticated { apiCall { api.circles(it) } }.map { it.circles }
     override suspend fun circle(id: String) = authenticated { apiCall { api.circle(it, id) } }

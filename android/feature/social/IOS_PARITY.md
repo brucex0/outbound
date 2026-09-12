@@ -3,8 +3,10 @@
 ## Authority
 
 - iOS home and feed: `ios/Outbound/Outbound/Domains/Social/SocialHomeView.swift`
+- iOS connection QR flow: `ios/Outbound/Outbound/Domains/Social/ConnectionQRCodeViews.swift`
 - iOS Circle surfaces: `ios/Outbound/Outbound/Domains/Social/CircleViews.swift`
 - Android home: `src/main/kotlin/com/plainstride/outbound/feature/social/SocialScreen.kt`
+- Android connection QR flow: `src/main/kotlin/com/plainstride/outbound/feature/social/ConnectionQrScreens.kt`
 - Android avatar loading: `src/main/kotlin/com/plainstride/outbound/feature/social/SocialAvatar.kt`
 
 ## Home Surface
@@ -14,6 +16,14 @@
 - Connections preserve a footprint-matched initial placeholder, accepted-person previews, active-workout indicators, and a dedicated full-screen list/search surface.
 - Empty, invitation, Circle creation, event, Group, recognition, and feed states use the same standard or companion card role as iOS.
 - Feed cards remain map-first with overlaid stats and Cheer, comment, profile, and safety actions. Tapping anywhere else on an activity card opens its detail page. Route previews use the shared Google map renderer as a non-interactive snapshot-like surface with gestures, map chrome, and endpoint markers disabled, matching the iOS `interactionModes: []` presentation.
+
+## Personal QR Connection Flow
+
+- Connections' add menu matches iOS with Scan QR code, Show my QR code, and Invite by link actions.
+- The personal QR screen concurrently loads the signed-in profile and the opaque backend connection link, renders only the canonical URL, and provides loading and unavailable states.
+- The scanner uses CameraX with the established ZXing decoder, accepts only `https://run.plainstride.com/connect/:code`, pauses during request submission, and maps self, duplicate, incoming, existing, success, invalid, and retryable failure results to transient localized feedback.
+- Camera first-use permission, denied-with-Settings recovery, and unavailable-hardware states match the corresponding iOS information hierarchy.
+- Invite by link uses Android's native share sheet with one localized plain-text referral invitation, matching iOS `SystemSharePresenter` behavior.
 
 ## Shared Resources And Accessibility
 
@@ -25,12 +35,14 @@
 
 - Initial loading, empty connections, accepted connections, active-workout presence, Circle empty/list/invitation, upcoming/past empty/list, Groups, empty/populated feed, and avatar success/fallback.
 - Light/dark themes, supported locales, font scaling, and TalkBack traversal remain manual device checks.
+- QR loading/success/failure, camera first use/denial/unavailable, invalid payload, self-scan, duplicate/existing relationship, success, and offline retry remain manual device checks.
 
 ## Status And Exceptions
 
 - Home presentation and avatar delivery are aligned with the current iOS implementation.
 - Circle creation is a full-screen, multi-select flow with optional naming and account-timezone creation. Circle detail now includes weekly progress, member contribution and recent-workout context, preset Cheers, focus/skip controls, invitations, primary selection, notification muting, rename, member removal, leave, archive, and reactivation operations.
 - Android uses a full-screen Compose dialog for Connections because the current feature module does not yet own a nested navigation graph; this preserves the iOS information hierarchy and back behavior without a platform-visible modal card.
+- Android uses full-screen Compose dialogs for the personal QR and scanner destinations for the same navigation-ownership reason. CameraX plus ZXing replaces VisionKit while preserving the accepted payload and submission contract.
 - Broader Social journey items outside this focused home-polish change remain tracked by `docs/android-social-parity-prompt.md` and must not be considered complete based on this manifest.
 
 ## Circle Reference Scenarios

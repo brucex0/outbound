@@ -17,9 +17,16 @@ data class SocialUiState(
     val selectedProfile: SocialPerson? = null, val selectedCircle: CircleSummary? = null,
     val selectedPost:SocialPost?=null,val comments:List<SocialComment> = emptyList(),
     val selectedEvent:SocialEvent?=null,val selectedGroup:SocialGroup?=null,val selectedInvitation:SocialInvitation?=null,
-    val feedCursor: String? = null, val feedLoading: Boolean = false, val connectionLink: ConnectionLink? = null,
+    val feedCursor: String? = null, val feedLoading: Boolean = false,
+    val connectionQr: ConnectionQrContent? = null, val connectionQrLoading: Boolean = false,
+    val connectionQrFailed: Boolean = false, val connectionRequestLoading: Boolean = false,
 )
 enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED }
+enum class ConnectionFeedback { REQUESTED, ALREADY_PENDING, INCOMING_PENDING, ALREADY_CONNECTED, SELF, UPDATED, REQUEST_FAILED, INVITE_LINK_FAILED }
+sealed interface ConnectionEffect {
+    data class Feedback(val value: ConnectionFeedback, val closeScanner: Boolean) : ConnectionEffect
+    data class ShareInvitation(val url: String) : ConnectionEffect
+}
 
 @HiltViewModel class SocialViewModel @Inject constructor(
     private val repository: SocialRepository,
@@ -28,6 +35,7 @@ enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED }
     private val mutableState = MutableStateFlow(SocialUiState())
     val state = mutableState.asStateFlow()
     val messages = MutableSharedFlow<SocialMessage>(extraBufferCapacity = 4)
+    val connectionEffects = MutableSharedFlow<ConnectionEffect>(extraBufferCapacity = 4)
     private var accountId: String? = null
     private var localeTag = "en"
     private var searchJob: Job? = null
@@ -89,8 +97,62 @@ enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED }
     fun connect(person:SocialPerson)=mutate("social_connection_requested"){repository.connect(person.id).getOrThrow();refresh()}
     fun acceptConnection(connectionId:String)=mutate("social_connection_accepted"){repository.accept(connectionId).getOrThrow();refresh()}
     fun removeConnection(connectionId:String)=mutate("social_connection_removed"){repository.removeConnection(connectionId).getOrThrow();refresh()}
-    fun requestConnectionLink()=viewModelScope.launch{repository.connectionLink().fold(onSuccess={link->mutableState.update{it.copy(connectionLink=link)};analytics.record(AnalyticsEvent("connection_qr_code_request_result",mapOf(AnalyticsProperty.Result to "success")))},onFailure={messages.emit(SocialMessage.ACTION_FAILED);analytics.record(AnalyticsEvent("connection_qr_code_request_result",mapOf(AnalyticsProperty.Result to "failure")))})}
-    fun closeConnectionLink()=mutableState.update{it.copy(connectionLink=null)}
+    fun openConnectionQr() {
+        if (mutableState.value.connectionQrLoading) return
+        analytics.record(AnalyticsEvent("profile_qr_code_opened", mapOf(AnalyticsProperty.EntrySource to "connections")))
+        mutableState.update { it.copy(connectionQr = null, connectionQrLoading = true, connectionQrFailed = false) }
+        viewModelScope.launch {
+            repository.connectionQr().fold(
+                onSuccess = { content -> mutableState.update { it.copy(connectionQr = content, connectionQrLoading = false) } },
+                onFailure = { mutableState.update { it.copy(connectionQrLoading = false, connectionQrFailed = true) } },
+            )
+        }
+    }
+    fun closeConnectionQr() = mutableState.update { it.copy(connectionQr = null, connectionQrLoading = false, connectionQrFailed = false) }
+    fun scannerOpened() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "connection_qr_scanner")))
+    fun inviteByLink() = viewModelScope.launch {
+        repository.referralLink().fold(
+            onSuccess = { connectionEffects.emit(ConnectionEffect.ShareInvitation(it.url)) },
+            onFailure = { connectionEffects.emit(ConnectionEffect.Feedback(ConnectionFeedback.INVITE_LINK_FAILED, closeScanner = false)) },
+        )
+    }
+    fun consumeConnectionCode(code: String) {
+        if (mutableState.value.connectionRequestLoading) return
+        mutableState.update { it.copy(connectionRequestLoading = true) }
+        viewModelScope.launch {
+            repository.consumeConnectionLink(code).fold(
+                onSuccess = { response ->
+                    val feedback = when (response.result) {
+                        "requested" -> ConnectionFeedback.REQUESTED
+                        "already_pending" -> ConnectionFeedback.ALREADY_PENDING
+                        "incoming_pending" -> ConnectionFeedback.INCOMING_PENDING
+                        "already_connected" -> ConnectionFeedback.ALREADY_CONNECTED
+                        "self" -> ConnectionFeedback.SELF
+                        else -> ConnectionFeedback.UPDATED
+                    }
+                    mutableState.update { it.copy(connectionRequestLoading = false) }
+                    analytics.record(AnalyticsEvent("connection_qr_code_request_result", mapOf(
+                        AnalyticsProperty.Result to (response.result.takeIf { it in CONNECTION_RESULTS } ?: "unknown"),
+                    )))
+                    connectionEffects.emit(ConnectionEffect.Feedback(feedback, closeScanner = true))
+                    if (response.result != "self") refresh()
+                },
+                onFailure = { error ->
+                    val reason = (error as? SocialException)?.reason
+                    val terminal = reason != null && reason !in setOf(
+                        SocialError.OFFLINE,
+                        SocialError.SERVER,
+                        SocialError.UNEXPECTED,
+                    )
+                    mutableState.update { it.copy(connectionRequestLoading = false) }
+                    analytics.record(AnalyticsEvent("connection_qr_code_request_result", mapOf(
+                        AnalyticsProperty.Result to if (terminal) "invalid" else "failure",
+                    )))
+                    connectionEffects.emit(ConnectionEffect.Feedback(ConnectionFeedback.REQUEST_FAILED, closeScanner = terminal))
+                },
+            )
+        }
+    }
     fun createCircle(name:String?,members:List<SocialPerson>,timeZone:String?)=mutate("circle_created"){repository.createCircle(name,members.map{it.id},timeZone).getOrThrow().let{created->mutableState.update{it.copy(selectedCircle=created)}};refresh()}
     fun inviteToCircle(circle:CircleSummary,members:List<SocialPerson>,idempotencyKey:String)=mutate("circle_invitation_sent"){repository.inviteToCircle(circle.id,members.map{it.id},idempotencyKey).getOrThrow();openCircle(circle)}
     fun setCircleFocus(circle:CircleSummary,mode:String,target:Int?,nextWeek:Boolean)=mutate("circle_focus_changed"){repository.setCircleFocus(circle.id,mode,target,nextWeek).getOrThrow();openCircle(circle)}
@@ -103,4 +165,8 @@ enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED }
     fun removeCircleMember(circle:CircleSummary,userId:String)=mutate("circle_member_removed"){repository.removeCircleMember(circle.id,userId).getOrThrow().let{updated->mutableState.update{it.copy(selectedCircle=updated)}};refresh()}
     fun respondToInvitation(invitation:SocialInvitation,accept:Boolean)=mutate("social_invitation_responded"){repository.respondToInvitation(invitation,accept).getOrThrow();closeTarget();refresh()}
     private fun mutate(event: String, success: SocialMessage = SocialMessage.ACTION_COMPLETE, block: suspend () -> Unit) = viewModelScope.launch { runCatching { block() }.onSuccess { messages.emit(success); analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "success"))) }.onFailure { messages.emit(SocialMessage.ACTION_FAILED); analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "failure"))) } }
+
+    private companion object {
+        val CONNECTION_RESULTS = setOf("requested", "already_pending", "incoming_pending", "already_connected", "self")
+    }
 }

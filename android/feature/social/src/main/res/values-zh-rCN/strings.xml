@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
+    <string name="social_add_connection">添加跑友</string>
     <string name="social_all">全部</string>
+    <string name="social_already_connected">你们已经建立连接</string>
     <string name="social_block">屏蔽此人</string>
     <string name="social_block_confirmation_message">屏蔽后双方将解除好友关系，并互相隐藏内容。</string>
     <string name="social_block_confirmation_title">屏蔽此人？</string>
+    <string name="social_camera_access_description">请在“设置”中允许使用相机，以扫描平步青云跑友码。</string>
+    <string name="social_camera_access_needed">需要相机权限</string>
     <string name="social_cancel">取消</string>
     <string name="social_cheer">发送私密鼓励</string>
     <string name="social_circle">你的圈子</string>
@@ -12,16 +16,22 @@
     <string name="social_circle_empty">保持活力，积极相伴。和支持你坚持运动的人创建一个私密圈子。</string>
     <string name="social_circle_progress">本周已完成 %1$d/%2$d 次活动</string>
     <string name="social_circle_reactivate">重新启用</string>
+    <string name="social_close">关闭</string>
     <string name="social_community">运动社区</string>
     <string name="social_conditions">天气</string>
     <string name="social_connect">添加好友</string>
+    <string name="social_connection_request_already_sent">连接请求已发送</string>
+    <string name="social_connection_request_failed">无法发送连接请求，请重试。</string>
+    <string name="social_connection_request_incoming">对方已向你发送连接请求</string>
+    <string name="social_connection_request_sent">已发送连接请求</string>
+    <string name="social_connection_request_updated">连接请求已更新</string>
     <string name="social_connections">好友</string>
     <string name="social_connections_empty">一起更有动力。找到你认识的人，让每次运动都有陪伴。</string>
-    <string name="social_discover">发现</string>
-    <string name="social_distance">距离</string>
     <string name="social_delete_post">删除动态</string>
     <string name="social_delete_post_confirmation_message">这会从动态中删除该帖子，但不会删除你保存的活动。</string>
     <string name="social_delete_post_confirmation_title">删除这条动态？</string>
+    <string name="social_discover">发现</string>
+    <string name="social_distance">距离</string>
     <string name="social_done">完成</string>
     <string name="social_dont_ask_again">不再询问</string>
     <string name="social_feed">近期动态</string>
@@ -30,7 +40,10 @@
     <string name="social_guide_noticed">向导发现了这个</string>
     <string name="social_hybrid">线下集合或随地加入</string>
     <string name="social_incoming_requests">%1$d 个好友请求</string>
+    <string name="social_invitation_share_message">来平步青云和我一起跑：%1$s</string>
     <string name="social_invite">邀请</string>
+    <string name="social_invite_by_link">通过链接邀请</string>
+    <string name="social_invite_link_failed">无法创建邀请链接，请重试。</string>
     <string name="social_invite_person">邀请 %1$s</string>
     <string name="social_invited_by">%1$s 邀请了你</string>
     <string name="social_join">加入</string>
@@ -38,18 +51,18 @@
     <string name="social_load_more">加载更多</string>
     <string name="social_members">%1$d 位成员</string>
     <string name="social_milestones">%1$d 个公开里程碑</string>
-    <string name="social_profile">个人主页</string>
-    <string name="social_back">返回</string>
-    <string name="social_profile_actions">个人主页操作</string>
-    <string name="social_profile_milestones">里程碑</string>
-    <string name="social_recent_activities">近期活动</string>
-    <string name="social_no_shared_activities">还没有分享过活动。</string>
     <string name="social_more">更多操作</string>
+    <string name="social_my_plainstride_qr_code">我的 Plainstride 二维码</string>
+    <string name="social_my_qr_code">我的二维码</string>
+    <string name="social_not_connection_code">这不是平步青云跑友码</string>
     <string name="social_notifications">通知</string>
     <string name="social_offline">正在显示已保存的动态</string>
+    <string name="social_open_settings">打开设置</string>
     <string name="social_pace">配速</string>
     <string name="social_past_activities">往期活动</string>
     <string name="social_past_empty">目前还没有共享活动结果。</string>
+    <string name="social_qr_code_unavailable">二维码不可用</string>
+    <string name="social_qr_load_failure">无法加载你的跑友码，请重试。</string>
     <string name="social_recognition_earned">你获得了新的社交里程碑。</string>
     <string name="social_refresh">刷新动态</string>
     <string name="social_relationship">关系：%1$s</string>
@@ -62,12 +75,21 @@
     <string name="social_route">活动路线</string>
     <string name="social_safety_body">举报内容会保密。屏蔽后双方将解除好友关系，并互相隐藏内容。</string>
     <string name="social_safety_title">安全选项</string>
+    <string name="social_scan_friend_qr_code">扫描朋友的平步青云二维码。</string>
+    <string name="social_scan_qr_code">扫描二维码</string>
+    <string name="social_scan_this_qr_code">扫描此二维码，和我一起使用 Plainstride。</string>
+    <string name="social_scanner_unavailable">无法使用扫描功能</string>
+    <string name="social_scanner_unavailable_description">此设备无法扫描跑友码。</string>
     <string name="social_search_people">搜索用户</string>
+    <string name="social_self_qr_code">这是你自己的二维码</string>
+    <string name="social_sending_connection_request">正在发送跑友请求…</string>
     <string name="social_share_award">分享成就</string>
     <string name="social_share_award_text">%1$s 在 Plainstride 获得了一项成就</string>
+    <string name="social_show_my_qr_code">显示我的二维码</string>
     <string name="social_time">时间</string>
     <string name="social_title">动态</string>
     <string name="social_upcoming">即将开始</string>
     <string name="social_upcoming_empty">暂时没有即将开始的活动。</string>
+    <string name="social_profile">个人主页</string><string name="social_back">返回</string><string name="social_profile_actions">个人主页操作</string><string name="social_profile_milestones">里程碑</string><string name="social_recent_activities">近期活动</string><string name="social_no_shared_activities">还没有分享过活动。</string>
     <string name="circle_create_title">创建你的亲友圈</string><string name="circle_create_inspiration">积极运动，相互鼓励，一起坚持。</string><string name="circle_create_detail">与最亲近的人分享目标和进度，彼此加油。</string><string name="circle_create_people">谁能陪你坚持运动？</string><string name="circle_create_selected">已选择%1$d人</string><string name="circle_create_name">亲友圈名称 · 可选</string><string name="circle_create_name_help">留空后，Plainstride 会推荐一个名称。</string><string name="circle_create_action">创建亲友圈</string><string name="circle_manage">管理亲友圈</string><string name="circle_relationship">与亲友一起坚持运动的私密空间。</string><string name="circle_no_numeric_focus">不设数字目标 · 一起动起来</string><string name="circle_skipping">本周休息</string><string name="circle_member_progress">%1$d/%2$d</string><string name="circle_contributed">已完成%1$d次</string><string name="circle_weekly_focus">每周目标</string><string name="circle_focus_personal">个人目标</string><string name="circle_focus_shared">共同目标</string><string name="circle_focus_none">不设目标</string><string name="circle_apply_next_week">下周生效</string><string name="circle_skip_week">本周休息</string><string name="circle_rename">更新名称</string><string name="circle_mute">关闭亲友圈通知</string><string name="circle_make_primary">在“今日”显示此亲友圈</string><string name="circle_remove_member">移除%1$s</string><string name="circle_leave">退出亲友圈</string>
 </resources>

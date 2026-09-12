@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
+    <string name="social_add_connection">Añadir contacto</string>
     <string name="social_all">Ver todo</string>
+    <string name="social_already_connected">Ya están conectados</string>
     <string name="social_block">Bloquear persona</string>
     <string name="social_block_confirmation_message">Al bloquear se elimina la conexión y se oculta el contenido de ambas personas.</string>
     <string name="social_block_confirmation_title">¿Bloquear a esta persona?</string>
+    <string name="social_camera_access_description">Permite el acceso a la cámara en Ajustes para escanear un código de contacto de Plainstride.</string>
+    <string name="social_camera_access_needed">Se necesita acceso a la cámara</string>
     <string name="social_cancel">Cancelar</string>
     <string name="social_cheer">Enviar un ánimo privado</string>
     <string name="social_circle">Tu Círculo</string>
@@ -12,16 +16,22 @@
     <string name="social_circle_empty">Activos. Positivos. Juntos. Crea un Círculo privado con quienes te ayudan a seguir en movimiento.</string>
     <string name="social_circle_progress">%1$d de %2$d actividades esta semana</string>
     <string name="social_circle_reactivate">Reactivar</string>
+    <string name="social_close">Cerrar</string>
     <string name="social_community">Comunidad</string>
     <string name="social_conditions">Condiciones</string>
     <string name="social_connect">Conectar</string>
+    <string name="social_connection_request_already_sent">Ya enviaste una solicitud de conexión</string>
+    <string name="social_connection_request_failed">No se pudo enviar la solicitud de conexión. Inténtalo de nuevo.</string>
+    <string name="social_connection_request_incoming">Esta persona ya te envió una solicitud de conexión</string>
+    <string name="social_connection_request_sent">Solicitud de conexión enviada</string>
+    <string name="social_connection_request_updated">Solicitud de conexión actualizada</string>
     <string name="social_connections">Conexiones</string>
     <string name="social_connections_empty">Mejor en compañía. Encuentra a gente que conoces y comparte el movimiento.</string>
-    <string name="social_discover">Descubrir</string>
-    <string name="social_distance">Distancia</string>
     <string name="social_delete_post">Eliminar publicación</string>
     <string name="social_delete_post_confirmation_message">Esto elimina la publicación de Social. Tu actividad guardada no se eliminará.</string>
     <string name="social_delete_post_confirmation_title">¿Eliminar esta publicación?</string>
+    <string name="social_discover">Descubrir</string>
+    <string name="social_distance">Distancia</string>
     <string name="social_done">Listo</string>
     <string name="social_dont_ask_again">No volver a preguntar</string>
     <string name="social_feed">Actividad reciente</string>
@@ -30,7 +40,10 @@
     <string name="social_guide_noticed">Tu guía se fijó en esto</string>
     <string name="social_hybrid">Reúnete o participa desde donde estés</string>
     <string name="social_incoming_requests">%1$d solicitudes de conexión</string>
+    <string name="social_invitation_share_message">Únete a mi carrera en Plainstride: %1$s</string>
     <string name="social_invite">Invitar</string>
+    <string name="social_invite_by_link">Invitar mediante un enlace</string>
+    <string name="social_invite_link_failed">No se pudo crear un enlace de invitación. Inténtalo de nuevo.</string>
     <string name="social_invite_person">Invitar a %1$s</string>
     <string name="social_invited_by">Invitación de %1$s</string>
     <string name="social_join">Unirme</string>
@@ -38,18 +51,18 @@
     <string name="social_load_more">Cargar más</string>
     <string name="social_members">%1$d miembros</string>
     <string name="social_milestones">%1$d logros compartidos</string>
-    <string name="social_profile">Perfil</string>
-    <string name="social_back">Atrás</string>
-    <string name="social_profile_actions">Acciones del perfil</string>
-    <string name="social_profile_milestones">LOGROS</string>
-    <string name="social_recent_activities">ACTIVIDADES RECIENTES</string>
-    <string name="social_no_shared_activities">Todavía no hay actividades compartidas.</string>
     <string name="social_more">Más acciones</string>
+    <string name="social_my_plainstride_qr_code">Mi código QR de Plainstride</string>
+    <string name="social_my_qr_code">Mi código QR</string>
+    <string name="social_not_connection_code">No es un código de contacto de Plainstride</string>
     <string name="social_notifications">Notificaciones</string>
     <string name="social_offline">Mostrando la actividad social guardada</string>
+    <string name="social_open_settings">Abrir Ajustes</string>
     <string name="social_pace">Ritmo</string>
     <string name="social_past_activities">Actividades anteriores</string>
     <string name="social_past_empty">Aún no hay resultados de actividades compartidas.</string>
+    <string name="social_qr_code_unavailable">Código QR no disponible</string>
+    <string name="social_qr_load_failure">No se pudo cargar tu código de contacto. Inténtalo de nuevo.</string>
     <string name="social_recognition_earned">Has conseguido un nuevo logro social.</string>
     <string name="social_refresh">Actualizar Social</string>
     <string name="social_relationship">Relación: %1$s</string>
@@ -62,12 +75,21 @@
     <string name="social_route">Ruta de la actividad</string>
     <string name="social_safety_body">Los reportes son privados. Al bloquear también se elimina la conexión y se oculta el contenido de ambas personas.</string>
     <string name="social_safety_title">Opciones de seguridad</string>
+    <string name="social_scan_friend_qr_code">Escanea el código QR de Plainstride de un amigo.</string>
+    <string name="social_scan_qr_code">Escanear código QR</string>
+    <string name="social_scan_this_qr_code">Escanea este código QR para unirte a mí en Plainstride.</string>
+    <string name="social_scanner_unavailable">Escáner no disponible</string>
+    <string name="social_scanner_unavailable_description">Este dispositivo no puede escanear códigos de contacto.</string>
     <string name="social_search_people">Buscar personas</string>
+    <string name="social_self_qr_code">Este es tu código QR</string>
+    <string name="social_sending_connection_request">Enviando solicitud de contacto…</string>
     <string name="social_share_award">Compartir logro</string>
     <string name="social_share_award_text">%1$s consiguió un logro en Plainstride</string>
+    <string name="social_show_my_qr_code">Mostrar mi código QR</string>
     <string name="social_time">Tiempo</string>
     <string name="social_title">Social</string>
     <string name="social_upcoming">Próximas</string>
     <string name="social_upcoming_empty">Aún no hay actividades próximas.</string>
+    <string name="social_profile">Perfil</string><string name="social_back">Atrás</string><string name="social_profile_actions">Acciones del perfil</string><string name="social_profile_milestones">LOGROS</string><string name="social_recent_activities">ACTIVIDADES RECIENTES</string><string name="social_no_shared_activities">Todavía no hay actividades compartidas.</string>
     <string name="circle_create_title">Crea tu Círculo</string><string name="circle_create_inspiration">Activos. Positivos. Juntos.</string><string name="circle_create_detail">Comparte metas y avances con tus personas más cercanas y anímense mutuamente.</string><string name="circle_create_people">¿Quién te ayuda a seguir en movimiento?</string><string name="circle_create_selected">%1$d seleccionados</string><string name="circle_create_name">Ponle nombre · Opcional</string><string name="circle_create_name_help">Déjalo en blanco y Plainstride sugerirá un nombre.</string><string name="circle_create_action">Crear tu Círculo</string><string name="circle_manage">Gestionar Círculo</string><string name="circle_relationship">Un espacio privado para mantenerse activos juntos.</string><string name="circle_no_numeric_focus">Sin meta numérica · Muévanse juntos</string><string name="circle_skipping">Descansa esta semana</string><string name="circle_member_progress">%1$d de %2$d</string><string name="circle_contributed">Ha aportado %1$d</string><string name="circle_weekly_focus">Enfoque semanal</string><string name="circle_focus_personal">Metas personales</string><string name="circle_focus_shared">Meta compartida</string><string name="circle_focus_none">Sin meta</string><string name="circle_apply_next_week">Aplicar la próxima semana</string><string name="circle_skip_week">Descansar esta semana</string><string name="circle_rename">Actualizar nombre</string><string name="circle_mute">Silenciar notificaciones del Círculo</string><string name="circle_make_primary">Mostrar este Círculo en Hoy</string><string name="circle_remove_member">Eliminar a %1$s</string><string name="circle_leave">Salir del Círculo</string>
 </resources>

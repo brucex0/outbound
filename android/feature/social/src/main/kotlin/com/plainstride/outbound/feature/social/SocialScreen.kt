@@ -1,5 +1,7 @@
 package com.plainstride.outbound.feature.social
 
+import android.content.Intent
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,11 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import android.graphics.Bitmap
-import androidx.compose.foundation.Image
-import androidx.compose.ui.graphics.asImageBitmap
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.MultiFormatWriter
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.serialization.json.*
@@ -37,8 +34,36 @@ import com.plainstride.outbound.core.designsystem.*
 
 @Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
     var createCircle by rememberSaveable { mutableStateOf(false) };var inviteCircle by remember { mutableStateOf<CircleSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var connectionsOpen by rememberSaveable { mutableStateOf(false) };var selectedActivity by remember { mutableStateOf<FeedActivity?>(null) }
+    var connectionQrOpen by rememberSaveable { mutableStateOf(false) }
+    var scannerOpen by rememberSaveable { mutableStateOf(false) }
+    var scannerFeedback by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
     LaunchedEffect(accountId, localeTag) { viewModel.start(accountId, localeTag) }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(viewModel) {
+        viewModel.connectionEffects.collect { effect ->
+            when (effect) {
+                is ConnectionEffect.ShareInvitation -> {
+                    val invitation = context.getString(R.string.social_invitation_share_message, effect.url)
+                    context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, invitation)
+                    }, null))
+                }
+                is ConnectionEffect.Feedback -> {
+                    val message = context.getString(connectionFeedbackResource(effect.value))
+                    if (scannerOpen && !effect.closeScanner) scannerFeedback = message
+                    else Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    if (effect.closeScanner) scannerOpen = false
+                }
+            }
+        }
+    }
+    LaunchedEffect(scannerFeedback) {
+        if (scannerFeedback == null) return@LaunchedEffect
+        kotlinx.coroutines.delay(2_000)
+        scannerFeedback = null
+    }
     LaunchedEffect(targetType,targetId,state.loading){
         if (!state.loading && targetType == "connections") connectionsOpen = true
         else if(!state.loading&&targetType!=null&&targetId!=null)viewModel.openTarget(targetType,targetId)
@@ -49,8 +74,24 @@ import com.plainstride.outbound.core.designsystem.*
         BackHandler { selectedActivity = null }
         SocialActivityDetail(selectedActivity!!, { selectedActivity = null }, modifier)
     }
-    if (connectionsOpen) ConnectionsDialog(state, viewModel::search, viewModel::openProfile, { invitation -> viewModel.openTarget("invitation", invitation.id) },viewModel::requestConnectionLink) { connectionsOpen = false }
-    state.connectionLink?.let{link->ConnectionQrDialog(link,viewModel::closeConnectionLink)}
+    if (connectionsOpen) ConnectionsDialog(
+        state = state,
+        search = viewModel::search,
+        openProfile = viewModel::openProfile,
+        reviewInvitation = { invitation -> viewModel.openTarget("invitation", invitation.id) },
+        scanQr = { scannerFeedback = null; scannerOpen = true },
+        showQr = { connectionQrOpen = true; viewModel.openConnectionQr() },
+        inviteByLink = viewModel::inviteByLink,
+        close = { connectionsOpen = false },
+    )
+    if (connectionQrOpen) ConnectionQrScreen(state) { connectionQrOpen = false; viewModel.closeConnectionQr() }
+    if (scannerOpen) ConnectionQrScannerScreen(
+        isProcessing = state.connectionRequestLoading,
+        serverMessage = scannerFeedback,
+        onOpened = viewModel::scannerOpened,
+        onPayload = { payload -> connectionCodeFromPayload(payload)?.let(viewModel::consumeConnectionCode) },
+        onClose = { scannerOpen = false },
+    )
     state.selectedProfile?.let { person ->
         ProfileScreen(
             person = person,
@@ -74,6 +115,17 @@ import com.plainstride.outbound.core.designsystem.*
     state.selectedGroup?.let{group->ActionDialog(group.name,stringResource(if(group.joined)R.string.social_leave else R.string.social_join),{viewModel.joinGroup(group);viewModel.closeTarget()},viewModel::closeTarget)}
     state.selectedInvitation?.let{invitation->AlertDialog(onDismissRequest=viewModel::closeTarget,title={Text(invitation.title)},confirmButton={TextButton({viewModel.respondToInvitation(invitation,true)}){Text(stringResource(R.string.social_accept))}},dismissButton={TextButton({viewModel.respondToInvitation(invitation,false)}){Text(stringResource(R.string.social_decline))}})}
     state.selectedPost?.let { CommentsDialog(it, state.comments, viewModel::addComment, viewModel::deleteComment, viewModel::closeComments) }
+}
+
+private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value) {
+    ConnectionFeedback.REQUESTED -> R.string.social_connection_request_sent
+    ConnectionFeedback.ALREADY_PENDING -> R.string.social_connection_request_already_sent
+    ConnectionFeedback.INCOMING_PENDING -> R.string.social_connection_request_incoming
+    ConnectionFeedback.ALREADY_CONNECTED -> R.string.social_already_connected
+    ConnectionFeedback.SELF -> R.string.social_self_qr_code
+    ConnectionFeedback.UPDATED -> R.string.social_connection_request_updated
+    ConnectionFeedback.REQUEST_FAILED -> R.string.social_connection_request_failed
+    ConnectionFeedback.INVITE_LINK_FAILED -> R.string.social_invite_link_failed
 }
 @Composable private fun ActionDialog(title:String,action:String,onAction:()->Unit,onClose:()->Unit)=AlertDialog(onDismissRequest=onClose,title={Text(title)},confirmButton={TextButton(onAction){Text(action)}},dismissButton={TextButton(onClose){Text(stringResource(R.string.social_done))}})
 
@@ -190,10 +242,45 @@ fun SocialConnectionsPreview(
 @Composable private fun SocialIconButton(onClick: () -> Unit, label: String, content: @Composable () -> Unit) = IconButton(onClick, Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = label }) { Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = .10f)) { Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) { content() } } }
 @Composable private fun PersonRow(person: SocialPerson, click: () -> Unit) = TextButton(click, Modifier.fillMaxWidth()) { SocialAvatar(person); Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) { Text(person.displayName); person.username?.let { Text("@$it", style = MaterialTheme.typography.bodySmall) } } }
 @Composable
-private fun ConnectionsDialog(state: SocialUiState, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, reviewInvitation:(SocialInvitation)->Unit,showQr:()->Unit, close: () -> Unit) = Dialog(onDismissRequest = close) {
+private fun ConnectionsDialog(
+    state: SocialUiState,
+    search: (String) -> Unit,
+    openProfile: (SocialPerson) -> Unit,
+    reviewInvitation: (SocialInvitation) -> Unit,
+    scanQr: () -> Unit,
+    showQr: () -> Unit,
+    inviteByLink: () -> Unit,
+    close: () -> Unit,
+) = Dialog(onDismissRequest = close) {
+    var addMenuExpanded by remember { mutableStateOf(false) }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) { Text(stringResource(R.string.social_connections), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold);IconButton(showQr){Icon(Icons.Outlined.QrCode,stringResource(R.string.social_invite))}; TextButton(close) { Text(stringResource(R.string.social_done)) } }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.social_connections), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Box {
+                    IconButton({ addMenuExpanded = true }, Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)) {
+                        Icon(Icons.Outlined.Add, stringResource(R.string.social_add_connection))
+                    }
+                    DropdownMenu(addMenuExpanded, { addMenuExpanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.social_scan_qr_code)) },
+                            leadingIcon = { Icon(Icons.Outlined.QrCodeScanner, null) },
+                            onClick = { addMenuExpanded = false; scanQr() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.social_show_my_qr_code)) },
+                            leadingIcon = { Icon(Icons.Outlined.QrCode, null) },
+                            onClick = { addMenuExpanded = false; showQr() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.social_invite_by_link)) },
+                            leadingIcon = { Icon(Icons.Outlined.Share, null) },
+                            onClick = { addMenuExpanded = false; inviteByLink() },
+                        )
+                    }
+                }
+                TextButton(close) { Text(stringResource(R.string.social_done)) }
+            }
             OutlinedTextField(state.search, search, Modifier.fillMaxWidth(), singleLine = true, label = { Text(stringResource(R.string.social_search_people)) }, leadingIcon = { Icon(Icons.Outlined.Search, null) })
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (state.searchResults.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_search_people)) }; items(state.searchResults, key = SocialPerson::id) { PersonRow(it) { openProfile(it) } } }
@@ -206,7 +293,6 @@ private fun ConnectionsDialog(state: SocialUiState, search: (String) -> Unit, op
         }
     }
 }
-@Composable private fun ConnectionQrDialog(link:ConnectionLink,close:()->Unit){val bitmap=remember(link.url){val size=640;val matrix=MultiFormatWriter().encode(link.url,BarcodeFormat.QR_CODE,size,size);Bitmap.createBitmap(size,size,Bitmap.Config.ARGB_8888).also{image->for(y in 0 until size)for(x in 0 until size)image.setPixel(x,y,if(matrix[x,y])android.graphics.Color.BLACK else android.graphics.Color.WHITE)}};AlertDialog(onDismissRequest=close,title={Text(stringResource(R.string.social_invite))},text={Column(horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(12.dp)){Image(bitmap.asImageBitmap(),stringResource(R.string.social_invite),Modifier.fillMaxWidth());Text(link.url,style=MaterialTheme.typography.bodySmall)}},confirmButton={TextButton(close){Text(stringResource(R.string.social_done))}})}
 @Composable private fun InvitationCard(invitation: SocialInvitation, review:(SocialInvitation)->Unit) = SocialCard { Text(invitation.title, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_invited_by, invitation.sender.displayName), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Button({review(invitation)}, Modifier.padding(top = 8.dp)) { Text(stringResource(R.string.social_review)) } }
 @Composable private fun EventCard(event: SocialEvent, open:()->Unit) = SocialCard(onClick = open) { Text(event.name, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_hybrid), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall); event.locationName?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
 @Composable private fun GroupCard(group: SocialGroup, membership: () -> Unit) = SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.Flag, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(group.name, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_members, group.memberCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; TextButton(membership) { Text(stringResource(if (group.joined) R.string.social_leave else R.string.social_join)) } } }

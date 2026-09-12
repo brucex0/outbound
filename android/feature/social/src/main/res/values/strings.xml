@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
+    <string name="social_add_connection">Add connection</string>
     <string name="social_all">All</string>
+    <string name="social_already_connected">You’re already connected</string>
     <string name="social_block">Block person</string>
     <string name="social_block_confirmation_message">Blocking removes the connection and hides each person’s content.</string>
     <string name="social_block_confirmation_title">Block this person?</string>
+    <string name="social_camera_access_description">Allow camera access in Settings to scan a Plainstride connection code.</string>
+    <string name="social_camera_access_needed">Camera access needed</string>
     <string name="social_cancel">Cancel</string>
     <string name="social_cheer">Send a private Cheer</string>
     <string name="social_circle">Your Circle</string>
@@ -12,16 +16,22 @@
     <string name="social_circle_empty">Active. Positive. Together. Create a private Circle with people who help you keep moving.</string>
     <string name="social_circle_progress">%1$d of %2$d activities this week</string>
     <string name="social_circle_reactivate">Reactivate</string>
+    <string name="social_close">Close</string>
     <string name="social_community">Social community</string>
     <string name="social_conditions">Conditions</string>
     <string name="social_connect">Connect</string>
+    <string name="social_connection_request_already_sent">Connection request already sent</string>
+    <string name="social_connection_request_failed">Could not send the connection request. Try again.</string>
+    <string name="social_connection_request_incoming">This runner already sent you a connection request</string>
+    <string name="social_connection_request_sent">Connection request sent</string>
+    <string name="social_connection_request_updated">Connection request updated</string>
     <string name="social_connections">Connections</string>
     <string name="social_connections_empty">Better together. Find people you know and make movement feel shared.</string>
-    <string name="social_discover">Discover</string>
-    <string name="social_distance">Distance</string>
     <string name="social_delete_post">Delete post</string>
     <string name="social_delete_post_confirmation_message">This removes the post from Social. Your saved activity is not deleted.</string>
     <string name="social_delete_post_confirmation_title">Delete this post?</string>
+    <string name="social_discover">Discover</string>
+    <string name="social_distance">Distance</string>
     <string name="social_done">Done</string>
     <string name="social_dont_ask_again">Don’t ask again</string>
     <string name="social_feed">Recent activity</string>
@@ -30,7 +40,10 @@
     <string name="social_guide_noticed">Guide noticed this</string>
     <string name="social_hybrid">Meet up or join from anywhere</string>
     <string name="social_incoming_requests">%1$d connection requests</string>
+    <string name="social_invitation_share_message">Join me for a run on Plainstride: %1$s</string>
     <string name="social_invite">Invite</string>
+    <string name="social_invite_by_link">Invite by link</string>
+    <string name="social_invite_link_failed">Could not create an invitation link. Try again.</string>
     <string name="social_invite_person">Invite %1$s</string>
     <string name="social_invited_by">Invited by %1$s</string>
     <string name="social_join">Join</string>
@@ -38,18 +51,18 @@
     <string name="social_load_more">Load more</string>
     <string name="social_members">%1$d members</string>
     <string name="social_milestones">%1$d shared milestones</string>
-    <string name="social_profile">Profile</string>
-    <string name="social_back">Back</string>
-    <string name="social_profile_actions">Profile actions</string>
-    <string name="social_profile_milestones">MILESTONES</string>
-    <string name="social_recent_activities">RECENT ACTIVITIES</string>
-    <string name="social_no_shared_activities">No shared activities yet.</string>
     <string name="social_more">More actions</string>
+    <string name="social_my_plainstride_qr_code">My Plainstride QR code</string>
+    <string name="social_my_qr_code">My QR Code</string>
+    <string name="social_not_connection_code">Not a Plainstride connection code</string>
     <string name="social_notifications">Notifications</string>
     <string name="social_offline">Showing saved Social activity</string>
+    <string name="social_open_settings">Open Settings</string>
     <string name="social_pace">Pace</string>
     <string name="social_past_activities">Past activities</string>
     <string name="social_past_empty">No shared activity results yet.</string>
+    <string name="social_qr_code_unavailable">QR code unavailable</string>
+    <string name="social_qr_load_failure">Could not load your connection code. Try again.</string>
     <string name="social_recognition_earned">You earned a new Social milestone.</string>
     <string name="social_refresh">Refresh Social</string>
     <string name="social_relationship">Relationship: %1$s</string>
@@ -62,12 +75,21 @@
     <string name="social_route">Activity route</string>
     <string name="social_safety_body">Reports are private. Blocking also removes the connection and hides each person’s content.</string>
     <string name="social_safety_title">Safety options</string>
+    <string name="social_scan_friend_qr_code">Scan a friend’s Plainstride QR code.</string>
+    <string name="social_scan_qr_code">Scan QR code</string>
+    <string name="social_scan_this_qr_code">Scan this QR code to join me on Plainstride.</string>
+    <string name="social_scanner_unavailable">Scanner unavailable</string>
+    <string name="social_scanner_unavailable_description">This device can’t scan connection codes.</string>
     <string name="social_search_people">Search people</string>
+    <string name="social_self_qr_code">This is your QR code</string>
+    <string name="social_sending_connection_request">Sending connection request…</string>
     <string name="social_share_award">Share award</string>
     <string name="social_share_award_text">%1$s earned an award on Plainstride</string>
+    <string name="social_show_my_qr_code">Show my QR code</string>
     <string name="social_time">Time</string>
     <string name="social_title">Social</string>
     <string name="social_upcoming">Upcoming</string>
     <string name="social_upcoming_empty">No upcoming activities yet.</string>
+    <string name="social_profile">Profile</string><string name="social_back">Back</string><string name="social_profile_actions">Profile actions</string><string name="social_profile_milestones">MILESTONES</string><string name="social_recent_activities">RECENT ACTIVITIES</string><string name="social_no_shared_activities">No shared activities yet.</string>
     <string name="circle_create_title">Create your Circle</string><string name="circle_create_inspiration">Active. Positive. Together.</string><string name="circle_create_detail">Share goals and progress with the people closest to you—and cheer each other on.</string><string name="circle_create_people">Who helps you keep moving?</string><string name="circle_create_selected">%1$d selected</string><string name="circle_create_name">Name your Circle · Optional</string><string name="circle_create_name_help">Leave it blank and Plainstride will suggest a name.</string><string name="circle_create_action">Create your Circle</string><string name="circle_manage">Manage Circle</string><string name="circle_relationship">A private place to keep moving together.</string><string name="circle_no_numeric_focus">No numeric goal · Move together</string><string name="circle_skipping">Skipping this week</string><string name="circle_member_progress">%1$d of %2$d</string><string name="circle_contributed">Contributed %1$d</string><string name="circle_weekly_focus">Weekly focus</string><string name="circle_focus_personal">Personal targets</string><string name="circle_focus_shared">Shared target</string><string name="circle_focus_none">No target</string><string name="circle_apply_next_week">Apply next week</string><string name="circle_skip_week">Skip this week</string><string name="circle_rename">Update name</string><string name="circle_mute">Mute Circle notifications</string><string name="circle_make_primary">Show this Circle on Today</string><string name="circle_remove_member">Remove %1$s</string><string name="circle_leave">Leave Circle</string>
 </resources>
