@@ -67,7 +67,7 @@ class DefaultSettingsRepository @Inject constructor(
         SettingsPreferences(
             measurement = MeasurementSystem.entries.firstOrNull { it.wireValue == values[MeasurementKey] } ?: deviceMeasurement(),
             temperature = TemperatureUnit.entries.firstOrNull { it.wireValue == values[TemperatureKey] } ?: deviceTemperature(),
-            appearance = AppearanceMode.entries.firstOrNull { it.wireValue == values[AppearanceKey] } ?: AppearanceMode.Dark,
+            appearance = AppearanceMode.entries.firstOrNull { it.wireValue == values[AppearanceKey] } ?: AppearanceMode.System,
             theme = PlainstrideThemeId.fromSerializedName(values[ThemeKey]),
         )
     }

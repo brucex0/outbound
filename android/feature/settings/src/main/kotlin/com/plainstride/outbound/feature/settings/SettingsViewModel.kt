@@ -17,7 +17,7 @@ import com.plainstride.outbound.core.designsystem.PlainstrideThemeId
 import com.plainstride.outbound.core.network.AccountDto
 
 data class SettingsUiState(
-    val preferences: SettingsPreferences = SettingsPreferences(MeasurementSystem.Metric, TemperatureUnit.Celsius, AppearanceMode.Dark, PlainstrideThemeId.VictoryGold),
+    val preferences: SettingsPreferences = SettingsPreferences(MeasurementSystem.Metric, TemperatureUnit.Celsius, AppearanceMode.System, PlainstrideThemeId.VictoryGold),
     val account: AccountDto? = null,
     val summary: MeSummary? = null,
     val loading: Boolean = true,
