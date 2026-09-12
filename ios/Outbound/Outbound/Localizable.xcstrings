@@ -34220,6 +34220,28 @@
         }
       }
     },
+    "common.dismiss": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dismiss"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "忽略"
+          }
+        }
+      }
+    },
     "health.import.title": {
       "localizations": {
         "en": {
@@ -34260,6 +34282,72 @@
           "stringUnit": {
             "state": "translated",
             "value": "APPLE 健康中的新训练"
+          }
+        }
+      }
+    },
+    "health.import.notification.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Apple Health workouts"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuevos entrenamientos de Apple Health"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 健康中有新训练"
+          }
+        }
+      }
+    },
+    "health.import.notification.detail": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ready to review: %d"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listos para revisar: %d"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "待查看：%d 项"
+          }
+        }
+      }
+    },
+    "health.import.notification.hint": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review and choose which workouts to import."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa y elige qué entrenamientos quieres importar."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看并选择要导入的训练。"
           }
         }
       }
@@ -35407,19 +35495,41 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Notifications"
+            "value": "Notification Center"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Notificaciones"
+            "value": "Centro de notificaciones"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "通知"
+            "value": "通知中心"
+          }
+        }
+      }
+    },
+    "notification.center.badge.count": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New items: %d"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elementos nuevos: %d"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新内容：%d 项"
           }
         }
       }
@@ -43287,19 +43397,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Notifications"
+            "value": "Notification Center"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Notificaciones"
+            "value": "Centro de notificaciones"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "通知"
+            "value": "通知中心"
           }
         }
       }
@@ -44805,19 +44915,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Notifications"
+            "value": "Notification Center"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Notificaciones"
+            "value": "Centro de notificaciones"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "通知"
+            "value": "通知中心"
           }
         }
       }
@@ -46526,19 +46636,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Notifications"
+            "value": "Notification Center"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Notificaciones"
+            "value": "Centro de notificaciones"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "通知"
+            "value": "通知中心"
           }
         }
       }
@@ -46549,19 +46659,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Notifications · %d"
+            "value": "Notification Center · %d"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Notificaciones · %d"
+            "value": "Centro de notificaciones · %d"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "通知 · %d"
+            "value": "通知中心 · %d"
           }
         }
       }

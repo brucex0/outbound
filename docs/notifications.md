@@ -7,8 +7,9 @@ Open this when changing notification creation, delivery, device registration, fo
 - The backend notification record is the source of truth. Push is a best-effort delivery channel, not a second inbox.
 - V1 sends push for existing Social notification types: `connectionRequest`, `connectionAccepted`, `cheer`, `comment`, `runInvitation`, `invitationAccepted`, and `activityEventJoined`.
 - Circle creates durable in-app records for `circleInvitation`, `circleInvitationAccepted`, `circleCheer`, `circleWeeklyGoalCompleted`, and `circleOwnershipTransferred`. Their object IDs route to an invitation or Circle; optional Cheer/completion delivery respects the per-Circle mute preference, while membership-critical state remains visible.
-- The iOS Social notification inbox remains available when push permission is denied or delivery fails.
-- Foreground notifications use the system banner, sound, and badge. Tapping a connection request selects Social and opens Connections; other pushes open the notification inbox.
+- The in-app destination is named Notification Center and remains available when push permission is denied or delivery fails.
+- Foreground push notifications use the system banner, sound, and badge. Tapping a connection request selects Social and opens Connections; other pushes open Notification Center.
+- Apple Health foreground scans are silent. When new workouts are found, one local-only Notification Center item appears and opens the import review on demand; health details are never sent to the notification backend.
 - Every delivered Social push uses the same event-specific, share-safe message as the inbox (for example, who accepted a connection or commented). Generic copy is only a client fallback for a malformed payload with no usable message. Do not put private plan, health, readiness, location, or cycle data in a push payload.
 - Device tokens are user-scoped, may move between accounts, and are removed when Firebase reports them invalid or unregistered.
 
@@ -83,8 +84,9 @@ Delivery logs contain only platform, a stable category (`invalid_token`, `creden
 - `PushNotificationCoordinator` owns authorization, APNs/FCM registration, backend synchronization, and pending tap state.
 - `AppDelegate` bridges APNs and Firebase Messaging callbacks and presents system banners in the foreground.
 - Registration occurs after authentication and retries on foreground activation.
-- The app icon badge is preserved when the app becomes active and is cleared after the Social notification inbox is marked read.
-- A notification tap records its durable ID and type. The app selects Social and routes connection requests directly to Connections; other types open Notifications, refresh the inbox, and route to the matching notification detail when present.
+- The app icon badge is preserved when the app becomes active and is cleared after Notification Center marks durable Social notifications read.
+- A notification tap records its durable ID and type. The app selects Social and routes connection requests directly to Connections; other types open Notification Center, refresh its durable items, and route to the matching detail when present.
+- The in-app bell uses a high-contrast numeric badge for unread durable notifications plus one actionable item when Apple Health imports await review.
 - Circle inbox rows render localized client copy from the semantic type and actor rather than displaying server-authored English. The Circle MVP is complete without push; adding Circle types to OS delivery remains subject to a later notification rollout.
 - `push_notification_opened` records the share-safe notification type and selected destination (`connections` or `notifications`).
 - User-facing permission text is provided by the system. Any future custom permission primer must use localized strings.
@@ -99,7 +101,7 @@ Delivery logs contain only platform, a stable category (`invalid_token`, `creden
 
 ## Local Workout Reminders
 
-Workout reminders are an on-device feature owned by `WorkoutNotificationScheduler`. They do not use Firebase, APNs delivery, FCM tokens, backend connectivity, or the Social notification inbox.
+Workout reminders are an on-device feature owned by `WorkoutNotificationScheduler`. They do not use Firebase, APNs delivery, FCM tokens, backend connectivity, or Notification Center.
 
 - Reminders default to enabled at 6:00 AM for new installations. Existing explicit reminder choices are preserved.
 - On first entry into the authenticated app experience, the enabled default requests notification authorization once. Denial turns reminders off; later app activation does not repeatedly request permission.

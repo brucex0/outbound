@@ -998,6 +998,7 @@ private struct SimplifiedTodayView: View {
     @EnvironmentObject private var weatherStore: SituationalWeatherStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var socialStore: TogetherStore
+    @EnvironmentObject private var healthImportStore: HealthImportStore
     @EnvironmentObject private var circleStore: CircleStore
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
     @EnvironmentObject private var tooltipCoordinator: TooltipCoordinator
@@ -1189,12 +1190,14 @@ private struct SimplifiedTodayView: View {
                 ]))
             }
         } label: {
-            Image(systemName: socialStore.showsNotificationBadge ? "bell.badge.fill" : "bell")
+            NotificationCenterIcon(count: notificationCenterBadgeCount)
         }
-        .accessibilityLabel(String(localized: "Social notifications"))
-        .accessibilityValue(socialStore.pendingInvitationCount > 0
-            ? String(localized: "\(socialStore.pendingInvitationCount) pending invitations")
-            : "")
+        .accessibilityLabel(String(localized: "app.notifications.destination", defaultValue: "Notification Center"))
+        .accessibilityValue(notificationCenterAccessibilityValue(count: notificationCenterBadgeCount))
+    }
+
+    private var notificationCenterBadgeCount: Int {
+        socialStore.unreadNotificationCount + (healthImportStore.importCandidates.isEmpty ? 0 : 1)
     }
 
     private var activityOverflowMenu: some View {
@@ -3070,12 +3073,10 @@ private struct SimplifiedMeView: View {
                             ]))
                         }
                     } label: {
-                        Image(systemName: socialStore.showsNotificationBadge ? "bell.badge.fill" : "bell")
+                        NotificationCenterIcon(count: notificationCenterBadgeCount)
                     }
-                    .accessibilityLabel(String(localized: "Social notifications"))
-                    .accessibilityValue(socialStore.pendingInvitationCount > 0
-                        ? String(localized: "\(socialStore.pendingInvitationCount) pending invitations")
-                        : "")
+                    .accessibilityLabel(String(localized: "app.notifications.destination", defaultValue: "Notification Center"))
+                    .accessibilityValue(notificationCenterAccessibilityValue(count: notificationCenterBadgeCount))
                     NavigationLink {
                         SimplifiedSettingsView(
                             trainingProfileSex: $trainingProfileSex
@@ -3092,6 +3093,10 @@ private struct SimplifiedMeView: View {
     private func loadProfile() async {
         profile = try? await APIClient.shared.fetchMyProfile()
         UserAvatarPersistence.save(profile?.avatarUrl, for: AuthStore.currentUserId)
+    }
+
+    private var notificationCenterBadgeCount: Int {
+        socialStore.unreadNotificationCount + (healthImportStore.importCandidates.isEmpty ? 0 : 1)
     }
 
     private func showManualWorkoutToast() {

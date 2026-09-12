@@ -102,11 +102,11 @@ struct MainTabView: View {
         }
         .onChange(of: onboardingStore.isPresented) { wasPresented, isPresented in
             guard wasPresented, !isPresented else { return }
-            checkForHealthWorkouts(presentWhenFound: true)
+            checkForHealthWorkouts(presentWhenFound: false)
         }
         .onChange(of: activityStore.hasLoadedActivities) { _, hasLoaded in
             guard hasLoaded, !onboardingStore.isPresented else { return }
-            checkForHealthWorkouts(presentWhenFound: true)
+            checkForHealthWorkouts(presentWhenFound: false)
         }
         .onChange(of: appNavigationStore.pendingAssistantTarget) { _, target in
             guard target != nil, activitySessionState == .idle else { return }
@@ -136,7 +136,7 @@ struct MainTabView: View {
             guard newPhase == .active else { return }
             consumeStoredPreparedActivityIfNeeded()
             if activityStore.hasLoadedActivities, !onboardingStore.isPresented {
-                checkForHealthWorkouts(presentWhenFound: true)
+                checkForHealthWorkouts(presentWhenFound: false)
             }
         }
         .onChange(of: connectivityStore.isOffline) { wasOffline, isOffline in

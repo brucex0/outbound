@@ -12,6 +12,7 @@ struct SocialHomeView: View {
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
+    @EnvironmentObject private var healthImportStore: HealthImportStore
     @State private var selectedCommentPost: TogetherPostDTO?
     @State private var selectedActivityPost: TogetherPostDTO?
     @State private var isCreateActivityEventPresented = false
@@ -120,12 +121,10 @@ struct SocialHomeView: View {
                         showsNotifications = true
                         trackSocialInboxOpened(entrySource: "social")
                     } label: {
-                        Image(systemName: socialStore.showsNotificationBadge ? "bell.badge.fill" : "bell")
+                        NotificationCenterIcon(count: notificationCenterBadgeCount)
                     }
-                    .accessibilityLabel("Social notifications")
-                    .accessibilityValue(socialStore.pendingInvitationCount > 0
-                        ? String(localized: "\(socialStore.pendingInvitationCount) pending invitations")
-                        : "")
+                    .accessibilityLabel(String(localized: "app.notifications.destination", defaultValue: "Notification Center"))
+                    .accessibilityValue(notificationCenterAccessibilityValue(count: notificationCenterBadgeCount))
                 }
             }
             .refreshable {
@@ -340,6 +339,10 @@ struct SocialHomeView: View {
                 .entrySource: .string(entrySource),
             ]))
         }
+    }
+
+    private var notificationCenterBadgeCount: Int {
+        socialStore.unreadNotificationCount + (healthImportStore.importCandidates.isEmpty ? 0 : 1)
     }
 
     private func incomingRequestCard(_ connection: SocialConnectionDTO) -> some View {
@@ -1472,14 +1475,62 @@ private struct PastActivityEventRow: View {
 }
 
 struct SocialNotificationsView: View {
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
     @EnvironmentObject private var circleStore: CircleStore
+    @EnvironmentObject private var healthImportStore: HealthImportStore
     @State private var selectedNotification: SocialNotificationDTO?
 
     var body: some View {
         List {
-            if socialStore.notifications.isEmpty {
+            if !healthImportStore.importCandidates.isEmpty {
+                Section {
+                    Button {
+                        healthImportStore.isReviewPresented = true
+                    } label: {
+                        HStack(alignment: .top, spacing: OutboundSpacing.compact) {
+                            Image(systemName: "heart.text.clipboard.fill")
+                                .font(.title3)
+                                .foregroundStyle(OutboundPalette.companion)
+                                .frame(width: 36, height: 36)
+                                .background(OutboundPalette.companion.opacity(0.12), in: Circle())
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(String(
+                                    localized: "health.import.notification.title",
+                                    defaultValue: "New Apple Health workouts"
+                                ))
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.primary)
+                                Text(healthImportNotificationDetail)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(String(
+                        localized: "health.import.notification.hint",
+                        defaultValue: "Review and choose which workouts to import."
+                    ))
+                    .swipeActions {
+                        Button(role: .destructive) {
+                            healthImportStore.dismissCandidates()
+                        } label: {
+                            Label(
+                                String(localized: "common.dismiss", defaultValue: "Dismiss"),
+                                systemImage: "xmark"
+                            )
+                        }
+                    }
+                }
+            }
+
+            if socialStore.notifications.isEmpty && healthImportStore.importCandidates.isEmpty {
                 ContentUnavailableView("No notifications", systemImage: "bell", description: Text("Connection requests, Cheers, comments, and run invitations appear here."))
             } else {
                 ForEach(socialStore.notifications) { notification in
@@ -1507,11 +1558,16 @@ struct SocialNotificationsView: View {
                 }
             }
         }
-        .navigationTitle("Notifications")
+        .navigationTitle(String(localized: "app.notifications.destination", defaultValue: "Notification Center"))
         .navigationDestination(item: $selectedNotification) { notification in
             notificationDestination(notification)
         }
         .task {
+            if !healthImportStore.importCandidates.isEmpty {
+                await analyticsManager?.track(.init(.featureExposed, properties: [
+                    .feature: .string("health_import_notification_center_item"),
+                ]))
+            }
             await socialStore.refreshNotifications()
             if let notificationID = pushNotifications.pendingNotificationID,
                let notification = socialStore.notifications.first(where: { $0.id == notificationID }) {
@@ -1522,6 +1578,17 @@ struct SocialNotificationsView: View {
             await pushNotifications.clearAppIconBadge()
         }
         .refreshable { await socialStore.refreshNotifications() }
+    }
+
+    private var healthImportNotificationDetail: String {
+        String(
+            format: String(
+                localized: "health.import.notification.detail",
+                defaultValue: "Ready to review: %d"
+            ),
+            locale: .autoupdatingCurrent,
+            healthImportStore.importCandidates.count
+        )
     }
 
     @ViewBuilder
