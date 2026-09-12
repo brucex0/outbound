@@ -78,8 +78,9 @@ router.get("/", async (c) => {
     try {
       await assertCircleMember(membership.circleId, user.id);
       return await circlePayload(membership.circleId, user.id);
-    } catch {
-      return null;
+    } catch (error) {
+      if (error instanceof CircleDomainError) return null;
+      throw error;
     }
   }));
   const visibleCircles = circles.filter((circle): circle is NonNullable<typeof circle> => circle != null);

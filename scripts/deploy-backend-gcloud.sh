@@ -72,6 +72,8 @@ Environment overrides:
   NPM_BIN                 optional npm path
   NODE_BIN                optional node path for TypeScript fallback
   RUN_LOCAL_BUILD=0       skip local build before deploy
+  RUN_SCHEMA_SYNC=0       skip pinning and executing the production schema job
+  SCHEMA_JOB              default: outbound-db-push
   RUN_HEALTH_CHECK=0      skip /health check after deploy
   HEALTH_CHECK_RETRIES    default: 5 retries after the first attempt
   HEALTH_CHECK_RETRY_DELAY_SECONDS default: 5
@@ -179,6 +181,8 @@ GCLOUD_BIN="${GCLOUD_BIN:-$HOME/google-cloud-sdk/bin/gcloud}"
 NPM_BIN="${NPM_BIN:-}"
 NODE_BIN="${NODE_BIN:-}"
 RUN_LOCAL_BUILD="${RUN_LOCAL_BUILD:-1}"
+RUN_SCHEMA_SYNC="${RUN_SCHEMA_SYNC:-$production_profile}"
+SCHEMA_JOB="${SCHEMA_JOB:-outbound-db-push}"
 RUN_HEALTH_CHECK="${RUN_HEALTH_CHECK:-1}"
 HEALTH_CHECK_RETRIES="${HEALTH_CHECK_RETRIES:-5}"
 HEALTH_CHECK_RETRY_DELAY_SECONDS="${HEALTH_CHECK_RETRY_DELAY_SECONDS:-5}"
@@ -312,6 +316,14 @@ if [[ -n "$ALIBABA_LIVE_COACH_VOICE_MAP" ]]; then
 fi
 environment_vars="^|^$(IFS='|'; echo "${environment_bindings[*]}")"
 
+deploy_without_traffic=0
+for extra_arg in "$@"; do
+  if [[ "$extra_arg" == "--no-traffic" ]]; then
+    deploy_without_traffic=1
+    break
+  fi
+done
+
 deploy_args=(
   run deploy "$SERVICE"
   "--project=$PROJECT_ID"
@@ -336,16 +348,41 @@ if [[ "$QUIET" == "1" ]]; then
   deploy_args+=(--quiet)
 fi
 
+# Keep a schema-dependent revision away from production traffic until its exact
+# image has applied the matching Prisma schema. An explicit --no-traffic remains
+# authoritative and leaves traffic unchanged after the schema sync.
+if [[ "$RUN_SCHEMA_SYNC" == "1" && "$deploy_without_traffic" == "0" ]]; then
+  deploy_args+=(--no-traffic)
+fi
+
 echo "Deploying $SERVICE to Cloud Run project=$PROJECT_ID region=$REGION account=$GCLOUD_ACCOUNT"
 "$GCLOUD_BIN" "${deploy_args[@]}" "$@"
 
-deploy_without_traffic=0
-for extra_arg in "$@"; do
-  if [[ "$extra_arg" == "--no-traffic" ]]; then
-    deploy_without_traffic=1
-    break
+if [[ "$RUN_SCHEMA_SYNC" == "1" ]]; then
+  revision_name="$("$GCLOUD_BIN" run services describe "$SERVICE" \
+    "--project=$PROJECT_ID" \
+    "--region=$REGION" \
+    --format='value(status.latestCreatedRevisionName)')"
+  revision_image="$("$GCLOUD_BIN" run revisions describe "$revision_name" \
+    "--project=$PROJECT_ID" \
+    "--region=$REGION" \
+    --format='value(spec.containers[0].image)')"
+  if [[ -z "$revision_name" || -z "$revision_image" ]]; then
+    echo "Could not resolve the newly deployed revision image for schema sync." >&2
+    exit 1
   fi
-done
+  echo "Pinning $SCHEMA_JOB to $revision_name and applying its schema"
+  "$GCLOUD_BIN" run jobs update "$SCHEMA_JOB" \
+    "--project=$PROJECT_ID" \
+    "--region=$REGION" \
+    "--image=$revision_image" \
+    --quiet
+  "$GCLOUD_BIN" run jobs execute "$SCHEMA_JOB" \
+    "--project=$PROJECT_ID" \
+    "--region=$REGION" \
+    --wait
+fi
+
 if [[ "$deploy_without_traffic" == "0" ]]; then
   echo "Routing production traffic to the latest ready revision"
   "$GCLOUD_BIN" run services update-traffic "$SERVICE" \

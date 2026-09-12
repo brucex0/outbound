@@ -333,7 +333,9 @@ $HOME/google-cloud-sdk/bin/gcloud run jobs update outbound-db-push \
   --set-secrets=DATABASE_URL=outbound-database-url:latest
 ```
 
-Before executing the schema job, update it to the same image digest as the latest ready `outbound-api` revision. A stale job image can report success while applying an older Prisma schema. The job should run `npm run db:push -- --accept-data-loss` followed by `npm run seed:training-plans` so pre-publish constraint changes are accepted and the `TrainingPlanTemplate` catalog tables are populated after schema changes. `db:push` skips Prisma Client generation because the immutable runtime image already contains the generated client and runs as a non-root user.
+The production deploy helper keeps a new revision off traffic, pins `outbound-db-push` to that revision's exact image digest, executes the schema job, and only then moves traffic. Set `RUN_SCHEMA_SYNC=0` only for a deployment that is known not to need database access or when schema work is being coordinated separately. An explicit `--no-traffic` still runs the schema job by default but leaves traffic unchanged.
+
+The job runs `npm run db:push -- --accept-data-loss` followed by `npm run seed:training-plans` so pre-publish constraint changes are accepted and the `TrainingPlanTemplate` catalog tables are populated after schema changes. `db:push` skips Prisma Client generation because the immutable runtime image already contains the generated client and runs as a non-root user. If applying the job manually, always update it to the same image digest as the target `outbound-api` revision first; a stale job image can report success while applying an older Prisma schema.
 
 The 2026-08-30 planner migration intentionally deleted only the 27 legacy `LiveCoachSession` rows and their `LiveCoachCue` children before adding the required plan columns. Accounts, entitlements, trial usage, activities, workout plans, and all other product data were preserved.
 
@@ -411,7 +413,7 @@ If you want the IAM user to be able to change ownership or manage privileges cre
 
 - The local backend can run assistant-only when `DATABASE_URL` is absent, or use the embedded Postgres workflow documented above.
 - The live Cloud Run service is connected to the `outbound` Cloud SQL database, so authenticated activity, planning, personalization, safety, social, and account-deletion routes can use durable storage.
-- After any Prisma schema change, deploy the API first, pin `outbound-db-push` to the new revision's exact image digest, and execute the job before relying on the changed route behavior.
+- Production deploys automatically pin and execute `outbound-db-push` before routing traffic. If that automation is explicitly disabled, deploy the API without traffic, pin the job to the new revision's exact image digest, execute it, and only then route traffic.
 - Fuzzy connection search requires the schema-declared `pg_trgm` extension and `User` trigram indexes. The route falls back to literal matching while the extension is absent; execute the pinned schema job to enable fuzzy results after deploying the matching image.
 - Activity history sync requires the nullable `Activity.clientData`, `clientUpdatedAt`, `deletedAt`, and `updatedAt` fields. After deploying this change, run the pinned schema job before distributing the matching iOS build. Existing activity rows are restored through the route's legacy-field adapter and are upgraded to lossless client snapshots the next time a device with a local copy synchronizes.
 - Activity photo sync requires the current `Photo` columns and uniqueness constraints. Deploy the API and run the pinned schema job before distributing the matching iOS build. Uploads are idempotent by `(activityId, clientPhotoId)`; the iOS client keeps local JPEGs, retries missing uploads at launch/foreground, and downloads authenticated copies when restoring history on another device.
