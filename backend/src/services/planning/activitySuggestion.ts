@@ -339,7 +339,7 @@ function plannedWorkoutSuggestion(workout: PlannedWorkoutWithBlocks, why: string
     startLabel: startLabelFor(workout.modality),
     plannedWorkoutId: workout.id,
     archetypeId: null,
-    optional: !workout.isKeyWorkout,
+    optional: false,
   };
 }
 

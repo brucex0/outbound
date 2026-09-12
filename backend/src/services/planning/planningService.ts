@@ -454,6 +454,7 @@ async function assemblePlanningState(
     plan: plan ? { ...plan, versions: undefined } : null,
     currentVersion: version ? { ...version, workouts: undefined } : null,
     today,
+    workouts,
     upcoming: workouts.filter((workout) => workout.scheduledDate >= now).slice(0, 10),
     recommendations,
     athleteState,

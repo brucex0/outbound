@@ -240,6 +240,7 @@ export interface PlanningState {
   plan: unknown | null;
   currentVersion: unknown | null;
   today: unknown | null;
+  workouts: unknown[];
   upcoming: unknown[];
   recommendations: TrainingPlanRecommendation[];
   athleteState: unknown | null;
