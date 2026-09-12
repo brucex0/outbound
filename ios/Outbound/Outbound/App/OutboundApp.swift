@@ -991,6 +991,14 @@ final class TrainingPlanStore: ObservableObject {
     private var refreshTask: Task<Void, Never>?
     private var recommendationRefreshTask: Task<Void, Never>?
 
+    var shouldSupersedeCalibration: Bool {
+        if activitySuggestion?.shouldSupersedeCalibration == true {
+            return true
+        }
+        guard let workout = todaySuggestion?.workout else { return false }
+        return workout.kind == .recovery && workout.isOptional
+    }
+
     init(
         defaults: UserDefaults = .standard,
         calendar: Calendar = .current,

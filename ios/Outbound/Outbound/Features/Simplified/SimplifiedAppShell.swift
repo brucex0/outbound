@@ -1432,8 +1432,8 @@ private struct SimplifiedTodayView: View {
 
     private var todayCardSourceType: String {
         if currentCalibrationWorkout != nil { return "calibration_workout" }
+        if trainingPlanStore.shouldSupersedeCalibration { return "optional_recovery" }
         switch trainingPlanStore.activitySuggestion?.relationship {
-        case "optionalRecovery": return "optional_recovery"
         case "adjustedFromPlan": return "adjusted_from_plan"
         default: return "planned_workout"
         }
@@ -1844,7 +1844,7 @@ private struct SimplifiedTodayView: View {
     }
 
     private var currentCalibrationWorkout: CalibrationWorkoutDTO? {
-        guard trainingPlanStore.activitySuggestion?.shouldSupersedeCalibration != true else {
+        guard !trainingPlanStore.shouldSupersedeCalibration else {
             return nil
         }
         return personalizationStore.snapshot.currentCalibrationWorkout
