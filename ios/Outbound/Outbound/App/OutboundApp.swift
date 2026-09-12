@@ -46,6 +46,7 @@ struct OutboundApp: App {
     @State private var startupDestination: AppStartupDestination = .launching
     @State private var startupBeganAt = Date()
     @State private var hasTrackedInitialStartup = false
+    @State private var isConsumingPendingInvite = false
 
     init() {
         let isFirebaseConfigured = FirebaseBootstrap.configureIfAvailable()
@@ -203,6 +204,7 @@ struct OutboundApp: App {
             .environmentObject(communityRouteStore)
             .environmentObject(subscriptionStore)
             .task {
+                await consumePendingConnectionLinkIfPossible()
                 if let userID = authStore.user?.id {
                     recognitionStore.activate(userID: userID)
                     socialRecognitionStore.activate(userID: userID)
@@ -427,14 +429,24 @@ struct OutboundApp: App {
                 || PlainstrideLinks.connectionCode(from: url) != nil
                 || PlainstrideLinks.referralCode(from: url) != nil else { return }
         UserDefaults.standard.set(url.absoluteString, forKey: "pending_plainstride_invite_v1")
-        guard authStore.isAuthenticated else { return }
+        guard authStore.isAuthenticated, startupDestination == .main else { return }
         Task { await consumePendingInviteIfPossible() }
     }
 
+    private func consumePendingConnectionLinkIfPossible() async {
+        guard let rawURL = UserDefaults.standard.string(forKey: "pending_plainstride_invite_v1"),
+              let url = URL(string: rawURL),
+              PlainstrideLinks.connectionCode(from: url) != nil else { return }
+        await consumePendingInviteIfPossible()
+    }
+
     private func consumePendingInviteIfPossible() async {
-        guard authStore.isAuthenticated,
+        guard !isConsumingPendingInvite,
+              authStore.isAuthenticated,
               let rawURL = UserDefaults.standard.string(forKey: "pending_plainstride_invite_v1"),
               let url = URL(string: rawURL) else { return }
+        isConsumingPendingInvite = true
+        defer { isConsumingPendingInvite = false }
         if let token = PlainstrideLinks.liveGroupToken(from: url) {
             await liveGroupStore.joinGroup(invite: token)
             guard liveGroupStore.activeSession != nil else { return }
