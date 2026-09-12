@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -38,20 +39,21 @@ import com.plainstride.outbound.core.designsystem.*
     var scannerOpen by rememberSaveable { mutableStateOf(false) }
     var scannerFeedback by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val resources = LocalResources.current
     LaunchedEffect(accountId, localeTag) { viewModel.start(accountId, localeTag) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(viewModel) {
         viewModel.connectionEffects.collect { effect ->
             when (effect) {
                 is ConnectionEffect.ShareInvitation -> {
-                    val invitation = context.getString(R.string.social_invitation_share_message, effect.url)
+                    val invitation = resources.getString(R.string.social_invitation_share_message, effect.url)
                     context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
                         putExtra(Intent.EXTRA_TEXT, invitation)
                     }, null))
                 }
                 is ConnectionEffect.Feedback -> {
-                    val message = context.getString(connectionFeedbackResource(effect.value))
+                    val message = resources.getString(connectionFeedbackResource(effect.value))
                     if (scannerOpen && !effect.closeScanner) scannerFeedback = message
                     else Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     if (effect.closeScanner) scannerOpen = false

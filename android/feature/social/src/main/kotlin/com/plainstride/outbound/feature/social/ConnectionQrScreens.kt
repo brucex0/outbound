@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -80,6 +81,7 @@ import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import java.util.concurrent.Executors
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 @Composable
 fun PersonalConnectionQrRoute(
@@ -207,6 +209,7 @@ internal fun ConnectionQrScannerScreen(
     properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
 ) {
     val context = LocalContext.current
+    val invalidCodeMessage = stringResource(R.string.social_not_connection_code)
     var cameraState by remember { mutableStateOf(CameraState.Requesting) }
     var scannerMessage by remember { mutableStateOf<String?>(null) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -215,9 +218,7 @@ internal fun ConnectionQrScannerScreen(
 
     LaunchedEffect(Unit) {
         onOpened()
-        if (!context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
-            cameraState = CameraState.Unavailable
-        } else if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             cameraState = CameraState.Ready
         } else {
             permissionLauncher.launch(Manifest.permission.CAMERA)
@@ -253,7 +254,7 @@ internal fun ConnectionQrScannerScreen(
                         enabled = !isProcessing,
                         onPayload = { payload ->
                             if (connectionCodeFromPayload(payload) == null) {
-                                scannerMessage = context.getString(R.string.social_not_connection_code)
+                                scannerMessage = invalidCodeMessage
                             } else {
                                 onPayload(payload)
                             }
@@ -351,7 +352,19 @@ private fun ConnectionCodeCamera(
     }
     LaunchedEffect(previewView, lifecycleOwner) {
         val view = previewView ?: return@LaunchedEffect
-        val provider = runCatching { ProcessCameraProvider.getInstance(context).get() }.getOrElse {
+        val provider = runCatching { context.awaitCameraProvider() }.getOrElse { error ->
+            logCameraFailure("provider", error)
+            onUnavailable()
+            return@LaunchedEffect
+        }
+        val cameraSelector = runCatching {
+            when {
+                provider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) -> CameraSelector.DEFAULT_BACK_CAMERA
+                provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) -> CameraSelector.DEFAULT_FRONT_CAMERA
+                else -> error("No camera available")
+            }
+        }.getOrElse { error ->
+            logCameraFailure("selection", error)
             onUnavailable()
             return@LaunchedEffect
         }
@@ -373,12 +386,20 @@ private fun ConnectionCodeCamera(
             }
         }
         runCatching {
-            provider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
+            // CameraX's process provider is shared by the recording and Social features. Clear any
+            // stale use cases before starting the scanner so a previous preview cannot exhaust the
+            // device's supported stream combination.
+            provider.unbindAll()
+            provider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, analysis)
         }.onSuccess {
             binding.provider = provider
             binding.preview = preview
             binding.analysis = analysis
-        }.onFailure { onUnavailable() }
+        }.onFailure { error ->
+            analysis.clearAnalyzer()
+            logCameraFailure("binding", error)
+            onUnavailable()
+        }
     }
 
     AndroidView(
@@ -433,6 +454,23 @@ private fun Context.openAppSettings() {
     startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
 }
 
+private suspend fun Context.awaitCameraProvider(): ProcessCameraProvider = suspendCancellableCoroutine { continuation ->
+    val future = ProcessCameraProvider.getInstance(this)
+    continuation.invokeOnCancellation { future.cancel(false) }
+    future.addListener(
+        {
+            if (continuation.isActive) {
+                continuation.resumeWith(runCatching { future.get() })
+            }
+        },
+        ContextCompat.getMainExecutor(this),
+    )
+}
+
+private fun logCameraFailure(stage: String, error: Throwable) {
+    Log.w(CAMERA_LOG_TAG, "Camera $stage failed: ${error.javaClass.simpleName}")
+}
+
 private class CameraBinding(
     var provider: ProcessCameraProvider? = null,
     var preview: Preview? = null,
@@ -440,3 +478,4 @@ private class CameraBinding(
 )
 
 private val CONNECTION_CODE = Regex("[A-Za-z0-9_-]{8,64}")
+private const val CAMERA_LOG_TAG = "PlainstrideQrScanner"
