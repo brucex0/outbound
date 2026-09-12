@@ -114,6 +114,7 @@ import com.plainstride.outbound.feature.livecoach.LiveCoachSettingsSection
 import com.plainstride.outbound.feature.assistant.AssistantRoute
 import com.plainstride.outbound.feature.assistant.MusicRoute
 import com.plainstride.outbound.feature.social.SocialRoute
+import com.plainstride.outbound.feature.social.PersonalConnectionQrRoute
 import com.plainstride.outbound.feature.today.WorkoutLaunchIntent
 import com.plainstride.outbound.feature.today.TodayManualLaunch
 import com.plainstride.outbound.feature.today.TodayActivityChoice
@@ -400,6 +401,7 @@ private fun SignedInApp(
                             localWeeklyMinutes = integration.progress.stats.currentWeek.durationSeconds / 60,
                             localWeeklyDistanceMeters = integration.progress.stats.currentWeek.distanceMeters,
                             localWeeklyActivityCount = integration.progress.stats.currentWeek.activityCount,
+                            onMyQrCode = { navController.navigate(MY_QR_ROUTE) { launchSingleTop = true } },
                             onConnections = {
                                 socialTarget = "connections" to ""
                                 navController.navigate(TopLevelDestination.Social.route) { launchSingleTop = true }
@@ -462,6 +464,9 @@ private fun SignedInApp(
                     requireNotNull(accountId),
                     onClose = { navController.popBackStack() },
                 )
+            }
+            composable(MY_QR_ROUTE) {
+                PersonalConnectionQrRoute(onClose = { navController.popBackStack() })
             }
             composable(RECORDING_ROUTE) {
                 RecordingRoute(
@@ -559,6 +564,7 @@ private fun SignedInApp(
 
 private const val RECORDING_ROUTE = "recording"
 private const val ASSISTANT_ROUTE = "assistant"
+private const val MY_QR_ROUTE = "my_qr"
 private const val MUSIC_ROUTE = "music"
 private const val ACTIVITY_HISTORY_ROUTE = "activity_history"
 private const val PROGRESS_ROUTE = "progress"

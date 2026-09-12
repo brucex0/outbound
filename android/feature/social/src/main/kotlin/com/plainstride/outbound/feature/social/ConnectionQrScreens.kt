@@ -69,7 +69,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.EncodeHintType
@@ -78,6 +80,19 @@ import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import java.util.concurrent.Executors
 import kotlinx.coroutines.delay
+
+@Composable
+fun PersonalConnectionQrRoute(
+    onClose: () -> Unit,
+    viewModel: SocialViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(viewModel) { viewModel.openConnectionQr(entrySource = "me_profile_card") }
+    ConnectionQrScreen(state) {
+        viewModel.closeConnectionQr()
+        onClose()
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

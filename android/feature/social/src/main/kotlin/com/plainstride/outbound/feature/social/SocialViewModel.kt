@@ -97,9 +97,9 @@ sealed interface ConnectionEffect {
     fun connect(person:SocialPerson)=mutate("social_connection_requested"){repository.connect(person.id).getOrThrow();refresh()}
     fun acceptConnection(connectionId:String)=mutate("social_connection_accepted"){repository.accept(connectionId).getOrThrow();refresh()}
     fun removeConnection(connectionId:String)=mutate("social_connection_removed"){repository.removeConnection(connectionId).getOrThrow();refresh()}
-    fun openConnectionQr() {
+    fun openConnectionQr(entrySource: String = "connections") {
         if (mutableState.value.connectionQrLoading) return
-        analytics.record(AnalyticsEvent("profile_qr_code_opened", mapOf(AnalyticsProperty.EntrySource to "connections")))
+        analytics.record(AnalyticsEvent("profile_qr_code_opened", mapOf(AnalyticsProperty.EntrySource to entrySource)))
         mutableState.update { it.copy(connectionQr = null, connectionQrLoading = true, connectionQrFailed = false) }
         viewModelScope.launch {
             repository.connectionQr().fold(

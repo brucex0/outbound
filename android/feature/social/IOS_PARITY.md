@@ -19,6 +19,7 @@
 
 ## Personal QR Connection Flow
 
+- Me's profile card exposes a dedicated personal QR action that opens the generator directly, matching the iOS profile-card journey without routing through Connections first.
 - Connections' add menu matches iOS with Scan QR code, Show my QR code, and Invite by link actions.
 - The personal QR screen concurrently loads the signed-in profile and the opaque backend connection link, renders only the canonical URL, and provides loading and unavailable states.
 - The scanner uses CameraX with the established ZXing decoder, accepts only `https://run.plainstride.com/connect/:code`, pauses during request submission, and maps self, duplicate, incoming, existing, success, invalid, and retryable failure results to transient localized feedback.

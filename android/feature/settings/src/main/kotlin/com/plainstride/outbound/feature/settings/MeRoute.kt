@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Policy
+import androidx.compose.material.icons.outlined.QrCode
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
@@ -86,6 +87,7 @@ import com.plainstride.outbound.core.designsystem.plainstrideThemeColors
 import com.plainstride.outbound.feature.social.SocialAvatar
 import com.plainstride.outbound.feature.social.SocialConnectionsPreview
 import com.plainstride.outbound.feature.social.SocialPerson
+import com.plainstride.outbound.feature.social.R as SocialR
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -153,6 +155,7 @@ fun MeRoute(
     localWeeklyMinutes: Int = 0,
     localWeeklyDistanceMeters: Double = 0.0,
     localWeeklyActivityCount: Int = 0,
+    onMyQrCode: () -> Unit = {},
     onConnections: () -> Unit = {},
     onMyRoutes: () -> Unit = {},
     onMeDestination: (String) -> Unit = {},
@@ -175,6 +178,7 @@ fun MeRoute(
             state, onSettings = { page = MePage.Settings }, onRefresh = viewModel::refresh,
             connections, insights, personalMilestones,
             localWeeklyMinutes, localWeeklyDistanceMeters, localWeeklyActivityCount,
+            onMyQrCode = onMyQrCode,
             onConnections = { onMeDestination("connections"); onConnections() },
             onMyRoutes = { onMeDestination("my_routes"); onMyRoutes() },
             onMilestones = { onMeDestination("milestones"); page = MePage.Milestones },
@@ -214,6 +218,7 @@ private fun MeOverview(
     localWeeklyMinutes: Int,
     localWeeklyDistanceMeters: Double,
     localWeeklyActivityCount: Int,
+    onMyQrCode: () -> Unit,
     onConnections: () -> Unit,
     onMyRoutes: () -> Unit,
     onMilestones: () -> Unit,
@@ -241,6 +246,9 @@ private fun MeOverview(
                     Column(Modifier.weight(1f)) {
                         Text(state.account?.displayName ?: stringResource(R.string.runner), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         state.account?.username?.let { Text("@$it", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    }
+                    IconButton(onClick = onMyQrCode) {
+                        Icon(Icons.Outlined.QrCode, stringResource(SocialR.string.social_show_my_qr_code))
                     }
                     Icon(Icons.Outlined.Edit, stringResource(R.string.edit_profile))
                 }
