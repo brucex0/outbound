@@ -21,6 +21,13 @@ The backend is authoritative. A live-sharing session snapshots voice-cheer acces
 - The inviter receives 14 days after the invitee saves an activity lasting at least 10 minutes.
 - Claims and grants are idempotent. Self-referrals and inviter changes are rejected.
 
+## Client Surfaces
+
+- Me contains separate entries for Plainstride Plus, Rewards Center, and My invitation code on iOS and Android.
+- Rewards Center shows active earned or granted Plus capabilities. RevenueCat-only access remains on the separate Plus subscription screen.
+- Rewards Center links to a dedicated code-redemption screen instead of embedding redemption fields in the reward summary.
+- My invitation code owns the permanent personal code, share action, and qualified and pending invitation counts.
+
 ## Contribution Codes
 
 Entitlement codes are high-entropy, stored only as SHA-256 digests, and grant a bounded Plus duration. Codes have a label, expiration, redemption limit, and revocation status. Issue one from `backend/` with:
@@ -80,7 +87,7 @@ Example issuance body:
 
 ## Analytics And Privacy
 
-The client records only reward-surface exposure, bounded code type, success/failure, and share source. Codes, user IDs, campaign labels, grant references, and expiration timestamps are excluded.
+The client records only reward-surface exposure, bounded code type, success/failure, share source, and bounded Me destination. Codes, user IDs, campaign labels, grant references, and expiration timestamps are excluded.
 
 ## Database Rebuild
 
