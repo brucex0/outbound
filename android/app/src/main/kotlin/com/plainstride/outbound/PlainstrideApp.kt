@@ -33,6 +33,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -45,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -56,6 +58,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Today
@@ -411,6 +414,34 @@ private fun SignedInApp(
                                 navController.navigate(COMMUNITY_ROUTES_ROUTE) { launchSingleTop = true }
                             },
                             onMeDestination = settingsViewModel::trackMeDestination,
+                            benefitsContent = {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    MeBenefitDestinationCard(
+                                        title = R.string.rewards_plus,
+                                        body = R.string.rewards_plus_settings_body,
+                                        icon = Icons.Filled.AutoAwesome,
+                                    ) {
+                                        settingsViewModel.trackMeDestination("plus")
+                                        navController.navigate(PLUS_ROUTE)
+                                    }
+                                    MeBenefitDestinationCard(
+                                        title = R.string.rewards_settings_title,
+                                        body = R.string.rewards_settings_body,
+                                        icon = Icons.Filled.EmojiEvents,
+                                    ) {
+                                        settingsViewModel.trackMeDestination("rewards_center")
+                                        navController.navigate(REWARDS_ROUTE)
+                                    }
+                                    MeBenefitDestinationCard(
+                                        title = R.string.rewards_my_invitation_code,
+                                        body = R.string.rewards_invitation_code_body,
+                                        icon = Icons.Filled.Person,
+                                    ) {
+                                        settingsViewModel.trackMeDestination("invitation_code")
+                                        navController.navigate(INVITATION_CODE_ROUTE)
+                                    }
+                                }
+                            },
                             activityContent = {
                                 accountId?.let { id ->
                                     RecentActivitiesRoute(
@@ -431,9 +462,6 @@ private fun SignedInApp(
                                 }
                             },
                             settingsContent = {
-                                SettingsGroupTitle(stringResource(R.string.rewards_plus))
-                                ListItem(headlineContent = { Text(stringResource(R.string.rewards_plus)) }, supportingContent = { Text(stringResource(R.string.rewards_plus_settings_body)) }, modifier = Modifier.clickable { navController.navigate(PLUS_ROUTE) })
-                                ListItem(headlineContent = { Text(stringResource(R.string.rewards_settings_title)) }, supportingContent = { Text(stringResource(R.string.rewards_settings_body)) }, modifier = Modifier.clickable { navController.navigate(REWARDS_ROUTE) })
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_planned_workouts))
                                 ReminderSettingsRow(reminderViewModel, BuildConfig.DEBUG)
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_safety))
@@ -513,7 +541,9 @@ private fun SignedInApp(
                 LaunchedEffect(Unit) { integrationViewModel.openInbox() }
                 NotificationInbox(integration.notifications) { destination -> when(destination){ NotificationDestination.Connections -> { socialTarget="connections" to "";navController.navigate(TopLevelDestination.Social.route) };is NotificationDestination.Activity -> { activityTarget=destination.id;navController.navigate(ACTIVITY_HISTORY_ROUTE) };is NotificationDestination.Post -> {socialTarget="post" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Event -> {socialTarget="event" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Invitation -> {socialTarget="invitation" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Circle -> {socialTarget="circle" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Group -> {safetyTarget="group" to destination.id;navController.navigate(SAFETY_ROUTE)};is NotificationDestination.Live -> {safetyTarget="live" to destination.id;navController.navigate(SAFETY_ROUTE)};NotificationDestination.Inbox -> Unit } }
             }
-            composable(REWARDS_ROUTE) { RewardsRoute(onBack = { navController.popBackStack() }) }
+            composable(REWARDS_ROUTE) { RewardsRoute(onBack = { navController.popBackStack() }, onRedeem = { navController.navigate(REWARD_REDEMPTION_ROUTE) }) }
+            composable(REWARD_REDEMPTION_ROUTE) { RewardRedemptionRoute(onBack = { navController.popBackStack() }) }
+            composable(INVITATION_CODE_ROUTE) { InvitationCodeRoute(onBack = { navController.popBackStack() }) }
             composable(PLUS_ROUTE) { PlusRoute(onBack = { navController.popBackStack() }) }
         }
     }
@@ -562,6 +592,22 @@ private fun SignedInApp(
     )
 }
 
+@Composable
+private fun MeBenefitDestinationCard(
+    @StringRes title: Int,
+    @StringRes body: Int,
+    icon: ImageVector,
+    onClick: () -> Unit,
+) {
+    OutlinedCard(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        ListItem(
+            headlineContent = { Text(stringResource(title)) },
+            supportingContent = { Text(stringResource(body)) },
+            leadingContent = { Icon(icon, null, tint = MaterialTheme.colorScheme.primary) },
+        )
+    }
+}
+
 private const val RECORDING_ROUTE = "recording"
 private const val ASSISTANT_ROUTE = "assistant"
 private const val MY_QR_ROUTE = "my_qr"
@@ -573,6 +619,8 @@ private const val SAFETY_ROUTE = "safety"
 private const val HEALTH_ROUTE = "health"
 private const val NOTIFICATIONS_ROUTE = "notifications"
 private const val REWARDS_ROUTE = "rewards"
+private const val REWARD_REDEMPTION_ROUTE = "reward-redemption"
+private const val INVITATION_CODE_ROUTE = "invitation-code"
 private const val PLUS_ROUTE = "plus"
 
 private fun recordingLocationPermission(context: android.content.Context): LocationPermissionState = when {

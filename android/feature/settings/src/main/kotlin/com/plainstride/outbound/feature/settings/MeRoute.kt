@@ -159,6 +159,7 @@ fun MeRoute(
     onConnections: () -> Unit = {},
     onMyRoutes: () -> Unit = {},
     onMeDestination: (String) -> Unit = {},
+    benefitsContent: @Composable () -> Unit = {},
     activityContent: @Composable () -> Unit = {},
     settingsContent: @Composable () -> Unit = {},
     onMessage: suspend (SettingsMessage) -> Unit,
@@ -182,7 +183,9 @@ fun MeRoute(
             onConnections = { onMeDestination("connections"); onConnections() },
             onMyRoutes = { onMeDestination("my_routes"); onMyRoutes() },
             onMilestones = { onMeDestination("milestones"); page = MePage.Milestones },
-            activityContent, modifier,
+            benefitsContent = benefitsContent,
+            activityContent = activityContent,
+            modifier = modifier,
         )
         MePage.Settings -> SettingsScreen(
             state = state,
@@ -222,6 +225,7 @@ private fun MeOverview(
     onConnections: () -> Unit,
     onMyRoutes: () -> Unit,
     onMilestones: () -> Unit,
+    benefitsContent: @Composable () -> Unit,
     activityContent: @Composable () -> Unit,
     modifier: Modifier,
 ) {
@@ -253,6 +257,7 @@ private fun MeOverview(
                     Icon(Icons.Outlined.Edit, stringResource(R.string.edit_profile))
                 }
             } }
+            item { benefitsContent() }
             item { SectionTitle(stringResource(R.string.me_connections)) }
             item { SocialConnectionsPreview(connections, onOpenAll = onConnections) }
             item { SectionTitle(stringResource(R.string.current_focus)) }

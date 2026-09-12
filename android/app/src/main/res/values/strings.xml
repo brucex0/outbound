@@ -75,9 +75,9 @@
     <string name="transfer_invalid">That transfer code is invalid or expired. Create a new code on your iPhone and try again.</string>
     <string name="reminder_debug_test">Debug: send a test reminder in 10 seconds</string>
     <string name="rewards_back">Back</string>
-    <string name="rewards_title">Invitations and rewards</string>
-    <string name="rewards_settings_title">Invitations and rewards</string>
-    <string name="rewards_settings_body">Share your code, earn Plus, or redeem a contribution reward.</string>
+    <string name="rewards_title">Rewards Center</string>
+    <string name="rewards_settings_title">Rewards Center</string>
+    <string name="rewards_settings_body">View active rewards or redeem a code.</string>
     <string name="rewards_plus">Plainstride Plus</string>
     <string name="rewards_plus_settings_body">Adaptive planning, personalized live coaching, and voice cheers.</string>
     <string name="rewards_plus_tagline">A coach that adapts with you</string>
@@ -95,11 +95,15 @@
     <string name="rewards_subscription_synced">Your Plus access is up to date.</string>
     <string name="rewards_subscription_sync_failed">Plus access could not be refreshed yet. Please try again shortly.</string>
     <string name="rewards_invite">Invite and earn</string>
+    <string name="rewards_invite_detail">You and a new runner each earn 14 days of Plus. Your reward arrives after their first activity of at least 10 minutes.</string>
+    <string name="rewards_my_invitation_code">My invitation code</string>
+    <string name="rewards_invitation_code_body">Share your code and track qualified invitations.</string>
     <string name="rewards_your_code">Your invitation code</string>
     <string name="rewards_share_invitation">Share invitation</string>
     <string name="rewards_share_message">Join me on Plainstride: %1$s We’ll each earn 14 days of Plus when you get moving.</string>
     <string name="rewards_invite_counts">%1$d qualified · %2$d pending</string>
     <string name="rewards_redeem">Redeem a code</string>
+    <string name="rewards_redeem_detail">Invitation codes can be claimed during your first seven days. Contribution codes are issued by Plainstride.</string>
     <string name="rewards_invitation_code">Invitation code</string>
     <string name="rewards_claim_invitation">Claim invitation</string>
     <string name="rewards_entitlement_code">Contribution reward code</string>
@@ -107,4 +111,7 @@
     <string name="rewards_load_failed">Rewards could not be loaded.</string>
     <string name="rewards_redeemed">Plainstride Plus added.</string>
     <string name="rewards_redeem_failed">This code could not be redeemed.</string>
+    <string name="rewards_current_rewards">Current rewards</string>
+    <string name="rewards_current_rewards_detail">Plus benefits you earn or receive appear here.</string>
+    <string name="rewards_no_active_rewards">No active rewards yet.</string>
 </resources>

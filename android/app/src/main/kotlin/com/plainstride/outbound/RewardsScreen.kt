@@ -93,7 +93,9 @@ class RewardsViewModel @Inject constructor(
         if (success) refresh()
     }
 
-    fun shared() = analytics.record(AnalyticsEvent("referral_code_shared", mapOf(AnalyticsProperty.SourceType to "rewards_center")))
+    fun shared(source: String) = analytics.record(
+        AnalyticsEvent("referral_code_shared", mapOf(AnalyticsProperty.SourceType to source)),
+    )
 
     fun paywallOpened(source: String) = analytics.record(AnalyticsEvent("subscription_paywall_opened", mapOf(AnalyticsProperty.EntrySource to source)))
 
@@ -209,11 +211,13 @@ class RewardsViewModel @Inject constructor(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun RewardsRoute(onBack: () -> Unit, viewModel: RewardsViewModel = hiltViewModel()) {
+@Composable fun RewardsRoute(
+    onBack: () -> Unit,
+    onRedeem: () -> Unit,
+    viewModel: RewardsViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
-    var invitationCode by remember { mutableStateOf("") }
-    var entitlementCode by remember { mutableStateOf("") }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { viewModel.rewardsCenterOpened() }
     state.message?.let { message ->
@@ -226,24 +230,86 @@ class RewardsViewModel @Inject constructor(
         IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.rewards_back)) }
     }) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            state.status?.referral?.let { referral ->
-                item { Text(stringResource(R.string.rewards_invite), style = MaterialTheme.typography.titleMedium) }
-                item { ListItem(headlineContent = { Text(stringResource(R.string.rewards_your_code)) }, supportingContent = { Text(referral.code) }) }
-                item { Button(onClick = {
-                    viewModel.shared()
-                    context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"; putExtra(Intent.EXTRA_TEXT, context.getString(R.string.rewards_share_message, referral.shareURL))
-                    }, null))
-                }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.rewards_share_invitation)) } }
-                item { Text(stringResource(R.string.rewards_invite_counts, referral.qualifiedCount, referral.pendingCount)) }
+            item { Text(stringResource(R.string.rewards_current_rewards), style = MaterialTheme.typography.titleMedium) }
+            val rewards = state.status?.entitlements.orEmpty().mapNotNull { entitlement ->
+                capabilities.firstOrNull { it.first == entitlement.capability }
+                    ?.takeIf { entitlement.allowed && entitlement.sources.any { source -> source != "revenuecat" } }
             }
-            item { HorizontalDivider(); Text(stringResource(R.string.rewards_redeem), style = MaterialTheme.typography.titleMedium) }
+            if (state.status != null && rewards.isEmpty()) {
+                item { Text(stringResource(R.string.rewards_no_active_rewards), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
+            items(rewards, key = { it.first }) { reward ->
+                ListItem(
+                    headlineContent = { Text(stringResource(reward.second)) },
+                    supportingContent = { Text(stringResource(reward.third)) },
+                    leadingContent = { Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.primary) },
+                )
+            }
+            item { Text(stringResource(R.string.rewards_current_rewards_detail), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            item { HorizontalDivider() }
+            item { Button(onRedeem, Modifier.fillMaxWidth()) { Text(stringResource(R.string.rewards_redeem)) } }
+            item { Text(stringResource(R.string.rewards_redeem_detail), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            if (state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun RewardRedemptionRoute(onBack: () -> Unit, viewModel: RewardsViewModel = hiltViewModel()) {
+    val state by viewModel.state.collectAsState()
+    val context = LocalContext.current
+    var invitationCode by remember { mutableStateOf("") }
+    var entitlementCode by remember { mutableStateOf("") }
+    val snackbar = remember { SnackbarHostState() }
+    state.message?.let { message ->
+        LaunchedEffect(message) {
+            snackbar.showSnackbar(context.getString(message))
+            viewModel.clearMessage()
+        }
+    }
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }, topBar = { TopAppBar(title = { Text(stringResource(R.string.rewards_redeem)) }, navigationIcon = {
+        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.rewards_back)) }
+    }) }) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (state.status?.referral?.claimStatus == null) {
                 item { OutlinedTextField(invitationCode, { invitationCode = it.take(64) }, label = { Text(stringResource(R.string.rewards_invitation_code)) }, modifier = Modifier.fillMaxWidth(), singleLine = true) }
                 item { Button({ viewModel.redeem(invitationCode, true); invitationCode = "" }, Modifier.fillMaxWidth(), enabled = !state.working && invitationCode.isNotBlank()) { Text(stringResource(R.string.rewards_claim_invitation)) } }
             }
             item { OutlinedTextField(entitlementCode, { entitlementCode = it.take(64) }, label = { Text(stringResource(R.string.rewards_entitlement_code)) }, modifier = Modifier.fillMaxWidth(), singleLine = true) }
             item { Button({ viewModel.redeem(entitlementCode, false); entitlementCode = "" }, Modifier.fillMaxWidth(), enabled = !state.working && entitlementCode.isNotBlank()) { Text(stringResource(R.string.rewards_redeem_reward)) } }
+            item { Text(stringResource(R.string.rewards_redeem_detail), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            if (state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun InvitationCodeRoute(onBack: () -> Unit, viewModel: RewardsViewModel = hiltViewModel()) {
+    val state by viewModel.state.collectAsState()
+    val context = LocalContext.current
+    val snackbar = remember { SnackbarHostState() }
+    state.message?.let { message ->
+        LaunchedEffect(message) {
+            snackbar.showSnackbar(context.getString(message))
+            viewModel.clearMessage()
+        }
+    }
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }, topBar = { TopAppBar(title = { Text(stringResource(R.string.rewards_my_invitation_code)) }, navigationIcon = {
+        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.rewards_back)) }
+    }) }) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            state.status?.referral?.let { referral ->
+                item { ListItem(headlineContent = { Text(stringResource(R.string.rewards_your_code)) }, supportingContent = { Text(referral.code) }) }
+                item { Button(onClick = {
+                    viewModel.shared("me_invitation_code")
+                    context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, context.getString(R.string.rewards_share_message, referral.shareURL))
+                    }, null))
+                }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.rewards_share_invitation)) } }
+                item { Text(stringResource(R.string.rewards_invite_counts, referral.qualifiedCount, referral.pendingCount)) }
+                item { Text(stringResource(R.string.rewards_invite_detail), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
             if (state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
         }
     }
