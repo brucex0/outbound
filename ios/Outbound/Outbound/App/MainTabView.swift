@@ -51,7 +51,7 @@ struct MainTabView: View {
             }
         }
         .animation(.easeInOut(duration: 0.22), value: connectivityStore.isOffline)
-        .animation(.easeInOut(duration: 0.22), value: activityStore.isSyncing)
+        .animation(.easeInOut(duration: 0.22), value: activityStore.failedActivityCount)
         .fullScreenCover(isPresented: onboardingPresentation) {
             SimplifiedOnboardingFlow { prepareTodayLaunchForCurrentPlan() }
             .environmentObject(onboardingStore)
