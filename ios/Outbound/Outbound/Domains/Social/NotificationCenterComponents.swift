@@ -9,15 +9,15 @@ struct NotificationCenterIcon: View {
             .overlay(alignment: .topTrailing) {
                 if count > 0 {
                     Text(verbatim: count > 9 ? "9+" : String(count))
-                        .font(.system(size: 7, weight: .bold, design: .rounded))
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 2)
-                        .frame(minWidth: 12, minHeight: 12)
+                        .padding(.horizontal, 3)
+                        .frame(minWidth: 16, minHeight: 16)
                         .background(Color.red, in: Capsule())
                         .overlay {
                             Capsule().stroke(Color(.systemBackground), lineWidth: 1)
                         }
-                        .offset(x: 4, y: -4)
+                        .offset(x: 5, y: -7)
                         .accessibilityHidden(true)
                 }
             }
