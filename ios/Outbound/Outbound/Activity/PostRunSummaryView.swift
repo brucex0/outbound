@@ -18,6 +18,7 @@ struct PostRunSummaryView: View {
     let guidanceReport: LiveGuidanceSessionReport
     let workoutID: String
     let onGuidanceFeedback: (LiveGuidanceFeedback) -> Void
+    let onDiscardPrompted: () -> Void
     let onSave: ([(UIImage, PhotoMetadata)], FinishReflection) async -> Bool
     let onDiscard: () -> Void
     @State private var draftPhotos: [PostRunPhoto]
@@ -31,6 +32,7 @@ struct PostRunSummaryView: View {
     @State private var isSubmitting = false
     @State private var didTrackSaveIneligible = false
     @State private var isWeightInputPresented = false
+    @State private var isDiscardConfirmationPresented = false
 
     init(
         summary: ActivitySummary,
@@ -42,6 +44,7 @@ struct PostRunSummaryView: View {
         guidanceReport: LiveGuidanceSessionReport = .empty,
         workoutID: String = "freestyle-run",
         onGuidanceFeedback: @escaping (LiveGuidanceFeedback) -> Void = { _ in },
+        onDiscardPrompted: @escaping () -> Void = {},
         onSave: @escaping ([(UIImage, PhotoMetadata)], FinishReflection) async -> Bool,
         onDiscard: @escaping () -> Void
     ) {
@@ -54,6 +57,7 @@ struct PostRunSummaryView: View {
         self.guidanceReport = guidanceReport
         self.workoutID = workoutID
         self.onGuidanceFeedback = onGuidanceFeedback
+        self.onDiscardPrompted = onDiscardPrompted
         self.onSave = onSave
         self.onDiscard = onDiscard
         _draftPhotos = State(initialValue: photos.map(PostRunPhoto.init))
@@ -156,12 +160,34 @@ struct PostRunSummaryView: View {
             guard !items.isEmpty else { return }
             Task { await importPhotos(from: items) }
         }
+        .alert(
+            String(localized: "summary.discard.confirmation.title", defaultValue: "Discard unsaved activity?"),
+            isPresented: $isDiscardConfirmationPresented
+        ) {
+            Button(String(localized: "summary.action.discard", defaultValue: "Discard activity"), role: .destructive) {
+                onDiscard()
+            }
+            Button(
+                String(localized: "summary.discard.confirmation.keep_editing", defaultValue: "Keep editing"),
+                role: .cancel
+            ) {}
+        } message: {
+            Text(String(
+                localized: "summary.discard.confirmation.message",
+                defaultValue: "This activity hasn’t been saved. If you close now, it will be permanently discarded."
+            ))
+        }
     }
 
     private var closeButton: some View {
         Button {
             guard !isSubmitting else { return }
-            onDiscard()
+            if isSaveEligible {
+                onDiscardPrompted()
+                isDiscardConfirmationPresented = true
+            } else {
+                onDiscard()
+            }
         } label: {
             Image(systemName: "xmark")
                 .font(.system(size: 16, weight: .bold))
@@ -174,7 +200,7 @@ struct PostRunSummaryView: View {
         .background(.ultraThinMaterial, in: Circle())
         .overlay(Circle().stroke(.white.opacity(0.22), lineWidth: 1))
         .shadow(color: .black.opacity(0.18), radius: 5, y: 2)
-        .accessibilityLabel(String(localized: "summary.action.discard", defaultValue: "Discard activity"))
+        .accessibilityLabel(String(localized: "common.close", defaultValue: "Close"))
         .accessibilityIdentifier("ClosePostRunSummaryButton")
     }
 
