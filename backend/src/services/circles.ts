@@ -240,7 +240,10 @@ export async function circlePayload(circleId: string, viewerId: string, includeH
       where: {
         sourceCircleId: circleId,
         status: { in: ["scheduled", "active", "reconciling", "completed"] },
-        participants: { some: { userId: viewerId, status: "going" } },
+        OR: [
+          { participants: { some: { userId: viewerId, status: "going" } } },
+          { invitations: { some: { recipientId: viewerId, status: { in: ["pending", "accepted"] } } } },
+        ],
       },
       select: {
         id: true,
@@ -324,7 +327,11 @@ export async function circlePayload(circleId: string, viewerId: string, includeH
         creator: event.creator,
         attendeeCount: event.participants.length,
         currentUserGoing: event.participants.some((participant) => participant.userId === viewerId),
-        currentUserRole: event.creatorId === viewerId ? "owner" : "participant",
+        currentUserRole: event.creatorId === viewerId
+          ? "owner"
+          : event.participants.some((participant) => participant.userId === viewerId)
+            ? "participant"
+            : "viewer",
       })),
     recentMoments: [
       ...(week.state === "completed" && week.completedAt ? [{ id: `completion:${week.id}`, type: "weekly_completion", createdAt: week.completedAt, title: null }] : []),
