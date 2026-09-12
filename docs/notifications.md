@@ -9,7 +9,7 @@ Open this when changing notification creation, delivery, device registration, fo
 - Circle creates durable in-app records for `circleInvitation`, `circleInvitationAccepted`, `circleCheer`, `circleWeeklyGoalCompleted`, and `circleOwnershipTransferred`. Their object IDs route to an invitation or Circle; optional Cheer/completion delivery respects the per-Circle mute preference, while membership-critical state remains visible.
 - The iOS Social notification inbox remains available when push permission is denied or delivery fails.
 - Foreground notifications use the system banner, sound, and badge. Tapping a connection request selects Social and opens Connections; other pushes open the notification inbox.
-- Push text contains the same share-safe message as the inbox. Do not put private plan, health, readiness, location, or cycle data in a push payload.
+- Every delivered Social push uses the same event-specific, share-safe message as the inbox (for example, who accepted a connection or commented). Generic copy is only a client fallback for a malformed payload with no usable message. Do not put private plan, health, readiness, location, or cycle data in a push payload.
 - Device tokens are user-scoped, may move between accounts, and are removed when Firebase reports them invalid or unregistered.
 
 ## Backend Contract
