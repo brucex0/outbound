@@ -2849,6 +2849,7 @@ private struct SimplifiedMeView: View {
                             .buttonStyle(.plain)
                         }
                     }
+                    benefitsNavigationCard
                     connectionsPreview
                     Button(action: onOpenPlan) {
                         OutboundCard {
@@ -3193,6 +3194,67 @@ private struct SimplifiedMeView: View {
         )
     }
 
+    private var benefitsNavigationCard: some View {
+        OutboundCard {
+            VStack(spacing: 0) {
+                NavigationLink {
+                    PlusView(entrySource: "me")
+                } label: {
+                    benefitNavigationLabel(
+                        title: String(localized: "rewards.plus", table: "Rewards"),
+                        detail: String(localized: "rewards.plus_settings_body", table: "Rewards"),
+                        systemImage: "sparkles"
+                    )
+                }
+                Divider()
+                NavigationLink {
+                    RewardsCenterView()
+                } label: {
+                    benefitNavigationLabel(
+                        title: String(localized: "rewards.settings_title", table: "Rewards"),
+                        detail: String(localized: "rewards.settings_body", table: "Rewards"),
+                        systemImage: "gift"
+                    )
+                }
+                Divider()
+                NavigationLink {
+                    InvitationCodeView()
+                } label: {
+                    benefitNavigationLabel(
+                        title: String(localized: "rewards.my_invitation_code", table: "Rewards"),
+                        detail: String(localized: "rewards.invitation_code_body", table: "Rewards"),
+                        systemImage: "person.crop.circle.badge.plus"
+                    )
+                }
+            }
+        }
+    }
+
+    private func benefitNavigationLabel(title: String, detail: String, systemImage: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.headline)
+                .foregroundStyle(OutboundPalette.companion)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 12)
+        .contentShape(Rectangle())
+    }
+
     private func openConnections() {
         showsConnections = true
         Task {
@@ -3361,25 +3423,6 @@ private struct SimplifiedSettingsView: View {
                     AccountTransferView()
                 } label: {
                     Label(String(localized: "account_transfer.settings_title", table: "AccountTransfer"), systemImage: "iphone.and.arrow.forward")
-                }
-                NavigationLink {
-                    PlusView(entrySource: "settings")
-                } label: {
-                    Label {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(String(localized: "rewards.plus", table: "Rewards"))
-                            Text(String(localized: "rewards.plus_settings_body", table: "Rewards"))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    } icon: {
-                        Image(systemName: "sparkles")
-                    }
-                }
-                NavigationLink {
-                    RewardsCenterView()
-                } label: {
-                    Label(String(localized: "rewards.settings_title", table: "Rewards"), systemImage: "gift")
                 }
             }
             Section(String(localized: "workout.reminders.section", defaultValue: "Planned workouts")) {
