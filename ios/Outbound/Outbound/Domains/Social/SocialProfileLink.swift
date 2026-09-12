@@ -70,6 +70,28 @@ private struct SocialProfileDestination: View {
 
     var body: some View {
         SocialPersonProfileView(person: person, username: username)
+            .safeAreaInset(edge: .bottom) {
+                if connection?.status == "pending", connection?.direction == "incoming" {
+                    HStack(spacing: OutboundSpacing.compact) {
+                        Button("Decline", role: .destructive) {
+                            Task { await removeConnection() }
+                        }
+                        .buttonStyle(.bordered)
+                        .frame(maxWidth: .infinity)
+                        .disabled(isRemovingConnection)
+
+                        Button("Accept") {
+                            Task { await acceptConnection() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .frame(maxWidth: .infinity)
+                        .disabled(isRemovingConnection)
+                    }
+                    .padding(.horizontal, OutboundSpacing.screen)
+                    .padding(.vertical, OutboundSpacing.compact)
+                    .background(.bar)
+                }
+            }
             .toolbar {
                 if connection?.status == "accepted" {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -108,6 +130,15 @@ private struct SocialProfileDestination: View {
         isRemovingConnection = true
         defer { isRemovingConnection = false }
         if await socialStore.removeConnection(connection) {
+            dismiss()
+        }
+    }
+
+    private func acceptConnection() async {
+        guard let connection, !isRemovingConnection else { return }
+        isRemovingConnection = true
+        defer { isRemovingConnection = false }
+        if await socialStore.acceptConnection(connection) {
             dismiss()
         }
     }
@@ -229,9 +260,16 @@ struct ConnectionLinkProfileDestination: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
         case ("pending", "incoming"):
-            Button("Accept") { acceptConnection() }
-                .buttonStyle(.borderedProminent)
-                .disabled(isMutating)
+            HStack(spacing: OutboundSpacing.compact) {
+                Button("Decline", role: .destructive) { removeConnection() }
+                    .buttonStyle(.bordered)
+                    .frame(maxWidth: .infinity)
+                    .disabled(isMutating)
+                Button("Accept") { acceptConnection() }
+                    .buttonStyle(.borderedProminent)
+                    .frame(maxWidth: .infinity)
+                    .disabled(isMutating)
+            }
         default:
             Button("Connect") { requestConnection() }
                 .buttonStyle(.borderedProminent)
