@@ -524,6 +524,10 @@ final class APIClient {
         try await post("/social/connection-links", body: EmptyBody())
     }
 
+    func fetchConnectionLinkProfile(linkCode: String) async throws -> ConnectionLinkProfileResponseDTO {
+        try await get("/social/connection-links/\(linkCode)")
+    }
+
     func requestConnection(linkCode: String) async throws -> ConnectionLinkRequestResponseDTO {
         try await post("/social/connection-links/\(linkCode)/request", body: EmptyBody())
     }

@@ -6,6 +6,10 @@ struct SocialPeopleSearchOutcome: Sendable {
     let matchMode: String
 }
 
+struct ConnectionLinkPreviewOutcome: Sendable {
+    let shouldClearPendingURL: Bool
+}
+
 struct ConnectionLinkConsumptionOutcome: Sendable {
     let shouldClearPendingURL: Bool
     let analyticsResult: String
@@ -44,6 +48,8 @@ final class TogetherStore: ObservableObject {
     @Published private(set) var resultsByActivityEventID: [String: ActivityEventResultDTO] = [:]
     @Published private(set) var recordingActivityEventID: String?
     @Published private(set) var connectionLinkFeedback: ConnectionLinkFeedback?
+    @Published private(set) var pendingConnectionProfile: ConnectionLinkProfilePreview?
+    @Published private(set) var isConnectionProfileLoading = false
 
     private let api: APIClient
     private let defaults: UserDefaults
@@ -324,6 +330,54 @@ final class TogetherStore: ObservableObject {
                 shouldClearPendingURL: isPermanentFailure,
                 analyticsResult: isPermanentFailure ? "invalid" : "failure"
             )
+        }
+    }
+
+    func previewConnectionLink(code: String) async -> ConnectionLinkPreviewOutcome {
+        isConnectionProfileLoading = true
+        defer { isConnectionProfileLoading = false }
+        do {
+            let response = try await api.fetchConnectionLinkProfile(linkCode: code)
+            pendingConnectionProfile = ConnectionLinkProfilePreview(
+                code: code,
+                person: response.person,
+                isSelf: response.isSelf
+            )
+            errorMessage = nil
+            return ConnectionLinkPreviewOutcome(shouldClearPendingURL: true)
+        } catch {
+            connectionLinkFeedback = ConnectionLinkFeedback(
+                text: String(localized: "Could not load your connection code. Try again.", table: "ConnectionQRCode"),
+                style: .error
+            )
+            let isPermanentFailure: Bool
+            if let apiError = error as? APIError,
+               case let .http(statusCode, _, _) = apiError {
+                isPermanentFailure = (400..<500).contains(statusCode)
+            } else {
+                isPermanentFailure = false
+            }
+            return ConnectionLinkPreviewOutcome(shouldClearPendingURL: isPermanentFailure)
+        }
+    }
+
+    func takePendingConnectionProfile() -> ConnectionLinkProfilePreview? {
+        defer { pendingConnectionProfile = nil }
+        return pendingConnectionProfile
+    }
+
+    func requestConnection(linkCode: String) async -> ConnectionLinkRequestResponseDTO? {
+        do {
+            let response = try await api.requestConnection(linkCode: linkCode)
+            errorMessage = nil
+            if response.result != "self" {
+                await refreshConnections()
+                await refreshNotifications()
+                await refresh()
+            }
+            return response
+        } catch {
+            return nil
         }
     }
 
@@ -655,6 +709,8 @@ final class TogetherStore: ObservableObject {
         resultsByActivityEventID = [:]
         recordingActivityEventID = nil
         connectionLinkFeedback = nil
+        pendingConnectionProfile = nil
+        isConnectionProfileLoading = false
         nextConnectionsCursor = nil
         latestPeopleSearchQuery = ""
     }
@@ -1060,4 +1116,5 @@ struct ConnectionLinkResponseDTO: Decodable, Sendable {
 struct ConnectionLinkRequestResponseDTO: Decodable, Sendable {
     let result: String
     let person: SocialPersonDTO
+    let relationship: SocialRelationshipDTO?
 }

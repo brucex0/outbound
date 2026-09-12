@@ -17,6 +17,32 @@ enum SimplifiedAppTab: Hashable {
     }
 }
 
+private enum ConnectionProfilePresentation: Identifiable {
+    case loading
+    case profile(ConnectionLinkProfilePreview)
+
+    var id: String {
+        switch self {
+        case .loading: "connection_link_loading"
+        case .profile(let preview): "connection_link_profile_\(preview.id)"
+        }
+    }
+}
+
+private struct ConnectionLinkProfileLoadingView: View {
+    var body: some View {
+        ZStack {
+            OutboundPalette.background.ignoresSafeArea()
+            VStack(spacing: OutboundSpacing.compact) {
+                ProgressView()
+                Text(String(localized: "Checking QR code…", table: "ConnectionQRCode"))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
 private struct AssistantLauncherButton: View {
     static let diameter: CGFloat = 44
     static let floatingTabBarTopInset: CGFloat = 18
@@ -206,6 +232,7 @@ struct SimplifiedAppShell: View {
     @State private var completionCircle: CircleDTO?
     @State private var circleToast: String?
     @State private var connectionFeedback: ConnectionLinkFeedback?
+    @State private var connectionProfilePresentation: ConnectionProfilePresentation?
     @State private var tabBarHeight: CGFloat = 83
 
     var body: some View {
@@ -317,6 +344,16 @@ struct SimplifiedAppShell: View {
                             .participantCountBucket: .string(ProductAnalyticsBucket.count(circle.memberCount))
                         ]))
                     }
+                }
+            }
+        }
+        .fullScreenCover(item: $connectionProfilePresentation) { presentation in
+            switch presentation {
+            case .loading:
+                ConnectionLinkProfileLoadingView()
+            case .profile(let preview):
+                NavigationStack {
+                    ConnectionLinkProfileDestination(preview: preview)
                 }
             }
         }
@@ -485,6 +522,21 @@ struct SimplifiedAppShell: View {
             selection = .social
             connectionFeedback = feedback
             socialStore.clearConnectionLinkFeedback()
+        }
+        .onChange(of: socialStore.pendingConnectionProfile?.id, initial: true) { _, profileID in
+            guard profileID != nil, let preview = socialStore.takePendingConnectionProfile() else { return }
+            selection = .social
+            connectionProfilePresentation = .profile(preview)
+        }
+        .onChange(of: socialStore.isConnectionProfileLoading, initial: true) { _, isLoading in
+            guard isLoading else {
+                if case .loading = connectionProfilePresentation {
+                    connectionProfilePresentation = nil
+                }
+                return
+            }
+            selection = .social
+            connectionProfilePresentation = .loading
         }
         .onChange(of: preActivityRoute) { _, route in
             selectedRouteName = route?.name

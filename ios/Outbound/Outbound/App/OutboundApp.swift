@@ -453,10 +453,7 @@ struct OutboundApp: App {
         } else if let token = PlainstrideLinks.activityEventToken(from: url) {
             guard await togetherStore.acceptActivityEventInvitation(token: token) else { return }
         } else if let code = PlainstrideLinks.connectionCode(from: url) {
-            let outcome = await togetherStore.consumeConnectionLink(code: code)
-            await analyticsManager.track(.init(.connectionQRCodeRequestResult, properties: [
-                .result: .string(outcome.analyticsResult)
-            ]))
+            let outcome = await togetherStore.previewConnectionLink(code: code)
             guard outcome.shouldClearPendingURL else { return }
         } else if let referralCode = PlainstrideLinks.referralCode(from: url) {
             do {

@@ -99,6 +99,19 @@ struct SocialPeopleSearchResponseDTO: Codable, Sendable {
     let matchMode: String?
 }
 
+struct ConnectionLinkProfileResponseDTO: Decodable, Sendable {
+    let person: SocialPersonSearchResultDTO
+    let isSelf: Bool
+}
+
+struct ConnectionLinkProfilePreview: Identifiable, Sendable {
+    let code: String
+    let person: SocialPersonSearchResultDTO
+    let isSelf: Bool
+
+    var id: String { person.id }
+}
+
 struct SocialConnectionRequestDTO: Codable, Sendable {
     let userId: String
 }
