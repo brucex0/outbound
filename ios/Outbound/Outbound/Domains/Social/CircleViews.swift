@@ -529,7 +529,8 @@ struct CircleDetailView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     if let commitment = current.members.first(where: \.isCurrentUser)?.commitment?.targetCount {
-                        Text(String(localized: "circle.commitment.progress", defaultValue: "Your commitment: \(current.members.first(where: \.isCurrentUser)?.contributedCount ?? 0) of \(commitment)"))
+                        let contributedCount = current.members.first(where: \.isCurrentUser)?.contributedCount ?? 0
+                        Text(commitmentProgress(contributedCount: contributedCount, target: commitment, includesLabel: true))
                             .font(.subheadline.weight(.semibold))
                     }
                 } else if current.week.focusMode == "none" {
@@ -636,8 +637,22 @@ struct CircleDetailView: View {
 
     private func memberStatus(_ member: CircleMemberDTO) -> String {
         if member.commitment?.skipped == true { return String(localized: "circle.commitment.skipping", defaultValue: "Skipping this week") }
-        if let target = member.commitment?.targetCount { return String(localized: "circle.member.progress", defaultValue: "\(member.contributedCount) of \(target)") }
+        if let target = member.commitment?.targetCount {
+            return commitmentProgress(contributedCount: member.contributedCount, target: target, includesLabel: false)
+        }
         return String(localized: "circle.member.contributed", defaultValue: "Contributed \(member.contributedCount)")
+    }
+    private func commitmentProgress(contributedCount: Int, target: Int, includesLabel: Bool) -> String {
+        let completedCount = min(contributedCount, target)
+        let extraCount = max(0, contributedCount - target)
+        if extraCount > 0 {
+            return includesLabel
+                ? String(localized: "circle.commitment.progress.extra", defaultValue: "Your commitment: \(completedCount) of \(target) · \(extraCount) extra")
+                : String(localized: "circle.member.progress.extra", defaultValue: "\(completedCount) of \(target) · \(extraCount) extra")
+        }
+        return includesLabel
+            ? String(localized: "circle.commitment.progress", defaultValue: "Your commitment: \(completedCount) of \(target)")
+            : String(localized: "circle.member.progress", defaultValue: "\(completedCount) of \(target)")
     }
     private func activityTypeTitle(_ type: String) -> String {
         switch type {

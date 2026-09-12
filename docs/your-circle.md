@@ -177,7 +177,7 @@ The detail screen includes:
 6. Recent Circle moments limited to Cheers, completed activities, and weekly completion—not a duplicate activity feed.
 7. Management entry.
 
-Member progress may show `2 of 3`, `Contributed 2`, `Skipping this week`, or no numeric state. Under each member, show their most recent activity from the current Circle week with title/type, date and time, duration, distance, and available workout metrics such as average heart rate and energy. Do not expose companion inferences or why someone changed or skipped a target.
+Member progress may show `2 of 3`, `3 of 3 · 2 extra`, `Contributed 2`, `Skipping this week`, or no numeric state. Once a member exceeds a commitment, cap the completed portion at the target and show additional activities separately instead of presenting progress such as `5 of 3`. Under each member, show their most recent activity from the current Circle week with title/type, date and time, duration, distance, and available workout metrics such as average heart rate and energy. Do not expose companion inferences or why someone changed or skipped a target.
 
 ## Actions
 

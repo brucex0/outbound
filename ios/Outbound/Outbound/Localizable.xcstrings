@@ -2823,6 +2823,14 @@
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "你的运动承诺：已完成 %1$lld/%2$lld" } }
       }
     },
+    "circle.commitment.progress.extra": {
+      "comment": "Personal Circle commitment progress after the member exceeds the target. The first value is capped progress, the second is the target, and the third is the number of additional activities. [platform:ios]",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Your commitment: %1$lld of %2$lld · %3$lld extra" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Tu compromiso: %1$lld de %2$lld · %3$lld extra" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "你的运动承诺：已完成 %1$lld/%2$lld · 额外 %3$lld 次" } }
+      }
+    },
     "circle.commitment.set": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Set my goal" } },
@@ -3419,6 +3427,14 @@
             "value": "%lld/%lld"
           }
         }
+      }
+    },
+    "circle.member.progress.extra": {
+      "comment": "Circle member progress after the member exceeds the target. The first value is capped progress, the second is the target, and the third is the number of additional activities. [platform:ios]",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%1$lld of %2$lld · %3$lld extra" } },
+        "es": { "stringUnit": { "state": "translated", "value": "%1$lld de %2$lld · %3$lld extra" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "%1$lld/%2$lld · 额外 %3$lld 次" } }
       }
     },
     "circle.members": {
