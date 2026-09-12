@@ -669,11 +669,15 @@ struct SimplifiedAppShell: View {
     }
 
     private func trackPlanningSurfaceOpened(_ surface: String, entrySource: String) {
+        var properties: [ProductPropertyKey: AnalyticsValue] = [
+            .sourceType: .string(surface),
+            .entrySource: .string(entrySource),
+        ]
+        if surface == "plan_details", let currentWeek = trainingPlanStore.currentWeek {
+            properties[.countBucket] = .string(ProductAnalyticsBucket.count(currentWeek.scheduledWorkouts.count))
+        }
         Task {
-            await analyticsManager?.track(.init(.planningSurfaceOpened, properties: [
-                .sourceType: .string(surface),
-                .entrySource: .string(entrySource),
-            ]))
+            await analyticsManager?.track(.init(.planningSurfaceOpened, properties: properties))
         }
     }
 

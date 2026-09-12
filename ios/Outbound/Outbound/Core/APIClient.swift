@@ -1130,14 +1130,21 @@ private extension PlanningAPIStateResponse {
         let sport = goal.activities.count > 1
             ? TrainingPlanSport.mixed
             : TrainingPlanSport.apiSport(from: goal.activities.first ?? "run")
-        let weekWorkouts = currentWeekWorkouts(calendar: calendar)
+        let planWorkouts = workouts ?? upcoming
+        let currentWeekIndex = Self.currentWeekIndex(createdAt: createdAt, calendar: calendar)
+        let weekWorkouts = planWeekWorkouts(
+            inPlanWeek: currentWeekIndex,
+            createdAt: createdAt,
+            calendar: calendar,
+            planWorkouts: planWorkouts
+        )
         let plannedThisWeek = weekWorkouts.isEmpty
             ? Array(upcoming.prefix(goal.daysPerWeekTarget ?? fallbackRecommendation?.sessionsPerWeek ?? 3))
             : weekWorkouts
         let scheduledWorkouts = plannedThisWeek.map { $0.trainingPlanWorkout() }
         let notificationWorkouts = upcoming.compactMap { workout -> ScheduledWorkoutReminder? in
             guard !["completed", "cancelled", "canceled", "skipped", "rest"].contains(workout.status.lowercased()),
-                  let scheduledDate = APIDateParser.date(from: workout.scheduledDate) else { return nil }
+                  let scheduledDate = APIDateParser.planningDate(from: workout.scheduledDate) else { return nil }
             return ScheduledWorkoutReminder(
                 id: "\(plan.id)-\(workout.id)",
                 workoutID: workout.id,
@@ -1149,7 +1156,7 @@ private extension PlanningAPIStateResponse {
             )
         }
         let durationWeeks = fallbackRecommendation?.durationWeeks
-            ?? Self.estimatedDurationWeeks(createdAt: createdAt, workouts: upcoming, calendar: calendar)
+            ?? Self.estimatedDurationWeeks(createdAt: createdAt, workouts: planWorkouts, calendar: calendar)
         let sessionsPerWeek = goal.daysPerWeekTarget
             ?? fallbackRecommendation?.sessionsPerWeek
             ?? max(1, scheduledWorkouts.count)
@@ -1173,12 +1180,11 @@ private extension PlanningAPIStateResponse {
             createdAt: createdAt
         )
 
-        let completedWorkouts = scheduledWorkoutsForCurrentWeek(calendar: calendar, status: "completed")
+        let completedWorkouts = weekWorkouts.filter { $0.status == "completed" }
         let completedSessions = completedWorkouts.count
         let completedMinutes = completedWorkouts.reduce(0) { $0 + Int(ceil(Double($1.durationSeconds) / 60.0)) }
         let targetMinutes = max(1, scheduledWorkouts.reduce(0) { $0 + $1.durationMinutesRounded })
-        let targetSessions = max(1, scheduledWorkouts.filter { !$0.isOptional }.count)
-        let currentWeekIndex = Self.currentWeekIndex(createdAt: createdAt, calendar: calendar)
+        let targetSessions = max(1, scheduledWorkouts.count)
         let progressPercent = min(
             1,
             max(
@@ -1226,18 +1232,21 @@ private extension PlanningAPIStateResponse {
         )
     }
 
-    private func currentWeekWorkouts(calendar: Calendar) -> [PlanningAPIWorkout] {
-        guard let week = calendar.dateInterval(of: .weekOfYear, for: Date()) else {
-            return upcoming
+    private func planWeekWorkouts(
+        inPlanWeek weekIndex: Int,
+        createdAt: Date,
+        calendar: Calendar,
+        planWorkouts: [PlanningAPIWorkout]
+    ) -> [PlanningAPIWorkout] {
+        let planStart = calendar.startOfDay(for: createdAt)
+        guard let weekStart = calendar.date(byAdding: .day, value: (weekIndex - 1) * 7, to: planStart),
+              let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart) else {
+            return planWorkouts
         }
-        return upcoming.filter { workout in
-            guard let scheduledDate = APIDateParser.date(from: workout.scheduledDate) else { return false }
-            return scheduledDate >= week.start && scheduledDate < week.end
+        return planWorkouts.filter { workout in
+            guard let scheduledDate = APIDateParser.planningDate(from: workout.scheduledDate) else { return false }
+            return scheduledDate >= weekStart && scheduledDate < weekEnd
         }
-    }
-
-    private func scheduledWorkoutsForCurrentWeek(calendar: Calendar, status: String) -> [PlanningAPIWorkout] {
-        currentWeekWorkouts(calendar: calendar).filter { $0.status == status }
     }
 
     private func guideLine(fallbackFocus: TrainingPlanFocus) -> String {
@@ -1319,8 +1328,10 @@ private extension PlanningAPIStateResponse {
     }
 
     private static func currentWeekIndex(createdAt: Date, calendar: Calendar) -> Int {
-        let planWeekStart = calendar.dateInterval(of: .weekOfYear, for: createdAt)?.start ?? createdAt
-        return max(1, (calendar.dateComponents([.weekOfYear], from: planWeekStart, to: Date()).weekOfYear ?? 0) + 1)
+        let planStart = calendar.startOfDay(for: createdAt)
+        let today = calendar.startOfDay(for: Date())
+        let elapsedDays = max(0, calendar.dateComponents([.day], from: planStart, to: today).day ?? 0)
+        return (elapsedDays / 7) + 1
     }
 
     private static func estimatedDurationWeeks(
@@ -1329,12 +1340,13 @@ private extension PlanningAPIStateResponse {
         calendar: Calendar
     ) -> Int {
         let lastWorkoutDate = workouts
-            .compactMap { APIDateParser.date(from: $0.scheduledDate) }
+            .compactMap { APIDateParser.planningDate(from: $0.scheduledDate) }
             .max()
         guard let lastWorkoutDate else { return 4 }
-        let planWeekStart = calendar.dateInterval(of: .weekOfYear, for: createdAt)?.start ?? createdAt
-        let workoutWeekStart = calendar.dateInterval(of: .weekOfYear, for: lastWorkoutDate)?.start ?? lastWorkoutDate
-        return max(1, (calendar.dateComponents([.weekOfYear], from: planWeekStart, to: workoutWeekStart).weekOfYear ?? 0) + 1)
+        let planStart = calendar.startOfDay(for: createdAt)
+        let lastWorkoutDay = calendar.startOfDay(for: lastWorkoutDate)
+        let coveredDays = max(1, (calendar.dateComponents([.day], from: planStart, to: lastWorkoutDay).day ?? 0) + 1)
+        return max(1, Int(ceil(Double(coveredDays) / 7.0)))
     }
 }
 
@@ -1355,10 +1367,10 @@ private extension PlanningAPIWorkout {
 
         return TrainingPlanWorkout(
             id: id,
-            scheduledDate: APIDateParser.date(from: scheduledDate),
+            scheduledDate: APIDateParser.planningDate(from: scheduledDate),
             title: title,
             kind: stimulus.workoutKind,
-            dayLabel: overrideDayLabel ?? APIDateParser.weekdayLabel(from: scheduledDate),
+            dayLabel: overrideDayLabel ?? APIDateParser.planningWeekdayLabel(from: scheduledDate),
             summary: stimulus.summaryLabel,
             purpose: stimulus.purposeLabel,
             guideCue: stimulus.guideCue,
@@ -1367,7 +1379,7 @@ private extension PlanningAPIWorkout {
             distanceLabel: distanceMeters.map { APIDateParser.distanceLabel(meters: $0) },
             targetCalories: targetCalories,
             steps: targetCalories == nil ? steps : [],
-            isOptional: !isKeyWorkout
+            isOptional: false
         )
     }
 }
@@ -1573,8 +1585,16 @@ private enum APIDateParser {
         return plainFormatter.date(from: value)
     }
 
-    static func weekdayLabel(from value: String) -> String {
-        guard let date = date(from: value) else { return "Planned" }
+    static func planningDate(from value: String, calendar: Calendar = .current) -> Date? {
+        guard let instant = date(from: value) else { return nil }
+        var utcCalendar = Calendar(identifier: .gregorian)
+        utcCalendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let components = utcCalendar.dateComponents([.year, .month, .day], from: instant)
+        return calendar.date(from: components)
+    }
+
+    static func planningWeekdayLabel(from value: String) -> String {
+        guard let date = planningDate(from: value) else { return "Planned" }
         let formatter = DateFormatter()
         formatter.dateFormat = "EEE"
         return formatter.string(from: date)
@@ -1969,6 +1989,7 @@ private struct PlanningAPIStateResponse: Decodable {
     let plan: PlanningAPIPlan?
     let currentVersion: PlanningAPIVersion?
     let today: PlanningAPIWorkout?
+    let workouts: [PlanningAPIWorkout]?
     let upcoming: [PlanningAPIWorkout]
     let recommendations: [TrainingPlanRecommendation]?
     let athleteState: PlanningAPIAthleteState?

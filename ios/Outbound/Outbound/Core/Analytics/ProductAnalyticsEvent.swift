@@ -355,7 +355,7 @@ enum ProductAnalyticsSchema {
         .assistantLauncherOpened: [.destination, .entrySource],
         .assistantMeaningfulEngagement: [.destination, .entrySource],
         .todayCardDisplayChanged: [.sourceType, .selectionType],
-        .planningSurfaceOpened: [.sourceType, .entrySource],
+        .planningSurfaceOpened: [.sourceType, .entrySource, .countBucket],
         .trainingPlanEnded: [.entrySource],
         .musicAuthorizationRequested: [],
         .musicAuthorizationCompleted: [.result],
