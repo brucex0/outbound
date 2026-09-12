@@ -187,6 +187,8 @@ The same script forwards the enabled persona/voice allowlists, per-contract cue 
 
 Production dynamic access uses `LIVE_COACH_ACCESS_MODE=founding_trial`, `LIVE_COACH_FOUNDING_USER_LIMIT=1000`, and `LIVE_COACH_TRIAL_RUN_LIMIT=3`. The oldest 1,000 accounts receive a durable promotion grant when first evaluated. Later accounts reserve a trial when a dynamic session starts, consume it only after the first successful dynamic cue in that session, and release it on cancellation, expiration, provider failure, or a session that never receives dynamic audio. After three consumed trials, dynamic generation returns `entitlement_required` while reviewed fixed guidance continues. `open_beta` remains an explicit unlimited development/temporary-operations mode.
 
+The deploy helper forwards `LIVE_COACH_PAID_MODE_READY` and defaults it to `false`. Set it to `true` only for an intentional paywall test or after the RevenueCat products, published paywall, client key, backend secret key, and signed webhook are ready. This flag makes the contextual Live Guidance upgrade route available after trial exhaustion; it does not interrupt a workout or remove fixed guidance.
+
 Operational sequence:
 
 1. Enable `texttospeech.googleapis.com` in `outbound-494602` and confirm the Cloud Run runtime identity can consume it.
@@ -209,6 +211,7 @@ LIVE_COACH_SERVER_AUDIO_MODE=fixed_only \
 LIVE_COACH_ACCESS_MODE=founding_trial \
 LIVE_COACH_FOUNDING_USER_LIMIT=1000 \
 LIVE_COACH_TRIAL_RUN_LIMIT=3 \
+LIVE_COACH_PAID_MODE_READY=false \
 LIVE_COACH_PLANNER_ENABLED=true \
 GEMINI_LIVE_COACH_PLANNER_MODEL=gemini-3.1-pro-preview \
 GEMINI_VERTEX_PROJECT_ID=outbound-494602 \
