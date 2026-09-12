@@ -42,6 +42,7 @@ data class SessionUserDto(
     val displayName: String? = null,
     val avatarUrl: String? = null,
     val email: String? = null,
+    val onboardingStatus: String? = null,
     val onboardingCompleted: Boolean = false,
     val termsAcceptedVersion: Int = 0,
 )

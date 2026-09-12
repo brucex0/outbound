@@ -140,10 +140,12 @@ fun TodayRoute(
     initialWorkoutId: String? = null,
     guidanceContent: @Composable () -> Unit = {},
     startRequest: Int = 0,
+    refreshRequest: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     LaunchedEffect(accountId, localeTag) { viewModel.configure(accountId, localeTag) }
+    LaunchedEffect(refreshRequest) { if (refreshRequest > 0) viewModel.refresh() }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val weather by viewModel.weather.collectAsStateWithLifecycle()
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -166,7 +168,7 @@ fun TodayRoute(
         },
         onStartFreestyle = onStartFreestyle,
         onReturnToSession = onReturnToSession,
-        onSetUpPlan = { viewModel.setUpPlan(); onSetUpPlan() },
+        onSetUpPlan = onSetUpPlan,
         onStartManual = { setup -> viewModel.trackManualWorkoutStarted(setup.activity, setup.goal); onStartManual(setup) },
         onOpenMusic = onOpenMusic,
         onOpenLiveTrack = onOpenLiveTrack,

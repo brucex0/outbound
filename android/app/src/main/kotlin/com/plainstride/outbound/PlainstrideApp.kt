@@ -52,6 +52,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Groups
@@ -83,6 +85,8 @@ import com.plainstride.outbound.feature.activity.RecentActivitiesRoute
 import com.plainstride.outbound.reminders.ReminderSettingsRow
 import com.plainstride.outbound.feature.onboarding.OnboardingEffect
 import com.plainstride.outbound.feature.onboarding.OnboardingRoute
+import com.plainstride.outbound.feature.onboarding.PlanBuilderSource
+import com.plainstride.outbound.feature.onboarding.R as OnboardingR
 import com.plainstride.outbound.feature.today.TodayMessage
 import com.plainstride.outbound.feature.today.TodayRoute
 import com.plainstride.outbound.feature.today.TodayViewModel
@@ -194,19 +198,18 @@ private fun SignedInApp(
     val context = LocalContext.current
     val resources = LocalResources.current
     val scope = rememberCoroutineScope()
-    val signedInAccountId = when (val session = authState.session) { is SessionState.SignedIn -> session.accountId; is SessionState.Refreshing -> session.accountId; else -> null }
-    val onboardingCycleViewModel:CycleAwareViewModel=hiltViewModel()
-    LaunchedEffect(signedInAccountId){signedInAccountId?.let{onboardingCycleViewModel.start(it)}}
     if (!onboardingResolved) {
         OnboardingRoute(
             onComplete = { onboardingResolved = true },
             forceReplay = forceOnboardingReplay,
-            optionalPrivateSetup = { signedInAccountId?.let { CycleAwareSection(it,onboardingCycleViewModel) } },
+            usesMetric = measurementUnitSystem == MeasurementUnitSystem.metric,
             onMessage = { effect ->
                 val message = when (effect) {
                     OnboardingEffect.IdentityUnavailable -> R.string.onboarding_identity_unavailable
                     OnboardingEffect.HealthUnavailable -> R.string.onboarding_health_unavailable
-                    OnboardingEffect.SavedOffline -> R.string.onboarding_save_unavailable
+                    OnboardingEffect.ProfileUnavailable -> R.string.onboarding_save_unavailable
+                    OnboardingEffect.PlanCreationUnavailable -> OnboardingR.string.plan_builder_create_error
+                    OnboardingEffect.SkipUnavailable -> OnboardingR.string.plan_builder_skip_error
                     OnboardingEffect.Completed, OnboardingEffect.FailedOpen -> return@OnboardingRoute
                 }
                 scope.launch { snackbar.showSnackbar(resources.getString(message)) }
@@ -223,6 +226,8 @@ private fun SignedInApp(
     var safetyTarget by remember { mutableStateOf<Pair<String,String>?>(null) }
     var reminderWorkoutId by remember { mutableStateOf<String?>(null) }
     var todayStartRequest by remember { mutableStateOf(0) }
+    var todayRefreshRequest by remember { mutableStateOf(0) }
+    var planBuilderSource by remember { mutableStateOf<PlanBuilderSource?>(null) }
     val activeRecordingViewModel:ActiveRecordingViewModel=hiltViewModel()
     val hasActiveSession by activeRecordingViewModel.active.collectAsStateWithLifecycle()
     var suppressRecordingRecovery by remember { mutableStateOf(false) }
@@ -351,7 +356,7 @@ private fun SignedInApp(
                                 navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
                             },
                             onReturnToSession = { navController.navigate(RECORDING_ROUTE) { launchSingleTop = true } },
-                            onSetUpPlan = { /* Plan setup is connected by the planning flow. */ },
+                            onSetUpPlan = { planBuilderSource = PlanBuilderSource.PlannedButton },
                             onStartManual = { setup ->
                                 recordingLaunch = setup.toRecordingLaunch(integration.defaultGearId)
                                 navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
@@ -364,6 +369,7 @@ private fun SignedInApp(
                             useFahrenheit = settingsState.preferences.temperature == com.plainstride.outbound.feature.settings.TemperatureUnit.Fahrenheit,
                             inboxCount = integration.notifications.count { it.readAt == null },
                             startRequest = todayStartRequest,
+                            refreshRequest = todayRefreshRequest,
                             onMessage = { message ->
                                 snackbar.showSnackbar(resources.getString(todayMessageResource(message)))
                             },
@@ -504,6 +510,42 @@ private fun SignedInApp(
             }
             composable(REWARDS_ROUTE) { RewardsRoute(onBack = { navController.popBackStack() }) }
             composable(PLUS_ROUTE) { PlusRoute(onBack = { navController.popBackStack() }) }
+        }
+    }
+    planBuilderSource?.let { source ->
+        Dialog(
+            onDismissRequest = {},
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                dismissOnBackPress = false,
+                dismissOnClickOutside = false,
+            ),
+        ) {
+            Surface(Modifier.fillMaxSize()) {
+                OnboardingRoute(
+                    source = source,
+                    usesMetric = measurementUnitSystem == MeasurementUnitSystem.metric,
+                    onComplete = {
+                        planBuilderSource = null
+                        todayRefreshRequest += 1
+                    },
+                    onMessage = { effect ->
+                        val message = when (effect) {
+                            OnboardingEffect.IdentityUnavailable -> R.string.onboarding_identity_unavailable
+                            OnboardingEffect.HealthUnavailable -> R.string.onboarding_health_unavailable
+                            OnboardingEffect.ProfileUnavailable -> R.string.onboarding_save_unavailable
+                            OnboardingEffect.PlanCreationUnavailable -> OnboardingR.string.plan_builder_create_error
+                            OnboardingEffect.SkipUnavailable -> OnboardingR.string.plan_builder_skip_error
+                            OnboardingEffect.Completed, OnboardingEffect.FailedOpen -> return@OnboardingRoute
+                        }
+                        android.widget.Toast.makeText(
+                            context,
+                            resources.getString(message),
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    },
+                )
+            }
         }
     }
     if (authState.confirmDeletion) AlertDialog(

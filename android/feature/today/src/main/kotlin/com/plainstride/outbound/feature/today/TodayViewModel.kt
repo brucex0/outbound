@@ -259,30 +259,6 @@ class TodayViewModel @Inject constructor(
         )
     }
 
-    fun setUpPlan() {
-        if (mutationInFlight.value) return
-        viewModelScope.launch {
-            mutationInFlight.value = true
-            val (accountId, localeTag) = accountScope.value
-            val result = repository.createGoal(
-                accountId,
-                localeTag,
-                com.plainstride.outbound.core.network.CreateTrainingGoalRequest(
-                    type = "general_fitness",
-                    primaryModality = Modality.run,
-                    daysPerWeekTarget = 3,
-                    maxSessionMinutes = 45,
-                    priority = "balanced",
-                ),
-            )
-            if (result.isSuccess) {
-                analytics.record(AnalyticsEvent("training_plan_created", mapOf(AnalyticsProperty.Source to "today_empty_state")))
-                refresh()
-            } else messages.emit(TodayMessage.CouldNotAdjust)
-            mutationInFlight.value = false
-        }
-    }
-
     private data class Meta(
         val refreshing: Boolean,
         val mutating: Boolean,

@@ -34,6 +34,7 @@ Primary flow:
 | Future mainland China launch, login availability, backend reachability, Android push channels | `docs/mainland-china-readiness.md` | Deferred-market decision, authentication findings, infrastructure risks, notification-provider strategy, and revisit sequence |
 | Rendered localization QA findings and release blockers | `docs/localization-qa.md` | Screen coverage, mixed-language defects, terminology issues, and remaining verification matrix |
 | New user onboarding, durable skip, reusable plan setup, no-plan behavior | `docs/new-user-onboarding.md` | Canonical first-launch choice, plan-builder flow, objectives, multi-activity inputs, persistence, and entry points |
+| Android onboarding parity sources, transitions, analytics, accessibility, and reference scenarios | `android/feature/onboarding/IOS_PARITY.md` | Focused handoff for keeping the Compose onboarding and reusable plan builder aligned with iOS |
 | Onboarding and plan-setup implementation handoff | `docs/onboarding-plan-setup-implementation-prompt.md` | Copy-ready backend/iOS implementation prompt, affected areas, analytics, localization, verification, and acceptance criteria |
 | Legacy signup and onboarding prototype | `docs/prototypes/outbound-onboarding-flow.html` | Earlier visual reference; use `docs/new-user-onboarding.md` rather than this prototype for current product behavior |
 | In-app AI assistant UX, prompt flows, and local response strategy | `docs/assistant.md` | Assistant goals, file map, persistence, capabilities, and extension ideas |

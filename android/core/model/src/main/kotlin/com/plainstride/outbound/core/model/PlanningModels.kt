@@ -56,7 +56,8 @@ data class PlannedWorkout(
 data class TrainingGoal(
     val id: String,
     val type: String,
-    val primaryModality: Modality,
+    val activities: List<Modality>,
+    val baselineContext: String? = null,
     val targetDate: String? = null,
     val targetDistanceMeters: Double? = null,
     val targetEventName: String? = null,

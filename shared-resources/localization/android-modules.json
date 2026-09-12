@@ -14,7 +14,18 @@
     { "keyPrefix": "community", "androidPrefix": "", "resourceRoot": "android/feature/community/src/main/res", "file": "strings.xml" },
     { "keyPrefix": "health", "androidPrefix": "health_", "resourceRoot": "android/feature/health/src/main/res", "file": "strings.xml" },
     { "keyPrefix": "livecoach", "androidPrefix": "live_coach_", "resourceRoot": "android/feature/livecoach/src/main/res", "file": "strings.xml" },
-    { "keyPrefix": "onboarding", "androidPrefix": "onboarding_", "resourceRoot": "android/feature/onboarding/src/main/res", "file": "strings.xml" },
+    {
+      "keyPrefix": "onboarding",
+      "androidPrefix": "onboarding_",
+      "sources": [
+        { "keyPrefix": "onboarding", "androidPrefix": "onboarding_" },
+        { "keyPrefix": "plan_builder", "androidPrefix": "plan_builder_" },
+        { "keyPrefix": "weekday", "androidPrefix": "onboarding_weekday_" },
+        { "keyPrefix": "activity.type", "androidPrefix": "plan_builder_activity_" }
+      ],
+      "resourceRoot": "android/feature/onboarding/src/main/res",
+      "file": "strings.xml"
+    },
     { "keyPrefix": "progress", "androidPrefix": "progress_", "resourceRoot": "android/feature/progress/src/main/res", "file": "strings.xml" },
     { "keyPrefix": "recording", "androidPrefix": "recording_", "resourceRoot": "android/feature/recording/src/main/res", "file": "strings.xml" },
     { "keyPrefix": "safety", "androidPrefix": "", "resourceRoot": "android/feature/safety/src/main/res", "file": "strings.xml" },

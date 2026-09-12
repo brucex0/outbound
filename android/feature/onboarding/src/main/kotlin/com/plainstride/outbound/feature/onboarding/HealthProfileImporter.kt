@@ -16,9 +16,10 @@ class HealthConnectProfileImporter @Inject constructor(private val importer: com
         is HealthConnectResult.Success -> {
             val sessions = result.value
             Result.success(ImportedHealthProfile(
-                trainingProfile = TrainingProfileInput(null, null, null, null),
+                trainingProfile = TrainingProfileInput(null, null, null, null, PlanObjective.Endurance),
                 recentSessionsPerWeek = (sessions.size / HealthConnectRepository.ONBOARDING_IMPORT_WEEKS.toDouble()).toInt().coerceAtLeast(0),
                 comfortableMinutes = sessions.map { java.time.Duration.between(it.startTime, it.endTime).toMinutes().toInt() }.sorted().let { values -> values.getOrNull(values.size / 2) },
+                recentActivityCount = sessions.size,
             ))
         }
         is HealthConnectResult.PermissionRequired -> Result.failure(HealthProfileUnavailableException)

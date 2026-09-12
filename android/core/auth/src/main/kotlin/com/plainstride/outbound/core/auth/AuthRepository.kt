@@ -89,6 +89,7 @@ private fun SessionResponseDto.credentials() = SessionCredentials(
     account = SessionAccount(
         id = user.id,
         onboardingCompleted = user.onboardingCompleted,
+        onboardingStatus = user.onboardingStatus,
     ),
 )
 

@@ -26,6 +26,6 @@ class OnboardingDraftStore @Inject constructor(
         dataStore.edit { it.remove(draftKey(accountId)) }
     }
 
-    private fun draftKey(accountId: String) = stringPreferencesKey("onboarding_draft_${accountId.safeKey()}")
+    private fun draftKey(accountId: String) = stringPreferencesKey("plan_builder_draft_v1_${accountId.safeKey()}")
     private fun String.safeKey() = fold(0x811c9dc5L) { hash, char -> (hash xor char.code.toLong()) * 0x01000193L }.toString(16)
 }

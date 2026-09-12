@@ -12,6 +12,8 @@ const catalogPath = resolve(dirname(configPath), config.catalog);
 const catalog = JSON.parse(await readFile(catalogPath, "utf8"));
 const check = process.argv.includes("--check");
 const adopt = process.argv.includes("--adopt-existing");
+const moduleFilter = process.argv.find(argument => argument.startsWith("--module="))?.slice("--module=".length);
+const outputModules = moduleFilter ? config.modules.filter(module => module.keyPrefix === moduleFilter) : config.modules;
 
 function decodeXML(value) {
   return value.replaceAll("\\'", "'").replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&quot;", '"').replaceAll("&amp;", "&");
@@ -42,14 +44,22 @@ function placeholders(value) {
 }
 
 function catalogKey(module, androidName) {
-  const stem = androidName.startsWith(module.androidPrefix) ? androidName.slice(module.androidPrefix.length) : androidName;
-  return `${module.keyPrefix}.${stem.replaceAll("_", ".")}`;
+  const source = [...sourceDefinitions(module)]
+    .sort((left, right) => right.androidPrefix.length - left.androidPrefix.length)
+    .find(candidate => androidName.startsWith(candidate.androidPrefix))
+    ?? { keyPrefix: module.keyPrefix, androidPrefix: module.androidPrefix };
+  const stem = androidName.startsWith(source.androidPrefix) ? androidName.slice(source.androidPrefix.length) : androidName;
+  return `${source.keyPrefix}.${stem.replaceAll("_", ".")}`;
 }
 
 const ownershipMarker = keyPrefix => `[android:${keyPrefix}]`;
 
-function androidName(module, key) {
-  return module.androidPrefix + key.slice(module.keyPrefix.length + 1).replaceAll(".", "_");
+function sourceDefinitions(module) {
+  return module.sources ?? [{ keyPrefix: module.keyPrefix, androidPrefix: module.androidPrefix }];
+}
+
+function androidName(source, key) {
+  return source.androidPrefix + key.slice(source.keyPrefix.length + 1).replaceAll(".", "_");
 }
 
 function parseResources(xml) {
@@ -110,13 +120,18 @@ function validatePlaceholders(resources, key) {
 
 function render(module, locale) {
   const rows = [];
-  const prefix = `${module.keyPrefix}.`;
-  for (const key of Object.keys(catalog.strings).filter(key => key.startsWith(prefix) && catalog.strings[key].comment?.includes(ownershipMarker(module.keyPrefix))).sort()) {
+  const ownedKeys = sourceDefinitions(module).flatMap(source => {
+    const prefix = `${source.keyPrefix}.`;
+    return Object.keys(catalog.strings)
+      .filter(key => key.startsWith(prefix) && catalog.strings[key].comment?.includes(ownershipMarker(module.keyPrefix)))
+      .map(key => ({ key, source }));
+  }).sort((left, right) => left.key.localeCompare(right.key));
+  for (const { key, source } of ownedKeys) {
     const entry = catalog.strings[key];
     const resource = localized(entry, locale, key);
     const allLocales = Object.keys(config.locales).map(candidate => localized(entry, candidate, key));
     validatePlaceholders(allLocales, key);
-    const name = androidName(module, key);
+    const name = androidName(source, key);
     if (resource.type === "string") rows.push(`    <string name="${name}">${androidFormat(resource.value)}</string>`);
     else {
       rows.push(`    <plurals name="${name}">`);
@@ -130,7 +145,7 @@ function render(module, locale) {
 if (adopt) await adoptExisting();
 
 let stale = false;
-for (const module of config.modules) {
+for (const module of outputModules) {
   for (const [appleLocale, directory] of Object.entries(config.locales)) {
     const output = join(repo, module.resourceRoot, directory, module.file);
     const expected = render(module, appleLocale);

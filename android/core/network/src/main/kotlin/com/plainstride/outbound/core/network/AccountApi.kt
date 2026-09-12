@@ -21,8 +21,10 @@ import retrofit2.http.PUT
     val contactEmail: String? = null,
     val bio: String? = null,
     val contactPhone: String? = null,
+    val onboardingStatus: String? = null,
     val onboardingCompleted: Boolean? = null,
 )
+@Serializable data class OnboardingResolutionResponse(val onboardingStatus: String)
 @Serializable data class UpdateAccountRequest(val username: String? = null, val displayName: String, val bio: String? = null, val contactEmail: String? = null, val contactPhone: String? = null)
 
 @Serializable data class GuideSelectionDto(
@@ -75,6 +77,7 @@ import retrofit2.http.PUT
 interface AccountApiService {
     @GET("v1/auth/me") suspend fun currentAccount(@Header("Authorization") authorization: String): Response<AccountDto>
     @PATCH("v1/auth/me") suspend fun updateAccount(@Header("Authorization") authorization: String, @Body body: UpdateAccountRequest): Response<AccountDto>
+    @retrofit2.http.POST("v1/auth/onboarding/skip") suspend fun skipOnboarding(@Header("Authorization") authorization: String): Response<OnboardingResolutionResponse>
     @GET("v1/auth/me/preferences") suspend fun preferences(@Header("Authorization") authorization: String): Response<UserPreferencesResponseDto>
     @PUT("v1/auth/me/preferences") suspend fun updatePreferences(@Header("Authorization") authorization: String, @Body body: UserPreferencesDto): Response<UserPreferencesResponseDto>
 }

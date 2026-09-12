@@ -14,6 +14,7 @@ data class SessionCredentials(
 data class SessionAccount(
     val id: String,
     val onboardingCompleted: Boolean?,
+    val onboardingStatus: String? = null,
 )
 
 interface SecureSessionStore {

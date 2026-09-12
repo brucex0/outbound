@@ -4,10 +4,11 @@ import javax.inject.Inject
 import com.plainstride.outbound.core.auth.SessionCoordinator
 import com.plainstride.outbound.core.model.PrimaryMotivation
 import com.plainstride.outbound.core.model.RunGoalType
+import com.plainstride.outbound.core.model.PlanningState
 import com.plainstride.outbound.core.network.AccountApiService
 import com.plainstride.outbound.core.network.ApiResult
+import com.plainstride.outbound.core.network.CreateTrainingGoalRequest
 import com.plainstride.outbound.core.network.PlanningApiService
-import com.plainstride.outbound.core.network.RunnerProfileRequest
 import com.plainstride.outbound.core.network.TrainingProfileRequest
 import com.plainstride.outbound.core.network.UpdateAccountRequest
 import com.plainstride.outbound.core.network.apiCall
@@ -26,19 +27,35 @@ class DefaultOnboardingRepository @Inject constructor(
             account.displayName,
             account.username,
             account.normalizedEmail,
-            account.onboardingCompleted == true,
+            account.resolvedOnboardingStatus(),
         )
     }
 
     override suspend fun updateIdentity(displayName: String, username: String, contactEmail: String?): Result<OnboardingAccount> = runCatching {
-        val account = apiCall { accounts.updateAccount(authorization(), UpdateAccountRequest(username, displayName, contactEmail)) }.valueOrThrow()
-        OnboardingAccount(account.id, account.displayName, account.username, account.normalizedEmail, account.onboardingCompleted == true)
+        val account = apiCall {
+            accounts.updateAccount(
+                authorization(),
+                UpdateAccountRequest(username = username, displayName = displayName, contactEmail = contactEmail),
+            )
+        }.valueOrThrow()
+        OnboardingAccount(account.id, account.displayName, account.username, account.normalizedEmail, account.resolvedOnboardingStatus())
     }
 
     override suspend fun updateTrainingProfile(input: TrainingProfileInput): Result<Unit> = runCatching {
         val authorization = authorization()
-        val current = apiCall { personalization.trainingProfile(authorization) }.valueOrThrow()
-        apiCall { personalization.updateTrainingProfile(authorization, TrainingProfileRequest(input.sexAtBirth?.name?.lowercase(), input.birthDate, input.heightCentimeters, input.weightKilograms, current.primaryMotivation, current.preferredRunGoalType)) }.valueOrThrow()
+        apiCall {
+            personalization.updateTrainingProfile(
+                authorization,
+                TrainingProfileRequest(
+                    input.sexAtBirth?.name?.lowercase(),
+                    input.birthDate,
+                    input.heightCentimeters,
+                    input.weightKilograms,
+                    input.objective.primaryMotivation,
+                    input.objective.preferredRunGoalType,
+                ),
+            )
+        }.valueOrThrow()
         Unit
     }
 
@@ -47,26 +64,32 @@ class DefaultOnboardingRepository @Inject constructor(
         onFailure = { Result.failure(it) },
     )
 
-    override suspend fun completeOnboarding(input: RunnerProfileInput): Result<Unit> = runCatching {
+    override suspend fun skipOnboarding(): Result<OnboardingStatus> = runCatching {
+        apiCall { accounts.skipOnboarding(authorization()) }.valueOrThrow().onboardingStatus.toStatus()
+    }
+
+    override suspend fun createPlan(input: PlanBuilderInput): Result<PlanningState> = runCatching {
         apiCall {
-            personalization.updateProfile(
+            personalization.createGoal(
                 authorization(),
-                RunnerProfileRequest(
-                    goalSummary = input.goal.goalSummary,
-                    scheduleSummary = "${input.targetSessionsPerWeek} sessions/week; up to ${input.availableMinutes} minutes on weekdays",
-                    comfortableDurationMinutes = input.comfortableMinutes,
-                    recentSessionsPerWeek = input.recentSessionsPerWeek,
-                    targetSessionsPerWeek = input.targetSessionsPerWeek,
-                    preferredLongRunDay = input.preferredLongRunDay,
-                    guidanceDetail = "balanced",
-                    primaryMotivation = input.goal.motivation,
-                    preferredRunGoalType = RunGoalType.time,
-                    constraints = mapOf("maxWeekdayMinutes" to input.availableMinutes.toString()),
-                    complete = true,
+                CreateTrainingGoalRequest(
+                    type = input.objective.wireValue,
+                    activities = input.activities.map { it.modality },
+                    baselineContext = input.baselineContext.wireValue,
+                    targetDate = input.eventDate.takeIf { input.objective == PlanObjective.EventPreparation },
+                    targetDistanceMeters = input.eventDistanceMeters.takeIf { input.objective == PlanObjective.EventPreparation },
+                    priority = if (input.objective == PlanObjective.EventPreparation) "finish" else "generalHealth",
+                    preferredDays = input.preferredDays,
+                    daysPerWeekTarget = input.sessionsPerWeek,
+                    maxSessionMinutes = input.availableMinutes,
+                    riskTolerance = if (input.baselineContext == PlanBaselineContext.ReturningAfterBreak) "conservative" else "balanced",
+                    constraints = buildMap {
+                        input.constraints.takeIf(String::isNotBlank)?.let { put("notes", it) }
+                        input.otherObjective.takeIf(String::isNotBlank)?.let { put("otherObjective", it) }
+                    },
                 ),
             )
         }.valueOrThrow()
-        Unit
     }
 
     private suspend fun authorization(): String = sessions.validAccessToken()?.let { "Bearer $it" } ?: throw OnboardingDataException.SignedOut
@@ -82,16 +105,36 @@ private fun <T> ApiResult<T>.valueOrThrow(): T = when (this) {
     is ApiResult.Failure -> throw OnboardingDataException.Api(error)
 }
 
-private val RunningGoal.goalSummary: String get() = when (this) {
-    RunningGoal.Consistency -> "Build a consistent running habit"
-    RunningGoal.Start -> "Start running safely"
-    RunningGoal.Comeback -> "Return to running consistently"
-    RunningGoal.Race -> "Prepare for a race"
-    RunningGoal.Faster -> "Improve running performance"
+private fun com.plainstride.outbound.core.network.AccountDto.resolvedOnboardingStatus() =
+    onboardingStatus?.toStatus() ?: if (onboardingCompleted == true) OnboardingStatus.completed else OnboardingStatus.pending
+
+private fun String.toStatus() = runCatching { OnboardingStatus.valueOf(this) }.getOrDefault(OnboardingStatus.pending)
+
+private val PlanObjective.wireValue: String get() = when (this) {
+    PlanObjective.EventPreparation -> "eventPreparation"
+    PlanObjective.Endurance -> "endurance"
+    PlanObjective.Speed -> "speed"
+    PlanObjective.WeightLoss -> "weightLoss"
+    PlanObjective.FitnessMaintenance -> "fitnessMaintenance"
+    PlanObjective.HealthEnergy -> "healthEnergy"
+    PlanObjective.Other -> "other"
 }
 
-private val RunningGoal.motivation: PrimaryMotivation get() = when (this) {
-    RunningGoal.Consistency, RunningGoal.Comeback -> PrimaryMotivation.consistency
-    RunningGoal.Race, RunningGoal.Faster -> PrimaryMotivation.performance
-    RunningGoal.Start -> PrimaryMotivation.generalFitness
+private val PlanBaselineContext.wireValue: String get() = when (this) {
+    PlanBaselineContext.StartingOut -> "startingOut"
+    PlanBaselineContext.CurrentlyActive -> "currentlyActive"
+    PlanBaselineContext.ReturningAfterBreak -> "returningAfterBreak"
+}
+
+private val PlanObjective.primaryMotivation: PrimaryMotivation get() = when (this) {
+    PlanObjective.EventPreparation, PlanObjective.Endurance, PlanObjective.Speed -> PrimaryMotivation.performance
+    PlanObjective.WeightLoss -> PrimaryMotivation.weightLoss
+    PlanObjective.FitnessMaintenance -> PrimaryMotivation.weightMaintenance
+    PlanObjective.HealthEnergy, PlanObjective.Other -> PrimaryMotivation.generalFitness
+}
+
+private val PlanObjective.preferredRunGoalType: RunGoalType get() = when (this) {
+    PlanObjective.EventPreparation, PlanObjective.Endurance -> RunGoalType.distance
+    PlanObjective.WeightLoss -> RunGoalType.calories
+    PlanObjective.Speed, PlanObjective.FitnessMaintenance, PlanObjective.HealthEnergy, PlanObjective.Other -> RunGoalType.time
 }

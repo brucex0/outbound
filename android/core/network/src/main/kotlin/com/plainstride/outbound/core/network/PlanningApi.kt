@@ -27,7 +27,8 @@ import com.plainstride.outbound.core.model.TrainingProfile
 @Serializable
 data class CreateTrainingGoalRequest(
     val type: String,
-    val primaryModality: Modality? = null,
+    val activities: List<Modality>,
+    val baselineContext: String? = null,
     val targetDate: String? = null,
     val targetDistanceMeters: Double? = null,
     val targetEventName: String? = null,
