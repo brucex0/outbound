@@ -11,6 +11,18 @@ struct ConnectionLinkConsumptionOutcome: Sendable {
     let analyticsResult: String
 }
 
+struct ConnectionLinkFeedback: Equatable {
+    enum Style: Equatable {
+        case progress
+        case success
+        case information
+        case error
+    }
+
+    let text: String
+    let style: Style
+}
+
 @MainActor
 final class TogetherStore: ObservableObject {
     @Published private(set) var state: TogetherResponseDTO
@@ -31,7 +43,7 @@ final class TogetherStore: ObservableObject {
     @Published private(set) var blocks: [SocialBlockDTO] = []
     @Published private(set) var resultsByActivityEventID: [String: ActivityEventResultDTO] = [:]
     @Published private(set) var recordingActivityEventID: String?
-    @Published private(set) var connectionLinkToast: String?
+    @Published private(set) var connectionLinkFeedback: ConnectionLinkFeedback?
 
     private let api: APIClient
     private let defaults: UserDefaults
@@ -266,21 +278,25 @@ final class TogetherStore: ObservableObject {
     }
 
     func consumeConnectionLink(code: String) async -> ConnectionLinkConsumptionOutcome {
+        connectionLinkFeedback = ConnectionLinkFeedback(
+            text: String(localized: "Checking QR code…", table: "ConnectionQRCode"),
+            style: .progress
+        )
         do {
             let response = try await api.requestConnection(linkCode: code)
-            connectionLinkToast = switch response.result {
+            connectionLinkFeedback = switch response.result {
             case "requested":
-                String(localized: "Connection request sent")
+                ConnectionLinkFeedback(text: String(localized: "Connection request sent"), style: .success)
             case "already_pending":
-                String(localized: "Connection request already sent")
+                ConnectionLinkFeedback(text: String(localized: "Connection request already sent"), style: .information)
             case "incoming_pending":
-                String(localized: "This runner already sent you a connection request")
+                ConnectionLinkFeedback(text: String(localized: "This runner already sent you a connection request"), style: .information)
             case "already_connected":
-                String(localized: "You’re already connected")
+                ConnectionLinkFeedback(text: String(localized: "You’re already connected"), style: .information)
             case "self":
-                String(localized: "This is your QR code")
+                ConnectionLinkFeedback(text: String(localized: "This is your QR code"), style: .information)
             default:
-                String(localized: "Connection request updated")
+                ConnectionLinkFeedback(text: String(localized: "Connection request updated"), style: .success)
             }
             errorMessage = nil
             if response.result != "self" {
@@ -293,7 +309,10 @@ final class TogetherStore: ObservableObject {
                 analyticsResult: Self.analyticsConnectionLinkResult(response.result)
             )
         } catch {
-            connectionLinkToast = String(localized: "Could not send the connection request. Try again.")
+            connectionLinkFeedback = ConnectionLinkFeedback(
+                text: String(localized: "Could not send the connection request. Try again."),
+                style: .error
+            )
             let isPermanentFailure: Bool
             if let apiError = error as? APIError,
                case let .http(statusCode, _, _) = apiError {
@@ -308,8 +327,8 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func clearConnectionLinkToast() {
-        connectionLinkToast = nil
+    func clearConnectionLinkFeedback() {
+        connectionLinkFeedback = nil
     }
 
     func react(to post: TogetherPostDTO) async {
@@ -635,7 +654,7 @@ final class TogetherStore: ObservableObject {
         blocks = []
         resultsByActivityEventID = [:]
         recordingActivityEventID = nil
-        connectionLinkToast = nil
+        connectionLinkFeedback = nil
         nextConnectionsCursor = nil
         latestPeopleSearchQuery = ""
     }

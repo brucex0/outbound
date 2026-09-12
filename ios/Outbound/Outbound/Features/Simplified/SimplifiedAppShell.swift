@@ -205,7 +205,7 @@ struct SimplifiedAppShell: View {
     @State private var replacementPlanRecommendation: TrainingPlanRecommendation?
     @State private var completionCircle: CircleDTO?
     @State private var circleToast: String?
-    @State private var connectionToast: String?
+    @State private var connectionFeedback: ConnectionLinkFeedback?
     @State private var tabBarHeight: CGFloat = 83
 
     var body: some View {
@@ -281,32 +281,31 @@ struct SimplifiedAppShell: View {
                 )
         }
         .overlay(alignment: .top) {
-            if let toast = circleToast ?? connectionToast {
-                Label(
-                    toast,
-                    systemImage: circleToast == nil ? "person.badge.plus" : "person.3.fill"
-                )
+            if let circleToast {
+                Label(circleToast, systemImage: "person.3.fill")
                     .font(.subheadline.weight(.semibold))
                     .padding(.horizontal, 14).padding(.vertical, 10)
                     .background(.regularMaterial, in: Capsule())
                     .shadow(color: .black.opacity(0.12), radius: 12, y: 5)
                     .padding(.top, 8)
                     .transition(.move(edge: .top).combined(with: .opacity))
+            } else if let connectionFeedback {
+                connectionFeedbackToast(connectionFeedback)
             }
         }
         .animation(.snappy, value: circleToast)
-        .animation(.snappy, value: connectionToast)
+        .animation(.snappy, value: connectionFeedback)
         .task(id: circleToast) {
             guard circleToast != nil else { return }
             try? await Task.sleep(for: .seconds(3.6))
             guard !Task.isCancelled else { return }
             circleToast = nil
         }
-        .task(id: connectionToast) {
-            guard connectionToast != nil else { return }
+        .task(id: connectionFeedback) {
+            guard let connectionFeedback, connectionFeedback.style != .progress else { return }
             try? await Task.sleep(for: .seconds(3.6))
             guard !Task.isCancelled else { return }
-            connectionToast = nil
+            self.connectionFeedback = nil
         }
         .fullScreenCover(item: $completionCircle) { circle in
             CircleCompletionCelebrationView(circle: circle) {
@@ -481,11 +480,11 @@ struct SimplifiedAppShell: View {
             circleToast = message
             circleStore.clearToast()
         }
-        .onChange(of: socialStore.connectionLinkToast, initial: true) { _, message in
-            guard let message else { return }
+        .onChange(of: socialStore.connectionLinkFeedback, initial: true) { _, feedback in
+            guard let feedback else { return }
             selection = .social
-            connectionToast = message
-            socialStore.clearConnectionLinkToast()
+            connectionFeedback = feedback
+            socialStore.clearConnectionLinkFeedback()
         }
         .onChange(of: preActivityRoute) { _, route in
             selectedRouteName = route?.name
@@ -500,6 +499,35 @@ struct SimplifiedAppShell: View {
                 showsAssistant = false
             }
         }
+    }
+
+    private func connectionFeedbackToast(_ feedback: ConnectionLinkFeedback) -> some View {
+        HStack(spacing: 8) {
+            switch feedback.style {
+            case .progress:
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(theme.accentColor)
+            case .success:
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+            case .information:
+                Image(systemName: "info.circle.fill")
+                    .foregroundStyle(theme.accentColor)
+            case .error:
+                Image(systemName: "exclamationmark.circle.fill")
+                    .foregroundStyle(.red)
+            }
+
+            Text(feedback.text)
+        }
+        .font(.subheadline.weight(.semibold))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.regularMaterial, in: Capsule())
+        .shadow(color: .black.opacity(0.12), radius: 12, y: 5)
+        .padding(.top, 8)
+        .transition(.move(edge: .top).combined(with: .opacity))
     }
 
     private var assistantScreenName: String {
