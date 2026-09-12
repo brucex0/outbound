@@ -229,14 +229,34 @@ export async function circlePayload(circleId: string, viewerId: string, includeH
   const circle = await prisma.circle.findUnique({ where: { id: circleId }, include: { owner: { select: shareSafeMemberSelect }, members: { where: { status: "active" }, include: { user: { select: shareSafeMemberSelect } }, orderBy: { joinedAt: "asc" } } } });
   if (!circle) return null;
   const week = await ensureCurrentWeek(prisma, circle.id, new Date());
-  const [commitments, history, cheers, viewerMembership, completionPresentation, invitations, recentEvents] = await Promise.all([
+  const [commitments, history, cheers, viewerMembership, completionPresentation, invitations, activityEvents] = await Promise.all([
     prisma.circleCommitment.findMany({ where: { weekId: week.id } }),
     includeHistory ? prisma.circleWeek.findMany({ where: { circleId, startsAt: { lt: week.startsAt } }, orderBy: { startsAt: "desc" }, take: 12 }) : Promise.resolve([]),
     prisma.circleCheer.findMany({ where: { circleId, weekId: week.id }, orderBy: { createdAt: "desc" }, take: 30 }),
     prisma.circleMember.findUnique({ where: { circleId_userId: { circleId, userId: viewerId } }, select: { notificationMuted: true } }),
     prisma.circleWeekPresentation.findUnique({ where: { weekId_userId: { weekId: week.id, userId: viewerId } }, select: { presentedAt: true } }),
     circle.ownerId === viewerId ? prisma.circleInvitation.findMany({ where: { circleId, status: "pending", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, include: { sender: { select: shareSafeMemberSelect }, recipient: { select: shareSafeMemberSelect }, circle: { select: { id: true, name: true } } }, orderBy: { createdAt: "desc" } }) : Promise.resolve([]),
-    prisma.activityEvent.findMany({ where: { sourceCircleId: circleId, participants: { some: { userId: viewerId, status: "going" } } }, select: { id: true, title: true, startsAt: true, status: true }, orderBy: { startsAt: "desc" }, take: 5 }),
+    prisma.activityEvent.findMany({
+      where: {
+        sourceCircleId: circleId,
+        status: { in: ["scheduled", "active", "reconciling", "completed"] },
+        participants: { some: { userId: viewerId, status: "going" } },
+      },
+      select: {
+        id: true,
+        creatorId: true,
+        title: true,
+        startsAt: true,
+        endsAt: true,
+        locationName: true,
+        note: true,
+        status: true,
+        creator: { select: shareSafeMemberSelect },
+        participants: { where: { status: "going" }, select: { userId: true } },
+      },
+      orderBy: { startsAt: "desc" },
+      take: 10,
+    }),
   ]);
   const contributions = await prisma.circleContribution.findMany({
     where: { weekId: week.id },
@@ -290,10 +310,28 @@ export async function circlePayload(circleId: string, viewerId: string, includeH
     completionPresentationPending: week.state === "completed" && completionPresentation != null && completionPresentation.presentedAt == null,
     cheers: cheers.map((cheer) => ({ id: cheer.id, senderUserId: cheer.senderId, recipientUserId: cheer.recipientId, presetType: cheer.presetType, createdAt: cheer.createdAt })),
     invitations: invitations.map((invitation) => ({ id: invitation.id, circleId: invitation.circleId, circle: invitation.circle, sender: invitation.sender, recipient: invitation.recipient, status: invitation.status, createdAt: invitation.createdAt, expiresAt: invitation.expiresAt })),
+    upcomingActivities: activityEvents
+      .filter((event) => ["scheduled", "active"].includes(event.status))
+      .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
+      .map((event) => ({
+        id: event.id,
+        title: event.title,
+        startsAt: event.startsAt,
+        endsAt: event.endsAt,
+        locationName: event.locationName,
+        paceNote: event.note,
+        status: event.status,
+        creator: event.creator,
+        attendeeCount: event.participants.length,
+        currentUserGoing: event.participants.some((participant) => participant.userId === viewerId),
+        currentUserRole: event.creatorId === viewerId ? "owner" : "participant",
+      })),
     recentMoments: [
       ...(week.state === "completed" && week.completedAt ? [{ id: `completion:${week.id}`, type: "weekly_completion", createdAt: week.completedAt, title: null }] : []),
       ...cheers.map((cheer) => ({ id: `cheer:${cheer.id}`, type: "cheer", createdAt: cheer.createdAt, title: cheer.presetType })),
-      ...recentEvents.map((event) => ({ id: `event:${event.id}`, type: "planned_run", createdAt: event.startsAt, title: event.title })),
+      ...activityEvents
+        .filter((event) => ["reconciling", "completed"].includes(event.status))
+        .map((event) => ({ id: `event:${event.id}`, type: "completed_activity", createdAt: event.startsAt, title: event.title })),
     ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 10),
     history: includeHistory ? history.map((item) => ({ id: item.id, startsAt: item.startsAt, endsAt: item.endsAt, focusMode: item.focusMode, state: item.state })) : undefined,
   };
