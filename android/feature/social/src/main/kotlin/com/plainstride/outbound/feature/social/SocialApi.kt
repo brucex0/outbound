@@ -63,6 +63,7 @@ interface SocialApiService {
     @DELETE("v1/social/users/{id}/block") suspend fun unblock(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
     @GET("v1/social/blocks") suspend fun blocks(@Header("Authorization") auth: String): Response<BlocksResponse>
     @POST("v1/social/connection-links") suspend fun connectionLink(@Header("Authorization") auth: String): Response<ConnectionLink>
+    @GET("v1/social/connection-links/{code}") suspend fun connectionLinkPreview(@Header("Authorization") auth: String, @Path("code") code: String): Response<ConnectionLinkPreview>
     @POST("v1/social/connection-links/{code}/request") suspend fun consumeConnectionLink(@Header("Authorization") auth: String, @Path("code") code: String): Response<ConnectionLinkResult>
     @POST("v1/social/referrals") suspend fun referralLink(@Header("Authorization") auth: String): Response<ConnectionLink>
     @PUT("v1/social/workout-presence") suspend fun setPresence(@Header("Authorization") auth: String, @Body body: PresenceBody): Response<Unit>

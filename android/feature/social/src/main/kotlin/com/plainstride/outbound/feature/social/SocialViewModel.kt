@@ -20,9 +20,11 @@ data class SocialUiState(
     val feedCursor: String? = null, val feedLoading: Boolean = false,
     val connectionQr: ConnectionQrContent? = null, val connectionQrLoading: Boolean = false,
     val connectionQrFailed: Boolean = false, val connectionRequestLoading: Boolean = false,
+    val connectionProfileLoading: Boolean = false, val connectionProfileCode: String? = null,
+    val connectionProfileIsSelf: Boolean = false,
 )
 enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED }
-enum class ConnectionFeedback { CHECKING, REQUESTED, ALREADY_PENDING, INCOMING_PENDING, ALREADY_CONNECTED, SELF, UPDATED, REQUEST_FAILED, INVITE_LINK_FAILED }
+enum class ConnectionFeedback { CHECKING, REQUESTED, ALREADY_PENDING, INCOMING_PENDING, ALREADY_CONNECTED, SELF, UPDATED, REQUEST_FAILED, PROFILE_LOAD_FAILED, INVITE_LINK_FAILED }
 sealed interface ConnectionEffect {
     data class Feedback(val value: ConnectionFeedback, val closeScanner: Boolean) : ConnectionEffect
     data class ShareInvitation(val url: String) : ConnectionEffect
@@ -66,8 +68,8 @@ sealed interface ConnectionEffect {
     }
     fun toggleCheer(post: SocialPost) = mutate("social_cheer_toggled") { repository.setCheer(post.id, !post.viewerHasCheered).getOrThrow(); refresh() }
     fun trackActivityDetailOpened() = analytics.record(AnalyticsEvent("activity_detail_opened", mapOf(AnalyticsProperty.Source to "social_feed")))
-    fun openProfile(person: SocialPerson) { mutableState.update { it.copy(selectedProfile = person) }; analytics.record(AnalyticsEvent("social_profile_opened", mapOf(AnalyticsProperty.Source to "social"))) }
-    fun closeProfile() = mutableState.update { it.copy(selectedProfile = null) }
+    fun openProfile(person: SocialPerson) { mutableState.update { it.copy(selectedProfile = person, connectionProfileCode = null, connectionProfileIsSelf = false) }; analytics.record(AnalyticsEvent("social_profile_opened", mapOf(AnalyticsProperty.Source to "social"))) }
+    fun closeProfile() = mutableState.update { it.copy(selectedProfile = null, connectionProfileCode = null, connectionProfileIsSelf = false) }
     fun openTarget(type:String,id:String){when(type){"activity","post"->viewModelScope.launch{var post=mutableState.value.home.posts.firstOrNull{it.id==id||it.activity?.id==id};var cursor=mutableState.value.home.nextCursor;repeat(5){if(post!=null||cursor==null)return@repeat;repository.loadFeed(cursor).onSuccess{page->post=page.items.firstOrNull{it.id==id||it.activity?.id==id};cursor=page.nextCursor}};post?.let(::openComments)};"event"->viewModelScope.launch{repository.event(id).onSuccess{event->mutableState.update{it.copy(selectedEvent=event)}}};"circle"->viewModelScope.launch{repository.circle(id).onSuccess{circle->mutableState.update{it.copy(selectedCircle=circle)}}};"group"->mutableState.update{state->state.copy(selectedGroup=state.home.groups.firstOrNull{it.id==id})};"invitation"->mutableState.update{state->state.copy(selectedInvitation=state.home.invitations.firstOrNull{it.id==id||it.objectId==id})}}}
     fun closeTarget()=mutableState.update{it.copy(selectedEvent=null,selectedGroup=null,selectedInvitation=null)}
     fun openCircle(circle: CircleSummary) = viewModelScope.launch { repository.circle(circle.id).onSuccess { value -> mutableState.update { it.copy(selectedCircle = value) } } }
@@ -116,6 +118,54 @@ sealed interface ConnectionEffect {
             onFailure = { connectionEffects.emit(ConnectionEffect.Feedback(ConnectionFeedback.INVITE_LINK_FAILED, closeScanner = false)) },
         )
     }
+    fun openConnectionCodeProfile(code: String) {
+        if (mutableState.value.connectionProfileLoading) return
+        mutableState.update { it.copy(connectionProfileLoading = true, selectedProfile = null, connectionProfileCode = null, connectionProfileIsSelf = false) }
+        viewModelScope.launch {
+            repository.connectionLinkPreview(code).fold(
+                onSuccess = { preview ->
+                    mutableState.update { it.copy(
+                        connectionProfileLoading = false,
+                        selectedProfile = preview.person,
+                        connectionProfileCode = code,
+                        connectionProfileIsSelf = preview.isSelf,
+                    ) }
+                    analytics.record(AnalyticsEvent("social_profile_opened", mapOf(AnalyticsProperty.EntrySource to "connection_qr_code")))
+                },
+                onFailure = { error ->
+                    mutableState.update { it.copy(connectionProfileLoading = false) }
+                    val reason = (error as? SocialException)?.reason
+                    analytics.record(AnalyticsEvent("social_operation_failed", mapOf(
+                        AnalyticsProperty.SourceType to "connection_qr_profile",
+                        AnalyticsProperty.ErrorCategory to if (reason in setOf(SocialError.FORBIDDEN, SocialError.NOT_FOUND, SocialError.INVALID_RESPONSE)) "invalid_link" else "api_unavailable",
+                    )))
+                    connectionEffects.emit(ConnectionEffect.Feedback(ConnectionFeedback.PROFILE_LOAD_FAILED, closeScanner = false))
+                },
+            )
+        }
+    }
+    fun connectFromConnectionCode() {
+        val code = mutableState.value.connectionProfileCode ?: return
+        if (mutableState.value.connectionRequestLoading) return
+        mutableState.update { it.copy(connectionRequestLoading = true) }
+        viewModelScope.launch {
+            repository.consumeConnectionLink(code).fold(
+                onSuccess = { response ->
+                    mutableState.update { it.copy(connectionRequestLoading = false, selectedProfile = response.person) }
+                    analytics.record(AnalyticsEvent("connection_qr_code_request_result", mapOf(
+                        AnalyticsProperty.Result to (response.result.takeIf { it in CONNECTION_RESULTS } ?: "unknown"),
+                    )))
+                    connectionEffects.emit(ConnectionEffect.Feedback(connectionFeedback(response.result), closeScanner = false))
+                    if (response.result != "self") refresh()
+                },
+                onFailure = {
+                    mutableState.update { it.copy(connectionRequestLoading = false) }
+                    analytics.record(AnalyticsEvent("connection_qr_code_request_result", mapOf(AnalyticsProperty.Result to "failure")))
+                    connectionEffects.emit(ConnectionEffect.Feedback(ConnectionFeedback.REQUEST_FAILED, closeScanner = false))
+                },
+            )
+        }
+    }
     fun consumeConnectionCode(code: String, showProgressFeedback: Boolean = false) {
         if (mutableState.value.connectionRequestLoading) return
         mutableState.update { it.copy(connectionRequestLoading = true) }
@@ -125,14 +175,7 @@ sealed interface ConnectionEffect {
             }
             repository.consumeConnectionLink(code).fold(
                 onSuccess = { response ->
-                    val feedback = when (response.result) {
-                        "requested" -> ConnectionFeedback.REQUESTED
-                        "already_pending" -> ConnectionFeedback.ALREADY_PENDING
-                        "incoming_pending" -> ConnectionFeedback.INCOMING_PENDING
-                        "already_connected" -> ConnectionFeedback.ALREADY_CONNECTED
-                        "self" -> ConnectionFeedback.SELF
-                        else -> ConnectionFeedback.UPDATED
-                    }
+                    val feedback = connectionFeedback(response.result)
                     mutableState.update { it.copy(connectionRequestLoading = false) }
                     analytics.record(AnalyticsEvent("connection_qr_code_request_result", mapOf(
                         AnalyticsProperty.Result to (response.result.takeIf { it in CONNECTION_RESULTS } ?: "unknown"),
@@ -171,5 +214,13 @@ sealed interface ConnectionEffect {
 
     private companion object {
         val CONNECTION_RESULTS = setOf("requested", "already_pending", "incoming_pending", "already_connected", "self")
+        fun connectionFeedback(result: String) = when (result) {
+            "requested" -> ConnectionFeedback.REQUESTED
+            "already_pending" -> ConnectionFeedback.ALREADY_PENDING
+            "incoming_pending" -> ConnectionFeedback.INCOMING_PENDING
+            "already_connected" -> ConnectionFeedback.ALREADY_CONNECTED
+            "self" -> ConnectionFeedback.SELF
+            else -> ConnectionFeedback.UPDATED
+        }
     }
 }

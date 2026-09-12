@@ -67,7 +67,7 @@ import com.plainstride.outbound.core.designsystem.*
     LaunchedEffect(targetType,targetId,state.loading){
         if (!state.loading && targetType == "connections") connectionsOpen = true
         else if (!state.loading && targetType == "connection_link" && !targetId.isNullOrBlank()) {
-            viewModel.consumeConnectionCode(targetId, showProgressFeedback = true)
+            viewModel.openConnectionCodeProfile(targetId)
             onConnectionLinkConsumed()
         }
         else if(!state.loading&&targetType!=null&&targetId!=null)viewModel.openTarget(targetType,targetId)
@@ -96,14 +96,17 @@ import com.plainstride.outbound.core.designsystem.*
         onPayload = { payload -> connectionCodeFromPayload(payload)?.let(viewModel::consumeConnectionCode) },
         onClose = { scannerOpen = false },
     )
+    if (state.connectionProfileLoading) ConnectionProfileLoadingScreen()
     state.selectedProfile?.let { person ->
         ProfileScreen(
             person = person,
             posts = state.home.posts.filter { it.author.id == person.id },
             close = viewModel::closeProfile,
-            connect = { viewModel.connect(person) },
+            connect = { if (state.connectionProfileCode != null) viewModel.connectFromConnectionCode() else viewModel.connect(person) },
             accept = { person.connectionId?.let(viewModel::acceptConnection) },
             remove = { person.connectionId?.let(viewModel::removeConnection) },
+            isCurrentUser = state.connectionProfileIsSelf,
+            isProcessing = state.connectionRequestLoading,
             openActivity = { activity ->
                 viewModel.closeProfile()
                 selectedActivity = activity
@@ -130,9 +133,21 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
     ConnectionFeedback.SELF -> R.string.social_self_qr_code
     ConnectionFeedback.UPDATED -> R.string.social_connection_request_updated
     ConnectionFeedback.REQUEST_FAILED -> R.string.social_connection_request_failed
+    ConnectionFeedback.PROFILE_LOAD_FAILED -> R.string.social_qr_load_failure
     ConnectionFeedback.INVITE_LINK_FAILED -> R.string.social_invite_link_failed
 }
 @Composable private fun ActionDialog(title:String,action:String,onAction:()->Unit,onClose:()->Unit)=AlertDialog(onDismissRequest=onClose,title={Text(title)},confirmButton={TextButton(onAction){Text(action)}},dismissButton={TextButton(onClose){Text(stringResource(R.string.social_done))}})
+
+@Composable private fun ConnectionProfileLoadingScreen() = Dialog(onDismissRequest = {}, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                CircularProgressIndicator()
+                Text(stringResource(R.string.social_checking_qr_code), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
 
 @Composable private fun SocialScreen(state: SocialUiState, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openCircle: (CircleSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(FeedActivity)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (SocialGroup) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, createCircle:()->Unit, modifier: Modifier) {
     var safetyPost by remember { mutableStateOf<SocialPost?>(null) }
@@ -457,6 +472,8 @@ private fun ProfileScreen(
     connect: () -> Unit,
     accept: () -> Unit,
     remove: () -> Unit,
+    isCurrentUser: Boolean = false,
+    isProcessing: Boolean = false,
     openActivity: (FeedActivity) -> Unit,
 ) {
     var confirmsRemoval by remember { mutableStateOf(false) }
@@ -473,8 +490,9 @@ private fun ProfileScreen(
                     },
                     actions = {
                         when {
-                            person.relationship == "none" -> TextButton(connect) { Text(stringResource(R.string.social_connect)) }
-                            person.relationship == "pending" && person.connectionDirection == "incoming" -> TextButton(accept) { Text(stringResource(R.string.social_accept)) }
+                            isCurrentUser -> Unit
+                            person.relationship == "none" -> TextButton(connect, enabled = !isProcessing) { Text(stringResource(R.string.social_connect)) }
+                            person.relationship == "pending" && person.connectionDirection == "incoming" -> TextButton(accept, enabled = !isProcessing) { Text(stringResource(R.string.social_accept)) }
                             person.relationship in setOf("accepted", "connected") -> IconButton({ confirmsRemoval = true }) {
                                 Icon(Icons.Outlined.MoreVert, stringResource(R.string.social_profile_actions))
                             }

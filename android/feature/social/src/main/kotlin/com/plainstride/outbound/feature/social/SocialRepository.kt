@@ -35,6 +35,7 @@ interface SocialRepository {
     suspend fun unblock(personId: String): Result<Unit>
     suspend fun connectionQr(): Result<ConnectionQrContent>
     suspend fun referralLink(): Result<ConnectionLink>
+    suspend fun connectionLinkPreview(code: String): Result<ConnectionLinkPreview>
     suspend fun consumeConnectionLink(code: String): Result<ConnectionLinkResult>
     suspend fun circles(): Result<List<CircleSummary>>
     suspend fun circle(id: String): Result<CircleSummary>
@@ -137,7 +138,10 @@ class OfflineFirstSocialRepository @Inject constructor(
         }
     } }
     override suspend fun referralLink() = authenticated { apiCall { api.referralLink(it) } }
+    override suspend fun connectionLinkPreview(code: String) = authenticated { apiCall { api.connectionLinkPreview(it, code) } }
+        .map { preview -> preview.copy(person = preview.person.withRelationship()) }
     override suspend fun consumeConnectionLink(code: String) = authenticated { apiCall { api.consumeConnectionLink(it, code) } }
+        .map { response -> response.copy(person = response.person.withRelationship(response.relationship)) }
     override suspend fun circles() = authenticated { apiCall { api.circles(it) } }.map { it.circles }
     override suspend fun circle(id: String) = authenticated { apiCall { api.circle(it, id) } }
     override suspend fun cheerCircle(id: String, recipientId: String, preset: String) = authenticated { apiCall { api.circleCheer(it, id, CheerBody(recipientId, preset)) } }
@@ -177,6 +181,13 @@ class OfflineFirstSocialRepository @Inject constructor(
             is ApiResult.Failure -> Result.failure(SocialException(response.error.toSocialError()))
         }
     }
+
+    private fun SocialPerson.withRelationship(value: SocialRelationship? = relationshipDetails) = copy(
+        relationshipDetails = value,
+        relationship = value?.status ?: "none",
+        connectionId = value?.id,
+        connectionDirection = value?.direction,
+    )
 
     private companion object { const val NAMESPACE = "social.home"; const val HOME = "current"; const val CACHE_TTL = 5 * 60_000L }
 }
