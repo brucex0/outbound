@@ -1676,6 +1676,69 @@
         }
       }
     },
+    "circle.activity.going_count": {
+      "localizations": {
+        "en": {"stringUnit": {"state": "translated", "value": "%lld going"}},
+        "es": {"stringUnit": {"state": "translated", "value": "%lld confirmados"}},
+        "zh-Hans": {"stringUnit": {"state": "translated", "value": "%lld 人参加"}}
+      }
+    },
+    "circle.moment.activity_completed": {
+      "localizations": {
+        "en": {"stringUnit": {"state": "translated", "value": "Activity completed"}},
+        "es": {"stringUnit": {"state": "translated", "value": "Actividad completada"}},
+        "zh-Hans": {"stringUnit": {"state": "translated", "value": "活动已完成"}}
+      }
+    },
+    "circle.next_activity_format": {
+      "localizations": {
+        "en": {"stringUnit": {"state": "translated", "value": "Next: %@ · %@"}},
+        "es": {"stringUnit": {"state": "translated", "value": "Próxima: %@ · %@"}},
+        "zh-Hans": {"stringUnit": {"state": "translated", "value": "下一场：%@ · %@"}}
+      }
+    },
+    "circle.up_next": {
+      "localizations": {
+        "en": {"stringUnit": {"state": "translated", "value": "UP NEXT"}},
+        "es": {"stringUnit": {"state": "translated", "value": "PRÓXIMAMENTE"}},
+        "zh-Hans": {"stringUnit": {"state": "translated", "value": "接下来"}}
+      }
+    },
+    "social.event.open_details": {
+      "localizations": {
+        "en": {"stringUnit": {"state": "translated", "value": "Opens activity details"}},
+        "es": {"stringUnit": {"state": "translated", "value": "Abre los detalles de la actividad"}},
+        "zh-Hans": {"stringUnit": {"state": "translated", "value": "打开活动详情"}}
+      }
+    },
+    "social.event.paired_workout_detail": {
+      "localizations": {
+        "en": {"stringUnit": {"state": "translated", "value": "Circle activity · %@"}},
+        "es": {"stringUnit": {"state": "translated", "value": "Actividad del círculo · %@"}},
+        "zh-Hans": {"stringUnit": {"state": "translated", "value": "活力圈活动 · %@"}}
+      }
+    },
+    "social.event.start_with_circle": {
+      "localizations": {
+        "en": {"stringUnit": {"state": "translated", "value": "Start with Circle"}},
+        "es": {"stringUnit": {"state": "translated", "value": "Empezar con el círculo"}},
+        "zh-Hans": {"stringUnit": {"state": "translated", "value": "和活力圈一起开始"}}
+      }
+    },
+    "today.circle_activity": {
+      "localizations": {
+        "en": {"stringUnit": {"state": "translated", "value": "TODAY WITH YOUR CIRCLE"}},
+        "es": {"stringUnit": {"state": "translated", "value": "HOY CON TU CÍRCULO"}},
+        "zh-Hans": {"stringUnit": {"state": "translated", "value": "今天和活力圈一起"}}
+      }
+    },
+    "today.circle_activity.paired_format": {
+      "localizations": {
+        "en": {"stringUnit": {"state": "translated", "value": "Paired with %@ · %@"}},
+        "es": {"stringUnit": {"state": "translated", "value": "Combinada con %@ · %@"}},
+        "zh-Hans": {"stringUnit": {"state": "translated", "value": "已搭配 %@ · %@"}}
+      }
+    },
     "circle.invitation.promise": {
       "localizations": {
         "en": {

@@ -50,6 +50,13 @@ struct CircleCompactContent: View {
 
             Spacer(minLength: 16)
 
+            if !circle.upcomingActivities.isEmpty {
+                Image(systemName: "calendar.badge.clock")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(theme.heroForegroundColor)
+                    .accessibilityHidden(true)
+            }
+
             compactProgress
                 .fixedSize()
         }
@@ -115,6 +122,12 @@ struct CircleCompactContent: View {
     private var statusText: String {
         if circle.lifecycle == "archived" { return String(localized: "circle.status.archived", defaultValue: "Archived") }
         if circle.lifecycle == "awaiting_members" { return String(localized: "circle.status.awaiting", defaultValue: "Waiting for someone to join") }
+        if let activity = circle.upcomingActivities.first {
+            return String(
+                localized: "circle.next_activity_format",
+                defaultValue: "Next: \(activity.title) · \(activity.startsAt.formatted(date: .abbreviated, time: .shortened))"
+            )
+        }
         let personalCount = circle.members.first(where: \.isCurrentUser)?.contributedCount ?? 0
         if !circle.week.focusConfigured {
             return personalCount > 0
@@ -370,6 +383,7 @@ struct CircleDetailView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: OutboundSpacing.standard) {
                 header
+                if !current.upcomingActivities.isEmpty { upcomingActivitiesSection }
                 focusCard
                 membersSection
                 Button { showsPlanActivity = true; track(.circlePlanActivityStarted, [.entrySource: .string("circle_detail"), .participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } label: {
@@ -391,7 +405,7 @@ struct CircleDetailView: View {
             NavigationLink { CircleManagementView(circle: current) } label: { Image(systemName: "gearshape") }
                 .accessibilityLabel(String(localized: "circle.management", defaultValue: "Circle settings"))
         }
-        .sheet(isPresented: $showsPlanActivity) {
+        .sheet(isPresented: $showsPlanActivity, onDismiss: refreshAfterPlanning) {
             CreateActivityEventView(
                 sourceCircleID: current.id,
                 preselectedConnectionIDs: Set(invitees.map(\.id)),
@@ -405,6 +419,57 @@ struct CircleDetailView: View {
         .task {
             await circleStore.refreshCircle(id: current.id)
             track(.circleProgressOpened, [.entrySource: .string("circle_detail"), .selectionType: .string(current.week.focusMode), .participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))])
+        }
+    }
+
+    private var upcomingActivitiesSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(String(localized: "circle.up_next", defaultValue: "UP NEXT"))
+                .socialSectionLabel()
+
+            ForEach(current.upcomingActivities) { activity in
+                NavigationLink {
+                    ActivityEventDetailView(
+                        run: activity.activityEvent,
+                        entrySource: "circle_up_next"
+                    )
+                } label: {
+                    OutboundCard(style: .companion) {
+                        HStack(spacing: OutboundSpacing.standard) {
+                            Image(systemName: "calendar.badge.clock")
+                                .font(.title2)
+                                .foregroundStyle(OutboundPalette.companion)
+                                .frame(width: 42, height: 42)
+                                .background(OutboundPalette.companion.opacity(0.12), in: Circle())
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(activity.title)
+                                    .font(.headline)
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
+                                Text(upcomingActivitySummary(activity))
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func refreshAfterPlanning() {
+        Task {
+            await socialStore.refresh()
+            await circleStore.refreshCircle(id: current.id)
         }
     }
 
@@ -504,8 +569,17 @@ struct CircleDetailView: View {
     private var momentsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(String(localized: "circle.moments", defaultValue: "RECENT MOMENTS")).socialSectionLabel()
-            OutboundCard { ForEach(current.recentMoments) { moment in HStack { Image(systemName: moment.type == "cheer" ? "heart.fill" : moment.type == "planned_run" ? "calendar" : "sparkles").foregroundStyle(OutboundPalette.companion); Text(momentText(moment)).font(.subheadline); Spacer(); Text(moment.createdAt, style: .relative).font(.caption).foregroundStyle(.secondary) }.frame(minHeight: 44) } }
+            OutboundCard { ForEach(current.recentMoments) { moment in HStack { Image(systemName: moment.type == "cheer" ? "heart.fill" : moment.type == "completed_activity" ? "checkmark.circle.fill" : "sparkles").foregroundStyle(OutboundPalette.companion); Text(momentText(moment)).font(.subheadline); Spacer(); Text(moment.createdAt, style: .relative).font(.caption).foregroundStyle(.secondary) }.frame(minHeight: 44) } }
         }
+    }
+
+    private func upcomingActivitySummary(_ activity: CircleActivityEventDTO) -> String {
+        var parts = [activity.startsAt.formatted(date: .abbreviated, time: .shortened)]
+        if let locationName = activity.locationName, !locationName.isEmpty {
+            parts.append(locationName)
+        }
+        parts.append(String(localized: "circle.activity.going_count", defaultValue: "\(activity.attendeeCount) going"))
+        return parts.joined(separator: " · ")
     }
 
     private func historySection(_ history: [CircleWeekHistoryDTO]) -> some View {
@@ -570,7 +644,7 @@ struct CircleDetailView: View {
 
     private func momentText(_ moment: CircleMomentDTO) -> String {
         switch moment.type {
-        case "planned_run": return moment.title ?? String(localized: "circle.moment.activity_planned", defaultValue: "Activity planned")
+        case "completed_activity": return moment.title ?? String(localized: "circle.moment.activity_completed", defaultValue: "Activity completed")
         case "weekly_completion": return String(localized: "circle.moment.completed", defaultValue: "Weekly focus completed")
         default: return String(localized: "circle.moment.cheer", defaultValue: "A Cheer was sent")
         }

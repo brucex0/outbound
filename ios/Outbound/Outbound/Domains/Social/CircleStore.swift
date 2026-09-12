@@ -337,6 +337,21 @@ final class CircleStore: ObservableObject {
             currentUserMuted: false, completionPresentationPending: false,
             cheers: [.init(id: "ui-test-cheer", senderUserId: sage.id, recipientUserId: avery.id, presetType: "encouragement", createdAt: now.addingTimeInterval(-3_600))],
             invitations: [],
+            upcomingActivities: [
+                .init(
+                    id: "ui-test-circle-activity",
+                    title: "Saturday morning run",
+                    startsAt: now.addingTimeInterval(86_400),
+                    endsAt: now.addingTimeInterval(90_000),
+                    locationName: "Golden Gate Park",
+                    paceNote: "Easy and conversational",
+                    status: "scheduled",
+                    creator: sage,
+                    attendeeCount: 2,
+                    currentUserGoing: true,
+                    currentUserRole: "owner"
+                ),
+            ],
             recentMoments: [.init(id: "ui-test-moment", type: "cheer", createdAt: now.addingTimeInterval(-3_600), title: "encouragement")],
             history: []
         )

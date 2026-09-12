@@ -187,6 +187,43 @@ struct ActivityEventDTO: Codable, Identifiable, Sendable {
     var currentUserRole: String? = nil
 }
 
+extension SessionIntent {
+    func paired(with event: ActivityEventDTO, attendanceMode: String? = nil) -> SessionIntent {
+        SessionIntent(
+            id: "activity-event-\(event.id)-\(id)",
+            sport: sport,
+            title: event.title,
+            detail: String(
+                localized: "social.event.paired_workout_detail",
+                defaultValue: "Circle activity · \(detail)"
+            ),
+            guideLine: guideLine,
+            startLabel: String(localized: "social.event.start_with_circle", defaultValue: "Start with Circle"),
+            targetDistanceMeters: targetDistanceMeters,
+            targetDurationSeconds: targetDurationSeconds,
+            targetCalories: targetCalories,
+            estimatedDistanceMeters: estimatedDistanceMeters,
+            estimatedDurationSeconds: estimatedDurationSeconds,
+            allowsCalorieGoal: allowsCalorieGoal,
+            routeName: routeName,
+            preparedRoute: preparedRoute,
+            activityTypeOverride: activityTypeOverride,
+            workoutSteps: workoutSteps,
+            coachingTarget: coachingTarget,
+            workoutReference: workoutReference,
+            workoutCues: workoutCues,
+            raceIntent: raceIntent,
+            activityEvent: ActivityEventLaunchContext(
+                id: event.id,
+                title: event.title,
+                role: event.currentUserRole ?? "participant",
+                attendanceMode: attendanceMode,
+                organizerName: event.creator.displayName
+            )
+        )
+    }
+}
+
 struct ActivityEventDetailDTO: Codable, Identifiable, Sendable {
     let id: String
 

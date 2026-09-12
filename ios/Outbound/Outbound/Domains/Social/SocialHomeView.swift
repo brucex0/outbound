@@ -1078,10 +1078,14 @@ private struct SocialGroupsView: View {
     }
 }
 
-private struct ActivityEventDetailView: View {
+struct ActivityEventDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
+    @EnvironmentObject private var appNavigationStore: AppNavigationStore
     let run: ActivityEventDTO
+    var entrySource = "social_upcoming"
     @State private var detail: ActivityEventDetailDTO?
     @State private var isConnectionPickerPresented = false
     @State private var selectedConnectionIDs: Set<String> = []
@@ -1216,6 +1220,18 @@ private struct ActivityEventDetailView: View {
                 }
             }
             Section {
+                if canStartActivity {
+                    Button {
+                        startActivity()
+                    } label: {
+                        Label(
+                            String(localized: "social.event.start_with_circle", defaultValue: "Start with Circle"),
+                            systemImage: "figure.run"
+                        )
+                        .font(.headline)
+                    }
+                }
+
                 if !isCreator && ["scheduled", "active"].contains(detail?.status ?? run.status ?? "scheduled") {
                     Button {
                         guard let detail else { return }
@@ -1272,6 +1288,9 @@ private struct ActivityEventDetailView: View {
             Text("\(invitation.recipient.displayName) will no longer be able to accept this invitation.")
         }
         .task {
+            await analyticsManager?.track(.init(.activityEventDetailOpened, properties: [
+                .entrySource: .string(entrySource),
+            ]))
             detail = await socialStore.activityEventDetail(id: run.id)
             if run.startsAt <= Date() { await socialStore.loadActivityEventResults(id: run.id) }
         }
@@ -1332,6 +1351,22 @@ private struct ActivityEventDetailView: View {
                 }
             }
         }
+    }
+
+    private var canStartActivity: Bool {
+        guard detail?.currentUserGoing ?? run.currentUserGoing ?? false else { return false }
+        let status = detail?.status ?? run.status ?? "scheduled"
+        return ["scheduled", "active"].contains(status)
+            && (Calendar.current.isDateInToday(run.startsAt) || status == "active")
+    }
+
+    private func startActivity() {
+        socialStore.prepareToRecord(activityEventID: run.id)
+        appNavigationStore.prepareActivityEvent(
+            run,
+            attendanceMode: detail?.currentUserAttendanceMode
+        )
+        dismiss()
     }
 
     private func resultLabel(_ participant: ActivityEventResultParticipantDTO) -> String {

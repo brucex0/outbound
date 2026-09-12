@@ -28,6 +28,7 @@ struct CircleDTO: Codable, Identifiable, Sendable {
     let completionPresentationPending: Bool
     let cheers: [CircleCheerDTO]
     let invitations: [CircleInvitationDTO]
+    let upcomingActivities: [CircleActivityEventDTO]
     let recentMoments: [CircleMomentDTO]
     let history: [CircleWeekHistoryDTO]?
 }
@@ -115,6 +116,46 @@ struct CircleMomentDTO: Codable, Identifiable, Sendable {
     let type: String
     let createdAt: Date
     let title: String?
+}
+
+struct CircleActivityEventDTO: Codable, Identifiable, Sendable {
+    let id: String
+    let title: String
+    let startsAt: Date
+    let endsAt: Date?
+    let locationName: String?
+    let paceNote: String?
+    let status: String
+    let creator: CirclePersonDTO
+    let attendeeCount: Int
+    let currentUserGoing: Bool
+    let currentUserRole: String
+
+    var activityEvent: ActivityEventDTO {
+        ActivityEventDTO(
+            id: id,
+            title: title,
+            startsAt: startsAt,
+            endsAt: endsAt,
+            locationName: locationName,
+            paceNote: paceNote,
+            club: nil,
+            creator: TogetherPersonDTO(
+                id: creator.id,
+                displayName: creator.displayName,
+                avatarUrl: creator.avatarUrl
+            ),
+            groups: [],
+            compatibility: nil,
+            source: ActivityEventSourceDTO(kind: "circle", label: "Circle"),
+            attendeeCount: attendeeCount,
+            attendeePreview: nil,
+            currentUserGoing: currentUserGoing,
+            status: status,
+            participationMode: "hybrid",
+            currentUserRole: currentUserRole
+        )
+    }
 }
 
 struct CircleInvitationCircleDTO: Codable, Identifiable, Sendable {

@@ -130,9 +130,11 @@ Keep the existing Today hierarchy and the planned-workout card's established dis
 
 - Show one compact card for the member's primary active Circle below any currently visible workout or activity-event card.
 - Keep Circle to one tappable row: truncating name, member count in parentheses, breathing room, then trailing weekly progress.
+- A future Circle activity adds a compact calendar indicator and becomes the Circle row's status without displacing today's workout.
 - Keep Circle above the measured selected-route/goal preview and manual goal pills with a narrow gap instead of allowing the surfaces to overlap.
 - Do not show Circle creation on Today.
 - An imminent joined activity event keeps its existing priority within the non-Circle opportunity slot.
+- A joined Circle activity scheduled for today replaces the separate planned-workout card and pairs with that workout's structure. The center Start action and the activity detail Start action launch the same event-linked workout.
 - If the primary Circle has no Weekly Focus, the card may show a recent Cheer or a restrained `Plan an activity` action instead of numeric progress.
 - If there are several Circles and no valid primary selection, choose the most recently active Circle and persist it as primary.
 
@@ -159,11 +161,12 @@ Do not rename the production Social tab or redesign the wider feed for this feat
 The detail screen includes:
 
 1. Circle name and member avatars.
-2. Current Weekly Focus and combined state when applicable.
-3. Member rows with first name, avatar, completed/target state, and Cheer.
-4. `Plan an activity`.
-5. Recent Circle moments limited to Cheers, joined activity plans, and weekly completion—not a duplicate activity feed.
-6. Management entry.
+2. `Up next` activity cards with date, location, attendance count, and a direct path to activity detail.
+3. Current Weekly Focus and combined state when applicable.
+4. Member rows with first name, avatar, completed/target state, and Cheer.
+5. `Plan an activity`.
+6. Recent Circle moments limited to Cheers, completed activities, and weekly completion—not a duplicate activity feed.
+7. Management entry.
 
 Member progress may show `2 of 3`, `Contributed 2`, `Skipping this week`, or no numeric state. Under each member, show their most recent activity from the current Circle week with title/type, date and time, duration, distance, and available workout metrics such as average heart rate and energy. Do not expose companion inferences or why someone changed or skipped a target.
 
@@ -184,6 +187,11 @@ Member progress may show `2 of 3`, `Contributed 2`, `Skipping this week`, or no 
 - The organizer must still review the invitees, time, attendance mode, and optional meetup before creation.
 - Store the resulting event through the existing activity-event model; do not create a second Circle-specific activity object.
 - The event may retain a Circle source reference for navigation, but activity-event privacy and attendance rules remain authoritative.
+- Scheduled and active events live in Circle `Up next`; they enter Recent moments only after reconciliation or completion.
+- Opening any planned-activity card routes to the existing activity-event detail screen.
+- On the scheduled day, pair the event with the runner's current planned-workout intent. Keep its workout steps and workout reference while using the event title and event link.
+- If no personal plan exists, launch the event as a freestyle activity.
+- One saved recording completes the paired planned workout and reconciles the activity-event participant; never create duplicate personal activities.
 
 ## Post-Activity And Recognition
 

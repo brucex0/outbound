@@ -2054,6 +2054,8 @@ final class AppNavigationStore: ObservableObject {
     @Published var pendingAssistantTarget: AssistantNavigationTarget?
     @Published private(set) var highlightedAssistantAnchorID: String?
     @Published var pendingActivityIntent: SessionIntent?
+    @Published private(set) var pendingActivityEvent: ActivityEventDTO?
+    private(set) var pendingActivityEventAttendanceMode: String?
 
     func open(_ target: AssistantNavigationTarget) {
         pendingAssistantTarget = target
@@ -2062,6 +2064,11 @@ final class AppNavigationStore: ObservableObject {
 
     func prepareActivity(intent: SessionIntent) {
         pendingActivityIntent = intent
+    }
+
+    func prepareActivityEvent(_ event: ActivityEventDTO, attendanceMode: String?) {
+        pendingActivityEventAttendanceMode = attendanceMode
+        pendingActivityEvent = event
     }
 
     func consumeStoredPreparedActivity(unitSystem: MeasurementUnitSystem) {
@@ -2080,6 +2087,11 @@ final class AppNavigationStore: ObservableObject {
 
     func consumePreparedActivity() {
         pendingActivityIntent = nil
+    }
+
+    func consumePreparedActivityEvent() {
+        pendingActivityEvent = nil
+        pendingActivityEventAttendanceMode = nil
     }
 }
 

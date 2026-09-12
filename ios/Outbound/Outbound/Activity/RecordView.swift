@@ -824,6 +824,9 @@ struct RecordView: View {
         guide.setSpeechEnabled(voiceGuideSpeechEnabled)
         isStartingActivity = true
         let intent = plannedIntent
+        if let activityEventID = intent?.activityEvent?.id {
+            socialStore.prepareToRecord(activityEventID: activityEventID)
+        }
         beginRecordingAfterLiveShareSetup()
         isStartingActivity = false
 

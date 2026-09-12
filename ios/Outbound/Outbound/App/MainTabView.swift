@@ -10,6 +10,7 @@ struct MainTabView: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var personalizationStore: PersonalizationStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
+    @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var healthAuthorizationStore: HealthAuthorizationStore
     @EnvironmentObject private var healthImportStore: HealthImportStore
     @EnvironmentObject private var activityStore: ActivityStore
@@ -117,6 +118,16 @@ struct MainTabView: View {
             guard let intent else { return }
             presentActivity(intent: intent)
             appNavigationStore.consumePreparedActivity()
+        }
+        .onChange(of: appNavigationStore.pendingActivityEvent?.id) { _, eventID in
+            guard eventID != nil, let event = appNavigationStore.pendingActivityEvent else { return }
+            let intent = (personalTodayIntent ?? .freestyleRun).paired(
+                with: event,
+                attendanceMode: appNavigationStore.pendingActivityEventAttendanceMode
+            )
+            socialStore.prepareToRecord(activityEventID: event.id)
+            presentActivity(intent: intent)
+            appNavigationStore.consumePreparedActivityEvent()
         }
         .onChange(of: workoutNotificationScheduler.pendingReminder?.id) { _, _ in
             handlePendingWorkoutReminder()
@@ -274,11 +285,28 @@ struct MainTabView: View {
     }
 
     private var defaultTodayIntent: SessionIntent? {
-        guard trainingPlanStore.activePlan != nil else { return nil }
-        return customizedTodayIntent
-            ?? currentCalibrationIntent
-            ?? trainingPlanStore.todaySuggestion?.suggestedSession.intent
-            ?? .freestyleRun
+        guard let event = joinedActivityEventToday else { return personalTodayIntent }
+        return (personalTodayIntent ?? .freestyleRun).paired(with: event)
+    }
+
+    private var personalTodayIntent: SessionIntent? {
+        let personalIntent: SessionIntent?
+        if trainingPlanStore.activePlan == nil {
+            personalIntent = nil
+        } else {
+            personalIntent = customizedTodayIntent
+                ?? currentCalibrationIntent
+                ?? trainingPlanStore.todaySuggestion?.suggestedSession.intent
+                ?? .freestyleRun
+        }
+        return personalIntent
+    }
+
+    private var joinedActivityEventToday: ActivityEventDTO? {
+        socialStore.state.upcomingRuns.first { event in
+            guard event.currentUserGoing == true else { return false }
+            return Calendar.current.isDateInToday(event.startsAt) || event.status == "active"
+        }
     }
 
     private var currentCalibrationIntent: SessionIntent? {

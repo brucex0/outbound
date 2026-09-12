@@ -1327,7 +1327,8 @@ private struct SimplifiedTodayView: View {
 
     private var activityEventToday: ActivityEventDTO? {
         socialStore.state.upcomingRuns.first {
-            $0.currentUserGoing == true && $0.startsAt <= Date().addingTimeInterval(24 * 60 * 60)
+            guard $0.currentUserGoing == true else { return false }
+            return Calendar.current.isDateInToday($0.startsAt) || $0.status == "active"
         }
     }
 
@@ -1362,22 +1363,41 @@ private struct SimplifiedTodayView: View {
     }
 
     private func activityEventCard(_ event: ActivityEventDTO) -> some View {
-        OutboundCard(style: .companion) {
-            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                Text("NEXT ACTIVITY").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                ActivityEventSummaryContent(
-                    title: event.title,
-                    startsAt: event.startsAt,
-                    locationName: event.locationName,
-                    note: event.paceNote
-                )
-                Text(event.currentUserRole == "owner"
-                     ? String(localized: "You’re organizing · Meet up or join from anywhere")
-                     : String(localized: "You’re participating · Meet up or join from anywhere"))
-                    .font(.caption)
+        NavigationLink {
+            ActivityEventDetailView(run: event, entrySource: "today_primary")
+        } label: {
+            OutboundCard(style: .companion) {
+                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                    HStack {
+                        Text(String(localized: "today.circle_activity", defaultValue: "TODAY WITH YOUR CIRCLE"))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    ActivityEventSummaryContent(
+                        title: event.title,
+                        startsAt: event.startsAt,
+                        locationName: event.locationName,
+                        note: event.paceNote
+                    )
+                    Label(
+                        String(
+                            localized: "today.circle_activity.paired_format",
+                            defaultValue: "Paired with \(todayWorkoutName) · \(todayTotalDuration)"
+                        ),
+                        systemImage: "checkmark.circle.fill"
+                    )
+                    .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
+                }
+                .contentShape(Rectangle())
             }
         }
+        .buttonStyle(.plain)
+        .accessibilityHint(String(localized: "social.event.open_details", defaultValue: "Opens activity details"))
     }
 
     private var plannedWorkoutCard: some View {
