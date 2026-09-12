@@ -12,7 +12,7 @@ The core loop is:
 
 `Your Circle` is the first permanent relationship feature built around that loop. It is an invitation-only group for family, friends, and other accepted connections who want to live a more active, positive life together. It is optional and must not weaken the solo experience.
 
-Circle is not a leaderboard, public community, or chat product. It is a lightweight place to share workouts, stay connected, choose a realistic weekly focus, notice effort, Cheer, and plan an activity.
+Circle is not a leaderboard, public community, or chat product. It is a lightweight place to share workouts, stay connected, choose a meaningful weekly theme, notice effort, Cheer, and plan an activity.
 
 ## Product Principles
 
@@ -41,19 +41,29 @@ A Circle is the persistent relationship container.
 - A Circle may be active, archived, or awaiting its first accepted invitation.
 - Archiving preserves history and can be reversed.
 
-### Weekly Focus
+### Weekly Theme
 
-A Weekly Focus is optional, replaceable configuration for one Circle week. It is not part of the Circle's identity.
+A Weekly Theme is an optional, replaceable shared intention for one Circle week. It creates emotional direction without turning the Circle into a scorecard and is not part of the Circle's identity.
 
-Supported MVP modes:
+The owner chooses or changes the Circle-wide theme. Members do not receive an edit action for Circle-wide settings; they may independently set or clear only their own commitment after a theme is active. This permission rule applies consistently in Circle detail and Circle settings so a member can never enter an empty editor.
 
-1. `personal_targets`: every member independently chooses an activity-count target or skips the week.
-2. `shared_target`: all qualifying activities contribute toward one shared activity-count target.
-3. `none`: the Circle has no numeric goal; Cheers and activity planning remain available.
+The first version supports nine curated themes:
 
-The UI should recommend personal targets because they let members with different abilities contribute fairly. Shared target and no target remain easy alternatives.
+- `build_consistency`
+- `one_small_step`
+- `keep_the_rhythm`
+- `move_for_your_mood`
+- `recover_and_recharge`
+- `do_something_together`
+- `explore_somewhere_new`
+- `try_something_different`
+- `celebrate_every_effort`
 
-The data model must allow future goal types, but the MVP UI supports activity count only. Do not build distance, duration, calories, streaks, or ranking goals now.
+Each curated theme has a localized title, supporting sentence, and symbol. The editor shows three recommendations followed by the remaining catalog. Recommendations use safe Circle-level context only: an upcoming activity, whether the Circle has recorded activity this week, and whether a legacy numeric week completed. They must not expose or judge an individual member.
+
+The owner may instead write a custom theme with a required title of at most 50 characters and an optional supporting note of at most 120 characters. Custom text is visible only through authorized Circle responses and must never be included in product analytics.
+
+Themes use the `theme` focus mode. A theme itself is never completed. Activities remain visible as shared participation, while each member may optionally set an activity-count commitment. Do not add distance, duration, calories, streaks, rankings, or a shared numeric target to this first-version UI.
 
 ### Circle Week
 
@@ -62,18 +72,17 @@ Each Circle has an explicit reset weekday and IANA timezone.
 - Defaults come from the creator's locale and current timezone.
 - The owner can edit both in Circle settings.
 - The current week is materialized or resolved server-side so every member sees the same interval.
-- Historical weeks retain the focus configuration and commitments that produced their totals.
-- A settings change may apply now or next week. `Now` updates the current week; `Next week` updates the next/default configuration without rewriting the current week.
+- Historical weeks retain the theme, optional custom copy, and commitments from that week.
+- A theme change may apply now or next week. `Now` updates the current week; `Next week` updates the next/default configuration without rewriting the current week.
 
 ### Commitments
 
-- In personal-target mode, each member controls only their own target.
+- Under an active theme, each member controls only their own optional activity-count commitment.
 - Present a few sensible presets and a custom value rather than a fixed 0–7 rule.
 - The server should accept a bounded positive custom count; use a generous validation ceiling to prevent malformed input without presenting it as a product limit.
-- `Skip this week` is distinct from a zero target. A skipped member is excluded from the combined denominator and shown with neutral language.
-- Targets may be changed during the current week. The combined denominator updates immediately without punishment or public audit copy.
-- In shared-target mode, the owner controls the Circle target.
-- In no-target mode, do not render fake progress or completion language.
+- Turning the commitment off removes it. Do not describe the member as behind, skipped, or owing the Circle activity.
+- Commitments may be changed during the current week without punishment or public audit copy.
+- Do not aggregate personal commitments into a Circle-wide target or completion state.
 
 ### Contributions
 
@@ -97,7 +106,7 @@ Circle creation should take less than a minute:
 2. Accept the generated name or edit it.
 3. Create the Circle and send invitations.
 
-Do not require a Weekly Focus during creation. After creation, offer `Choose a weekly focus` as a clear next step that can be skipped.
+Do not require a Weekly Theme during creation. After creation, offer `Choose a weekly theme` as a clear next step that can be skipped.
 
 ### Creation Experience
 
@@ -105,7 +114,7 @@ Use each state for one communication job:
 
 - **Before creation — make the idea desirable.** The empty Social card leads with `Active. Positive. Together.` and shows walking, running, and cycling symbols. One concise sentence connects goals, progress, the people closest to the member, and mutual encouragement. The whole card opens creation.
 - **During creation — turn inspiration into one easy decision.** Keep one scrollable screen rather than a wizard: repeat the concise promise, then show `Who helps you keep moving?`, the accepted-connection picker, an optional name, and one persistent `Create your Circle` action. Show the number selected but do not advertise a fixed maximum; disable additional choices only when the backend-delivered capacity is reached.
-- **After creation — teach the loop and offer the next useful action.** Do not drop directly into a mostly empty detail screen. Show a warm success state with the invited people, explain that all supported activities count, show that workouts are visible to the Circle and can receive Cheers, then make `Choose a weekly focus` primary and `Open Circle` secondary. Explain that a numeric focus is optional.
+- **After creation — teach the loop and offer the next useful action.** Do not drop directly into a mostly empty detail screen. Show a warm success state with the invited people, explain that all supported activities count, show that workouts are visible to the Circle and can receive Cheers, then make `Choose a weekly theme` primary and `Open Circle` secondary. Explain that personal commitments are optional.
 - **After activation — let real people and workouts carry the meaning.** Circle detail leads with its relationship statement, weekly progress, and member rows containing recent workout context. Cheers sit beside people, and `Plan an activity` remains the primary shared action.
 
 Avoid a carousel, educational modal, or mandatory goal setup. The screen itself should demonstrate the product loop with real connections and real workout context.
@@ -135,7 +144,7 @@ Keep the existing Today hierarchy and the planned-workout card's established dis
 - Do not show Circle creation on Today.
 - An imminent joined activity event keeps its existing priority within the non-Circle opportunity slot.
 - A joined Circle activity scheduled for today replaces the separate planned-workout card and pairs with that workout's structure. The center Start action and the activity detail Start action launch the same event-linked workout.
-- If the primary Circle has no Weekly Focus, the card may show a recent Cheer or a restrained `Plan an activity` action instead of numeric progress.
+- If the primary Circle has no Weekly Theme, the card may show a recent Cheer or a restrained `Plan an activity` action instead of numeric progress.
 - If there are several Circles and no valid primary selection, choose the most recently active Circle and persist it as primary.
 
 The card should answer only:
@@ -162,7 +171,7 @@ The detail screen includes:
 
 1. Circle name and member avatars.
 2. `Up next` activity cards with date, location, attendance count, and a direct path to activity detail.
-3. Current Weekly Focus and combined state when applicable.
+3. Current Weekly Theme, shared activity count, and the viewer's optional commitment when applicable.
 4. Member rows with first name, avatar, completed/target state, and Cheer.
 5. `Plan an activity`.
 6. Recent Circle moments limited to Cheers, completed activities, and weekly completion—not a duplicate activity feed.
@@ -199,7 +208,7 @@ After a qualifying activity is saved and synchronized, add one compact Circle co
 
 ```text
 You moved your Circle forward.
-4 of 6 activities complete this week.
+4 activities together this week.
 ```
 
 Behavior:
@@ -210,34 +219,27 @@ Behavior:
 - If several Circles receive the contribution, show the primary Circle and summarize the rest compactly.
 - If the server is temporarily unavailable, save the activity normally and show Circle progress after reconciliation instead of claiming success prematurely.
 
-When a numeric Weekly Focus reaches completion:
-
-- Record completion idempotently on the server.
-- Show one brief, Reduce-Motion-aware celebration to each member on their next app open.
-- Do not name a top contributor or expose contribution shares.
-- Do not create a permanent badge for every completed week.
-- A future one-time recognition for a member's first completed Circle week may use the existing recognition system, but it is not required for MVP.
+Weekly themes never enter a completed state and do not produce Circle-wide completion notifications. A future personal-commitment reflection may recognize the individual privately, but it must not reinterpret the shared theme as a scored challenge.
 
 ## Management
 
 Use one clear Circle settings screen.
 
-Settings fields and Weekly Focus controls keep a local draft while editing, then sync changed values when their screen closes. Unchanged drafts do not call the API, and sync results use transient success or failure feedback; these screens do not use explicit Save buttons.
+Settings fields, Weekly Theme controls, and personal commitments keep a local draft while editing, then sync changed values when their screen closes. Unchanged drafts do not call the API, and sync results use transient success or failure feedback; these screens do not use explicit Save buttons.
 
 Owner controls:
 
 - rename Circle;
 - invite or remove members;
-- change Weekly Focus mode;
-- set the shared target;
+- choose a curated theme or write a custom theme;
 - change reset weekday or timezone;
-- apply focus changes now or next week;
+- apply theme changes now or next week;
 - transfer ownership;
 - archive or reactivate the Circle.
 
 Member controls:
 
-- edit or skip their personal target;
+- set, edit, or clear their personal commitment when a theme is active;
 - choose the primary Circle shown on Today;
 - mute Circle notifications;
 - leave the Circle.
@@ -292,11 +294,11 @@ The Prisma schema already has minimal `Circle` and `CircleMember` placeholders. 
 
 Recommended server-owned concepts:
 
-- `Circle`: name, owner, lifecycle, reset weekday, timezone, and default/upcoming focus configuration.
+- `Circle`: name, owner, lifecycle, reset weekday, timezone, and default/upcoming theme configuration.
 - `CircleMember`: user, role, joined state, primary selection, notification preference, and timestamps.
 - `CircleInvitation`: sender, recipient, status, expiry, and idempotency fields.
-- `CircleWeek`: immutable interval plus the focus-mode snapshot, target, state, completion, and presentation timestamps.
-- `CircleCommitment`: one member's personal target or skipped state for one Circle week.
+- `CircleWeek`: immutable interval plus the theme key, optional custom title/note, legacy focus-mode snapshot, and state.
+- `CircleCommitment`: one member's optional personal activity-count target for one Circle week.
 - `CircleContribution`: unique Circle-week/activity relation used for idempotent counting and deletion reconciliation.
 - `CircleCheer`: sender, recipient, Circle week, preset type, and timestamps.
 
@@ -307,7 +309,7 @@ Recommended authenticated route groups:
 - list/create/detail/update/archive Circles;
 - invite/list/cancel/accept/decline Circle invitations;
 - add/remove/leave/transfer Circle membership;
-- read/update current and upcoming Weekly Focus;
+- read/update current and upcoming Weekly Theme;
 - read/update personal commitment;
 - send/remove Cheer;
 - select primary Circle.
@@ -332,7 +334,7 @@ Activity save/sync should invoke one idempotent Circle contribution reconciler a
 
 Measure the complete relationship loop:
 
-`eligible exposure -> creation -> invitation -> acceptance -> active Circle -> focus configured -> activity contributed -> Cheer or activity planned -> following-week contribution`
+`eligible exposure -> creation -> invitation -> acceptance -> active Circle -> theme configured -> activity contributed -> Cheer or activity planned -> following-week contribution`
 
 Add typed provider-neutral events for:
 
@@ -340,20 +342,19 @@ Add typed provider-neutral events for:
 - creation started/completed/failed;
 - invitation sent/accepted/declined/cancelled;
 - Circle activated;
-- focus mode selected or changed;
-- personal/shared target changed using only a coarse target bucket;
+- curated/custom theme selected or changed;
+- personal commitment set or cleared using only a coarse target bucket;
 - progress opened;
 - Cheer sent/removed;
 - Plan-an-activity started/completed;
 - activity contribution reconciled;
-- weekly focus completed;
 - primary Circle changed;
 - notifications muted/unmuted;
 - member left/removed;
 - Circle archived/reactivated;
 - Circle operation failed with a normalized category.
 
-Allowed properties are bounded values such as entry source, focus mode, coarse Circle-size bucket, coarse target bucket, current/next-week application, and success/failure category.
+Allowed properties are bounded values such as entry source, curated/custom selection type, coarse Circle-size bucket, coarse target bucket, current/next-week application, and success/failure category. Never send a custom theme title or note.
 
 Never send Circle IDs, user IDs beyond the existing analytics identity contract, member identities, names, activity IDs, exact counts, exact activity facts, locations, health data, free text, notification text, or companion content.
 
@@ -362,7 +363,7 @@ Evaluate:
 - invitation acceptance;
 - Circle activation;
 - share of members contributing each week;
-- Weekly Focus completion;
+- theme adoption and repeat use;
 - Cheer and Plan-an-activity use;
 - second- and fourth-week Circle continuity;
 - D7 and D28 saved-activity retention;
@@ -409,14 +410,16 @@ Do not introduce visibly age-specific modes. Research involving ages 15–17 req
 - A person can create a Circle from accepted connections without configuring a goal.
 - Invitees can accept or decline, and blocked or disconnected users cannot join.
 - A Circle becomes Today-eligible after at least two members are active.
-- Members can use personal, shared, or no-target Weekly Focus modes.
-- Members can edit/skip their own personal commitment; owners can manage shared settings.
+- Owners can choose one of nine localized themes or create a custom title and optional note.
+- The editor recommends three themes using safe Circle-level context and retains the theme in Circle history.
+- Members never see a Circle-wide theme edit action or an empty editor.
+- Members can set, edit, or clear only their own optional personal commitment.
 - Multiple Circle membership works, and one primary Circle controls Today presentation.
 - Qualifying canonical activities reconcile exactly once into every applicable Circle week.
-- Social and Circle detail show correct combined progress and the latest workout context for each member.
+- Social and Circle detail show the current theme, shared activity count, personal commitment state, and latest workout context for each member.
 - Cheer and Plan-an-activity work from the shared Circle context.
 - The post-activity flow presents confirmed contribution without blocking activity save.
-- Weekly completion celebrates once per member and respects Reduce Motion.
+- Weekly themes never produce score-like completion language or a Circle-wide completion notification.
 - Leave, remove, mute, transfer, archive, reactivate, and primary-selection flows work.
 - Offline cache never crosses accounts and stale content remains clearly non-authoritative during failed mutations.
 - All new strings are localized in English, Simplified Chinese, and Spanish.
@@ -449,9 +452,10 @@ Deliver the complete backend and iOS vertical slice:
 - Reconcile recorded, imported, and manual canonical activities into the
   correct Circle week by activity start time. Reconcile deletion too. Circle
   failure must never block activity save or deletion.
-- Add the fast creation/invitation flow, flexible Weekly Focus configuration,
-  Circle detail, and management controls. Support personal targets, one shared
-  activity-count target, or no numeric target. Keep Circle and Weekly Focus separate.
+- Add the fast creation/invitation flow, owner-controlled Weekly Theme configuration,
+  Circle detail, and management controls. Support the curated catalog, custom title
+  and optional note, safe recommendations, and optional member-owned activity-count
+  commitments. Keep the Circle relationship and Weekly Theme separate.
 - Support multiple Circle membership and one account-owned primary Circle.
 - Add Your Circle below Connections on Social. Show one compact primary-Circle
   card in Today's existing social-opportunity slot only when eligible; imminent
