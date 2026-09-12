@@ -21,7 +21,9 @@ struct SimplifiedOnboardingFlow: View {
     @State private var isResolvingSkip = false
     @State private var isConnectingHealth = false
     @State private var didConnectHealth = false
+    @State private var hasDetailsFromPriorSession = false
     @State private var isSavingTrainingProfile = false
+    @State private var savedTrainingProfile: TrainingProfileDTO?
     @State private var healthMessage: String?
     @State private var toastMessage: String?
     @State private var toastRetry: ToastRetry?
@@ -73,7 +75,10 @@ struct SimplifiedOnboardingFlow: View {
         .onAppear { configure() }
         .onChange(of: draft) { _, value in onboardingStore.savePlanBuilderDraft(value) }
         .onChange(of: step) { _, value in
-            if value == .profile { trackProfileViewIfNeeded() }
+            if value == .profile {
+                restoreTrainingProfileStep()
+                trackProfileViewIfNeeded()
+            }
         }
         .animation(.snappy, value: toastMessage)
     }
@@ -395,6 +400,13 @@ struct SimplifiedOnboardingFlow: View {
         displayName = validDisplayName ? (authStore.user?.displayName ?? "") : ""
         username = authStore.user?.username == "runner" ? "" : (authStore.user?.username ?? "")
         email = validEmail ? (authStore.user?.email ?? "") : ""
+        if authStore.user != nil {
+            Task {
+                if let profile = try? await APIClient.shared.fetchTrainingProfile() {
+                    savedTrainingProfile = profile
+                }
+            }
+        }
         guard !hasTrackedOpen else { return }
         hasTrackedOpen = true
         track(.planBuilderOpened, [.entrySource: .string(onboardingStore.presentationSource.rawValue)])
@@ -501,6 +513,44 @@ struct SimplifiedOnboardingFlow: View {
             authStore.applyProfileIdentity(username: profile.username, displayName: profile.displayName)
             identityCompleted = true
         } catch { identityError = String(localized: "onboarding.identity.error", defaultValue: "That username may already be taken. Try another one.") }
+    }
+
+    /// Prefills the draft from the training profile already saved for this account so a returning
+    /// user does not see blank height, weight, and sex fields again.
+    private func restoreDraftFromSavedTrainingProfile() {
+        guard let profile = savedTrainingProfile else { return }
+        let usesMetric = measurementPreferences.unitSystem == .metric
+        if let heightCentimeters = profile.heightCentimeters {
+            draft.heightText = formattedMeasurement(usesMetric ? heightCentimeters : heightCentimeters / 2.54)
+        }
+        if let weightKilograms = profile.weightKilograms {
+            draft.weightText = formattedMeasurement(usesMetric ? weightKilograms : weightKilograms / 0.45359237)
+        }
+        if draft.sexAtBirth == nil { draft.sexAtBirth = profile.sexAtBirth }
+        if let birthDate = profile.birthDate.flatMap(Self.birthDateFormatter.date(from:)) {
+            draft.birthDate = birthDate
+        }
+    }
+
+    /// Imports the HealthKit profile details a previously-granted authorization already allows.
+    private func importHealthProfileData() {
+        isConnectingHealth = true
+        Task {
+            do {
+                let since = Calendar.current.date(byAdding: .weekOfYear, value: -8, to: Date()) ?? .distantPast
+                let data = try await healthImportStore.personalizationData(since: since)
+                applyHealthData(data)
+                healthMessage = String(
+                    format: String(localized: "plan_builder.health.connected", defaultValue: "Connected. Found %d recent activities."),
+                    locale: .autoupdatingCurrent,
+                    data.recentWorkouts.count
+                )
+            } catch {
+                didConnectHealth = false
+                healthMessage = String(localized: "onboarding.health.error", defaultValue: "Apple Health could not be connected. You can try again or continue without it.")
+            }
+            isConnectingHealth = false
+        }
     }
 
     private func connectHealth() {
@@ -698,6 +748,36 @@ struct SimplifiedOnboardingFlow: View {
 
     private func parsedMeasurement(_ text: String) -> Double? {
         Double(text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: "."))
+    }
+
+    private var draftHasTrainingDetails: Bool {
+        draft.birthDate != nil || draft.sexAtBirth != nil
+            || !draft.heightText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !draft.weightText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// Restores the private-details step for a returning user: prefill measurements saved on the
+    /// server, and treat Apple Health as already connected when the user previously granted access
+    /// so the step does not always ask them to connect again.
+    private func restoreTrainingProfileStep() {
+        restoreDraftFromSavedTrainingProfile()
+        if draftHasTrainingDetails { hasDetailsFromPriorSession = true }
+        guard !didConnectHealth, !hasDetailsFromPriorSession else { return }
+
+        if healthAuthorizationStore.snapshot.requestState == .reviewed {
+            didConnectHealth = true
+            importHealthProfileData()
+        } else {
+            Task {
+                await healthAuthorizationStore.refresh()
+                guard !didConnectHealth,
+                      healthAuthorizationStore.lastErrorMessage == nil,
+                      healthAuthorizationStore.snapshot.requestState == .reviewed
+                else { return }
+                didConnectHealth = true
+                importHealthProfileData()
+            }
+        }
     }
 
     private func formattedMeasurement(_ value: Double) -> String {
