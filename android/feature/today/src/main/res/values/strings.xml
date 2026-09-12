@@ -36,8 +36,8 @@
     <string name="today_freestyle">Start freestyle run</string>
     <string name="today_goal_edit_hint">Tap a goal pill to change the activity target.</string>
     <string name="today_hike">Hike</string>
-    <string name="today_inbox">Notifications</string>
-    <string name="today_inbox_count">Notifications · %1$d</string>
+    <string name="today_inbox">Notification Center</string>
+    <string name="today_inbox_count">Notification Center · %1$d</string>
     <string name="today_indoor">Indoor</string>
     <string name="today_keep_original">Keep planned workout</string>
     <string name="today_launch_dock">Planned</string>

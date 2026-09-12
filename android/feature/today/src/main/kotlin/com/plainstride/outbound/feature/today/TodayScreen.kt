@@ -402,6 +402,7 @@ private fun CuratedWorkoutSheet(workouts: List<StandaloneWorkout>, onDismiss: ()
 
 @Composable
 private fun TodayTopControls(weather: WeatherGuidance?, useFahrenheit: Boolean, inboxCount: Int, onWeather: () -> Unit, onInbox: () -> Unit) {
+    val inboxDescription = if (inboxCount > 0) stringResource(R.string.today_inbox_count, inboxCount) else stringResource(R.string.today_inbox)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Surface(onClick = onWeather, shape = CircleShape, color = MaterialTheme.colorScheme.surface, tonalElevation = 8.dp, shadowElevation = 6.dp) {
             Row(Modifier.heightIn(min = 48.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -411,8 +412,8 @@ private fun TodayTopControls(weather: WeatherGuidance?, useFahrenheit: Boolean, 
         }
         PlainstrideFloatingAction(onClick = onInbox) {
             Box {
-                BadgedBox(badge = { if (inboxCount > 0) Badge { Text(inboxCount.coerceAtMost(99).toString()) } }) {
-                    Icon(Icons.Default.Notifications, stringResource(R.string.today_inbox), Modifier.size(22.dp))
+                BadgedBox(badge = { if (inboxCount > 0) Badge(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError) { Text(inboxCount.coerceAtMost(99).toString()) } }) {
+                    Icon(Icons.Default.Notifications, inboxDescription, Modifier.size(22.dp))
                 }
             }
         }

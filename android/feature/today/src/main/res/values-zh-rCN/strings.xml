@@ -36,8 +36,8 @@
     <string name="today_freestyle">开始自由跑</string>
     <string name="today_goal_edit_hint">轻点目标选项可更改本次活动目标。</string>
     <string name="today_hike">徒步</string>
-    <string name="today_inbox">通知</string>
-    <string name="today_inbox_count">通知 · %1$d</string>
+    <string name="today_inbox">通知中心</string>
+    <string name="today_inbox_count">通知中心 · %1$d</string>
     <string name="today_indoor">室内</string>
     <string name="today_keep_original">保留原计划</string>
     <string name="today_launch_dock">计划训练</string>

@@ -453,7 +453,7 @@ private fun SignedInApp(
                             onMessage = { message -> snackbar.showSnackbar(resources.getString(settingsMessageResource(message))) },
                         )
                     } else if (destination == TopLevelDestination.Social && accountId != null) {
-                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.first,socialTarget?.second,onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE)},onActivity={id->activityTarget=id;navController.navigate(ACTIVITY_HISTORY_ROUTE)},onConnectionLinkConsumed={socialTarget=null;onConnectionCodeConsumed()})
+                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.first,socialTarget?.second,inboxCount=integration.notifications.count { it.readAt == null },onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE)},onActivity={id->activityTarget=id;navController.navigate(ACTIVITY_HISTORY_ROUTE)},onConnectionLinkConsumed={socialTarget=null;onConnectionCodeConsumed()})
                     } else {
                         FoundationScreen(destination, authState, authViewModel)
                     }

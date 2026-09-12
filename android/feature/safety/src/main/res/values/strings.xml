@@ -2,7 +2,7 @@
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
     <string name="inbox_empty">You’re all caught up.</string>
-    <string name="inbox_title">Notifications</string>
+    <string name="inbox_title">Notification Center</string>
     <string name="safety_add_contact">Add trusted contact</string>
     <string name="safety_allow">Allow notifications</string>
     <string name="safety_contacts">Trusted contacts</string>

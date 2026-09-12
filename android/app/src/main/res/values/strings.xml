@@ -42,7 +42,7 @@
     <string name="music_settings_title">Music</string>
     <string name="notification_channel_social">Social activity</string>
     <string name="notification_generic_body">You have a new update.</string>
-    <string name="notifications_destination">Notifications</string>
+    <string name="notifications_destination">Notification Center</string>
     <string name="onboarding_health_unavailable">Health Connect isn’t available yet. You can enter details or skip.</string>
     <string name="onboarding_identity_unavailable">Couldn’t save that profile. Check your connection and try again.</string>
     <string name="onboarding_save_unavailable">Couldn’t build your week yet. Your answers are saved; try again when you’re online.</string>

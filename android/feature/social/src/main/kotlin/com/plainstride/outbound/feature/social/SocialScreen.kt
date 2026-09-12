@@ -33,7 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.serialization.json.*
 import com.plainstride.outbound.core.designsystem.*
 
-@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onConnectionLinkConsumed:()->Unit={}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
+@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,inboxCount:Int=0,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onConnectionLinkConsumed:()->Unit={}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
     var createCircle by rememberSaveable { mutableStateOf(false) };var inviteCircle by remember { mutableStateOf<CircleSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var connectionsOpen by rememberSaveable { mutableStateOf(false) };var selectedActivity by remember { mutableStateOf<FeedActivity?>(null) }
     var connectionQrOpen by rememberSaveable { mutableStateOf(false) }
     var scannerOpen by rememberSaveable { mutableStateOf(false) }
@@ -75,7 +75,7 @@ import com.plainstride.outbound.core.designsystem.*
         else if(!state.loading&&targetType!=null&&targetId!=null)viewModel.openTarget(targetType,targetId)
     }
     if (selectedActivity == null) {
-        SocialScreen(state, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openCircle, viewModel::openComments, { activity -> selectedActivity = activity; viewModel.trackActivityDetailOpened() }, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, viewModel::joinGroup, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createCircle=true}, modifier)
+        SocialScreen(state, inboxCount, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openCircle, viewModel::openComments, { activity -> selectedActivity = activity; viewModel.trackActivityDetailOpened() }, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, viewModel::joinGroup, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createCircle=true}, modifier)
     } else {
         BackHandler { selectedActivity = null }
         SocialActivityDetail(selectedActivity!!, { selectedActivity = null }, modifier)
@@ -157,7 +157,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
     }
 }
 
-@Composable private fun SocialScreen(state: SocialUiState, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openCircle: (CircleSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(FeedActivity)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (SocialGroup) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createCircle:()->Unit, modifier: Modifier) {
+@Composable private fun SocialScreen(state: SocialUiState, inboxCount: Int, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openCircle: (CircleSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(FeedActivity)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (SocialGroup) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createCircle:()->Unit, modifier: Modifier) {
     var safetyPost by remember { mutableStateOf<SocialPost?>(null) }
     var blockConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
     var deletionConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
@@ -169,7 +169,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
     val incomingRequests = state.home.connections.filter { it.relationship == "pending" && it.connectionDirection == "incoming" }
     val circleInvitations = state.home.invitations.filter { it.kind == "circle" }
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) { SocialIconButton(conditions, stringResource(R.string.social_conditions)) { Icon(Icons.Outlined.WbSunny, null) }; SocialIconButton(community, stringResource(R.string.social_community)) { Icon(Icons.Outlined.People, null) }; SocialIconButton(notifications, stringResource(R.string.social_notifications)) { BadgedBox({ if (state.home.invitations.isNotEmpty()) Badge() }) { Icon(Icons.Outlined.Notifications, null) } } } }
+        item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) { SocialIconButton(conditions, stringResource(R.string.social_conditions)) { Icon(Icons.Outlined.WbSunny, null) }; SocialIconButton(community, stringResource(R.string.social_community)) { Icon(Icons.Outlined.People, null) }; SocialIconButton(notifications, stringResource(R.string.social_notifications)) { BadgedBox({ if (inboxCount > 0) Badge(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError) { Text(inboxCount.coerceAtMost(99).toString()) } }) { Icon(Icons.Outlined.Notifications, null) } } } }
         if (state.offline) item { AssistChip({}, { Text(stringResource(R.string.social_offline)) }, leadingIcon = { Icon(Icons.Outlined.CloudOff, null) }) }
         items(incomingRequests, key = { "request-${it.id}" }) { person ->
             RequesterCard(person, { openProfile(person) }, { acceptRequest(person) }, { declineRequest(person) })

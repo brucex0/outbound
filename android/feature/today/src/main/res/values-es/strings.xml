@@ -36,8 +36,8 @@
     <string name="today_freestyle">Iniciar carrera libre</string>
     <string name="today_goal_edit_hint">Toca un objetivo para cambiar la meta de la actividad.</string>
     <string name="today_hike">Senderismo</string>
-    <string name="today_inbox">Notificaciones</string>
-    <string name="today_inbox_count">Notificaciones · %1$d</string>
+    <string name="today_inbox">Centro de notificaciones</string>
+    <string name="today_inbox_count">Centro de notificaciones · %1$d</string>
     <string name="today_indoor">Interior</string>
     <string name="today_keep_original">Mantener el entrenamiento previsto</string>
     <string name="today_launch_dock">Planificado</string>

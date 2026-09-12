@@ -22,7 +22,7 @@
 - Planned and manual activity configurations
 - Active session and idle session
 - Weather loading, available with or without place name, cached, permission-required, and unavailable
-- Unread-only inbox badge, locally cleared when the inbox opens, and overflow photo preview
+- High-contrast numeric Notification Center badge, locally cleared when the center opens, and overflow photo preview
 
 ## Verification
 

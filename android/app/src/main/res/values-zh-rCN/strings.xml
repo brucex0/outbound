@@ -42,7 +42,7 @@
     <string name="music_settings_title">音乐</string>
     <string name="notification_channel_social">社交动态</string>
     <string name="notification_generic_body">你有一条新动态。</string>
-    <string name="notifications_destination">通知</string>
+    <string name="notifications_destination">通知中心</string>
     <string name="onboarding_health_unavailable">健康互联暂不可用。你可以手动填写或跳过。</string>
     <string name="onboarding_identity_unavailable">无法保存个人资料。请检查网络连接后重试。</string>
     <string name="onboarding_save_unavailable">暂时无法制定本周计划。你的回答已保存，请联网后重试。</string>

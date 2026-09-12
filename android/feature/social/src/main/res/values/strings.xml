@@ -56,7 +56,7 @@
     <string name="social_my_plainstride_qr_code">My Plainstride QR code</string>
     <string name="social_my_qr_code">My QR Code</string>
     <string name="social_not_connection_code">Not a Plainstride connection code</string>
-    <string name="social_notifications">Notifications</string>
+    <string name="social_notifications">Notification Center</string>
     <string name="social_offline">Showing saved Social activity</string>
     <string name="social_open_settings">Open Settings</string>
     <string name="social_pace">Pace</string>

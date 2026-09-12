@@ -12,6 +12,7 @@
 ## Home Surface
 
 - The Social root has no leading page title; global conditions, community, and notification actions remain trailing controls.
+- The Notification Center action uses the shared unread count in a high-contrast numeric badge rather than a low-visibility dot.
 - Connections, Your Circle, Upcoming, Past activities, Groups, and Recent activity share the iOS section-label, rounded-card, spacing, and action hierarchy.
 - Connections preserve a footprint-matched initial placeholder, accepted-person previews, active-workout indicators, and a dedicated full-screen list/search surface.
 - Incoming requests render as tappable requester profile cards on Social home and in Connections, with separate icon-only Accept and Decline actions; the requester profile retains both labeled actions.

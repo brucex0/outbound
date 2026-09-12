@@ -2,7 +2,7 @@
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
     <string name="inbox_empty">Estás al día.</string>
-    <string name="inbox_title">Notificaciones</string>
+    <string name="inbox_title">Centro de notificaciones</string>
     <string name="safety_add_contact">Añadir contacto de confianza</string>
     <string name="safety_allow">Permitir notificaciones</string>
     <string name="safety_contacts">Contactos de confianza</string>
