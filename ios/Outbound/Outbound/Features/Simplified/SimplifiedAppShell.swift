@@ -3199,6 +3199,7 @@ private struct SimplifiedMeView: View {
             VStack(spacing: 0) {
                 NavigationLink {
                     PlusView(entrySource: "me")
+                        .onAppear { trackMeBenefitDestination("plus") }
                 } label: {
                     benefitNavigationLabel(
                         title: String(localized: "rewards.plus", table: "Rewards"),
@@ -3209,6 +3210,7 @@ private struct SimplifiedMeView: View {
                 Divider()
                 NavigationLink {
                     RewardsCenterView()
+                        .onAppear { trackMeBenefitDestination("rewards_center") }
                 } label: {
                     benefitNavigationLabel(
                         title: String(localized: "rewards.settings_title", table: "Rewards"),
@@ -3219,6 +3221,7 @@ private struct SimplifiedMeView: View {
                 Divider()
                 NavigationLink {
                     InvitationCodeView()
+                        .onAppear { trackMeBenefitDestination("invitation_code") }
                 } label: {
                     benefitNavigationLabel(
                         title: String(localized: "rewards.my_invitation_code", table: "Rewards"),
@@ -3253,6 +3256,15 @@ private struct SimplifiedMeView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 12)
         .contentShape(Rectangle())
+    }
+
+    private func trackMeBenefitDestination(_ destination: String) {
+        Task {
+            await analyticsManager?.track(.init(.meDestinationOpened, properties: [
+                .destination: .string(destination),
+                .entrySource: .string("me"),
+            ]))
+        }
     }
 
     private func openConnections() {
