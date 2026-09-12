@@ -4,7 +4,7 @@
 
 - Settings → Appearance offers System, Light, and Dark modes.
 - The selection is persisted in `UserDefaults` by `AppearancePreferences` and applied at the app root with SwiftUI's `preferredColorScheme`.
-- Dark is the default for people who have not chosen a mode. Saved System, Light, and Dark selections remain respected. Theme colors remain a separate preference and adapt within the selected appearance.
+- System is the default for people who have not chosen a mode on iOS or Android. Saved System, Light, and Dark selections remain respected. Theme colors remain a separate preference and adapt within the selected appearance.
 
 Open this when adding, changing, or applying an app theme or editing theme discovery in Today and Settings.
 

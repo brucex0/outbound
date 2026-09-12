@@ -545,7 +545,7 @@ final class AppearancePreferences: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        mode = defaults.string(forKey: modeKey).flatMap(AppearanceMode.init(rawValue:)) ?? .dark
+        mode = defaults.string(forKey: modeKey).flatMap(AppearanceMode.init(rawValue:)) ?? .system
     }
 }
 
