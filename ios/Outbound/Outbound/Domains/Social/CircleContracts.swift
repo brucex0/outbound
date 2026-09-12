@@ -89,6 +89,9 @@ struct CircleUpcomingFocusDTO: Codable, Sendable {
     let mode: String
     let focusConfigured: Bool
     let sharedTarget: Int?
+    let themeKey: String?
+    let themeTitle: String?
+    let themeNote: String?
 }
 
 struct CirclePersonDTO: Codable, Identifiable, Sendable {
@@ -131,6 +134,9 @@ struct CircleWeekDTO: Codable, Identifiable, Sendable {
     let focusMode: String
     let focusConfigured: Bool
     let sharedTarget: Int?
+    let themeKey: String?
+    let themeTitle: String?
+    let themeNote: String?
     let state: String
     let contributedCount: Int
     let targetCount: Int?
@@ -141,6 +147,9 @@ struct CircleWeekHistoryDTO: Codable, Identifiable, Sendable {
     let startsAt: Date
     let endsAt: Date
     let focusMode: String
+    let themeKey: String?
+    let themeTitle: String?
+    let themeNote: String?
     let state: String
 }
 
@@ -238,12 +247,16 @@ struct CircleInviteRequestDTO: Encodable, Sendable {
 struct CircleFocusRequestDTO: Encodable, Sendable {
     let mode: String
     let sharedTarget: Int?
+    let themeKey: String?
+    let customThemeTitle: String?
+    let customThemeNote: String?
     let apply: String
 }
 
 struct CircleCommitmentRequestDTO: Encodable, Sendable {
     let targetCount: Int?
     let skipped: Bool
+    let clear: Bool
 }
 
 struct CircleCheerRequestDTO: Encodable, Sendable {

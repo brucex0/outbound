@@ -172,12 +172,24 @@ final class CircleStore: ObservableObject {
         await mutate(success: String(localized: "circle.toast.saved", defaultValue: "Circle updated.")) { try await api.updateCircleName(id: circle.id, name: name) }
     }
 
-    func updateFocus(circle: CircleDTO, mode: String, sharedTarget: Int?, apply: String = "now") async -> CircleDTO? {
-        await mutate(success: String(localized: "circle.toast.focus_saved", defaultValue: "Weekly focus updated.")) { try await api.updateCircleFocus(id: circle.id, request: .init(mode: mode, sharedTarget: sharedTarget, apply: apply)) }
+    func updateFocus(circle: CircleDTO, themeKey: String, customTitle: String?, customNote: String?, apply: String = "now") async -> CircleDTO? {
+        await mutate(success: String(localized: "circle.toast.focus_saved", defaultValue: "Weekly theme updated.")) {
+            try await api.updateCircleFocus(
+                id: circle.id,
+                request: .init(
+                    mode: "theme",
+                    sharedTarget: nil,
+                    themeKey: themeKey,
+                    customThemeTitle: customTitle,
+                    customThemeNote: customNote,
+                    apply: apply
+                )
+            )
+        }
     }
 
-    func updateCommitment(circle: CircleDTO, targetCount: Int?, skipped: Bool) async -> CircleDTO? {
-        await mutate(success: String(localized: "circle.toast.commitment_saved", defaultValue: "Your weekly focus is updated.")) { try await api.updateCircleCommitment(id: circle.id, request: .init(targetCount: targetCount, skipped: skipped)) }
+    func updateCommitment(circle: CircleDTO, targetCount: Int?, skipped: Bool, clear: Bool = false) async -> CircleDTO? {
+        await mutate(success: String(localized: "circle.toast.commitment_saved", defaultValue: "Your weekly commitment is updated.")) { try await api.updateCircleCommitment(id: circle.id, request: .init(targetCount: targetCount, skipped: skipped, clear: clear)) }
     }
 
     func sendCheer(circle: CircleDTO, member: CircleMemberDTO, presetType: String) async -> Bool {
@@ -332,8 +344,8 @@ final class CircleStore: ObservableObject {
                 CircleMemberDTO(id: "ui-test-circle-sage", user: sage, role: "owner", isCurrentUser: true, commitment: .init(targetCount: 3, skipped: false), contributedCount: 1, recentActivity: .init(type: "running", title: "Golden Gate recovery run", startedAt: now.addingTimeInterval(-86_400), durationSecs: 1_740, distanceM: 4_600, elevationM: 38, avgPace: 378, avgHeartRate: 138, energyKilocalories: 315)),
                 CircleMemberDTO(id: "ui-test-circle-avery", user: avery, role: "member", isCurrentUser: false, commitment: .init(targetCount: 4, skipped: false), contributedCount: 2, recentActivity: .init(type: "running", title: "Easy neighborhood run", startedAt: now.addingTimeInterval(-172_800), durationSecs: 1_920, distanceM: 5_100, elevationM: 42, avgPace: 376, avgHeartRate: 144, energyKilocalories: 510)),
             ],
-            upcomingFocus: .init(mode: "personal_targets", focusConfigured: true, sharedTarget: nil),
-            week: .init(id: "ui-test-circle-week", startsAt: start, endsAt: start.addingTimeInterval(7 * 86_400), focusMode: "personal_targets", focusConfigured: true, sharedTarget: nil, state: "open", contributedCount: 3, targetCount: 7),
+            upcomingFocus: .init(mode: "theme", focusConfigured: true, sharedTarget: nil, themeKey: "build_consistency", themeTitle: nil, themeNote: nil),
+            week: .init(id: "ui-test-circle-week", startsAt: start, endsAt: start.addingTimeInterval(7 * 86_400), focusMode: "theme", focusConfigured: true, sharedTarget: nil, themeKey: "build_consistency", themeTitle: nil, themeNote: nil, state: "open", contributedCount: 3, targetCount: nil),
             currentUserMuted: false, completionPresentationPending: false,
             cheers: [.init(id: "ui-test-cheer", senderUserId: sage.id, recipientUserId: avery.id, presetType: "encouragement", createdAt: now.addingTimeInterval(-3_600))],
             invitations: [],

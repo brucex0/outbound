@@ -63,6 +63,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case circleInvitationCancelled = "circle_invitation_cancelled"
     case circleActivated = "circle_activated"
     case circleFocusChanged = "circle_focus_changed"
+    case circleThemeChanged = "circle_theme_changed"
     case circleTargetChanged = "circle_target_changed"
     case circleProgressOpened = "circle_progress_opened"
     case circleCheerSent = "circle_cheer_sent"
@@ -327,6 +328,7 @@ enum ProductAnalyticsSchema {
         .circleInvitationCancelled: [.entrySource],
         .circleActivated: [.participantCountBucket],
         .circleFocusChanged: [.selectionType, .sourceType],
+        .circleThemeChanged: [.selectionType, .sourceType],
         .circleTargetChanged: [.selectionType, .targetBucket, .sourceType],
         .circleProgressOpened: [.entrySource, .selectionType, .participantCountBucket],
         .circleCheerSent: [.selectionType],

@@ -1417,19 +1417,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose a weekly focus"
+            "value": "Choose a weekly theme"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Elige un enfoque semanal"
+            "value": "Elige un tema semanal"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择每周目标"
+            "value": "选择本周主题"
           }
         }
       }
@@ -1461,19 +1461,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A numeric goal is optional. You can simply encourage each other."
+            "value": "The theme is shared. Personal commitments are optional."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El objetivo numérico es opcional. También pueden limitarse a animarse."
+            "value": "El tema es compartido. Los compromisos personales son opcionales."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "数字目标并非必需，互相鼓励也很好。"
+            "value": "主题属于大家，个人运动承诺完全自愿。"
           }
         }
       }
@@ -2074,19 +2074,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "My target"
+            "value": "My commitment"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mi objetivo"
+            "value": "Mi compromiso"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "我的目标"
+            "value": "我的运动承诺"
           }
         }
       }
@@ -2793,6 +2793,258 @@
             "value": "等大家准备好后，再选择灵活的每周目标。"
           }
         }
+      }
+    },
+    "circle.commitment.edit": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Edit my goal" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Editar mi objetivo" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "编辑我的目标" } }
+      }
+    },
+    "circle.commitment.enable": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Set a personal commitment" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Fijar un compromiso personal" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "设定个人运动承诺" } }
+      }
+    },
+    "circle.commitment.optional": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This is optional and belongs only to you." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Es opcional y solo te pertenece a ti." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "这完全自愿，只属于你。" } }
+      }
+    },
+    "circle.commitment.progress": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Your commitment: %1$lld of %2$lld" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Tu compromiso: %1$lld de %2$lld" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "你的运动承诺：已完成 %1$lld/%2$lld" } }
+      }
+    },
+    "circle.commitment.set": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Set my goal" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Fijar mi objetivo" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "设定我的目标" } }
+      }
+    },
+    "circle.theme.activity_count": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%lld activities together this week" } },
+        "es": { "stringUnit": { "state": "translated", "value": "%lld actividades entre todos esta semana" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "本周大家共完成 %lld 次运动" } }
+      }
+    },
+    "circle.theme.browse": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "More themes" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Más temas" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "更多主题" } }
+      }
+    },
+    "circle.theme.build_consistency.detail": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Small efforts count. Keep showing up." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Cada pequeño esfuerzo cuenta. Sigue adelante." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "点滴行动也算数，继续动起来。" } }
+      }
+    },
+    "circle.theme.build_consistency.title": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Build consistency" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Crear constancia" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "坚持成习惯" } }
+      }
+    },
+    "circle.theme.celebrate_every_effort.detail": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Notice every activity, not just the biggest ones." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Valora cada actividad, no solo las más grandes." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "看见每次运动，不只关注最耀眼的成绩。" } }
+      }
+    },
+    "circle.theme.celebrate_every_effort.title": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Celebrate every effort" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Celebrar cada esfuerzo" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "每一次努力都值得庆祝" } }
+      }
+    },
+    "circle.theme.choose": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Choose a weekly theme" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Elige un tema semanal" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "选择本周主题" } }
+      }
+    },
+    "circle.theme.custom.action": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Write your own" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Escribe el tuyo" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "自定义主题" } }
+      }
+    },
+    "circle.theme.custom.note": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Supporting note · Optional" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Nota de apoyo · Opcional" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "补充说明 · 可选" } }
+      }
+    },
+    "circle.theme.custom.required": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Add a short title before closing." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Añade un título breve antes de cerrar." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "关闭前请填写一个简短标题。" } }
+      }
+    },
+    "circle.theme.custom.section": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Custom theme" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Tema personalizado" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "自定义主题" } }
+      }
+    },
+    "circle.theme.custom.title": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Theme title" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Título del tema" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "主题标题" } }
+      }
+    },
+    "circle.theme.do_something_together.detail": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Make time to move and connect." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Reserven un momento para moverse y conectar." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "留点时间，一起运动也一起相聚。" } }
+      }
+    },
+    "circle.theme.do_something_together.title": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Do something together" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Hagan algo juntos" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "一起动起来" } }
+      }
+    },
+    "circle.theme.explore_somewhere_new.detail": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Let curiosity choose the route." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Deja que la curiosidad elija el camino." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "让好奇心带你选择路线。" } }
+      }
+    },
+    "circle.theme.explore_somewhere_new.title": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Explore somewhere new" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Explora un lugar nuevo" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "探索新地方" } }
+      }
+    },
+    "circle.theme.keep_the_rhythm.detail": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Carry the momentum into another week." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Lleva el impulso a una semana más." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "把这份动力延续到新的一周。" } }
+      }
+    },
+    "circle.theme.keep_the_rhythm.title": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Keep the rhythm" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Mantén el ritmo" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "保持节奏" } }
+      }
+    },
+    "circle.theme.move_for_your_mood.detail": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Choose movement that helps you feel better." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Elige un movimiento que te ayude a sentirte mejor." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "选择让自己感觉更好的运动。" } }
+      }
+    },
+    "circle.theme.move_for_your_mood.title": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Move for your mood" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Muévete para sentirte mejor" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "为好心情而动" } }
+      }
+    },
+    "circle.theme.one_small_step.detail": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Make moving feel possible again." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Haz que volver a moverte se sienta posible." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "让重新动起来变得轻松可行。" } }
+      }
+    },
+    "circle.theme.one_small_step.title": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "One small step" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Un pequeño paso" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "从小小一步开始" } }
+      }
+    },
+    "circle.theme.recommended": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Recommended for your Circle" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Recomendados para tu círculo" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "为你的活力圈推荐" } }
+      }
+    },
+    "circle.theme.recover_and_recharge.detail": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Keep it gentle and give your body room to recover." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Baja el ritmo y dale a tu cuerpo tiempo para recuperarse." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "放慢一点，给身体足够的恢复空间。" } }
+      }
+    },
+    "circle.theme.recover_and_recharge.title": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Recover and recharge" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Recupérate y recarga energías" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "好好恢复，充充电" } }
+      }
+    },
+    "circle.theme.try_something_different.detail": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Change the routine and discover a new way to move." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Cambia la rutina y descubre una nueva forma de moverte." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "跳出日常，发现运动的新方式。" } }
+      }
+    },
+    "circle.theme.try_something_different.title": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Try something different" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Prueba algo diferente" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "换种方式动一动" } }
+      }
+    },
+    "circle.theme.unconfigured.member": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "The Circle owner hasn’t chosen this week’s theme yet." } },
+        "es": { "stringUnit": { "state": "translated", "value": "La persona responsable del círculo aún no ha elegido el tema de esta semana." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "圈主还没有选择本周主题。" } }
+      }
+    },
+    "circle.theme.unconfigured.owner": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Choose a shared intention for the week." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Elige una intención compartida para la semana." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "为这一周选择一个共同方向。" } }
+      }
+    },
+    "circle.today.theme_progress": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%1$@ · You moved %2$lld times" } },
+        "es": { "stringUnit": { "state": "translated", "value": "%1$@ · Te moviste %2$lld veces" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "%1$@ · 你已运动 %2$lld 次" } }
+      }
+    },
+    "circle.weekly_theme": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Weekly Theme" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Tema semanal" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "本周主题" } }
       }
     },
     "circle.history": {
@@ -3988,19 +4240,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your weekly focus is updated."
+            "value": "Your weekly commitment is updated."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu enfoque semanal está actualizado."
+            "value": "Tu compromiso semanal está actualizado."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的每周目标已更新。"
+            "value": "你的每周运动承诺已更新。"
           }
         }
       }
@@ -4054,19 +4306,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Weekly focus updated."
+            "value": "Weekly theme updated."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Enfoque semanal actualizado."
+            "value": "Tema semanal actualizado."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "每周目标已更新。"
+            "value": "本周主题已更新。"
           }
         }
       }

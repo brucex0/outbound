@@ -129,6 +129,11 @@ struct CircleCompactContent: View {
             )
         }
         let personalCount = circle.members.first(where: \.isCurrentUser)?.contributedCount ?? 0
+        if let themeTitle = CircleThemeCatalog.displayTitle(key: circle.week.themeKey, customTitle: circle.week.themeTitle) {
+            return personalCount > 0
+                ? String(localized: "circle.today.theme_progress", defaultValue: "\(themeTitle) · You moved \(personalCount) times")
+                : themeTitle
+        }
         if !circle.week.focusConfigured {
             return personalCount > 0
                 ? String(localized: "circle.today.personal_contribution", defaultValue: "You contributed \(personalCount) this week")
@@ -142,7 +147,7 @@ struct CircleCompactContent: View {
         if let target = circle.week.targetCount {
             return String(localized: "circle.today.progress", defaultValue: "You: \(personalCount) · Together: \(circle.week.contributedCount) of \(target)")
         }
-        return String(localized: "circle.focus.choose", defaultValue: "Choose a weekly focus")
+        return String(localized: "circle.theme.choose", defaultValue: "Choose a weekly theme")
     }
 }
 
@@ -332,7 +337,7 @@ private struct CircleCreatedView: View {
                 .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
                 VStack(spacing: 10) {
-                    Button(String(localized: "circle.created.choose_focus", defaultValue: "Choose a weekly focus")) { showsFocus = true }
+                    Button(String(localized: "circle.created.choose_focus", defaultValue: "Choose a weekly theme")) { showsFocus = true }
                         .buttonStyle(.borderedProminent)
                         .tint(OutboundPalette.companion)
                         .frame(maxWidth: .infinity, minHeight: 50)
@@ -490,17 +495,43 @@ struct CircleDetailView: View {
         OutboundCard {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text(String(localized: "circle.weekly_focus", defaultValue: "Weekly Focus")).font(.headline)
+                    Text(String(localized: "circle.weekly_theme", defaultValue: "Weekly Theme")).font(.headline)
                     Spacer()
-                    Button(!current.week.focusConfigured
-                        ? String(localized: "circle.focus.choose_action", defaultValue: "Choose")
-                        : String(localized: "common.edit", defaultValue: "Edit")) {
-                        showsFocus = true
+                    if current.role == "owner" {
+                        Button(!current.week.focusConfigured
+                            ? String(localized: "circle.focus.choose_action", defaultValue: "Choose")
+                            : String(localized: "common.edit", defaultValue: "Edit")) {
+                            showsFocus = true
+                        }
+                    } else if current.week.focusConfigured && ["theme", "personal_targets"].contains(current.week.focusMode) {
+                        Button(current.members.first(where: \.isCurrentUser)?.commitment?.targetCount == nil
+                            ? String(localized: "circle.commitment.set", defaultValue: "Set my goal")
+                            : String(localized: "circle.commitment.edit", defaultValue: "Edit my goal")) {
+                            showsFocus = true
+                        }
                     }
                 }
                 if !current.week.focusConfigured {
-                    Text(String(localized: "circle.focus.unconfigured", defaultValue: "Choose a flexible focus when the Circle is ready."))
+                    Text(current.role == "owner"
+                        ? String(localized: "circle.theme.unconfigured.owner", defaultValue: "Choose a shared intention for the week.")
+                        : String(localized: "circle.theme.unconfigured.member", defaultValue: "The Circle owner hasn’t chosen this week’s theme yet."))
                         .font(.subheadline).foregroundStyle(.secondary)
+                } else if let themeTitle = CircleThemeCatalog.displayTitle(key: current.week.themeKey, customTitle: current.week.themeTitle) {
+                    Label(themeTitle, systemImage: CircleThemeCatalog.definition(for: current.week.themeKey)?.systemImage ?? "sparkles")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(OutboundPalette.companion)
+                    if let detail = CircleThemeCatalog.displayDetail(key: current.week.themeKey, customNote: current.week.themeNote), !detail.isEmpty {
+                        Text(detail)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(String(localized: "circle.theme.activity_count", defaultValue: "\(current.week.contributedCount) activities together this week"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if let commitment = current.members.first(where: \.isCurrentUser)?.commitment?.targetCount {
+                        Text(String(localized: "circle.commitment.progress", defaultValue: "Your commitment: \(current.members.first(where: \.isCurrentUser)?.contributedCount ?? 0) of \(commitment)"))
+                            .font(.subheadline.weight(.semibold))
+                    }
                 } else if current.week.focusMode == "none" {
                     Text(String(localized: "circle.focus.none.detail", defaultValue: "No numeric goal this week. Cheer each other on or plan something active."))
                 } else if let target = current.week.targetCount {
@@ -583,7 +614,24 @@ struct CircleDetailView: View {
     }
 
     private func historySection(_ history: [CircleWeekHistoryDTO]) -> some View {
-        VStack(alignment: .leading, spacing: 8) { Text(String(localized: "circle.history", defaultValue: "HISTORY")).socialSectionLabel(); OutboundCard { ForEach(history.prefix(6)) { week in HStack { Text(week.startsAt.formatted(date: .abbreviated, time: .omitted)); Spacer(); Text(week.state == "completed" ? String(localized: "circle.completed", defaultValue: "Completed") : String(localized: "circle.week.recorded", defaultValue: "Week recorded")).foregroundStyle(.secondary) }.frame(minHeight: 44) } } }
+        VStack(alignment: .leading, spacing: 8) {
+            Text(String(localized: "circle.history", defaultValue: "HISTORY")).socialSectionLabel()
+            OutboundCard {
+                ForEach(history.prefix(6)) { week in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(week.startsAt.formatted(date: .abbreviated, time: .omitted))
+                            if let title = CircleThemeCatalog.displayTitle(key: week.themeKey, customTitle: week.themeTitle) {
+                                Text(title).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        Text(week.state == "completed" ? String(localized: "circle.completed", defaultValue: "Completed") : String(localized: "circle.week.recorded", defaultValue: "Week recorded")).foregroundStyle(.secondary)
+                    }
+                    .frame(minHeight: 44)
+                }
+            }
+        }
     }
 
     private func memberStatus(_ member: CircleMemberDTO) -> String {
@@ -657,46 +705,117 @@ struct CircleFocusEditor: View {
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var circleStore: CircleStore
     let circle: CircleDTO
-    @State private var mode: String
-    @State private var sharedTarget: Int
+    @State private var selectedThemeKey: String
+    @State private var customTitle: String
+    @State private var customNote: String
     @State private var personalTarget: Int
     @State private var apply = "now"
-    @State private var skip = false
+    @State private var hasCommitment: Bool
 
     init(circle: CircleDTO) {
         self.circle = circle
         let ownCommitment = circle.members.first(where: \.isCurrentUser)?.commitment
-        _mode = State(initialValue: circle.week.focusMode)
-        _sharedTarget = State(initialValue: circle.week.sharedTarget ?? 3)
+        _selectedThemeKey = State(initialValue: circle.week.themeKey ?? "")
+        _customTitle = State(initialValue: circle.week.themeTitle ?? "")
+        _customNote = State(initialValue: circle.week.themeNote ?? "")
         _personalTarget = State(initialValue: ownCommitment?.targetCount ?? 3)
-        _skip = State(initialValue: ownCommitment?.skipped ?? false)
+        _hasCommitment = State(initialValue: ownCommitment?.targetCount != nil && ownCommitment?.skipped != true)
     }
 
     private var current: CircleDTO { circleStore.circles.first(where: { $0.id == circle.id }) ?? circle }
+    private var recommendations: [CircleThemeDefinition] { CircleThemeCatalog.recommendations(for: current) }
+    private var recommendationIDs: Set<String> { Set(recommendations.map(\.id)) }
 
     var body: some View {
         Form {
             if circle.role == "owner" {
-                Section { Picker(String(localized: "circle.focus.mode", defaultValue: "Focus mode"), selection: $mode) { Text(String(localized: "circle.focus.personal", defaultValue: "Personal targets · Recommended")).tag("personal_targets"); Text(String(localized: "circle.focus.shared", defaultValue: "One shared target")).tag("shared_target"); Text(String(localized: "circle.focus.none", defaultValue: "No numeric target")).tag("none") } }
-                if mode == "shared_target" {
-                    Section {
-                        targetPresets(selection: $sharedTarget)
-                        Stepper(String(localized: "circle.focus.shared_count", defaultValue: "\(sharedTarget) activities together"), value: $sharedTarget, in: 1...100)
+                Section(String(localized: "circle.theme.recommended", defaultValue: "Recommended for your Circle")) {
+                    ForEach(recommendations) { theme in
+                        themeButton(theme)
+                    }
+                }
+                Section(String(localized: "circle.theme.browse", defaultValue: "More themes")) {
+                    ForEach(CircleThemeCatalog.all.filter { !recommendationIDs.contains($0.id) }) { theme in
+                        themeButton(theme)
+                    }
+                    Button {
+                        selectedThemeKey = "custom"
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "pencil.line")
+                                .frame(width: 28)
+                                .foregroundStyle(OutboundPalette.companion)
+                            Text(String(localized: "circle.theme.custom.action", defaultValue: "Write your own"))
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            if selectedThemeKey == "custom" {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(OutboundPalette.companion)
+                            }
+                        }
+                        .frame(minHeight: 44)
+                    }
+                }
+                if selectedThemeKey == "custom" {
+                    Section(String(localized: "circle.theme.custom.section", defaultValue: "Custom theme")) {
+                        TextField(String(localized: "circle.theme.custom.title", defaultValue: "Theme title"), text: $customTitle)
+                            .onChange(of: customTitle) { _, value in customTitle = String(value.prefix(50)) }
+                        TextField(String(localized: "circle.theme.custom.note", defaultValue: "Supporting note · Optional"), text: $customNote, axis: .vertical)
+                            .lineLimit(2...4)
+                            .onChange(of: customNote) { _, value in customNote = String(value.prefix(120)) }
+                        if customTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text(String(localized: "circle.theme.custom.required", defaultValue: "Add a short title before closing."))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
                 Section { Picker(String(localized: "circle.focus.apply", defaultValue: "Apply"), selection: $apply) { Text(String(localized: "circle.apply.now", defaultValue: "Now")).tag("now"); Text(String(localized: "circle.apply.next", defaultValue: "Next week")).tag("next_week") } }
             }
-            if editsCurrentPersonalFocus {
-                Section(String(localized: "circle.commitment.mine", defaultValue: "My target")) {
-                    targetPresets(selection: $personalTarget)
-                    Stepper(String(localized: "circle.commitment.count", defaultValue: "\(personalTarget) activities"), value: $personalTarget, in: 1...100)
-                    Toggle(String(localized: "circle.commitment.skip", defaultValue: "Skip this week"), isOn: $skip)
+            if canEditCommitment {
+                Section(String(localized: "circle.commitment.mine", defaultValue: "My commitment")) {
+                    Toggle(String(localized: "circle.commitment.enable", defaultValue: "Set a personal commitment"), isOn: $hasCommitment)
+                    if hasCommitment {
+                        targetPresets(selection: $personalTarget)
+                        Stepper(String(localized: "circle.commitment.count", defaultValue: "\(personalTarget) activities"), value: $personalTarget, in: 1...100)
+                    }
+                    Text(String(localized: "circle.commitment.optional", defaultValue: "This is optional and belongs only to you."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
-        .navigationTitle(String(localized: "circle.weekly_focus", defaultValue: "Weekly Focus"))
+        .navigationTitle(circle.role == "owner"
+            ? String(localized: "circle.weekly_theme", defaultValue: "Weekly Theme")
+            : String(localized: "circle.commitment.mine", defaultValue: "My commitment"))
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button(String(localized: "common.close", defaultValue: "Close")) { dismiss() } } }
         .onDisappear { saveDraftIfNeeded() }
+    }
+
+    private func themeButton(_ theme: CircleThemeDefinition) -> some View {
+        Button {
+            selectedThemeKey = theme.id
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: theme.systemImage)
+                    .frame(width: 28)
+                    .foregroundStyle(OutboundPalette.companion)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(theme.title)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(theme.detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                if selectedThemeKey == theme.id {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(OutboundPalette.companion)
+                }
+            }
+            .frame(minHeight: 52)
+        }
     }
 
     private func targetPresets(selection: Binding<Int>) -> some View {
@@ -716,31 +835,35 @@ struct CircleFocusEditor: View {
         }
     }
 
-    private var editsCurrentPersonalFocus: Bool {
-        if circle.role == "owner", apply == "now" { return mode == "personal_targets" }
-        return current.week.focusConfigured && current.week.focusMode == "personal_targets"
+    private var canEditCommitment: Bool {
+        if circle.role == "owner", apply == "now", !selectedThemeKey.isEmpty { return true }
+        return current.week.focusConfigured && ["theme", "personal_targets"].contains(current.week.focusMode)
     }
 
     private func saveDraftIfNeeded() {
-        let draftMode = mode
-        let draftSharedTarget = sharedTarget
+        let draftThemeKey = selectedThemeKey
+        let draftCustomTitle = customTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let draftCustomNote = customNote.trimmingCharacters(in: .whitespacesAndNewlines)
         let draftPersonalTarget = personalTarget
         let draftApply = apply
-        let draftSkipped = skip
+        let draftHasCommitment = hasCommitment
         let originalCommitment = circle.members.first(where: \.isCurrentUser)?.commitment
-        let originalPersonalTarget = originalCommitment?.targetCount ?? 3
-        let originalSkipped = originalCommitment?.skipped ?? false
-        let normalizedSharedTarget = draftMode == "shared_target" ? draftSharedTarget : nil
-        let originalSharedTarget = circle.week.focusMode == "shared_target" ? circle.week.sharedTarget : nil
-        let focusChanged = circle.role == "owner" && (
-            draftMode != circle.week.focusMode ||
-            normalizedSharedTarget != originalSharedTarget ||
+        let originalHasCommitment = originalCommitment?.targetCount != nil && originalCommitment?.skipped != true
+        let normalizedTitle = draftThemeKey == "custom" ? draftCustomTitle : nil
+        let normalizedNote = draftThemeKey == "custom" && !draftCustomNote.isEmpty ? draftCustomNote : nil
+        let hasValidThemeDraft = !draftThemeKey.isEmpty && (draftThemeKey != "custom" || !draftCustomTitle.isEmpty)
+        let focusChanged = circle.role == "owner" && hasValidThemeDraft && (
+            draftThemeKey != circle.week.themeKey ||
+            normalizedTitle != circle.week.themeTitle ||
+            normalizedNote != circle.week.themeNote ||
             draftApply != "now"
         )
-        let intendedCurrentMode = circle.role == "owner" && draftApply == "now" ? draftMode : circle.week.focusMode
-        let enteredPersonalFocus = circle.week.focusMode != "personal_targets" && intendedCurrentMode == "personal_targets"
-        let commitmentChanged = intendedCurrentMode == "personal_targets" && (
-            draftPersonalTarget != originalPersonalTarget || draftSkipped != originalSkipped || enteredPersonalFocus
+        let intendedCurrentSupportsCommitment = circle.role == "owner" && draftApply == "now" && hasValidThemeDraft
+            ? true
+            : current.week.focusConfigured && ["theme", "personal_targets"].contains(current.week.focusMode)
+        let commitmentChanged = intendedCurrentSupportsCommitment && (
+            draftHasCommitment != originalHasCommitment ||
+            (draftHasCommitment && draftPersonalTarget != originalCommitment?.targetCount)
         )
         guard focusChanged || commitmentChanged else { return }
 
@@ -748,17 +871,14 @@ struct CircleFocusEditor: View {
         Task {
             var focusSaved = true
             if focusChanged {
-                focusSaved = await circleStore.updateFocus(circle: circleSnapshot, mode: draftMode, sharedTarget: normalizedSharedTarget, apply: draftApply) != nil
+                focusSaved = await circleStore.updateFocus(circle: circleSnapshot, themeKey: draftThemeKey, customTitle: normalizedTitle, customNote: normalizedNote, apply: draftApply) != nil
                 if focusSaved {
-                    await analyticsManager?.track(.init(.circleFocusChanged, properties: [.selectionType: .string(draftMode), .sourceType: .string(draftApply)]))
-                    if let normalizedSharedTarget {
-                        await analyticsManager?.track(.init(.circleTargetChanged, properties: [.selectionType: .string("shared"), .targetBucket: .string(ProductAnalyticsBucket.count(normalizedSharedTarget)), .sourceType: .string(draftApply)]))
-                    }
+                    await analyticsManager?.track(.init(.circleThemeChanged, properties: [.selectionType: .string(draftThemeKey == "custom" ? "custom" : "curated"), .sourceType: .string(draftApply)]))
                 }
             }
             guard commitmentChanged, focusSaved else { return }
-            if await circleStore.updateCommitment(circle: circleSnapshot, targetCount: draftSkipped ? nil : draftPersonalTarget, skipped: draftSkipped) != nil {
-                await analyticsManager?.track(.init(.circleTargetChanged, properties: [.selectionType: .string(draftSkipped ? "skipped" : "target"), .targetBucket: .string(ProductAnalyticsBucket.count(draftPersonalTarget)), .sourceType: .string("now")]))
+            if await circleStore.updateCommitment(circle: circleSnapshot, targetCount: draftHasCommitment ? draftPersonalTarget : nil, skipped: false, clear: !draftHasCommitment) != nil {
+                await analyticsManager?.track(.init(.circleTargetChanged, properties: [.selectionType: .string(draftHasCommitment ? "target" : "cleared"), .targetBucket: .string(ProductAnalyticsBucket.count(draftPersonalTarget)), .sourceType: .string("now")]))
             }
         }
     }
@@ -797,7 +917,15 @@ struct CircleManagementView: View {
 
     var body: some View {
         Form {
-            Section { NavigationLink(String(localized: "circle.weekly_focus", defaultValue: "Weekly Focus")) { CircleFocusEditor(circle: current) }; Button(current.id == circleStore.primaryCircleID ? String(localized: "circle.primary.current", defaultValue: "Primary Circle") : String(localized: "circle.primary.make", defaultValue: "Make primary")) { Task { if await circleStore.selectPrimary(current) { track(.circlePrimaryChanged, [.entrySource: .string("circle_settings")]) } } }.disabled(current.id == circleStore.primaryCircleID || !current.eligibleForToday); Toggle(String(localized: "circle.notifications.mute", defaultValue: "Mute optional notifications"), isOn: $notificationMuted) }
+            Section {
+                if current.role == "owner" {
+                    NavigationLink(String(localized: "circle.weekly_theme", defaultValue: "Weekly Theme")) { CircleFocusEditor(circle: current) }
+                } else if current.week.focusConfigured && ["theme", "personal_targets"].contains(current.week.focusMode) {
+                    NavigationLink(String(localized: "circle.commitment.mine", defaultValue: "My commitment")) { CircleFocusEditor(circle: current) }
+                }
+                Button(current.id == circleStore.primaryCircleID ? String(localized: "circle.primary.current", defaultValue: "Primary Circle") : String(localized: "circle.primary.make", defaultValue: "Make primary")) { Task { if await circleStore.selectPrimary(current) { track(.circlePrimaryChanged, [.entrySource: .string("circle_settings")]) } } }.disabled(current.id == circleStore.primaryCircleID || !current.eligibleForToday)
+                Toggle(String(localized: "circle.notifications.mute", defaultValue: "Mute optional notifications"), isOn: $notificationMuted)
+            }
 
             if current.role == "owner" {
                 Section(String(localized: "circle.management.owner", defaultValue: "Owner controls")) { TextField(String(localized: "circle.create.name", defaultValue: "Name"), text: $name); if current.lifecycle != "archived" { Button(String(localized: "circle.invite.more", defaultValue: "Invite connections")) { showsInvite = true } } }
