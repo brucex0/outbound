@@ -80,6 +80,7 @@ import com.google.zxing.MultiFormatWriter
 import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import java.util.concurrent.Executors
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 
@@ -352,7 +353,13 @@ private fun ConnectionCodeCamera(
     }
     LaunchedEffect(previewView, lifecycleOwner) {
         val view = previewView ?: return@LaunchedEffect
-        val provider = runCatching { context.awaitCameraProvider() }.getOrElse { error ->
+        val provider = try {
+            context.awaitCameraProvider()
+        } catch (error: CancellationException) {
+            // Compose restarts this effect while the dialog's AndroidView and lifecycle owner
+            // settle. Cancellation is normal lifecycle control, not a camera failure.
+            throw error
+        } catch (error: Throwable) {
             logCameraFailure("provider", error)
             onUnavailable()
             return@LaunchedEffect
