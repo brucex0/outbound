@@ -21,7 +21,6 @@ struct SimplifiedOnboardingFlow: View {
     @State private var isResolvingSkip = false
     @State private var isConnectingHealth = false
     @State private var didConnectHealth = false
-    @State private var hasDetailsFromPriorSession = false
     @State private var isSavingTrainingProfile = false
     @State private var savedTrainingProfile: TrainingProfileDTO?
     @State private var healthMessage: String?
@@ -761,12 +760,10 @@ struct SimplifiedOnboardingFlow: View {
     /// so the step does not always ask them to connect again.
     private func restoreTrainingProfileStep() {
         restoreDraftFromSavedTrainingProfile()
-        if draftHasTrainingDetails { hasDetailsFromPriorSession = true }
-        guard !didConnectHealth, !hasDetailsFromPriorSession else { return }
+        guard !didConnectHealth else { return }
 
         if healthAuthorizationStore.snapshot.requestState == .reviewed {
-            didConnectHealth = true
-            importHealthProfileData()
+            markHealthRestored()
         } else {
             Task {
                 await healthAuthorizationStore.refresh()
@@ -774,10 +771,17 @@ struct SimplifiedOnboardingFlow: View {
                       healthAuthorizationStore.lastErrorMessage == nil,
                       healthAuthorizationStore.snapshot.requestState == .reviewed
                 else { return }
-                didConnectHealth = true
-                importHealthProfileData()
+                markHealthRestored()
             }
         }
+    }
+
+    /// Reflects a previously-granted authorization, and quietly pulls HealthKit profile details
+    /// only when the step is still completely blank so restored values are never overwritten.
+    private func markHealthRestored() {
+        didConnectHealth = true
+        guard !draftHasTrainingDetails else { return }
+        importHealthProfileData()
     }
 
     private func formattedMeasurement(_ value: Double) -> String {
