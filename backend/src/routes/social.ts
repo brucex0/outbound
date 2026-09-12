@@ -410,6 +410,42 @@ router.post("/connection-links", async (c) => {
   }, existing ? 200 : 201);
 });
 
+router.get("/connection-links/:code", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const code = c.req.param("code");
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(code)) {
+    return c.json({ error: "Connection link not found." }, 404);
+  }
+  const link = await getPrismaClient().referralLink.findUnique({
+    where: { code },
+    include: { creator: { select: socialPersonSelect } },
+  });
+  if (!link || (await blockedUserIDs(user.id)).includes(link.creatorId)) {
+    return c.json({ error: "Connection link not found." }, 404);
+  }
+  const isSelf = link.creatorId === user.id;
+  const relationship = isSelf ? null : await getPrismaClient().connection.findFirst({
+    where: {
+      OR: [
+        { requesterId: user.id, addresseeId: link.creatorId },
+        { requesterId: link.creatorId, addresseeId: user.id },
+      ],
+    },
+  });
+  return c.json({
+    person: {
+      ...link.creator,
+      relationship: relationship ? {
+        id: relationship.id,
+        status: relationship.status,
+        direction: relationship.requesterId === user.id ? "outgoing" : "incoming",
+      } : null,
+    },
+    isSelf,
+  });
+});
+
 router.post("/connection-links/:code/request", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
@@ -423,12 +459,20 @@ router.post("/connection-links/:code/request", async (c) => {
   });
   if (!link) return c.json({ error: "Connection link not found." }, 404);
   if (link.creatorId === user.id) {
-    return c.json({ result: "self", person: link.creator });
+    return c.json({ result: "self", person: link.creator, relationship: null });
   }
 
   const outcome = await createConnectionRequest(user, link.creatorId);
   if (!outcome.ok) return c.json({ error: "Connection link not found." }, outcome.status);
-  return c.json({ result: outcome.result, person: link.creator }, outcome.created ? 201 : 200);
+  return c.json({
+    result: outcome.result,
+    person: link.creator,
+    relationship: {
+      id: outcome.connection.id,
+      status: outcome.connection.status,
+      direction: outcome.connection.requesterId === user.id ? "outgoing" : "incoming",
+    },
+  }, outcome.created ? 201 : 200);
 });
 
 router.post("/connections/:id/accept", async (c) => {
