@@ -1807,9 +1807,11 @@ private struct SimplifiedTodayView: View {
     }
 
     private var todayWorkoutName: String {
-        if let customizedRunIntent { return localizedAppCopy(customizedRunIntent.title) }
+        if let customizedRunIntent {
+            return workoutCopyWithoutLeadingDuration(customizedRunIntent.title)
+        }
         let rawName = currentCalibrationWorkout?.title ?? trainingPlanStore.todaySuggestion?.workout.title ?? "Easy run"
-        return localizedAppCopy(rawName.components(separatedBy: " · ").first ?? rawName)
+        return workoutCopyWithoutLeadingDuration(rawName.components(separatedBy: " · ").first ?? rawName)
     }
 
     private var todayTotalDuration: String {
@@ -1873,25 +1875,23 @@ private struct SimplifiedTodayView: View {
                 return [WorkoutPhaseItem(
                     id: customizedRunIntent.id,
                     duration: distanceLabel(meters),
-                    title: customizedRunIntent.title,
+                    title: displayWorkoutCopy(customizedRunIntent.title),
                     weight: 1
                 )]
             }
             let seconds = customizedRunIntent.targetDurationSeconds ?? 0
-            return [WorkoutPhaseItem(
+            return [workoutPhaseItem(
                 id: customizedRunIntent.id,
-                duration: durationLabel(seconds).replacingOccurrences(of: " min", with: "m"),
-                title: customizedRunIntent.title,
-                weight: max(1, CGFloat(seconds) / 300)
+                label: customizedRunIntent.title,
+                durationSeconds: seconds
             )]
         }
         if let workout = currentCalibrationWorkout {
             return workout.steps.map {
-                WorkoutPhaseItem(
+                workoutPhaseItem(
                     id: $0.id,
-                    duration: durationLabel($0.durationSeconds).replacingOccurrences(of: " min", with: "m"),
-                    title: localizedAppCopy($0.label),
-                    weight: max(1, CGFloat($0.durationSeconds) / 300)
+                    label: $0.label,
+                    durationSeconds: $0.durationSeconds
                 )
             }
         }
@@ -1904,13 +1904,47 @@ private struct SimplifiedTodayView: View {
             ]
         }
         return steps.map {
-            WorkoutPhaseItem(
+            workoutPhaseItem(
                 id: $0.id,
-                duration: $0.durationLabel.replacingOccurrences(of: " min", with: "m"),
-                title: localizedAppCopy($0.label),
-                weight: max(1, CGFloat($0.durationSeconds) / 300)
+                label: $0.label,
+                durationSeconds: $0.durationSeconds
             )
         }
+    }
+
+    private func workoutPhaseItem(id: String, label: String, durationSeconds: Int) -> WorkoutPhaseItem {
+        let parsed = leadingMinuteDuration(in: label)
+        let displayedDurationSeconds = parsed?.seconds ?? durationSeconds
+        return WorkoutPhaseItem(
+            id: id,
+            duration: durationLabel(displayedDurationSeconds).replacingOccurrences(of: " min", with: "m"),
+            title: displayWorkoutCopy(parsed?.copy ?? label),
+            weight: max(1, CGFloat(displayedDurationSeconds) / 300)
+        )
+    }
+
+    private func workoutCopyWithoutLeadingDuration(_ value: String) -> String {
+        displayWorkoutCopy(leadingMinuteDuration(in: value)?.copy ?? value)
+    }
+
+    private func displayWorkoutCopy(_ value: String) -> String {
+        let localized = localizedAppCopy(value).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let first = localized.first else { return localized }
+        return first.uppercased() + localized.dropFirst()
+    }
+
+    private func leadingMinuteDuration(in value: String) -> (seconds: Int, copy: String)? {
+        let pattern = #"^\s*([0-9]+(?:\.[0-9]+)?)\s*(?:min|mins|minute|minutes)\s+(.+?)\s*$"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
+              let match = regex.firstMatch(in: value, range: NSRange(value.startIndex..., in: value)),
+              let minutesRange = Range(match.range(at: 1), in: value),
+              let copyRange = Range(match.range(at: 2), in: value),
+              let minutes = Double(value[minutesRange])
+        else {
+            return nil
+        }
+
+        return (Int((minutes * 60).rounded()), String(value[copyRange]))
     }
 
     /// Model and fallback copy uses English semantic values; catalog lookup localizes
