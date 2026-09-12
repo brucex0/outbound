@@ -75,7 +75,7 @@ import com.plainstride.outbound.core.designsystem.*
         else if(!state.loading&&targetType!=null&&targetId!=null)viewModel.openTarget(targetType,targetId)
     }
     if (selectedActivity == null) {
-        SocialScreen(state, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openCircle, viewModel::openComments, { activity -> selectedActivity = activity; viewModel.trackActivityDetailOpened() }, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, viewModel::joinGroup, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, {createCircle=true}, modifier)
+        SocialScreen(state, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openCircle, viewModel::openComments, { activity -> selectedActivity = activity; viewModel.trackActivityDetailOpened() }, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, viewModel::joinGroup, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createCircle=true}, modifier)
     } else {
         BackHandler { selectedActivity = null }
         SocialActivityDetail(selectedActivity!!, { selectedActivity = null }, modifier)
@@ -88,6 +88,8 @@ import com.plainstride.outbound.core.designsystem.*
         scanQr = { scannerFeedback = null; scannerOpen = true },
         showQr = { connectionQrOpen = true; viewModel.openConnectionQr() },
         inviteByLink = viewModel::inviteByLink,
+        acceptRequest = { person -> person.connectionId?.let(viewModel::acceptConnection) },
+        declineRequest = { person -> person.connectionId?.let(viewModel::removeConnection) },
         close = { connectionsOpen = false },
     )
     if (connectionQrOpen) ConnectionQrScreen(state) { connectionQrOpen = false; viewModel.closeConnectionQr() }
@@ -151,7 +153,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
     }
 }
 
-@Composable private fun SocialScreen(state: SocialUiState, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openCircle: (CircleSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(FeedActivity)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (SocialGroup) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, createCircle:()->Unit, modifier: Modifier) {
+@Composable private fun SocialScreen(state: SocialUiState, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openCircle: (CircleSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(FeedActivity)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (SocialGroup) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createCircle:()->Unit, modifier: Modifier) {
     var safetyPost by remember { mutableStateOf<SocialPost?>(null) }
     var blockConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
     var deletionConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
@@ -165,7 +167,9 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) { SocialIconButton(conditions, stringResource(R.string.social_conditions)) { Icon(Icons.Outlined.WbSunny, null) }; SocialIconButton(community, stringResource(R.string.social_community)) { Icon(Icons.Outlined.People, null) }; SocialIconButton(notifications, stringResource(R.string.social_notifications)) { BadgedBox({ if (state.home.invitations.isNotEmpty()) Badge() }) { Icon(Icons.Outlined.Notifications, null) } } } }
         if (state.offline) item { AssistChip({}, { Text(stringResource(R.string.social_offline)) }, leadingIcon = { Icon(Icons.Outlined.CloudOff, null) }) }
-        if (incomingRequests.isNotEmpty()) item { SocialCard(onClick = { openProfile(incomingRequests.first()) }) { Row(verticalAlignment = Alignment.CenterVertically) { SocialAvatar(incomingRequests.first()); Spacer(Modifier.width(12.dp)); Text(stringResource(R.string.social_incoming_requests, incomingRequests.size), Modifier.weight(1f), fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_review), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold) } } }
+        items(incomingRequests, key = { "request-${it.id}" }) { person ->
+            RequesterCard(person, { openProfile(person) }, { acceptRequest(person) }, { declineRequest(person) })
+        }
         item { SectionHeader(stringResource(R.string.social_connections), action = stringResource(R.string.social_all), onAction = openConnections) }
         item { SocialConnectionsPreview(acceptedConnections, state.loading, openConnections, openProfile) }
         item { SectionHeader(stringResource(R.string.social_circle), action = if (state.home.circles.isNotEmpty()) stringResource(R.string.social_circle_create) else null, onAction = createCircle) }
@@ -263,6 +267,22 @@ fun SocialConnectionsPreview(
 }
 @Composable private fun SocialIconButton(onClick: () -> Unit, label: String, content: @Composable () -> Unit) = IconButton(onClick, Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = label }) { Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = .10f)) { Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) { content() } } }
 @Composable private fun PersonRow(person: SocialPerson, click: () -> Unit) = TextButton(click, Modifier.fillMaxWidth()) { SocialAvatar(person); Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) { Text(person.displayName); person.username?.let { Text("@$it", style = MaterialTheme.typography.bodySmall) } } }
+@Composable private fun RequesterCard(person: SocialPerson, openProfile: () -> Unit, accept: () -> Unit, decline: () -> Unit) = SocialCard(onClick = openProfile) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        SocialAvatar(person)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(person.displayName, fontWeight = FontWeight.SemiBold)
+            person.username?.let { Text("@$it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+        SocialIconButton(accept, stringResource(R.string.social_accept)) {
+            Icon(Icons.Outlined.Check, null)
+        }
+        SocialIconButton(decline, stringResource(R.string.social_decline)) {
+            Icon(Icons.Outlined.Close, null, tint = MaterialTheme.colorScheme.error)
+        }
+    }
+}
 @Composable
 private fun ConnectionsDialog(
     state: SocialUiState,
@@ -272,6 +292,8 @@ private fun ConnectionsDialog(
     scanQr: () -> Unit,
     showQr: () -> Unit,
     inviteByLink: () -> Unit,
+    acceptRequest: (SocialPerson) -> Unit,
+    declineRequest: (SocialPerson) -> Unit,
     close: () -> Unit,
 ) = Dialog(onDismissRequest = close) {
     var addMenuExpanded by remember { mutableStateOf(false) }
@@ -307,7 +329,7 @@ private fun ConnectionsDialog(
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (state.searchResults.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_search_people)) }; items(state.searchResults, key = SocialPerson::id) { PersonRow(it) { openProfile(it) } } }
                 val incoming = state.home.connections.filter { it.relationship == "pending" && it.connectionDirection == "incoming" }
-                if (incoming.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_requests)) }; items(incoming, key = SocialPerson::id) { PersonRow(it) { openProfile(it) } } }
+                if (incoming.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_requests)) }; items(incoming, key = SocialPerson::id) { person -> RequesterCard(person, { openProfile(person) }, { acceptRequest(person) }, { declineRequest(person) }) } }
                 if (state.home.invitations.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_invite)) }; items(state.home.invitations, key = SocialInvitation::id) { invitation -> InvitationCard(invitation, reviewInvitation) } }
                 val accepted = state.home.connections.filter { it.relationship in setOf("accepted", "connected") }
                 if (accepted.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_connections)) }; items(accepted, key = SocialPerson::id) { PersonRow(it) { openProfile(it) } } }
@@ -494,7 +516,10 @@ private fun ProfileScreen(
                         when {
                             isCurrentUser -> Unit
                             person.relationship == "none" -> TextButton(connect, enabled = !isProcessing) { Text(stringResource(R.string.social_connect)) }
-                            person.relationship == "pending" && person.connectionDirection == "incoming" -> TextButton(accept, enabled = !isProcessing) { Text(stringResource(R.string.social_accept)) }
+                            person.relationship == "pending" && person.connectionDirection == "incoming" -> {
+                                TextButton(remove, enabled = !isProcessing) { Text(stringResource(R.string.social_decline)) }
+                                TextButton(accept, enabled = !isProcessing) { Text(stringResource(R.string.social_accept)) }
+                            }
                             person.relationship in setOf("accepted", "connected") -> IconButton({ confirmsRemoval = true }) {
                                 Icon(Icons.Outlined.MoreVert, stringResource(R.string.social_profile_actions))
                             }
