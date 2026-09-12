@@ -104,11 +104,11 @@ export async function createCircle(ownerId: string, input: CircleInput) {
 }
 
 export async function ensureCurrentWeek(tx: Prisma.TransactionClient, circleId: string, now: Date) {
-  const circle = await tx.circle.findUniqueOrThrow({ where: { id: circleId }, select: { resetWeekday: true, timeZone: true, defaultFocusMode: true, defaultFocusConfigured: true, defaultTarget: true } });
+  const circle = await tx.circle.findUniqueOrThrow({ where: { id: circleId }, select: { resetWeekday: true, timeZone: true, defaultFocusMode: true, defaultFocusConfigured: true, defaultTarget: true, defaultThemeKey: true, defaultThemeTitle: true, defaultThemeNote: true } });
   const interval = circleWeekInterval(now, circle.resetWeekday, circle.timeZone);
   return tx.circleWeek.upsert({
     where: { circleId_startsAt: { circleId, startsAt: interval.startsAt } },
-    create: { circleId, startsAt: interval.startsAt, endsAt: interval.endsAt, timeZone: circle.timeZone, resetWeekday: circle.resetWeekday, focusMode: circle.defaultFocusMode, focusConfigured: circle.defaultFocusConfigured, sharedTarget: circle.defaultTarget },
+    create: { circleId, startsAt: interval.startsAt, endsAt: interval.endsAt, timeZone: circle.timeZone, resetWeekday: circle.resetWeekday, focusMode: circle.defaultFocusMode, focusConfigured: circle.defaultFocusConfigured, sharedTarget: circle.defaultTarget, themeKey: circle.defaultThemeKey, themeTitle: circle.defaultThemeTitle, themeNote: circle.defaultThemeNote },
     update: {},
   });
 }
@@ -126,7 +126,7 @@ export async function reconcileActivityToCircles(userId: string, activityId: str
       ? []
       : await prisma.circleMember.findMany({
           where: { userId, status: "active", joinedAt: { lte: activity.startedAt }, circle: { lifecycle: { not: "archived" } } },
-          include: { circle: { select: { id: true, resetWeekday: true, timeZone: true, defaultFocusMode: true, defaultFocusConfigured: true, defaultTarget: true } } },
+          include: { circle: { select: { id: true, resetWeekday: true, timeZone: true, defaultFocusMode: true, defaultFocusConfigured: true, defaultTarget: true, defaultThemeKey: true, defaultThemeTitle: true, defaultThemeNote: true } } },
         });
     const memberships = (await Promise.all(candidateMemberships.map(async (membership) => {
       try {
@@ -145,7 +145,7 @@ export async function reconcileActivityToCircles(userId: string, activityId: str
         const interval = circleWeekInterval(activity.startedAt, membership.circle.resetWeekday, membership.circle.timeZone);
         const week = await tx.circleWeek.upsert({
           where: { circleId_startsAt: { circleId: membership.circle.id, startsAt: interval.startsAt } },
-          create: { circleId: membership.circle.id, startsAt: interval.startsAt, endsAt: interval.endsAt, timeZone: membership.circle.timeZone, resetWeekday: membership.circle.resetWeekday, focusMode: membership.circle.defaultFocusMode, focusConfigured: membership.circle.defaultFocusConfigured, sharedTarget: membership.circle.defaultTarget },
+          create: { circleId: membership.circle.id, startsAt: interval.startsAt, endsAt: interval.endsAt, timeZone: membership.circle.timeZone, resetWeekday: membership.circle.resetWeekday, focusMode: membership.circle.defaultFocusMode, focusConfigured: membership.circle.defaultFocusConfigured, sharedTarget: membership.circle.defaultTarget, themeKey: membership.circle.defaultThemeKey, themeTitle: membership.circle.defaultThemeTitle, themeNote: membership.circle.defaultThemeNote },
           update: {},
         });
         await tx.circleContribution.createMany({ data: [{ weekId: week.id, memberId: membership.id, activityId: activity.id }], skipDuplicates: true });
@@ -194,7 +194,7 @@ export async function transferCircleOwnership(circleId: string, ownerId: string,
 
 export async function refreshWeekState(tx: Prisma.TransactionClient, weekId: string) {
   const week = await tx.circleWeek.findUniqueOrThrow({ where: { id: weekId }, include: { commitments: true, contributions: true, circle: { select: { lifecycle: true, name: true } } } });
-  if (!week.focusConfigured || week.focusMode === "none") {
+  if (!week.focusConfigured || week.focusMode === "none" || week.focusMode === "theme") {
     if (week.state === "completed") return tx.circleWeek.update({ where: { id: week.id }, data: { state: "open", completedAt: null } });
     return week;
   }
@@ -307,8 +307,8 @@ export async function circlePayload(circleId: string, viewerId: string, includeH
         recentActivity: contributions.find((contribution) => contribution.memberId === member.id)?.activity ?? null,
       };
     }),
-    upcomingFocus: { mode: circle.defaultFocusMode, focusConfigured: circle.defaultFocusConfigured, sharedTarget: circle.defaultTarget },
-    week: { id: week.id, startsAt: week.startsAt, endsAt: week.endsAt, focusMode: week.focusMode, focusConfigured: week.focusConfigured, sharedTarget: week.sharedTarget, state: week.state, contributedCount: contributions.length, targetCount: !week.focusConfigured ? null : week.focusMode === "shared_target" ? week.sharedTarget : commitments.filter((c) => !c.skipped).reduce((sum, c) => sum + (c.targetCount ?? 0), 0) || null },
+    upcomingFocus: { mode: circle.defaultFocusMode, focusConfigured: circle.defaultFocusConfigured, sharedTarget: circle.defaultTarget, themeKey: circle.defaultThemeKey, themeTitle: circle.defaultThemeTitle, themeNote: circle.defaultThemeNote },
+    week: { id: week.id, startsAt: week.startsAt, endsAt: week.endsAt, focusMode: week.focusMode, focusConfigured: week.focusConfigured, sharedTarget: week.sharedTarget, themeKey: week.themeKey, themeTitle: week.themeTitle, themeNote: week.themeNote, state: week.state, contributedCount: contributions.length, targetCount: !week.focusConfigured || week.focusMode === "theme" ? null : week.focusMode === "shared_target" ? week.sharedTarget : commitments.filter((c) => !c.skipped).reduce((sum, c) => sum + (c.targetCount ?? 0), 0) || null },
     currentUserMuted: viewerMembership?.notificationMuted ?? false,
     completionPresentationPending: week.state === "completed" && completionPresentation != null && completionPresentation.presentedAt == null,
     cheers: cheers.map((cheer) => ({ id: cheer.id, senderUserId: cheer.senderId, recipientUserId: cheer.recipientId, presetType: cheer.presetType, createdAt: cheer.createdAt })),
@@ -340,7 +340,7 @@ export async function circlePayload(circleId: string, viewerId: string, includeH
         .filter((event) => ["reconciling", "completed"].includes(event.status))
         .map((event) => ({ id: `event:${event.id}`, type: "completed_activity", createdAt: event.startsAt, title: event.title })),
     ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 10),
-    history: includeHistory ? history.map((item) => ({ id: item.id, startsAt: item.startsAt, endsAt: item.endsAt, focusMode: item.focusMode, state: item.state })) : undefined,
+    history: includeHistory ? history.map((item) => ({ id: item.id, startsAt: item.startsAt, endsAt: item.endsAt, focusMode: item.focusMode, themeKey: item.themeKey, themeTitle: item.themeTitle, themeNote: item.themeNote, state: item.state })) : undefined,
   };
   return payload;
 }

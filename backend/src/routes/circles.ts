@@ -25,7 +25,19 @@ import {
 } from "../services/circles.js";
 
 const router = new Hono<AppEnv>();
-const focusMode = z.enum(["personal_targets", "shared_target", "none"]);
+const focusMode = z.enum(["theme", "personal_targets", "shared_target", "none"]);
+const themeKey = z.enum([
+  "build_consistency",
+  "one_small_step",
+  "keep_the_rhythm",
+  "move_for_your_mood",
+  "recover_and_recharge",
+  "do_something_together",
+  "explore_somewhere_new",
+  "try_something_different",
+  "celebrate_every_effort",
+  "custom",
+]);
 const presetType = z.enum(["encouragement", "celebration", "support"]);
 const createSchema = z.object({
   name: z.string().trim().max(80).optional(),
@@ -36,9 +48,22 @@ const createSchema = z.object({
 const focusSchema = z.object({
   mode: focusMode,
   sharedTarget: z.number().int().min(1).max(100).nullable().optional(),
+  themeKey: themeKey.nullable().optional(),
+  customThemeTitle: z.string().trim().min(1).max(50).nullable().optional(),
+  customThemeNote: z.string().trim().max(120).nullable().optional(),
   apply: z.enum(["now", "next_week"]).default("now"),
+}).superRefine((input, context) => {
+  if (input.mode === "theme" && !input.themeKey) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["themeKey"], message: "A weekly theme is required." });
+  }
+  if (input.themeKey && input.mode !== "theme") {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["themeKey"], message: "Themes require theme focus mode." });
+  }
+  if (input.themeKey === "custom" && !input.customThemeTitle) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["customThemeTitle"], message: "A custom theme needs a title." });
+  }
 });
-const commitmentSchema = z.object({ targetCount: z.number().int().min(1).max(100).nullable().optional(), skipped: z.boolean().default(false) });
+const commitmentSchema = z.object({ targetCount: z.number().int().min(1).max(100).nullable().optional(), skipped: z.boolean().default(false), clear: z.boolean().default(false) });
 const inviteSchema = z.object({ recipientUserIds: z.array(z.string().min(1)).min(1).max(CIRCLE_MEMBER_LIMIT_MAXIMUM - 1), idempotencyKey: z.string().min(1).max(128).optional() });
 const renameSchema = z.object({ name: z.string().trim().min(1).max(80) });
 const calendarSchema = z.object({ resetWeekday: z.number().int().min(1).max(7), timeZone: z.string().trim().max(100), apply: z.enum(["now", "next_week"]).default("next_week") });
@@ -222,10 +247,20 @@ router.post("/:id/focus", zValidator("json", focusSchema), async (c) => {
   const circle = await getPrismaClient().circle.findFirst({ where: { id: c.req.param("id"), ownerId: user.id, lifecycle: { not: "archived" } } });
   if (!circle) return c.json({ error: "Owner access is required." }, 403);
   if (input.mode === "shared_target" && !input.sharedTarget) return c.json({ error: "A shared target is required." }, 422);
-  await getPrismaClient().circle.update({ where: { id: circle.id }, data: { defaultFocusMode: input.mode, defaultFocusConfigured: true, defaultTarget: input.sharedTarget ?? null } });
+  const defaultTheme = input.themeKey === undefined ? {} : {
+    defaultThemeKey: input.themeKey,
+    defaultThemeTitle: input.themeKey === "custom" ? input.customThemeTitle : null,
+    defaultThemeNote: input.themeKey === "custom" ? input.customThemeNote || null : null,
+  };
+  const weekTheme = input.themeKey === undefined ? {} : {
+    themeKey: input.themeKey,
+    themeTitle: input.themeKey === "custom" ? input.customThemeTitle : null,
+    themeNote: input.themeKey === "custom" ? input.customThemeNote || null : null,
+  };
+  await getPrismaClient().circle.update({ where: { id: circle.id }, data: { defaultFocusMode: input.mode, defaultFocusConfigured: true, defaultTarget: input.sharedTarget ?? null, ...defaultTheme } });
   if (input.apply !== "next_week") {
     const week = await ensureCurrentWeek(getPrismaClient(), circle.id, new Date());
-    await getPrismaClient().circleWeek.update({ where: { id: week.id }, data: { focusMode: input.mode, focusConfigured: true, sharedTarget: input.sharedTarget ?? null } });
+    await getPrismaClient().circleWeek.update({ where: { id: week.id }, data: { focusMode: input.mode, focusConfigured: true, sharedTarget: input.sharedTarget ?? null, ...weekTheme } });
     await refreshWeekState(getPrismaClient(), week.id);
   }
   return c.json(await circlePayload(circle.id, user.id, true));
@@ -237,8 +272,12 @@ router.put("/:id/commitment", zValidator("json", commitmentSchema), async (c) =>
   const member = await assertCircleMember(c.req.param("id"), user.id);
   const input = c.req.valid("json");
   const week = await ensureCurrentWeek(getPrismaClient(), c.req.param("id"), new Date());
-  if (!week.focusConfigured || week.focusMode !== "personal_targets") return c.json({ error: "Personal commitments are available only for a configured personal focus." }, 422);
-  await getPrismaClient().circleCommitment.upsert({ where: { weekId_memberId: { weekId: week.id, memberId: member!.id } }, create: { weekId: week.id, memberId: member!.id, targetCount: input.skipped ? null : input.targetCount ?? 3, skipped: input.skipped }, update: { targetCount: input.skipped ? null : input.targetCount ?? 3, skipped: input.skipped } });
+  if (!week.focusConfigured || !["theme", "personal_targets"].includes(week.focusMode)) return c.json({ error: "Personal commitments are not available for this weekly focus." }, 422);
+  if (input.clear) {
+    await getPrismaClient().circleCommitment.deleteMany({ where: { weekId: week.id, memberId: member!.id } });
+  } else {
+    await getPrismaClient().circleCommitment.upsert({ where: { weekId_memberId: { weekId: week.id, memberId: member!.id } }, create: { weekId: week.id, memberId: member!.id, targetCount: input.skipped ? null : input.targetCount ?? 3, skipped: input.skipped }, update: { targetCount: input.skipped ? null : input.targetCount ?? 3, skipped: input.skipped } });
+  }
   await refreshWeekState(getPrismaClient(), week.id);
   return c.json(await circlePayload(c.req.param("id"), user.id, true));
 });

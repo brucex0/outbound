@@ -1318,9 +1318,12 @@ model Circle {
   memberLimit            Int                @default(6) // snapshotted from backend Circle policy when created
   resetWeekday           Int                @default(1) // ISO weekday, 1 = Monday
   timeZone               String
-  defaultFocusMode       String             @default("personal_targets") // personal_targets | shared_target | none
+  defaultFocusMode       String             @default("personal_targets") // theme | personal_targets | shared_target | none
   defaultFocusConfigured Boolean            @default(false)
   defaultTarget          Int?
+  defaultThemeKey        String?
+  defaultThemeTitle      String?
+  defaultThemeNote       String?
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
   members                CircleMember[]
@@ -1388,6 +1391,9 @@ model CircleWeek {
   focusMode       String
   focusConfigured Boolean                  @default(false)
   sharedTarget    Int?
+  themeKey        String?
+  themeTitle      String?
+  themeNote       String?
   state           String                   @default("open") // open | completed | closed
   completedAt     DateTime?
   createdAt       DateTime                 @default(now())

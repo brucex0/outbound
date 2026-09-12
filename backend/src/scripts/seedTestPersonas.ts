@@ -190,8 +190,9 @@ async function seedTestPersonas() {
       name: "Weekend Crew",
       lifecycle: "active",
       timeZone: "America/Los_Angeles",
-      defaultFocusMode: "personal_targets",
+      defaultFocusMode: "theme",
       defaultFocusConfigured: true,
+      defaultThemeKey: "build_consistency",
       members: {
         create: [
           { userId: socialRunner.id, role: "owner", displayNameSnapshot: socialRunner.displayName, joinedAt: daysAgo(now, 30) },
@@ -204,7 +205,7 @@ async function seedTestPersonas() {
   const circleWeek = await ensureCurrentWeek(prisma, circle.id, now);
   await prisma.circleWeek.update({
     where: { id: circleWeek.id },
-    data: { focusMode: "personal_targets", focusConfigured: true },
+    data: { focusMode: "theme", focusConfigured: true, themeKey: "build_consistency" },
   });
   await prisma.circleCommitment.createMany({
     data: circle.members.map((member) => ({
