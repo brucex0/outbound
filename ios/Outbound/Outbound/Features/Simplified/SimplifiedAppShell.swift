@@ -2820,6 +2820,7 @@ private struct SimplifiedMeView: View {
     @State private var showsManualWorkoutEntry = false
     @State private var showsConnections = false
     @State private var showsSocialInbox = false
+    @State private var showsQRCode = false
     @State private var manualWorkoutToast: String?
     @State private var navigationPath = NavigationPath()
     @State private var hasTrackedCalorieExposure = false
@@ -2864,6 +2865,17 @@ private struct SimplifiedMeView: View {
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+
+                            Button {
+                                showsQRCode = true
+                            } label: {
+                                Image(systemName: "qrcode")
+                                    .font(.headline.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                    .frame(width: 44, height: 44)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(String(localized: "Show my QR code"))
                         }
                     }
                     benefitsNavigationCard
@@ -3059,6 +3071,13 @@ private struct SimplifiedMeView: View {
             .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
             .navigationDestination(isPresented: $showsConnections) { SocialConnectionsView() }
             .navigationDestination(isPresented: $showsSocialInbox) { SocialNotificationsView() }
+            .navigationDestination(isPresented: $showsQRCode) {
+                SimplifiedMyQRCodeView(
+                    displayName: profile?.displayName ?? authStore.currentLoginLabel ?? String(localized: "Your profile"),
+                    username: profile?.username,
+                    avatarURL: profile?.avatarUrl
+                )
+            }
             .navigationDestination(for: AssistantNavigationTarget.self) { target in
                 assistantDestination(for: target)
             }
