@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -121,8 +122,10 @@ data class RecordedActivityReview(
 fun RecordingRoute(
     accountId: String,
     launch: RecordingLaunchConfiguration,
-    onSaved: (RecordedActivityReview) -> Unit,
+    onSaved: (RecordedActivityReview, ActivityPhotoAlbumExportResult?) -> Unit,
     onExit: () -> Unit,
+    saveActivityPhotosToAlbum: Boolean = true,
+    onPhotoAlbumPermissionDenied: () -> Unit = {},
     modifier: Modifier = Modifier,
     unitSystem: MeasurementUnitSystem = MeasurementUnitSystem.metric,
     weightKilograms: Double? = null,
@@ -139,8 +142,38 @@ fun RecordingRoute(
     var pendingResume by remember { mutableStateOf(false) }
     var showLocationEducation by remember { mutableStateOf(false) }
     var showCameraEducation by remember { mutableStateOf(false) }
+    var pendingPhotoAlbumSave by remember { mutableStateOf<RecordedActivityReview?>(null) }
     val saveSnackbar = remember { SnackbarHostState() }
     val saveFailedMessage = stringResource(R.string.recording_save_failed)
+
+    val saveReview: (RecordedActivityReview, Boolean, ActivityPhotoAlbumExportResult?) -> Unit =
+        { review, exportPhoto, overrideResult ->
+            scope.launch {
+                val result = viewModel.saveFinished(review, exportPhoto)
+                if (result.saved) {
+                    viewModel.markSaved()
+                    onSaved(review, overrideResult ?: result.photoAlbumExport)
+                } else {
+                    saveSnackbar.showSnackbar(saveFailedMessage)
+                }
+            }
+        }
+
+    val photoAlbumPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        val review = pendingPhotoAlbumSave ?: return@rememberLauncherForActivityResult
+        pendingPhotoAlbumSave = null
+        if (!granted) {
+            viewModel.trackPhotoAlbumPermissionDenied()
+            onPhotoAlbumPermissionDenied()
+        }
+        saveReview(
+            review,
+            granted,
+            if (granted) null else ActivityPhotoAlbumExportResult.PERMISSION_DENIED,
+        )
+    }
 
     fun permissionState(): LocationPermissionState {
         val precise = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -257,14 +290,17 @@ fun RecordingRoute(
                 onRemovePhoto = { ui.photoPath?.let(::File)?.delete(); viewModel.setPhotoPath(null) },
                 onSave = {
                     val reflection = ui.reflection ?: ReflectionChoice.STEADY
-                    scope.launch {
-                        val review = RecordedActivityReview(snapshot, reflection, ui.photoPath)
-                        if (viewModel.saveFinished(review)) {
-                            viewModel.markSaved()
-                            onSaved(review)
-                        } else {
-                            saveSnackbar.showSnackbar(saveFailedMessage)
-                        }
+                    val review = RecordedActivityReview(snapshot, reflection, ui.photoPath)
+                    val needsLegacyStoragePermission = saveActivityPhotosToAlbum &&
+                        ui.photoPath != null &&
+                        Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
+                        context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
+                            PackageManager.PERMISSION_GRANTED
+                    if (needsLegacyStoragePermission) {
+                        pendingPhotoAlbumSave = review
+                        photoAlbumPermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    } else {
+                        saveReview(review, saveActivityPhotosToAlbum, null)
                     }
                 },
                 saving = ui.saving,

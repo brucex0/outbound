@@ -46,6 +46,9 @@
     <string name="onboarding_health_unavailable">Health Connect aún no está disponible. Puedes introducir los datos u omitirlos.</string>
     <string name="onboarding_identity_unavailable">No se pudo guardar el perfil. Comprueba la conexión e inténtalo de nuevo.</string>
     <string name="onboarding_save_unavailable">Aún no pudimos crear tu semana. Tus respuestas están guardadas; inténtalo cuando tengas conexión.</string>
+    <string name="photo_album_permission_denied">Permite el acceso a Fotos en Ajustes para guardar las fotos de tus actividades</string>
+    <string name="photo_album_save_failed">La actividad se guardó, pero las fotos no se pudieron añadir al álbum</string>
+    <string name="photo_album_saved">Fotos guardadas en el álbum Plainstride</string>
     <string name="progress_destination">Progreso y equipo</string>
     <string name="reminder_body">Tu plan está listo cuando tú lo estés.</string>
     <string name="reminder_channel">Recordatorios de entrenamiento</string>

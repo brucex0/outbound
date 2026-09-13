@@ -32,6 +32,9 @@
     <string name="no_active_plan">Sin plan activo</string>
     <string name="no_active_plan_body">Configura un plan desde Hoy cuando quieras.</string>
     <string name="open_settings">Abrir ajustes</string>
+    <string name="photos_save_activity">Guardar fotos de las actividades</string>
+    <string name="photos_save_activity_detail">Añade las fotos automáticamente al álbum Plainstride</string>
+    <string name="photos_section">Fotos</string>
     <string name="plan_synced">Sincronizado con tu plan de entrenamiento adaptativo.</string>
     <string name="privacy">Política de privacidad</string>
     <string name="privacy_note">Plainstride mantiene los datos privados de salud fuera de Social y nunca los incluye en los análisis.</string>

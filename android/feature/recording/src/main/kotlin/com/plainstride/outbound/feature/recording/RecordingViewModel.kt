@@ -47,6 +47,11 @@ data class RecordingUiState(
     val pendingMedia:Boolean=false,
 )
 
+data class RecordedActivitySaveResult(
+    val saved: Boolean,
+    val photoAlbumExport: ActivityPhotoAlbumExportResult? = null,
+)
+
 @HiltViewModel
 class RecordingViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
@@ -56,6 +61,7 @@ class RecordingViewModel @Inject constructor(
     private val syncScheduler: ActivitySyncScheduler,
     private val voice: RecordingVoiceCoordinator,
 ) : ViewModel() {
+    private val photoAlbumExporter = ActivityPhotoAlbumExporter(context)
     private val launchJson=Json{ignoreUnknownKeys=true;explicitNulls=false}
     private val client = RecordingSessionClient(context).apply { connect() }
     private val mutableState = MutableStateFlow(RecordingUiState())
@@ -188,6 +194,14 @@ class RecordingViewModel @Inject constructor(
     fun trackPhotoAttempt() = analytics.record(AnalyticsEvent("activity_photo_capture_attempted", mapOf(
         AnalyticsProperty.Source to "recording",
     )))
+    fun trackPhotoAlbumPermissionDenied() = analytics.record(AnalyticsEvent(
+        "photo_album_export_completed",
+        mapOf(
+            AnalyticsProperty.Result to "permission_denied",
+            AnalyticsProperty.SourceType to "automatic",
+            AnalyticsProperty.CountBucket to "one",
+        ),
+    ))
     fun trackSaveIneligible() {
         val current = snapshot.value
         analytics.record(AnalyticsEvent("activity_save_ineligible_shown", mapOf(
@@ -205,8 +219,11 @@ class RecordingViewModel @Inject constructor(
     private fun clearLaunch(){context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).edit().remove(LAUNCH_KEY).apply()}
 
     /** Returns only after the activity and its outbox operation are committed to Room. */
-    suspend fun saveFinished(review: RecordedActivityReview): Boolean {
-        if (mutableState.value.saving) return false
+    suspend fun saveFinished(
+        review: RecordedActivityReview,
+        savePhotoToAlbum: Boolean,
+    ): RecordedActivitySaveResult {
+        if (mutableState.value.saving) return RecordedActivitySaveResult(saved = false)
         mutableState.value = mutableState.value.copy(saving = true)
         val sourcePhoto = review.photoPath?.let(::File)?.takeIf(File::isFile)
         var persistedPhotoPath: String? = null
@@ -270,16 +287,34 @@ class RecordingViewModel @Inject constructor(
                 photos = listOfNotNull(photo),
             ))
             syncScheduler.schedule(accountId)
+            val photoAlbumExport = if (savePhotoToAlbum && sourcePhoto != null) {
+                runCatching {
+                    photoAlbumExporter.export(sourcePhoto, sessionId, savedAt.toEpochMilli())
+                }.getOrDefault(ActivityPhotoAlbumExportResult.FAILED).also { result ->
+                    analytics.record(AnalyticsEvent("photo_album_export_completed", mapOf(
+                        AnalyticsProperty.Result to when (result) {
+                            ActivityPhotoAlbumExportResult.SAVED -> "success"
+                            ActivityPhotoAlbumExportResult.ALREADY_SAVED -> "already_saved"
+                            ActivityPhotoAlbumExportResult.PERMISSION_DENIED -> "permission_denied"
+                            ActivityPhotoAlbumExportResult.FAILED -> "failure"
+                        },
+                        AnalyticsProperty.SourceType to "automatic",
+                        AnalyticsProperty.CountBucket to "one",
+                    )))
+                }
+            } else {
+                null
+            }
             sourcePhoto?.delete()
             analytics.record(AnalyticsEvent("activity_saved_locally", mapOf(
                 AnalyticsProperty.Result to "success",
                 AnalyticsProperty.ActivityType to snapshot.activityKind.name.lowercase(),
             )))
-            true
+            RecordedActivitySaveResult(saved = true, photoAlbumExport = photoAlbumExport)
         }.getOrElse {
             persistedPhotoPath?.let(media::delete)
             analytics.record(AnalyticsEvent("activity_saved_locally", mapOf(AnalyticsProperty.Result to "failure")))
-            false
+            RecordedActivitySaveResult(saved = false)
         }.also { mutableState.value = mutableState.value.copy(saving = false) }
     }
 

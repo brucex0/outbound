@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Policy
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.QrCode
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
@@ -55,6 +56,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -197,6 +199,7 @@ fun MeRoute(
             onTemperature = viewModel::setTemperature,
             onAppearance = viewModel::setAppearance,
             onTheme = viewModel::setTheme,
+            onSaveActivityPhotos = { viewModel.setSaveActivityPhotosToAlbum(it) },
             onLinkGoogle = onLinkGoogle,
             onSignOut = onSignOut,
             onDeleteAccount = onDeleteAccount,
@@ -481,6 +484,7 @@ private fun SettingsScreen(
     onTemperature: (TemperatureUnit) -> Unit,
     onAppearance: (AppearanceMode) -> Unit,
     onTheme: (PlainstrideThemeId) -> Unit,
+    onSaveActivityPhotos: (Boolean) -> Unit,
     onLinkGoogle: () -> Unit,
     onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit,
@@ -511,6 +515,19 @@ private fun SettingsScreen(
             item { SectionTitle(stringResource(R.string.units)) }
             item { ChoiceRow(stringResource(R.string.measurement), MeasurementSystem.entries, state.preferences.measurement, { stringResource(if (it == MeasurementSystem.Metric) R.string.metric else R.string.imperial) }, onMeasurement) }
             item { ChoiceRow(stringResource(R.string.temperature), TemperatureUnit.entries, state.preferences.temperature, { stringResource(if (it == TemperatureUnit.Celsius) R.string.celsius else R.string.fahrenheit) }, onTemperature) }
+            item { HorizontalDivider() }
+            item { SectionTitle(stringResource(R.string.photos_section)) }
+            item { ListItem(
+                headlineContent = { Text(stringResource(R.string.photos_save_activity)) },
+                supportingContent = { Text(stringResource(R.string.photos_save_activity_detail)) },
+                leadingContent = { Icon(Icons.Outlined.PhotoLibrary, null) },
+                trailingContent = { Switch(state.preferences.saveActivityPhotosToAlbum, null) },
+                modifier = Modifier
+                    .clickable(role = Role.Switch) {
+                        onSaveActivityPhotos(!state.preferences.saveActivityPhotosToAlbum)
+                    }
+                    .heightIn(min = 64.dp),
+            ) }
             item { HorizontalDivider() }
             item { SectionTitle(stringResource(R.string.appearance)) }
             item { ChoiceRow(stringResource(R.string.mode), AppearanceMode.entries, state.preferences.appearance, { stringResource(when (it) { AppearanceMode.System -> R.string.system_mode; AppearanceMode.Light -> R.string.light_mode; AppearanceMode.Dark -> R.string.dark_mode }) }, onAppearance) }

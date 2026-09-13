@@ -32,6 +32,9 @@
     <string name="no_active_plan">暂无训练计划</string>
     <string name="no_active_plan_body">准备好后，可在“今天”中创建计划。</string>
     <string name="open_settings">打开设置</string>
+    <string name="photos_save_activity">保存运动照片</string>
+    <string name="photos_save_activity_detail">自动将照片添加到平步青云相册</string>
+    <string name="photos_section">照片</string>
     <string name="plan_synced">已与你的自适应训练计划同步。</string>
     <string name="privacy">隐私政策</string>
     <string name="privacy_note">Plainstride 不会在社交功能或分析数据中包含你的私密健康信息。</string>

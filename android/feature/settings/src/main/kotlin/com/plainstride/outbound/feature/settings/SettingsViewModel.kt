@@ -66,6 +66,23 @@ class SettingsViewModel @Inject constructor(
     fun setAppearance(value: AppearanceMode) = save("appearance_mode", value.wireValue) { repository.setAppearance(value) }
     fun setTheme(value: PlainstrideThemeId) = save("theme", value.serializedName) { repository.setTheme(value) }
 
+    fun setSaveActivityPhotosToAlbum(value: Boolean, showMessage: Boolean = true) {
+        if (saving.value) return
+        viewModelScope.launch {
+            saving.value = true
+            val result = repository.setSaveActivityPhotosToAlbum(value)
+            analytics.record(AnalyticsEvent(
+                "preference_changed",
+                mapOf(
+                    AnalyticsProperty.ChangeType to "save_activity_photos_to_album",
+                    AnalyticsProperty.SelectionType to if (value) "enabled" else "disabled",
+                ),
+            ))
+            if (showMessage) messages.emit(if (result.isSuccess) SettingsMessage.Saved else SettingsMessage.SaveFailed)
+            saving.value = false
+        }
+    }
+
     fun trackLegal(document: String) = analytics.record(
         AnalyticsEvent("legal_document_opened", mapOf(AnalyticsProperty.Source to "settings", AnalyticsProperty.Result to document))
     )

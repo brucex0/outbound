@@ -46,6 +46,9 @@
     <string name="onboarding_health_unavailable">健康互联暂不可用。你可以手动填写或跳过。</string>
     <string name="onboarding_identity_unavailable">无法保存个人资料。请检查网络连接后重试。</string>
     <string name="onboarding_save_unavailable">暂时无法制定本周计划。你的回答已保存，请联网后重试。</string>
+    <string name="photo_album_permission_denied">请在设置中允许访问照片，以保存运动照片</string>
+    <string name="photo_album_save_failed">运动已保存，但照片未能添加到相册</string>
+    <string name="photo_album_saved">照片已保存到平步青云相册</string>
     <string name="progress_destination">进度与装备</string>
     <string name="reminder_body">你的训练计划已准备好，随时可以开始。</string>
     <string name="reminder_channel">训练提醒</string>

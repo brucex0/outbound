@@ -46,6 +46,9 @@
     <string name="onboarding_health_unavailable">Health Connect isn’t available yet. You can enter details or skip.</string>
     <string name="onboarding_identity_unavailable">Couldn’t save that profile. Check your connection and try again.</string>
     <string name="onboarding_save_unavailable">Couldn’t build your week yet. Your answers are saved; try again when you’re online.</string>
+    <string name="photo_album_permission_denied">Allow Photos access in Settings to save activity photos</string>
+    <string name="photo_album_save_failed">Activity saved, but photos couldn’t be added to the album</string>
+    <string name="photo_album_saved">Photos saved to the Plainstride album</string>
     <string name="progress_destination">Progress &amp; gear</string>
     <string name="reminder_body">Your plan is ready when you are.</string>
     <string name="reminder_channel">Workout reminders</string>

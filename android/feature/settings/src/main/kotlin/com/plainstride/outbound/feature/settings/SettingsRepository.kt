@@ -33,6 +33,7 @@ data class SettingsPreferences(
     val temperature: TemperatureUnit,
     val appearance: AppearanceMode,
     val theme: PlainstrideThemeId,
+    val saveActivityPhotosToAlbum: Boolean = true,
 )
 
 data class MeSummary(
@@ -50,6 +51,7 @@ interface SettingsRepository {
     suspend fun setTemperature(value: TemperatureUnit): Result<Unit>
     suspend fun setAppearance(value: AppearanceMode): Result<Unit>
     suspend fun setTheme(value: PlainstrideThemeId): Result<Unit>
+    suspend fun setSaveActivityPhotosToAlbum(value: Boolean): Result<Unit>
 }
 
 @Singleton
@@ -69,6 +71,7 @@ class DefaultSettingsRepository @Inject constructor(
             temperature = TemperatureUnit.entries.firstOrNull { it.wireValue == values[TemperatureKey] } ?: deviceTemperature(),
             appearance = AppearanceMode.entries.firstOrNull { it.wireValue == values[AppearanceKey] } ?: AppearanceMode.System,
             theme = PlainstrideThemeId.fromSerializedName(values[ThemeKey]),
+            saveActivityPhotosToAlbum = values[SaveActivityPhotosKey] ?: true,
         )
     }
 
@@ -119,6 +122,10 @@ class DefaultSettingsRepository @Inject constructor(
     override suspend fun setTemperature(value: TemperatureUnit) = update(TemperatureKey, value.wireValue)
     override suspend fun setAppearance(value: AppearanceMode) = update(AppearanceKey, value.wireValue)
     override suspend fun setTheme(value: PlainstrideThemeId) = update(ThemeKey, value.serializedName)
+    override suspend fun setSaveActivityPhotosToAlbum(value: Boolean): Result<Unit> {
+        dataStore.edit { it[SaveActivityPhotosKey] = value }
+        return Result.success(Unit)
+    }
 
     private suspend fun update(key: Preferences.Key<String>, value: String): Result<Unit> {
         dataStore.edit { it[key] = value; it[DirtyKey] = true }
@@ -171,6 +178,7 @@ class DefaultSettingsRepository @Inject constructor(
         val TemperatureKey = stringPreferencesKey("temperature_unit_v1")
         val AppearanceKey = stringPreferencesKey("appearance_mode_v1")
         val ThemeKey = stringPreferencesKey("theme_v1")
+        val SaveActivityPhotosKey = booleanPreferencesKey("save_activity_photos_to_album_v1")
         val DirtyKey = booleanPreferencesKey("settings_preferences_dirty_v1")
     }
 }

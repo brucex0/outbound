@@ -102,6 +102,7 @@ import com.plainstride.outbound.feature.settings.MeMilestone
 import com.plainstride.outbound.feature.settings.SettingsGroupTitle
 import com.plainstride.outbound.feature.settings.R as SettingsR
 import com.plainstride.outbound.feature.recording.ActivityKind
+import com.plainstride.outbound.feature.recording.ActivityPhotoAlbumExportResult
 import com.plainstride.outbound.feature.recording.RecordedActivityReview
 import com.plainstride.outbound.feature.recording.RecordingGoal
 import com.plainstride.outbound.feature.recording.RecordingGoalType
@@ -502,10 +503,19 @@ private fun SignedInApp(
                     launch = recordingLaunch,
                     unitSystem = measurementUnitSystem,
                     weightKilograms = integration.weightKilograms,
-                    onSaved = { review: RecordedActivityReview ->
+                    onSaved = { review: RecordedActivityReview, photoAlbumExport: ActivityPhotoAlbumExportResult? ->
                         suppressRecordingRecovery = true
                         healthViewModel.export(review)
                         integrationViewModel.completePlannedWorkout(recordingLaunch, review)
+                        val photoMessage = when (photoAlbumExport) {
+                            ActivityPhotoAlbumExportResult.SAVED -> R.string.photo_album_saved
+                            ActivityPhotoAlbumExportResult.PERMISSION_DENIED -> R.string.photo_album_permission_denied
+                            ActivityPhotoAlbumExportResult.FAILED -> R.string.photo_album_save_failed
+                            ActivityPhotoAlbumExportResult.ALREADY_SAVED, null -> null
+                        }
+                        photoMessage?.let { message ->
+                            scope.launch { snackbar.showSnackbar(resources.getString(message)) }
+                        }
                         navController.navigate(TopLevelDestination.Me.route) {
                             popUpTo(RECORDING_ROUTE) { inclusive = true }
                         }
@@ -519,6 +529,10 @@ private fun SignedInApp(
                     sessionEffect = { snapshot ->
                         LiveCoachRecordingEffect(recordingLaunch, measurementUnitSystem)
                         RecordingSafetyEffect(snapshot)
+                    },
+                    saveActivityPhotosToAlbum = settingsState.preferences.saveActivityPhotosToAlbum,
+                    onPhotoAlbumPermissionDenied = {
+                        settingsViewModel.setSaveActivityPhotosToAlbum(false, showMessage = false)
                     },
                 )
             }
