@@ -2867,7 +2867,7 @@ private extension TogetherActivityDTO {
                 timestamp: resolvedStartedAt.addingTimeInterval(TimeInterval(duration) * progress),
                 latitude: coordinate[1],
                 longitude: coordinate[0],
-                altitude: nil,
+                altitude: coordinate.count > 2 && coordinate[2].isFinite ? coordinate[2] : nil,
                 verticalAccuracy: nil
             )
         }
@@ -2894,6 +2894,7 @@ private extension TogetherActivityDTO {
         }
         return SavedActivity(
             id: UUID(uuidString: id) ?? UUID(),
+            activityType: type.flatMap(ActivityType.init(rawValue:)) ?? .running,
             title: title ?? String(localized: "Activity"),
             guideNudge: "",
             reflection: nil,
@@ -2903,6 +2904,8 @@ private extension TogetherActivityDTO {
             durationSecs: duration,
             distanceM: max(0, distanceM ?? 0),
             avgPace: avgPace,
+            elevationGainM: elevationM,
+            energyKilocalories: energyKilocalories,
             route: routePoints.isEmpty ? nil : SavedRoute(points: routePoints),
             photos: savedPhotos,
             sync: nil

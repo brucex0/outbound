@@ -22,7 +22,7 @@ The current view is a Strava-style layered detail page:
 7. **Guide reflection** — full card with reflection title/body and optional nudge
 8. **Photos** — a permanent horizontal strip in the sheet selects GPS-tagged map pins; tapping the selected photo opens a full-screen lightbox with paging, caption, and counter
 
-Social activity posts reuse this same map-and-sheet detail shell through a share-safe activity adapter. The Social presentation adds the connection header, caption, inline Cheer/comment actions, contextual companion feedback, and a medium-to-full-height comment drawer with a sticky composer. Ownership gates editing and route publication: `Save Route` remains available on the current runner's own Social posts but is omitted from another runner's activity. Unavailable private source/gear metadata and route privacy are omitted.
+Social activity posts reuse this same map-and-sheet detail shell through a share-safe activity adapter. The Social presentation adds the connection header, caption, inline Cheer/comment actions, contextual companion feedback, and a medium-to-full-height comment drawer with a sticky composer. The share-safe activity summary carries the owner's stored elevation gain and calorie total, and route altitude samples preserve the shared elevation profile; Social never recalculates another runner's calories from the viewer's private weight. Ownership gates editing and route publication: `Save Route` remains available on the current runner's own Social posts but is omitted from another runner's activity. Unavailable private source/gear metadata and route privacy are omitted.
 
 The full Social activity card opens activity detail when tapped, while its profile, overflow, Cheer, and Comments controls retain their dedicated actions. Card-driven detail opens emit `activity_detail_opened` with `source_type=social_feed` on both clients.
 
@@ -120,7 +120,7 @@ Splits are computed on-the-fly by iterating route points, computing cumulative d
 
 Most analysis features are computed locally:
 
-- **Calories** — calculated on demand from current activity facts and the latest private weight, using speed-banded MET values from the [2024 Adult Compendium of Physical Activities](https://pacompendium.com/adult-compendium/), so workout or weight edits update every completed-workout surface without persisting a stale value; hidden when weight, distance, duration, or speed plausibility is insufficient
+- **Calories** — calculated on demand for the runner's private activity surfaces from current activity facts and the latest private weight, using speed-banded MET values from the [2024 Adult Compendium of Physical Activities](https://pacompendium.com/adult-compendium/), so workout or weight edits update those completed-workout surfaces without persisting a stale value; hidden when weight, distance, duration, or speed plausibility is insufficient. Social detail displays only the owner's stored calorie total from the share-safe activity response.
 - **Elevation profile** — computed from persisted `SavedRoutePoint.altitude` values
 - **Splits** — computed from route points via haversine + timestamp arithmetic
 - **Pace heatmap** — computed from point-to-point distance/time deltas

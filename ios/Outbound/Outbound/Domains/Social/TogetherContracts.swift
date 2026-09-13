@@ -327,33 +327,42 @@ struct LinkActivityEventRequestDTO: Codable, Sendable { let activityId: String }
 
 struct TogetherActivityDTO: Codable, Sendable {
     let id: String
+    let type: String?
     let title: String?
     let startedAt: Date?
     let endedAt: Date?
     let durationSecs: Int?
     let distanceM: Double?
+    let elevationM: Double?
     let avgPace: Double?
+    let energyKilocalories: Int?
     let route: TogetherActivityRouteDTO?
     let photos: [TogetherActivityPhotoDTO]?
 
     init(
         id: String,
+        type: String? = nil,
         title: String?,
         startedAt: Date? = nil,
         endedAt: Date? = nil,
         durationSecs: Int?,
         distanceM: Double?,
+        elevationM: Double? = nil,
         avgPace: Double?,
+        energyKilocalories: Int? = nil,
         route: TogetherActivityRouteDTO?,
         photos: [TogetherActivityPhotoDTO]? = nil
     ) {
         self.id = id
+        self.type = type
         self.title = title
         self.startedAt = startedAt
         self.endedAt = endedAt
         self.durationSecs = durationSecs
         self.distanceM = distanceM
+        self.elevationM = elevationM
         self.avgPace = avgPace
+        self.energyKilocalories = energyKilocalories
         self.route = route
         self.photos = photos
     }

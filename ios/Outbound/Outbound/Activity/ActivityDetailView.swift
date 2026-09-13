@@ -112,7 +112,7 @@ struct ActivityDetailView: View {
                 value: walkingStepCount.formatted()
             ))
         }
-        if showsPrivateDetails, let kilocalories = calorieEstimate.kilocalories {
+        if let kilocalories = displayedKilocalories {
             stats.append(DetailActivityStat(
                 label: String(localized: "activity.metric.calories", defaultValue: "Calories"),
                 value: WorkoutCalorieEstimator.calorieValue(kilocalories)
@@ -132,6 +132,11 @@ struct ActivityDetailView: View {
             for: currentActivity,
             weightKilograms: onboardingStore.latestWeightKilograms
         )
+    }
+
+    private var displayedKilocalories: Int? {
+        if showsPrivateDetails { return calorieEstimate.kilocalories }
+        return currentActivity.energyKilocalories.flatMap { $0 > 0 ? $0 : nil }
     }
 
     private var splits: [ActivitySplit] {
@@ -304,12 +309,11 @@ struct ActivityDetailView: View {
         }
         .onAppear {
             selectFirstLocatedPhotoIfNeeded()
-            if showsPrivateDetails,
-               calorieEstimate.kilocalories != nil,
-               !hasTrackedCalorieExposure {
+            if displayedKilocalories != nil, !hasTrackedCalorieExposure {
                 hasTrackedCalorieExposure = true
                 track(.init(.featureExposed, properties: [
                     .feature: .string("completed_workout_calories"),
+                    .sourceType: .string(routePublicationEntrySource),
                 ]))
             }
             if canPublishRoute, !hasTrackedSaveRouteExposure {
