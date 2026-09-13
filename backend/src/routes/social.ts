@@ -1180,12 +1180,15 @@ const socialPersonSelect = {
 
 const socialActivitySelect = {
   id: true,
+  type: true,
   title: true,
   startedAt: true,
   endedAt: true,
   durationSecs: true,
   distanceM: true,
+  elevationM: true,
   avgPace: true,
+  energyKilocalories: true,
   route: true,
 } as const;
 
