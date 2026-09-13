@@ -1260,7 +1260,9 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
                 previousRouteSignature = routeSignature
             }
 
-            let photoSignature = photos.map(\.id).map(\.uuidString).joined(separator: ",")
+            let photoSignature = photos
+                .map { "\($0.id.uuidString):\($0.relativePath)" }
+                .joined(separator: ",")
             if photoSignature != previousPhotoSignature {
                 mapView.removeAnnotations(mapView.annotations)
                 mapView.addAnnotations(photos.compactMap(ActivityRoutePhotoAnnotation.init(photo:)))
@@ -1306,7 +1308,7 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
                 ?? ActivityRoutePhotoAnnotationView(annotation: annotation, reuseIdentifier: identifier)
             view.annotation = annotation
             if let photoView = view as? ActivityRoutePhotoAnnotationView {
-                photoView.setImage(photoAnnotation.image)
+                photoView.setImage(from: photoAnnotation.imageURL)
                 photoView.displayPriority = .required
                 photoView.transform = photoAnnotation.photoID == selectedPhotoID
                     ? CGAffineTransform(scaleX: 1.22, y: 1.22)
@@ -1410,13 +1412,17 @@ private final class ActivityRoutePolyline: MKPolyline {
 private final class ActivityRoutePhotoAnnotation: NSObject, MKAnnotation {
     let coordinate: CLLocationCoordinate2D
     let photoID: UUID
-    let image: UIImage?
+    let imageURL: URL
 
     nonisolated init?(photo: SavedPhoto) {
         guard let photoCoordinate = photo.coordinate else { return nil }
         photoID = photo.id
-        let imageURL = ActivityPersistence.imageURL(for: photo)
-        image = imageURL.isFileURL ? UIImage(contentsOfFile: imageURL.path) : nil
+        if let remoteURL = URL(string: photo.relativePath),
+           ["http", "https"].contains(remoteURL.scheme?.lowercased() ?? "") {
+            imageURL = remoteURL
+        } else {
+            imageURL = ActivityPersistence.imageURL(for: photo)
+        }
         coordinate = CLLocationCoordinate2D(
             latitude: photoCoordinate.latitude,
             longitude: photoCoordinate.longitude
@@ -1427,6 +1433,8 @@ private final class ActivityRoutePhotoAnnotation: NSObject, MKAnnotation {
 
 private final class ActivityRoutePhotoAnnotationView: MKAnnotationView {
     private let thumbnailView = UIImageView()
+    private var representedImageURL: URL?
+    private var imageTask: URLSessionDataTask?
 
     override init(annotation: (any MKAnnotation)?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
@@ -1454,7 +1462,46 @@ private final class ActivityRoutePhotoAnnotationView: MKAnnotationView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func setImage(_ image: UIImage?) {
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        imageTask?.cancel()
+        imageTask = nil
+        representedImageURL = nil
+        showPlaceholder()
+    }
+
+    func setImage(from url: URL) {
+        imageTask?.cancel()
+        imageTask = nil
+        representedImageURL = url
+
+        if url.isFileURL {
+            let image = UIImage(contentsOfFile: url.path(percentEncoded: false))
+            setThumbnail(image)
+            return
+        }
+
+        showPlaceholder()
+        var request = URLRequest(url: url)
+        request.cachePolicy = .returnCacheDataElseLoad
+        imageTask = URLSession.shared.dataTask(with: request) { [weak self] data, response, _ in
+            guard let data,
+                  let httpResponse = response as? HTTPURLResponse,
+                  (200..<300).contains(httpResponse.statusCode),
+                  let image = UIImage(data: data) else { return }
+            DispatchQueue.main.async {
+                guard let self, self.representedImageURL == url else { return }
+                self.setThumbnail(image)
+            }
+        }
+        imageTask?.resume()
+    }
+
+    private func showPlaceholder() {
+        setThumbnail(nil)
+    }
+
+    private func setThumbnail(_ image: UIImage?) {
         thumbnailView.image = image ?? UIImage(systemName: "camera.fill")
         thumbnailView.tintColor = .white
         thumbnailView.backgroundColor = image == nil ? .systemOrange : .secondarySystemBackground
