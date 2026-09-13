@@ -160,10 +160,11 @@ For activity source attribution, expand `Activity.syncSource` into a structured 
 
 ### Progress
 
-- tabs for Now, Trends, Records, and Gear to keep the stats surface discoverable
-- PR history
-- shoe mileage
-- race prediction card with confidence
+- tabs for Now, Trends, Insights, and Records
+- matched period comparisons and sport-specific trend history
+- grounded explanations with confidence and visible evidence
+- PR history and race prediction cards
+- no shoe mileage; gear stays in Settings and activity metadata
 - source filters later if imports create duplicates or confusing totals
 
 ## Metric Rules
@@ -216,7 +217,7 @@ The first high-value slice is:
 
 1. local shoe model and Settings UI
 2. shoe picker on Save Activity
-3. shoe mileage in Progress
+3. shoe mileage in Settings and activity detail
 4. activity source badge model
 5. edit title/distance/duration/date for manual corrections
 
@@ -232,7 +233,7 @@ Implemented locally:
 - `SavedActivity` now carries source, gear, manual-edit, indoor, cadence, and heart-rate-zone metadata with decoding defaults for older manifests.
 - `RecordView` can mark treadmill/indoor sessions and attaches the default shoe on save.
 - `ActivityDetailView` shows source, shoe, indoor, cadence, and HR-zone metadata and has a focused edit sheet for title, date, distance, duration, and shoe.
-- `ProgressStatsEngine` computes PR history and race predictions; `ProgressView` renders PRs, predictions, and shoe mileage.
+- `ProgressStatsEngine` computes matched comparisons, multi-range trends, grounded insights, PR history, and race predictions; `ProgressView` renders these without shoe mileage.
 - Progress includes an Add Workout form for route-free manual activities. The main assistant recognizes workout-log requests, asks for missing sport or duration, and opens the same editable confirmation form before saving.
 
 Still future work:

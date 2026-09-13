@@ -80,9 +80,9 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## Progress
 
-- `Progress/ProgressStatsEngine.swift`: pure local stats engine shared with the Swift Package target. It derives current-week totals, four-week buckets, best efforts, PR history, race predictions, one momentum note, and a lightweight guide note from `ProgressActivity` inputs without depending on SwiftUI or `SavedActivity`.
-- `Progress/ProgressView.swift`: Strava-style Progress surface opened from Me. It adapts saved activities into `ProgressActivity`, computes route-window best efforts from canonical route points, and organizes weekly summary/recent stats, trends, records, and gear mileage into Now, Trends, Records, and Gear tabs.
-- `Tests/OutboundSessionAnalysisTests/ProgressStatsEngineTests.swift`: focused Swift Package coverage for current-week totals, four-week buckets, route-window best efforts, fallback efforts, longest run, best weekly distance, PR history, race predictions, and momentum notes.
+- `Progress/ProgressStatsEngine.swift`: pure local stats engine shared with the Swift Package target. It derives matched week/month/28-day comparisons, `4W`/`3M`/`6M`/`1Y` series, HR-qualified efficiency and load signals, ranked semantic insights, best efforts, PR history, predictions, and momentum from `ProgressActivity` inputs without depending on SwiftUI or `SavedActivity`. See `docs/progress-insights.md` for thresholds and guardrails.
+- `Progress/ProgressView.swift`: Progress surface opened from Me. It adapts saved activities into normalized stats inputs, computes route-window best efforts from canonical route points, and presents Now, Trends, Insights, and Records. Trend pace is sport-specific; explanation copy is localized and grounded in visible evidence. Shoe mileage is intentionally excluded.
+- `Tests/OutboundSessionAnalysisTests/ProgressStatsEngineTests.swift`: focused Swift Package coverage for matched partial periods, all trend ranges, HR-qualified efficiency and load gates, current-week totals, route-window/fallback efforts, records, predictions, and momentum notes.
 
 ## Companion And Session Analysis
 

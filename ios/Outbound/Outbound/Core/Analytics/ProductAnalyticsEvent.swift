@@ -47,6 +47,9 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case liveWorkoutPanelDisplayChanged = "live_workout_panel_display_changed"
     case paginatedListPageLoaded = "paginated_list_page_loaded"
     case meDestinationOpened = "me_destination_opened"
+    case progressSurfaceOpened = "progress_surface_opened"
+    case progressControlChanged = "progress_control_changed"
+    case progressInsightsExposed = "progress_insights_exposed"
     case connectionsOpened = "connections_opened"
     case connectionsSearchCompleted = "connections_search_completed"
     case socialProfileOpened = "social_profile_opened"
@@ -304,6 +307,9 @@ enum ProductAnalyticsSchema {
         .liveWorkoutPanelDisplayChanged: [.selectionType, .sourceType],
         .paginatedListPageLoaded: [.sourceType, .countBucket, .pageDepthBucket],
         .meDestinationOpened: [.destination, .entrySource],
+        .progressSurfaceOpened: [.entrySource, .countBucket],
+        .progressControlChanged: [.control, .selectionType],
+        .progressInsightsExposed: [.countBucket, .sourceType],
         .connectionsOpened: [.entrySource],
         .connectionsSearchCompleted: [.sourceType, .inputScript, .queryLengthBucket, .countBucket, .matchMode, .result],
         .socialProfileOpened: [.entrySource],
