@@ -9,12 +9,23 @@ struct RewardsCenterView: View {
         Form {
             Section {
                 if let status {
-                    if rewardEntitlements(in: status).isEmpty {
+                    if rewardEntitlements(in: status).isEmpty && status.bankedRewardDays == 0 {
                         Text(text("rewards.no_active_rewards"))
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(rewardEntitlements(in: status)) { entitlement in
                             rewardRow(entitlement)
+                        }
+                        if status.bankedRewardDays > 0 {
+                            HStack(spacing: 12) {
+                                Image(systemName: "calendar.badge.clock")
+                                    .foregroundStyle(.orange)
+                                    .frame(width: 24)
+                                Text(String.localizedStringWithFormat(
+                                    text("rewards.banked_days_format"),
+                                    status.bankedRewardDays
+                                ))
+                            }
                         }
                     }
                 } else {
@@ -113,7 +124,8 @@ struct InvitationCodeView: View {
     var body: some View {
         Form {
             Section {
-                if let referral = status?.referral {
+                if let status {
+                    let referral = status.referral
                     LabeledContent(text("rewards.your_code"), value: referral.code)
                         .textSelection(.enabled)
                     Button {
@@ -121,7 +133,12 @@ struct InvitationCodeView: View {
                     } label: {
                         Label(text("rewards.share_invitation"), systemImage: "square.and.arrow.up")
                     }
-                    LabeledContent(text("rewards.qualified_invites"), value: "\(referral.qualifiedCount)")
+                    LabeledContent(
+                        status.referralProgram.foundingMember
+                            ? text("rewards.activated_runners")
+                            : text("rewards.qualified_invites"),
+                        value: "\(referral.qualifiedCount)"
+                    )
                     if referral.pendingCount > 0 {
                         LabeledContent(text("rewards.pending_invites"), value: "\(referral.pendingCount)")
                     }
@@ -130,7 +147,9 @@ struct InvitationCodeView: View {
                         .frame(maxWidth: .infinity)
                 }
             } footer: {
-                Text(text("rewards.invite_detail"))
+                if let status {
+                    Text(invitationDetail(status.referralProgram))
+                }
             }
         }
         .navigationTitle(text("rewards.my_invitation_code"))
@@ -143,13 +162,39 @@ struct InvitationCodeView: View {
     }
 
     private func share(_ referral: RewardsReferralDTO) {
-        let invitation = "\(text("rewards.share_message"))\n\n\(referral.shareURL.absoluteString)"
+        guard let program = status?.referralProgram else { return }
+        let invitation = "\(shareMessage(program))\n\n\(referral.shareURL.absoluteString)"
         Task {
             await SystemSharePresenter.present(activityItems: [invitation])
             await analyticsManager?.track(.init(.referralCodeShared, properties: [
-                .sourceType: .string("me_invitation_code")
+                .sourceType: .string("me_invitation_code"),
+                .selectionType: .string(program.foundingMember ? "founding" : "reward_eligible")
             ]))
         }
+    }
+
+    private func invitationDetail(_ program: ReferralProgramDTO) -> String {
+        let qualifyingMinutes = program.qualifyingActivitySeconds / 60
+        if program.inviterRewardEligible {
+            return String.localizedStringWithFormat(
+                text("rewards.invite_detail_format"),
+                program.inviteeRewardDays,
+                program.inviterRewardDays,
+                qualifyingMinutes
+            )
+        }
+        return String.localizedStringWithFormat(
+            text("rewards.invite_detail_founding_format"),
+            program.inviteeRewardDays,
+            program.claimWindowDays
+        )
+    }
+
+    private func shareMessage(_ program: ReferralProgramDTO) -> String {
+        let key: String.LocalizationValue = program.inviterRewardEligible
+            ? "rewards.share_message_format"
+            : "rewards.share_message_founding_format"
+        return String.localizedStringWithFormat(text(key), program.inviteeRewardDays)
     }
 
     private func refresh() async {

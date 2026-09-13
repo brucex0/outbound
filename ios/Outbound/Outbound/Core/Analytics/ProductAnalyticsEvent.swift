@@ -323,7 +323,7 @@ enum ProductAnalyticsSchema {
         .liveVoiceCheerPlayed: [.countBucket],
         .rewardsCenterOpened: [],
         .rewardCodeRedeemed: [.sourceType, .result],
-        .referralCodeShared: [.sourceType],
+        .referralCodeShared: [.sourceType, .selectionType],
         .subscriptionPaywallOpened: [.entrySource],
         .subscriptionCustomerCenterOpened: [.entrySource],
         .subscriptionReconciled: [.sourceType, .result],

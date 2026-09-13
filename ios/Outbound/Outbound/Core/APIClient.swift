@@ -2211,7 +2211,19 @@ struct VoiceCheerDTO: Decodable, Identifiable {
 
 struct RewardsStatusDTO: Decodable {
     let referral: RewardsReferralDTO
+    let referralProgram: ReferralProgramDTO
+    let bankedRewardDays: Int
     let entitlements: [CapabilityEntitlementDTO]
+}
+
+struct ReferralProgramDTO: Decodable {
+    let termsVersion: Int
+    let inviteeRewardDays: Int
+    let inviterRewardDays: Int
+    let claimWindowDays: Int
+    let qualifyingActivitySeconds: Int
+    let inviterRewardEligible: Bool
+    let foundingMember: Bool
 }
 
 struct RewardsReferralDTO: Decodable {
