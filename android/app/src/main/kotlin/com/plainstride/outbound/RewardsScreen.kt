@@ -93,8 +93,11 @@ class RewardsViewModel @Inject constructor(
         if (success) refresh()
     }
 
-    fun shared(source: String) = analytics.record(
-        AnalyticsEvent("referral_code_shared", mapOf(AnalyticsProperty.SourceType to source)),
+    fun shared(source: String, foundingMember: Boolean) = analytics.record(
+        AnalyticsEvent("referral_code_shared", mapOf(
+            AnalyticsProperty.SourceType to source,
+            AnalyticsProperty.SelectionType to if (foundingMember) "founding" else "reward_eligible",
+        )),
     )
 
     fun paywallOpened(source: String) = analytics.record(AnalyticsEvent("subscription_paywall_opened", mapOf(AnalyticsProperty.EntrySource to source)))
@@ -235,7 +238,7 @@ class RewardsViewModel @Inject constructor(
                 capabilities.firstOrNull { it.first == entitlement.capability }
                     ?.takeIf { entitlement.allowed && entitlement.sources.any { source -> source != "revenuecat" } }
             }
-            if (state.status != null && rewards.isEmpty()) {
+            if (state.status != null && rewards.isEmpty() && state.status?.bankedRewardDays == 0) {
                 item { Text(stringResource(R.string.rewards_no_active_rewards), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             items(rewards, key = { it.first }) { reward ->
@@ -244,6 +247,14 @@ class RewardsViewModel @Inject constructor(
                     supportingContent = { Text(stringResource(reward.third)) },
                     leadingContent = { Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.primary) },
                 )
+            }
+            state.status?.bankedRewardDays?.takeIf { it > 0 }?.let { days ->
+                item {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.rewards_banked_days, days)) },
+                        leadingContent = { Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.primary) },
+                    )
+                }
             }
             item { Text(stringResource(R.string.rewards_current_rewards_detail), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             item { HorizontalDivider() }
@@ -298,17 +309,51 @@ class RewardsViewModel @Inject constructor(
         IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.rewards_back)) }
     }) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            state.status?.referral?.let { referral ->
+            state.status?.let { status ->
+                val referral = status.referral
+                val program = status.referralProgram
                 item { ListItem(headlineContent = { Text(stringResource(R.string.rewards_your_code)) }, supportingContent = { Text(referral.code) }) }
                 item { Button(onClick = {
-                    viewModel.shared("me_invitation_code")
+                    viewModel.shared("me_invitation_code", program.foundingMember)
                     context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, context.getString(R.string.rewards_share_message, referral.shareURL))
+                        putExtra(
+                            Intent.EXTRA_TEXT,
+                            context.getString(
+                                if (program.inviterRewardEligible) R.string.rewards_share_message else R.string.rewards_share_message_founding,
+                                program.inviteeRewardDays,
+                                referral.shareURL,
+                            ),
+                        )
                     }, null))
                 }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.rewards_share_invitation)) } }
-                item { Text(stringResource(R.string.rewards_invite_counts, referral.qualifiedCount, referral.pendingCount)) }
-                item { Text(stringResource(R.string.rewards_invite_detail), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item {
+                    Text(stringResource(
+                        if (program.foundingMember) R.string.rewards_invite_counts_founding else R.string.rewards_invite_counts,
+                        referral.qualifiedCount,
+                        referral.pendingCount,
+                    ))
+                }
+                item {
+                    Text(
+                        if (program.inviterRewardEligible) {
+                            stringResource(
+                                R.string.rewards_invite_detail,
+                                program.inviteeRewardDays,
+                                program.inviterRewardDays,
+                                program.qualifyingActivitySeconds / 60,
+                            )
+                        } else {
+                            stringResource(
+                                R.string.rewards_invite_detail_founding,
+                                program.inviteeRewardDays,
+                                program.claimWindowDays,
+                            )
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             if (state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
         }

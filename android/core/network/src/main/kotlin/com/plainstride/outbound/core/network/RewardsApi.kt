@@ -24,8 +24,19 @@ import retrofit2.http.POST
     val expiresAt: String? = null,
     val sources: List<String> = emptyList(),
 )
+@Serializable data class ReferralProgramDto(
+    val termsVersion: Int,
+    val inviteeRewardDays: Int,
+    val inviterRewardDays: Int,
+    val claimWindowDays: Int,
+    val qualifyingActivitySeconds: Int,
+    val inviterRewardEligible: Boolean,
+    val foundingMember: Boolean,
+)
 @Serializable data class RewardsStatusDto(
     val referral: RewardsReferralDto,
+    val referralProgram: ReferralProgramDto,
+    val bankedRewardDays: Int,
     val entitlements: List<CapabilityEntitlementDto>,
 )
 @Serializable data class RewardCodeRequestDto(val code: String)
