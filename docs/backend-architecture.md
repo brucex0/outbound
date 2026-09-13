@@ -104,6 +104,7 @@ Responsibilities:
 - issue 15-minute access tokens and atomically rotate opaque 30-day refresh tokens
 - provide authenticated `me` endpoints
 - delete the authenticated user's relational data and revoke Apple authorization through a recently reauthorized `DELETE /v1/auth/me`
+- own avatar upload and removal through authenticated `PATCH`/`DELETE /v1/auth/me/avatar` endpoints
 - persist the versioned account preference snapshot exposed by `GET`/`PUT /v1/auth/me/preferences`, including measurement and temperature units, coaching/voice configuration, appearance/theme, gear defaults, music choices, and activity-setup defaults
 
 Rules:

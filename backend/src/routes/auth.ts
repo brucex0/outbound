@@ -492,6 +492,23 @@ router.patch(
   }
 );
 
+router.delete("/me/avatar", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c);
+  if (!user) return c.json({ error: "Authentication required." }, 401);
+  try {
+    await deleteAvatar(user.id);
+    return c.json(await getPrismaClient().user.update({
+      where: { id: user.id },
+      data: { avatarUrl: null },
+    }));
+  } catch (error) {
+    console.error("[avatar] removal failed", error);
+    return c.json({ error: error instanceof Error ? error.message : "Avatar removal failed." }, 503);
+  }
+});
+
 const appleDeletionCredential = z.object({
   provider: z.literal("apple").optional(), identityToken: z.string().min(1), authorizationCode: z.string().min(1), rawNonce: z.string().min(16),
 }).strict();
