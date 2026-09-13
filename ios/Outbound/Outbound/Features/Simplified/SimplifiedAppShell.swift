@@ -2933,29 +2933,41 @@ private struct SimplifiedMeView: View {
                             }
                         }
                     }
-                    OutboundCard {
-                        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                            Text("This week")
-                                .font(.headline)
-                            HStack {
-                                meStat(measurementPreferences.unitSystem.distanceString(meters: weekDistance, fractionDigits: 1), String(localized: "Distance"))
-                                meStat(weekDuration.formatted(), String(localized: "Time"))
+                    NavigationLink {
+                        RunnerProgressView()
+                    } label: {
+                        OutboundCard {
+                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                HStack {
+                                    Text("This week")
+                                        .font(.headline)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.tertiary)
+                                        .accessibilityHidden(true)
+                                }
+                                HStack {
+                                    meStat(measurementPreferences.unitSystem.distanceString(meters: weekDistance, fractionDigits: 1), String(localized: "Distance"))
+                                    meStat(weekDuration.formatted(), String(localized: "Time"))
+                                }
+                                HStack {
+                                    Text("Plan")
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
+                                    Text(String(
+                                        localized: "plan.weekProgress",
+                                        defaultValue: "\(weekRuns) of \(weekTarget) completed"
+                                    ))
+                                        .font(.subheadline.weight(.semibold))
+                                }
+                                ProgressView(value: Double(weekRuns), total: Double(max(1, weekTarget)))
+                                    .tint(OutboundPalette.companion)
+                                AIExplanationView(text: weekGuideLine)
                             }
-                            HStack {
-                                Text("Plan")
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(String(
-                                    localized: "plan.weekProgress",
-                                    defaultValue: "\(weekRuns) of \(weekTarget) completed"
-                                ))
-                                    .font(.subheadline.weight(.semibold))
-                            }
-                            ProgressView(value: Double(weekRuns), total: Double(max(1, weekTarget)))
-                                .tint(OutboundPalette.companion)
-                            AIExplanationView(text: weekGuideLine)
                         }
                     }
+                    .buttonStyle(.plain)
                     recognitionSection
                     if showsCycleAwareGuidance {
                         OutboundCard {
