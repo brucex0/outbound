@@ -2727,7 +2727,7 @@ private struct SocialActivityDetailView: View {
             ActivityDetailView(
                 activity: activity.savedActivity(postCreatedAt: currentPost.createdAt),
                 usesStoredActivity: false,
-                showsShareControl: true,
+                showsShareControl: currentPost.isCurrentUser,
                 showsEditControl: false,
                 showsPrivateDetails: false,
                 routePublicationActivityID: currentPost.isCurrentUser ? activity.id : nil,
