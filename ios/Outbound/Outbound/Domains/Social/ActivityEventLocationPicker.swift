@@ -98,7 +98,11 @@ struct ActivityEventMapPicker: View {
     @State private var hasResolutionError = false
     @State private var resolutionGeneration = 0
     @State private var resolutionTask: Task<Void, Never>?
+    @State private var resolutionTimeoutTask: Task<Void, Never>?
     @State private var reverseGeocoder = CLGeocoder()
+    @State private var freezesNextUserLocation = false
+
+    private static let resolutionTimeoutNanoseconds: UInt64 = 8_000_000_000
 
     init(
         initialCoordinate: CLLocationCoordinate2D?,
@@ -122,6 +126,7 @@ struct ActivityEventMapPicker: View {
             }
         } else {
             _position = State(initialValue: .userLocation(fallback: .automatic))
+            _freezesNextUserLocation = State(initialValue: true)
         }
     }
 
@@ -135,7 +140,7 @@ struct ActivityEventMapPicker: View {
                 invalidateSelectionIfNeeded(for: context.region.center)
             }
             .onMapCameraChange(frequency: .onEnd) { context in
-                choose(context.region.center)
+                settleCamera(at: context.region)
             }
             .overlay {
                 centerPin
@@ -157,6 +162,7 @@ struct ActivityEventMapPicker: View {
                     Spacer(minLength: 0)
 
                     Button {
+                        freezesNextUserLocation = true
                         position = .userLocation(fallback: .automatic)
                     } label: {
                         Image(systemName: "location.fill")
@@ -195,6 +201,7 @@ struct ActivityEventMapPicker: View {
             }
             .onDisappear {
                 resolutionTask?.cancel()
+                resolutionTimeoutTask?.cancel()
                 reverseGeocoder.cancelGeocode()
             }
         }
@@ -280,12 +287,24 @@ struct ActivityEventMapPicker: View {
 
         resolutionGeneration += 1
         resolutionTask?.cancel()
+        resolutionTimeoutTask?.cancel()
         reverseGeocoder.cancelGeocode()
         resolutionTask = nil
+        resolutionTimeoutTask = nil
         selectedCoordinate = nil
         selectedPlace = nil
         isResolving = false
         hasResolutionError = false
+    }
+
+    private func settleCamera(at region: MKCoordinateRegion) {
+        if freezesNextUserLocation {
+            // User-location mode follows every GPS refinement. Freeze its first settled
+            // region so small location updates cannot continuously restart geocoding.
+            freezesNextUserLocation = false
+            position = .region(region)
+        }
+        choose(region.center)
     }
 
     private func choose(_ coordinate: CLLocationCoordinate2D) {
@@ -304,6 +323,7 @@ struct ActivityEventMapPicker: View {
         isResolving = true
 
         resolutionTask?.cancel()
+        resolutionTimeoutTask?.cancel()
         reverseGeocoder.cancelGeocode()
         resolutionTask = Task { @MainActor in
             do {
@@ -320,13 +340,36 @@ struct ActivityEventMapPicker: View {
                 isResolving = false
                 selectedPlace = place
                 hasResolutionError = place == nil
+                resolutionTimeoutTask?.cancel()
+                resolutionTimeoutTask = nil
+                resolutionTask = nil
             } catch is CancellationError {
                 // A newer camera position owns the loading state.
             } catch {
                 guard generation == resolutionGeneration else { return }
                 isResolving = false
                 hasResolutionError = true
+                resolutionTimeoutTask?.cancel()
+                resolutionTimeoutTask = nil
+                resolutionTask = nil
             }
+        }
+        resolutionTimeoutTask = Task { @MainActor in
+            do {
+                try await Task.sleep(nanoseconds: Self.resolutionTimeoutNanoseconds)
+            } catch {
+                return
+            }
+
+            guard generation == resolutionGeneration,
+                  isResolving,
+                  coordinatesMatch(selectedCoordinate, coordinate) else { return }
+            resolutionTask?.cancel()
+            resolutionTask = nil
+            reverseGeocoder.cancelGeocode()
+            isResolving = false
+            hasResolutionError = true
+            resolutionTimeoutTask = nil
         }
     }
 
