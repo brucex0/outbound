@@ -2942,10 +2942,17 @@ private struct SimplifiedMeView: View {
                                     Text("This week")
                                         .font(.headline)
                                     Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.tertiary)
-                                        .accessibilityHidden(true)
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "sparkles")
+                                        Text(String(localized: "progress.view_insights", defaultValue: "View insights"))
+                                        Image(systemName: "chevron.right")
+                                            .accessibilityHidden(true)
+                                    }
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(OutboundPalette.companion)
+                                    .padding(.horizontal, 9)
+                                    .padding(.vertical, 6)
+                                    .background(OutboundPalette.companion.opacity(0.12), in: Capsule())
                                 }
                                 HStack {
                                     meStat(measurementPreferences.unitSystem.distanceString(meters: weekDistance, fractionDigits: 1), String(localized: "Distance"))
