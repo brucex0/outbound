@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { isFoundingMember } from "./foundingMembers.js";
 
@@ -37,20 +37,36 @@ export function generateEntitlementCode(): string {
 }
 
 export async function ensurePersonalReferralCode(prisma: PrismaClient, userId: string): Promise<string> {
-  const existing = await prisma.referralLink.findUnique({ where: { creatorId: userId } });
-  if (existing) return existing.code;
   for (let attempt = 0; attempt < 5; attempt += 1) {
+    const existing = await prisma.referralLink.findUnique({ where: { creatorId: userId } });
+    if (existing && isPersonalReferralCode(existing.code)) return existing.code;
     const code = randomReadableCode();
     try {
+      if (existing) {
+        const updated = await prisma.referralLink.updateMany({
+          where: { id: existing.id, code: existing.code },
+          data: { code },
+        });
+        if (updated.count === 1) return code;
+        continue;
+      }
       const created = await prisma.referralLink.create({ data: { creatorId: userId, code } });
-      return formatRewardCode(created.code);
+      return created.code;
     } catch (error) {
       if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
       const raced = await prisma.referralLink.findUnique({ where: { creatorId: userId } });
-      if (raced) return raced.code;
+      if (raced && isPersonalReferralCode(raced.code)) return raced.code;
     }
   }
   throw new Error("referral_code_unavailable");
+}
+
+export function normalizePersonalReferralCode(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+export function isPersonalReferralCode(value: string): boolean {
+  return /^[a-z0-9]{8}$/.test(value);
 }
 
 export async function hasActiveCapability(
@@ -163,11 +179,11 @@ export async function setRevenueCatPlusEntitlement(
 }
 
 export async function claimReferral(prisma: PrismaClient, inviteeId: string, rawCode: string) {
-  const code = rawCode.trim();
+  const code = normalizePersonalReferralCode(rawCode);
   return prisma.$transaction(async (tx) => {
     const [invitee, referralCode, existing] = await Promise.all([
       tx.user.findUnique({ where: { id: inviteeId }, select: { id: true, createdAt: true } }),
-      tx.referralLink.findFirst({ where: { OR: [{ code }, { code: normalizeRewardCode(code) }] } }),
+      tx.referralLink.findUnique({ where: { code } }),
       tx.referralClaim.findUnique({ where: { claimantId: inviteeId } }),
     ]);
     if (!invitee || !referralCode) throw new RewardCodeError("invalid_referral_code");
@@ -271,9 +287,8 @@ function addDays(value: Date, days: number): Date {
 }
 
 function randomReadableCode(): string {
-  const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
-  const bytes = randomBytes(8);
-  return [...bytes].map((byte) => alphabet[byte % alphabet.length]).join("");
+  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+  return Array.from({ length: 8 }, () => alphabet[randomInt(alphabet.length)]).join("");
 }
 
 export class RewardCodeError extends Error {

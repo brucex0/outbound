@@ -147,8 +147,8 @@ async function inviteLanding(c: Context<AppEnv>) {
 }
 
 function referralCodeFromPath(pathname: string) {
-  const match = pathname.match(/^\/invite\/r\/([A-Za-z0-9_-]{8,64})$/);
-  return match?.[1] ?? null;
+  const match = pathname.match(/^\/invite\/r\/([a-z0-9]{8})$/i);
+  return match?.[1]?.toLowerCase() ?? null;
 }
 
 function escapeHTML(value: string) {

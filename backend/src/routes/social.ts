@@ -15,7 +15,13 @@ import {
   recognitionAwards,
 } from "../services/recognition.js";
 import { assertCircleMember } from "../services/circles.js";
-import { claimReferral, RewardCodeError } from "../services/entitlements.js";
+import {
+  claimReferral,
+  ensurePersonalReferralCode,
+  isPersonalReferralCode,
+  normalizePersonalReferralCode,
+  RewardCodeError,
+} from "../services/entitlements.js";
 
 const router = new Hono<AppEnv>();
 const activityEventReconciliationWindowMs = 4 * 60 * 60 * 1000;
@@ -400,21 +406,18 @@ router.post("/connections", zValidator("json", z.object({ userId: z.string().min
 router.post("/connection-links", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  const existing = await getPrismaClient().referralLink.findUnique({ where: { creatorId: user.id } });
-  const link = existing ?? await getPrismaClient().referralLink.create({
-    data: { creatorId: user.id, code: randomBytes(12).toString("base64url") },
-  });
+  const code = await ensurePersonalReferralCode(getPrismaClient(), user.id);
   return c.json({
-    code: link.code,
-    url: `${publicWebBaseURL()}/connect/${link.code}`,
-  }, existing ? 200 : 201);
+    code,
+    url: `${publicWebBaseURL()}/invite/r/${code}`,
+  });
 });
 
 router.get("/connection-links/:code", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  const code = c.req.param("code");
-  if (!/^[A-Za-z0-9_-]{8,64}$/.test(code)) {
+  const code = normalizePersonalReferralCode(c.req.param("code"));
+  if (!isPersonalReferralCode(code)) {
     return c.json({ error: "Connection link not found." }, 404);
   }
   const link = await getPrismaClient().referralLink.findUnique({
@@ -449,8 +452,8 @@ router.get("/connection-links/:code", async (c) => {
 router.post("/connection-links/:code/request", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  const code = c.req.param("code");
-  if (!/^[A-Za-z0-9_-]{8,64}$/.test(code)) {
+  const code = normalizePersonalReferralCode(c.req.param("code"));
+  if (!isPersonalReferralCode(code)) {
     return c.json({ error: "Connection link not found." }, 404);
   }
   const link = await getPrismaClient().referralLink.findUnique({
@@ -464,6 +467,13 @@ router.post("/connection-links/:code/request", async (c) => {
 
   const outcome = await createConnectionRequest(user, link.creatorId);
   if (!outcome.ok) return c.json({ error: "Connection link not found." }, outcome.status);
+  try {
+    await claimReferral(getPrismaClient(), user.id, code);
+  } catch (error) {
+    if (!(error instanceof RewardCodeError)) {
+      console.error("Plainstride invitation claim failed while connecting; continuing connection request.", error);
+    }
+  }
   return c.json({
     result: outcome.result,
     person: link.creator,
@@ -922,24 +932,22 @@ router.get("/activity-events/:id/results", async (c) => {
 router.post("/referrals", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  const existing = await getPrismaClient().referralLink.findUnique({ where: { creatorId: user.id } });
-  const referral = existing ?? await getPrismaClient().referralLink.create({
-    data: { creatorId: user.id, code: randomBytes(12).toString("base64url") },
-  });
+  const code = await ensurePersonalReferralCode(getPrismaClient(), user.id);
+  const referral = await getPrismaClient().referralLink.findUniqueOrThrow({ where: { creatorId: user.id } });
   return c.json({
-    code: referral.code,
-    url: `${publicWebBaseURL()}/invite/r/${referral.code}`,
+    code,
+    url: `${publicWebBaseURL()}/invite/r/${code}`,
     clickCount: referral.clickCount,
     claimCount: referral.claimCount,
-  }, existing ? 200 : 201);
+  });
 });
 
 router.post("/referrals/:code/claim", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
   try {
-    await claimReferral(getPrismaClient(), user.id, c.req.param("code"));
-    return c.json({ claimed: true, rewardDays: 14 });
+    const claim = await claimReferral(getPrismaClient(), user.id, c.req.param("code"));
+    return c.json({ claimed: true, rewardDays: claim.inviteeRewardDays });
   } catch (error) {
     if (error instanceof RewardCodeError) {
       return c.json({ claimed: false, reason: error.code }, error.code.includes("already") ? 409 : 422);

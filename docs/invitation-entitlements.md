@@ -14,7 +14,8 @@ The backend is authoritative. A live-sharing session snapshots voice-cheer acces
 
 ## Personal Invitation Rewards
 
-- Existing `ReferralLink` codes are each user's permanent personal invitation code. The same opaque code also backs the personal connection QR through its distinct `/connect/:code` route; sharing or rendering it again never rotates the code.
+- Each `ReferralLink` is a permanent eight-character personal code using lowercase letters and digits. The backend enforces uniqueness and retries collisions. Loading the personal surface once replaces an older-format pre-release code; the resulting eight-character code does not rotate.
+- The personal QR and shared invitation use the same canonical `/invite/r/:code` URL. Opening it previews the inviter's Social profile with an explicit Connect action; an eligible new member also claims the referral. The older `/connect/:code` route remains a compatible connection-link parser for eight-character codes.
 - Referral share copy tells recipients who install the app to return to the original message and tap the link again. The web invitation landing page repeats these steps because App Store installation does not preserve the referral URL.
 - A new account can claim one inviter during its first seven days. The window is measured from the invitee's account creation; the inviter's permanent code does not expire after seven days.
 - The invitee immediately receives 30 days of Plus.
@@ -25,10 +26,11 @@ The backend is authoritative. A live-sharing session snapshots voice-cheer acces
 
 ## Client Surfaces
 
-- Me contains separate entries for Plainstride Plus, Rewards Center, and My invitation code on iOS and Android.
+- Me contains entries for Plainstride Plus, Rewards Center, and My invite on iOS and Android.
 - Rewards Center shows active earned or granted Plus capabilities. RevenueCat-only access remains on the separate Plus subscription screen.
 - Rewards Center links to a dedicated code-redemption screen instead of embedding redemption fields in the reward summary.
-- My invitation code owns the permanent personal code, share action, and qualified and pending invitation counts.
+- My invite owns the QR, permanent personal code, copy and share actions, reward explanation, and qualified and pending invitation counts.
+- The owner-only QR button on the Me profile card opens this same My invite screen with QR-specific entry analytics, preserving fast in-person connection without maintaining a separate product surface.
 
 ## Contribution Codes
 
@@ -91,7 +93,7 @@ Example issuance body:
 
 ## Analytics And Privacy
 
-The client records only reward-surface exposure, bounded code type, success/failure, share source, founding-versus-reward-eligible invitation policy, and bounded Me destination. Codes, user IDs, campaign labels, grant references, and expiration timestamps are excluded.
+The client records only reward-surface exposure, bounded code type, success/failure, share or copy source, founding-versus-reward-eligible invitation policy, and bounded Me destination. Codes, user IDs, campaign labels, grant references, and expiration timestamps are excluded.
 
 ## Database Rebuild
 
