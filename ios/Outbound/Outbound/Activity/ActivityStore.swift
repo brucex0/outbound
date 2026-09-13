@@ -8,6 +8,7 @@ final class ActivityStore: ObservableObject {
     @Published private(set) var activities: [SavedActivity] = []
     @Published private(set) var isSyncing = false
     @Published private(set) var hasLoadedActivities = false
+    @Published private(set) var photoAlbumNotice: ActivityPhotoAlbumNotice?
     private let api = APIClient.shared
     private let persistence = ActivityPersistence.shared
     private let analyticsManager: AnalyticsManager?
@@ -87,10 +88,15 @@ final class ActivityStore: ObservableObject {
             .persistence,
             "Local activity save completed history_count=\(ActivityDiagnosticLog.countBucket(activities.count)) sync_pending=true"
         )
+        await exportPhotosToAlbumIfNeeded(activity)
         Task {
             await syncActivityIfPossible(id: activity.id)
         }
         return activity
+    }
+
+    func clearPhotoAlbumNotice() {
+        photoAlbumNotice = nil
     }
 
     func importHealthWorkouts(_ workouts: [ImportedWorkout]) async -> Set<String> {
@@ -749,6 +755,47 @@ final class ActivityStore: ObservableObject {
         case 17..<21: return "\(day) Evening Run"
         default:      return "\(day) Night Run"
         }
+    }
+
+    private func exportPhotosToAlbumIfNeeded(_ activity: SavedActivity) async {
+        let outcome = await ActivityPhotoAlbumExporter.shared.exportPhotos(from: activity)
+        let result: String
+        switch outcome {
+        case .skipped, .alreadySaved:
+            return
+        case .saved:
+            result = "success"
+            photoAlbumNotice = ActivityPhotoAlbumNotice(
+                message: String(
+                    localized: "app.photo.album.saved",
+                    defaultValue: "Photos saved to the Plainstride album"
+                ),
+                isError: false
+            )
+        case .permissionDenied:
+            result = "permission_denied"
+            photoAlbumNotice = ActivityPhotoAlbumNotice(
+                message: String(
+                    localized: "app.photo.album.permission.denied",
+                    defaultValue: "Allow Photos access in Settings to save activity photos"
+                ),
+                isError: true
+            )
+        case .failed:
+            result = "failure"
+            photoAlbumNotice = ActivityPhotoAlbumNotice(
+                message: String(
+                    localized: "app.photo.album.save.failed",
+                    defaultValue: "Activity saved, but photos couldn’t be added to the album"
+                ),
+                isError: true
+            )
+        }
+        await analyticsManager?.track(.init(.photoAlbumExportCompleted, properties: [
+            .result: .string(result),
+            .sourceType: .string("automatic"),
+            .countBucket: .string(ProductAnalyticsBucket.count(activity.photos.count))
+        ]))
     }
 
     private static var uiTestActivityFixtures: [SavedActivity] {

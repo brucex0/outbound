@@ -70,7 +70,10 @@
     <string>Plainstride uses the camera to capture moments during your run and scan connection QR codes.</string>
 
     <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>Plainstride saves activity share images to your photo library when you choose Save Image.</string>
+    <string>Plainstride saves activity photos and share images to your photo library.</string>
+
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Plainstride adds activity photos to your Plainstride album.</string>
 
     <key>NSMicrophoneUsageDescription</key>
     <string>Plainstride uses the microphone for voice activity commands and guide audio during workouts.</string>

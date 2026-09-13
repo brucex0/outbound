@@ -233,6 +233,52 @@
         }
       }
     },
+    "NSPhotoLibraryAddUsageDescription" : {
+      "comment" : "Privacy - Photo Library Additions Usage Description",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plainstride saves activity photos and share images to your photo library."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plainstride guarda las fotos de tus actividades y las imágenes compartidas en tu fototeca."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "平步青云会将运动照片和分享图片保存到你的照片图库。"
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryUsageDescription" : {
+      "comment" : "Privacy - Photo Library Usage Description",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plainstride adds activity photos to your Plainstride album."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plainstride añade las fotos de tus actividades a tu álbum Plainstride."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "平步青云会将运动照片添加到你的平步青云相册。"
+          }
+        }
+      }
+    },
     "NSMotionUsageDescription" : {
       "comment" : "Privacy - Motion Usage Description",
       "localizations" : {

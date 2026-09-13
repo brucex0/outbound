@@ -318,6 +318,17 @@ struct SimplifiedAppShell: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             } else if let connectionFeedback {
                 connectionFeedbackToast(connectionFeedback)
+            } else if let notice = activityStore.photoAlbumNotice {
+                Label(
+                    notice.message,
+                    systemImage: notice.isError ? "exclamationmark.circle.fill" : "checkmark.circle.fill"
+                )
+                .font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .background(.regularMaterial, in: Capsule())
+                .shadow(color: .black.opacity(0.12), radius: 12, y: 5)
+                .padding(.top, 8)
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .animation(.snappy, value: circleToast)
@@ -333,6 +344,12 @@ struct SimplifiedAppShell: View {
             try? await Task.sleep(for: .seconds(3.6))
             guard !Task.isCancelled else { return }
             self.connectionFeedback = nil
+        }
+        .task(id: activityStore.photoAlbumNotice?.id) {
+            guard activityStore.photoAlbumNotice != nil else { return }
+            try? await Task.sleep(for: .seconds(3.6))
+            guard !Task.isCancelled else { return }
+            activityStore.clearPhotoAlbumNotice()
         }
         .fullScreenCover(item: $completionCircle) { circle in
             CircleCompletionCelebrationView(circle: circle) {
@@ -3416,6 +3433,7 @@ private struct SimplifiedSettingsView: View {
     @Binding var trainingProfileSex: TrainingProfileSex?
     @State private var confirmsSignOut = false
     @State private var confirmsAccountDeletion = false
+    @AppStorage(ActivityPhotoAlbumPreferences.savesPhotosKey) private var savesActivityPhotos = true
 
     var body: some View {
         Form {
@@ -3442,6 +3460,25 @@ private struct SimplifiedSettingsView: View {
                     WorkoutReminderSettingsView()
                 } label: {
                     Label(String(localized: "workout.reminders.title", defaultValue: "Workout reminders"), systemImage: "bell.badge")
+                }
+            }
+            Section(String(localized: "settings.photos.section", defaultValue: "Photos")) {
+                Toggle(isOn: Binding(
+                    get: { savesActivityPhotos },
+                    set: { setSavesActivityPhotos($0) }
+                )) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(String(
+                            localized: "settings.photos.save.activity",
+                            defaultValue: "Save activity photos"
+                        ))
+                        Text(String(
+                            localized: "settings.photos.save.activity.detail",
+                            defaultValue: "Automatically add photos to the Plainstride album"
+                        ))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
                 }
             }
             Section("Safety") {
@@ -3584,6 +3621,17 @@ private struct SimplifiedSettingsView: View {
             return trainingProfileSex == .male
         }
         return onboardingStore.completedProfile?.bodyProfile.sex == .male
+    }
+
+    private func setSavesActivityPhotos(_ enabled: Bool) {
+        guard savesActivityPhotos != enabled else { return }
+        savesActivityPhotos = enabled
+        Task {
+            await analyticsManager?.track(.init(.preferenceChanged, properties: [
+                .changeType: .string("save_activity_photos_to_album"),
+                .selectionType: .string(enabled ? "enabled" : "disabled")
+            ]))
+        }
     }
 
     private func setMeasurementUnitSystem(_ unitSystem: MeasurementUnitSystem) {

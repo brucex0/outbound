@@ -35206,6 +35206,75 @@
         }
       }
     },
+    "app.photo.album.permission.denied": {
+      "comment": "Shown after an automatic activity-photo export when Photos access was declined. [android:app] Generated Android name: photo_album_permission_denied.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow Photos access in Settings to save activity photos"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permite el acceso a Fotos en Ajustes para guardar las fotos de tus actividades"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请在设置中允许访问照片，以保存运动照片"
+          }
+        }
+      }
+    },
+    "app.photo.album.save.failed": {
+      "comment": "Shown when the activity saved but its photos could not be copied to the device photo album. [android:app] Generated Android name: photo_album_save_failed.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activity saved, but photos couldn’t be added to the album"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La actividad se guardó, pero las fotos no se pudieron añadir al álbum"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运动已保存，但照片未能添加到相册"
+          }
+        }
+      }
+    },
+    "app.photo.album.saved": {
+      "comment": "Shown after activity photos are copied to the device's Plainstride album. [android:app] Generated Android name: photo_album_saved.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photos saved to the Plainstride album"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fotos guardadas en el álbum Plainstride"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "照片已保存到平步青云相册"
+          }
+        }
+      }
+    },
     "app.notification.generic.body": {
       "comment": "Shared with Android app; generated Android name: notification_generic_body. [android:app] Generated Android name: notification_generic_body.",
       "localizations": {
@@ -43449,6 +43518,75 @@
           "stringUnit": {
             "state": "translated",
             "value": "暂无新通知。"
+          }
+        }
+      }
+    },
+    "settings.photos.save.activity": {
+      "comment": "Settings toggle that controls automatic device-album export for activity photos. [android:settings] Generated Android name: photos_save_activity.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save activity photos"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar fotos de las actividades"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存运动照片"
+          }
+        }
+      }
+    },
+    "settings.photos.save.activity.detail": {
+      "comment": "Explains that the activity-photo setting saves into one device album. [android:settings] Generated Android name: photos_save_activity_detail.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatically add photos to the Plainstride album"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añade las fotos automáticamente al álbum Plainstride"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动将照片添加到平步青云相册"
+          }
+        }
+      }
+    },
+    "settings.photos.section": {
+      "comment": "Title for photo-related settings. [android:settings] Generated Android name: photos_section.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photos"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fotos"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "照片"
           }
         }
       }

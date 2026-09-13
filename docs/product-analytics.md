@@ -98,6 +98,7 @@ Track:
 | Distance/time goals | goal control exposed -> type/preset/custom selected -> activity started -> progress bucket reached -> activity saved |
 | Shoes | gear entry exposed -> shoe added/defaulted -> shoe selected -> activity saved with shoe -> retirement reminder acted on |
 | Photos | capture entry exposed -> capture attempted/succeeded (including whether a coordinate was attached, never the coordinate itself) -> retained or deleted -> activity saved with photo -> explicitly shared |
+| Photo album export | default-on preference changed -> automatic export completed with success, permission denial, or failure; record only a coarse photo-count bucket |
 | Group runs | group control exposed -> create/join attempted -> invitation shared/opened -> joined -> activity started -> activity saved |
 | Your Circle | eligible section exposure -> creation -> invitation -> acceptance -> active Circle -> focus configured -> activity contributed -> Cheer or activity planned -> following-week contribution |
 | Live Guidance | coaching level selected -> semantic moment detected -> cue spoken -> cue outcome evaluated -> optional challenge completed -> post-run feedback submitted |

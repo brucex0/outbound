@@ -130,6 +130,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case photoPreviewed = "photo_previewed"
     case photoRemoved = "photo_removed"
     case photoReordered = "photo_reordered"
+    case photoAlbumExportCompleted = "photo_album_export_completed"
     case groupRunCreateAttempted = "group_run_create_attempted"
     case groupRunCreated = "group_run_created"
     case groupRunJoinAttempted = "group_run_join_attempted"
@@ -395,6 +396,7 @@ enum ProductAnalyticsSchema {
         .photoPreviewed: [.sourceType],
         .photoRemoved: [.sourceType],
         .photoReordered: [.sourceType],
+        .photoAlbumExportCompleted: [.result, .sourceType, .countBucket],
         .groupRunCreateAttempted: [],
         .groupRunCreated: [.participantCountBucket],
         .groupRunJoinAttempted: [],
