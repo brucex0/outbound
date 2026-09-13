@@ -1,9 +1,10 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 import type { LiveCoachFeatureConfig } from "./liveCoachFeatureConfig.js";
 import type { LiveCoachAccessDecision } from "./liveCoachTypes.js";
+import { FOUNDING_ENTITLEMENT_SOURCE } from "../foundingMembers.js";
 
 export const LIVE_COACH_CAPABILITY = "live_coach_dynamic";
-export const LIVE_COACH_FOUNDING_SOURCE = "founding_beta_1000";
+export const LIVE_COACH_FOUNDING_SOURCE = FOUNDING_ENTITLEMENT_SOURCE;
 export const LIVE_COACH_TRIAL_PERIOD_KEY = "three_run_trial_v1";
 
 export interface LiveCoachEntitlementResolver {

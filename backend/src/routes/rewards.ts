@@ -7,10 +7,12 @@ import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import { getPrismaClient } from "../services/prisma.js";
 import {
   claimReferral,
+  bankedPlusDays,
   ensurePersonalReferralCode,
   entitlementSummary,
   redeemEntitlementCode,
   RewardCodeError,
+  referralProgramForUser,
 } from "../services/entitlements.js";
 import {
   reconcileRevenueCatPlus,
@@ -25,12 +27,14 @@ router.get("/", async (c) => {
   const unavailable = requireDatabase(c); if (unavailable) return unavailable;
   const user = await getAuthenticatedAppUser(c); if (!user) return c.json({ error: "Authentication required." }, 401);
   const prisma = getPrismaClient();
-  const [referralCode, entitlements, claim, qualifiedCount, pendingCount] = await Promise.all([
+  const [referralCode, entitlements, claim, qualifiedCount, pendingCount, referralProgram, bankedRewardDays] = await Promise.all([
     ensurePersonalReferralCode(prisma, user.id),
     entitlementSummary(prisma, user.id),
     prisma.referralClaim.findUnique({ where: { claimantId: user.id }, select: { status: true } }),
     prisma.referralClaim.count({ where: { referralLink: { creatorId: user.id }, status: "rewarded" } }),
     prisma.referralClaim.count({ where: { referralLink: { creatorId: user.id }, status: "claimed" } }),
+    referralProgramForUser(prisma, user.id),
+    bankedPlusDays(prisma, user.id),
   ]);
   return c.json({
     referral: {
@@ -40,6 +44,8 @@ router.get("/", async (c) => {
       qualifiedCount,
       pendingCount,
     },
+    referralProgram,
+    bankedRewardDays,
     entitlements,
   });
 });
@@ -48,8 +54,8 @@ router.post("/referrals/claim", zValidator("json", codeSchema), async (c) => {
   const unavailable = requireDatabase(c); if (unavailable) return unavailable;
   const user = await getAuthenticatedAppUser(c); if (!user) return c.json({ error: "Authentication required." }, 401);
   try {
-    await claimReferral(getPrismaClient(), user.id, c.req.valid("json").code);
-    return c.json({ claimed: true, rewardDays: 14 });
+    const claim = await claimReferral(getPrismaClient(), user.id, c.req.valid("json").code);
+    return c.json({ claimed: true, rewardDays: claim.inviteeRewardDays });
   } catch (error) { return rewardError(c, error); }
 });
 

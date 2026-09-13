@@ -14,12 +14,14 @@ The backend is authoritative. A live-sharing session snapshots voice-cheer acces
 
 ## Personal Invitation Rewards
 
-- Existing `ReferralLink` codes are each user's permanent personal invitation code.
+- Existing `ReferralLink` codes are each user's permanent personal invitation code. The same opaque code also backs the personal connection QR through its distinct `/connect/:code` route; sharing or rendering it again never rotates the code.
 - Referral share copy tells recipients who install the app to return to the original message and tap the link again. The web invitation landing page repeats these steps because App Store installation does not preserve the referral URL.
-- A new account can claim one inviter during its first seven days.
-- The invitee immediately receives 14 days of Plus.
-- The inviter receives 14 days after the invitee saves an activity lasting at least 10 minutes.
+- A new account can claim one inviter during its first seven days. The window is measured from the invitee's account creation; the inviter's permanent code does not expire after seven days.
+- The invitee immediately receives 30 days of Plus.
+- A non-founding inviter receives 30 days after the invitee saves an activity lasting at least 10 minutes.
+- Founding members keep the same permanent invitation code and activation counts, but receive no inviter reward. Their client copy describes only the new runner's benefit.
 - Claims and grants are idempotent. Self-referrals and inviter changes are rejected.
+- `GET /v1/rewards` returns the member-specific, server-authoritative referral terms. Clients localize prose around those structured values instead of embedding reward amounts or qualification thresholds.
 
 ## Client Surfaces
 
@@ -42,11 +44,13 @@ The command prints the redeemable code once. Do not place codes in logs, analyti
 
 `FeatureEntitlement` stores current effective access. `EntitlementGrantLedger` records immutable referral, contribution, and manual admin grants. Earned durations extend the active `earned_plus` expiration instead of replacing subscription, founding, promotional, or independently revocable admin grants.
 
+When a RevenueCat subscription is active, newly earned Plus time begins after the paid expiration date. A later subscription reconciliation moves still-unused earned time after the updated paid expiration so the two grants do not overlap. `GET /v1/rewards` exposes the saved whole-day balance as `bankedRewardDays`.
+
 RevenueCat store purchases use the independent `revenuecat` source. Its `plainstride_pro` entitlement grants the same capability bundle, but never replaces or shortens earned, founding, contribution, or admin access. See `docs/subscriptions.md` for purchase and reconciliation setup.
 
 ## API
 
-- `GET /v1/rewards`: personal code, referral counts, claim state, and effective capability access.
+- `GET /v1/rewards`: personal code, member-specific referral program, referral counts, saved reward days, claim state, and effective capability access.
 - `POST /v1/rewards/referrals/claim`: claim a personal invitation code.
 - `POST /v1/rewards/codes/redeem`: redeem a contribution entitlement code.
 - Existing `POST /v1/social/referrals/:code/claim` uses the same reward service for universal-link compatibility.
@@ -87,7 +91,7 @@ Example issuance body:
 
 ## Analytics And Privacy
 
-The client records only reward-surface exposure, bounded code type, success/failure, share source, and bounded Me destination. Codes, user IDs, campaign labels, grant references, and expiration timestamps are excluded.
+The client records only reward-surface exposure, bounded code type, success/failure, share source, founding-versus-reward-eligible invitation policy, and bounded Me destination. Codes, user IDs, campaign labels, grant references, and expiration timestamps are excluded.
 
 ## Database Rebuild
 

@@ -38,6 +38,7 @@ Open this when configuring, releasing, or troubleshooting Plainstride Plus purch
 - RevenueCat webhooks are verified over the raw body with `X-RevenueCat-Webhook-Signature` and a five-minute timestamp tolerance.
 - Every accepted webhook fetches canonical customer state from `GET /v1/subscribers/{app_user_id}` before updating the backend grant.
 - Reconciliation is idempotent. An absent or expired `plainstride_pro` entitlement expires only the `revenuecat` grant; other grant sources remain untouched.
+- Referral Plus days do not run concurrently with an active RevenueCat subscription. The backend schedules them after the paid expiration and shifts any still-unused saved period when a later reconciliation advances that expiration. This preserves the access value for monthly and annual subscribers without modifying store billing.
 
 ## Release Gate
 

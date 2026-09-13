@@ -1588,16 +1588,19 @@ model ReferralLink {
 }
 
 model ReferralClaim {
-  id             String       @id @default(cuid())
-  referralLinkId String
-  referralLink   ReferralLink @relation(fields: [referralLinkId], references: [id], onDelete: Cascade)
-  claimantId     String       @unique
-  claimant       User         @relation("ReferralClaimant", fields: [claimantId], references: [id], onDelete: Cascade)
-  claimedAt      DateTime     @default(now())
-  status         String       @default("claimed")
-  rewardDays     Int          @default(14)
-  qualifiedAt    DateTime?
-  rewardedAt     DateTime?
+  id                        String       @id @default(cuid())
+  referralLinkId            String
+  referralLink              ReferralLink @relation(fields: [referralLinkId], references: [id], onDelete: Cascade)
+  claimantId                String       @unique
+  claimant                  User         @relation("ReferralClaimant", fields: [claimantId], references: [id], onDelete: Cascade)
+  claimedAt                 DateTime     @default(now())
+  status                    String       @default("claimed")
+  rewardDays                Int          @default(30)
+  inviteeRewardDays         Int          @default(30)
+  qualifyingActivitySeconds Int          @default(600)
+  termsVersion              Int          @default(1)
+  qualifiedAt               DateTime?
+  rewardedAt                DateTime?
 
   @@index([referralLinkId, claimedAt])
 }

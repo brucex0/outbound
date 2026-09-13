@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { Prisma, type PrismaClient } from "@prisma/client";
+import { isFoundingMember } from "./foundingMembers.js";
 
 export const PAID_CAPABILITIES = [
   "ai_planning_dynamic",
@@ -9,9 +10,13 @@ export const PAID_CAPABILITIES = [
 export type PaidCapability = typeof PAID_CAPABILITIES[number];
 export const PLUS_BUNDLE = "plus";
 export const REVENUECAT_ENTITLEMENT_SOURCE = "revenuecat";
-export const REFERRAL_REWARD_DAYS = 14;
-export const REFERRAL_CLAIM_WINDOW_DAYS = 7;
-export const REFERRAL_QUALIFYING_ACTIVITY_SECONDS = 10 * 60;
+export const REFERRAL_PROGRAM = {
+  termsVersion: 1,
+  inviteeRewardDays: 30,
+  inviterRewardDays: 30,
+  claimWindowDays: 7,
+  qualifyingActivitySeconds: 10 * 60,
+} as const;
 
 type DatabaseClient = PrismaClient | Prisma.TransactionClient;
 
@@ -77,11 +82,31 @@ export async function entitlementSummary(prisma: PrismaClient, userId: string, n
   });
 }
 
+export async function referralProgramForUser(prisma: DatabaseClient, userId: string) {
+  const foundingMember = await isFoundingMember(prisma, userId);
+  return {
+    ...REFERRAL_PROGRAM,
+    inviterRewardDays: foundingMember ? 0 : REFERRAL_PROGRAM.inviterRewardDays,
+    inviterRewardEligible: !foundingMember,
+    foundingMember,
+  };
+}
+
+export async function bankedPlusDays(prisma: PrismaClient, userId: string, now = new Date()): Promise<number> {
+  const credit = await prisma.featureEntitlement.findUnique({
+    where: { userId_capability_source: { userId, capability: PAID_CAPABILITIES[0], source: "earned_plus" } },
+    select: { startsAt: true, expiresAt: true, status: true },
+  });
+  if (!credit?.expiresAt || credit.status !== "active" || credit.startsAt <= now) return 0;
+  return Math.max(0, Math.round((credit.expiresAt.getTime() - credit.startsAt.getTime()) / 86_400_000));
+}
+
 export async function setRevenueCatPlusEntitlement(
   prisma: PrismaClient,
   userId: string,
   subscription: { active: boolean; startsAt: Date; expiresAt: Date | null },
 ): Promise<void> {
+  const now = new Date();
   await prisma.$transaction(async (tx) => {
     for (const capability of PAID_CAPABILITIES) {
       await tx.featureEntitlement.upsert({
@@ -106,6 +131,33 @@ export async function setRevenueCatPlusEntitlement(
           expiresAt: subscription.expiresAt,
         },
       });
+      const earned = await tx.featureEntitlement.findUnique({
+        where: { userId_capability_source: { userId, capability, source: "earned_plus" } },
+      });
+      if (earned?.expiresAt && earned.status === "active" && earned.expiresAt > now) {
+        if (subscription.active && subscription.expiresAt && subscription.expiresAt > now) {
+          const rewardStart = earned.startsAt > now ? earned.startsAt : now;
+          const remainingMilliseconds = earned.expiresAt.getTime() - rewardStart.getTime();
+          if (remainingMilliseconds > 0 && rewardStart < subscription.expiresAt) {
+            await tx.featureEntitlement.update({
+              where: { id: earned.id },
+              data: {
+                startsAt: subscription.expiresAt,
+                expiresAt: new Date(subscription.expiresAt.getTime() + remainingMilliseconds),
+              },
+            });
+          }
+        } else if (earned.startsAt > now) {
+          const savedMilliseconds = earned.expiresAt.getTime() - earned.startsAt.getTime();
+          await tx.featureEntitlement.update({
+            where: { id: earned.id },
+            data: {
+              startsAt: now,
+              expiresAt: new Date(now.getTime() + savedMilliseconds),
+            },
+          });
+        }
+      }
     }
   });
 }
@@ -121,28 +173,34 @@ export async function claimReferral(prisma: PrismaClient, inviteeId: string, raw
     if (!invitee || !referralCode) throw new RewardCodeError("invalid_referral_code");
     if (existing) throw new RewardCodeError("referral_already_claimed");
     if (referralCode.creatorId === inviteeId) throw new RewardCodeError("self_referral_not_allowed");
-    if (invitee.createdAt < addDays(new Date(), -REFERRAL_CLAIM_WINDOW_DAYS)) throw new RewardCodeError("referral_window_closed");
+    if (invitee.createdAt < addDays(new Date(), -REFERRAL_PROGRAM.claimWindowDays)) throw new RewardCodeError("referral_window_closed");
+    const inviterIsFoundingMember = await isFoundingMember(tx, referralCode.creatorId);
     const claim = await tx.referralClaim.create({ data: {
       referralLinkId: referralCode.id,
       claimantId: inviteeId,
-      rewardDays: REFERRAL_REWARD_DAYS,
+      rewardDays: inviterIsFoundingMember ? 0 : REFERRAL_PROGRAM.inviterRewardDays,
+      inviteeRewardDays: REFERRAL_PROGRAM.inviteeRewardDays,
+      qualifyingActivitySeconds: REFERRAL_PROGRAM.qualifyingActivitySeconds,
+      termsVersion: REFERRAL_PROGRAM.termsVersion,
     } });
     await tx.referralLink.update({ where: { id: referralCode.id }, data: { claimCount: { increment: 1 } } });
-    await grantBundle(tx, inviteeId, REFERRAL_REWARD_DAYS, "referral_welcome", `referral-welcome:${claim.id}`);
+    await grantBundle(tx, inviteeId, claim.inviteeRewardDays, "referral_welcome", `referral-welcome:${claim.id}`);
     return claim;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
 export async function qualifyReferralFromActivity(prisma: PrismaClient, userId: string, durationSeconds: number | null | undefined) {
-  if ((durationSeconds ?? 0) < REFERRAL_QUALIFYING_ACTIVITY_SECONDS) return false;
   return prisma.$transaction(async (tx) => {
     const claim = await tx.referralClaim.findUnique({
       where: { claimantId: userId },
       include: { referralLink: { select: { creatorId: true } } },
     });
-    if (!claim || claim.rewardedAt) return false;
+    if (!claim || claim.rewardedAt || (durationSeconds ?? 0) < claim.qualifyingActivitySeconds) return false;
     const now = new Date();
-    await grantBundle(tx, claim.referralLink.creatorId, claim.rewardDays, "referral_reward", `referral-reward:${claim.id}`);
+    const inviterIsFoundingMember = await isFoundingMember(tx, claim.referralLink.creatorId);
+    if (!inviterIsFoundingMember && claim.rewardDays > 0) {
+      await grantBundle(tx, claim.referralLink.creatorId, claim.rewardDays, "referral_reward", `referral-reward:${claim.id}`);
+    }
     await tx.referralClaim.update({ where: { id: claim.id }, data: { status: "rewarded", qualifiedAt: now, rewardedAt: now } });
     return true;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
@@ -179,9 +237,24 @@ async function grantBundle(tx: Prisma.TransactionClient, userId: string, days: n
     const current = await tx.featureEntitlement.findUnique({ where: {
       userId_capability_source: { userId, capability, source: "earned_plus" },
     } });
-    const startsAt = current?.startsAt && current.startsAt < now ? current.startsAt : now;
-    const extensionBase = current?.status === "active" && current.expiresAt && current.expiresAt > now ? current.expiresAt : now;
-    const expiresAt = addDays(extensionBase, days);
+    const paid = await tx.featureEntitlement.findUnique({ where: {
+      userId_capability_source: { userId, capability, source: REVENUECAT_ENTITLEMENT_SOURCE },
+    } });
+    const paidUntil = paid?.status === "active" && paid.expiresAt && paid.expiresAt > now ? paid.expiresAt : now;
+    const existingActive = current?.status === "active" && current.expiresAt && current.expiresAt > now;
+    let startsAt = paidUntil;
+    let expiresAt = addDays(paidUntil, days);
+    if (existingActive) {
+      const remainingStart = current.startsAt > now ? current.startsAt : now;
+      const remainingMilliseconds = current.expiresAt!.getTime() - remainingStart.getTime();
+      if (paidUntil > remainingStart) {
+        startsAt = paidUntil;
+        expiresAt = addDays(new Date(paidUntil.getTime() + remainingMilliseconds), days);
+      } else {
+        startsAt = current.startsAt;
+        expiresAt = addDays(current.expiresAt!, days);
+      }
+    }
     await tx.featureEntitlement.upsert({
       where: { userId_capability_source: { userId, capability, source: "earned_plus" } },
       update: { status: "active", startsAt, expiresAt },
