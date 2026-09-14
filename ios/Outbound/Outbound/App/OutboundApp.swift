@@ -42,6 +42,7 @@ struct OutboundApp: App {
     @StateObject private var workoutNotificationScheduler = WorkoutNotificationScheduler.shared
     @StateObject private var communityRouteStore = CommunityRouteStore()
     @StateObject private var userPreferencesSyncStore = UserPreferencesSyncStore()
+    @StateObject private var phoneWorkoutCoordinator = PhoneWorkoutSessionCoordinator.shared
     @StateObject private var tooltipCoordinator: TooltipCoordinator
     @State private var startupDestination: AppStartupDestination = .launching
     @State private var startupBeganAt = Date()
@@ -54,6 +55,7 @@ struct OutboundApp: App {
             isFirebaseConfigured ? FirebaseAnalyticsProvider() : NoOpAnalyticsProvider()
         ])
         analyticsManager = manager
+        PhoneWorkoutSessionCoordinator.shared.configureAnalytics(manager)
         _authStore = StateObject(wrappedValue: AuthStore(analyticsManager: manager))
         _activityStore = StateObject(wrappedValue: ActivityStore(analyticsManager: manager))
         _recognitionStore = StateObject(wrappedValue: RecognitionStore(analyticsManager: manager))
@@ -178,6 +180,7 @@ struct OutboundApp: App {
             .environmentObject(assistantStore)
             .environmentObject(appNavigationStore)
             .environmentObject(healthAuthorizationStore)
+            .environmentObject(phoneWorkoutCoordinator)
             .environmentObject(healthImportStore)
             .environmentObject(dailyCheckInStore)
             .environmentObject(musicStore)
@@ -459,8 +462,16 @@ struct OutboundApp: App {
             do {
                 _ = try await APIClient.shared.claimReferral(code: referralCode)
             } catch {
-                return
+                if let apiError = error as? APIError,
+                   case let .http(statusCode, _, _) = apiError,
+                   (400..<500).contains(statusCode) {
+                    // An established or already-referred member can still connect.
+                } else {
+                    return
+                }
             }
+            let outcome = await togetherStore.previewConnectionLink(code: referralCode)
+            guard outcome.shouldClearPendingURL else { return }
         } else {
             return
         }

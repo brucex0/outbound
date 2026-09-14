@@ -10,6 +10,7 @@ pixels with no alpha channel, matching an App Store Connect-supported size.
 3. `06-social-light.png` and `06-social-dark.png` — connection request, Circle progress, milestone, and upcoming-run state
 4. `07-ai-planned-workout-light.png` and `07-ai-planned-workout-dark.png` — expanded assistant explanation for the planned workout
 5. `10-activity-detail-photos-light.png` and `10-activity-detail-photos-dark.png` — route detail with three existing running photos
+6. `19-progress-records-light.png` — current Progress Records tab used for the AI-powered deep-insights slide
 
 These captures use the current locally built Debug app with Social enabled. The
 live-run pair uses the Debug-only Redmond Harvest route simulator derived from
@@ -25,7 +26,7 @@ headlines can be added during final App Store composition.
 
 1. `01-today-dark.png` — know what to run today
 2. `07-ai-planned-workout-dark.png` — understand and adapt today's workout
-3. `04-progress-dark.png` — build weekly momentum
+3. `19-progress-records-light.png` — AI-powered insights across best efforts, PR history, and race predictions
 4. `05-cheer-live-track-dark.png` — private Live Track and voice cheers
 5. `03-live-redmond-half-dark.png` — follow a route while recording
 6. `10-activity-detail-photos-dark.png` — remember the run with route, stats, and moments

@@ -9,6 +9,10 @@ struct ActiveSessionJournal {
     let activityType: ActivityType?
     let walkingStepCount: Int?
     let routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?
+    let sessionMetadata: ActivityRecordingSessionMetadata?
+    let heartRateEffortEngine: HeartRateEffortEngine?
+    let lastWatchLifecycle: PlainstrideWorkoutLifecycle?
+    let lastWatchMessageSequence: UInt64?
     let recoveryStage: ActiveSessionRecoveryStage
     let trackPoints: [JournalTrackPoint]
 
@@ -19,6 +23,10 @@ struct ActiveSessionJournal {
         activityType: ActivityType?,
         walkingStepCount: Int? = nil,
         routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?,
+        sessionMetadata: ActivityRecordingSessionMetadata? = nil,
+        heartRateEffortEngine: HeartRateEffortEngine? = nil,
+        lastWatchLifecycle: PlainstrideWorkoutLifecycle? = nil,
+        lastWatchMessageSequence: UInt64? = nil,
         recoveryStage: ActiveSessionRecoveryStage = .recording,
         trackPoints: [JournalTrackPoint] = []
     ) {
@@ -28,6 +36,10 @@ struct ActiveSessionJournal {
         self.activityType = activityType
         self.walkingStepCount = walkingStepCount
         self.routeGuidanceRecoverySeed = routeGuidanceRecoverySeed
+        self.sessionMetadata = sessionMetadata
+        self.heartRateEffortEngine = heartRateEffortEngine
+        self.lastWatchLifecycle = lastWatchLifecycle
+        self.lastWatchMessageSequence = lastWatchMessageSequence
         self.recoveryStage = recoveryStage
         self.trackPoints = trackPoints
     }
@@ -44,6 +56,10 @@ struct ActiveSessionJournal {
                 activityType: metadata.activityType,
                 walkingStepCount: metadata.walkingStepCount,
                 routeGuidanceRecoverySeed: metadata.routeGuidanceRecoverySeed,
+                sessionMetadata: metadata.sessionMetadata,
+                heartRateEffortEngine: metadata.heartRateEffortEngine,
+                lastWatchLifecycle: metadata.lastWatchLifecycle,
+                lastWatchMessageSequence: metadata.lastWatchMessageSequence,
                 recoveryStage: metadata.recoveryStage ?? .recording,
                 trackPoints: ActiveSessionTrackJournal.load()
             )
@@ -66,6 +82,10 @@ struct ActiveSessionJournal {
                 activityType: activityType,
                 walkingStepCount: walkingStepCount,
                 routeGuidanceRecoverySeed: routeGuidanceRecoverySeed,
+                sessionMetadata: sessionMetadata,
+                heartRateEffortEngine: heartRateEffortEngine,
+                lastWatchLifecycle: lastWatchLifecycle,
+                lastWatchMessageSequence: lastWatchMessageSequence,
                 recoveryStage: recoveryStage
             )
             let data = try JSONEncoder().encode(metadata)
@@ -113,6 +133,10 @@ struct ActiveSessionJournal {
         let activityType: ActivityType?
         let walkingStepCount: Int?
         let routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?
+        let sessionMetadata: ActivityRecordingSessionMetadata?
+        let heartRateEffortEngine: HeartRateEffortEngine?
+        let lastWatchLifecycle: PlainstrideWorkoutLifecycle?
+        let lastWatchMessageSequence: UInt64?
         let recoveryStage: ActiveSessionRecoveryStage?
     }
 }

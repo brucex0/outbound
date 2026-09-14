@@ -2,6 +2,7 @@ import CoreLocation
 import Foundation
 
 enum ElevationGainCalculator {
+    private static let minimumClimbMeters = 10.0
     private static let maximumVerticalAccuracyMeters = 20.0
     private static let maximumVerticalSpeedMetersPerSecond = 3.0
     private static let minimumDistanceForGradeCheckMeters = 3.0
@@ -29,7 +30,7 @@ enum ElevationGainCalculator {
                 0,
                 (climbPeakAltitude ?? 0) - (climbFloorAltitude ?? 0)
             )
-            if activeClimb >= 2.5 {
+            if activeClimb >= ElevationGainCalculator.minimumClimbMeters {
                 committedGainMeters += activeClimb
             }
             previousAcceptedLocation = nil
@@ -65,7 +66,7 @@ enum ElevationGainCalculator {
         }
 
         private mutating func ingestFilteredAltitude(_ altitude: Double) {
-            let minimumClimbMeters = 2.5
+            let minimumClimbMeters = ElevationGainCalculator.minimumClimbMeters
             guard let floor = climbFloorAltitude,
                   let peak = climbPeakAltitude
             else {

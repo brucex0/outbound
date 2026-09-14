@@ -8,10 +8,10 @@ enum PlanBuilderSource: String, Codable {
 }
 
 enum PlanObjective: String, Codable, CaseIterable, Identifiable {
-    case eventPreparation, endurance, speed, strength, weightLoss, fitnessMaintenance, healthEnergy, other
+    case eventPreparation, endurance, speed, strength, weightLoss, healthEnergy
     var id: Self { self }
     static let availableInBuilder: [Self] = [
-        .eventPreparation, .endurance, .speed, .weightLoss, .fitnessMaintenance, .healthEnergy, .other,
+        .eventPreparation, .endurance, .speed, .weightLoss, .healthEnergy,
     ]
     var systemImage: String {
         switch self {
@@ -20,9 +20,7 @@ enum PlanObjective: String, Codable, CaseIterable, Identifiable {
         case .speed: "bolt.fill"
         case .strength: "dumbbell.fill"
         case .weightLoss: "scalemass.fill"
-        case .fitnessMaintenance: "repeat"
         case .healthEnergy: "heart.fill"
-        case .other: "ellipsis"
         }
     }
     var title: String {
@@ -32,9 +30,7 @@ enum PlanObjective: String, Codable, CaseIterable, Identifiable {
         case .speed: String(localized: "plan_builder.objective.speed", defaultValue: "Improve speed")
         case .strength: String(localized: "plan_builder.objective.strength", defaultValue: "Build strength")
         case .weightLoss: String(localized: "plan_builder.objective.weight_loss", defaultValue: "Lose weight")
-        case .fitnessMaintenance: String(localized: "plan_builder.objective.maintenance", defaultValue: "Maintain fitness")
         case .healthEnergy: String(localized: "plan_builder.objective.health", defaultValue: "Improve health and energy")
-        case .other: String(localized: "plan_builder.objective.other", defaultValue: "Something else")
         }
     }
 }
@@ -77,7 +73,8 @@ enum PlanBaselineContext: String, Codable, CaseIterable, Identifiable {
 
 struct PlanBuilderDraft: Codable, Equatable {
     var objective: PlanObjective = .endurance
-    var otherObjective = ""
+    var objectiveConfirmed: Bool?
+    var goalInputText: String?
     var activities: [PlanActivity] = [.run]
     var baselineContext: PlanBaselineContext = .currentlyActive
     var recentSessionsPerWeek = 2
@@ -86,7 +83,24 @@ struct PlanBuilderDraft: Codable, Equatable {
     var availableMinutes = 30
     var preferredDays: [String] = []
     var eventDistanceMeters: Double?
+    var eventDistanceConfirmed: Bool?
+    var eventDistanceFromGoalText: Bool?
     var eventDate: Date?
+    var eventDateConfirmed: Bool?
+    var eventDateFromGoalText: Bool?
+    var eventIntent: String? = "finish"
+    var eventIntentConfirmed: Bool?
+    var eventIntentFromGoalText: Bool?
+    var targetTimeSeconds: Int?
+    var targetTimeConfirmed: Bool?
+    var targetTimeFromGoalText: Bool?
+    var reviewHorizonWeeks: Int? = 8
+    var reviewHorizonConfirmed: Bool?
+    var reviewHorizonFromGoalText: Bool?
+    var successSignal: String?
+    var goalDescription: String?
+    var intakeContextVersion: String?
+    var observedBaselineConfirmed: Bool?
     var constraints = ""
     var birthDate: Date?
     var heightText = ""

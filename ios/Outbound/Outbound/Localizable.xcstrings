@@ -2,6 +2,18 @@
   "sourceLanguage": "en",
   "strings": {
     "": {},
+    "watch.disconnected.toast": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apple Watch disconnected — phone recording continues." } }, "es": { "stringUnit": { "state": "translated", "value": "El Apple Watch se desconectó; el iPhone sigue registrando." } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "Apple Watch 已断开，iPhone 会继续记录。" } } } },
+    "watch.connected.toast": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Heart rate connected." } }, "es": { "stringUnit": { "state": "translated", "value": "Frecuencia cardíaca conectada." } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "心率已连接。" } } } },
+    "watch.connecting.toast": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Connecting to Apple Watch…" } }, "es": { "stringUnit": { "state": "translated", "value": "Conectando con el Apple Watch…" } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "正在连接 Apple Watch…" } } } },
+    "watch.error.continuing": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apple Watch connection changed — your workout is still recording." } }, "es": { "stringUnit": { "state": "translated", "value": "Cambió la conexión con el Apple Watch; tu entrenamiento se sigue registrando." } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "Apple Watch 连接状态有变化，你的训练仍在继续记录。" } } } },
+    "watch.hr.unavailable": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "No signal" } }, "es": { "stringUnit": { "state": "translated", "value": "Sin señal" } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "无信号" } } } },
+    "watch.hr.waiting": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Waiting" } }, "es": { "stringUnit": { "state": "translated", "value": "Esperando" } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "等待中" } } } },
+    "watch.hr.zone.format": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Zone %d" } }, "es": { "stringUnit": { "state": "translated", "value": "Zona %d" } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "第 %d 区" } } } },
+    "watch.phone.active_detail": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Recording from Apple Watch" } }, "es": { "stringUnit": { "state": "translated", "value": "Registrando desde el Apple Watch" } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "由 Apple Watch 记录" } } } },
+    "watch.phone.active_guide": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Your watch is measuring the workout while Plainstride handles the live experience." } }, "es": { "stringUnit": { "state": "translated", "value": "Tu reloj mide el entrenamiento mientras Plainstride gestiona la experiencia en vivo." } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "手表负责测量训练数据，Plainstride 负责实时体验。" } } } },
+    "watch.phone.active_title": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apple Watch workout" } }, "es": { "stringUnit": { "state": "translated", "value": "Entrenamiento del Apple Watch" } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "Apple Watch 训练" } } } },
+    "watch.phone_only.toast": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apple Watch unavailable — continuing without live heart rate." } }, "es": { "stringUnit": { "state": "translated", "value": "Apple Watch no disponible; continuamos sin frecuencia cardíaca en vivo." } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "Apple Watch 不可用，将在没有实时心率的情况下继续。" } } } },
+    "watch.reconnected.toast": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apple Watch reconnected." } }, "es": { "stringUnit": { "state": "translated", "value": "Apple Watch reconectado." } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "Apple Watch 已重新连接。" } } } },
     "tooltip.cheer_me_on": {
       "localizations": {
         "en": {
@@ -20,6 +32,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "邀请亲友关注你的活动并为你加油"
+          }
+        }
+      }
+    },
+    "tooltip.dismiss.hint": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dismisses this tip"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cierra este consejo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭此提示"
           }
         }
       }
@@ -3341,6 +3375,50 @@
         }
       }
     },
+    "circle.list.open": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show all Circles"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar todos los círculos"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看所有活力圈"
+          }
+        }
+      }
+    },
+    "circle.list.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your Circles"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus círculos"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的活力圈"
+          }
+        }
+      }
+    },
     "circle.management": {
       "localizations": {
         "en": {
@@ -4719,19 +4797,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "By continuing, you agree to the [Terms of Service](https://run.plainstride.com/terms) and acknowledge the [Privacy Policy](https://run.plainstride.com/privacy)."
+            "value": "By continuing, you agree to the [Terms of Service](https://plainstride.ai/terms) and acknowledge the [Privacy Policy](https://plainstride.ai/privacy)."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Al continuar, aceptas los [Términos del servicio](https://run.plainstride.com/terms) y confirmas que has leído la [Política de privacidad](https://run.plainstride.com/privacy)."
+            "value": "Al continuar, aceptas los [Términos del servicio](https://plainstride.ai/terms) y confirmas que has leído la [Política de privacidad](https://plainstride.ai/privacy)."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "继续即表示你同意[服务条款](https://run.plainstride.com/terms)，并确认已阅读[隐私政策](https://run.plainstride.com/privacy)。"
+            "value": "继续即表示你同意[服务条款](https://plainstride.ai/terms)，并确认已阅读[隐私政策](https://plainstride.ai/privacy)。"
           }
         }
       }
@@ -5151,6 +5229,7 @@
     "social.guide.noticed": {"comment":"Shared with Android social. [android:social]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Guide noticed this"}},"es":{"stringUnit":{"state":"translated","value":"Tu guía se fijó en esto"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"向导发现了这个"}}}},
     "social.incoming.requests": {"comment":"Shared with Android social. [android:social]","localizations":{"en":{"stringUnit":{"state":"translated","value":"%d connection requests"}},"es":{"stringUnit":{"state":"translated","value":"%d solicitudes de conexión"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"%d 个好友请求"}}}},
     "social.add.connection": {"comment":"Shared with Android social. [android:social]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Add connection"}},"es":{"stringUnit":{"state":"translated","value":"Añadir contacto"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"添加跑友"}}}},
+    "social.connections.open": {"comment":"Accessibility label for the section-header button that opens the complete connections list.","localizations":{"en":{"stringUnit":{"state":"translated","value":"Show all connections"}},"es":{"stringUnit":{"state":"translated","value":"Mostrar todas las conexiones"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"查看所有好友"}}}},
     "social.scan.qr.code": {"comment":"Shared with Android social. [android:social]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Scan QR code"}},"es":{"stringUnit":{"state":"translated","value":"Escanear código QR"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"扫描二维码"}}}},
     "social.show.my.qr.code": {"comment":"Shared with Android social. [android:social]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Show my QR code"}},"es":{"stringUnit":{"state":"translated","value":"Mostrar mi código QR"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"显示我的二维码"}}}},
     "social.invite.by.link": {"comment":"Shared with Android social. [android:social]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Invite by link"}},"es":{"stringUnit":{"state":"translated","value":"Invitar mediante un enlace"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"通过链接邀请"}}}},
@@ -6406,6 +6485,204 @@
           "stringUnit": {
             "state": "translated",
             "value": "出生时指定的性别为选填项。Plainstride 仅用它来显示相关的私密健康功能，绝不会分享到“一起跑”。"
+          }
+        }
+      }
+    },
+    "profile.photo.camera_unavailable": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camera is unavailable."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La cámara no está disponible."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相机不可用。"
+          }
+        }
+      }
+    },
+    "profile.photo.choose": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose Photo"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir foto"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择照片"
+          }
+        }
+      }
+    },
+    "profile.photo.preview": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preview profile photo"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previsualizar foto de perfil"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预览头像"
+          }
+        }
+      }
+    },
+    "profile.photo.remove": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove Photo"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar foto"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除照片"
+          }
+        }
+      }
+    },
+    "profile.photo.remove_error": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not remove photo. Try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo eliminar la foto. Inténtalo de nuevo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法移除照片，请重试。"
+          }
+        }
+      }
+    },
+    "profile.photo.removed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile photo removed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foto de perfil eliminada"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "头像已移除"
+          }
+        }
+      }
+    },
+    "profile.photo.take": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take Photo"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tomar foto"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拍照"
+          }
+        }
+      }
+    },
+    "profile.photo.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile Photo"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foto de perfil"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "头像"
+          }
+        }
+      }
+    },
+    "profile.photo.update": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update Photo"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizar foto"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新照片"
           }
         }
       }
@@ -11742,6 +12019,29 @@
         }
       }
     },
+    "record.shoes.new": {
+      "comment": "Action in the Today shoe picker that opens the add-shoe form. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Shoe"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuevas zapatillas"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新跑鞋"
+          }
+        }
+      }
+    },
     "record.shoes.coachmark": {
       "localizations": {
         "es": {
@@ -13457,6 +13757,29 @@
           "stringUnit": {
             "state": "translated",
             "value": "海拔"
+          }
+        }
+      }
+    },
+    "activity.elevation.terrain_attribution": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terrain data from Mapzen and source agencies"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datos del terreno de Mapzen y organismos proveedores"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地形数据来自 Mapzen 及其数据提供机构"
           }
         }
       }
@@ -43546,24 +43869,24 @@
       }
     },
     "settings.photos.save.activity.detail": {
-      "comment": "Explains that the activity-photo setting saves into one device album. [android:settings] Generated Android name: photos_save_activity_detail.",
+      "comment": "Explains that activity photos are automatically exported to the device's Photos library when the activity is saved. [android:settings] Generated Android name: photos_save_activity_detail.",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automatically add photos to the Plainstride album"
+            "value": "Automatically save activity photos to Photos"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Añade las fotos automáticamente al álbum Plainstride"
+            "value": "Guarda automáticamente las fotos de actividades en Fotos"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自动将照片添加到平步青云相册"
+            "value": "自动将运动照片保存到“照片”"
           }
         }
       }
@@ -45243,6 +45566,29 @@
           "stringUnit": {
             "state": "translated",
             "value": "即将开始"
+          }
+        }
+      }
+    },
+    "social.upcoming.open": {
+      "comment": "Accessibility label for the section-header button that opens the complete upcoming-activity list.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show all upcoming activities"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar todas las actividades próximas"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看所有即将开始的活动"
           }
         }
       }
@@ -47957,6 +48303,9 @@
         }
       }
     },
+    "onboarding.profile.required_title": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Private planning details"}},"es":{"stringUnit":{"state":"translated","value":"Datos privados para tu plan"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"私密计划信息"}}}},
+    "onboarding.profile.required_subtitle": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Birth date, sex assigned at birth, and weight are required for safe plan personalization and calorie calculations. You can enter them manually or import available values from Apple Health. Height is optional."}},"es":{"stringUnit":{"state":"translated","value":"La fecha de nacimiento, el sexo asignado al nacer y el peso son necesarios para personalizar el plan con seguridad y calcular las calorías. Puedes introducirlos o importar los datos disponibles de Apple Health. La altura es opcional."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"为了安全地制定个性化计划并计算热量，需要填写出生日期、出生时指定的性别和体重。你可以手动输入，也可以从 Apple 健康导入现有数据。身高为可选项。"}}}},
+    "onboarding.profile.required_error": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Add a valid birth date, sex assigned at birth, and weight to continue."}},"es":{"stringUnit":{"state":"translated","value":"Añade una fecha de nacimiento válida, el sexo asignado al nacer y el peso para continuar."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"请填写有效的出生日期、出生时指定的性别和体重后继续。"}}}},
     "common.optional": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Optional"}},"es":{"stringUnit":{"state":"translated","value":"Opcional"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"可选"}}}},
     "common.retry": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Retry"}},"es":{"stringUnit":{"state":"translated","value":"Reintentar"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"重试"}}}},
     "plan_builder.activity.mobility": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Mobility"}},"es":{"stringUnit":{"state":"translated","value":"Movilidad"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"灵活性训练"}}}},
@@ -47972,15 +48321,52 @@
     "plan_builder.baseline.starting": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Starting out"}},"es":{"stringUnit":{"state":"translated","value":"Estoy empezando"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"刚开始运动"}}}},
     "plan_builder.baseline.subtitle": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"A rough starting point is enough. Your first three relevant sessions will refine it."}},"es":{"stringUnit":{"state":"translated","value":"Una estimación inicial es suficiente. Tus primeras tres sesiones relevantes la afinarán."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"大致的起点就够了。系统会根据你最先完成的三次相关运动逐步校准。"}}}},
     "plan_builder.baseline.title": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Where are you starting from?"}},"es":{"stringUnit":{"state":"translated","value":"¿Cuál es tu punto de partida?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你目前的起点如何？"}}}},
+    "plan_builder.baseline.observed": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Based on your last 28 days"}},"es":{"stringUnit":{"state":"translated","value":"Según tus últimos 28 días"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"根据你最近 28 天的记录"}}}},
+    "plan_builder.baseline.observed_summary": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"%1$d sessions across %2$d weeks · typically %3$d min · longest %4$d min"}},"es":{"stringUnit":{"state":"translated","value":"%1$d sesiones en %2$d semanas · normalmente %3$d min · máximo %4$d min"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"%2$d 周内完成 %1$d 次 · 通常 %3$d 分钟 · 最长 %4$d 分钟"}}}},
+    "plan_builder.baseline.update": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Update it"}},"es":{"stringUnit":{"state":"translated","value":"Actualizar"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"修改"}}}},
+    "plan_builder.baseline.use": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Use this baseline"}},"es":{"stringUnit":{"state":"translated","value":"Usar este punto de partida"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"使用这个起点"}}}},
+    "plan_builder.coach_prompt.action": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Use this goal"}},"es":{"stringUnit":{"state":"translated","value":"Usar este objetivo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"使用这个目标"}}}},
+    "plan_builder.coach_prompt.error": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"I couldn’t interpret that reliably. Try again or choose a quick reply."}},"es":{"stringUnit":{"state":"translated","value":"No pude interpretar el objetivo con seguridad. Inténtalo de nuevo o elige una respuesta rápida."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"我无法准确理解这个目标。请重试或选择一个快捷回答。"}}}},
+    "plan_builder.coach_prompt.optional_action": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Describe a specific goal instead"}},"es":{"stringUnit":{"state":"translated","value":"Prefiero describir un objetivo concreto"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"改为描述具体目标"}}}},
+    "plan_builder.coach_prompt.placeholder": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"For example: Prepare for a half marathon"}},"es":{"stringUnit":{"state":"translated","value":"Por ejemplo: prepararme para una media maratón"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"例如：备战半程马拉松"}}}},
+    "plan_builder.coach_prompt.subtitle": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"We’ll match your description to a plan goal. You can review the details before continuing."}},"es":{"stringUnit":{"state":"translated","value":"Relacionaremos tu descripción con un objetivo del plan. Podrás revisar los detalles antes de continuar."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"我们会将你的描述匹配到一个计划目标，你可以在继续前核对详细信息。"}}}},
+    "plan_builder.coach_prompt.title": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Describe your goal"}},"es":{"stringUnit":{"state":"translated","value":"Describe tu objetivo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"描述你的目标"}}}},
+    "plan_builder.conversation.change_goal": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Change goal"}},"es":{"stringUnit":{"state":"translated","value":"Cambiar objetivo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"更改目标"}}}},
+    "plan_builder.conversation.choose_date": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Choose event date"}},"es":{"stringUnit":{"state":"translated","value":"Elegir la fecha del evento"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"选择赛事日期"}}}},
+    "plan_builder.conversation.confirm_time": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Use this target time"}},"es":{"stringUnit":{"state":"translated","value":"Usar este tiempo objetivo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"使用这个目标时间"}}}},
+    "plan_builder.conversation.event_date": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"When is the event?"}},"es":{"stringUnit":{"state":"translated","value":"¿Cuándo es el evento?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"赛事在什么时候？"}}}},
+    "plan_builder.conversation.event_distance": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"What distance is the event?"}},"es":{"stringUnit":{"state":"translated","value":"¿Qué distancia tiene el evento?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"赛事距离是多少？"}}}},
+    "plan_builder.conversation.edit_answer": {"comment":"[platform:ios] Accessibility label for tapping a confirmed conversational answer to edit it.","localizations":{"en":{"stringUnit":{"state":"translated","value":"Edit %@"}},"es":{"stringUnit":{"state":"translated","value":"Editar %@"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"编辑%@"}}}},
+    "plan_builder.conversation.goal_acknowledged": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"%@ — got it."}},"es":{"stringUnit":{"state":"translated","value":"Perfecto: %@."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"好的，目标是：%@。"}}}},
+    "plan_builder.conversation.goal_hint": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Choose a quick reply or describe the goal in your own words."}},"es":{"stringUnit":{"state":"translated","value":"Elige una respuesta rápida o describe el objetivo con tus propias palabras."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"选择快捷回答，或用自己的话描述目标。"}}}},
+    "plan_builder.conversation.optional_answer": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Optional — you can continue without adding anything."}},"es":{"stringUnit":{"state":"translated","value":"Opcional: puedes continuar sin añadir nada."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"选填，你可以不填写并直接继续。"}}}},
+    "plan_builder.conversation.success_placeholder": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"For example: longer runs feel comfortable"}},"es":{"stringUnit":{"state":"translated","value":"Por ejemplo: sentirme cómodo en carreras más largas"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"例如：长距离跑起来更轻松"}}}},
+    "plan_builder.conversation.target_time": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"What time are you aiming for?"}},"es":{"stringUnit":{"state":"translated","value":"¿Qué tiempo quieres conseguir?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你的目标完赛时间是多少？"}}}},
+    "plan_builder.conversation.thinking": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Understanding your goal"}},"es":{"stringUnit":{"state":"translated","value":"Interpretando tu objetivo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"正在理解你的目标"}}}},
+    "plan_builder.conversation.weeks": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"%d weeks"}},"es":{"stringUnit":{"state":"translated","value":"%d semanas"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"%d 周"}}}},
     "plan_builder.build": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Build my plan"}},"es":{"stringUnit":{"state":"translated","value":"Crear mi plan"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"制定我的计划"}}}},
     "plan_builder.build.detail": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Create a plan around your goals, activities, and week."}},"es":{"stringUnit":{"state":"translated","value":"Crea un plan según tus objetivos, actividades y semana."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"根据你的目标、运动类型和每周安排制定计划。"}}}},
     "plan_builder.create": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Create my plan"}},"es":{"stringUnit":{"state":"translated","value":"Crear mi plan"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"创建我的计划"}}}},
     "plan_builder.create_error": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"We couldn’t create your plan. Your answers are saved."}},"es":{"stringUnit":{"state":"translated","value":"No pudimos crear tu plan. Tus respuestas están guardadas."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"暂时无法创建计划。你的回答已保存。"}}}},
     "plan_builder.creating": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Building a plan around your week…"}},"es":{"stringUnit":{"state":"translated","value":"Creando un plan que encaje en tu semana…"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"正在根据你的每周安排制定计划…"}}}},
     "plan_builder.event.date": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Event date"}},"es":{"stringUnit":{"state":"translated","value":"Fecha del evento"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"赛事日期"}}}},
+    "plan_builder.event.details_subtitle": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"We’ll use the date, distance, and your intent to shape the plan."}},"es":{"stringUnit":{"state":"translated","value":"Usaremos la fecha, la distancia y tu intención para dar forma al plan."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"我们会根据日期、距离和你的参赛目标来制定计划。"}}}},
+    "plan_builder.event.details_title": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Tell us about your event"}},"es":{"stringUnit":{"state":"translated","value":"Cuéntanos sobre tu evento"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"介绍一下你的赛事"}}}},
     "plan_builder.event.distance": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Event distance"}},"es":{"stringUnit":{"state":"translated","value":"Distancia del evento"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"赛事距离"}}}},
     "plan_builder.event.half": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Half marathon"}},"es":{"stringUnit":{"state":"translated","value":"Media maratón"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"半程马拉松"}}}},
     "plan_builder.event.marathon": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Marathon"}},"es":{"stringUnit":{"state":"translated","value":"Maratón"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"马拉松"}}}},
+    "plan_builder.event.intent": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"What matters most?"}},"es":{"stringUnit":{"state":"translated","value":"¿Qué es lo más importante?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你最看重什么？"}}}},
+    "plan_builder.event.intent.finish": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Finish comfortably"}},"es":{"stringUnit":{"state":"translated","value":"Terminar con comodidad"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"从容完赛"}}}},
+    "plan_builder.event.intent.perform": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Perform strongly"}},"es":{"stringUnit":{"state":"translated","value":"Rendir bien"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"发挥出色"}}}},
+    "plan_builder.event.intent.time": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Target a time"}},"es":{"stringUnit":{"state":"translated","value":"Buscar una marca"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"挑战目标成绩"}}}},
+    "plan_builder.event.target_minutes": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Target time: %d min"}},"es":{"stringUnit":{"state":"translated","value":"Tiempo objetivo: %d min"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"目标时间：%d 分钟"}}}},
+    "plan_builder.generic.review_horizon": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"When should we review this focus?"}},"es":{"stringUnit":{"state":"translated","value":"¿Cuándo revisamos este enfoque?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"何时回顾这个训练重点？"}}}},
+    "plan_builder.generic.details_subtitle": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Choose when to review this focus. Adding a personal success signal is optional."}},"es":{"stringUnit":{"state":"translated","value":"Elige cuándo revisar este enfoque. Añadir una señal personal de progreso es opcional."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"选择回顾这个训练重点的时间；你也可以选择填写自己的进步标准。"}}}},
+    "plan_builder.generic.details_title": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"What would progress look like?"}},"es":{"stringUnit":{"state":"translated","value":"¿Cómo sería un buen progreso?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"怎样算是取得进步？"}}}},
+    "plan_builder.generic.four_weeks": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"4 weeks"}},"es":{"stringUnit":{"state":"translated","value":"4 semanas"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"4 周"}}}},
+    "plan_builder.generic.eight_weeks": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"8 weeks"}},"es":{"stringUnit":{"state":"translated","value":"8 semanas"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"8 周"}}}},
+    "plan_builder.generic.twelve_weeks": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"12 weeks"}},"es":{"stringUnit":{"state":"translated","value":"12 semanas"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"12 周"}}}},
+    "plan_builder.generic.success": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"What would meaningful progress feel like?"}},"es":{"stringUnit":{"state":"translated","value":"¿Cómo notarías un progreso importante?"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"怎样的变化会让你觉得有明显进步？"}}}},
     "plan_builder.explore": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Explore first"}},"es":{"stringUnit":{"state":"translated","value":"Explorar primero"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"先逛逛"}}}},
     "plan_builder.finish_later": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Finish later"}},"es":{"stringUnit":{"state":"translated","value":"Terminar más tarde"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"稍后完成"}}}},
     "plan_builder.go_today": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Go to Today"}},"es":{"stringUnit":{"state":"translated","value":"Ir a Hoy"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"前往今天"}}}},
@@ -47988,9 +48374,6 @@
     "plan_builder.objective.endurance": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Build endurance or go farther"}},"es":{"stringUnit":{"state":"translated","value":"Mejorar la resistencia o llegar más lejos"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"提升耐力或完成更远距离"}}}},
     "plan_builder.objective.event": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Prepare for an event"}},"es":{"stringUnit":{"state":"translated","value":"Prepararme para un evento"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"备战赛事"}}}},
     "plan_builder.objective.health": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Improve health and energy"}},"es":{"stringUnit":{"state":"translated","value":"Mejorar la salud y la energía"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"改善健康与精力"}}}},
-    "plan_builder.objective.maintenance": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Maintain fitness"}},"es":{"stringUnit":{"state":"translated","value":"Mantener mi forma física"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"保持体能"}}}},
-    "plan_builder.objective.other": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Something else"}},"es":{"stringUnit":{"state":"translated","value":"Otro objetivo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"其他目标"}}}},
-    "plan_builder.objective.other_prompt": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Describe your objective"}},"es":{"stringUnit":{"state":"translated","value":"Describe tu objetivo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"描述你的目标"}}}},
     "plan_builder.objective.speed": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Improve speed"}},"es":{"stringUnit":{"state":"translated","value":"Mejorar la velocidad"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"提升速度"}}}},
     "plan_builder.objective.strength": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Build strength"}},"es":{"stringUnit":{"state":"translated","value":"Ganar fuerza"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"增强力量"}}}},
     "plan_builder.objective.subtitle": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Choose the one outcome that matters most right now."}},"es":{"stringUnit":{"state":"translated","value":"Elige el resultado que más te importa ahora mismo."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"选择你目前最看重的一个目标。"}}}},
@@ -48006,12 +48389,26 @@
     "plan_builder.result.total_time_value": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"%d min"}},"es":{"stringUnit":{"state":"translated","value":"%d min"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"%d 分钟"}}}},
     "plan_builder.result.week": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Your starting week"}},"es":{"stringUnit":{"state":"translated","value":"Tu primera semana"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你的起始周"}}}},
     "plan_builder.review.activities": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Activity mix"}},"es":{"stringUnit":{"state":"translated","value":"Combinación de actividades"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"运动组合"}}}},
+    "plan_builder.review.event": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Event"}},"es":{"stringUnit":{"state":"translated","value":"Evento"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"赛事"}}}},
+    "plan_builder.review.horizon": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Review point"}},"es":{"stringUnit":{"state":"translated","value":"Momento de revisión"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"回顾节点"}}}},
     "plan_builder.review.objective": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Goal"}},"es":{"stringUnit":{"state":"translated","value":"Objetivo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"目标"}}}},
     "plan_builder.review.subtitle": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Plainstride will schedule the next 7–14 days and adapt what comes after."}},"es":{"stringUnit":{"state":"translated","value":"Plainstride programará los próximos 7–14 días y adaptará lo que venga después."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"Plainstride 会具体安排接下来 7–14 天，并根据实际情况调整后续内容。"}}}},
+    "plan_builder.review.success": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Meaningful progress"}},"es":{"stringUnit":{"state":"translated","value":"Progreso importante"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"有意义的进步"}}}},
     "plan_builder.review.title": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Ready to create your plan"}},"es":{"stringUnit":{"state":"translated","value":"Todo listo para crear tu plan"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"准备创建你的计划"}}}},
     "plan_builder.review.week": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Realistic week"}},"es":{"stringUnit":{"state":"translated","value":"Semana realista"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"现实可行的一周"}}}},
     "plan_builder.review.week_value": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"%1$d sessions · about %2$d min each"}},"es":{"stringUnit":{"state":"translated","value":"%1$d sesiones · unos %2$d min cada una"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"%1$d 次运动 · 每次约 %2$d 分钟"}}}},
     "plan_builder.skip_error": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Couldn’t save that choice. Try again."}},"es":{"stringUnit":{"state":"translated","value":"No se pudo guardar esa opción. Inténtalo de nuevo."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"无法保存该选择，请重试。"}}}},
+    "plan_builder.smart_setup.activities": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Activities"}},"es":{"stringUnit":{"state":"translated","value":"Actividades"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"运动类型"}}}},
+    "plan_builder.smart_setup.adjust": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Adjust it"}},"es":{"stringUnit":{"state":"translated","value":"Ajustar"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"调整"}}}},
+    "plan_builder.smart_setup.based_on": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Based on %1$d sessions across %2$d recent weeks"}},"es":{"stringUnit":{"state":"translated","value":"Basado en %1$d sesiones durante %2$d semanas recientes"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"根据最近 %2$d 周的 %1$d 次运动"}}}},
+    "plan_builder.smart_setup.constraints": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Anything changed? Injury, illness, travel, or schedule constraints (optional)"}},"es":{"stringUnit":{"state":"translated","value":"¿Ha cambiado algo? Lesiones, enfermedad, viajes o límites de horario (opcional)"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"最近有变化吗？伤病、生病、出行或时间限制（可选）"}}}},
+    "plan_builder.smart_setup.days": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Usual days"}},"es":{"stringUnit":{"state":"translated","value":"Días habituales"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"常用运动日"}}}},
+    "plan_builder.smart_setup.loading": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Checking your recent training…"}},"es":{"stringUnit":{"state":"translated","value":"Revisando tu entrenamiento reciente…"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"正在查看你近期的训练记录…"}}}},
+    "plan_builder.smart_setup.rhythm": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Weekly rhythm"}},"es":{"stringUnit":{"state":"translated","value":"Ritmo semanal"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"每周节奏"}}}},
+    "plan_builder.smart_setup.rhythm_value": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"%1$d sessions · up to %2$d min"}},"es":{"stringUnit":{"state":"translated","value":"%1$d sesiones · hasta %2$d min"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"%1$d 次运动 · 最长约 %2$d 分钟"}}}},
+    "plan_builder.smart_setup.subtitle": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"I used your recent synced activities to fill this in. Confirm it if your current routine still fits."}},"es":{"stringUnit":{"state":"translated","value":"He usado tus actividades sincronizadas recientes para completar estos datos. Confírmalos si tu rutina actual sigue siendo la misma."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"我已根据你近期同步的运动记录填写这些信息。如果目前的训练习惯没有变化，请确认使用。"}}}},
+    "plan_builder.smart_setup.title": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"I already know your training pattern"}},"es":{"stringUnit":{"state":"translated","value":"Ya conozco tu patrón de entrenamiento"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"我已经了解你的训练规律"}}}},
+    "plan_builder.smart_setup.use": {"comment":"[platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Use this setup"}},"es":{"stringUnit":{"state":"translated","value":"Usar esta configuración"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"使用这个设置"}}}},
     "plan_builder.title": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Plan setup"}},"es":{"stringUnit":{"state":"translated","value":"Configurar el plan"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"计划设置"}}}},
     "plan_builder.week.constraints": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Injury, illness, travel, or schedule constraints (optional)"}},"es":{"stringUnit":{"state":"translated","value":"Lesiones, enfermedad, viajes o límites de horario (opcional)"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"伤病、出行或时间限制（可选）"}}}},
     "plan_builder.week.duration": {"comment":"[platform:ios] [android:onboarding]","localizations":{"en":{"stringUnit":{"state":"translated","value":"About %d min per session"}},"es":{"stringUnit":{"state":"translated","value":"Unos %d min por sesión"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"每次约 %d 分钟"}}}},

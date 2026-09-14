@@ -22,6 +22,7 @@ struct CameraHUDView: View {
     @Binding var activePage: SessionPage
     @Binding var isWorkoutPanelExpanded: Bool
     let onStart: () -> Void
+    let onPause: () -> Void
     let onResume: () -> Void
     let onFinish: () -> Void
     let onCaptureStateChange: (Bool) -> Void
@@ -83,7 +84,7 @@ struct CameraHUDView: View {
                         distanceLabel: measurementPreferences.unitSystem.distanceLabel,
                         elevationText: measurementPreferences.unitSystem.elevationValueString(meters: recorder.elevationGainMeters),
                         elevationLabel: measurementPreferences.unitSystem.elevationLabel,
-                        heartRateText: recorder.heartRate.map { "\($0)" } ?? "--",
+                        heartRateText: heartRateDisplayText,
                         guideMessage: guideMessage,
                         musicPlayback: musicStore.playback.hasActiveQueue ? musicStore.playback : nil,
                         showsMusicDisabledState: musicStore.hasDeveloperTokenError,
@@ -97,7 +98,7 @@ struct CameraHUDView: View {
                             Task { await musicStore.skipToNext() }
                         },
                         onStart: onStart,
-                        onPause: pauseActivity,
+                        onPause: onPause,
                         onResume: onResume,
                         onFinish: onFinish,
                         isFinishEnabled: !isCapturingPhoto
@@ -154,6 +155,19 @@ struct CameraHUDView: View {
     private var guideMessage: String? {
         guard recorder.state != .idle, !guide.lastNudge.isEmpty else { return nil }
         return guide.lastNudge
+    }
+
+    private var heartRateDisplayText: String {
+        if let bpm = recorder.heartRate {
+            guard let zone = recorder.heartRateZone else { return "\(bpm)" }
+            return "\(bpm) · " + String(
+                format: String(localized: "watch.hr.zone.format", defaultValue: "Zone %d"),
+                zone
+            )
+        }
+        return recorder.heartRateSignalState == .unavailable
+            ? String(localized: "watch.hr.unavailable", defaultValue: "No signal")
+            : String(localized: "watch.hr.waiting", defaultValue: "Waiting")
     }
 
     private var estimatedEnergyKilocalories: Double? {
@@ -327,10 +341,6 @@ struct CameraHUDView: View {
             captureContext: recorder.photoCaptureContext
         )
         onCapture(image, meta)
-    }
-
-    private func pauseActivity() {
-        recorder.pause()
     }
 
     private func trackMusicControl(_ control: String) {

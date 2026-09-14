@@ -79,22 +79,25 @@ Recommended v2 data types:
 ### Apple Watch
 
 Status:
-- yes, but split into two product modes
+- dedicated Plainstride watchOS companion is implemented alongside HealthKit-backed imports
 
 Mode 1: HealthKit-backed watch sync
 - Apple Watch records through the system or another app
 - data lands in Apple Health
 - Outbound reads it on iPhone
 
-Mode 2: dedicated Outbound watch experience
-- build a watchOS companion
-- start and monitor live workouts on watch
-- pass state to the phone app when needed
-- support live heart rate and watch-native workout capture
-
-Recommendation:
-- do Mode 1 first for breadth
-- do Mode 2 when live watch-led workouts become important to retention
+Mode 2: dedicated Plainstride watch experience
+- the `Plainstride Watch` target (`plainstride.outbound.watchkitapp`) starts from either device and uses HealthKit workout mirroring as its live transport
+- Apple Watch owns the `HKWorkoutSession`, `HKLiveWorkoutBuilder`, heart-rate stream, and Apple Health save whenever it participates
+- iPhone remains the primary route, camera, guidance, and activity-history experience; it receives live BPM, effort/zone, aggregate metrics, lifecycle controls, and the saved HealthKit workout UUID
+- a versioned session UUID and sequence-number protocol makes repeated handlers, duplicate messages, stale messages, delayed saves, and recovery idempotent
+- if Watch preparation does not complete within six seconds, phone recording starts normally and phone HealthKit write-back remains enabled
+- if connectivity drops after start, each device keeps recording independently and reconciles lifecycle and saved-workout ownership when mirroring returns
+- Watch lifecycle is authoritative; iPhone remains authoritative for route, camera, coaching, sharing, and the Plainstride review/save-or-discard decision. Discarding the local review never deletes the already-saved Apple Health workout
+- the watch recovers an active HealthKit workout after process termination; iPhone installs its mirroring handler during application launch so background delivery is not UI-dependent
+- a Watch-first background launch may not receive permission to begin iPhone route collection immediately. The Watch workout continues, the phone begins route collection when the app is permitted to run, and final Watch distance/heart-rate metrics fill an otherwise route-less phone summary without creating a second activity
+- the phone filters workouts carrying Plainstride's session metadata or the watch bundle source, preventing the Watch-owned workout from being imported as a second activity
+- heart-rate zones use one deterministic, non-medical five-zone engine on both devices. It accepts reliable personal max/resting values when supplied and otherwise uses a documented 190 BPM max fallback; gaps are capped so a removed watch does not inflate time in zone
 
 ### Popular Fitness Apps
 
@@ -175,10 +178,11 @@ User value:
 Goal:
 - support users who want live wearable-driven sessions
 
-Ship:
-- watchOS app for start/pause/finish
-- live heart-rate awareness during recording
-- route and workout continuity between phone and watch
+Shipped:
+- watchOS start/pause/resume/finish plus matching phone controls
+- live and final heart-rate metrics, five-zone time accumulation, distance, energy, and elapsed time
+- route continuity on iPhone with Watch-primary HealthKit persistence and late-save reconciliation
+- watch-first launches that route iPhone into the existing recording experience without creating a second session
 
 User value:
 - Outbound can support serious runners without giving up its camera-first phone experience

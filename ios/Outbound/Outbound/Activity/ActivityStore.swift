@@ -13,6 +13,7 @@ final class ActivityStore: ObservableObject {
     private let persistence = ActivityPersistence.shared
     private let analyticsManager: AnalyticsManager?
     private var activityRevision = 0
+    private var elevationCorrectionIDs = Set<UUID>()
 
     var pendingActivityCount: Int {
         activities.filter { !($0.sync?.isSynced ?? false) }.count
@@ -44,6 +45,7 @@ final class ActivityStore: ObservableObject {
         indoor: ActivityIndoorMetadata? = nil,
         cadence: ActivityCadenceSummary? = nil,
         heartRateZones: ActivityHeartRateZoneSummary? = nil,
+        recordingSession: ActivityRecordingSessionMetadata? = nil,
         activityEventID: String? = nil,
         followedRoute: FollowedRouteMetadata? = nil,
         recognitionBadgeIDs: [RecognitionBadgeID] = []
@@ -70,6 +72,7 @@ final class ActivityStore: ObservableObject {
                 indoor: indoor,
                 cadence: cadence,
                 heartRateZones: heartRateZones,
+                recordingSession: recordingSession,
                 activityEventID: activityEventID,
                 followedRoute: followedRoute,
                 recognitionBadgeIDs: recognitionBadgeIDs
@@ -150,7 +153,28 @@ final class ActivityStore: ObservableObject {
     }
 
     var importedHealthExternalIDs: Set<String> {
-        Set(activities.compactMap { $0.source.kind == .appleHealth ? $0.source.externalID : nil })
+        Set(activities.compactMap { activity in
+            activity.source.kind == .appleHealth
+                ? activity.source.externalID
+                : activity.recordingSession?.healthKitWorkoutExternalReference
+        })
+    }
+
+    func attachHealthKitWorkoutReference(sessionUUID: UUID, externalReference: String) async {
+        guard let index = activities.firstIndex(where: {
+            $0.recordingSession?.sessionUUID == sessionUUID
+        }), activities[index].recordingSession?.healthKitWorkoutExternalReference != externalReference else { return }
+        let updated = activities[index].withHealthKitWorkoutReference(externalReference)
+        do {
+            try await persistence.replace(updated)
+            activityRevision += 1
+            activities[index] = updated
+        } catch {
+            ActivityDiagnosticLog.error(
+                .persistence,
+                "Watch workout reference reconciliation failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
+        }
     }
 
     func delete(_ activity: SavedActivity) async throws {
@@ -183,6 +207,107 @@ final class ActivityStore: ObservableObject {
 
     func exportRoute(for activity: SavedActivity, format: RouteExportFormat) async throws -> URL {
         try await persistence.exportRoute(for: self.activity(id: activity.id) ?? activity, format: format)
+    }
+
+    func correctElevationIfNeeded(for activityID: UUID) async {
+        guard AuthStore.currentUserId != nil,
+              !elevationCorrectionIDs.contains(activityID),
+              let activity = activity(id: activityID),
+              activity.source.kind == .outbound,
+              activity.indoor?.isIndoor != true,
+              activity.route?.elevationMetadata == nil,
+              let route = activity.route,
+              route.points.count >= 2
+        else { return }
+
+        elevationCorrectionIDs.insert(activityID)
+        defer { elevationCorrectionIDs.remove(activityID) }
+        let startedAt = Date()
+        let locations = route.points.map { point in
+            CLLocation(
+                coordinate: point.coordinate,
+                altitude: point.altitude ?? 0,
+                horizontalAccuracy: 10,
+                verticalAccuracy: point.verticalAccuracy ?? 50,
+                timestamp: point.timestamp
+            )
+        }
+        let segmentStarts = Set(route.points.indices.filter { route.points[$0].startsNewSegment })
+        let summary = ActivitySummary(
+            startedAt: activity.startedAt,
+            endedAt: activity.endedAt,
+            durationSecs: activity.durationSecs,
+            distanceM: activity.distanceM,
+            avgPace: activity.avgPace,
+            elevationGainM: activity.elevationGainM ?? 0,
+            walkingStepCount: activity.walkingStepCount,
+            healthMetrics: activity.healthMetrics,
+            trackPoints: locations,
+            trackSegmentStartIndices: segmentStarts
+        )
+
+        do {
+            let corrected = try await TerrainElevationCorrector.correct(summary)
+            guard let elevationMetadata = corrected.elevationMetadata else { return }
+            let updated = SavedActivity(
+                id: activity.id,
+                activityType: activity.activityType,
+                title: activity.title,
+                guideNudge: activity.guideNudge,
+                reflection: activity.reflection,
+                createdAt: activity.createdAt,
+                startedAt: activity.startedAt,
+                endedAt: activity.endedAt,
+                durationSecs: activity.durationSecs,
+                distanceM: activity.distanceM,
+                avgPace: activity.avgPace,
+                elevationGainM: corrected.elevationGainM,
+                walkingStepCount: activity.walkingStepCount,
+                healthMetrics: activity.healthMetrics,
+                goal: activity.goal,
+                source: activity.source,
+                gear: activity.gear,
+                manualEdits: activity.manualEdits,
+                indoor: activity.indoor,
+                cadence: activity.cadence,
+                heartRateZones: activity.heartRateZones,
+                recordingSession: activity.recordingSession,
+                activityEventID: activity.activityEventID,
+                followedRoute: activity.followedRoute,
+                recognitionBadgeIDs: activity.recognitionBadgeIDs,
+                route: SavedRoute(
+                    points: SavedRoutePoint.simplified(from: corrected.trackSegments),
+                    elevationMetadata: elevationMetadata
+                ),
+                photos: activity.photos,
+                sync: SavedActivitySyncState(
+                    clientActivityId: activity.sync?.clientActivityId ?? activity.id.uuidString,
+                    serverActivityId: activity.sync?.serverActivityId,
+                    lastAttemptAt: activity.sync?.lastAttemptAt,
+                    syncedAt: nil,
+                    lastError: nil,
+                    localUpdatedAt: Date()
+                )
+            )
+            try await persistence.replace(updated)
+            activityRevision += 1
+            if let index = activities.firstIndex(where: { $0.id == updated.id }) {
+                activities[index] = updated
+            }
+            await analyticsManager?.track(.init(.activityElevationCorrectionCompleted, properties: [
+                .result: .string("success"),
+                .sourceType: .string("mapzen_backfill"),
+                .latencyBucket: .string(ProductAnalyticsBucket.latency(milliseconds: Date().timeIntervalSince(startedAt) * 1_000))
+            ]))
+            Task { await syncActivityIfPossible(id: updated.id) }
+        } catch {
+            await analyticsManager?.track(.init(.activityElevationCorrectionCompleted, properties: [
+                .result: .string("fallback"),
+                .sourceType: .string("existing_on_device"),
+                .latencyBucket: .string(ProductAnalyticsBucket.latency(milliseconds: Date().timeIntervalSince(startedAt) * 1_000)),
+                .errorCategory: .string(syncErrorCategory(error))
+            ]))
+        }
     }
 
     func updateActivity(
@@ -236,6 +361,7 @@ final class ActivityStore: ObservableObject {
             indoor: activity.indoor,
             cadence: activity.cadence,
             heartRateZones: activity.heartRateZones,
+            recordingSession: activity.recordingSession,
             activityEventID: activity.activityEventID,
             followedRoute: activity.followedRoute,
             recognitionBadgeIDs: activity.recognitionBadgeIDs,
@@ -485,6 +611,7 @@ final class ActivityStore: ObservableObject {
             indoor: current.indoor,
             cadence: current.cadence,
             heartRateZones: current.heartRateZones,
+            recordingSession: current.recordingSession,
             activityEventID: current.activityEventID,
             followedRoute: current.followedRoute,
             recognitionBadgeIDs: current.recognitionBadgeIDs,
@@ -734,6 +861,7 @@ final class ActivityStore: ObservableObject {
             indoor: activity.indoor,
             cadence: activity.cadence,
             heartRateZones: activity.heartRateZones,
+            recordingSession: activity.recordingSession,
             activityEventID: activity.activityEventID,
             followedRoute: stripImportedFollowedRoute && followedRoute?.source == .imported
                 ? nil

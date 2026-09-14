@@ -24,6 +24,7 @@ actor ActivityPersistence {
         indoor: ActivityIndoorMetadata?,
         cadence: ActivityCadenceSummary?,
         heartRateZones: ActivityHeartRateZoneSummary?,
+        recordingSession: ActivityRecordingSessionMetadata?,
         activityEventID: String?,
         followedRoute: FollowedRouteMetadata?,
         recognitionBadgeIDs: [RecognitionBadgeID]
@@ -43,6 +44,7 @@ actor ActivityPersistence {
             indoor: indoor,
             cadence: cadence,
             heartRateZones: heartRateZones,
+            recordingSession: recordingSession,
             activityEventID: activityEventID,
             followedRoute: followedRoute,
             recognitionBadgeIDs: recognitionBadgeIDs
@@ -109,6 +111,7 @@ private nonisolated enum LocalActivityStore {
         indoor: ActivityIndoorMetadata? = nil,
         cadence: ActivityCadenceSummary? = nil,
         heartRateZones: ActivityHeartRateZoneSummary? = nil,
+        recordingSession: ActivityRecordingSessionMetadata? = nil,
         activityEventID: String? = nil,
         followedRoute: FollowedRouteMetadata? = nil,
         recognitionBadgeIDs: [RecognitionBadgeID] = []
@@ -149,10 +152,14 @@ private nonisolated enum LocalActivityStore {
             indoor: indoor,
             cadence: cadence,
             heartRateZones: heartRateZones,
+            recordingSession: recordingSession,
             activityEventID: activityEventID,
             followedRoute: followedRoute,
             recognitionBadgeIDs: recognitionBadgeIDs,
-            route: SavedRoute(points: SavedRoutePoint.simplified(from: summary.trackSegments)),
+            route: SavedRoute(
+                points: SavedRoutePoint.simplified(from: summary.trackSegments),
+                elevationMetadata: summary.elevationMetadata
+            ),
             photos: savedPhotos,
             sync: SavedActivitySyncState(
                 clientActivityId: activityId.uuidString,
@@ -247,6 +254,7 @@ private nonisolated enum LocalActivityStore {
             indoor: activity.indoor,
             cadence: activity.cadence,
             heartRateZones: activity.heartRateZones,
+            recordingSession: activity.recordingSession,
             activityEventID: activity.activityEventID,
             followedRoute: activity.followedRoute,
             recognitionBadgeIDs: activity.recognitionBadgeIDs,
@@ -381,6 +389,29 @@ nonisolated struct FollowedRouteMetadata: Codable, Hashable {
     }
 }
 
+nonisolated struct ActivityRecordingSessionMetadata: Codable, Hashable {
+    enum Origin: String, Codable, Hashable {
+        case iPhone = "iphone"
+        case appleWatch = "apple_watch"
+    }
+
+    enum RecordingDevice: String, Codable, Hashable {
+        case phoneOnly = "phone_only"
+        case appleWatch = "apple_watch"
+    }
+
+    enum HealthKitOwnership: String, Codable, Hashable {
+        case phoneWriteBack = "phone_write_back"
+        case appleWatchPrimary = "apple_watch_primary"
+    }
+
+    let sessionUUID: UUID
+    let origin: Origin
+    let recordingDevice: RecordingDevice
+    let healthKitOwnership: HealthKitOwnership
+    let healthKitWorkoutExternalReference: String?
+}
+
 nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     static func == (lhs: SavedActivity, rhs: SavedActivity) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
@@ -406,6 +437,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     let indoor: ActivityIndoorMetadata?
     let cadence: ActivityCadenceSummary?
     let heartRateZones: ActivityHeartRateZoneSummary?
+    let recordingSession: ActivityRecordingSessionMetadata?
     let activityEventID: String?
     let followedRoute: FollowedRouteMetadata?
     let recognitionBadgeIDs: [RecognitionBadgeID]
@@ -464,6 +496,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         indoor = try c.decodeIfPresent(ActivityIndoorMetadata.self, forKey: .indoor)
         cadence = try c.decodeIfPresent(ActivityCadenceSummary.self, forKey: .cadence)
         heartRateZones = try c.decodeIfPresent(ActivityHeartRateZoneSummary.self, forKey: .heartRateZones)
+        recordingSession = try c.decodeIfPresent(ActivityRecordingSessionMetadata.self, forKey: .recordingSession)
         activityEventID = try c.decodeIfPresent(String.self, forKey: .activityEventID)
         followedRoute = try c.decodeIfPresent(FollowedRouteMetadata.self, forKey: .followedRoute)
         recognitionBadgeIDs = (try? c.decode([RecognitionBadgeID].self, forKey: .recognitionBadgeIDs)) ?? []
@@ -493,6 +526,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
          indoor: ActivityIndoorMetadata? = nil,
          cadence: ActivityCadenceSummary? = nil,
          heartRateZones: ActivityHeartRateZoneSummary? = nil,
+         recordingSession: ActivityRecordingSessionMetadata? = nil,
          activityEventID: String? = nil,
          followedRoute: FollowedRouteMetadata? = nil,
          recognitionBadgeIDs: [RecognitionBadgeID] = [],
@@ -512,6 +546,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         self.indoor = indoor
         self.cadence = cadence
         self.heartRateZones = heartRateZones
+        self.recordingSession = recordingSession
         self.activityEventID = activityEventID
         self.followedRoute = followedRoute
         self.recognitionBadgeIDs = recognitionBadgeIDs
@@ -543,6 +578,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         case indoor
         case cadence
         case heartRateZones
+        case recordingSession
         case activityEventID
         case followedRoute
         case recognitionBadgeIDs
@@ -576,11 +612,55 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         try c.encodeIfPresent(indoor, forKey: .indoor)
         try c.encodeIfPresent(cadence, forKey: .cadence)
         try c.encodeIfPresent(heartRateZones, forKey: .heartRateZones)
+        try c.encodeIfPresent(recordingSession, forKey: .recordingSession)
         try c.encodeIfPresent(activityEventID, forKey: .activityEventID)
         try c.encodeIfPresent(followedRoute, forKey: .followedRoute)
         try c.encodeIfPresent(route, forKey: .route)
         try c.encode(photos, forKey: .photos)
         try c.encodeIfPresent(sync, forKey: .sync)
+    }
+}
+
+nonisolated extension SavedActivity {
+    func withHealthKitWorkoutReference(_ externalReference: String) -> SavedActivity {
+        guard let recordingSession else { return self }
+        return SavedActivity(
+            id: id,
+            activityType: activityType,
+            title: title,
+            guideNudge: guideNudge,
+            reflection: reflection,
+            createdAt: createdAt,
+            startedAt: startedAt,
+            endedAt: endedAt,
+            durationSecs: durationSecs,
+            distanceM: distanceM,
+            avgPace: avgPace,
+            elevationGainM: elevationGainM,
+            walkingStepCount: walkingStepCount,
+            healthMetrics: healthMetrics,
+            goal: goal,
+            energyKilocalories: energyKilocalories,
+            source: source,
+            gear: gear,
+            manualEdits: manualEdits,
+            indoor: indoor,
+            cadence: cadence,
+            heartRateZones: heartRateZones,
+            recordingSession: ActivityRecordingSessionMetadata(
+                sessionUUID: recordingSession.sessionUUID,
+                origin: recordingSession.origin,
+                recordingDevice: recordingSession.recordingDevice,
+                healthKitOwnership: recordingSession.healthKitOwnership,
+                healthKitWorkoutExternalReference: externalReference
+            ),
+            activityEventID: activityEventID,
+            followedRoute: followedRoute,
+            recognitionBadgeIDs: recognitionBadgeIDs,
+            route: route,
+            photos: photos,
+            sync: sync
+        )
     }
 }
 
@@ -669,29 +749,43 @@ nonisolated struct SavedActivitySyncState: Codable, Hashable {
 
 nonisolated struct SavedRoute: Codable, Hashable {
     let points: [SavedRoutePoint]
+    let elevationMetadata: ActivityElevationMetadata?
 
-    init(points: [SavedRoutePoint]) {
+    init(points: [SavedRoutePoint], elevationMetadata: ActivityElevationMetadata? = nil) {
         self.points = points
+        self.elevationMetadata = elevationMetadata
     }
 
     init(from decoder: Decoder) throws {
         if let container = try? decoder.container(keyedBy: CodingKeys.self) {
             points = try container.decode([SavedRoutePoint].self, forKey: .points)
+            elevationMetadata = try container.decodeIfPresent(ActivityElevationMetadata.self, forKey: .elevationMetadata)
         } else {
             var container = try decoder.unkeyedContainer()
             points = try container.decode([SavedRoutePoint].self)
+            elevationMetadata = nil
         }
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(points, forKey: .points)
+        try container.encodeIfPresent(elevationMetadata, forKey: .elevationMetadata)
     }
 
     private enum CodingKeys: String, CodingKey {
         case points
+        case elevationMetadata
         case visibility
     }
+}
+
+nonisolated struct ActivityElevationMetadata: Codable, Hashable {
+    let algorithmVersion: String
+    let provider: String
+    let attributionText: String
+    let attributionURL: String
+    let modified: Bool
 }
 
 nonisolated struct SavedRoutePoint: Codable, Hashable {

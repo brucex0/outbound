@@ -30,6 +30,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activityDiscarded = "activity_discarded"
     case activityDeleted = "activity_deleted"
     case activityDetailOpened = "activity_detail_opened"
+    case activitySplitsViewed = "activity_splits_viewed"
     case activitySharePreviewed = "activity_share_previewed"
     case activityShareAction = "activity_share_action"
     case activitySyncCompleted = "activity_sync_completed"
@@ -38,6 +39,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case recognitionSyncFailed = "recognition_sync_failed"
     case recognitionAwarded = "recognition_awarded"
     case activityRecordingQuality = "activity_recording_quality"
+    case activityElevationCorrectionCompleted = "activity_elevation_correction_completed"
     case activityFeedLoaded = "activity_feed_loaded"
     case activityRecoveryPresentation = "activity_recovery_presentation"
     case activityPhotoRecovery = "activity_photo_recovery"
@@ -45,6 +47,16 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activitySimulationControlUsed = "activity_simulation_control_used"
     case liveActivityReconciled = "live_activity_reconciled"
     case liveWorkoutPanelDisplayChanged = "live_workout_panel_display_changed"
+    case watchFeatureExposed = "watch_feature_exposed"
+    case watchConnectionAttempted = "watch_connection_attempted"
+    case watchConnectionResult = "watch_connection_result"
+    case watchWorkoutOrigin = "watch_workout_origin"
+    case watchFirstLiveHeartRateReceived = "watch_first_live_heart_rate_received"
+    case watchDisconnected = "watch_disconnected"
+    case watchReconnected = "watch_reconnected"
+    case watchControlUsed = "watch_control_used"
+    case watchWorkoutSaveResult = "watch_workout_save_result"
+    case watchPhoneOnlyFallback = "watch_phone_only_fallback"
     case paginatedListPageLoaded = "paginated_list_page_loaded"
     case meDestinationOpened = "me_destination_opened"
     case progressSurfaceOpened = "progress_surface_opened"
@@ -58,6 +70,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case connectionQRCodeRequestResult = "connection_qr_code_request_result"
     case socialOperationFailed = "social_operation_failed"
     case circleSectionExposed = "circle_section_exposed"
+    case circleListOpened = "circle_list_opened"
     case circleCreationStarted = "circle_creation_started"
     case circleCreationCompleted = "circle_creation_completed"
     case circleCreationFailed = "circle_creation_failed"
@@ -146,6 +159,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case rewardsCenterOpened = "rewards_center_opened"
     case rewardCodeRedeemed = "reward_code_redeemed"
     case referralCodeShared = "referral_code_shared"
+    case referralCodeCopied = "referral_code_copied"
     case subscriptionPaywallOpened = "subscription_paywall_opened"
     case subscriptionCustomerCenterOpened = "subscription_customer_center_opened"
     case subscriptionReconciled = "subscription_reconciled"
@@ -173,6 +187,10 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case planBuilderOpened = "plan_builder_opened"
     case planBuilderExited = "plan_builder_exited"
     case planCreationCompleted = "plan_creation_completed"
+    case planIntakeContextLoaded = "plan_intake_context_loaded"
+    case planIntakeGoalInterpreted = "plan_intake_goal_interpreted"
+    case planIntakeAnswerEdited = "plan_intake_answer_edited"
+    case planIntakeBaselineConfirmed = "plan_intake_baseline_confirmed"
     case authenticationSessionRecovered = "authentication_session_recovered"
     case accountTransferIntentCreated = "account_transfer_intent_created"
     case accountTransferShared = "account_transfer_shared"
@@ -286,6 +304,7 @@ enum ProductAnalyticsSchema {
         .activityDiscarded: [.durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket],
         .activityDeleted: [.sourceType, .countBucket],
         .activityDetailOpened: [.sourceType],
+        .activitySplitsViewed: [.sourceType, .countBucket],
         .activitySharePreviewed: [.sourceType],
         .activityShareAction: [.sourceType, .result],
         .activitySyncCompleted: [.sourceType, .routeSelected],
@@ -298,6 +317,7 @@ enum ProductAnalyticsSchema {
             .filterRatioBucket, .distanceCorrectionBucket, .segmentCountBucket,
             .motionBridgeUsed, .routeMatchResult
         ],
+        .activityElevationCorrectionCompleted: [.result, .sourceType, .latencyBucket, .errorCategory],
         .activityFeedLoaded: [.countBucket, .sourceType, .timestampSource],
         .activityRecoveryPresentation: [.result, .sourceType, .countBucket],
         .activityPhotoRecovery: [.countBucket, .preRunPhotoAdded],
@@ -305,6 +325,16 @@ enum ProductAnalyticsSchema {
         .activitySimulationControlUsed: [.control, .selectionType],
         .liveActivityReconciled: [.result],
         .liveWorkoutPanelDisplayChanged: [.selectionType, .sourceType],
+        .watchFeatureExposed: [.sourceType],
+        .watchConnectionAttempted: [.sourceType],
+        .watchConnectionResult: [.sourceType, .result, .errorCategory, .latencyBucket],
+        .watchWorkoutOrigin: [.sourceType],
+        .watchFirstLiveHeartRateReceived: [.sourceType, .latencyBucket],
+        .watchDisconnected: [.sourceType, .result, .errorCategory],
+        .watchReconnected: [.sourceType, .result],
+        .watchControlUsed: [.sourceType, .control],
+        .watchWorkoutSaveResult: [.sourceType, .result, .errorCategory],
+        .watchPhoneOnlyFallback: [.sourceType, .result, .errorCategory],
         .paginatedListPageLoaded: [.sourceType, .countBucket, .pageDepthBucket],
         .meDestinationOpened: [.destination, .entrySource],
         .progressSurfaceOpened: [.entrySource, .countBucket],
@@ -318,16 +348,18 @@ enum ProductAnalyticsSchema {
         .connectionQRCodeRequestResult: [.result],
         .socialOperationFailed: [.sourceType, .errorCategory],
         .liveCheerInvitationConfigured: [.participantCountBucket],
-        .liveCheerFollowerOpened: [.entrySource],
+        .liveCheerFollowerOpened: [.entrySource, .selectionType],
         .liveVoiceCheerSent: [.result, .durationBucket],
         .liveVoiceCheerPlayed: [.countBucket],
         .rewardsCenterOpened: [],
         .rewardCodeRedeemed: [.sourceType, .result],
         .referralCodeShared: [.sourceType, .selectionType],
+        .referralCodeCopied: [.sourceType, .selectionType],
         .subscriptionPaywallOpened: [.entrySource],
         .subscriptionCustomerCenterOpened: [.entrySource],
         .subscriptionReconciled: [.sourceType, .result],
         .circleSectionExposed: [.entrySource, .participantCountBucket],
+        .circleListOpened: [.entrySource, .countBucket],
         .circleCreationStarted: [.entrySource],
         .circleCreationCompleted: [.entrySource, .participantCountBucket],
         .circleCreationFailed: [.entrySource, .errorCategory],
@@ -430,7 +462,11 @@ enum ProductAnalyticsSchema {
         .onboardingResolved: [.result],
         .planBuilderOpened: [.entrySource],
         .planBuilderExited: [.stepName],
-        .planCreationCompleted: [.result, .latencyBucket, .goalType, .countBucket],
+        .planCreationCompleted: [.result, .latencyBucket, .goalType, .countBucket, .errorCategory],
+        .planIntakeContextLoaded: [.sourceType],
+        .planIntakeGoalInterpreted: [.result, .sourceType, .errorCategory],
+        .planIntakeAnswerEdited: [.selectionType, .sourceType],
+        .planIntakeBaselineConfirmed: [.result, .sourceType],
         .authenticationSessionRecovered: [.result],
         .accountTransferIntentCreated: [.result, .errorCategory],
         .accountTransferShared: [.sourceType],
@@ -467,6 +503,16 @@ enum ProductAnalyticsSchema {
 }
 
 enum ProductAnalyticsBucket {
+    static func latency(milliseconds: Double) -> String {
+        switch max(0, milliseconds) {
+        case ..<250: "under_250ms"
+        case ..<1_000: "250ms_1s"
+        case ..<3_000: "1s_3s"
+        case ..<8_000: "3s_8s"
+        default: "8s_plus"
+        }
+    }
+
     static func distance(meters: Double) -> String {
         return switch max(0, meters) {
         case ..<1_000: "under_1k"

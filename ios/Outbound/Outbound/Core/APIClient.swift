@@ -53,6 +53,12 @@ final class APIClient {
         try await post("/activities", body: request)
     }
 
+    func correctTerrainElevation(
+        _ request: TerrainElevationCorrectionRequest
+    ) async throws -> TerrainElevationCorrectionResponse {
+        try await post("/elevation/correct", body: request)
+    }
+
     func fetchActivities(offset: Int = 0) async throws -> ActivitySyncListResponse {
         try await get("/activities", queryItems: [
             URLQueryItem(name: "limit", value: "200"),
@@ -319,6 +325,17 @@ final class APIClient {
         let state: PlanningAPIStateResponse = try await post("/planning/goals", body: request)
         let activitySuggestion = try? await fetchActivitySuggestion()
         return state.trainingPlanState(readiness: readiness, activitySuggestion: activitySuggestion)
+    }
+
+    func fetchPlanIntakeContext(objective: String? = nil) async throws -> PlanIntakeContextDTO {
+        try await get(
+            "/planning/intake-context",
+            queryItems: objective.map { [URLQueryItem(name: "objective", value: $0)] } ?? []
+        )
+    }
+
+    func interpretPlanIntake(_ request: PlanIntakeInterpretRequestDTO) async throws -> PlanIntakeInterpretationDTO {
+        try await post("/planning/intake/interpret", body: request)
     }
 
     func createTrainingPlan(
@@ -734,6 +751,10 @@ final class APIClient {
             "/auth/me/avatar",
             body: AppUserAvatarUploadDTO(base64: jpegData.base64EncodedString(), contentType: "image/jpeg")
         )
+    }
+
+    func removeMyAvatar() async throws -> AppUserProfileDTO {
+        try await delete("/auth/me/avatar")
     }
 
     func createAppleSession(_ request: AppleSessionRequest) async throws -> AuthSession {
@@ -1890,6 +1911,12 @@ struct PlanningGoalRequest: Encodable {
     let baselineContext: String
     let targetDate: String?
     let targetDistanceMeters: Double?
+    let eventIntent: String?
+    let targetTimeSeconds: Int?
+    let reviewHorizonWeeks: Int?
+    let successSignal: String?
+    let goalDescription: String?
+    let intakeContextVersion: String?
     let priority: String
     let preferredDays: [String]
     let daysPerWeekTarget: Int
@@ -1903,6 +1930,12 @@ struct PlanningGoalRequest: Encodable {
         baselineContext: String,
         targetDate: String?,
         targetDistanceMeters: Double?,
+        eventIntent: String? = nil,
+        targetTimeSeconds: Int? = nil,
+        reviewHorizonWeeks: Int? = nil,
+        successSignal: String? = nil,
+        goalDescription: String? = nil,
+        intakeContextVersion: String? = nil,
         priority: String,
         preferredDays: [String],
         daysPerWeekTarget: Int,
@@ -1915,6 +1948,12 @@ struct PlanningGoalRequest: Encodable {
         self.baselineContext = baselineContext
         self.targetDate = targetDate
         self.targetDistanceMeters = targetDistanceMeters
+        self.eventIntent = eventIntent
+        self.targetTimeSeconds = targetTimeSeconds
+        self.reviewHorizonWeeks = reviewHorizonWeeks
+        self.successSignal = successSignal
+        self.goalDescription = goalDescription
+        self.intakeContextVersion = intakeContextVersion
         self.priority = priority
         self.preferredDays = preferredDays
         self.daysPerWeekTarget = daysPerWeekTarget
@@ -1931,6 +1970,12 @@ struct PlanningGoalRequest: Encodable {
         baselineContext = "currentlyActive"
         targetDate = nil
         targetDistanceMeters = recommendation.template.focus.targetDistanceMeters
+        eventIntent = nil
+        targetTimeSeconds = nil
+        reviewHorizonWeeks = nil
+        successSignal = nil
+        goalDescription = nil
+        intakeContextVersion = nil
         priority = recommendation.template.focus == .comeback ? "rebuild" : "fitness"
         preferredDays = []
         daysPerWeekTarget = recommendation.sessionsPerWeek
@@ -1938,6 +1983,98 @@ struct PlanningGoalRequest: Encodable {
         riskTolerance = "balanced"
         constraints = ["candidateID": recommendation.id, "templateID": recommendation.template.id]
     }
+}
+
+struct PlanIntakeContextDTO: Decodable, Sendable {
+    let contractVersion: Int
+    let policyVersion: String
+    let contextVersion: String
+    let dataTier: String
+    let evidenceState: String
+    let questions: [String]
+    let bodyProfile: PlanIntakeBodyProfileDTO
+    let observedBaseline: PlanIntakeObservedBaselineDTO?
+    let suggestedSetup: PlanIntakeSuggestedSetupDTO?
+    let previousSchedule: PlanIntakePreviousScheduleDTO?
+    let requiredBodyFields: [String]
+}
+
+struct PlanIntakeBodyProfileDTO: Decodable, Sendable {
+    let sexAtBirth: TrainingProfileSex?
+    let birthDate: String?
+    let heightCentimeters: Double?
+    let weightKilograms: Double?
+    let completeForPlanning: Bool
+    let source: String
+}
+
+struct PlanIntakeObservedBaselineDTO: Decodable, Sendable {
+    let source: String
+    let confidence: String
+    let windowDays: Int
+    let sessionCount: Int
+    let activeWeekCount: Int
+    let sessionsPerWeek: Int
+    let comfortableMinutes: Int?
+    let longestSessionMinutes: Int?
+    let latestActivityAt: String?
+    let activityMix: [String]
+}
+
+struct PlanIntakePreviousScheduleDTO: Decodable, Sendable {
+    let source: String
+    let preferredDays: [String]
+    let sessionsPerWeek: Int
+    let maxSessionMinutes: Int
+    let requiresConfirmation: Bool
+}
+
+struct PlanIntakeSuggestedSetupDTO: Decodable, Sendable {
+    struct Evidence: Decodable, Sendable {
+        let windowDays: Int
+        let sessionCount: Int
+        let activeWeekCount: Int
+    }
+
+    let source: String
+    let confidence: String
+    let activities: [String]
+    let baselineContext: String
+    let sessionsPerWeek: Int
+    let maxSessionMinutes: Int
+    let preferredDays: [String]
+    let evidence: Evidence
+    let requiresConfirmation: Bool
+}
+
+struct PlanIntakeInterpretRequestDTO: Encodable, Sendable {
+    struct Draft: Encodable, Sendable {
+        let objective: String?
+        let activities: [String]
+        let eventDate: String?
+        let eventDistanceMeters: Double?
+        let eventIntent: String?
+        let targetTimeSeconds: Int?
+        let reviewHorizonWeeks: Int?
+        let sessionsPerWeek: Int?
+        let maxSessionMinutes: Int?
+    }
+    let message: String
+    let contextVersion: String
+    let draft: Draft
+}
+
+struct PlanIntakeInterpretationDTO: Decodable, Sendable {
+    let objective: String?
+    let activities: [String]
+    let eventDate: String?
+    let eventDistanceMeters: Double?
+    let eventIntent: String?
+    let targetTimeSeconds: Int?
+    let reviewHorizonWeeks: Int?
+    let goalDescription: String?
+    let recognizedFields: [String]
+    let assistantReply: String
 }
 
 struct OnboardingResolutionResponse: Decodable { let onboardingStatus: OnboardingStatus }
@@ -2102,6 +2239,31 @@ struct ActivityUploadResponse: Decodable {
     let circleContributions: [CircleContributionDTO]?
 }
 
+struct TerrainElevationCorrectionRequest: Encodable {
+    let points: [TerrainElevationRequestPoint]
+}
+
+struct TerrainElevationRequestPoint: Encodable {
+    let latitude: Double
+    let longitude: Double
+    let startsNewSegment: Bool
+}
+
+struct TerrainElevationCorrectionResponse: Decodable {
+    let elevationGainMeters: Double
+    let elevationsMeters: [Double]
+    let algorithmVersion: String
+    let approximateResolutionMeters: Double
+    let attribution: TerrainElevationAttribution
+}
+
+struct TerrainElevationAttribution: Decodable {
+    let provider: String
+    let text: String
+    let url: String
+    let modified: Bool
+}
+
 struct ActivitySyncListResponse: Decodable {
     let activities: [RemoteActivityRecord]
     let hasMore: Bool
@@ -2214,6 +2376,11 @@ struct RewardsStatusDTO: Decodable {
     let referralProgram: ReferralProgramDTO
     let bankedRewardDays: Int
     let entitlements: [CapabilityEntitlementDTO]
+    let featureControls: RewardsFeatureControlsDTO
+}
+
+struct RewardsFeatureControlsDTO: Decodable {
+    let paywallEnabled: Bool
 }
 
 struct ReferralProgramDTO: Decodable {

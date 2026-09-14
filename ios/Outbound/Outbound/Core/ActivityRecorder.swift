@@ -16,9 +16,15 @@ struct ActivityHealthMetrics: Codable, Hashable {
     }
 }
 
-private struct HeartRateSample {
-    let recordedAt: Date
-    let beatsPerMinute: Int
+enum HeartRateSignalState: String, Codable {
+    case waitingForFirstReading
+    case available
+    case unavailable
+}
+
+enum HeartRateIngestionSource: String, Codable {
+    case appleWatch
+    case debugFixture
 }
 
 @MainActor
@@ -29,17 +35,18 @@ final class ActivityRecorder: ObservableObject {
     @Published var elevationGainMeters: Double = 0
     @Published private(set) var walkingStepCount: Int?
     @Published var currentPace: Double?   // secs/km
-    @Published var heartRate: Int? {
-        didSet {
-            recordHeartRateSample(heartRate)
-        }
-    }
+    @Published private(set) var heartRate: Int?
+    @Published private(set) var heartRateSignalState: HeartRateSignalState = .waitingForFirstReading
+    @Published private(set) var heartRateZone: Int?
+    @Published private(set) var heartRateEffort: PlainstrideHeartRateEffort = .unavailable
     @Published var liveSnapshot: ActiveSessionSnapshot = .empty
     @Published var autoPaused = false
     @Published private(set) var recoveredSession = false
     @Published private(set) var recoveredAwaitingSave = false
     @Published private(set) var recoveredRouteGuidance: ActiveRouteGuidanceJournal?
     @Published private(set) var recoveredActivityType: ActivityType?
+    private(set) var recoveredWatchLifecycle: PlainstrideWorkoutLifecycle?
+    private(set) var recoveredWatchMessageSequence: UInt64?
     @Published private(set) var routeGuidanceSnapshot: RouteGuidanceSnapshot?
 #if DEBUG
     @Published private(set) var runSimulationState: RunSimulationState?
@@ -57,10 +64,14 @@ final class ActivityRecorder: ObservableObject {
     private var startDate: Date?
     private var currentSegmentStartDate: Date?
     private var accumulatedActiveDuration: TimeInterval = 0
-    private var heartRateSamples: [HeartRateSample] = []
+    private var heartRateEngine = HeartRateEffortEngine()
+    private var finalWatchHeartRateMetrics: PlainstrideFinalWorkoutMetrics?
+    private var sessionMetadata: ActivityRecordingSessionMetadata?
+    private let heartRateStaleInterval: TimeInterval = 20
     private var lastJournalSaveAt: Date?
     private var lastJournaledTrackPointCount = 0
     private var activityType: ActivityType = .running
+    var recordingSessionMetadata: ActivityRecordingSessionMetadata? { sessionMetadata }
     private var tracksLocation: Bool {
         activityType != .strengthTraining && activityType != .mobility
     }
@@ -101,7 +112,9 @@ final class ActivityRecorder: ObservableObject {
 
     func start(
         activityType: ActivityType = .running,
-        routeGuidance: ActiveRouteGuidanceJournal? = nil
+        routeGuidance: ActiveRouteGuidanceJournal? = nil,
+        canonicalStartDate: Date? = nil,
+        sessionMetadata: ActivityRecordingSessionMetadata? = nil
     ) {
 #if DEBUG
         resetRunSimulation()
@@ -111,13 +124,17 @@ final class ActivityRecorder: ObservableObject {
         lastJournaledTrackPointCount = 0
         recoveredAwaitingSave = false
         let now = Date()
+        let resolvedStartDate = canonicalStartDate.map { min($0, now) } ?? now
         state = .active
         autoPaused = false
         autoPauseCandidateStart = nil
-        startDate = now
+        startDate = resolvedStartDate
         currentSegmentStartDate = now
-        accumulatedActiveDuration = 0
+        accumulatedActiveDuration = max(0, now.timeIntervalSince(resolvedStartDate))
         self.activityType = activityType
+        self.sessionMetadata = sessionMetadata
+        recoveredWatchLifecycle = nil
+        recoveredWatchMessageSequence = nil
         self.routeGuidance = routeGuidance
         routeGuidance?.saveRouteSnapshot()
         routeGuidanceEngine = routeGuidance.flatMap {
@@ -126,13 +143,19 @@ final class ActivityRecorder: ObservableObject {
         routeGuidanceSnapshot = routeGuidanceEngine?.currentSnapshot
         recoveredRouteGuidance = nil
         recoveredActivityType = nil
+        recoveredWatchLifecycle = nil
+        recoveredWatchMessageSequence = nil
         elapsedSeconds = 0
         distanceMeters = 0
         elevationGainMeters = 0
         walkingStepCount = nil
         currentPace = nil
         heartRate = nil
-        heartRateSamples.removeAll()
+        heartRateSignalState = .waitingForFirstReading
+        heartRateZone = nil
+        heartRateEffort = .unavailable
+        heartRateEngine = HeartRateEffortEngine()
+        finalWatchHeartRateMetrics = nil
         if tracksLocation {
             locationManager.startTracking(activityType: activityType)
         }
@@ -243,6 +266,8 @@ final class ActivityRecorder: ObservableObject {
             elevationGainM: finalElevationGainMeters,
             walkingStepCount: stoppedTrack.walkingStepCount,
             healthMetrics: healthMetricsSummary(),
+            heartRateZones: heartRateZoneSummary(),
+            sessionMetadata: sessionMetadata,
             routeGuidance: finishedRouteGuidance,
             trackPoints: reconciledTrack.points,
             trackSegmentStartIndices: reconciledTrack.segmentStartIndices
@@ -255,7 +280,8 @@ final class ActivityRecorder: ObservableObject {
         startDate = nil
         currentSegmentStartDate = nil
         accumulatedActiveDuration = 0
-        heartRateSamples.removeAll()
+        heartRateEngine = HeartRateEffortEngine()
+        finalWatchHeartRateMetrics = nil
         recoveredSession = false
         recoveredAwaitingSave = false
         recoveredRouteGuidance = nil
@@ -317,7 +343,12 @@ final class ActivityRecorder: ObservableObject {
         elevationGainMeters = 0
         currentPace = nil
         heartRate = nil
-        heartRateSamples.removeAll()
+        heartRateSignalState = .waitingForFirstReading
+        heartRateZone = nil
+        heartRateEffort = .unavailable
+        heartRateEngine = HeartRateEffortEngine()
+        finalWatchHeartRateMetrics = nil
+        sessionMetadata = nil
         runSimulationSampler = sampler
         runSimulationState = RunSimulationState(
             speedKilometersPerHour: max(4, min(24, speedKilometersPerHour)),
@@ -466,8 +497,8 @@ final class ActivityRecorder: ObservableObject {
         self.distanceMeters = distanceMeters
         self.elevationGainMeters = elevationGainMeters
         currentPace = currentPaceSecsPerKm
-        heartRateSamples.removeAll()
-        self.heartRate = heartRate
+        heartRateEngine = HeartRateEffortEngine()
+        _ = ingestHeartRate(bpm: heartRate, sampledAt: now, source: .debugFixture)
         liveSnapshot = makeSnapshot()
         timer = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
@@ -613,6 +644,13 @@ final class ActivityRecorder: ObservableObject {
         elevationGainMeters = locationManager.elevationGainMeters
         walkingStepCount = locationManager.walkingStepCount
         currentPace = locationManager.currentPaceSecsPerKm
+        if let lastSample = heartRateEngine.snapshot.lastSampleDate,
+           now.timeIntervalSince(lastSample) > heartRateStaleInterval {
+            heartRate = nil
+            heartRateZone = nil
+            heartRateEffort = .unavailable
+            heartRateSignalState = .unavailable
+        }
         liveSnapshot = makeSnapshot()
         persistJournal()
     }
@@ -649,6 +687,15 @@ final class ActivityRecorder: ObservableObject {
             RouteGuidanceEngine(route: $0.route, recoverySeed: $0.recoverySeed)
         }
         routeGuidanceSnapshot = routeGuidanceEngine?.currentSnapshot
+        sessionMetadata = journal.sessionMetadata
+        recoveredWatchLifecycle = journal.lastWatchLifecycle
+        recoveredWatchMessageSequence = journal.lastWatchMessageSequence
+        heartRateEngine = journal.heartRateEffortEngine ?? HeartRateEffortEngine()
+        let recoveredHeartRate = heartRateEngine.snapshot
+        heartRate = recoveredHeartRate.currentBPM
+        heartRateZone = recoveredHeartRate.currentZone
+        heartRateEffort = recoveredHeartRate.effort
+        heartRateSignalState = recoveredHeartRate.currentBPM == nil ? .waitingForFirstReading : .available
         liveSnapshot = makeSnapshot()
         ActivityDiagnosticLog.notice(
             .recovery,
@@ -705,6 +752,10 @@ final class ActivityRecorder: ObservableObject {
             activityType: activityType,
             walkingStepCount: walkingStepCount,
             routeGuidanceRecoverySeed: routeGuidance?.recoverySeed,
+            sessionMetadata: sessionMetadata,
+            heartRateEffortEngine: heartRateEngine,
+            lastWatchLifecycle: recoveredWatchLifecycle,
+            lastWatchMessageSequence: recoveredWatchMessageSequence,
             recoveryStage: recoveryStage
         ).save()
         if force {
@@ -755,28 +806,125 @@ final class ActivityRecorder: ObservableObject {
         )
     }
 
-    private func recordHeartRateSample(_ heartRate: Int?) {
-        guard state != .idle, let heartRate, (30...240).contains(heartRate) else { return }
+    @discardableResult
+    func ingestHeartRate(
+        bpm: Int,
+        sampledAt: Date,
+        source: HeartRateIngestionSource
+    ) -> Bool {
+        guard state != .idle,
+              sampledAt <= Date().addingTimeInterval(5),
+              heartRateEngine.ingest(bpm: bpm, sampledAt: sampledAt) else { return false }
+        let snapshot = heartRateEngine.snapshot
+        heartRate = snapshot.currentBPM
+        heartRateZone = snapshot.currentZone
+        heartRateEffort = snapshot.effort
+        heartRateSignalState = .available
+        liveSnapshot = makeSnapshot()
+        persistJournal()
+        return true
+    }
 
-        let now = Date()
-        if let lastSample = heartRateSamples.last,
-           lastSample.beatsPerMinute == heartRate,
-           now.timeIntervalSince(lastSample.recordedAt) < 15 {
-            return
+    func applyFinalHeartRateMetrics(_ metrics: PlainstrideFinalWorkoutMetrics) {
+        finalWatchHeartRateMetrics = metrics
+    }
+
+    func updateRecordingSessionMetadata(_ metadata: ActivityRecordingSessionMetadata) {
+        guard state != .idle else { return }
+        sessionMetadata = metadata
+        persistJournal(force: true)
+    }
+
+    func reconcilingFinalHeartRateMetrics(
+        _ metrics: PlainstrideFinalWorkoutMetrics,
+        into summary: ActivitySummary
+    ) -> ActivitySummary {
+        let fallbackEngine = HeartRateEffortEngine()
+        let existingZones = summary.heartRateZones?.zones ?? (1...5).map { zone in
+            let bounds = fallbackEngine.bounds(for: zone)
+            return ActivityHeartRateZone(
+                index: zone,
+                lowerBoundBPM: bounds.lower,
+                upperBoundBPM: bounds.upper,
+                seconds: 0
+            )
         }
+        let zones = existingZones.map { zone in
+            ActivityHeartRateZone(
+                index: zone.index,
+                lowerBoundBPM: zone.lowerBoundBPM,
+                upperBoundBPM: zone.upperBoundBPM,
+                seconds: Int((metrics.timeInZones.first(where: { $0.zone == zone.index })?.seconds ?? 0).rounded())
+            )
+        }
+        let reconciledDistance = summary.trackPoints.isEmpty
+            ? (metrics.distanceMeters ?? summary.distanceM)
+            : summary.distanceM
+        return ActivitySummary(
+            startedAt: summary.startedAt,
+            endedAt: summary.endedAt,
+            durationSecs: max(summary.durationSecs, Int(metrics.elapsedTime.rounded())),
+            distanceM: reconciledDistance,
+            avgPace: reconciledDistance > 0
+                ? Double(max(summary.durationSecs, Int(metrics.elapsedTime.rounded()))) / (reconciledDistance / 1_000)
+                : summary.avgPace,
+            elevationGainM: summary.elevationGainM,
+            elevationMetadata: summary.elevationMetadata,
+            walkingStepCount: summary.walkingStepCount,
+            healthMetrics: ActivityHealthMetrics(
+                averageHeartRateBPM: metrics.averageBPM,
+                maxHeartRateBPM: metrics.maximumBPM,
+                heartRateSampleCount: summary.healthMetrics?.heartRateSampleCount ?? 0
+            ),
+            heartRateZones: ActivityHeartRateZoneSummary(
+                estimatedMaxHeartRate: summary.heartRateZones?.estimatedMaxHeartRate
+                    ?? fallbackEngine.configuration.maximumHeartRate,
+                zones: zones
+            ),
+            sessionMetadata: summary.sessionMetadata,
+            routeGuidance: summary.routeGuidance,
+            trackPoints: summary.trackPoints,
+            trackSegmentStartIndices: summary.trackSegmentStartIndices
+        )
+    }
 
-        heartRateSamples.append(HeartRateSample(recordedAt: now, beatsPerMinute: heartRate))
+    func updateWatchRecoveryState(
+        lifecycle: PlainstrideWorkoutLifecycle,
+        lastReceivedSequence: UInt64
+    ) {
+        recoveredWatchLifecycle = lifecycle
+        recoveredWatchMessageSequence = max(recoveredWatchMessageSequence ?? 0, lastReceivedSequence)
+        persistJournal()
     }
 
     private func healthMetricsSummary() -> ActivityHealthMetrics? {
-        let values = heartRateSamples.map(\.beatsPerMinute)
-        guard !values.isEmpty else { return nil }
-
-        let average = Int((Double(values.reduce(0, +)) / Double(values.count)).rounded())
+        let snapshot = heartRateEngine.snapshot
+        let average = finalWatchHeartRateMetrics?.averageBPM ?? snapshot.averageBPM
+        let maximum = finalWatchHeartRateMetrics?.maximumBPM ?? snapshot.maximumBPM
+        guard average != nil || maximum != nil else { return nil }
         return ActivityHealthMetrics(
             averageHeartRateBPM: average,
-            maxHeartRateBPM: values.max(),
-            heartRateSampleCount: values.count
+            maxHeartRateBPM: maximum,
+            heartRateSampleCount: snapshot.sampleCount
+        )
+    }
+
+    private func heartRateZoneSummary() -> ActivityHeartRateZoneSummary? {
+        let snapshot = heartRateEngine.snapshot
+        let durations = finalWatchHeartRateMetrics?.timeInZones ?? snapshot.timeInZones
+        guard snapshot.sampleCount > 0 || durations.contains(where: { $0.seconds > 0 }) else { return nil }
+        let zones = (1...5).map { zone -> ActivityHeartRateZone in
+            let bounds = heartRateEngine.bounds(for: zone)
+            return ActivityHeartRateZone(
+                index: zone,
+                lowerBoundBPM: bounds.lower,
+                upperBoundBPM: bounds.upper,
+                seconds: Int((durations.first(where: { $0.zone == zone })?.seconds ?? 0).rounded())
+            )
+        }
+        return ActivityHeartRateZoneSummary(
+            estimatedMaxHeartRate: heartRateEngine.configuration.maximumHeartRate,
+            zones: zones
         )
     }
 
@@ -818,8 +966,11 @@ struct ActivitySummary {
     let distanceM: Double
     let avgPace: Double?
     let elevationGainM: Double
+    let elevationMetadata: ActivityElevationMetadata?
     let walkingStepCount: Int?
     let healthMetrics: ActivityHealthMetrics?
+    let heartRateZones: ActivityHeartRateZoneSummary?
+    let sessionMetadata: ActivityRecordingSessionMetadata?
     let routeGuidance: RouteGuidanceSnapshot?
     let trackPoints: [CLLocation]
     let trackSegmentStartIndices: Set<Int>
@@ -847,8 +998,11 @@ struct ActivitySummary {
         distanceM: Double,
         avgPace: Double?,
         elevationGainM: Double = 0,
+        elevationMetadata: ActivityElevationMetadata? = nil,
         walkingStepCount: Int? = nil,
         healthMetrics: ActivityHealthMetrics? = nil,
+        heartRateZones: ActivityHeartRateZoneSummary? = nil,
+        sessionMetadata: ActivityRecordingSessionMetadata? = nil,
         routeGuidance: RouteGuidanceSnapshot? = nil,
         trackPoints: [CLLocation],
         trackSegmentStartIndices: Set<Int> = []
@@ -859,8 +1013,11 @@ struct ActivitySummary {
         self.distanceM = distanceM
         self.avgPace = avgPace
         self.elevationGainM = elevationGainM
+        self.elevationMetadata = elevationMetadata
         self.walkingStepCount = walkingStepCount
         self.healthMetrics = healthMetrics
+        self.heartRateZones = heartRateZones
+        self.sessionMetadata = sessionMetadata
         self.routeGuidance = routeGuidance
         self.trackPoints = trackPoints
         self.trackSegmentStartIndices = trackSegmentStartIndices

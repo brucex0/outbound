@@ -260,9 +260,24 @@ private struct CoordinatedTooltipModifier: ViewModifier {
                 coordinator.request(tooltip)
             }
             .onDisappear { coordinator.withdraw(tooltip) }
-            .popover(isPresented: presentation, arrowEdge: arrowEdge) {
-                OutboundTooltip(text: text)
+            .popover(
+                isPresented: presentation,
+                attachmentAnchor: .point(anchorPoint),
+                arrowEdge: arrowEdge
+            ) {
+                OutboundTooltip(text: text) {
+                    coordinator.dismiss(tooltip, outcome: "tapped")
+                }
             }
+    }
+
+    private var anchorPoint: UnitPoint {
+        switch arrowEdge {
+        case .top: .bottom
+        case .bottom: .top
+        case .leading: .trailing
+        case .trailing: .leading
+        }
     }
 
     private var presentation: Binding<Bool> {

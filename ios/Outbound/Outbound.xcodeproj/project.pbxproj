@@ -13,6 +13,7 @@
 		C10000022F9EE18E00F9B729 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = C10000042F9EE18E00F9B729 /* RevenueCatUI */; };
 		DB3A923F2F9EE6DA00F9B729 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000022F9EE18E00F9B729 /* FirebaseCore */; };
 		E10000000000000000000004 /* OutboundLiveActivityExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = E10000000000000000000001 /* OutboundLiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		W20000000000000000000004 /* Plainstride Watch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = W20000000000000000000001 /* Plainstride Watch.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -37,6 +38,13 @@
 			remoteGlobalIDString = E10000000000000000000006;
 			remoteInfo = OutboundLiveActivityExtension;
 		};
+		W20000000000000000000010 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DB3A91412F9EE18E00F9B729 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = W20000000000000000000009;
+			remoteInfo = "Plainstride Watch";
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -51,6 +59,17 @@
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		W20000000000000000000005 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				W20000000000000000000004 /* Plainstride Watch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -58,6 +77,7 @@
 		DB3A91582F9EE18F00F9B729 /* OutboundTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OutboundTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		DB3A91622F9EE18F00F9B729 /* OutboundUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OutboundUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E10000000000000000000001 /* OutboundLiveActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OutboundLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		W20000000000000000000001 /* Plainstride Watch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Plainstride Watch.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -84,6 +104,16 @@
 		E10000000000000000000003 /* OutboundLiveActivityExtension */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = OutboundLiveActivityExtension;
+			sourceTree = "<group>";
+		};
+		W20000000000000000000002 /* AppleWatchShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AppleWatchShared;
+			sourceTree = "<group>";
+		};
+		W20000000000000000000003 /* PlainstrideWatch */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PlainstrideWatch;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -122,6 +152,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		W20000000000000000000006 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -129,6 +166,8 @@
 			isa = PBXGroup;
 			children = (
 				DB3A914B2F9EE18E00F9B729 /* Outbound */,
+				W20000000000000000000002 /* AppleWatchShared */,
+				W20000000000000000000003 /* PlainstrideWatch */,
 				E10000000000000000000002 /* Shared */,
 				E10000000000000000000003 /* OutboundLiveActivityExtension */,
 				DB3A915B2F9EE18F00F9B729 /* OutboundTests */,
@@ -141,6 +180,7 @@
 			isa = PBXGroup;
 			children = (
 				DB3A91492F9EE18E00F9B729 /* Outbound.app */,
+				W20000000000000000000001 /* Plainstride Watch.app */,
 				E10000000000000000000001 /* OutboundLiveActivityExtension.appex */,
 				DB3A91582F9EE18F00F9B729 /* OutboundTests.xctest */,
 				DB3A91622F9EE18F00F9B729 /* OutboundUITests.xctest */,
@@ -159,15 +199,18 @@
 				DB3A91462F9EE18E00F9B729 /* Frameworks */,
 				DB3A91472F9EE18E00F9B729 /* Resources */,
 				E10000000000000000000005 /* Embed App Extensions */,
+				W20000000000000000000005 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				E10000000000000000000010 /* PBXTargetDependency */,
+				W20000000000000000000011 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				DB3A914B2F9EE18E00F9B729 /* Outbound */,
 				E10000000000000000000002 /* Shared */,
+				W20000000000000000000002 /* AppleWatchShared */,
 			);
 			name = Outbound;
 			packageProductDependencies = (
@@ -250,6 +293,29 @@
 			productReference = E10000000000000000000001 /* OutboundLiveActivityExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		W20000000000000000000009 /* Plainstride Watch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = W20000000000000000000014 /* Build configuration list for PBXNativeTarget "Plainstride Watch" */;
+			buildPhases = (
+				W20000000000000000000007 /* Sources */,
+				W20000000000000000000006 /* Frameworks */,
+				W20000000000000000000008 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				W20000000000000000000002 /* AppleWatchShared */,
+				W20000000000000000000003 /* PlainstrideWatch */,
+			);
+			name = "Plainstride Watch";
+			packageProductDependencies = (
+			);
+			productName = "Plainstride Watch";
+			productReference = W20000000000000000000001 /* Plainstride Watch.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -279,6 +345,14 @@
 					E10000000000000000000006 = {
 						CreatedOnToolsVersion = 26.2;
 					};
+					W20000000000000000000009 = {
+						CreatedOnToolsVersion = 26.5;
+						SystemCapabilities = {
+							com.apple.HealthKit = {
+								enabled = 1;
+							};
+						};
+					};
 				};
 			};
 			buildConfigurationList = DB3A91442F9EE18E00F9B729 /* Build configuration list for PBXProject "Outbound" */;
@@ -302,6 +376,7 @@
 			projectRoot = "";
 			targets = (
 				DB3A91482F9EE18E00F9B729 /* Outbound */,
+				W20000000000000000000009 /* Plainstride Watch */,
 				E10000000000000000000006 /* OutboundLiveActivityExtension */,
 				DB3A91572F9EE18F00F9B729 /* OutboundTests */,
 				DB3A91612F9EE18F00F9B729 /* OutboundUITests */,
@@ -332,6 +407,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		E10000000000000000000008 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		W20000000000000000000008 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -369,6 +451,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		W20000000000000000000007 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -386,6 +475,11 @@
 			isa = PBXTargetDependency;
 			target = E10000000000000000000006 /* OutboundLiveActivityExtension */;
 			targetProxy = E10000000000000000000011 /* PBXContainerItemProxy */;
+		};
+		W20000000000000000000011 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = W20000000000000000000009 /* Plainstride Watch */;
+			targetProxy = W20000000000000000000010 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -518,7 +612,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = SupportFiles/OutboundDebug.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 41;
+				CURRENT_PROJECT_VERSION = 43;
 				DEVELOPMENT_TEAM = WT54K7D7VH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -532,7 +626,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.6;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -558,7 +652,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = SupportFiles/Outbound.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 41;
+				CURRENT_PROJECT_VERSION = 43;
 				DEVELOPMENT_TEAM = WT54K7D7VH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -572,7 +666,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.6;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -680,7 +774,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 41;
+				CURRENT_PROJECT_VERSION = 43;
 				DEVELOPMENT_TEAM = WT54K7D7VH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -691,7 +785,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = plainstride.outbound.liveactivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -710,7 +804,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 41;
+				CURRENT_PROJECT_VERSION = 43;
 				DEVELOPMENT_TEAM = WT54K7D7VH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -721,7 +815,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = plainstride.outbound.liveactivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -732,6 +826,70 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		W20000000000000000000012 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SupportFiles/PlainstrideWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 43;
+				DEVELOPMENT_TEAM = WT54K7D7VH;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SupportFiles/PlainstrideWatch-Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.6;
+				PRODUCT_BUNDLE_IDENTIFIER = plainstride.outbound.watchkitapp;
+				PRODUCT_NAME = "Plainstride Watch";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Debug;
+		};
+		W20000000000000000000013 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SupportFiles/PlainstrideWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 43;
+				DEVELOPMENT_TEAM = WT54K7D7VH;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SupportFiles/PlainstrideWatch-Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.6;
+				PRODUCT_BUNDLE_IDENTIFIER = plainstride.outbound.watchkitapp;
+				PRODUCT_NAME = "Plainstride Watch";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Release;
 		};
@@ -779,6 +937,15 @@
 			buildConfigurations = (
 				E10000000000000000000012 /* Debug */,
 				E10000000000000000000013 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		W20000000000000000000014 /* Build configuration list for PBXNativeTarget "Plainstride Watch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				W20000000000000000000012 /* Debug */,
+				W20000000000000000000013 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

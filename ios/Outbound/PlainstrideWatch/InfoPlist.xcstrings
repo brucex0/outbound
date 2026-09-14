@@ -1,0 +1,20 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSHealthShareUsageDescription" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Plainstride reads live heart rate, distance, and energy to show your workout and effort on Apple Watch and iPhone." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Plainstride lee la frecuencia cardíaca, la distancia y la energía en vivo para mostrar tu entrenamiento y esfuerzo en el Apple Watch y el iPhone." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Plainstride 会读取实时心率、距离和能量数据，以便在 Apple Watch 和 iPhone 上显示训练与运动强度。" } }
+      }
+    },
+    "NSHealthUpdateUsageDescription" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Plainstride saves the workout recorded by Apple Watch to Apple Health." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Plainstride guarda en Apple Health el entrenamiento registrado por el Apple Watch." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Plainstride 会将 Apple Watch 记录的训练存入 Apple 健康。" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

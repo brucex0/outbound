@@ -168,6 +168,10 @@ struct ActivityDetailView: View {
         }
         .navigationTitle(currentActivity.title)
         .navigationBarTitleDisplayMode(.inline)
+        .task(id: currentActivity.id) {
+            guard usesStoredActivity, showsPrivateDetails else { return }
+            await activityStore.correctElevationIfNeeded(for: currentActivity.id)
+        }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if showsShareControl {
@@ -188,8 +192,7 @@ struct ActivityDetailView: View {
 
                 if canPublishRoute {
                     Button {
-                        tooltipCoordinator.dismiss(.saveRoute, outcome: "opened")
-                        isPublishRoutePresented = true
+                        openPublishRouteSheet()
                     } label: {
                         ZStack(alignment: .bottomTrailing) {
                             Image(systemName: "map")
@@ -521,7 +524,21 @@ struct ActivityDetailView: View {
                 .buttonStyle(.plain)
 
                 if showElevationProfile {
-                    elevationChart
+                    VStack(alignment: .leading, spacing: 8) {
+                        elevationChart
+                        if let metadata = currentActivity.route?.elevationMetadata,
+                           let attributionURL = URL(string: metadata.attributionURL) {
+                            Link(
+                                String(
+                                    localized: "activity.elevation.terrain_attribution",
+                                    defaultValue: "Terrain data from Mapzen and source agencies"
+                                ),
+                                destination: attributionURL
+                            )
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 14)
                     .transition(.opacity)
@@ -758,7 +775,14 @@ struct ActivityDetailView: View {
 
         return VStack(spacing: 0) {
             Button {
-                withAnimation(.snappy) { showSplits.toggle() }
+                let willShowSplits = !showSplits
+                withAnimation(.snappy) { showSplits = willShowSplits }
+                if willShowSplits {
+                    track(.init(.activitySplitsViewed, properties: [
+                        .sourceType: .string(usesStoredActivity ? "me_activity_detail" : "social_activity_detail"),
+                        .countBucket: .string(ProductAnalyticsBucket.count(splits.count)),
+                    ]))
+                }
             } label: {
                 HStack {
                     Text(String(localized: "activity.splits.title", defaultValue: "Splits"))
@@ -905,6 +929,23 @@ struct ActivityDetailView: View {
     private func track(_ event: ProductAnalyticsEvent) {
         guard let analyticsManager else { return }
         Task { await analyticsManager.track(event) }
+    }
+
+    private func openPublishRouteSheet() {
+        let waitsForTipDismissal = tooltipCoordinator.isPresented(.saveRoute)
+        tooltipCoordinator.dismiss(.saveRoute, outcome: "opened")
+        guard waitsForTipDismissal else {
+            isPublishRoutePresented = true
+            return
+        }
+        Task { @MainActor in
+            do {
+                try await Task.sleep(for: .milliseconds(250))
+            } catch {
+                return
+            }
+            isPublishRoutePresented = true
+        }
     }
 
     private func shareRoute(_ format: RouteExportFormat) {
@@ -1996,40 +2037,76 @@ private func computeSplits(from points: [SavedRoutePoint], unitSystem: Measureme
     guard points.count > 1 else { return [] }
 
     let splitDistanceMeters: Double = unitSystem == .metric ? 1000 : 1609.344
-    let distances = cumulativeDistances(from: points)
     var splits: [ActivitySplit] = []
-    var lastSplitEndIndex = 0
     var splitNumber = 1
+    var splitDistance = 0.0
+    var splitTime = 0.0
+    var splitElevationChange = 0.0
+    var hasSplitElevation = false
 
     for i in 1..<points.count {
-        if distances[i] >= Double(splitNumber) * splitDistanceMeters || i == points.count - 1 {
-            let segStart = lastSplitEndIndex
-            let segEnd = i
-            let segDistance = distances[segEnd] - distances[segStart]
-            let segTime = points[segEnd].timestamp.timeIntervalSince(points[segStart].timestamp)
-            let segPace = segDistance > 0 ? segTime / (segDistance / 1000) : 0
+        let start = points[i - 1]
+        let end = points[i]
 
-            if segDistance > 20 {
-                let elevationChange: Double?
-                if let startAltitude = points[segStart].altitude,
-                   let endAltitude = points[segEnd].altitude {
-                    elevationChange = endAltitude - startAltitude
-                } else {
-                    elevationChange = nil
-                }
+        // A resumed recording begins a new route segment. The timestamp gap before
+        // this point is paused time, not moving time, and must not affect splits.
+        guard !end.startsNewSegment else { continue }
 
+        let edgeDistance = haversineDistance(
+            lat1: start.latitude,
+            lon1: start.longitude,
+            lat2: end.latitude,
+            lon2: end.longitude
+        )
+        guard edgeDistance > 0, edgeDistance.isFinite else { continue }
+
+        let edgeTime = max(0, end.timestamp.timeIntervalSince(start.timestamp))
+        var consumedDistance = 0.0
+
+        while consumedDistance < edgeDistance {
+            let remainingEdgeDistance = edgeDistance - consumedDistance
+            let remainingSplitDistance = splitDistanceMeters - splitDistance
+            let distanceToConsume = min(remainingEdgeDistance, remainingSplitDistance)
+            let startFraction = consumedDistance / edgeDistance
+            let endFraction = (consumedDistance + distanceToConsume) / edgeDistance
+
+            splitDistance += distanceToConsume
+            splitTime += edgeTime * (distanceToConsume / edgeDistance)
+
+            if let startAltitude = start.altitude, let endAltitude = end.altitude {
+                splitElevationChange += (endAltitude - startAltitude) * (endFraction - startFraction)
+                hasSplitElevation = true
+            }
+
+            consumedDistance += distanceToConsume
+
+            if splitDistance >= splitDistanceMeters - 0.001 {
                 splits.append(ActivitySplit(
                     number: splitNumber,
-                    timeSeconds: Int(segTime),
-                    pace: segPace,
-                    distanceMeters: segDistance,
-                    elevationChangeM: elevationChange,
+                    timeSeconds: Int(splitTime.rounded()),
+                    pace: splitTime / (splitDistance / 1000),
+                    distanceMeters: splitDistance,
+                    elevationChangeM: hasSplitElevation ? splitElevationChange : nil,
                     heartRateBPM: nil
                 ))
-                lastSplitEndIndex = i
                 splitNumber += 1
+                splitDistance = 0
+                splitTime = 0
+                splitElevationChange = 0
+                hasSplitElevation = false
             }
         }
+    }
+
+    if splitDistance > 20 {
+        splits.append(ActivitySplit(
+            number: splitNumber,
+            timeSeconds: Int(splitTime.rounded()),
+            pace: splitTime / (splitDistance / 1000),
+            distanceMeters: splitDistance,
+            elevationChangeM: hasSplitElevation ? splitElevationChange : nil,
+            heartRateBPM: nil
+        ))
     }
 
     return splits

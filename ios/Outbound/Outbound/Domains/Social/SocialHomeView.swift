@@ -18,6 +18,7 @@ struct SocialHomeView: View {
     @State private var isCreateActivityEventPresented = false
     @State private var showsNotifications = false
     @State private var showsConnections = false
+    @State private var showsAddConnection = false
     @State private var pushedLiveCheerSessionID: String?
     @State private var toastMessage: String?
     @State private var postPendingReport: TogetherPostDTO?
@@ -68,6 +69,7 @@ struct SocialHomeView: View {
                             connections: [],
                             isLoading: true,
                             entrySource: "social_connections_section",
+                            onAdd: openAddConnection,
                             onOpenAll: openConnections
                         )
                     } else if shouldShowConnectionPrompt {
@@ -77,6 +79,7 @@ struct SocialHomeView: View {
                             connections: acceptedConnections,
                             isLoading: false,
                             entrySource: "social_connections_section",
+                            onAdd: openAddConnection,
                             onOpenAll: openConnections
                         )
                     }
@@ -196,6 +199,9 @@ struct SocialHomeView: View {
             }
             .navigationDestination(isPresented: $showsConnections) {
                 SocialConnectionsView()
+            }
+            .navigationDestination(isPresented: $showsAddConnection) {
+                SocialConnectionsView(startsAdding: true)
             }
             .navigationDestination(item: $pushedLiveCheerSessionID) { sessionID in
                 LiveCheerView(sessionID: sessionID, entrySource: "push")
@@ -395,8 +401,30 @@ struct SocialHomeView: View {
     @ViewBuilder
     private var yourCircleSection: some View {
         VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-            Text(String(localized: "circle.section.title", defaultValue: "Your Circle"))
-                .socialSectionLabel()
+            HStack {
+                Text(String(localized: "circle.section.title", defaultValue: "Your Circle"))
+                    .socialSectionLabel()
+                Spacer()
+                NavigationLink {
+                    CircleCreateView()
+                } label: {
+                    SocialSectionHeaderIcon(systemName: "plus")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(OutboundPalette.companion)
+                .disabled(!socialStore.hasLoadedConnections || acceptedConnections.isEmpty)
+                .accessibilityLabel(String(localized: "circle.create.navigation", defaultValue: "Create your Circle"))
+
+                NavigationLink {
+                    CirclesListView()
+                } label: {
+                    SocialSectionHeaderIcon(systemName: "ellipsis")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(OutboundPalette.companion)
+                .disabled(circleStore.circles.isEmpty)
+                .accessibilityLabel(String(localized: "circle.list.open", defaultValue: "Show all Circles"))
+            }
             ForEach(circleStore.invitations) { invitation in
                 circleInvitationCard(invitation)
             }
@@ -434,23 +462,13 @@ struct SocialHomeView: View {
                     }
                     .buttonStyle(.plain)
                 }
-            } else {
-                ForEach(circleStore.circles) { circle in
-                    NavigationLink {
-                        CircleDetailView(circle: circle)
-                    } label: {
-                        CircleCompactCard(circle: circle, isPrimary: circle.id == circleStore.primaryCircleID)
-                    }
-                    .buttonStyle(.plain)
+            } else if let circle = circleStore.primaryCircle {
+                NavigationLink {
+                    CircleDetailView(circle: circle)
+                } label: {
+                    CircleCompactCard(circle: circle, isPrimary: circle.id == circleStore.primaryCircleID)
                 }
-                if socialStore.hasLoadedConnections, !acceptedConnections.isEmpty {
-                    NavigationLink {
-                        CircleCreateView()
-                    } label: {
-                        Label(String(localized: "circle.create.another", defaultValue: "Create another Circle"), systemImage: "plus.circle")
-                            .frame(minHeight: 44)
-                    }
-                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -503,28 +521,33 @@ struct SocialHomeView: View {
         }
     }
 
+    private func openAddConnection() {
+        showsAddConnection = true
+        Task {
+            await analyticsManager?.track(.init(.connectionsOpened, properties: [
+                .entrySource: .string("social_home_add"),
+            ]))
+        }
+    }
+
     @ViewBuilder
     private var upcomingRuns: some View {
         HStack {
-            Text("UPCOMING").socialSectionLabel()
+            Text(String(localized: "social.upcoming", defaultValue: "Upcoming")).socialSectionLabel()
             Spacer()
+            SocialSectionHeaderAction(
+                systemName: "plus",
+                accessibilityLabel: String(localized: "Plan a run"),
+                action: { isCreateActivityEventPresented = true }
+            )
             NavigationLink {
                 SocialActivityDiscoveryView()
             } label: {
-                Text("Discover")
-                    .font(.subheadline.weight(.semibold))
+                SocialSectionHeaderIcon(systemName: "ellipsis")
             }
+            .buttonStyle(.plain)
             .foregroundStyle(OutboundPalette.companion)
-            Button {
-                isCreateActivityEventPresented = true
-            } label: {
-                Image(systemName: "plus")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(width: 32, height: 32)
-                    .background(OutboundPalette.companion.opacity(0.12), in: Circle())
-            }
-            .foregroundStyle(OutboundPalette.companion)
-            .accessibilityLabel("Plan a run")
+            .accessibilityLabel(String(localized: "social.upcoming.open", defaultValue: "Show all upcoming activities"))
         }
         if socialStore.state.upcomingRuns.isEmpty {
             OutboundCard {
@@ -1036,7 +1059,7 @@ private struct SocialActivityDiscoveryView: View {
                 }
             }
         }
-        .navigationTitle("Discover activities")
+        .navigationTitle(String(localized: "social.upcoming", defaultValue: "Upcoming"))
         .refreshable { await socialStore.refresh() }
     }
 }
@@ -1922,6 +1945,7 @@ struct SocialCommentsView: View {
 struct SocialConnectionsView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @Environment(\.analyticsManager) private var analyticsManager
+    let startsAdding: Bool
     @State private var searchQuery = ""
     @State private var paginationToast: String?
     @State private var searchToast: String?
@@ -1934,6 +1958,10 @@ struct SocialConnectionsView: View {
     @State private var showsQRCode = false
     @State private var showsScanner = false
     @FocusState private var isSearchFocused: Bool
+
+    init(startsAdding: Bool = false) {
+        self.startsAdding = startsAdding
+    }
 
     private static let pageSize = 20
 
@@ -1993,6 +2021,9 @@ struct SocialConnectionsView: View {
         .task {
             await socialStore.refreshConnections()
             await socialStore.refreshBlocks()
+            if startsAdding {
+                isSearchFocused = true
+            }
         }
         .navigationDestination(isPresented: $showsQRCode) {
             SocialConnectionQRCodeView()
@@ -2906,7 +2937,10 @@ private extension TogetherActivityDTO {
             avgPace: avgPace,
             elevationGainM: elevationM,
             energyKilocalories: energyKilocalories,
-            route: routePoints.isEmpty ? nil : SavedRoute(points: routePoints),
+            route: routePoints.isEmpty ? nil : SavedRoute(
+                points: routePoints,
+                elevationMetadata: route?.properties?.elevationMetadata
+            ),
             photos: savedPhotos,
             sync: nil
         )

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct RewardsCenterView: View {
     @Environment(\.analyticsManager) private var analyticsManager
@@ -120,40 +121,93 @@ struct InvitationCodeView: View {
     @Environment(\.analyticsManager) private var analyticsManager
     @State private var status: RewardsStatusDTO?
     @State private var message: String?
+    let entrySource: String
+
+    init(entrySource: String = "me_invitation_code") {
+        self.entrySource = entrySource
+    }
 
     var body: some View {
-        Form {
-            Section {
+        ScrollView {
+            VStack(spacing: OutboundSpacing.standard) {
                 if let status {
                     let referral = status.referral
-                    LabeledContent(text("rewards.your_code"), value: referral.code)
-                        .textSelection(.enabled)
-                    Button {
-                        share(referral)
-                    } label: {
-                        Label(text("rewards.share_invitation"), systemImage: "square.and.arrow.up")
+                    OutboundCard {
+                        VStack(spacing: OutboundSpacing.compact) {
+                            if let qrImage = QRCodeRenderer.image(for: referral.shareURL) {
+                                Image(uiImage: qrImage)
+                                    .interpolation(.none)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 280, height: 280)
+                                    .background(Color.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                    .accessibilityLabel(text("rewards.qr_accessibility"))
+                            }
+                            Text(String.localizedStringWithFormat(
+                                text("rewards.scan_invite_format"),
+                                status.referralProgram.inviteeRewardDays
+                            ))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
                     }
-                    LabeledContent(
-                        status.referralProgram.foundingMember
-                            ? text("rewards.activated_runners")
-                            : text("rewards.qualified_invites"),
-                        value: "\(referral.qualifiedCount)"
-                    )
-                    if referral.pendingCount > 0 {
-                        LabeledContent(text("rewards.pending_invites"), value: "\(referral.pendingCount)")
+
+                    OutboundCard {
+                        VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                            Text(text("rewards.your_code"))
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            HStack {
+                                Text(referral.code)
+                                    .font(.title2.monospaced().weight(.semibold))
+                                    .textSelection(.enabled)
+                                Spacer()
+                                Button {
+                                    copy(referral.code, foundingMember: status.referralProgram.foundingMember)
+                                } label: {
+                                    Label(text("rewards.copy_code"), systemImage: "doc.on.doc")
+                                }
+                            }
+                            Divider()
+                            Button {
+                                share(referral)
+                            } label: {
+                                Label(text("rewards.share_invitation"), systemImage: "square.and.arrow.up")
+                            }
+                            Divider()
+                            LabeledContent(
+                                status.referralProgram.foundingMember
+                                    ? text("rewards.activated_runners")
+                                    : text("rewards.qualified_invites"),
+                                value: "\(referral.qualifiedCount)"
+                            )
+                            if referral.pendingCount > 0 {
+                                LabeledContent(text("rewards.pending_invites"), value: "\(referral.pendingCount)")
+                            }
+                            Text(invitationDetail(status.referralProgram))
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 } else {
                     ProgressView()
                         .frame(maxWidth: .infinity)
                 }
-            } footer: {
-                if let status {
-                    Text(invitationDetail(status.referralProgram))
-                }
             }
+            .padding(OutboundSpacing.screen)
         }
+        .background(OutboundPalette.background)
         .navigationTitle(text("rewards.my_invitation_code"))
-        .task { await refresh() }
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await analyticsManager?.track(.init(.profileQRCodeOpened, properties: [
+                .entrySource: .string(entrySource)
+            ]))
+            await refresh()
+        }
         .overlay(alignment: .bottom) {
             if let message {
                 ToastMessage(message: message)
@@ -167,8 +221,19 @@ struct InvitationCodeView: View {
         Task {
             await SystemSharePresenter.present(activityItems: [invitation])
             await analyticsManager?.track(.init(.referralCodeShared, properties: [
-                .sourceType: .string("me_invitation_code"),
+                .sourceType: .string(entrySource),
                 .selectionType: .string(program.foundingMember ? "founding" : "reward_eligible")
+            ]))
+        }
+    }
+
+    private func copy(_ code: String, foundingMember: Bool) {
+        UIPasteboard.general.string = code
+        show(text("rewards.code_copied"))
+        Task {
+            await analyticsManager?.track(.init(.referralCodeCopied, properties: [
+                .sourceType: .string(entrySource),
+                .selectionType: .string(foundingMember ? "founding" : "reward_eligible")
             ]))
         }
     }

@@ -66,14 +66,14 @@
     <key>NSLocationAlwaysUsageDescription</key>
     <string>Plainstride tracks your route during activities, even in the background.</string>
 
-    <key>NSCameraUsageDescription</key>
-    <string>Plainstride uses the camera to capture moments during your run and scan connection QR codes.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Plainstride uses the camera to take profile and activity photos and scan connection QR codes.</string>
 
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>Plainstride saves activity photos and share images to your photo library.</string>
 
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Plainstride adds activity photos to your Plainstride album.</string>
+    <string>Plainstride uses your photo library to choose profile and activity photos.</string>
 
     <key>NSMicrophoneUsageDescription</key>
     <string>Plainstride uses the microphone for voice activity commands and guide audio during workouts.</string>

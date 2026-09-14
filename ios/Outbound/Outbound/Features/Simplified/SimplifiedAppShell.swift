@@ -239,7 +239,10 @@ struct SimplifiedAppShell: View {
         TabView(selection: $selection) {
             SocialHomeView()
                 .tag(SimplifiedAppTab.social)
-                .tabItem { Label("Social", systemImage: "person.2") }
+                .tabItem {
+                    Image(systemName: "person.2")
+                        .accessibilityLabel(String(localized: "Social"))
+                }
 
             SimplifiedTodayView(
                 isSelected: selection == .today,
@@ -263,13 +266,19 @@ struct SimplifiedAppShell: View {
             )
                 .assistantHighlightAnchor("today.primary-action")
                 .tag(SimplifiedAppTab.today)
-                .tabItem { Label(String(localized: "Today"), systemImage: "sparkles") }
+                .tabItem {
+                    Image(systemName: "sparkles")
+                        .accessibilityLabel(String(localized: "Today"))
+                }
 
             SimplifiedMeView(
                 onOpenPlan: { openPlanManagement(from: "me_current_focus") }
             )
                 .tag(SimplifiedAppTab.me)
-                .tabItem { Label("Me", systemImage: "person.crop.circle") }
+                .tabItem {
+                    Image(systemName: "person.crop.circle")
+                        .accessibilityLabel(String(localized: "Me"))
+                }
         }
         .tint(guideCatalog.selectedTheme.accentColor)
         .background {
@@ -930,7 +939,7 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
                     item.accessibilityIdentifier = "tab.start"
                 } else {
                     let image = UIImage(systemName: "sparkles")?.withRenderingMode(.alwaysTemplate)
-                    item.title = String(localized: "Today")
+                    item.title = nil
                     item.image = image
                     item.selectedImage = image
                     item.imageInsets = .zero
@@ -2815,12 +2824,15 @@ private struct SimplifiedMeView: View {
     @EnvironmentObject private var healthImportStore: HealthImportStore
     @EnvironmentObject private var socialStore: TogetherStore
     @State private var profile: AppUserProfileDTO?
+    @State private var paywallEnabled = false
     @State private var trainingProfileSex: TrainingProfileSex?
     @State private var showsCycleAwareCheckIn = false
     @State private var showsManualWorkoutEntry = false
     @State private var showsConnections = false
+    @State private var showsAddConnection = false
     @State private var showsSocialInbox = false
     @State private var showsQRCode = false
+    @State private var showsProfilePhotoPreview = false
     @State private var manualWorkoutToast: String?
     @State private var navigationPath = NavigationPath()
     @State private var hasTrackedCalorieExposure = false
@@ -2832,6 +2844,18 @@ private struct SimplifiedMeView: View {
                 LazyVStack(spacing: OutboundSpacing.standard) {
                     OutboundCard {
                         HStack(spacing: 12) {
+                            Button {
+                                showsProfilePhotoPreview = true
+                            } label: {
+                                EditableProfileAvatar(
+                                    url: profile?.avatarUrl,
+                                    name: profile?.displayName ?? authStore.currentLoginLabel ?? "Me",
+                                    size: 58
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(String(localized: "profile.photo.preview", defaultValue: "Preview profile photo"))
+
                             NavigationLink {
                                 SimplifiedProfileView(
                                     profile: profile,
@@ -2840,11 +2864,6 @@ private struct SimplifiedMeView: View {
                                 )
                             } label: {
                                 HStack(spacing: 14) {
-                                    UserAvatarView(
-                                        url: profile?.avatarUrl,
-                                        name: profile?.displayName ?? authStore.currentLoginLabel ?? "Me",
-                                        size: 58
-                                    )
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(profile?.displayName ?? authStore.currentLoginLabel ?? "Your profile")
                                             .font(.headline)
@@ -2856,15 +2875,12 @@ private struct SimplifiedMeView: View {
                                         }
                                     }
                                     Spacer(minLength: 0)
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.tertiary)
-                                        .accessibilityHidden(true)
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel(String(localized: "Open profile"))
 
                             Button {
                                 showsQRCode = true
@@ -2876,75 +2892,25 @@ private struct SimplifiedMeView: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(String(localized: "Show my QR code"))
+
+                            NavigationLink {
+                                SimplifiedProfileView(
+                                    profile: profile,
+                                    onProfileUpdated: { profile = $0 },
+                                    onTrainingProfileUpdated: applyTrainingProfile
+                                )
+                            } label: {
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                                    .frame(width: 32, height: 44)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(String(localized: "Open profile"))
                         }
                     }
                     benefitsNavigationCard
                     connectionsPreview
-                    Button(action: onOpenPlan) {
-                        OutboundCard {
-                            HStack(spacing: OutboundSpacing.standard) {
-                                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                                    Text("CURRENT FOCUS")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.secondary)
-                                    Text(planTitle)
-                                        .font(.headline)
-                                    Text(planDetail)
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer(minLength: 8)
-                                Image(systemName: "chevron.right")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(
-                        trainingPlanStore.activePlan == nil
-                            ? String(localized: "Choose a plan")
-                            : String(localized: "View plan")
-                    )
-                    .accessibilityHint(String(localized: "View, change, or end the current training plan"))
-                    NavigationLink {
-                        CommunityRouteLibraryView(mode: .mine)
-                    } label: {
-                        OutboundCard {
-                            HStack {
-                                Label(String(localized: "library.my_routes", defaultValue: "My Routes"), systemImage: "map.fill").font(.headline)
-                                Spacer()
-                                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    if !personalizationStore.snapshot.insights.isEmpty {
-                        OutboundCard {
-                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                                Text("WHAT I’VE LEARNED")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                                ForEach(personalizationStore.snapshot.insights.prefix(3)) { insight in
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        HStack {
-                                            Text(insight.label).font(.subheadline.weight(.semibold))
-                                            Spacer()
-                                            Text(insight.confidence.title)
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                        Text(insight.value)
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    if insight.id != personalizationStore.snapshot.insights.prefix(3).last?.id {
-                                        Divider()
-                                    }
-                                }
-                            }
-                        }
-                    }
                     NavigationLink {
                         RunnerProgressView()
                     } label: {
@@ -2988,6 +2954,71 @@ private struct SimplifiedMeView: View {
                     }
                     .buttonStyle(.plain)
                     recognitionSection
+                    Button(action: onOpenPlan) {
+                        OutboundCard {
+                            HStack(spacing: OutboundSpacing.standard) {
+                                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                    Text("CURRENT FOCUS")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                    Text(planTitle)
+                                        .font(.headline)
+                                    Text(planDetail)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer(minLength: 8)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(
+                        trainingPlanStore.activePlan == nil
+                            ? String(localized: "Choose a plan")
+                            : String(localized: "View plan")
+                    )
+                    .accessibilityHint(String(localized: "View, change, or end the current training plan"))
+                    if !personalizationStore.snapshot.insights.isEmpty {
+                        OutboundCard {
+                            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                Text("WHAT I’VE LEARNED")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                ForEach(personalizationStore.snapshot.insights.prefix(3)) { insight in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        HStack {
+                                            Text(insight.label).font(.subheadline.weight(.semibold))
+                                            Spacer()
+                                            Text(insight.confidence.title)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        Text(insight.value)
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    if insight.id != personalizationStore.snapshot.insights.prefix(3).last?.id {
+                                        Divider()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    NavigationLink {
+                        CommunityRouteLibraryView(mode: .mine)
+                    } label: {
+                        OutboundCard {
+                            HStack {
+                                Label(String(localized: "library.my_routes", defaultValue: "My Routes"), systemImage: "map.fill").font(.headline)
+                                Spacer()
+                                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
                     if showsCycleAwareGuidance {
                         OutboundCard {
                             VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
@@ -3070,13 +3101,10 @@ private struct SimplifiedMeView: View {
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
             .navigationDestination(isPresented: $showsConnections) { SocialConnectionsView() }
+            .navigationDestination(isPresented: $showsAddConnection) { SocialConnectionsView(startsAdding: true) }
             .navigationDestination(isPresented: $showsSocialInbox) { SocialNotificationsView() }
             .navigationDestination(isPresented: $showsQRCode) {
-                SimplifiedMyQRCodeView(
-                    displayName: profile?.displayName ?? authStore.currentLoginLabel ?? String(localized: "Your profile"),
-                    username: profile?.username,
-                    avatarURL: profile?.avatarUrl
-                )
+                InvitationCodeView(entrySource: "me_profile_card")
             }
             .navigationDestination(for: AssistantNavigationTarget.self) { target in
                 assistantDestination(for: target)
@@ -3106,6 +3134,14 @@ private struct SimplifiedMeView: View {
                     .environmentObject(activityStore)
                     .environmentObject(gearStore)
                     .environmentObject(measurementPreferences)
+            }
+            .sheet(isPresented: $showsProfilePhotoPreview) {
+                ProfilePhotoPreviewView(
+                    avatarURL: profile?.avatarUrl,
+                    displayName: profile?.displayName ?? authStore.currentLoginLabel ?? "Me",
+                    entrySource: "me_card",
+                    onProfileUpdated: { profile = $0 }
+                )
             }
             .overlay(alignment: .top) {
                 if let manualWorkoutToast {
@@ -3227,10 +3263,21 @@ private struct SimplifiedMeView: View {
         async let profileLoad: Void = loadProfile()
         async let trainingProfileLoad: Void = loadTrainingProfile()
         async let connectionsLoad: Void = loadConnectionsIfNeeded()
-        _ = await (profileLoad, trainingProfileLoad, connectionsLoad)
+        async let featureControlsLoad: Void = loadFeatureControls()
+        _ = await (profileLoad, trainingProfileLoad, connectionsLoad, featureControlsLoad)
         await analyticsManager?.track(.init(.featureExposed, properties: [
             .feature: .string("me_connections_preview"),
         ]))
+    }
+
+    private func loadFeatureControls() async {
+        guard let status = try? await APIClient.shared.fetchRewardsStatus() else { return }
+        paywallEnabled = status.featureControls.paywallEnabled
+        if paywallEnabled {
+            await analyticsManager?.track(.init(.featureExposed, properties: [
+                .feature: .string("me_plus_paywall_entry"),
+            ]))
+        }
     }
 
     private func loadConnectionsIfNeeded() async {
@@ -3245,6 +3292,7 @@ private struct SimplifiedMeView: View {
                 .sorted(by: SocialConnectionDTO.previewOrder),
             isLoading: socialStore.isConnectionsLoading && !socialStore.hasLoadedConnections,
             entrySource: "me_connections_preview",
+            onAdd: openAddConnection,
             onOpenAll: openConnections
         )
     }
@@ -3252,17 +3300,19 @@ private struct SimplifiedMeView: View {
     private var benefitsNavigationCard: some View {
         OutboundCard {
             VStack(spacing: 0) {
-                NavigationLink {
-                    PlusView(entrySource: "me")
-                        .onAppear { trackMeBenefitDestination("plus") }
-                } label: {
-                    benefitNavigationLabel(
-                        title: String(localized: "rewards.plus", table: "Rewards"),
-                        detail: String(localized: "rewards.plus_settings_body", table: "Rewards"),
-                        systemImage: "sparkles"
-                    )
+                if paywallEnabled {
+                    NavigationLink {
+                        PlusView(entrySource: "me")
+                            .onAppear { trackMeBenefitDestination("plus") }
+                    } label: {
+                        benefitNavigationLabel(
+                            title: String(localized: "rewards.plus", table: "Rewards"),
+                            detail: String(localized: "rewards.plus_settings_body", table: "Rewards"),
+                            systemImage: "sparkles"
+                        )
+                    }
+                    Divider()
                 }
-                Divider()
                 NavigationLink {
                     RewardsCenterView()
                         .onAppear { trackMeBenefitDestination("rewards_center") }
@@ -3271,17 +3321,6 @@ private struct SimplifiedMeView: View {
                         title: String(localized: "rewards.settings_title", table: "Rewards"),
                         detail: String(localized: "rewards.settings_body", table: "Rewards"),
                         systemImage: "gift"
-                    )
-                }
-                Divider()
-                NavigationLink {
-                    InvitationCodeView()
-                        .onAppear { trackMeBenefitDestination("invitation_code") }
-                } label: {
-                    benefitNavigationLabel(
-                        title: String(localized: "rewards.my_invitation_code", table: "Rewards"),
-                        detail: String(localized: "rewards.invitation_code_body", table: "Rewards"),
-                        systemImage: "person.crop.circle.badge.plus"
                     )
                 }
             }
@@ -3327,6 +3366,15 @@ private struct SimplifiedMeView: View {
         Task {
             await analyticsManager?.track(.init(.connectionsOpened, properties: [
                 .entrySource: .string("me_preview"),
+            ]))
+        }
+    }
+
+    private func openAddConnection() {
+        showsAddConnection = true
+        Task {
+            await analyticsManager?.track(.init(.connectionsOpened, properties: [
+                .entrySource: .string("me_add"),
             ]))
         }
     }
@@ -3512,7 +3560,7 @@ private struct SimplifiedSettingsView: View {
                         ))
                         Text(String(
                             localized: "settings.photos.save.activity.detail",
-                            defaultValue: "Automatically add photos to the Plainstride album"
+                            defaultValue: "Automatically save activity photos to Photos"
                         ))
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -3581,6 +3629,16 @@ private struct SimplifiedSettingsView: View {
                     NavigationLink("Cycle-aware guidance") { CycleAwareView() }
                 }
             }
+            Section("Gear") {
+                GearSettingsCard()
+            }
+            Section("Integrations") {
+                NavigationLink {
+                    AppleHealthSettingsView()
+                } label: {
+                    Label("Apple Health", systemImage: "heart.text.square")
+                }
+            }
             Section {
                 Button {
                     FeedbackTrigger.present(currentPage: "Settings")
@@ -3591,16 +3649,6 @@ private struct SimplifiedSettingsView: View {
                 Text("Help")
             } footer: {
                 Text("You can also shake your iPhone twice when an activity isn’t recording.")
-            }
-            Section("Gear") {
-                GearSettingsCard()
-            }
-            Section("Integrations") {
-                NavigationLink {
-                    AppleHealthSettingsView()
-                } label: {
-                    Label("Apple Health", systemImage: "heart.text.square")
-                }
             }
             Section {
                 legalDocumentButton(.terms, title: String(localized: "legal.terms.title"), systemImage: "doc.text")
@@ -3746,90 +3794,6 @@ private struct SimplifiedProfileView: View {
     }
 }
 
-private struct SimplifiedMyQRCodeView: View {
-    @Environment(\.analyticsManager) private var analyticsManager
-    let displayName: String
-    let username: String?
-    let avatarURL: String?
-    @State private var connectionURL: URL?
-    @State private var isLoading = true
-    @State private var hasError = false
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: OutboundSpacing.standard) {
-                OutboundCard {
-                    VStack(spacing: OutboundSpacing.compact) {
-                        UserAvatarView(url: avatarURL, name: displayName, size: 64)
-                        Text(displayName)
-                            .font(.headline)
-                        if let username, !username.isEmpty {
-                            Text("@\(username)")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-                }
-
-                OutboundCard {
-                    VStack(spacing: OutboundSpacing.standard) {
-                        if let connectionURL,
-                           let qrImage = QRCodeRenderer.image(for: connectionURL) {
-                            Image(uiImage: qrImage)
-                                .interpolation(.none)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 280, height: 280)
-                                .background(Color.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                                .accessibilityLabel(String(localized: "My Plainstride QR code"))
-
-                            Text(String(
-                                localized: "Scan this QR code to join me on Plainstride.",
-                                defaultValue: "Scan this QR code to join me on Plainstride."
-                            ))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                        } else if isLoading {
-                            ProgressView()
-                                .frame(width: 280, height: 280)
-                        } else if hasError {
-                            ContentUnavailableView(
-                                String(localized: "QR code unavailable"),
-                                systemImage: "qrcode",
-                                description: Text(String(
-                                    localized: "Try again when you have a connection.",
-                                    defaultValue: "Try again when you have a connection."
-                                ))
-                            )
-                            .frame(height: 280)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-            }
-            .padding(OutboundSpacing.screen)
-        }
-        .background(OutboundPalette.background)
-        .navigationTitle(String(localized: "My QR Code"))
-        .navigationBarTitleDisplayMode(.inline)
-        .task {
-            await analyticsManager?.track(.init(.profileQRCodeOpened, properties: [
-                .entrySource: .string("me_profile_card")
-            ]))
-            do {
-                connectionURL = try await APIClient.shared.createConnectionLink().url
-            } catch {
-                hasError = true
-            }
-            isLoading = false
-        }
-    }
-}
-
 private struct SimplifiedProfileEditorView: View {
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var authStore: AuthStore
@@ -3843,8 +3807,6 @@ private struct SimplifiedProfileEditorView: View {
     @State private var username = ""
     @State private var savedUsername = ""
     @State private var avatarUrl = UserAvatarPersistence.url(for: AuthStore.currentUserId)
-    @State private var selectedAvatarItem: PhotosPickerItem?
-    @State private var isUploadingAvatar = false
     @State private var isLoading = true
     @State private var isSaving = false
     @State private var sexAtBirth: TrainingProfileSex?
@@ -3857,6 +3819,7 @@ private struct SimplifiedProfileEditorView: View {
     @State private var preservedTrainingProfile: TrainingProfileDTO?
     @State private var toast: ProfileToast?
     @State private var showsQRCode = false
+    @State private var showsProfilePhotoPreview = false
 
     init(
         initialProfile: AppUserProfileDTO? = nil,
@@ -3882,8 +3845,10 @@ private struct SimplifiedProfileEditorView: View {
         Form {
             Section {
                 HStack(spacing: 14) {
-                    PhotosPicker(selection: $selectedAvatarItem, matching: .images) {
-                        UserAvatarView(
+                    Button {
+                        showsProfilePhotoPreview = true
+                    } label: {
+                        EditableProfileAvatar(
                             url: avatarUrl,
                             name: displayName.isEmpty ? authStore.currentLoginLabel ?? "Me" : displayName,
                             size: 58,
@@ -3891,7 +3856,7 @@ private struct SimplifiedProfileEditorView: View {
                         )
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(String(localized: "Change profile photo"))
+                    .accessibilityLabel(String(localized: "profile.photo.preview", defaultValue: "Preview profile photo"))
                     VStack(alignment: .leading, spacing: 3) {
                         Text(displayName.isEmpty ? "Your profile" : displayName).font(.headline)
                         if !username.isEmpty { Text("@\(username)").font(.caption).foregroundStyle(.secondary) }
@@ -3905,7 +3870,6 @@ private struct SimplifiedProfileEditorView: View {
                             .frame(width: 44, height: 44)
                     }
                     .buttonStyle(.plain)
-                    .disabled(isUploadingAvatar)
                     .accessibilityLabel(String(localized: "Show my QR code"))
                 }
             }
@@ -4003,10 +3967,18 @@ private struct SimplifiedProfileEditorView: View {
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $showsQRCode) {
-            SimplifiedMyQRCodeView(
+            InvitationCodeView(entrySource: "profile_editor")
+        }
+        .sheet(isPresented: $showsProfilePhotoPreview) {
+            ProfilePhotoPreviewView(
+                avatarURL: avatarUrl,
                 displayName: displayName.isEmpty ? authStore.currentLoginLabel ?? "Me" : displayName,
-                username: username.isEmpty ? nil : username,
-                avatarURL: avatarUrl
+                entrySource: "profile_editor",
+                onProfileUpdated: { profile in
+                    avatarUrl = profile.avatarUrl
+                    UserAvatarPersistence.save(profile.avatarUrl, for: AuthStore.currentUserId)
+                    onProfileUpdated?(profile)
+                }
             )
         }
         .toolbar {
@@ -4036,10 +4008,6 @@ private struct SimplifiedProfileEditorView: View {
             toast = nil
         }
         .task { await load() }
-        .onChange(of: selectedAvatarItem) { _, item in
-            guard let item else { return }
-            Task { await uploadAvatar(from: item) }
-        }
     }
 
     private func load() async {
@@ -4227,32 +4195,6 @@ private struct SimplifiedProfileEditorView: View {
         return value.formatted(.number.precision(.fractionLength(0...1)))
     }
 
-    private func uploadAvatar(from item: PhotosPickerItem) async {
-        isUploadingAvatar = true
-        defer {
-            isUploadingAvatar = false
-            selectedAvatarItem = nil
-        }
-        do {
-            guard let sourceData = try await item.loadTransferable(type: Data.self),
-                  let image = UIImage(data: sourceData),
-                  let jpegData = resizedAvatarData(from: image) else {
-                showToast(String(localized: "That photo could not be used."), style: .error)
-                return
-            }
-            let profile = try await APIClient.shared.uploadMyAvatar(jpegData: jpegData)
-            avatarUrl = profile.avatarUrl
-            UserAvatarPersistence.save(profile.avatarUrl, for: AuthStore.currentUserId)
-            if let avatarUrl = profile.avatarUrl, let uploadedImage = UIImage(data: jpegData) {
-                AvatarImageCache.shared.store(uploadedImage, for: avatarUrl)
-            }
-            onProfileUpdated?(profile)
-            showToast(String(localized: "Profile photo updated"), style: .success)
-        } catch {
-            showToast(String(localized: "Could not upload photo. Try again."), style: .error)
-        }
-    }
-
     private func showToast(_ text: String, style: ProfileToast.Style) {
         toast = ProfileToast(text: text, style: style)
     }
@@ -4260,15 +4202,6 @@ private struct SimplifiedProfileEditorView: View {
     private func nilIfEmpty(_ value: String) -> String? {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
-    }
-
-    private func resizedAvatarData(from image: UIImage) -> Data? {
-        let maximumDimension: CGFloat = 1_024
-        let scale = min(1, maximumDimension / max(image.size.width, image.size.height))
-        let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
-        let renderer = UIGraphicsImageRenderer(size: size)
-        let resized = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
-        return resized.jpegData(compressionQuality: 0.82)
     }
 
     private static let birthDateFormatter: DateFormatter = {
@@ -4307,6 +4240,307 @@ private struct ProfileToastView: View {
             }
             .shadow(color: .black.opacity(0.12), radius: 12, y: 5)
             .accessibilityElement(children: .combine)
+    }
+}
+
+private struct EditableProfileAvatar: View {
+    let url: String?
+    let name: String
+    let size: CGFloat
+    var isProfileLoading = false
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            UserAvatarView(
+                url: url,
+                name: name,
+                size: size,
+                isProfileLoading: isProfileLoading
+            )
+
+            Image(systemName: "camera.fill")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 22, height: 22)
+                .background(OutboundPalette.companion, in: Circle())
+                .overlay {
+                    Circle().strokeBorder(OutboundPalette.background, lineWidth: 2)
+                }
+                .accessibilityHidden(true)
+        }
+    }
+}
+
+private struct ProfilePhotoPreviewView: View {
+    @Environment(\.analyticsManager) private var analyticsManager
+    @Environment(\.dismiss) private var dismiss
+    let displayName: String
+    let entrySource: String
+    let onProfileUpdated: (AppUserProfileDTO) -> Void
+
+    @State private var avatarURL: String?
+    @State private var showsPhotoActions = false
+    @State private var showsPhotoLibrary = false
+    @State private var showsCamera = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var isUpdating = false
+    @State private var toast: ProfileToast?
+
+    init(
+        avatarURL: String?,
+        displayName: String,
+        entrySource: String,
+        onProfileUpdated: @escaping (AppUserProfileDTO) -> Void
+    ) {
+        self.displayName = displayName
+        self.entrySource = entrySource
+        self.onProfileUpdated = onProfileUpdated
+        _avatarURL = State(initialValue: avatarURL)
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: OutboundSpacing.standard) {
+                Spacer(minLength: OutboundSpacing.standard)
+
+                UserAvatarView(url: avatarURL, name: displayName, size: 240)
+                    .overlay {
+                        Circle().strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                    }
+                    .shadow(color: .black.opacity(0.12), radius: 18, y: 8)
+
+                Text(displayName)
+                    .font(.title3.weight(.semibold))
+
+                Spacer(minLength: OutboundSpacing.standard)
+
+                Button {
+                    showsPhotoActions = true
+                } label: {
+                    if isUpdating {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Label(
+                            String(localized: "profile.photo.update", defaultValue: "Update Photo"),
+                            systemImage: "camera.fill"
+                        )
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isUpdating)
+            }
+            .padding(OutboundSpacing.screen)
+            .background(OutboundPalette.background)
+            .navigationTitle(String(localized: "profile.photo.title", defaultValue: "Profile Photo"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "common.close", defaultValue: "Close")) { dismiss() }
+                }
+            }
+            .confirmationDialog(
+                String(localized: "profile.photo.update", defaultValue: "Update Photo"),
+                isPresented: $showsPhotoActions,
+                titleVisibility: .visible
+            ) {
+                Button(String(localized: "profile.photo.choose", defaultValue: "Choose Photo")) {
+                    track(action: "choose", result: "selected")
+                    showsPhotoLibrary = true
+                }
+                Button(String(localized: "profile.photo.take", defaultValue: "Take Photo")) {
+                    track(action: "take", result: "selected")
+                    guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+                        track(action: "take", result: "unavailable")
+                        showToast(
+                            String(localized: "profile.photo.camera_unavailable", defaultValue: "Camera is unavailable."),
+                            style: .error
+                        )
+                        return
+                    }
+                    showsCamera = true
+                }
+                Button(
+                    String(localized: "profile.photo.remove", defaultValue: "Remove Photo"),
+                    role: .destructive
+                ) {
+                    track(action: "remove", result: "selected")
+                    Task { await removePhoto() }
+                }
+                .disabled(avatarURL == nil)
+            }
+            .photosPicker(
+                isPresented: $showsPhotoLibrary,
+                selection: $selectedPhotoItem,
+                matching: .images
+            )
+            .sheet(isPresented: $showsCamera) {
+                ProfilePhotoCameraPicker(
+                    onImage: { image in
+                        showsCamera = false
+                        Task { await upload(image: image, action: "take") }
+                    },
+                    onCancel: { showsCamera = false }
+                )
+                .ignoresSafeArea()
+            }
+            .overlay(alignment: .top) {
+                if let toast {
+                    ProfileToastView(toast: toast)
+                        .padding(.horizontal, OutboundSpacing.screen)
+                        .padding(.top, OutboundSpacing.compact)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .animation(.snappy, value: toast)
+            .task(id: toast?.id) {
+                guard toast != nil else { return }
+                try? await Task.sleep(for: .seconds(2.2))
+                guard !Task.isCancelled else { return }
+                toast = nil
+            }
+            .onChange(of: selectedPhotoItem) { _, item in
+                guard let item else { return }
+                Task { await upload(item: item) }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func upload(item: PhotosPickerItem) async {
+        defer { selectedPhotoItem = nil }
+        do {
+            guard let sourceData = try await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: sourceData) else {
+                track(action: "choose", result: "failure")
+                showToast(String(localized: "That photo could not be used."), style: .error)
+                return
+            }
+            await upload(image: image, action: "choose")
+        } catch {
+            track(action: "choose", result: "failure")
+            showToast(String(localized: "Could not upload photo. Try again."), style: .error)
+        }
+    }
+
+    private func upload(image: UIImage, action: String) async {
+        isUpdating = true
+        defer { isUpdating = false }
+        guard let jpegData = resizedAvatarData(from: image) else {
+            track(action: action, result: "failure")
+            showToast(String(localized: "That photo could not be used."), style: .error)
+            return
+        }
+        do {
+            let profile = try await APIClient.shared.uploadMyAvatar(jpegData: jpegData)
+            avatarURL = profile.avatarUrl
+            UserAvatarPersistence.save(profile.avatarUrl, for: AuthStore.currentUserId)
+            if let avatarURL = profile.avatarUrl,
+               let uploadedImage = UIImage(data: jpegData) {
+                AvatarImageCache.shared.store(uploadedImage, for: avatarURL)
+            }
+            onProfileUpdated(profile)
+            await analyticsManager?.track(.init(.preferenceChanged, properties: [
+                .changeType: .string("profile_photo"),
+                .selectionType: .string("\(entrySource)_\(action)_success"),
+            ]))
+            showToast(String(localized: "Profile photo updated"), style: .success)
+        } catch {
+            track(action: action, result: "failure")
+            showToast(String(localized: "Could not upload photo. Try again."), style: .error)
+        }
+    }
+
+    private func removePhoto() async {
+        isUpdating = true
+        defer { isUpdating = false }
+        do {
+            let profile = try await APIClient.shared.removeMyAvatar()
+            avatarURL = profile.avatarUrl
+            UserAvatarPersistence.save(profile.avatarUrl, for: AuthStore.currentUserId)
+            onProfileUpdated(profile)
+            await analyticsManager?.track(.init(.preferenceChanged, properties: [
+                .changeType: .string("profile_photo"),
+                .selectionType: .string("\(entrySource)_remove_success"),
+            ]))
+            showToast(
+                String(localized: "profile.photo.removed", defaultValue: "Profile photo removed"),
+                style: .success
+            )
+        } catch {
+            track(action: "remove", result: "failure")
+            showToast(
+                String(localized: "profile.photo.remove_error", defaultValue: "Could not remove photo. Try again."),
+                style: .error
+            )
+        }
+    }
+
+    private func track(action: String, result: String) {
+        Task {
+            await analyticsManager?.track(.init(.preferenceChanged, properties: [
+                .changeType: .string("profile_photo"),
+                .selectionType: .string("\(entrySource)_\(action)_\(result)"),
+            ]))
+        }
+    }
+
+    private func showToast(_ text: String, style: ProfileToast.Style) {
+        toast = ProfileToast(text: text, style: style)
+    }
+
+    private func resizedAvatarData(from image: UIImage) -> Data? {
+        let maximumDimension: CGFloat = 1_024
+        let scale = min(1, maximumDimension / max(image.size.width, image.size.height))
+        let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let resized = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
+        return resized.jpegData(compressionQuality: 0.82)
+    }
+}
+
+private struct ProfilePhotoCameraPicker: UIViewControllerRepresentable {
+    let onImage: (UIImage) -> Void
+    let onCancel: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onImage: onImage, onCancel: onCancel)
+    }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.cameraCaptureMode = .photo
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let onImage: (UIImage) -> Void
+        let onCancel: () -> Void
+
+        init(onImage: @escaping (UIImage) -> Void, onCancel: @escaping () -> Void) {
+            self.onImage = onImage
+            self.onCancel = onCancel
+        }
+
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+        ) {
+            guard let image = info[.originalImage] as? UIImage else {
+                onCancel()
+                return
+            }
+            onImage(image)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            onCancel()
+        }
     }
 }
 

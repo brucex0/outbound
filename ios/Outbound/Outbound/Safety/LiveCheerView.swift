@@ -67,6 +67,7 @@ struct LiveCheerView: View {
     let entrySource: String
     @StateObject private var store: LiveCheerStore
     @Environment(\.analyticsManager) private var analyticsManager
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
 
     init(sessionID: String, entrySource: String = "social", initialSession: InvitedLiveShareDTO? = nil) {
         self.sessionID = sessionID
@@ -87,9 +88,22 @@ struct LiveCheerView: View {
                         .frame(maxHeight: .infinity)
                     }
                     HStack {
-                        metric(String(format: "%.2f km", session.distanceM / 1000), "Distance")
-                        metric(session.currentPaceSecsPerKm.map(Self.pace) ?? "—", "Pace")
-                        metric(session.heartRate.map { "\($0)" } ?? "—", "Heart rate")
+                        metric(
+                            measurementPreferences.unitSystem.distanceString(meters: session.distanceM),
+                            String(localized: "social.distance", defaultValue: "Distance")
+                        )
+                        metric(
+                            Self.elapsedTime(session.elapsedSeconds),
+                            String(localized: "social.time", defaultValue: "Time")
+                        )
+                        metric(
+                            paceValue(for: session),
+                            paceLabel(for: session)
+                        )
+                        metric(
+                            session.heartRate.map { "\($0)" } ?? "—",
+                            String(localized: "session.metric.heart_rate", defaultValue: "Heart rate")
+                        )
                     }
                     Text(session.status == "active" ? "\(session.runner.displayName) is moving" : "This activity has ended")
                         .font(.headline)
@@ -112,10 +126,14 @@ struct LiveCheerView: View {
             } else { ProgressView() }
         }
         .task {
-            await analyticsManager?.track(.init(.liveCheerFollowerOpened, properties: [.entrySource: .string(entrySource)]))
+            await store.refresh(id: sessionID)
+            await analyticsManager?.track(.init(.liveCheerFollowerOpened, properties: [
+                .entrySource: .string(entrySource),
+                .selectionType: .string(store.session?.status == "active" ? "current_pace" : "average_pace")
+            ]))
             while !Task.isCancelled {
-                await store.refresh(id: sessionID)
                 try? await Task.sleep(for: .seconds(5))
+                await store.refresh(id: sessionID)
             }
         }
         .onChange(of: store.statusMessage) { _, message in
@@ -124,8 +142,34 @@ struct LiveCheerView: View {
         }
     }
 
-    private func metric(_ value: String, _ label: LocalizedStringKey) -> some View { VStack { Text(value).font(.headline); Text(label).font(.caption).foregroundStyle(.secondary) }.frame(maxWidth: .infinity) }
-    private static func pace(_ seconds: Double) -> String { "\(Int(seconds) / 60):\(String(format: "%02d", Int(seconds) % 60))/km" }
+    private func metric(_ value: String, _ label: String) -> some View { VStack { Text(value).font(.headline); Text(label).font(.caption).foregroundStyle(.secondary) }.frame(maxWidth: .infinity) }
+
+    private func paceValue(for session: InvitedLiveShareDTO) -> String {
+        let secondsPerKilometer: Double?
+        if session.status == "active" {
+            secondsPerKilometer = session.currentPaceSecsPerKm
+        } else if session.distanceM > 0 {
+            secondsPerKilometer = Double(session.elapsedSeconds) / (session.distanceM / 1_000)
+        } else {
+            secondsPerKilometer = nil
+        }
+        return secondsPerKilometer?.paceString(for: measurementPreferences.unitSystem) ?? "—"
+    }
+
+    private func paceLabel(for session: InvitedLiveShareDTO) -> String {
+        session.status == "active"
+            ? String(localized: "session.metric.pace", defaultValue: "Pace")
+            : String(localized: "session.metric.average_pace", defaultValue: "Avg. pace")
+    }
+
+    private static func elapsedTime(_ seconds: Int) -> String {
+        let hours = seconds / 3_600
+        let minutes = (seconds % 3_600) / 60
+        let remainingSeconds = seconds % 60
+        return hours > 0
+            ? String(format: "%d:%02d:%02d", hours, minutes, remainingSeconds)
+            : String(format: "%d:%02d", minutes, remainingSeconds)
+    }
 }
 
 #if DEBUG
@@ -139,6 +183,7 @@ struct DebugLiveCheerFollowerHarness: View {
             )
         }
         .preferredColorScheme(.light)
+        .environmentObject(MeasurementPreferences())
     }
 
     private static let session = InvitedLiveShareDTO(

@@ -4,6 +4,7 @@ struct SocialConnectionsPreviewCard: View {
     let connections: [SocialConnectionDTO]
     let isLoading: Bool
     let entrySource: String
+    let onAdd: () -> Void
     let onOpenAll: () -> Void
 
     var body: some View {
@@ -12,9 +13,16 @@ struct SocialConnectionsPreviewCard: View {
                 Text(String(localized: "social.connections.title", defaultValue: "Connections"))
                     .socialSectionLabel()
                 Spacer()
-                Button(String(localized: "social.connections.all", defaultValue: "All"), action: onOpenAll)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(OutboundPalette.companion)
+                SocialSectionHeaderAction(
+                    systemName: "plus",
+                    accessibilityLabel: String(localized: "social.add.connection", defaultValue: "Add connection"),
+                    action: onAdd
+                )
+                SocialSectionHeaderAction(
+                    systemName: "ellipsis",
+                    accessibilityLabel: String(localized: "social.connections.open", defaultValue: "Show all connections"),
+                    action: onOpenAll
+                )
             }
 
             OutboundCard {
@@ -89,5 +97,32 @@ struct SocialConnectionsPreviewCard: View {
             }
         }
         .accessibilityHidden(true)
+    }
+}
+
+struct SocialSectionHeaderAction: View {
+    let systemName: String
+    let accessibilityLabel: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            SocialSectionHeaderIcon(systemName: systemName)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(OutboundPalette.companion)
+        .accessibilityLabel(accessibilityLabel)
+    }
+}
+
+struct SocialSectionHeaderIcon: View {
+    let systemName: String
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.subheadline.weight(.semibold))
+            .frame(width: 32, height: 32)
+            .background(OutboundPalette.companion.opacity(0.12), in: Circle())
+            .frame(width: 44, height: 44)
     }
 }

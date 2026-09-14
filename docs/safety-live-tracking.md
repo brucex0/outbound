@@ -151,6 +151,7 @@ Do not put networking directly in `ActivityRecorder`; keep recording stable even
 - Social shows active invitations in app; the follower screen provides the live map and a hold-to-record voice control.
 - The runner polls for pending recordings and plays the unmodified audio through the live guide audio player.
 - `LiveShareStore` sends throttled location updates from `ActiveSessionSnapshot`, currently every 10 seconds or 25 meters.
+- Finishing sends the reconciled final snapshot before ending the share. Followers see elapsed time and current pace while the share is active, then average pace calculated from final elapsed time and distance after it ends.
 - Finish, discard, and the live HUD stop-sharing control call the backend end endpoint.
 - If create or update fails, recording continues and the runner sees local stale/unavailable copy.
 

@@ -101,6 +101,7 @@ struct RecordView: View {
     @EnvironmentObject var communityRouteStore: CommunityRouteStore
     @EnvironmentObject var weatherStore: SituationalWeatherStore
     @EnvironmentObject var tooltipCoordinator: TooltipCoordinator
+    @EnvironmentObject var phoneWorkoutCoordinator: PhoneWorkoutSessionCoordinator
     @StateObject private var recorder: ActivityRecorder
     @StateObject private var guide = VirtualGuide()
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
@@ -116,6 +117,7 @@ struct RecordView: View {
     @State private var isPreActivityPhotoPreviewPresented = false
     @State private var selectedPreActivityPhotoItem: PhotosPickerItem?
     @State private var pendingActivity: PendingFinishedActivity?
+    @State private var elevationCorrectionTask: Task<ActivitySummary, Never>?
     @State private var plannedIntent: SessionIntent?
     @State private var activeIntent: SessionIntent?
     @State private var isAssistantPresented = false
@@ -284,6 +286,13 @@ struct RecordView: View {
         }
         .onReceive(recorder.$state) { state in
             onSessionStateChange?(ActivitySessionPortalState(recordingState: state))
+            if phoneWorkoutCoordinator.watchOwnsHealthKitPersistence {
+                if previousRecorderState == .active, state == .paused {
+                    phoneWorkoutCoordinator.requestPause(autoTriggered: recorder.autoPaused)
+                } else if previousRecorderState == .paused, state == .active {
+                    phoneWorkoutCoordinator.requestResume()
+                }
+            }
             guide.handleRecordingStateTransition(
                 from: previousRecorderState,
                 to: state,
@@ -293,6 +302,24 @@ struct RecordView: View {
             trackRecordingStateTransition(to: state)
             workoutPresence.sync(with: state)
             if state == .idle { applyTrustedContactDefault() }
+        }
+        .onChange(of: phoneWorkoutCoordinator.finishRequestToken) { _, _ in
+            guard recorder.state != .idle, pendingActivity == nil else { return }
+            finishRecording(recoveredAfterFinish: false, initiatedByWatch: true)
+        }
+        .onChange(of: phoneWorkoutCoordinator.finalMetrics) { _, metrics in
+            guard let metrics, let current = pendingActivity else { return }
+            pendingActivity = PendingFinishedActivity(
+                id: current.id,
+                summary: recorder.reconcilingFinalHeartRateMetrics(metrics, into: current.summary),
+                photos: current.photos,
+                reflection: current.reflection,
+                recognitionPreviews: current.recognitionPreviews,
+                guidanceReport: current.guidanceReport
+            )
+        }
+        .onChange(of: phoneWorkoutCoordinator.toastMessage) { _, message in
+            showSetupToast(message)
         }
         .onReceive(socialStore.$connections) { _ in applyTrustedContactDefault() }
         .onReceive(recorder.$elapsedSeconds) { elapsedSeconds in
@@ -332,6 +359,7 @@ struct RecordView: View {
             onLiveSurfaceVisibilityChange?(isVisible)
         }
         .onAppear {
+            phoneWorkoutCoordinator.bind(recorder: recorder)
             restoreInterruptedPhotosIfNeeded()
             onPreActivityPhotoChange?(preActivityPhoto)
             restoreInterruptedSessionIfNeeded()
@@ -342,6 +370,8 @@ struct RecordView: View {
             if recorder.state == .idle {
                 applyTrustedContactDefault()
                 recorder.locationManager.requestCurrentLocation()
+            } else if phoneWorkoutCoordinator.origin == .appleWatch {
+                adoptWatchInitiatedSessionIfNeeded()
             }
         }
     }
@@ -698,6 +728,7 @@ struct RecordView: View {
                     activePage: $activePage,
                     isWorkoutPanelExpanded: liveWorkoutPanelBinding(source: .camera),
                     onStart: startRecording,
+                    onPause: pauseRecording,
                     onResume: resumeRecording,
                     onFinish: finishRecording,
                     onCaptureStateChange: { isCapturingSessionPhoto = $0 }
@@ -724,6 +755,7 @@ struct RecordView: View {
                     activePage: $activePage,
                     isWorkoutPanelExpanded: liveWorkoutPanelBinding(source: .map),
                     onStart: startRecording,
+                    onPause: pauseRecording,
                     onResume: resumeRecording,
                     onFinish: finishRecording,
                     isFinishEnabled: !isCapturingSessionPhoto
@@ -1027,6 +1059,10 @@ struct RecordView: View {
         )
         trackFeatureExposure("live_guidance")
         showCamera = true
+        phoneWorkoutCoordinator.preparePhoneFirst(
+            activityType: activeIntent?.resolvedActivityType ?? .running,
+            isIndoor: isIndoorSession
+        )
         beginStartCountdown()
     }
 
@@ -1126,8 +1162,11 @@ struct RecordView: View {
 #endif
         recorder.start(
             activityType: activeIntent?.resolvedActivityType ?? .running,
-            routeGuidance: routeGuidance
+            routeGuidance: routeGuidance,
+            canonicalStartDate: phoneWorkoutCoordinator.canonicalStartDate,
+            sessionMetadata: phoneWorkoutCoordinator.recordingMetadata()
         )
+        phoneWorkoutCoordinator.markPhoneRecorderStarted()
     }
 
     private func updateLiveActivity(
@@ -1154,6 +1193,7 @@ struct RecordView: View {
         countdownStep = nil
         if recorder.state == .idle {
             recorder.locationManager.cancelPreparation()
+            phoneWorkoutCoordinator.cancelPreparation()
         }
         guide.deactivate()
         activeIntent = nil
@@ -1167,12 +1207,18 @@ struct RecordView: View {
     }
 
     private func finishRecording() {
-        finishRecording(recoveredAfterFinish: false)
+        finishRecording(recoveredAfterFinish: false, initiatedByWatch: false)
     }
 
-    private func finishRecording(recoveredAfterFinish: Bool) {
+    private func finishRecording(
+        recoveredAfterFinish: Bool,
+        initiatedByWatch: Bool = false
+    ) {
         guard !isCapturingSessionPhoto else { return }
         cancelStartCountdown(returnToSetup: true)
+        if !initiatedByWatch {
+            phoneWorkoutCoordinator.requestFinish()
+        }
         let summary = recorder.finish()
         let eligibility = ActivitySaveEligibility.evaluate(
             durationSecs: summary.durationSecs,
@@ -1210,7 +1256,7 @@ struct RecordView: View {
             ]))
         }
         liveActivityManager.end(using: recorder.liveSnapshot, unitSystem: measurementPreferences.unitSystem)
-        liveShareStore.end()
+        liveShareStore.end(finalSnapshot: recorder.liveSnapshot)
         liveGroupStore.finishActivity()
         guide.deactivate()
         Task { await musicStore.endWorkoutPlaybackIfNeeded() }
@@ -1242,12 +1288,67 @@ struct RecordView: View {
             pendingActivity = finishedActivity
             showCamera = false
         }
+        beginElevationCorrection(for: finishedActivity, isEligible: isSaveEligible)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
+    private func beginElevationCorrection(
+        for activity: PendingFinishedActivity,
+        isEligible: Bool
+    ) {
+        elevationCorrectionTask?.cancel()
+        guard isEligible,
+              !isIndoorSession,
+              AuthStore.currentUserId != nil,
+              activity.summary.trackPoints.count >= 2
+        else {
+            elevationCorrectionTask = nil
+            return
+        }
+
+        let startedAt = Date()
+        let originalSummary = activity.summary
+        let activityID = activity.id
+        elevationCorrectionTask = Task {
+            do {
+                let corrected = try await TerrainElevationCorrector.correct(originalSummary)
+                guard !Task.isCancelled else { return originalSummary }
+                track(.init(.activityElevationCorrectionCompleted, properties: [
+                    .result: .string("success"),
+                    .sourceType: .string("mapzen_terrain"),
+                    .latencyBucket: .string(ProductAnalyticsBucket.latency(milliseconds: Date().timeIntervalSince(startedAt) * 1_000))
+                ]))
+                if let current = pendingActivity, current.id == activityID {
+                    pendingActivity = PendingFinishedActivity(
+                        id: current.id,
+                        summary: corrected,
+                        photos: current.photos,
+                        reflection: current.reflection,
+                        recognitionPreviews: current.recognitionPreviews,
+                        guidanceReport: current.guidanceReport
+                    )
+                }
+                return corrected
+            } catch {
+                guard !Task.isCancelled else { return originalSummary }
+                track(.init(.activityElevationCorrectionCompleted, properties: [
+                    .result: .string("fallback"),
+                    .sourceType: .string("on_device"),
+                    .latencyBucket: .string(ProductAnalyticsBucket.latency(milliseconds: Date().timeIntervalSince(startedAt) * 1_000)),
+                    .errorCategory: .string(elevationCorrectionErrorCategory(error))
+                ]))
+                return originalSummary
+            }
+        }
     }
 
     private func resumeRecording() {
         let shouldRecoverWorkoutMusic = recorder.recoveredSession
-        recorder.resume()
+        if phoneWorkoutCoordinator.watchOwnsHealthKitPersistence {
+            phoneWorkoutCoordinator.requestResume()
+        } else {
+            recorder.resume()
+        }
         guard shouldRecoverWorkoutMusic else { return }
 
         Task {
@@ -1267,48 +1368,87 @@ struct RecordView: View {
         }
     }
 
+    private func pauseRecording() {
+        if phoneWorkoutCoordinator.watchOwnsHealthKitPersistence {
+            phoneWorkoutCoordinator.requestPause(autoTriggered: recorder.autoPaused)
+        } else {
+            recorder.pause()
+        }
+    }
+
+    private func adoptWatchInitiatedSessionIfNeeded() {
+        guard recorder.state != .idle else { return }
+        activeIntent = plannedIntent ?? .freestyleRun
+        activePage = preferredSessionPage
+        isLiveWorkoutPanelExpanded = false
+        showCamera = true
+        guide.setSpeechEnabled(voiceGuideSpeechEnabled)
+        guide.activate(
+            with: guideStore.profile,
+            persona: guideCatalog.selectedPersona,
+            sessionIntent: activeIntent,
+            unitSystem: measurementPreferences.unitSystem,
+            weatherSnapshot: weatherStore.snapshot,
+            isIndoor: isIndoorSession,
+            challenge: .off,
+            suppressedMomentTypes: guideCatalog.suppressedMomentTypes(
+                for: guideCatalog.selection.coachingContract
+            )
+        )
+        updateLiveActivity(snapshot: recorder.liveSnapshot, state: recorder.state, intent: activeIntent)
+    }
+
     private func savePendingActivity(
         _ activity: PendingFinishedActivity,
         photos: [(UIImage, PhotoMetadata)],
         reflection: FinishReflection
     ) async -> Bool {
+        let correctedSummary = await elevationCorrectionTask?.value ?? activity.summary
+        let resolvedActivity = PendingFinishedActivity(
+            id: activity.id,
+            summary: correctedSummary,
+            photos: activity.photos,
+            reflection: activity.reflection,
+            recognitionPreviews: activity.recognitionPreviews,
+            guidanceReport: activity.guidanceReport
+        )
         let eligibility = ActivitySaveEligibility.evaluate(
-            durationSecs: activity.summary.durationSecs,
-            distanceM: activity.summary.distanceM
+            durationSecs: resolvedActivity.summary.durationSecs,
+            distanceM: resolvedActivity.summary.distanceM
         )
         guard eligibility == .eligible else {
             ActivityDiagnosticLog.notice(
                 .persistence,
-                "Post-run save blocked eligibility=too_short duration=\(ActivityDiagnosticLog.durationBucket(seconds: activity.summary.durationSecs)) distance=\(ActivityDiagnosticLog.distanceBucket(meters: activity.summary.distanceM))"
+                "Post-run save blocked eligibility=too_short duration=\(ActivityDiagnosticLog.durationBucket(seconds: resolvedActivity.summary.durationSecs)) distance=\(ActivityDiagnosticLog.distanceBucket(meters: resolvedActivity.summary.distanceM))"
             )
             return false
         }
 
         let priorActivities = activityStore.activities
-        let previewProgress = goalStore.previewProgress(with: activity.summary, activities: priorActivities)
+        let previewProgress = goalStore.previewProgress(with: resolvedActivity.summary, activities: priorActivities)
         let savedActivityType = activeIntent?.resolvedActivityType ?? .running
         let savedSport = SportType(activityType: savedActivityType)
         let energyKilocalories = WorkoutCalorieEstimator.estimate(
-            for: activity.summary,
+            for: resolvedActivity.summary,
             activityType: savedActivityType,
             weightKilograms: onboardingStore.latestWeightKilograms
         ).kilocalories
         let followedRoute = activeIntent?.preparedRoute.map { route in
             FollowedRouteMetadata(
                 route: route,
-                finalProgress: activity.summary.routeGuidance?.progressFraction ?? 0,
-                arrived: activity.summary.routeGuidance?.hasArrived ?? false
+                finalProgress: resolvedActivity.summary.routeGuidance?.progressFraction ?? 0,
+                arrived: resolvedActivity.summary.routeGuidance?.hasArrived ?? false
             )
         }
 
         ActivityDiagnosticLog.notice(
             .persistence,
-            "Post-run save requested type=\(savedActivityType.rawValue) duration=\(ActivityDiagnosticLog.durationBucket(seconds: activity.summary.durationSecs)) distance=\(ActivityDiagnosticLog.distanceBucket(meters: activity.summary.distanceM)) photos=\(ActivityDiagnosticLog.countBucket(photos.count)) recovered=\(didRestoreSession)"
+            "Post-run save requested type=\(savedActivityType.rawValue) duration=\(ActivityDiagnosticLog.durationBucket(seconds: resolvedActivity.summary.durationSecs)) distance=\(ActivityDiagnosticLog.distanceBucket(meters: resolvedActivity.summary.distanceM)) photos=\(ActivityDiagnosticLog.countBucket(photos.count)) recovered=\(didRestoreSession)"
         )
         let savedActivity: SavedActivity
         do {
             savedActivity = try await activityStore.save(
-                summary: activity.summary,
+                summary: resolvedActivity.summary,
                 photos: photos,
                 activityType: savedActivityType,
                 reflection: reflection,
@@ -1320,12 +1460,13 @@ struct RecordView: View {
                 source: .outboundRecorded,
                 gear: savedActivityType == .running ? gearStore.attachment(for: selectedSessionShoe) : nil,
                 indoor: isIndoorSession ? ActivityIndoorMetadata(isIndoor: true, mode: "treadmill") : nil,
-                heartRateZones: heartRateZones(from: activity.summary),
+                heartRateZones: resolvedActivity.summary.heartRateZones,
+                recordingSession: resolvedRecordingSession(for: resolvedActivity.summary),
                 activityEventID: activeIntent?.activityEvent?.id == socialStore.recordingActivityEventID
                     ? socialStore.recordingActivityEventID
                     : nil,
                 followedRoute: followedRoute,
-                recognitionBadgeIDs: activity.recognitionPreviews.map(\.badgeID)
+                recognitionBadgeIDs: resolvedActivity.recognitionPreviews.map(\.badgeID)
             )
         } catch {
             ActivityDiagnosticLog.error(
@@ -1335,7 +1476,7 @@ struct RecordView: View {
             return false
         }
         ActivityDiagnosticLog.notice(.persistence, "Post-run save completed local_state=durable")
-        var savedProperties = outcomeProperties(for: activity.summary)
+        var savedProperties = outcomeProperties(for: resolvedActivity.summary)
         savedProperties[.activityType] = .string(savedActivityType.rawValue)
         savedProperties[.goalType] = .string(analyticsGoalType)
         savedProperties[.photoCountBucket] = .string(ProductAnalyticsBucket.count(photos.count))
@@ -1355,12 +1496,14 @@ struct RecordView: View {
         }
         _ = socialStore.consumeRecordingActivityEventID()
 
-        Task {
-            try? await HealthKitService().saveWorkout(
-                savedActivity,
-                sport: savedSport,
-                energyKilocalories: energyKilocalories.map(Double.init)
-            )
+        if savedActivity.recordingSession?.healthKitOwnership != .appleWatchPrimary {
+            Task {
+                try? await HealthKitService().saveWorkout(
+                    savedActivity,
+                    sport: savedSport,
+                    energyKilocalories: energyKilocalories.map(Double.init)
+                )
+            }
         }
 
         if let workoutReference = activeIntent?.workoutReference,
@@ -1369,13 +1512,13 @@ struct RecordView: View {
                 id: workoutReference.id,
                 request: PlannedWorkoutCompletionRequest(
                     activityId: nil,
-                    completedAt: activity.summary.endedAt,
-                    durationSeconds: activity.summary.durationSecs,
-                    distanceMeters: activity.summary.distanceM,
+                    completedAt: resolvedActivity.summary.endedAt,
+                    durationSeconds: resolvedActivity.summary.durationSecs,
+                    distanceMeters: resolvedActivity.summary.distanceM,
                     targetCalories: activeIntent?.targetCalories,
                     energyKilocalories: energyKilocalories,
-                    avgPace: activity.summary.avgPace,
-                    avgHeartRate: activity.summary.healthMetrics?.averageHeartRateBPM,
+                    avgPace: resolvedActivity.summary.avgPace,
+                    avgHeartRate: resolvedActivity.summary.healthMetrics?.averageHeartRateBPM,
                     completionQuality: "completed"
                 )
             )
@@ -1422,6 +1565,8 @@ struct RecordView: View {
 
     private func clearPending(recoveryReason: ActiveSessionClearReason) {
         cancelStartCountdown(returnToSetup: true)
+        elevationCorrectionTask?.cancel()
+        elevationCorrectionTask = nil
         pendingActivity = nil
         isLiveWorkoutPanelExpanded = false
         capturedPhotos = []
@@ -1442,6 +1587,7 @@ struct RecordView: View {
         intentBeforeSelectedRoute = nil
         selectedRouteDistanceMeters = nil
         selectedGuidanceChallenge = .off
+        phoneWorkoutCoordinator.clearCompletedSession()
 #if DEBUG
         isRunSimulationEnabled = false
 #endif
@@ -1717,71 +1863,11 @@ struct RecordView: View {
             HStack(spacing: 10) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 10) {
-                        setupUtilityButton(
-                            title: String(localized: "record.setup.music", defaultValue: "Music"),
-                            value: musicSetupValue,
-                            isConfigured: musicIsConfigured
-                        ) {
-                            trackFeatureExposure("music")
-                            dismissMusicDiscoveryTip(result: "opened")
-                            setupSheet = .music
-                        }
-                        .coordinatedTooltip(
-                            .musicDiscovery,
-                            isEligible: canRequestMusicDiscoveryTip,
-                            text: String(localized: "record.music.discovery.tip", defaultValue: "Tap to add music"),
-                            arrowEdge: .bottom
-                        )
-
-                        setupUtilityButton(
-                            title: String(localized: "record.voice_guide.title", defaultValue: "Voice Guide"),
-                            value: isVoiceGuideExplicitlyUnavailable
-                                ? String(localized: "record.voice_guide.unavailable.short", defaultValue: "Unavailable")
-                                : (isVoiceGuideEnabled
-                                    ? String(localized: "common.on", defaultValue: "On")
-                                    : String(localized: "common.off", defaultValue: "Off")),
-                            isConfigured: voiceGuideSpeechEnabled
-                        ) {
-                            tooltipCoordinator.dismiss(.voiceGuide, outcome: "opened")
-                            setVoiceGuideEnabled(
-                                isVoiceGuideExplicitlyUnavailable ? true : !isVoiceGuideEnabled
-                            )
-                        }
-                        .coordinatedTooltip(
-                            .voiceGuide,
-                            isEligible: isVisible && !showCamera && activityStore.activities.count == 1,
-                            text: String(localized: "tooltip.voice_guide", defaultValue: "Get coaching cues while you move"),
-                            arrowEdge: .bottom
-                        )
-
-                        setupUtilityButton(
-                            title: String(localized: "record.setup.cheer_me_on", defaultValue: "Cheer me on"),
-                            value: liveTrackValue,
-                            isConfigured: liveShareStore.isArmedForNextActivity
-                        ) {
-                            tooltipCoordinator.dismiss(.cheerMeOn, outcome: "opened")
-                            showsTrustedContacts = true
-                        }
-                        .coordinatedTooltip(
-                            .cheerMeOn,
-                            isEligible: isVisible && !showCamera && socialStore.connections.contains { $0.status == "accepted" },
-                            text: String(localized: "tooltip.cheer_me_on", defaultValue: "Invite loved ones to follow along and cheer you on"),
-                            arrowEdge: .bottom
-                        )
-
+                        launchMusicControl
+                        launchVoiceGuideControl
+                        launchCheerMeOnControl
                         launchShoeControl
-
-                        setupUtilityButton(
-                            title: indoorOutdoorLabel,
-                            value: indoorOutdoorLabel,
-                            isConfigured: true
-                        ) {
-                            isIndoorSession.toggle()
-                            track(.init(.activityConfigurationChanged, properties: [
-                                .changeType: .string("environment"),
-                                .selectionType: .string(isIndoorSession ? "indoor" : "outdoor")
-                            ]))
-                        }
+                        launchEnvironmentControl
                     }
                     .padding(.leading, 16)
                     .padding(.trailing, isEmbeddedInToday ? 16 : 0)
@@ -1803,6 +1889,81 @@ struct RecordView: View {
         .frame(height: ActivityLaunchLayout.dockHeight)
         .background(.ultraThickMaterial)
         .overlay(alignment: .top) { Divider() }
+    }
+
+    // Keep each utility's concrete SwiftUI type out of the LazyHStack tuple. The
+    // combined tooltip modifier types can otherwise overflow Swift's runtime
+    // metadata resolver when this dock is embedded in Today on a physical device.
+    private var launchMusicControl: AnyView {
+        AnyView(setupUtilityButton(
+            title: String(localized: "record.setup.music", defaultValue: "Music"),
+            value: musicSetupValue,
+            isConfigured: musicIsConfigured
+        ) {
+            trackFeatureExposure("music")
+            dismissMusicDiscoveryTip(result: "opened")
+            setupSheet = .music
+        }
+        .coordinatedTooltip(
+            .musicDiscovery,
+            isEligible: canRequestMusicDiscoveryTip,
+            text: String(localized: "record.music.discovery.tip", defaultValue: "Tap to add music"),
+            arrowEdge: .bottom
+        ))
+    }
+
+    private var launchVoiceGuideControl: AnyView {
+        AnyView(setupUtilityButton(
+            title: String(localized: "record.voice_guide.title", defaultValue: "Voice Guide"),
+            value: isVoiceGuideExplicitlyUnavailable
+                ? String(localized: "record.voice_guide.unavailable.short", defaultValue: "Unavailable")
+                : (isVoiceGuideEnabled
+                    ? String(localized: "common.on", defaultValue: "On")
+                    : String(localized: "common.off", defaultValue: "Off")),
+            isConfigured: voiceGuideSpeechEnabled
+        ) {
+            tooltipCoordinator.dismiss(.voiceGuide, outcome: "opened")
+            setVoiceGuideEnabled(
+                isVoiceGuideExplicitlyUnavailable ? true : !isVoiceGuideEnabled
+            )
+        }
+        .coordinatedTooltip(
+            .voiceGuide,
+            isEligible: isVisible && !showCamera && activityStore.activities.count == 1,
+            text: String(localized: "tooltip.voice_guide", defaultValue: "Get coaching cues while you move"),
+            arrowEdge: .bottom
+        ))
+    }
+
+    private var launchCheerMeOnControl: AnyView {
+        AnyView(setupUtilityButton(
+            title: String(localized: "record.setup.cheer_me_on", defaultValue: "Cheer me on"),
+            value: liveTrackValue,
+            isConfigured: liveShareStore.isArmedForNextActivity
+        ) {
+            tooltipCoordinator.dismiss(.cheerMeOn, outcome: "opened")
+            showsTrustedContacts = true
+        }
+        .coordinatedTooltip(
+            .cheerMeOn,
+            isEligible: isVisible && !showCamera && socialStore.connections.contains { $0.status == "accepted" },
+            text: String(localized: "tooltip.cheer_me_on", defaultValue: "Invite loved ones to follow along and cheer you on"),
+            arrowEdge: .bottom
+        ))
+    }
+
+    private var launchEnvironmentControl: AnyView {
+        AnyView(setupUtilityButton(
+            title: indoorOutdoorLabel,
+            value: indoorOutdoorLabel,
+            isConfigured: true
+        ) {
+            isIndoorSession.toggle()
+            track(.init(.activityConfigurationChanged, properties: [
+                .changeType: .string("environment"),
+                .selectionType: .string(isIndoorSession ? "indoor" : "outdoor")
+            ]))
+        })
     }
 
     private var launchGoalPillRow: some View {
@@ -1956,7 +2117,7 @@ struct RecordView: View {
                 isConfigured: false
             ) {
                 tooltipCoordinator.dismiss(.shoes, outcome: "opened")
-                isAddShoePresented = true
+                openAddShoe()
             }
             .coordinatedTooltip(
                 .shoes,
@@ -1966,15 +2127,20 @@ struct RecordView: View {
             ))
         } else {
             AnyView(Menu {
-                ForEach(gearStore.activeShoes) { shoe in
-                    Button(shoe.displayName) {
+                ForEach(sessionShoeMenuItems) { shoe in
+                    Button {
                         selectedSessionShoeID = shoe.id
                         track(.init(.shoeSelected, properties: [.selectionType: .string("active_shoe")]))
+                    } label: {
+                        shoeMenuLabel(shoe)
                     }
                 }
-                Button(String(localized: "common.none", defaultValue: "None")) {
-                    selectedSessionShoeID = nil
-                    track(.init(.shoeSelected, properties: [.selectionType: .string("none")]))
+                Divider()
+                Button(action: openAddShoe) {
+                    Label(
+                        String(localized: "record.shoes.new", defaultValue: "New Shoe"),
+                        systemImage: "plus"
+                    )
                 }
             } label: {
                 utilityButtonLabel(
@@ -1982,6 +2148,7 @@ struct RecordView: View {
                     isConfigured: selectedSessionShoe != nil
                 )
             }
+            .menuOrder(.fixed)
             .accessibilityLabel(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
             .accessibilityValue(selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None")))
         }
@@ -2353,16 +2520,23 @@ struct RecordView: View {
                 systemImage: "shoeprints.fill",
                 isConfigured: false,
                 accessibilityValue: String(localized: "record.shoes.none_accessibility", defaultValue: "No shoes configured")
-            ) { isAddShoePresented = true }
+            ) { openAddShoe() }
         } else {
             Menu {
-                ForEach(gearStore.activeShoes) { shoe in
+                ForEach(sessionShoeMenuItems) { shoe in
                     Button {
                         selectedSessionShoeID = shoe.id
                         track(.init(.shoeSelected, properties: [.selectionType: .string("active_shoe")]))
                     } label: {
-                        Text(shoe.displayName)
+                        shoeMenuLabel(shoe)
                     }
+                }
+                Divider()
+                Button(action: openAddShoe) {
+                    Label(
+                        String(localized: "record.shoes.new", defaultValue: "New Shoe"),
+                        systemImage: "plus"
+                    )
                 }
             } label: {
                 ZStack(alignment: .bottomTrailing) {
@@ -2370,6 +2544,7 @@ struct RecordView: View {
                     if selectedSessionShoe != nil { configuredBadge }
                 }
             }
+            .menuOrder(.fixed)
             .accessibilityLabel(String(localized: "record.setup.shoes", defaultValue: "Shoes"))
             .accessibilityValue(selectedSessionShoe?.displayName ?? String(localized: "common.none", defaultValue: "None"))
         }
@@ -2754,6 +2929,17 @@ struct RecordView: View {
         Task { await analyticsManager.track(event) }
     }
 
+    private func elevationCorrectionErrorCategory(_ error: Error) -> String {
+        if case let APIError.http(statusCode, _, _) = error {
+            return "http_\(statusCode)"
+        }
+        if error is DecodingError { return "decoding" }
+        if let urlError = error as? URLError {
+            return urlError.code == .notConnectedToInternet ? "offline" : "network"
+        }
+        return "invalid_response"
+    }
+
     private var isVoiceGuideExplicitlyUnavailable: Bool {
         guideCatalog.liveCoachAudioMode == .disabled
     }
@@ -2816,6 +3002,7 @@ struct RecordView: View {
         guard !didTrackSetupView else { return }
         didTrackSetupView = true
         track(.init(.activitySetupViewed, properties: [.entrySource: .string(analyticsEntrySource)]))
+        track(.init(.watchFeatureExposed, properties: [.sourceType: .string("iphone")]))
         ["music", "routes", "shoes", "photos", "group_run"].forEach(trackFeatureExposure)
     }
 
@@ -3422,24 +3609,32 @@ struct RecordView: View {
     private var gearSetupMenu: some View {
         if gearStore.activeShoes.isEmpty {
             Button {
-                isAddShoePresented = true
+                openAddShoe()
             } label: {
                 compactSetupLabel(title: "Shoes", value: "Add shoes", systemImage: "shoeprints.fill")
             }
             .buttonStyle(.plain)
         } else {
             Menu {
-                ForEach(gearStore.activeShoes) { shoe in
+                ForEach(sessionShoeMenuItems) { shoe in
                     Button {
                         selectedSessionShoeID = shoe.id
                         track(.init(.shoeSelected, properties: [.selectionType: .string("active_shoe")]))
                     } label: {
-                        Text(shoe.displayName)
+                        shoeMenuLabel(shoe)
                     }
+                }
+                Divider()
+                Button(action: openAddShoe) {
+                    Label(
+                        String(localized: "record.shoes.new", defaultValue: "New Shoe"),
+                        systemImage: "plus"
+                    )
                 }
             } label: {
                 compactSetupLabel(title: "Shoes", value: selectedSessionShoe?.displayName ?? "None", systemImage: "shoeprints.fill")
             }
+            .menuOrder(.fixed)
             .buttonStyle(.plain)
             .accessibilityLabel(String(localized: "record.shoes.change", defaultValue: "Change shoes"))
         }
@@ -3453,34 +3648,53 @@ struct RecordView: View {
         return gearStore.defaultShoe
     }
 
+    private var sessionShoeMenuItems: [GearItem] {
+        var shoes = gearStore.activeShoes
+        guard let selectedShoeID = selectedSessionShoe?.id,
+              let selectedIndex = shoes.firstIndex(where: { $0.id == selectedShoeID }) else {
+            return shoes
+        }
+        let selectedShoe = shoes.remove(at: selectedIndex)
+        shoes.insert(selectedShoe, at: 0)
+        return shoes
+    }
+
+    @ViewBuilder
+    private func shoeMenuLabel(_ shoe: GearItem) -> some View {
+        if shoe.id == selectedSessionShoe?.id {
+            Label(shoe.displayName, systemImage: "checkmark")
+        } else {
+            Text(shoe.displayName)
+        }
+    }
+
+    private func openAddShoe() {
+        track(.init(.shoeSelected, properties: [.selectionType: .string("add_new")]))
+        isAddShoePresented = true
+    }
+
     private func applyDefaultSessionShoeIfNeeded() {
         guard !didApplyDefaultSessionShoe else { return }
         selectedSessionShoeID = gearStore.defaultShoe?.id
         didApplyDefaultSessionShoe = true
     }
 
-    private func heartRateZones(from summary: ActivitySummary) -> ActivityHeartRateZoneSummary? {
-        guard let averageHeartRate = summary.healthMetrics?.averageHeartRateBPM else { return nil }
-        let estimatedMax = 190
-        let bounds = [
-            (1, 0.50, 0.60),
-            (2, 0.60, 0.70),
-            (3, 0.70, 0.80),
-            (4, 0.80, 0.90),
-            (5, 0.90, 1.01)
-        ]
-        let zones = bounds.map { index, lower, upper in
-            let lowerBPM = Int((Double(estimatedMax) * lower).rounded())
-            let upperBPM = upper >= 1 ? nil : Int((Double(estimatedMax) * upper).rounded())
-            let containsAverage = averageHeartRate >= lowerBPM && (upperBPM.map { averageHeartRate < $0 } ?? true)
-            return ActivityHeartRateZone(
-                index: index,
-                lowerBoundBPM: lowerBPM,
-                upperBoundBPM: upperBPM,
-                seconds: containsAverage ? summary.durationSecs : 0
+    private func resolvedRecordingSession(for summary: ActivitySummary) -> ActivityRecordingSessionMetadata? {
+        guard var metadata = phoneWorkoutCoordinator.recordingMetadata()
+            ?? summary.sessionMetadata else {
+            return nil
+        }
+        if metadata.healthKitOwnership == .appleWatchPrimary {
+            metadata = ActivityRecordingSessionMetadata(
+                sessionUUID: metadata.sessionUUID,
+                origin: metadata.origin,
+                recordingDevice: metadata.recordingDevice,
+                healthKitOwnership: metadata.healthKitOwnership,
+                healthKitWorkoutExternalReference: phoneWorkoutCoordinator.savedWorkoutExternalReference
+                    ?? metadata.healthKitWorkoutExternalReference
             )
         }
-        return ActivityHeartRateZoneSummary(estimatedMaxHeartRate: estimatedMax, zones: zones)
+        return metadata
     }
 
     private func sessionGoalCard(for intent: SessionIntent) -> some View {
@@ -4897,12 +5111,28 @@ struct ActivityLaunchMap: View {
 }
 
 private struct PendingFinishedActivity: Identifiable {
-    let id = UUID()
+    let id: UUID
     let summary: ActivitySummary
     let photos: [(UIImage, PhotoMetadata)]
     let reflection: FinishReflection
     let recognitionPreviews: [RecognitionPreview]
     let guidanceReport: LiveGuidanceSessionReport
+
+    init(
+        id: UUID = UUID(),
+        summary: ActivitySummary,
+        photos: [(UIImage, PhotoMetadata)],
+        reflection: FinishReflection,
+        recognitionPreviews: [RecognitionPreview],
+        guidanceReport: LiveGuidanceSessionReport
+    ) {
+        self.id = id
+        self.summary = summary
+        self.photos = photos
+        self.reflection = reflection
+        self.recognitionPreviews = recognitionPreviews
+        self.guidanceReport = guidanceReport
+    }
 }
 
 struct StatBlock: View {

@@ -256,7 +256,7 @@ Existing iOS Firebase Google code is deleted rather than retained as dead code. 
 ### Cross-device account linking
 
 - An authenticated device may create one active transfer intent with `POST /v1/auth/link-intents`; creating another consumes the older intent.
-- The server returns a 16-character grouped code and canonical `https://run.plainstride.com/account-link` URL. The code starts from 128 random bits, is stored only as a SHA-256 hash, expires after 10 minutes, and is consumed atomically once.
+- The server returns a 16-character grouped code and canonical `https://plainstride.ai/account-link` URL. The code starts from 128 random bits, is stored only as a SHA-256 hash, expires after 10 minutes, and is consumed atomically once.
 - Android redeems the intent with a verified Google ID token through `POST /v1/auth/link-intents/redeem/google`; success links that Google subject to the source user and returns a first-party session.
 - A Google subject owned by another user fails with `provider_identity_in_use`. Email is metadata only and is never used to discover or merge accounts.
 - Creation and redemption have dedicated identity/IP rate limits. Codes and URLs must never appear in analytics or server logs.

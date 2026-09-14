@@ -95,7 +95,7 @@ final class LiveShareStore: ObservableObject {
 
     func ingest(_ snapshot: ActiveSessionSnapshot) {
         guard let session = activeSession, session.isActive, snapshot.isActive else { return }
-        guard let location = snapshot.location else { return }
+        guard let request = Self.locationUpdateRequest(from: snapshot) else { return }
         guard shouldSend(snapshot: snapshot) else { return }
 
         lastSentAt = snapshot.recordedAt
@@ -105,17 +105,7 @@ final class LiveShareStore: ObservableObject {
             do {
                 let response = try await api.updateLiveShareLocation(
                     shareID: session.id,
-                    request: LiveShareLocationUpdateRequest(
-                        recordedAt: snapshot.recordedAt,
-                        latitude: location.latitude,
-                        longitude: location.longitude,
-                        altitudeM: location.altitudeMeters.isFinite ? location.altitudeMeters : nil,
-                        accuracyM: location.horizontalAccuracyMeters.isFinite ? location.horizontalAccuracyMeters : nil,
-                        elapsedSeconds: snapshot.elapsedSeconds,
-                        distanceM: snapshot.distanceMeters,
-                        currentPaceSecsPerKm: snapshot.currentPaceSecsPerKm,
-                        heartRate: snapshot.heartRate
-                    )
+                    request: request
                 )
                 await MainActor.run {
                     apply(response)
@@ -129,7 +119,8 @@ final class LiveShareStore: ObservableObject {
         }
     }
 
-    func end(now: Date = Date()) {
+    func end(finalSnapshot: ActiveSessionSnapshot? = nil, now: Date = Date()) {
+        let pendingUpdateTask = updateTask
         updateTask?.cancel()
         updateTask = nil
 
@@ -146,6 +137,16 @@ final class LiveShareStore: ObservableObject {
         lastCheerFetchAt = nil
 
         Task { [api] in
+            // A cancelled URL request may still be finishing on the server. Wait for it
+            // before writing the authoritative final metrics, then close the share.
+            await pendingUpdateTask?.value
+            if let finalSnapshot,
+               let request = Self.locationUpdateRequest(from: finalSnapshot) {
+                _ = try? await api.updateLiveShareLocation(
+                    shareID: session.id,
+                    request: request
+                )
+            }
             _ = try? await api.endLiveShare(shareID: session.id)
         }
     }
@@ -174,6 +175,23 @@ final class LiveShareStore: ObservableObject {
         session.endedAt = response.endedAt
         session.lastLocationAt = response.lastLocationAt
         activeSession = session
+    }
+
+    private static func locationUpdateRequest(
+        from snapshot: ActiveSessionSnapshot
+    ) -> LiveShareLocationUpdateRequest? {
+        guard let location = snapshot.location else { return nil }
+        return LiveShareLocationUpdateRequest(
+            recordedAt: snapshot.recordedAt,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            altitudeM: location.altitudeMeters.isFinite ? location.altitudeMeters : nil,
+            accuracyM: location.horizontalAccuracyMeters.isFinite ? location.horizontalAccuracyMeters : nil,
+            elapsedSeconds: snapshot.elapsedSeconds,
+            distanceM: snapshot.distanceMeters,
+            currentPaceSecsPerKm: snapshot.currentPaceSecsPerKm,
+            heartRate: snapshot.heartRate
+        )
     }
 
     func setSelectedConnections(_ connections: [SocialConnectionDTO]) {

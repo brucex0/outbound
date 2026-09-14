@@ -11,6 +11,7 @@ Open this when adding or changing a short, anchored discovery tooltip in the iOS
 - Discovery tips share a global budget of one presentation per calendar day. Contextual tips are exempt because they appear only after a qualifying action, but they still never overlap another tooltip.
 - Leaving a surface withdraws its candidate without acknowledging it, so it remains eligible on a later visit.
 - Existing `*_discovery_tip_dismissed_v1` values are honored when migrating older tooltips.
+- Tooltip bubbles use a compact multiline width, anchor their arrow to the nearest point on the target, and dismiss when the bubble itself is tapped.
 
 ## Add A Tooltip
 

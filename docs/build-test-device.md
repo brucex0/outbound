@@ -5,6 +5,7 @@ Open this when validating changes, installing on device, editing signing setting
 ## Signing And Entitlements
 
 - Bundle ID: `plainstride.outbound`.
+- Watch app bundle ID: `plainstride.outbound.watchkitapp`; its companion bundle ID is `plainstride.outbound`.
 - Development team in the project: Plainstride Labs Inc. (`WT54K7D7VH`).
 - Current iOS deployment target in Xcode: `18.0`.
 - Version 1 targets iPhone only (`TARGETED_DEVICE_FAMILY = 1`) and supports portrait orientation only. Revisit iPad orientation and multitasking behavior separately if iPad support is added.
@@ -12,8 +13,8 @@ Open this when validating changes, installing on device, editing signing setting
 - Both configurations include Sign in with Apple, HealthKit, and WeatherKit for the paid Plainstride Labs team.
 - Use a paid Apple Developer team before validating Apple provider sign-in on device or shipping.
 - Do not add `aps-environment`, HealthKit clinical-record access, or HealthKit background delivery unless the matching capability and implementation are required.
-- Device installs still require an Apple Development identity and iOS Development provisioning profiles for both `plainstride.outbound` and `plainstride.outbound.liveactivity`.
-- To refresh signing in Xcode: open `ios/Outbound/Outbound.xcodeproj`, go to Xcode Settings > Accounts, select the Apple ID for Plainstride Labs Inc. (`WT54K7D7VH`), use Manage Certificates to create an Apple Development certificate if needed, then select both the `Outbound` app target and `OutboundLiveActivityExtension` target and keep Automatically manage signing enabled with team `WT54K7D7VH`.
+- Device installs still require an Apple Development identity and development provisioning profiles for `plainstride.outbound`, `plainstride.outbound.liveactivity`, and `plainstride.outbound.watchkitapp`.
+- To refresh signing in Xcode: open `ios/Outbound/Outbound.xcodeproj`, go to Xcode Settings > Accounts, select the Apple ID for Plainstride Labs Inc. (`WT54K7D7VH`), use Manage Certificates to create an Apple Development certificate if needed, then select `Outbound`, `OutboundLiveActivityExtension`, and `Plainstride Watch` and keep Automatically manage signing enabled with team `WT54K7D7VH`.
 - If Xcode offers to register `Bruce main` or create/download provisioning profiles during the next build, allow it.
 
 If a device build fails because `codesign` cannot access the signing key in the login keychain, run:
@@ -38,7 +39,19 @@ Use build-only checks for normal validation. Do not run tests unless the user as
 ```sh
 xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme Outbound -destination 'generic/platform=iOS Simulator' build
 xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme Outbound -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
+xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme 'Plainstride Watch' -destination 'generic/platform=watchOS' CODE_SIGNING_ALLOWED=NO build
 ```
+
+The Watch scheme requires the matching watchOS platform component in Xcode. If the host has SDK headers but reports that watchOS is not installed, install the watchOS device platform in Xcode Settings > Components before relying on the scheme build. A compiler-only fallback can type-check the Watch and shared Swift sources against the installed SDK, but it does not validate embedding or signing.
+
+## Apple Watch Paired-Device Validation
+
+- In Xcode, select a paired iPhone + Apple Watch destination and run the `Outbound` scheme; confirm `Plainstride Watch.app` is embedded and installs on the watch.
+- Grant Health access on Apple Watch, then start once from iPhone and once from Watch. In both directions confirm one session, matching elapsed time, live BPM/effort, and pause/resume/finish from either device.
+- During an active workout, move the devices out of range or disable the connection. Confirm both surfaces say recording continues, route recording remains active on iPhone, and controls reconcile after reconnection.
+- Terminate and relaunch each app during an active workout. Confirm Watch recovers the HealthKit session and iPhone returns to the same Plainstride activity rather than creating a second record.
+- Finish while disconnected, reconnect, and confirm the delayed Apple Health workout UUID attaches to the existing activity. A later Apple Health import scan must not offer that workout again.
+- Deny Watch Health authorization or test without a paired/available Watch. After the six-second preparation window, confirm the iPhone begins a normal phone-only workout and performs its usual HealthKit write-back.
 
 After pulling the destructive pre-release Your Circle schema replacement, rebuild local backend data and generated Prisma types before launching the app:
 

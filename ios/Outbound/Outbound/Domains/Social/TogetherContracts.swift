@@ -383,6 +383,11 @@ struct TogetherActivityPhotoDTO: Codable, Sendable {
 
 struct TogetherActivityRouteDTO: Codable, Sendable {
     let geometry: TogetherActivityRouteGeometryDTO
+    let properties: TogetherActivityRoutePropertiesDTO?
+}
+
+struct TogetherActivityRoutePropertiesDTO: Codable, Sendable {
+    let elevationMetadata: ActivityElevationMetadata?
 }
 
 struct TogetherActivityRouteGeometryDTO: Codable, Sendable {

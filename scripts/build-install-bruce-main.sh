@@ -4,14 +4,17 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [[ -n "${DERIVED_DATA_PATH:-}" ]]; then
   DERIVED_DATA_PATH="$DERIVED_DATA_PATH"
+  created_derived_data=false
 else
   DERIVED_DATA_PATH="$(mktemp -d /tmp/outbound-device-derived.XXXXXX)"
+  created_derived_data=true
 fi
 TARGET_DEVICE_NAME="${TARGET_DEVICE_NAME:-Bruce main}"
 CORE_DEVICE_ID="${CORE_DEVICE_ID:-591E461F-4950-5FBD-A797-4777F1E83532}"
 SIMULATOR_ID="${SIMULATOR_ID:-}"
 BUNDLE_ID="plainstride.outbound"
 EXTENSION_BUNDLE_ID="${BUNDLE_ID}.liveactivity"
+WATCH_BUNDLE_ID="${BUNDLE_ID}.watchkitapp"
 DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM:-WT54K7D7VH}"
 PROFILE_DIRS=(
   "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
@@ -34,6 +37,16 @@ timestamp() {
 log() {
   printf '[%s] %s\n' "$(timestamp)" "$*"
 }
+
+cleanup() {
+  # Every run gets its own mktemp build directory, so nothing can reuse it once
+  # this script exits. Removing it here stops /tmp from accumulating another
+  # ~2.5 GB copy per build. Set KEEP_DERIVED_DATA=1 to keep the build products.
+  if [[ "$created_derived_data" == true && -z "${KEEP_DERIVED_DATA:-}" ]]; then
+    rm -rf -- "$DERIVED_DATA_PATH"
+  fi
+}
+trap cleanup EXIT INT TERM
 
 trap 'log "Failed at line ${LINENO}: ${BASH_COMMAND}"' ERR
 
@@ -66,7 +79,9 @@ Options:
   -h, --help        Show this help.
 
 Environment:
-  DERIVED_DATA_PATH  Optional. Defaults to a fresh temp directory under /tmp.
+  DERIVED_DATA_PATH  Optional. Defaults to a fresh temp directory under /tmp
+                     that is deleted when the script exits.
+  KEEP_DERIVED_DATA  Set to 1 to keep that temp build directory for inspection.
   TARGET_DEVICE_NAME Defaults to Bruce main.
   CORE_DEVICE_ID     Defaults to Bruce main's current CoreDevice ID.
   SIMULATOR_ID       Optional simulator UUID. Defaults to the first available
@@ -232,9 +247,14 @@ report_signing_inputs() {
     missing=true
   fi
 
+  if ! has_profile_for_bundle "$WATCH_BUNDLE_ID"; then
+    echo "Missing watchOS Development provisioning profile for ${DEVELOPMENT_TEAM}.${WATCH_BUNDLE_ID}." >&2
+    missing=true
+  fi
+
   if [[ "$missing" == true ]]; then
     echo "Continuing so xcodebuild -allowProvisioningUpdates can refresh signing from your Xcode account." >&2
-    echo "If xcodebuild still reports No Accounts, refresh signing once in Xcode for the Outbound app and Live Activity extension targets." >&2
+    echo "If xcodebuild still reports No Accounts, refresh signing once in Xcode for the Outbound app, Live Activity extension, and Plainstride Watch targets." >&2
   else
     log "Local signing inputs found"
   fi

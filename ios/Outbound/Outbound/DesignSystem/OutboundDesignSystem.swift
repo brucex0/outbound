@@ -162,15 +162,22 @@ enum OutboundPalette {
 
 struct OutboundTooltip: View {
     let text: String
+    let onDismiss: () -> Void
 
     var body: some View {
-        Text(text)
-            .font(.subheadline.weight(.semibold))
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .presentationCompactAdaptation(.popover)
+        Button(action: onDismiss) {
+            Text(text)
+                .font(.subheadline.weight(.semibold))
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 220)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(String(localized: "tooltip.dismiss.hint", defaultValue: "Dismisses this tip"))
+        .presentationCompactAdaptation(.popover)
     }
 }
 

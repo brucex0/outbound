@@ -34,11 +34,11 @@ let slides: [Slide] = [
         titleSize: 82
     ),
     Slide(
-        filename: "04-adjust-around-real-life.png",
-        title: "Adjust Any Workout\nAround Real Life",
-        subtitle: "Ask for a useful change while keeping the purpose of the workout.",
-        screenshot: "07-ai-planned-workout-light.png",
-        titleSize: 88
+        filename: "04-track-progress-and-personal-bests.png",
+        title: "AI-Powered Deep Insights\nInto Every Run",
+        subtitle: "See the patterns behind your best efforts, PR history, and race predictions.",
+        screenshot: "19-progress-records-light.png",
+        titleSize: 82
     ),
     Slide(
         filename: "05-share-live-with-trusted-people.png",
@@ -94,8 +94,13 @@ let slides: [Slide] = [
 let fileManager = FileManager.default
 let repositoryRoot = URL(fileURLWithPath: fileManager.currentDirectoryPath)
 let sourceDirectory = repositoryRoot.appendingPathComponent("artifacts/app-store-screenshots")
+let legacySourceDirectory = repositoryRoot.appendingPathComponent("artifacts/artifacts/app-store-screenshots")
 let outputDirectory = sourceDirectory.appendingPathComponent("framed-light")
-let backgroundURL = outputDirectory.appendingPathComponent("background-route-ivory.png")
+let canonicalBackgroundURL = outputDirectory.appendingPathComponent("background-route-ivory.png")
+let legacyBackgroundURL = repositoryRoot.appendingPathComponent("artifacts/artifacts/app-store-screenshots/framed-light/background-route-ivory.png")
+let backgroundURL = fileManager.fileExists(atPath: canonicalBackgroundURL.path)
+    ? canonicalBackgroundURL
+    : legacyBackgroundURL
 
 guard fileManager.fileExists(atPath: backgroundURL.path) else {
     fputs("Missing background: \(backgroundURL.path)\n", stderr)
@@ -195,7 +200,12 @@ func drawRoundedImage(_ screenshot: NSImage, top: CGFloat) {
 }
 
 func render(slide: Slide, index: Int, background: NSImage) throws {
-    guard let screenshot = NSImage(contentsOf: sourceDirectory.appendingPathComponent(slide.screenshot)) else {
+    let canonicalScreenshotURL = sourceDirectory.appendingPathComponent(slide.screenshot)
+    let legacyScreenshotURL = legacySourceDirectory.appendingPathComponent(slide.screenshot)
+    let screenshotURL = fileManager.fileExists(atPath: canonicalScreenshotURL.path)
+        ? canonicalScreenshotURL
+        : legacyScreenshotURL
+    guard let screenshot = NSImage(contentsOf: screenshotURL) else {
         throw NSError(domain: "PlainstrideScreenshots", code: 1, userInfo: [NSLocalizedDescriptionKey: "Missing screenshot: \(slide.screenshot)"])
     }
 

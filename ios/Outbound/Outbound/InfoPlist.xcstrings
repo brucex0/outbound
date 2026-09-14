@@ -78,19 +78,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride uses the camera to capture moments during your run and scan connection QR codes."
+            "value" : "Plainstride uses the camera to take profile and activity photos and scan connection QR codes."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride usa la cámara para capturar momentos durante tu carrera y escanear códigos QR de contactos."
+            "value" : "Plainstride usa la cámara para tomar fotos de perfil y de actividades, y escanear códigos QR de contactos."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "平步青云会使用相机记录跑步中的精彩时刻，并扫描跑友二维码。"
+            "value" : "平步青云会使用相机拍摄头像和运动照片，并扫描跑友二维码。"
           }
         }
       }
@@ -262,19 +262,19 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride adds activity photos to your Plainstride album."
+            "value" : "Plainstride uses your photo library to choose profile and activity photos."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Plainstride añade las fotos de tus actividades a tu álbum Plainstride."
+            "value" : "Plainstride usa tu fototeca para elegir fotos de perfil y de actividades."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "平步青云会将运动照片添加到你的平步青云相册。"
+            "value" : "平步青云会使用你的照片图库来选择头像和运动照片。"
           }
         }
       }

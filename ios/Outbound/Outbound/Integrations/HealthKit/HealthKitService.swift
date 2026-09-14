@@ -434,6 +434,10 @@ private extension HealthKitService {
     }
 
     func isOutboundWorkout(_ workout: HKWorkout) -> Bool {
+        if workout.metadata?["ai.plainstride.session_uuid"] != nil
+            || workout.sourceRevision.source.bundleIdentifier == "plainstride.watchapp" {
+            return true
+        }
         if workout.metadata?[HKMetadataKeyExternalUUID] != nil,
            workout.sourceRevision.source.bundleIdentifier == Bundle.main.bundleIdentifier {
             return true

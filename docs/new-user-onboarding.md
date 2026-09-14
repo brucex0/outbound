@@ -66,6 +66,19 @@ Selecting an authored plan remains a valid shortcut and does not need to go thro
 
 Plan setup should feel like a short conversation, not a configuration form. It can be launched from first use, the Today `Planned` control, or All Plans.
 
+The builder is evidence-aware:
+
+- new accounts describe their baseline because Plainstride has no activity evidence;
+- established accounts see one compact training-setup summary inferred from the last 28 days: activity mix, session frequency, an upper-typical session duration, and habitual weekdays;
+- partial or historical evidence may provide context but never silently establishes current fitness;
+- established accounts accept that setup in one tap or choose `Adjust it`; they do not repeat the activities, baseline, and weekly-schedule forms;
+- the same confirmation asks only whether injury, illness, travel, or schedule constraints have changed, because activity history cannot establish those safely;
+- every inferred value is visible, editable, and labeled by source.
+
+The backend classifies a baseline as established only when it contains at least six supported activities across at least three of the last four weeks and includes an activity in the last 14 days. This combines coverage and recency instead of using a single arbitrary stale-after interval. Older history remains useful context, but the builder asks for a current baseline. The inferred weekly schedule is rounded from the 28-day activity count and capped to the builder's supported 1–6 sessions before it enters any client or request contract.
+
+Plan setup uses one conversational shell backed by a deterministic state machine. The coach asks one bounded question, then presents quick replies, an appropriate structured control, or a text composer. Natural-language goal input and quick replies enter the same thread; neither silently mutates a separate form. AI receives the privacy-filtered intake context (data tier, evidence state, aggregate baseline, inferred setup, prior schedule, and remaining question IDs), extracts explicit facts, and maps them into the structured contract. Product code owns question order, validation, consent, and completion. If AI is unavailable, deterministic interpretation and the same quick replies keep the flow usable.
+
 ### 1. Objective
 
 Ask `What do you want this plan to help you achieve?`
@@ -76,9 +89,7 @@ Choose one objective—the outcome that matters most right now:
 - build endurance or go farther
 - improve speed
 - lose weight
-- maintain fitness
 - improve health and energy
-- something else
 
 Keep strength hidden as both an objective and activity until Plainstride has dedicated recording, workout generation, launching, progress, and guidance for it.
 
@@ -86,11 +97,17 @@ Do not offer `Build consistency` or `Get active regularly` as objectives. Consis
 
 Ask for event distance and date only when event preparation is selected. Treat `starting out` and `returning after a break` as starting context, not objectives.
 
+Event preparation also asks whether the runner wants to finish comfortably, perform strongly, or target a time. Non-event objectives ask for a 4-, 8-, or 12-week review horizon and an optional private description of what meaningful progress would feel like. The review horizon is a reassessment point, not an artificial end date.
+
+After a typed goal is interpreted, keep the runner's message visible, acknowledge the understood goal, and reveal the next missing structured question in the same conversation. For example, `prepare for half marathon` establishes event preparation and half-marathon distance, then asks for the event date rather than closing a modal or returning to goal choices. Quick-reply goal selection follows the same path.
+
+Only confirmed answers satisfy validation. A displayed suggestion may initialize a control, but Continue remains hidden or disabled until the runner confirms required event distance, date, intent, and target time when applicable. Confirmed answers remain tappable so the runner can revise them without restarting intake; revising an answer invalidates only that answer and any values that depend on it. On iOS, event date selection uses a dedicated calendar sheet that closes after a changed date is selected and retains a Done action to confirm the displayed date.
+
 The objective controls progression and tradeoffs. Do not collect secondary objectives until the planner can genuinely reconcile multiple competing outcomes.
 
 ### 2. Activities
 
-Ask which activities the plan should use:
+When recent evidence is not established, ask which activities the plan should use:
 
 - choose one or more activities with no primary or supporting rank
 - currently expose only `Run`, `Walk / Hike`, and `Bike`
@@ -101,7 +118,7 @@ Keep `Strength` and `Mobility` hidden until they meet that full support bar; the
 
 ### 3. Starting Point
 
-Collect only the baseline needed for the selected activities:
+When recent evidence is not established or the runner chooses `Adjust it`, collect only the baseline needed for the selected activities:
 
 - recent session frequency
 - comfortable session duration
@@ -111,7 +128,7 @@ Use observed Health or activity data when the user explicitly connects it. Keep 
 
 ### 4. Realistic Week
 
-Ask what most weeks can reliably support:
+When recent evidence is not established or the runner chooses `Adjust it`, ask what most weeks can reliably support:
 
 - `1–6 sessions per week`
 - typical time available
@@ -121,9 +138,11 @@ Ask what most weeks can reliably support:
 
 One session per week is valid. Create one meaningful anchor session and label any mobility or recovery additions as optional. Never inflate the commitment to make the plan look fuller.
 
-### 5. Optional Private Details
+### 5. Required Private Planning Details
 
-Birthday, height, weight, sex assigned at birth, and Apple Health remain optional and private. Keep the body fields manually editable; Apple Health is an optional autofill path, not a replacement for manual entry. Explain why a field helps before requesting it. Apple Health authorization occurs only after the user taps the connection action.
+Birth date, sex assigned at birth, and weight are required before a personalized plan can be created. Plainstride uses them as private planning inputs; weight also enables calorie calculations. Store birth date instead of a fixed age so age remains accurate. Height remains optional until a supported planning or calorie policy uses it.
+
+Keep every body field manually editable. Apple Health or Health Connect is an optional autofill path, not a requirement or a way to skip confirmation. Explain the planning and calorie purpose before requesting the fields. Health authorization occurs only after the user taps the connection action. These values never appear in Together, generated social content, or analytics.
 
 ### 6. Create And Present The Plan
 
@@ -156,7 +175,7 @@ Calibration means the first three relevant completed sessions, not three mandato
 
 - First launch offers the explicit `Explore first` resolution.
 - After plan setup has begun, closing it uses `Finish later` semantics and preserves the account-scoped draft locally.
-- Optional profile and Health sections have a direct `Skip` action.
+- Apple Health or Health Connect remains optional. The required private planning fields do not have a `Skip` action.
 - Exiting an explicitly launched plan setup never changes onboarding back to pending and never creates a partial active plan.
 
 ## Permission Timing
@@ -177,7 +196,11 @@ Add typed, bounded events for:
 - `onboarding_resolved`, emitted once with result `skipped` or `completed`
 - `plan_builder_opened`, with entry source `onboarding`, `planned_button`, or `all_plans`
 - `plan_builder_exited`, with a bounded step name
-- `plan_creation_completed`, with success/failure and a coarse latency bucket
+- `plan_creation_completed`, with success/failure, a coarse latency bucket, and a bounded error category on failure
+- `plan_intake_context_loaded`, with the bounded data tier
+- `plan_intake_goal_interpreted`, with success/failure, bounded source `conversation_text` or `quick_reply`, and a bounded error category on failure
+- `plan_intake_answer_edited`, with a bounded field name and source `conversation`
+- `plan_intake_baseline_confirmed`, with accepted/corrected and bounded source `recent_activities` or `recent_activity_setup`
 
 Objective and activity categories may be bounded enum values. Never send free text, body details, dates, exact measurements, constraints, workout details, or account identifiers through analytics.
 `plan_creation_completed` may include the single bounded goal type and a coarse selected-activity count bucket; it must not include profile measurements or free text.
@@ -186,6 +209,7 @@ Objective and activity categories may be bounded enum values. Never send free te
 
 - Backend account state: `backend/prisma/schema.prisma`, `backend/src/services/authSessions.ts`, and `backend/src/routes/auth.ts` own the durable `pending` / `skipped` / `completed` contract and skip mutation.
 - Backend plan creation: `backend/src/routes/planning.ts` and `backend/src/services/planning/` own structured objectives, modality mix, weekly capacity, scheduling preferences, and the adaptive 14-day starting window.
+- Adaptive intake: `GET /v1/planning/intake-context` returns the privacy-filtered evidence summary, inferred setup, and required questions. It derives habitual weekdays in the request's time zone and never sends raw activity records to the intake AI. `POST /v1/planning/intake/interpret` receives that aggregate context and extracts structured facts from one user message. `planIntake.ts` owns confidence, recency, strict AI output, and deterministic fallback behavior.
 - iOS routing and persistence: `App/OutboundApp.swift`, `App/AuthStore.swift`, `Core/AuthSession.swift`, and `App/OnboardingStore.swift` use the server status as the authority and keep account-scoped builder drafts locally.
 - Reusable iOS builder: `Features/Onboarding/SimplifiedOnboardingFlow.swift` is shared by first use, Today's `Planned` control, and the All Plans entry.
 - No-plan behavior: `App/MainTabView.swift` keeps Today in manual Run mode while `Features/Planning/TrainingPlanViews.swift` leads All Plans with `Build my plan`.

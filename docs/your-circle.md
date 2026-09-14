@@ -160,7 +160,8 @@ Keep the current Social screen and place `Your Circle` directly below Connection
 - No Circles: show one restrained creation card after Connections has loaded successfully.
 - Pending Circle: show invitation/setup status and management access.
 - One Circle: show its compact status and open the detail screen.
-- Multiple Circles: show the primary Circle first, followed by compact rows.
+- Multiple Circles: keep the Social preview to the primary Circle. An ellipsis in the section header opens the complete primary-first list.
+- Keep creation in the section header as a plus action instead of adding a second creation row below the preview.
 - Circle detail owns member progress, recent workout context, Cheers, activity planning, history, and settings.
 
 Do not rename the production Social tab or redesign the wider feed for this feature.

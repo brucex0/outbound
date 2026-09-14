@@ -5,93 +5,8 @@ import Vision
 import VisionKit
 
 struct SocialConnectionQRCodeView: View {
-    @Environment(\.analyticsManager) private var analyticsManager
-    @State private var profile: AppUserProfileDTO?
-    @State private var connectionURL: URL?
-    @State private var isLoading = true
-    @State private var hasError = false
-
     var body: some View {
-        ScrollView {
-            VStack(spacing: OutboundSpacing.standard) {
-                if let profile {
-                    OutboundCard {
-                        VStack(spacing: OutboundSpacing.compact) {
-                            SocialAvatar(name: profile.displayName, avatarURL: profile.avatarUrl)
-                            Text(profile.displayName)
-                                .font(.headline)
-                            if !profile.username.isEmpty {
-                                Text("@\(profile.username)")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                    }
-                }
-
-                OutboundCard {
-                    VStack(spacing: OutboundSpacing.standard) {
-                        if let connectionURL,
-                           let qrImage = QRCodeRenderer.image(for: connectionURL) {
-                            Image(uiImage: qrImage)
-                                .interpolation(.none)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 280, height: 280)
-                                .background(Color.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                                .accessibilityLabel(String(localized: "My Plainstride QR code"))
-
-                            Text(String(
-                                localized: "Scan this QR code to join me on Plainstride.",
-                                defaultValue: "Scan this QR code to join me on Plainstride."
-                            ))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                        } else if isLoading {
-                            ProgressView()
-                                .frame(width: 280, height: 280)
-                        } else if hasError {
-                            ContentUnavailableView(
-                                String(localized: "QR code unavailable"),
-                                systemImage: "qrcode",
-                                description: Text(String(
-                                    localized: "Could not load your connection code. Try again.",
-                                    defaultValue: "Could not load your connection code. Try again.",
-                                    table: "ConnectionQRCode"
-                                ))
-                            )
-                            .frame(height: 280)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-            }
-            .padding(OutboundSpacing.screen)
-        }
-        .background(OutboundPalette.background)
-        .navigationTitle(String(localized: "My QR Code"))
-        .navigationBarTitleDisplayMode(.inline)
-        .task { await loadCode() }
-    }
-
-    private func loadCode() async {
-        await analyticsManager?.track(.init(.profileQRCodeOpened, properties: [
-            .entrySource: .string("connections")
-        ]))
-        do {
-            async let profileRequest = APIClient.shared.fetchMyProfile()
-            async let linkRequest = APIClient.shared.createConnectionLink()
-            let (loadedProfile, link) = try await (profileRequest, linkRequest)
-            profile = loadedProfile
-            connectionURL = link.url
-        } catch {
-            hasError = true
-        }
-        isLoading = false
+        InvitationCodeView(entrySource: "connections")
     }
 }
 
@@ -233,7 +148,7 @@ struct SocialConnectionQRScannerView: View {
     private func handlePayload(_ payload: String) {
         guard !isProcessing else { return }
         guard let url = URL(string: payload),
-              let code = PlainstrideLinks.connectionCode(from: url) else {
+              let code = PlainstrideLinks.personalInvitationCode(from: url) else {
             scannerMessage = String(localized: "Not a Plainstride connection code", table: "ConnectionQRCode")
             return
         }

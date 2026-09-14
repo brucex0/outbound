@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        PhoneWorkoutSessionCoordinator.shared.installMirroringHandler()
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = self
         return true

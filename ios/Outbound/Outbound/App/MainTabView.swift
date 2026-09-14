@@ -17,6 +17,7 @@ struct MainTabView: View {
     @EnvironmentObject private var connectivityStore: ConnectivityStore
     @EnvironmentObject private var workoutNotificationScheduler: WorkoutNotificationScheduler
     @EnvironmentObject private var workoutReminderPreferences: WorkoutReminderPreferences
+    @EnvironmentObject private var phoneWorkoutCoordinator: PhoneWorkoutSessionCoordinator
     @State private var activeLaunch: RecordLaunch?
     @State private var isActivityVisible = false
     @State private var activitySessionState: ActivitySessionPortalState = .idle
@@ -70,6 +71,7 @@ struct MainTabView: View {
                 .environmentObject(measurementPreferences)
         }
         .onAppear {
+            phoneWorkoutCoordinator.bind(activityStore: activityStore)
             restoreInterruptedActivityIfNeeded()
             consumeStoredPreparedActivityIfNeeded()
             prepareTodayLaunchIfNeeded()
@@ -142,6 +144,11 @@ struct MainTabView: View {
         .onChange(of: connectivityStore.isOffline) { wasOffline, isOffline in
             guard wasOffline, !isOffline else { return }
             Task { await activityStore.syncPendingActivitiesIfNeeded() }
+        }
+        .onChange(of: phoneWorkoutCoordinator.incomingWatchSession, initial: true) { _, session in
+            guard let session else { return }
+            selectedAppTab = .today
+            presentActivity(intent: watchInitiatedIntent(session.identity))
         }
     }
 
@@ -379,6 +386,20 @@ struct MainTabView: View {
             activityTypeOverride: activityType
         )
     }
+
+    private func watchInitiatedIntent(_ identity: PlainstrideWorkoutIdentity) -> SessionIntent {
+        let activityType = ActivityType(identity.activity)
+        let sport = SportType(activityType: activityType)
+        return SessionIntent(
+            id: "watch-active-\(identity.activity.rawValue)",
+            sport: sport,
+            title: String(localized: "watch.phone.active_title", defaultValue: "Apple Watch workout"),
+            detail: String(localized: "watch.phone.active_detail", defaultValue: "Recording from Apple Watch"),
+            guideLine: String(localized: "watch.phone.active_guide", defaultValue: "Your watch is measuring the workout while Plainstride handles the live experience."),
+            startLabel: String(localized: "common.resume", defaultValue: "Resume"),
+            activityTypeOverride: activityType
+        )
+    }
 }
 
 private struct RecordLaunch: Identifiable {
@@ -412,6 +433,20 @@ private extension SportType {
         case .mixed: return nil
         case .strength: self = .strength
         case .mobility: self = .mobility
+        }
+    }
+}
+
+private extension ActivityType {
+    init(_ activity: PlainstrideWorkoutActivity) {
+        self = switch activity {
+        case .running: .running
+        case .walking: .walking
+        case .cycling: .cycling
+        case .hiking: .hiking
+        case .swimming: .swimming
+        case .strength: .strengthTraining
+        case .mobility: .mobility
         }
     }
 }
