@@ -84,117 +84,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 
-@Composable
-fun PersonalConnectionQrRoute(
-    onClose: () -> Unit,
-    viewModel: SocialViewModel = hiltViewModel(),
-) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(viewModel) { viewModel.openConnectionQr(entrySource = "me_profile_card") }
-    ConnectionQrScreen(state) {
-        viewModel.closeConnectionQr()
-        onClose()
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun ConnectionQrScreen(
-    state: SocialUiState,
-    onClose: () -> Unit,
-) = Dialog(
-    onDismissRequest = onClose,
-    properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-) {
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column {
-            TopAppBar(
-                title = { Text(stringResource(R.string.social_my_qr_code)) },
-                navigationIcon = {
-                    IconButton(onClose) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.social_close))
-                    }
-                },
-            )
-            Column(
-                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                state.connectionQr?.owner?.let { owner ->
-                    Card(
-                        Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    ) {
-                        Column(
-                            Modifier.fillMaxWidth().padding(18.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            SocialAvatar(owner, 56.dp)
-                            Text(owner.displayName, style = MaterialTheme.typography.titleMedium)
-                            owner.username?.takeIf(String::isNotBlank)?.let {
-                                Text("@$it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    }
-                }
-
-                Card(
-                    Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                ) {
-                    Box(
-                        Modifier.fillMaxWidth().heightIn(min = 344.dp).padding(24.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        when {
-                            state.connectionQr != null -> {
-                                val bitmap = remember(state.connectionQr.link.url) { qrBitmap(state.connectionQr.link.url) }
-                                if (bitmap != null) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(14.dp),
-                                    ) {
-                                        Image(
-                                            bitmap.asImageBitmap(),
-                                            stringResource(R.string.social_my_plainstride_qr_code),
-                                            Modifier.size(260.dp).background(Color.White).padding(4.dp),
-                                        )
-                                        Text(
-                                            stringResource(R.string.social_scan_this_qr_code),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                } else {
-                                    QrUnavailable()
-                                }
-                            }
-                            state.connectionQrLoading -> CircularProgressIndicator()
-                            state.connectionQrFailed -> QrUnavailable()
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun QrUnavailable() {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Icon(Icons.Outlined.QrCode, null, Modifier.size(42.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(stringResource(R.string.social_qr_code_unavailable), style = MaterialTheme.typography.titleMedium)
-        Text(
-            stringResource(R.string.social_qr_load_failure),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
 private enum class CameraState { Requesting, Ready, Denied, Unavailable }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -435,13 +324,17 @@ private fun ImageProxy.decodeQrCode(): String? {
 
 internal fun connectionCodeFromPayload(payload: String): String? {
     val uri = runCatching { Uri.parse(payload) }.getOrNull() ?: return null
-    if (uri.scheme != "https" || uri.host != "run.plainstride.com") return null
+    if (uri.scheme != "https" || uri.host != "plainstride.ai") return null
     val segments = uri.pathSegments
-    if (segments.size != 2 || segments[0] != "connect") return null
-    return segments[1].takeIf { CONNECTION_CODE.matches(it) }
+    val code = when {
+        segments.size == 2 && segments[0] == "connect" -> segments[1]
+        segments.size == 3 && segments[0] == "invite" && segments[1] == "r" -> segments[2]
+        else -> return null
+    }
+    return code.lowercase().takeIf { CONNECTION_CODE.matches(it) }
 }
 
-private fun qrBitmap(payload: String): android.graphics.Bitmap? = runCatching {
+fun personalInviteQrBitmap(payload: String): android.graphics.Bitmap? = runCatching {
     val size = 640
     val matrix = MultiFormatWriter().encode(
         payload,
@@ -484,5 +377,5 @@ private class CameraBinding(
     var analysis: ImageAnalysis? = null,
 )
 
-private val CONNECTION_CODE = Regex("[A-Za-z0-9_-]{8,64}")
+private val CONNECTION_CODE = Regex("[a-z0-9]{8}")
 private const val CAMERA_LOG_TAG = "PlainstrideQrScanner"

@@ -18,7 +18,7 @@
     <string name="auth_delete_account_and_data">Delete Account and Data</string>
     <string name="auth_delete_confirmation_body">This permanently deletes your Plainstride account, synced activities, plans, profile, social data, and locally stored Plainstride data. This cannot be undone.</string>
     <string name="auth_delete_confirmation_title">Permanently delete your account?</string>
-    <string name="auth_legal_consent">By continuing, you agree to the [Terms of Service](https://run.plainstride.com/terms) and acknowledge the [Privacy Policy](https://run.plainstride.com/privacy).</string>
+    <string name="auth_legal_consent">By continuing, you agree to the [Terms of Service](https://plainstride.ai/terms) and acknowledge the [Privacy Policy](https://plainstride.ai/privacy).</string>
     <string name="auth_sign_in_methods">Sign-in methods</string>
     <string name="auth_sign_out">Sign out</string>
     <string name="auth_sign_out_confirmation">Sign out of Plainstride?</string>

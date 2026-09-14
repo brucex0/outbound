@@ -87,7 +87,7 @@ Support pull-to-refresh of home, Connections, Circles, Circle invitations, notif
 - Profiles show avatar, display name, username, relationship-aware actions, and only shareable recognitions. Opening from any surface records only the entry source. Removal requires confirmation.
 - Add a Blocked accounts screen with refresh and unblock. Blocking a feed author immediately removes inaccessible data from visible state.
 - The add menu includes Scan QR code, Show my QR code, and Invite by link.
-- Generate/share only canonical `https://run.plainstride.com/connect/:code` URLs based on the opaque connection-link code. The QR must not contain an account ID or username.
+- Generate/share only canonical `https://plainstride.ai/connect/:code` URLs based on the opaque connection-link code. The QR must not contain an account ID or username.
 - Implement QR scanning with CameraX/ML Kit or the established Android scanner stack. Accept only the canonical HTTPS host/path, stop scanning after a valid code, and open the read-only Social profile preview.
 - Cover camera first use, denial, permanent denial with Settings recovery, unavailable hardware, invalid code, self-scan, existing/pending/accepted relationships, block conflict, offline/retry, and duplicate scan idempotency.
 - A QR scan or Universal/App Link preview never mutates the relationship. Only an explicit Connect action creates a normal pending request; it never auto-accepts. Preserve a pending Universal/App Link through authentication and clear it only after a terminal/idempotent preview result.

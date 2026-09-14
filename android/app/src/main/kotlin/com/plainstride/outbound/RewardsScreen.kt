@@ -1,6 +1,10 @@
 package com.plainstride.outbound
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,6 +15,9 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -21,6 +28,7 @@ import com.plainstride.outbound.core.analytics.AnalyticsEvent
 import com.plainstride.outbound.core.analytics.AnalyticsProperty
 import com.plainstride.outbound.core.analytics.ProductAnalytics
 import com.plainstride.outbound.core.network.*
+import com.plainstride.outbound.feature.social.personalInviteQrBitmap
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -99,6 +107,23 @@ class RewardsViewModel @Inject constructor(
             AnalyticsProperty.SelectionType to if (foundingMember) "founding" else "reward_eligible",
         )),
     )
+
+    fun inviteOpened(source: String) = analytics.record(
+        AnalyticsEvent("profile_qr_code_opened", mapOf(AnalyticsProperty.EntrySource to source)),
+    )
+
+    fun copied(source: String, foundingMember: Boolean) {
+        analytics.record(AnalyticsEvent("referral_code_copied", mapOf(
+            AnalyticsProperty.SourceType to source,
+            AnalyticsProperty.SelectionType to if (foundingMember) "founding" else "reward_eligible",
+        )))
+        mutableState.value = mutableState.value.copy(message = R.string.rewards_code_copied)
+    }
+
+    fun claimIncomingInvitation(code: String) = viewModelScope.launch {
+        val token = tokens.validAccessToken() ?: return@launch
+        runCatching { api.claimInvitation("Bearer $token", RewardCodeRequestDto(code)) }
+    }
 
     fun paywallOpened(source: String) = analytics.record(AnalyticsEvent("subscription_paywall_opened", mapOf(AnalyticsProperty.EntrySource to source)))
 
@@ -295,10 +320,15 @@ class RewardsViewModel @Inject constructor(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun InvitationCodeRoute(onBack: () -> Unit, viewModel: RewardsViewModel = hiltViewModel()) {
+@Composable fun InvitationCodeRoute(
+    onBack: () -> Unit,
+    entrySource: String = "me_invitation_code",
+    viewModel: RewardsViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(entrySource) { viewModel.inviteOpened(entrySource) }
     state.message?.let { message ->
         LaunchedEffect(message) {
             snackbar.showSnackbar(context.getString(message))
@@ -312,9 +342,44 @@ class RewardsViewModel @Inject constructor(
             state.status?.let { status ->
                 val referral = status.referral
                 val program = status.referralProgram
-                item { ListItem(headlineContent = { Text(stringResource(R.string.rewards_your_code)) }, supportingContent = { Text(referral.code) }) }
+                item {
+                    val bitmap = remember(referral.shareURL) { personalInviteQrBitmap(referral.shareURL) }
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(
+                            Modifier.fillMaxWidth().padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(14.dp),
+                        ) {
+                            bitmap?.let {
+                                Image(
+                                    it.asImageBitmap(),
+                                    stringResource(R.string.rewards_qr_accessibility),
+                                    Modifier.size(260.dp).background(Color.White).padding(4.dp),
+                                )
+                            }
+                            Text(
+                                stringResource(R.string.rewards_scan_invite, program.inviteeRewardDays),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+                item {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.rewards_your_code)) },
+                        supportingContent = { Text(referral.code, style = MaterialTheme.typography.headlineSmall) },
+                        trailingContent = {
+                            TextButton(onClick = {
+                                context.getSystemService(ClipboardManager::class.java)
+                                    .setPrimaryClip(ClipData.newPlainText(context.getString(R.string.rewards_your_code), referral.code))
+                                viewModel.copied(entrySource, program.foundingMember)
+                            }) { Text(stringResource(R.string.rewards_copy_code)) }
+                        },
+                    )
+                }
                 item { Button(onClick = {
-                    viewModel.shared("me_invitation_code", program.foundingMember)
+                    viewModel.shared(entrySource, program.foundingMember)
                     context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
                         putExtra(

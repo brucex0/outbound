@@ -9,6 +9,9 @@ import com.plainstride.outbound.core.network.AccountApiService
 import com.plainstride.outbound.core.network.ApiResult
 import com.plainstride.outbound.core.network.CreateTrainingGoalRequest
 import com.plainstride.outbound.core.network.PlanningApiService
+import com.plainstride.outbound.core.network.PlanIntakeContext
+import com.plainstride.outbound.core.network.PlanIntakeInterpretRequest
+import com.plainstride.outbound.core.network.PlanIntakeInterpretation
 import com.plainstride.outbound.core.network.TrainingProfileRequest
 import com.plainstride.outbound.core.network.UpdateAccountRequest
 import com.plainstride.outbound.core.network.apiCall
@@ -78,6 +81,12 @@ class DefaultOnboardingRepository @Inject constructor(
                     baselineContext = input.baselineContext.wireValue,
                     targetDate = input.eventDate.takeIf { input.objective == PlanObjective.EventPreparation },
                     targetDistanceMeters = input.eventDistanceMeters.takeIf { input.objective == PlanObjective.EventPreparation },
+                    eventIntent = input.eventIntent.takeIf { input.objective == PlanObjective.EventPreparation },
+                    targetTimeSeconds = input.targetTimeSeconds.takeIf { input.objective == PlanObjective.EventPreparation },
+                    reviewHorizonWeeks = input.reviewHorizonWeeks.takeUnless { input.objective == PlanObjective.EventPreparation },
+                    successSignal = input.successSignal.takeIf(String::isNotBlank),
+                    goalDescription = input.goalDescription.takeIf(String::isNotBlank),
+                    intakeContextVersion = input.intakeContextVersion,
                     priority = if (input.objective == PlanObjective.EventPreparation) "finish" else "generalHealth",
                     preferredDays = input.preferredDays,
                     daysPerWeekTarget = input.sessionsPerWeek,
@@ -85,11 +94,18 @@ class DefaultOnboardingRepository @Inject constructor(
                     riskTolerance = if (input.baselineContext == PlanBaselineContext.ReturningAfterBreak) "conservative" else "balanced",
                     constraints = buildMap {
                         input.constraints.takeIf(String::isNotBlank)?.let { put("notes", it) }
-                        input.otherObjective.takeIf(String::isNotBlank)?.let { put("otherObjective", it) }
                     },
                 ),
             )
         }.valueOrThrow()
+    }
+
+    override suspend fun planIntakeContext(objective: PlanObjective?): Result<PlanIntakeContext> = runCatching {
+        apiCall { personalization.planIntakeContext(authorization(), objective?.wireValue) }.valueOrThrow()
+    }
+
+    override suspend fun interpretPlanIntake(input: PlanIntakeInterpretRequest): Result<PlanIntakeInterpretation> = runCatching {
+        apiCall { personalization.interpretPlanIntake(authorization(), input) }.valueOrThrow()
     }
 
     private suspend fun authorization(): String = sessions.validAccessToken()?.let { "Bearer $it" } ?: throw OnboardingDataException.SignedOut
@@ -115,9 +131,7 @@ private val PlanObjective.wireValue: String get() = when (this) {
     PlanObjective.Endurance -> "endurance"
     PlanObjective.Speed -> "speed"
     PlanObjective.WeightLoss -> "weightLoss"
-    PlanObjective.FitnessMaintenance -> "fitnessMaintenance"
     PlanObjective.HealthEnergy -> "healthEnergy"
-    PlanObjective.Other -> "other"
 }
 
 private val PlanBaselineContext.wireValue: String get() = when (this) {
@@ -129,12 +143,11 @@ private val PlanBaselineContext.wireValue: String get() = when (this) {
 private val PlanObjective.primaryMotivation: PrimaryMotivation get() = when (this) {
     PlanObjective.EventPreparation, PlanObjective.Endurance, PlanObjective.Speed -> PrimaryMotivation.performance
     PlanObjective.WeightLoss -> PrimaryMotivation.weightLoss
-    PlanObjective.FitnessMaintenance -> PrimaryMotivation.weightMaintenance
-    PlanObjective.HealthEnergy, PlanObjective.Other -> PrimaryMotivation.generalFitness
+    PlanObjective.HealthEnergy -> PrimaryMotivation.generalFitness
 }
 
 private val PlanObjective.preferredRunGoalType: RunGoalType get() = when (this) {
     PlanObjective.EventPreparation, PlanObjective.Endurance -> RunGoalType.distance
     PlanObjective.WeightLoss -> RunGoalType.calories
-    PlanObjective.Speed, PlanObjective.FitnessMaintenance, PlanObjective.HealthEnergy, PlanObjective.Other -> RunGoalType.time
+    PlanObjective.Speed, PlanObjective.HealthEnergy -> RunGoalType.time
 }

@@ -33,9 +33,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.serialization.json.*
 import com.plainstride.outbound.core.designsystem.*
 
-@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,inboxCount:Int=0,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onConnectionLinkConsumed:()->Unit={}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
+@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,inboxCount:Int=0,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onConnectionLinkConsumed:()->Unit={}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
     var createCircle by rememberSaveable { mutableStateOf(false) };var inviteCircle by remember { mutableStateOf<CircleSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var connectionsOpen by rememberSaveable { mutableStateOf(false) };var selectedActivity by remember { mutableStateOf<FeedActivity?>(null) }
-    var connectionQrOpen by rememberSaveable { mutableStateOf(false) }
     var scannerOpen by rememberSaveable { mutableStateOf(false) }
     var scannerFeedback by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
@@ -86,13 +85,12 @@ import com.plainstride.outbound.core.designsystem.*
         openProfile = viewModel::openProfile,
         reviewInvitation = { invitation -> viewModel.openTarget("invitation", invitation.id) },
         scanQr = { scannerFeedback = null; scannerOpen = true },
-        showQr = { connectionQrOpen = true; viewModel.openConnectionQr() },
+        showQr = { connectionsOpen = false; onMyInvite() },
         inviteByLink = viewModel::inviteByLink,
         acceptRequest = { person -> person.connectionId?.let(viewModel::acceptConnection) },
         declineRequest = { person -> person.connectionId?.let(viewModel::removeConnection) },
         close = { connectionsOpen = false },
     )
-    if (connectionQrOpen) ConnectionQrScreen(state) { connectionQrOpen = false; viewModel.closeConnectionQr() }
     if (scannerOpen) ConnectionQrScannerScreen(
         isProcessing = state.connectionProfileLoading,
         serverMessage = scannerFeedback,

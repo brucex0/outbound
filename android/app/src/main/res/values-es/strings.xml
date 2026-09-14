@@ -100,9 +100,13 @@
     <string name="rewards_invite">Invitar a amigos</string>
     <string name="rewards_invite_detail">El nuevo corredor recibe %1$d días de Plus al canjear tu invitación. Tú recibes %2$d días cuando complete su primera actividad de al menos %3$d minutos.</string>
     <string name="rewards_invite_detail_founding">Los nuevos corredores que invites reciben %1$d días de Plus. Pueden canjear tu invitación durante sus primeros %2$d días después de registrarse.</string>
-    <string name="rewards_my_invitation_code">Mi código de invitación</string>
+    <string name="rewards_my_invitation_code">Mi invitación</string>
     <string name="rewards_invitation_code_body">Comparte tu invitación permanente y descubre quién empieza a moverse.</string>
     <string name="rewards_your_code">Tu código de invitación</string>
+    <string name="rewards_copy_code">Copiar</string>
+    <string name="rewards_code_copied">Código de invitación copiado</string>
+    <string name="rewards_qr_accessibility">Mi código QR de invitación a Plainstride</string>
+    <string name="rewards_scan_invite">Escanea para conectar. Los nuevos miembros que cumplan los requisitos también pueden recibir %1$d días de Plus.</string>
     <string name="rewards_share_invitation">Compartir invitación</string>
     <string name="rewards_share_message">Únete a Plainstride conmigo y recibe %1$d días de Plus: %2$s Si primero instalas Plainstride, vuelve a este mensaje y toca de nuevo el enlace después.</string>
     <string name="rewards_share_message_founding">Únete a Plainstride conmigo y recibe %1$d días de Plus: %2$s Si primero instalas Plainstride, vuelve a este mensaje y toca de nuevo el enlace después.</string>

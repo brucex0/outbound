@@ -38,7 +38,9 @@ import retrofit2.http.POST
     val referralProgram: ReferralProgramDto,
     val bankedRewardDays: Int,
     val entitlements: List<CapabilityEntitlementDto>,
+    val featureControls: RewardsFeatureControlsDto,
 )
+@Serializable data class RewardsFeatureControlsDto(val paywallEnabled: Boolean)
 @Serializable data class RewardCodeRequestDto(val code: String)
 @Serializable data class RewardRedemptionDto(
     val claimed: Boolean? = null,

@@ -257,7 +257,7 @@ private fun MeOverview(
                     IconButton(onClick = onMyQrCode) {
                         Icon(Icons.Outlined.QrCode, stringResource(SocialR.string.social_show_my_qr_code))
                     }
-                    Icon(Icons.Outlined.Edit, stringResource(R.string.edit_profile))
+                    Icon(Icons.Filled.ChevronRight, stringResource(R.string.edit_profile))
                 }
             } }
             item { benefitsContent() }
@@ -542,9 +542,9 @@ private fun SettingsScreen(
             item { settingsContent() }
             item { HorizontalDivider() }
             item { SectionTitle(stringResource(R.string.help_and_legal)) }
-            item { LegalAction(R.string.terms, "terms", "https://run.plainstride.com/terms", onLegal, uriHandler::openUri) }
-            item { LegalAction(R.string.privacy, "privacy", "https://run.plainstride.com/privacy", onLegal, uriHandler::openUri) }
-            item { LegalAction(R.string.support, "support", "https://run.plainstride.com/support", onLegal, uriHandler::openUri) }
+            item { LegalAction(R.string.terms, "terms", "https://plainstride.ai/terms", onLegal, uriHandler::openUri) }
+            item { LegalAction(R.string.privacy, "privacy", "https://plainstride.ai/privacy", onLegal, uriHandler::openUri) }
+            item { LegalAction(R.string.support, "support", "https://plainstride.ai/support", onLegal, uriHandler::openUri) }
             if (debugToolsEnabled) item { SettingsAction(R.string.replay_onboarding, Icons.Outlined.Refresh, onReplayOnboarding) }
             item { ListItem(headlineContent = { Text(stringResource(R.string.version)) }, supportingContent = { Text(appVersion) }) }
             item { Text(stringResource(R.string.privacy_note), Modifier.padding(20.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }

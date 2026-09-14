@@ -1,5 +1,14 @@
 # iOS Onboarding Parity
 
+## Adaptive Plan Intake
+
+- Android and iOS consume the same `GET /v1/planning/intake-context` evidence and question contract.
+- Both accept a natural-language goal through `POST /v1/planning/intake/interpret` while retaining structured controls as fallback.
+- Established runners confirm an editable 28-day baseline; new or insufficient-data runners answer the full baseline questions.
+- Event goals collect date, distance, and finish/performance/time intent. Generic goals collect a 4/8/12-week review horizon and optional progress description.
+- Birth date, sex assigned at birth, and weight are required for personalized planning. Health Connect and Apple Health are optional autofill paths; height remains optional.
+- Analytics contain bounded state and source labels only, never answers, measurements, health facts, or conversational text.
+
 ## Authority And Counterparts
 
 - iOS flow: `ios/Outbound/Outbound/Features/Onboarding/SimplifiedOnboardingFlow.swift`

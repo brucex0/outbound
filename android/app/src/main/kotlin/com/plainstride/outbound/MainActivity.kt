@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
 
     private fun Intent.transferCode(): String? {
         val uri: Uri = data ?: return null
-        if (uri.scheme != "https" || uri.host != "run.plainstride.com" || uri.path != "/account-link") return null
+        if (uri.scheme != "https" || uri.host != "plainstride.ai" || uri.path != "/account-link") return null
         return uri.getQueryParameter("code")?.take(32)
     }
 
@@ -75,8 +75,12 @@ class MainActivity : ComponentActivity() {
     private fun Intent.connectionCode(): String? {
         val uri = data ?: return null
         val segments = uri.pathSegments
-        if (uri.scheme != "https" || uri.host != "run.plainstride.com") return null
-        if (segments.size != 2 || segments[0] != "connect") return null
-        return segments[1].takeIf { it.isNotBlank() && it.length <= 128 }
+        if (uri.scheme != "https" || uri.host != "plainstride.ai") return null
+        val code = when {
+            segments.size == 2 && segments[0] == "connect" -> segments[1]
+            segments.size == 3 && segments[0] == "invite" && segments[1] == "r" -> segments[2]
+            else -> return null
+        }
+        return code.lowercase().takeIf { it.matches(Regex("[a-z0-9]{8}")) }
     }
 }

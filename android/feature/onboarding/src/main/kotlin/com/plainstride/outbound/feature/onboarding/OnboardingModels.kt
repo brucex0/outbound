@@ -36,9 +36,7 @@ enum class PlanObjective(@param:StringRes val label: Int) {
     Endurance(R.string.plan_builder_objective_endurance),
     Speed(R.string.plan_builder_objective_speed),
     WeightLoss(R.string.plan_builder_objective_weight_loss),
-    FitnessMaintenance(R.string.plan_builder_objective_maintenance),
     HealthEnergy(R.string.plan_builder_objective_health),
-    Other(R.string.plan_builder_objective_other),
 }
 
 @Serializable
@@ -73,10 +71,16 @@ data class OnboardingDraft(
     val username: String = "",
     val email: String = "",
     val objective: PlanObjective = PlanObjective.Endurance,
-    val otherObjective: String = "",
     val activities: List<PlanActivity> = listOf(PlanActivity.Run),
     val eventDistanceMeters: Double? = 5_000.0,
-    val eventDate: String? = null,
+    val eventDate: String? = defaultEventDate(),
+    val eventIntent: String = "finish",
+    val targetTimeSeconds: Int? = null,
+    val reviewHorizonWeeks: Int = 8,
+    val successSignal: String = "",
+    val goalDescription: String = "",
+    val intakeContextVersion: String? = null,
+    val observedBaselineConfirmed: Boolean? = null,
     val baselineContext: PlanBaselineContext = PlanBaselineContext.CurrentlyActive,
     val recentSessionsPerWeek: Int = 2,
     val comfortableMinutes: Int = 30,
@@ -112,10 +116,15 @@ data class TrainingProfileInput(
 
 data class PlanBuilderInput(
     val objective: PlanObjective,
-    val otherObjective: String,
     val activities: List<PlanActivity>,
     val eventDistanceMeters: Double?,
     val eventDate: String?,
+    val eventIntent: String,
+    val targetTimeSeconds: Int?,
+    val reviewHorizonWeeks: Int,
+    val successSignal: String,
+    val goalDescription: String,
+    val intakeContextVersion: String?,
     val baselineContext: PlanBaselineContext,
     val recentSessionsPerWeek: Int,
     val comfortableMinutes: Int,
@@ -133,3 +142,11 @@ data class ImportedHealthProfile(
 )
 
 internal fun defaultEventDate(): String = LocalDate.now().plusWeeks(8).toString()
+
+internal fun OnboardingDraft.requiredBodyProfileComplete(): Boolean {
+    val birth = runCatching { LocalDate.parse(birthDate) }.getOrNull() ?: return false
+    val age = java.time.Period.between(birth, LocalDate.now()).years
+    val rawWeight = weight.trim().replace(',', '.').toDoubleOrNull() ?: return false
+    val kilograms = if (measurementSystem == MeasurementSystem.Metric) rawWeight else rawWeight * 0.45359237
+    return age in 13..100 && kilograms in 25.0..350.0 && sexAtBirth != SexAtBirth.NotProvided
+}

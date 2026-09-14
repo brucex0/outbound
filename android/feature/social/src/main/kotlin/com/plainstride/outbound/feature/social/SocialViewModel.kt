@@ -18,8 +18,7 @@ data class SocialUiState(
     val selectedPost:SocialPost?=null,val comments:List<SocialComment> = emptyList(),
     val selectedEvent:SocialEvent?=null,val selectedGroup:SocialGroup?=null,val selectedInvitation:SocialInvitation?=null,
     val feedCursor: String? = null, val feedLoading: Boolean = false,
-    val connectionQr: ConnectionQrContent? = null, val connectionQrLoading: Boolean = false,
-    val connectionQrFailed: Boolean = false, val connectionRequestLoading: Boolean = false,
+    val connectionRequestLoading: Boolean = false,
     val connectionProfileLoading: Boolean = false, val connectionProfileCode: String? = null,
     val connectionProfileIsSelf: Boolean = false,
 )
@@ -99,18 +98,6 @@ sealed interface ConnectionEffect {
     fun connect(person:SocialPerson)=mutate("social_connection_requested"){repository.connect(person.id).getOrThrow();refresh()}
     fun acceptConnection(connectionId:String)=mutate("social_connection_accepted"){repository.accept(connectionId).getOrThrow();refresh()}
     fun removeConnection(connectionId:String)=mutate("social_connection_removed"){repository.removeConnection(connectionId).getOrThrow();refresh()}
-    fun openConnectionQr(entrySource: String = "connections") {
-        if (mutableState.value.connectionQrLoading) return
-        analytics.record(AnalyticsEvent("profile_qr_code_opened", mapOf(AnalyticsProperty.EntrySource to entrySource)))
-        mutableState.update { it.copy(connectionQr = null, connectionQrLoading = true, connectionQrFailed = false) }
-        viewModelScope.launch {
-            repository.connectionQr().fold(
-                onSuccess = { content -> mutableState.update { it.copy(connectionQr = content, connectionQrLoading = false) } },
-                onFailure = { mutableState.update { it.copy(connectionQrLoading = false, connectionQrFailed = true) } },
-            )
-        }
-    }
-    fun closeConnectionQr() = mutableState.update { it.copy(connectionQr = null, connectionQrLoading = false, connectionQrFailed = false) }
     fun scannerOpened() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "connection_qr_scanner")))
     fun inviteByLink() = viewModelScope.launch {
         repository.referralLink().fold(

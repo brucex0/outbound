@@ -118,7 +118,6 @@ import com.plainstride.outbound.feature.livecoach.LiveCoachSettingsSection
 import com.plainstride.outbound.feature.assistant.AssistantRoute
 import com.plainstride.outbound.feature.assistant.MusicRoute
 import com.plainstride.outbound.feature.social.SocialRoute
-import com.plainstride.outbound.feature.social.PersonalConnectionQrRoute
 import com.plainstride.outbound.feature.today.WorkoutLaunchIntent
 import com.plainstride.outbound.feature.today.TodayManualLaunch
 import com.plainstride.outbound.feature.today.TodayActivityChoice
@@ -246,6 +245,8 @@ private fun SignedInApp(
     val healthViewModel:HealthIntegrationViewModel=hiltViewModel()
     val healthPermissions by healthViewModel.permissions.collectAsStateWithLifecycle()
     val integrationViewModel: P0IntegrationViewModel = hiltViewModel()
+    val rewardsViewModel: RewardsViewModel = hiltViewModel()
+    val rewardsState by rewardsViewModel.state.collectAsStateWithLifecycle()
     val reminderViewModel: ReminderViewModel = hiltViewModel()
     val integration by integrationViewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(accountId) { accountId?.let { integrationViewModel.start(it, resources.configuration.locales[0].toLanguageTag());cycleViewModel.start(it);healthViewModel.start(it) } }
@@ -273,6 +274,7 @@ private fun SignedInApp(
     }
     LaunchedEffect(connectionCode) {
         val code = connectionCode ?: return@LaunchedEffect
+        rewardsViewModel.claimIncomingInvitation(code)
         socialTarget = "connection_link" to code
         navController.navigate(TopLevelDestination.Social.route) { launchSingleTop = true }
     }
@@ -417,13 +419,15 @@ private fun SignedInApp(
                             onMeDestination = settingsViewModel::trackMeDestination,
                             benefitsContent = {
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    MeBenefitDestinationCard(
-                                        title = R.string.rewards_plus,
-                                        body = R.string.rewards_plus_settings_body,
-                                        icon = Icons.Filled.AutoAwesome,
-                                    ) {
-                                        settingsViewModel.trackMeDestination("plus")
-                                        navController.navigate(PLUS_ROUTE)
+                                    if (rewardsState.status?.featureControls?.paywallEnabled == true) {
+                                        MeBenefitDestinationCard(
+                                            title = R.string.rewards_plus,
+                                            body = R.string.rewards_plus_settings_body,
+                                            icon = Icons.Filled.AutoAwesome,
+                                        ) {
+                                            settingsViewModel.trackMeDestination("plus")
+                                            navController.navigate(PLUS_ROUTE)
+                                        }
                                     }
                                     MeBenefitDestinationCard(
                                         title = R.string.rewards_settings_title,
@@ -482,7 +486,7 @@ private fun SignedInApp(
                             onMessage = { message -> snackbar.showSnackbar(resources.getString(settingsMessageResource(message))) },
                         )
                     } else if (destination == TopLevelDestination.Social && accountId != null) {
-                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.first,socialTarget?.second,inboxCount=integration.notifications.count { it.readAt == null },onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE)},onActivity={id->activityTarget=id;navController.navigate(ACTIVITY_HISTORY_ROUTE)},onConnectionLinkConsumed={socialTarget=null;onConnectionCodeConsumed()})
+                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.first,socialTarget?.second,inboxCount=integration.notifications.count { it.readAt == null },onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE)},onActivity={id->activityTarget=id;navController.navigate(ACTIVITY_HISTORY_ROUTE)},onMyInvite={navController.navigate(MY_QR_ROUTE){launchSingleTop=true}},onConnectionLinkConsumed={socialTarget=null;onConnectionCodeConsumed()})
                     } else {
                         FoundationScreen(destination, authState, authViewModel)
                     }
@@ -495,7 +499,10 @@ private fun SignedInApp(
                 )
             }
             composable(MY_QR_ROUTE) {
-                PersonalConnectionQrRoute(onClose = { navController.popBackStack() })
+                InvitationCodeRoute(
+                    onBack = { navController.popBackStack() },
+                    entrySource = "me_profile_card",
+                )
             }
             composable(RECORDING_ROUTE) {
                 RecordingRoute(
@@ -557,7 +564,12 @@ private fun SignedInApp(
             }
             composable(REWARDS_ROUTE) { RewardsRoute(onBack = { navController.popBackStack() }, onRedeem = { navController.navigate(REWARD_REDEMPTION_ROUTE) }) }
             composable(REWARD_REDEMPTION_ROUTE) { RewardRedemptionRoute(onBack = { navController.popBackStack() }) }
-            composable(INVITATION_CODE_ROUTE) { InvitationCodeRoute(onBack = { navController.popBackStack() }) }
+            composable(INVITATION_CODE_ROUTE) {
+                InvitationCodeRoute(
+                    onBack = { navController.popBackStack() },
+                    entrySource = "me_invitation_code",
+                )
+            }
             composable(PLUS_ROUTE) { PlusRoute(onBack = { navController.popBackStack() }) }
         }
     }
@@ -831,8 +843,8 @@ private fun SignInScreen(
             }
             Text(stringResource(R.string.auth_terms_notice), style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), textAlign = TextAlign.Center)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                TextButton(onClick = { viewModel.trackLegal("terms"); uriHandler.openUri("https://run.plainstride.com/terms") }) { Text(stringResource(R.string.auth_terms_link)) }
-                TextButton(onClick = { viewModel.trackLegal("privacy"); uriHandler.openUri("https://run.plainstride.com/privacy") }) { Text(stringResource(R.string.auth_privacy_link)) }
+                TextButton(onClick = { viewModel.trackLegal("terms"); uriHandler.openUri("https://plainstride.ai/terms") }) { Text(stringResource(R.string.auth_terms_link)) }
+                TextButton(onClick = { viewModel.trackLegal("privacy"); uriHandler.openUri("https://plainstride.ai/privacy") }) { Text(stringResource(R.string.auth_privacy_link)) }
             }
         }
     }

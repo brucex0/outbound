@@ -100,9 +100,13 @@
     <string name="rewards_invite">邀请好友</string>
     <string name="rewards_invite_detail">新跑者领取你的邀请后可获得 %1$d 天 Plus；完成首次至少 %3$d 分钟的活动后，你可获得 %2$d 天 Plus。</string>
     <string name="rewards_invite_detail_founding">你邀请的新跑者可获得 %1$d 天 Plus。他们可在注册后的前 %2$d 天内领取邀请。</string>
-    <string name="rewards_my_invitation_code">我的邀请码</string>
+    <string name="rewards_my_invitation_code">我的邀请</string>
     <string name="rewards_invitation_code_body">分享你的专属长期邀请码，看看谁开始行动。</string>
     <string name="rewards_your_code">你的邀请码</string>
+    <string name="rewards_copy_code">复制</string>
+    <string name="rewards_code_copied">邀请码已复制</string>
+    <string name="rewards_qr_accessibility">我的平步青云邀请二维码</string>
+    <string name="rewards_scan_invite">扫码即可添加好友。符合条件的新成员还可领取 %1$d 天 Plus。</string>
     <string name="rewards_share_invitation">分享邀请</string>
     <string name="rewards_share_message">和我一起加入平步青云，领取 %1$d 天 Plus：%2$s。如果需要先安装平步青云，安装后请回到这条消息，再点一次链接。</string>
     <string name="rewards_share_message_founding">和我一起加入平步青云，领取 %1$d 天 Plus：%2$s。如果需要先安装平步青云，安装后请回到这条消息，再点一次链接。</string>

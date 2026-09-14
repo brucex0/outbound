@@ -202,7 +202,7 @@ class ActivityViewModel @Inject constructor(
         canvas.drawText(context.getString(R.string.activity_distance).uppercase(), 72f, 1460f, paint)
         canvas.drawText(context.getString(R.string.activity_time).uppercase(), 390f, 1460f, paint)
         canvas.drawText(context.getString(R.string.activity_avg_pace).uppercase(), 700f, 1460f, paint)
-        drawQr(canvas, "https://run.plainstride.com/invite", 790, 1600, 220)
+        drawQr(canvas, "https://plainstride.ai/invite", 790, 1600, 220)
         target.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 95, it) }
         bitmap.recycle()
         analytics.record(AnalyticsEvent("activity_share_previewed", mapOf(AnalyticsProperty.SourceType to "activity_detail")))

@@ -21,7 +21,7 @@ Before upload, inspect the AAB signature, application ID, version, mapping file,
 ## Security And Platform Checks
 
 - Release cleartext traffic is denied. Debug permits only emulator host `10.0.2.2`; never ship the debug manifest/resource overlay.
-- Only `MainActivity` is exported, for launcher and verified `https://run.plainstride.com/account-link` links. Services, receivers, and providers must remain non-exported unless a documented platform contract requires otherwise.
+- Only `MainActivity` is exported, for launcher and verified `https://plainstride.ai/account-link` links. Services, receivers, and providers must remain non-exported unless a documented platform contract requires otherwise.
 - Publish and verify `/.well-known/assetlinks.json` for `com.plainstride.outbound` using the Play signing certificate, not the upload certificate.
 - Cloud backup and device transfer are disabled for databases, preferences, files, root storage, and external app storage because these contain account sessions, precise activity tracks, health-derived records, and cached coaching/media data.
 - Review the release merged manifest after every dependency update. Confirm permissions match actual UX education and Play declarations.

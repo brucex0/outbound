@@ -17,6 +17,9 @@ import com.plainstride.outbound.core.analytics.AnalyticsEvent
 import com.plainstride.outbound.core.analytics.AnalyticsProperty
 import com.plainstride.outbound.core.analytics.ProductAnalytics
 import com.plainstride.outbound.core.model.PlanningState
+import com.plainstride.outbound.core.network.PlanIntakeContext
+import com.plainstride.outbound.core.network.PlanIntakeDraftRequest
+import com.plainstride.outbound.core.network.PlanIntakeInterpretRequest
 
 @Immutable
 data class OnboardingUiState(
@@ -30,6 +33,9 @@ data class OnboardingUiState(
     val healthConnected: Boolean = false,
     val recentHealthActivityCount: Int = 0,
     val plan: PlanningState? = null,
+    val intakeContext: PlanIntakeContext? = null,
+    val interpretingGoal: Boolean = false,
+    val interpretationReply: String? = null,
 )
 
 sealed interface OnboardingEffect {
@@ -72,7 +78,7 @@ class OnboardingViewModel @Inject constructor(
             OnboardingStep.Objective -> moveTo(OnboardingStep.Activities)
             OnboardingStep.Activities -> moveTo(OnboardingStep.Baseline)
             OnboardingStep.Baseline -> moveTo(OnboardingStep.Week)
-            OnboardingStep.Week -> moveTo(OnboardingStep.Profile)
+            OnboardingStep.Week -> moveTo(if (mutableState.value.hasPlanningBodyProfile()) OnboardingStep.Review else OnboardingStep.Profile)
             OnboardingStep.Profile -> saveTrainingProfileAndContinue()
             OnboardingStep.Review -> createPlan()
             OnboardingStep.Result -> {
@@ -89,13 +95,59 @@ class OnboardingViewModel @Inject constructor(
             OnboardingStep.Baseline -> OnboardingStep.Activities
             OnboardingStep.Week -> OnboardingStep.Baseline
             OnboardingStep.Profile -> OnboardingStep.Week
-            OnboardingStep.Review -> OnboardingStep.Profile
+            OnboardingStep.Review -> if (mutableState.value.hasPlanningBodyProfile()) OnboardingStep.Week else OnboardingStep.Profile
             else -> return
         }
         moveTo(previous)
     }
 
     fun exploreFirst() = resolveSkip()
+
+    fun interpretGoal(message: String) {
+        val state = mutableState.value
+        val draft = state.draft ?: return
+        val context = state.intakeContext ?: return
+        if (message.isBlank() || state.interpretingGoal) return
+        viewModelScope.launch {
+            mutableState.value = mutableState.value.copy(interpretingGoal = true, interpretationReply = null)
+            val request = PlanIntakeInterpretRequest(
+                message.trim(),
+                context.contextVersion,
+                PlanIntakeDraftRequest(
+                    objective = draft.objective.apiValue,
+                    activities = draft.activities.map { it.modality.name },
+                    eventDate = draft.eventDate,
+                    eventDistanceMeters = draft.eventDistanceMeters,
+                    eventIntent = draft.eventIntent,
+                    targetTimeSeconds = draft.targetTimeSeconds,
+                    reviewHorizonWeeks = draft.reviewHorizonWeeks,
+                    sessionsPerWeek = draft.sessionsPerWeek,
+                    maxSessionMinutes = draft.availableMinutes,
+                ),
+            )
+            repository.interpretPlanIntake(request).fold(
+                onSuccess = { result ->
+                    val updated = (mutableState.value.draft ?: draft).copy(
+                        objective = result.objective?.toPlanObjective() ?: draft.objective,
+                        activities = result.activities.mapNotNull(String::toPlanActivity).ifEmpty { draft.activities },
+                        eventDate = result.eventDate ?: draft.eventDate,
+                        eventDistanceMeters = result.eventDistanceMeters ?: draft.eventDistanceMeters,
+                        eventIntent = result.eventIntent ?: draft.eventIntent,
+                        targetTimeSeconds = result.targetTimeSeconds ?: draft.targetTimeSeconds,
+                        reviewHorizonWeeks = result.reviewHorizonWeeks ?: draft.reviewHorizonWeeks,
+                        goalDescription = result.goalDescription ?: draft.goalDescription,
+                    ).normalized()
+                    drafts.save(updated)
+                    mutableState.value = mutableState.value.copy(draft = updated, interpretingGoal = false, interpretationReply = result.assistantReply)
+                    analytics.record(AnalyticsEvent("plan_intake_goal_interpreted", mapOf(AnalyticsProperty.Result to "success", AnalyticsProperty.SourceType to "conversation")))
+                },
+                onFailure = {
+                    mutableState.value = mutableState.value.copy(interpretingGoal = false, interpretationReply = "fallback")
+                    analytics.record(AnalyticsEvent("plan_intake_goal_interpreted", mapOf(AnalyticsProperty.Result to "failure", AnalyticsProperty.SourceType to "conversation")))
+                },
+            )
+        }
+    }
 
     fun finishLater() {
         val state = mutableState.value
@@ -178,6 +230,8 @@ class OnboardingViewModel @Inject constructor(
         if (!firstUse && initial.step == OnboardingStep.Welcome) initial = initial.copy(step = OnboardingStep.Objective)
         if (firstUse && account.needsIdentity) initial = initial.copy(step = OnboardingStep.Identity)
 
+        val context = repository.planIntakeContext().getOrNull()
+        if (context != null) initial = initial.withIntakeContext(context)
         drafts.save(initial)
         mutableState.value = OnboardingUiState(
             loading = false,
@@ -185,9 +239,11 @@ class OnboardingViewModel @Inject constructor(
             draft = initial,
             source = source,
             firstUse = firstUse,
+            intakeContext = context,
         )
         analytics.record(AnalyticsEvent("plan_builder_opened", mapOf(AnalyticsProperty.EntrySource to source.analyticsValue)))
         analytics.record(AnalyticsEvent("onboarding_step_viewed", mapOf(AnalyticsProperty.Source to initial.step.analyticsName())))
+        context?.let { analytics.record(AnalyticsEvent("plan_intake_context_loaded", mapOf(AnalyticsProperty.SourceType to it.dataTier))) }
     }
 
     private fun newDraft(account: OnboardingAccount, firstUse: Boolean, measurementSystem: MeasurementSystem) = OnboardingDraft(
@@ -225,7 +281,7 @@ class OnboardingViewModel @Inject constructor(
 
     private fun saveTrainingProfileAndContinue() = viewModelScope.launch {
         val draft = mutableState.value.draft ?: return@launch
-        if (!draft.measurementsValid()) return@launch
+        if (!draft.measurementsValid() || !draft.requiredBodyProfileComplete()) return@launch
         val metric = draft.measurementSystem == MeasurementSystem.Metric
         val training = TrainingProfileInput(
             birthDate = draft.birthDate.ifBlank { null },
@@ -234,14 +290,13 @@ class OnboardingViewModel @Inject constructor(
             sexAtBirth = draft.sexAtBirth.takeUnless { it == SexAtBirth.NotProvided },
             objective = draft.objective,
         )
-        if (!training.hasValues()) {
-            skipTrainingProfile()
-            return@launch
-        }
         mutableState.value = mutableState.value.copy(saving = true)
         repository.updateTrainingProfile(training).fold(
             onSuccess = {
-                mutableState.value = mutableState.value.copy(saving = false)
+                val refreshedContext = repository.planIntakeContext(draft.objective).getOrNull()
+                val refreshedDraft = refreshedContext?.let { draft.withIntakeContext(it) } ?: draft
+                drafts.save(refreshedDraft)
+                mutableState.value = mutableState.value.copy(saving = false, draft = refreshedDraft, intakeContext = refreshedContext ?: mutableState.value.intakeContext)
                 analytics.record(AnalyticsEvent(
                     "onboarding_training_profile_completed",
                     mapOf(
@@ -326,8 +381,9 @@ class OnboardingViewModel @Inject constructor(
     }
 
     private fun OnboardingDraft.planInput() = PlanBuilderInput(
-        objective, otherObjective, activities, eventDistanceMeters,
-        eventDate ?: defaultEventDate(), baselineContext, recentSessionsPerWeek,
+        objective, activities, eventDistanceMeters,
+        eventDate ?: defaultEventDate(), eventIntent, targetTimeSeconds, reviewHorizonWeeks,
+        successSignal, goalDescription, intakeContextVersion, baselineContext, recentSessionsPerWeek,
         comfortableMinutes, sessionsPerWeek, availableMinutes, preferredDays, constraints,
     )
 
@@ -373,9 +429,42 @@ class OnboardingViewModel @Inject constructor(
     }
     private val PlanObjective.analyticsValue: String get() = when (this) {
         PlanObjective.EventPreparation -> "event_preparation"
-        PlanObjective.FitnessMaintenance -> "fitness_maintenance"
         PlanObjective.HealthEnergy -> "health_energy"
         PlanObjective.WeightLoss -> "weight_loss"
         else -> name.lowercase()
     }
 }
+
+private fun OnboardingUiState.hasPlanningBodyProfile() = intakeContext?.bodyProfile?.completeForPlanning == true || draft?.requiredBodyProfileComplete() == true
+
+private fun OnboardingDraft.withIntakeContext(context: PlanIntakeContext): OnboardingDraft {
+    val metric = measurementSystem == MeasurementSystem.Metric
+    val body = context.bodyProfile
+    val baseline = context.observedBaseline
+    val inferredActivities = baseline?.activityMix.orEmpty().mapNotNull(String::toPlanActivity)
+    return copy(
+        intakeContextVersion = context.contextVersion,
+        birthDate = body.birthDate ?: birthDate,
+        height = body.heightCentimeters?.let { if (metric) it else it / 2.54 }?.formatInputValue() ?: height,
+        weight = body.weightKilograms?.let { if (metric) it else it / 0.45359237 }?.formatInputValue() ?: weight,
+        sexAtBirth = body.sexAtBirth?.let { runCatching { SexAtBirth.valueOf(it.replaceFirstChar(Char::uppercase)) }.getOrNull() } ?: sexAtBirth,
+        recentSessionsPerWeek = if (baseline?.confidence == "high") baseline.sessionsPerWeek.coerceIn(0, 6) else recentSessionsPerWeek,
+        comfortableMinutes = if (baseline?.confidence == "high") baseline.comfortableMinutes?.coerceIn(10, 120) ?: comfortableMinutes else comfortableMinutes,
+        activities = inferredActivities.ifEmpty { activities },
+        sessionsPerWeek = context.previousSchedule?.sessionsPerWeek ?: sessionsPerWeek,
+        availableMinutes = context.previousSchedule?.maxSessionMinutes ?: availableMinutes,
+        preferredDays = context.previousSchedule?.preferredDays ?: preferredDays,
+    )
+}
+
+private val PlanObjective.apiValue: String get() = when (this) {
+    PlanObjective.EventPreparation -> "eventPreparation"
+    PlanObjective.Endurance -> "endurance"
+    PlanObjective.Speed -> "speed"
+    PlanObjective.WeightLoss -> "weightLoss"
+    PlanObjective.HealthEnergy -> "healthEnergy"
+}
+
+private fun String.toPlanObjective() = PlanObjective.entries.firstOrNull { it.apiValue == this }
+private fun String.toPlanActivity() = when (this) { "run" -> PlanActivity.Run; "walk" -> PlanActivity.Walk; "bike" -> PlanActivity.Bike; else -> null }
+private fun Double.formatInputValue() = if (this % 1.0 == 0.0) roundToInt().toString() else "%.1f".format(this)

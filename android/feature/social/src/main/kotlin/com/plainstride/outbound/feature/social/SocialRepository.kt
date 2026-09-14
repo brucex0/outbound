@@ -33,7 +33,6 @@ interface SocialRepository {
     suspend fun block(personId: String): Result<Unit>
     suspend fun blockedAccounts(): Result<List<BlockedAccount>>
     suspend fun unblock(personId: String): Result<Unit>
-    suspend fun connectionQr(): Result<ConnectionQrContent>
     suspend fun referralLink(): Result<ConnectionLink>
     suspend fun connectionLinkPreview(code: String): Result<ConnectionLinkPreview>
     suspend fun consumeConnectionLink(code: String): Result<ConnectionLinkResult>
@@ -67,7 +66,6 @@ interface SocialRepository {
 
 class OfflineFirstSocialRepository @Inject constructor(
     private val api: SocialApiService,
-    private val accounts: AccountApiService,
     private val tokens: AccessTokenProvider,
     private val cache: AccountCacheDao,
 ) : SocialRepository {
@@ -116,27 +114,6 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun block(personId: String) = authenticated { apiCall { api.block(it, personId) } }
     override suspend fun blockedAccounts() = authenticated { apiCall { api.blocks(it) } }.map { it.blocks }
     override suspend fun unblock(personId: String) = authenticated { apiCall { api.unblock(it, personId) } }
-    override suspend fun connectionQr() = authenticated { auth -> coroutineScope {
-        val accountRequest = async { apiCall { accounts.currentAccount(auth) } }
-        val linkRequest = async { apiCall { api.connectionLink(auth) } }
-        when (val account = accountRequest.await()) {
-            is ApiResult.Failure -> account
-            is ApiResult.Success -> when (val link = linkRequest.await()) {
-                is ApiResult.Failure -> link
-                is ApiResult.Success -> ApiResult.Success(ConnectionQrContent(
-                    owner = SocialPerson(
-                        id = account.value.id,
-                        displayName = account.value.displayName?.takeIf(String::isNotBlank)
-                            ?: account.value.username?.takeIf(String::isNotBlank)
-                            ?: "Plainstride",
-                        username = account.value.username,
-                        avatarUrl = account.value.avatarUrl,
-                    ),
-                    link = link.value,
-                ))
-            }
-        }
-    } }
     override suspend fun referralLink() = authenticated { apiCall { api.referralLink(it) } }
     override suspend fun connectionLinkPreview(code: String) = authenticated { apiCall { api.connectionLinkPreview(it, code) } }
         .map { preview -> preview.copy(person = preview.person.withRelationship()) }

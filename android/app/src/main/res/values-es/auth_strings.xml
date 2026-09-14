@@ -18,7 +18,7 @@
     <string name="auth_delete_account_and_data">Eliminar cuenta y datos</string>
     <string name="auth_delete_confirmation_body">Esto eliminará permanentemente tu cuenta de Plainstride, actividades sincronizadas, planes, perfil, datos sociales y datos guardados en el dispositivo. No se puede deshacer.</string>
     <string name="auth_delete_confirmation_title">¿Eliminar permanentemente tu cuenta?</string>
-    <string name="auth_legal_consent">Al continuar, aceptas los [Términos del servicio](https://run.plainstride.com/terms) y confirmas que has leído la [Política de privacidad](https://run.plainstride.com/privacy).</string>
+    <string name="auth_legal_consent">Al continuar, aceptas los [Términos del servicio](https://plainstride.ai/terms) y confirmas que has leído la [Política de privacidad](https://plainstride.ai/privacy).</string>
     <string name="auth_sign_in_methods">Métodos de inicio de sesión</string>
     <string name="auth_sign_out">Cerrar sesión</string>
     <string name="auth_sign_out_confirmation">¿Cerrar sesión en Plainstride?</string>

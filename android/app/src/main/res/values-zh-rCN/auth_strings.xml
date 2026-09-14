@@ -18,7 +18,7 @@
     <string name="auth_delete_account_and_data">删除账户和数据</string>
     <string name="auth_delete_confirmation_body">这将永久删除你的平步青云账户、已同步活动、计划、个人资料、社交数据和本地保存的平步青云数据。此操作无法撤销。</string>
     <string name="auth_delete_confirmation_title">永久删除你的账户？</string>
-    <string name="auth_legal_consent">继续即表示你同意[服务条款](https://run.plainstride.com/terms)，并确认已阅读[隐私政策](https://run.plainstride.com/privacy)。</string>
+    <string name="auth_legal_consent">继续即表示你同意[服务条款](https://plainstride.ai/terms)，并确认已阅读[隐私政策](https://plainstride.ai/privacy)。</string>
     <string name="auth_sign_in_methods">登录方式</string>
     <string name="auth_sign_out">退出登录</string>
     <string name="auth_sign_out_confirmation">退出平步青云？</string>

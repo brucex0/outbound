@@ -94,9 +94,6 @@
     <string name="plan_builder_objective_endurance">Build endurance or go farther</string>
     <string name="plan_builder_objective_event">Prepare for an event</string>
     <string name="plan_builder_objective_health">Improve health and energy</string>
-    <string name="plan_builder_objective_maintenance">Maintain fitness</string>
-    <string name="plan_builder_objective_other">Something else</string>
-    <string name="plan_builder_objective_other_prompt">Describe your objective</string>
     <string name="plan_builder_objective_speed">Improve speed</string>
     <string name="plan_builder_objective_strength">Build strength</string>
     <string name="plan_builder_objective_subtitle">Choose the one outcome that matters most right now.</string>
@@ -137,4 +134,25 @@
     <string name="onboarding_weekday_thu">Thu</string>
     <string name="onboarding_weekday_tue">Tue</string>
     <string name="onboarding_weekday_wed">Wed</string>
+    <string name="plan_builder_coach_prompt_title">Tell your coach in your own words</string>
+    <string name="plan_builder_coach_prompt_placeholder">For example: I want to finish my first half marathon in May</string>
+    <string name="plan_builder_coach_prompt_action">Use this goal</string>
+    <string name="plan_builder_coach_prompt_error">I couldn’t interpret that reliably. Choose the closest option below.</string>
+    <string name="plan_builder_baseline_observed">Based on your last 28 days</string>
+    <string name="plan_builder_baseline_observed_summary">%1$d sessions across %2$d weeks · typically %3$d min · longest %4$d min</string>
+    <string name="plan_builder_baseline_use">Use this baseline</string>
+    <string name="plan_builder_baseline_update">Update it</string>
+    <string name="plan_builder_event_intent">What matters most?</string>
+    <string name="plan_builder_event_intent_finish">Finish comfortably</string>
+    <string name="plan_builder_event_intent_perform">Perform strongly</string>
+    <string name="plan_builder_event_intent_time">Target a time</string>
+    <string name="plan_builder_event_target_minutes">Target time: %1$d min</string>
+    <string name="plan_builder_generic_review_horizon">When should we review this focus?</string>
+    <string name="plan_builder_generic_four_weeks">4 weeks</string>
+    <string name="plan_builder_generic_eight_weeks">8 weeks</string>
+    <string name="plan_builder_generic_twelve_weeks">12 weeks</string>
+    <string name="plan_builder_generic_success">What would meaningful progress feel like?</string>
+    <string name="onboarding_profile_required_title">Private planning details</string>
+    <string name="onboarding_profile_required_subtitle">Birth date, sex assigned at birth, and weight are required for safe plan personalization and calorie calculations. Enter them manually or import available values from Health Connect. Height is optional.</string>
+    <string name="onboarding_profile_required_error">Add a valid birth date, sex assigned at birth, and weight to continue.</string>
 </resources>
