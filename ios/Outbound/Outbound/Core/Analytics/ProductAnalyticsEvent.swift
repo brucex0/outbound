@@ -66,6 +66,17 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case connectionsSearchCompleted = "connections_search_completed"
     case socialProfileOpened = "social_profile_opened"
     case socialInboxOpened = "social_inbox_opened"
+    case socialTabExposed = "social_tab_exposed"
+    case socialTabSelected = "social_tab_selected"
+    case socialTabBadgeExposed = "social_tab_badge_exposed"
+    case socialTabBadgeSelected = "social_tab_badge_selected"
+    case socialTabBadgeCleared = "social_tab_badge_cleared"
+    case socialActiveNowExposed = "social_active_now_exposed"
+    case socialActiveNowSelected = "social_active_now_selected"
+    case socialUpcomingExposed = "social_upcoming_exposed"
+    case socialUpcomingSelected = "social_upcoming_selected"
+    case socialDiscoveryActionSelected = "social_discovery_action_selected"
+    case socialFeedFirstCardVisible = "social_feed_first_card_visible"
     case profileQRCodeOpened = "profile_qr_code_opened"
     case connectionQRCodeRequestResult = "connection_qr_code_request_result"
     case socialOperationFailed = "social_operation_failed"
@@ -346,6 +357,17 @@ enum ProductAnalyticsSchema {
         .connectionsSearchCompleted: [.sourceType, .inputScript, .queryLengthBucket, .countBucket, .matchMode, .result],
         .socialProfileOpened: [.entrySource],
         .socialInboxOpened: [.entrySource],
+        .socialTabExposed: [.selectionType, .entrySource],
+        .socialTabSelected: [.selectionType, .entrySource],
+        .socialTabBadgeExposed: [.selectionType, .sourceType],
+        .socialTabBadgeSelected: [.selectionType, .sourceType],
+        .socialTabBadgeCleared: [.selectionType, .sourceType],
+        .socialActiveNowExposed: [.countBucket],
+        .socialActiveNowSelected: [.selectionType, .entrySource],
+        .socialUpcomingExposed: [.countBucket, .sourceType],
+        .socialUpcomingSelected: [.selectionType, .entrySource],
+        .socialDiscoveryActionSelected: [.selectionType, .entrySource],
+        .socialFeedFirstCardVisible: [.sourceType],
         .profileQRCodeOpened: [.entrySource],
         .connectionQRCodeRequestResult: [.result],
         .socialOperationFailed: [.sourceType, .errorCategory],

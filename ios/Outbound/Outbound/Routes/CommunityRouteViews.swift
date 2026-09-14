@@ -19,9 +19,17 @@ struct CommunityRouteLibraryView: View {
     private let initialSelection: PreparedRoute?
     let mode: CommunityRouteLibraryMode
     private let onSelect: ((PreparedRoute?) -> Void)?
+    private let embedded: Bool
+    private let importRequestID: Int
 
-    init(mode: CommunityRouteLibraryMode = .discover) {
+    init(
+        mode: CommunityRouteLibraryMode = .discover,
+        embedded: Bool = false,
+        importRequestID: Int = 0
+    ) {
         self.mode = mode
+        self.embedded = embedded
+        self.importRequestID = importRequestID
         initialSelection = nil
         onSelect = nil
     }
@@ -30,6 +38,8 @@ struct CommunityRouteLibraryView: View {
         mode = .discover
         initialSelection = selection
         self.onSelect = onSelect
+        embedded = false
+        importRequestID = 0
         _selectedRoute = State(initialValue: selection)
     }
 
@@ -37,6 +47,29 @@ struct CommunityRouteLibraryView: View {
 
     var body: some View {
         List {
+            if embedded {
+                Section {
+                    HStack(spacing: 10) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(.secondary)
+                        TextField(
+                            String(localized: "route.library.search.prompt", defaultValue: "Route or location"),
+                            text: $query
+                        )
+                        .submitLabel(.search)
+                        .onSubmit { Task { await store.search(query) } }
+                        Button {
+                            Task { await store.search(query) }
+                        } label: {
+                            Image(systemName: "arrow.right.circle.fill")
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(String(localized: "Search"))
+                    }
+                    .frame(minHeight: 44)
+                }
+            }
             if mode == .discover {
                 Section {
                     Button { locator.requestLocation() } label: {
@@ -99,12 +132,15 @@ struct CommunityRouteLibraryView: View {
             }
         }
         .navigationTitle(
-            onSelect == nil
+            embedded
+                ? ""
+                : (onSelect == nil
                 ? (mode == .mine
                     ? String(localized: "library.my_routes", defaultValue: "My Routes")
                     : String(localized: "route.library.title.explore", defaultValue: "Explore Routes"))
-                : String(localized: "route.library.title.select", defaultValue: "Select Route")
+                : String(localized: "route.library.title.select", defaultValue: "Select Route"))
         )
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if onSelect != nil {
                 ToolbarItem(placement: .cancellationAction) {
@@ -128,11 +164,11 @@ struct CommunityRouteLibraryView: View {
                 }
             }
         }
-        .searchable(
-            text: $query,
-            prompt: Text(String(localized: "route.library.search.prompt", defaultValue: "Route or location"))
-        )
+        .communityRouteSearchable(enabled: !embedded, text: $query)
         .onSubmit(of: .search) { Task { await store.search(query) } }
+        .onChange(of: importRequestID) { _, _ in
+            importsFile = true
+        }
         .onAppear {
             if mode == .mine {
                 guard store.beginAutomaticMineLoadIfNeeded() else { return }
@@ -270,6 +306,23 @@ struct CommunityRouteLibraryView: View {
             .disabled(preparingRouteID != nil)
         } else {
             NavigationLink { CommunityRouteDetailView(route: route) } label: { row() }
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func communityRouteSearchable(
+        enabled: Bool,
+        text: Binding<String>
+    ) -> some View {
+        if enabled {
+            searchable(
+                text: text,
+                prompt: Text(String(localized: "route.library.search.prompt", defaultValue: "Route or location"))
+            )
+        } else {
+            self
         }
     }
 }

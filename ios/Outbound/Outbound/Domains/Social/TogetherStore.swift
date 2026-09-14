@@ -50,12 +50,15 @@ final class TogetherStore: ObservableObject {
     @Published private(set) var connectionLinkFeedback: ConnectionLinkFeedback?
     @Published private(set) var pendingConnectionProfile: ConnectionLinkProfilePreview?
     @Published private(set) var isConnectionProfileLoading = false
+    @Published private(set) var homeRefreshRevision = 0
+    @Published private(set) var latestViewedFeedPostID: String?
 
     private let api: APIClient
     private let defaults: UserDefaults
     private let legacyCacheKey = "together_state_v1"
     private let cacheKeyPrefix = "together_state_v1_account_"
     private let connectionsCacheKeyPrefix = "social_connections_v1_account_"
+    private let viewedFeedPostKeyPrefix = "social_viewed_feed_post_v1_account_"
     private var activeUserID: String?
     private var authGeneration = 0
     private var nextConnectionsCursor: String?
@@ -89,6 +92,7 @@ final class TogetherStore: ObservableObject {
         resetState()
 
         guard let userID else { return }
+        latestViewedFeedPostID = defaults.string(forKey: viewedFeedPostKey(for: userID))
         if isUITestSeedData {
             state = Self.uiTestFixture
             loadUITestState()
@@ -114,6 +118,7 @@ final class TogetherStore: ObservableObject {
         if isUITestSeedData {
             state = Self.uiTestFixture
             errorMessage = nil
+            homeRefreshRevision += 1
             return
         }
         isLoading = true
@@ -128,12 +133,24 @@ final class TogetherStore: ObservableObject {
             state = refreshedState
             persist()
             errorMessage = nil
+            homeRefreshRevision += 1
         } catch {
             guard generation == authGeneration else { return }
             errorMessage = state.upcomingRuns.isEmpty && state.posts.isEmpty
                 ? "Together is unavailable. Your private training remains available."
                 : "Showing saved Together activity."
         }
+    }
+
+    var hasUnseenFeedPosts: Bool {
+        guard let newestPostID = state.posts.first?.id else { return false }
+        return newestPostID != latestViewedFeedPostID
+    }
+
+    func markNewestFeedPostViewed() {
+        guard let activeUserID, let newestPostID = state.posts.first?.id else { return }
+        latestViewedFeedPostID = newestPostID
+        defaults.set(newestPostID, forKey: viewedFeedPostKey(for: activeUserID))
     }
 
     func loadMorePosts() async -> Int? {
@@ -711,6 +728,8 @@ final class TogetherStore: ObservableObject {
         connectionLinkFeedback = nil
         pendingConnectionProfile = nil
         isConnectionProfileLoading = false
+        homeRefreshRevision = 0
+        latestViewedFeedPostID = nil
         nextConnectionsCursor = nil
         latestPeopleSearchQuery = ""
     }
@@ -743,6 +762,10 @@ final class TogetherStore: ObservableObject {
 
     private var isUITestSeedData: Bool {
         ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData")
+    }
+
+    private func viewedFeedPostKey(for userID: String) -> String {
+        viewedFeedPostKeyPrefix + userID
     }
 
     private static var uiTestFixture: TogetherResponseDTO {

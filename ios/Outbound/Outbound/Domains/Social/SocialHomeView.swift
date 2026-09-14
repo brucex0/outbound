@@ -15,7 +15,14 @@ struct SocialHomeView: View {
     @EnvironmentObject private var healthImportStore: HealthImportStore
     @State private var selectedCommentPost: TogetherPostDTO?
     @State private var selectedActivityPost: TogetherPostDTO?
+    @State private var selectedFeatureTab: SocialFeatureTab = .feed
+    @State private var hasInitializedFeatureTab = false
+    @State private var hasInteractedWithFeatureTabs = false
+    @State private var exposedBadgeSignatures: Set<String> = []
+    @State private var peopleFocusRequestID = 0
+    @State private var routeImportRequestID = 0
     @State private var isCreateActivityEventPresented = false
+    @State private var isCircleCreationPresented = false
     @State private var showsNotifications = false
     @State private var showsConnections = false
     @State private var showsAddConnection = false
@@ -24,6 +31,9 @@ struct SocialHomeView: View {
     @State private var postPendingReport: TogetherPostDTO?
     @State private var postPendingBlock: TogetherPostDTO?
     @State private var postPendingDeletion: TogetherPostDTO?
+    @State private var hasTrackedActiveNowExposure = false
+    @State private var hasTrackedUpcomingExposure = false
+    @State private var hasTrackedFirstFeedCard = false
     @AppStorage("social.skipPostDeletionConfirmation") private var skipsPostDeletionConfirmation = false
     @StateObject private var liveCheerStore = LiveCheerStore()
 
@@ -38,64 +48,35 @@ struct SocialHomeView: View {
             .sorted(by: SocialConnectionDTO.previewOrder)
     }
 
+    private var activeConnections: [SocialConnectionDTO] {
+        acceptedConnections.filter { $0.isInActiveWorkout == true }
+    }
+
+    private var incomingConnectionRequestCount: Int {
+        socialStore.connections.filter { $0.status == "pending" && $0.direction == "incoming" }.count
+    }
+
+    private var tabBadges: [SocialFeatureTab: SocialTabBadge] {
+        var badges: [SocialFeatureTab: SocialTabBadge] = [:]
+        if socialStore.hasUnseenFeedPosts { badges[.feed] = .dot }
+        if incomingConnectionRequestCount > 0 { badges[.people] = .count(incomingConnectionRequestCount) }
+        if !circleStore.invitations.isEmpty { badges[.circle] = .count(circleStore.invitations.count) }
+        return badges
+    }
+
     private var syncedActivityIDs: [String] {
         activityStore.activities.compactMap(\.sync?.serverActivityId).sorted()
     }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                    if !liveCheerStore.sessions.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Cheer someone on").socialSectionLabel()
-                            ForEach(liveCheerStore.sessions) { session in
-                                NavigationLink {
-                                    LiveCheerView(sessionID: session.id)
-                                } label: {
-                                    liveCheerRow(name: session.runner.displayName)
-                                }
-                            }
-                        }
-                    }
-                    if let incomingRequest = socialStore.connections.first(where: {
-                        $0.status == "pending" && $0.direction == "incoming"
-                    }) {
-                        incomingRequestCard(incomingRequest)
-                    }
-
-                    if !socialStore.hasLoadedConnections {
-                        SocialConnectionsPreviewCard(
-                            connections: [],
-                            isLoading: true,
-                            entrySource: "social_connections_section",
-                            onAdd: openAddConnection,
-                            onOpenAll: openConnections
-                        )
-                    } else if shouldShowConnectionPrompt {
-                        connectionGrowthCard
-                    } else if !acceptedConnections.isEmpty {
-                        SocialConnectionsPreviewCard(
-                            connections: acceptedConnections,
-                            isLoading: false,
-                            entrySource: "social_connections_section",
-                            onAdd: openAddConnection,
-                            onOpenAll: openConnections
-                        )
-                    }
-
-                    yourCircleSection
-
-                    if let milestone = socialRecognitionStore.highlight {
-                        SocialMilestoneCard(preview: milestone)
-                    }
-
-                    upcomingRuns
-                    pastActivityEvents
-                    joinedClubs
-                    recentPosts
-                }
-                .padding(OutboundSpacing.screen)
+            VStack(spacing: 0) {
+                SocialFeatureTabBar(
+                    selection: selectedFeatureTab,
+                    badges: tabBadges,
+                    onSelect: { selectFeatureTab($0) }
+                )
+                socialTabContent
             }
             .background(OutboundPalette.background)
             .navigationBarTitleDisplayMode(.inline)
@@ -104,21 +85,37 @@ struct SocialHomeView: View {
                     GlobalConditionsButton()
 
                     Menu {
-                        NavigationLink {
-                            SocialGroupsView()
+                        Button {
+                            isCreateActivityEventPresented = true
+                            trackUpcomingInteraction("plan")
                         } label: {
-                            Label("Groups", systemImage: "person.3")
+                            Label(String(localized: "social.create.plan", defaultValue: "Plan a run"), systemImage: "calendar.badge.plus")
                         }
 
-                        NavigationLink {
-                            CommunityRouteLibraryView()
+                        Button {
+                            selectFeatureTab(.people, entrySource: "create_menu")
+                            peopleFocusRequestID += 1
                         } label: {
-                            Label("Explore routes", systemImage: "map")
+                            Label(String(localized: "social.create.person", defaultValue: "Add person"), systemImage: "person.badge.plus")
+                        }
+
+                        Button {
+                            selectFeatureTab(.circle, entrySource: "create_menu")
+                            isCircleCreationPresented = true
+                        } label: {
+                            Label(String(localized: "social.create.circle", defaultValue: "Create Circle"), systemImage: "person.3.sequence")
+                        }
+
+                        Button {
+                            selectFeatureTab(.routes, entrySource: "create_menu")
+                            routeImportRequestID += 1
+                        } label: {
+                            Label(String(localized: "social.create.route", defaultValue: "Import a route"), systemImage: "square.and.arrow.down")
                         }
                     } label: {
-                        Image(systemName: "person.2.circle")
+                        Image(systemName: "plus.circle")
                     }
-                    .accessibilityLabel("Social community")
+                    .accessibilityLabel(String(localized: "social.create.menu", defaultValue: "Create or add"))
 
                     Button {
                         showsNotifications = true
@@ -130,13 +127,6 @@ struct SocialHomeView: View {
                     .accessibilityValue(notificationCenterAccessibilityValue(count: notificationCenterBadgeCount))
                 }
             }
-            .refreshable {
-                async let homeRefresh: Void = socialStore.refresh()
-                async let connectionsRefresh: Void = socialStore.refreshConnections()
-                async let circleRefresh: Void = circleStore.refresh()
-                async let invitationRefresh: Void = circleStore.refreshInvitations()
-                _ = await (homeRefresh, connectionsRefresh, circleRefresh, invitationRefresh)
-            }
             .task {
                 async let liveCheers: Void = liveCheerStore.refreshSessions()
                 async let connectionsRefresh: Void = socialStore.refreshConnections()
@@ -145,28 +135,16 @@ struct SocialHomeView: View {
                 async let circleInvitations: Void = circleStore.refreshInvitations()
                 _ = await (connectionsRefresh, notificationsRefresh, circleRefresh, circleInvitations, liveCheers)
             }
-            .onChange(of: shouldShowConnectionPrompt, initial: true) { _, showsPrompt in
-                guard showsPrompt else { return }
-                Task {
-                    await analyticsManager?.track(.init(.featureExposed, properties: [
-                        .feature: .string("social_connection_growth_prompt"),
-                    ]))
-                }
-            }
-            .onChange(of: acceptedConnections.isEmpty, initial: true) { _, isEmpty in
-                guard socialStore.hasLoadedConnections, !isEmpty else { return }
-                Task {
-                    await analyticsManager?.track(.init(.featureExposed, properties: [
-                        .feature: .string("social_connections_section"),
-                    ]))
-                }
-            }
             .onChange(of: socialStore.hasLoadedConnections, initial: true) { _, loaded in
                 guard loaded else { return }
-                Task { await analyticsManager?.track(.init(.circleSectionExposed, properties: [
-                    .entrySource: .string("social"),
-                    .participantCountBucket: .string(ProductAnalyticsBucket.count(circleStore.primaryCircle?.memberCount ?? 0))
-                ])) }
+                initializeFeatureTabIfNeeded()
+            }
+            .onChange(of: selectedFeatureTab) { _, tab in
+                guard tab == .feed else { return }
+                trackFeedModuleExposuresIfNeeded()
+            }
+            .onChange(of: badgeAnalyticsSignature, initial: true) { _, _ in
+                trackNewBadgeExposures()
             }
             .onChange(of: circleStore.errorMessage) { _, message in
                 guard let message else { return }
@@ -203,6 +181,9 @@ struct SocialHomeView: View {
             .navigationDestination(isPresented: $showsAddConnection) {
                 SocialConnectionsView(startsAdding: true)
             }
+            .navigationDestination(isPresented: $isCircleCreationPresented) {
+                CircleCreateView()
+            }
             .navigationDestination(item: $pushedLiveCheerSessionID) { sessionID in
                 LiveCheerView(sessionID: sessionID, entrySource: "push")
             }
@@ -216,8 +197,8 @@ struct SocialHomeView: View {
                     trackPushOpen(type: "live_cheer_invitation", destination: "live_cheer")
                     pushNotifications.consumePendingNotification()
                 } else if pushNotifications.pendingNotificationType == "connectionRequest" {
-                    showsConnections = true
-                    trackPushOpen(type: "connection_request", destination: "connections")
+                    selectFeatureTab(.people, entrySource: "push")
+                    trackPushOpen(type: "connection_request", destination: "people")
                     pushNotifications.consumePendingNotification()
                 } else {
                     showsNotifications = true
@@ -308,6 +289,398 @@ struct SocialHomeView: View {
                 Text(String(localized: "social.delete.post.confirmation.message", defaultValue: "This removes the post from Social. Your saved activity is not deleted."))
             }
         }
+    }
+
+    private var badgeAnalyticsSignature: String {
+        SocialFeatureTab.allCases.compactMap { tab in
+            tabBadges[tab].map { "\(tab.rawValue):\($0.analyticsKind)" }
+        }.joined(separator: "|")
+    }
+
+    @ViewBuilder
+    private var socialTabContent: some View {
+        ZStack {
+            tabLayer(.feed) { feedTab }
+            tabLayer(.people) {
+                SocialConnectionsView(
+                    embedded: true,
+                    focusRequestID: peopleFocusRequestID
+                )
+            }
+            tabLayer(.circle) { circleTab }
+            tabLayer(.groups) { SocialGroupsView(embedded: true) }
+            tabLayer(.routes) {
+                CommunityRouteLibraryView(
+                    embedded: true,
+                    importRequestID: routeImportRequestID
+                )
+            }
+        }
+    }
+
+    private func tabLayer<Content: View>(
+        _ tab: SocialFeatureTab,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
+            .opacity(selectedFeatureTab == tab ? 1 : 0)
+            .allowsHitTesting(selectedFeatureTab == tab)
+            .accessibilityHidden(selectedFeatureTab != tab)
+    }
+
+    private var feedTab: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 12) {
+                activeNowRail
+                upcomingCarousel
+                recentPosts
+            }
+            .padding(.horizontal, OutboundSpacing.screen)
+            .padding(.vertical, 12)
+        }
+        .refreshable { await refreshFeed(clearUnseenBadge: true) }
+    }
+
+    private var circleTab: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                yourCircleSection
+            }
+            .padding(OutboundSpacing.screen)
+        }
+        .refreshable {
+            async let circles: Void = circleStore.refresh()
+            async let invitations: Void = circleStore.refreshInvitations()
+            _ = await (circles, invitations)
+        }
+    }
+
+    @ViewBuilder
+    private var activeNowRail: some View {
+        if !activeConnections.isEmpty {
+            VStack(alignment: .leading, spacing: 7) {
+                Text(String(localized: "social.active_now.title", defaultValue: "Active now"))
+                    .socialSectionLabel()
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 14) {
+                        ForEach(activeConnections) { connection in
+                            activeConnectionLink(connection)
+                        }
+                    }
+                    .padding(.horizontal, 1)
+                }
+                .frame(height: 70)
+            }
+            .onAppear {
+                guard hasInitializedFeatureTab, selectedFeatureTab == .feed else { return }
+                trackActiveNowExposureIfNeeded()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func activeConnectionLink(_ connection: SocialConnectionDTO) -> some View {
+        if let session = liveCheerStore.sessions.first(where: {
+            $0.runner.id == connection.person.id && $0.status == "active"
+        }) {
+            NavigationLink {
+                LiveCheerView(
+                    sessionID: session.id,
+                    entrySource: "social_active_now",
+                    initialSession: session
+                )
+            } label: {
+                activeConnectionLabel(connection, showsCheer: true)
+            }
+            .buttonStyle(.plain)
+            .simultaneousGesture(TapGesture().onEnded {
+                trackActiveNowInteraction("cheer")
+            })
+        } else {
+            SocialProfileLink(
+                person: connection.person,
+                connection: connection,
+                entrySource: "social_active_now"
+            ) {
+                activeConnectionLabel(connection, showsCheer: false)
+            }
+            .simultaneousGesture(TapGesture().onEnded {
+                trackActiveNowInteraction("profile")
+            })
+        }
+    }
+
+    private func activeConnectionLabel(
+        _ connection: SocialConnectionDTO,
+        showsCheer: Bool
+    ) -> some View {
+        VStack(spacing: 3) {
+            SocialAvatar(
+                name: connection.person.displayName,
+                avatarURL: connection.person.avatarUrl
+            )
+            .overlay(alignment: .bottomTrailing) {
+                Image(systemName: showsCheer ? "waveform.circle.fill" : "circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(OutboundPalette.companion)
+                    .background(.background, in: Circle())
+            }
+            Text(connection.firstName)
+                .font(.caption2.weight(.medium))
+                .lineLimit(1)
+                .frame(width: 58)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(
+            format: String(localized: "social.active_now.person", defaultValue: "%@ is active now"),
+            connection.person.displayName
+        ))
+        .accessibilityHint(
+            showsCheer
+                ? String(localized: "social.active_now.cheer_hint", defaultValue: "Opens the live Cheer screen")
+                : String(localized: "social.active_now.profile_hint", defaultValue: "Opens this person’s profile")
+        )
+    }
+
+    @ViewBuilder
+    private var upcomingCarousel: some View {
+        let upcoming = prioritizedUpcomingRuns
+        if !upcoming.isEmpty {
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 10) {
+                    Text(String(localized: "social.upcoming", defaultValue: "Upcoming"))
+                        .socialSectionLabel()
+                    Spacer()
+                    Button {
+                        isCreateActivityEventPresented = true
+                        trackUpcomingInteraction("plan")
+                    } label: {
+                        Label(String(localized: "social.upcoming.plan", defaultValue: "Plan"), systemImage: "plus")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.plain)
+                    .frame(minHeight: 44)
+                    .foregroundStyle(OutboundPalette.companion)
+
+                    NavigationLink {
+                        SocialActivityDiscoveryView()
+                    } label: {
+                        Text(String(localized: "social.upcoming.see_all", defaultValue: "See all"))
+                            .font(.caption.weight(.semibold))
+                            .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(OutboundPalette.companion)
+                    .simultaneousGesture(TapGesture().onEnded {
+                        trackUpcomingInteraction("see_all")
+                    })
+                }
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 10) {
+                        ForEach(upcoming.prefix(3)) { run in
+                            NavigationLink {
+                                ActivityEventDetailView(run: run)
+                            } label: {
+                                upcomingCompactCard(run)
+                            }
+                            .buttonStyle(.plain)
+                            .simultaneousGesture(TapGesture().onEnded {
+                                trackUpcomingInteraction("card")
+                            })
+                        }
+                    }
+                    .padding(.horizontal, 1)
+                }
+                .frame(height: 118)
+            }
+            .onAppear {
+                guard hasInitializedFeatureTab, selectedFeatureTab == .feed else { return }
+                trackUpcomingExposureIfNeeded()
+            }
+        }
+    }
+
+    private var prioritizedUpcomingRuns: [ActivityEventDTO] {
+        socialStore.state.upcomingRuns.sorted { lhs, rhs in
+            let lhsPriority = upcomingPriority(lhs)
+            let rhsPriority = upcomingPriority(rhs)
+            return lhsPriority == rhsPriority ? lhs.startsAt < rhs.startsAt : lhsPriority < rhsPriority
+        }
+    }
+
+    private func upcomingPriority(_ run: ActivityEventDTO) -> Int {
+        if isActionRequired(run) { return 0 }
+        if run.startsAt <= Date().addingTimeInterval(72 * 60 * 60) { return 1 }
+        return 2
+    }
+
+    private func isActionRequired(_ run: ActivityEventDTO) -> Bool {
+        run.source?.kind == "directInvitation" && run.currentUserGoing != true
+    }
+
+    private func upcomingCompactCard(_ run: ActivityEventDTO) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(run.startsAt.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute()))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(OutboundPalette.companion)
+                .lineLimit(1)
+            Text(run.title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+            Label(
+                run.locationName == nil
+                    ? String(localized: "social.upcoming.anywhere", defaultValue: "Join from anywhere")
+                    : String(localized: "social.upcoming.meetup", defaultValue: "Meet up or join anywhere"),
+                systemImage: "person.2.wave.2"
+            )
+            .lineLimit(1)
+            Label(
+                String(localized: "social.upcoming.attendees", defaultValue: "\(run.attendeeCount ?? 0) going"),
+                systemImage: "person.2"
+            )
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .frame(width: 226, height: 88, alignment: .topLeading)
+        .padding(12)
+        .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .stroke(OutboundPalette.companion.opacity(0.16), lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func initializeFeatureTabIfNeeded() {
+        guard !hasInitializedFeatureTab, !hasInteractedWithFeatureTabs else { return }
+        hasInitializedFeatureTab = true
+        selectedFeatureTab = acceptedConnections.isEmpty ? .people : .feed
+        track(.socialTabExposed, properties: [
+            .selectionType: .string(selectedFeatureTab.rawValue),
+            .entrySource: .string("social_visit"),
+        ])
+        if selectedFeatureTab == .feed {
+            trackFeedModuleExposuresIfNeeded()
+        }
+    }
+
+    private func selectFeatureTab(
+        _ tab: SocialFeatureTab,
+        entrySource explicitEntrySource: String? = nil
+    ) {
+        hasInteractedWithFeatureTabs = true
+        let entrySource = explicitEntrySource ?? (selectedFeatureTab == tab ? "reselect" : "tab_row")
+        selectedFeatureTab = tab
+        track(.socialTabExposed, properties: [
+            .selectionType: .string(tab.rawValue),
+            .entrySource: .string(entrySource),
+        ])
+        track(.socialTabSelected, properties: [
+            .selectionType: .string(tab.rawValue),
+            .entrySource: .string(entrySource),
+        ])
+        if let badge = tabBadges[tab] {
+            track(.socialTabBadgeSelected, properties: [
+                .selectionType: .string(tab.rawValue),
+                .sourceType: .string(badge.analyticsKind),
+            ])
+        }
+        if tab == .feed {
+            trackFeedModuleExposuresIfNeeded()
+            Task { await refreshFeed(clearUnseenBadge: true) }
+        } else if tab == .circle {
+            track(.circleSectionExposed, properties: [
+                .entrySource: .string(entrySource),
+                .participantCountBucket: .string(ProductAnalyticsBucket.count(circleStore.primaryCircle?.memberCount ?? 0)),
+            ])
+        }
+    }
+
+    private func refreshFeed(clearUnseenBadge: Bool) async {
+        let previousRevision = socialStore.homeRefreshRevision
+        async let home: Void = socialStore.refresh()
+        async let live: Void = liveCheerStore.refreshSessions()
+        _ = await (home, live)
+        guard clearUnseenBadge,
+              socialStore.homeRefreshRevision > previousRevision,
+              socialStore.hasUnseenFeedPosts else { return }
+        socialStore.markNewestFeedPostViewed()
+        track(.socialTabBadgeCleared, properties: [
+            .selectionType: .string(SocialFeatureTab.feed.rawValue),
+            .sourceType: .string("successful_refresh"),
+        ])
+    }
+
+    private func trackNewBadgeExposures() {
+        let currentSignatures = Set(SocialFeatureTab.allCases.compactMap { tab in
+            tabBadges[tab].map { "\(tab.rawValue):\($0.analyticsKind)" }
+        })
+        exposedBadgeSignatures.formIntersection(currentSignatures)
+        for tab in SocialFeatureTab.allCases {
+            guard let badge = tabBadges[tab] else { continue }
+            let signature = "\(tab.rawValue):\(badge.analyticsKind)"
+            guard exposedBadgeSignatures.insert(signature).inserted else { continue }
+            track(.socialTabBadgeExposed, properties: [
+                .selectionType: .string(tab.rawValue),
+                .sourceType: .string(badge.analyticsKind),
+            ])
+        }
+    }
+
+    private func trackActiveNowInteraction(_ selection: String) {
+        track(.socialActiveNowSelected, properties: [
+            .selectionType: .string(selection),
+            .entrySource: .string("active_now"),
+        ])
+    }
+
+    private func trackUpcomingInteraction(_ selection: String) {
+        track(.socialUpcomingSelected, properties: [
+            .selectionType: .string(selection),
+            .entrySource: .string("feed"),
+        ])
+    }
+
+    private func trackFeedModuleExposuresIfNeeded() {
+        trackActiveNowExposureIfNeeded()
+        trackUpcomingExposureIfNeeded()
+        trackFirstFeedCardVisibilityIfNeeded()
+    }
+
+    private func trackActiveNowExposureIfNeeded() {
+        guard !activeConnections.isEmpty, !hasTrackedActiveNowExposure else { return }
+        hasTrackedActiveNowExposure = true
+        track(.socialActiveNowExposed, properties: [
+            .countBucket: .string(ProductAnalyticsBucket.count(activeConnections.count)),
+        ])
+    }
+
+    private func trackUpcomingExposureIfNeeded() {
+        let upcoming = prioritizedUpcomingRuns
+        guard !upcoming.isEmpty, !hasTrackedUpcomingExposure else { return }
+        hasTrackedUpcomingExposure = true
+        track(.socialUpcomingExposed, properties: [
+            .countBucket: .string(ProductAnalyticsBucket.count(upcoming.count)),
+            .sourceType: .string(upcoming.contains(where: isActionRequired) ? "action_required" : "relevant"),
+        ])
+    }
+
+    private func trackFirstFeedCardVisibilityIfNeeded() {
+        guard let firstPost = socialStore.state.posts.first,
+              !hasTrackedFirstFeedCard else { return }
+        hasTrackedFirstFeedCard = true
+        track(.socialFeedFirstCardVisible, properties: [
+            .sourceType: .string(firstPost.isCurrentUser ? "self" : "connection"),
+        ])
+    }
+
+    private func track(
+        _ name: ProductEventName,
+        properties: [ProductPropertyKey: AnalyticsValue]
+    ) {
+        Task { await analyticsManager?.track(.init(name, properties: properties)) }
     }
 
     private func liveCheerRow(name: String) -> some View {
@@ -799,6 +1172,12 @@ struct SocialHomeView: View {
                 .accessibilityAction(named: String(localized: "Open activity")) {
                     selectedActivityPost = post
                 }
+                .onAppear {
+                    guard post.id == socialStore.state.posts.first?.id,
+                          hasInitializedFeatureTab,
+                          selectedFeatureTab == .feed else { return }
+                    trackFirstFeedCardVisibilityIfNeeded()
+                }
                 if post.id == socialStore.state.posts.last?.id,
                    socialStore.state.nextFeedCursor != nil {
                     ProgressView()
@@ -1058,6 +1437,13 @@ private struct SocialActivityDiscoveryView: View {
                     }
                 }
             }
+            if !socialStore.state.pastEvents.isEmpty {
+                Section(String(localized: "social.activities.past", defaultValue: "Past activities")) {
+                    ForEach(socialStore.state.pastEvents) { event in
+                        PastActivityEventRow(event: event)
+                    }
+                }
+            }
         }
         .navigationTitle(String(localized: "social.upcoming", defaultValue: "Upcoming"))
         .refreshable { await socialStore.refresh() }
@@ -1067,40 +1453,82 @@ private struct SocialActivityDiscoveryView: View {
 private struct SocialGroupsView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
+    let embedded: Bool
+
+    init(embedded: Bool = false) {
+        self.embedded = embedded
+    }
+
+    private var joinedGroups: [SocialGroupDTO] {
+        socialStore.discoverableGroups.filter { $0.membershipRole != nil }
+    }
+
+    private var discoveryGroups: [SocialGroupDTO] {
+        socialStore.discoverableGroups.filter { $0.membershipRole == nil }
+    }
 
     var body: some View {
-        List(socialStore.discoverableGroups) { group in
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(group.name).font(.headline)
-                        Text([group.city, String(localized: "\(group.memberCount) members")].compactMap { $0 }.joined(separator: " · "))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+        List {
+            Section(String(localized: "social.groups.joined", defaultValue: "Joined Groups")) {
+                if joinedGroups.isEmpty {
+                    Label(
+                        String(localized: "social.groups.joined.empty", defaultValue: "Groups you join will appear here."),
+                        systemImage: "person.3"
+                    )
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                } else {
+                    ForEach(joinedGroups) { group in
+                        groupRow(group)
                     }
-                    Spacer()
-                    Button(group.membershipRole == nil ? String(localized: "Join") : String(localized: "Leave")) {
-                        Task {
-                            let isJoining = group.membershipRole == nil
-                            if await socialStore.toggleMembership(in: group), isJoining {
-                                _ = socialRecognitionStore.registerGroupJoin(groupID: group.id)
-                            }
-                        }
-                    }
-                    .buttonStyle(.bordered)
                 }
-                if let description = group.description { Text(description).font(.subheadline) }
             }
-            .padding(.vertical, 4)
-        }
-        .navigationTitle("Groups")
-        .overlay {
-            if socialStore.discoverableGroups.isEmpty {
-                ContentUnavailableView("No groups yet", systemImage: "person.3", description: Text("Discoverable running groups will appear here."))
+
+            Section(String(localized: "social.groups.discover", defaultValue: "Discover")) {
+                if discoveryGroups.isEmpty {
+                    ContentUnavailableView(
+                        String(localized: "social.groups.discover.empty", defaultValue: "No new Groups right now"),
+                        systemImage: "binoculars",
+                        description: Text(String(localized: "social.groups.discover.description", defaultValue: "Pull to refresh as more running Groups become available."))
+                    )
+                } else {
+                    ForEach(discoveryGroups) { group in
+                        groupRow(group)
+                    }
+                }
             }
         }
+        .navigationTitle(embedded ? "" : String(localized: "Groups"))
+        .navigationBarTitleDisplayMode(.inline)
         .task { await socialStore.refreshGroups() }
         .refreshable { await socialStore.refreshGroups() }
+    }
+
+    private func groupRow(_ group: SocialGroupDTO) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(group.name).font(.headline)
+                    Text([group.city, String(localized: "\(group.memberCount) members")].compactMap { $0 }.joined(separator: " · "))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button(group.membershipRole == nil ? String(localized: "Join") : String(localized: "Leave")) {
+                    Task {
+                        let isJoining = group.membershipRole == nil
+                        if await socialStore.toggleMembership(in: group), isJoining {
+                            _ = socialRecognitionStore.registerGroupJoin(groupID: group.id)
+                        }
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
+            if let description = group.description {
+                Text(description).font(.subheadline)
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 
@@ -1946,6 +2374,8 @@ struct SocialConnectionsView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @Environment(\.analyticsManager) private var analyticsManager
     let startsAdding: Bool
+    let embedded: Bool
+    let focusRequestID: Int
     @State private var searchQuery = ""
     @State private var paginationToast: String?
     @State private var searchToast: String?
@@ -1959,8 +2389,14 @@ struct SocialConnectionsView: View {
     @State private var showsScanner = false
     @FocusState private var isSearchFocused: Bool
 
-    init(startsAdding: Bool = false) {
+    init(
+        startsAdding: Bool = false,
+        embedded: Bool = false,
+        focusRequestID: Int = 0
+    ) {
         self.startsAdding = startsAdding
+        self.embedded = embedded
+        self.focusRequestID = focusRequestID
     }
 
     private static let pageSize = 20
@@ -1991,31 +2427,34 @@ struct SocialConnectionsView: View {
                 }
             }
         }
-        .navigationTitle("Connections")
+        .navigationTitle(embedded ? "" : String(localized: "Connections"))
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button {
-                        showsScanner = true
-                    } label: {
-                        Label(String(localized: "Scan QR code", table: "ConnectionQRCode"), systemImage: "qrcode.viewfinder")
-                    }
+            if !embedded {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button {
+                            showsScanner = true
+                        } label: {
+                            Label(String(localized: "Scan QR code", table: "ConnectionQRCode"), systemImage: "qrcode.viewfinder")
+                        }
 
-                    Button {
-                        showsQRCode = true
-                    } label: {
-                        Label("Show my QR code", systemImage: "qrcode")
-                    }
+                        Button {
+                            showsQRCode = true
+                        } label: {
+                            Label("Show my QR code", systemImage: "qrcode")
+                        }
 
-                    Button {
-                        Task { await inviteByLink() }
+                        Button {
+                            Task { await inviteByLink() }
+                        } label: {
+                            Label("Invite by link", systemImage: "square.and.arrow.up")
+                        }
                     } label: {
-                        Label("Invite by link", systemImage: "square.and.arrow.up")
+                        Image(systemName: "plus")
                     }
-                } label: {
-                    Image(systemName: "plus")
+                    .accessibilityLabel("Add connection")
                 }
-                .accessibilityLabel("Add connection")
             }
         }
         .task {
@@ -2024,6 +2463,9 @@ struct SocialConnectionsView: View {
             if startsAdding {
                 isSearchFocused = true
             }
+        }
+        .onChange(of: focusRequestID) { _, _ in
+            isSearchFocused = true
         }
         .navigationDestination(isPresented: $showsQRCode) {
             SocialConnectionQRCodeView()
@@ -2191,6 +2633,49 @@ struct SocialConnectionsView: View {
                 }
             }
 
+            if socialStore.hasLoadedConnections && acceptedConnections.isEmpty {
+                Section {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label(
+                            String(localized: "social.people.empty.title", defaultValue: "Find your people"),
+                            systemImage: "person.2.circle"
+                        )
+                        .font(.headline)
+                        Text(String(localized: "social.people.empty.description", defaultValue: "Connect with friends to share activities, plan runs, and cheer each other on."))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                        Button {
+                            isSearchFocused = true
+                            trackDiscoveryAction("find_people")
+                        } label: {
+                            Label(String(localized: "social.people.find", defaultValue: "Find people"), systemImage: "magnifyingglass")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button {
+                            trackDiscoveryAction("invite_friend")
+                            Task { await inviteByLink() }
+                        } label: {
+                            Label(String(localized: "social.people.invite", defaultValue: "Invite a friend"), systemImage: "square.and.arrow.up")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button {
+                            showsScanner = true
+                            trackDiscoveryAction("scan_qr")
+                        } label: {
+                            Label(String(localized: "social.people.scan", defaultValue: "Scan QR"), systemImage: "qrcode.viewfinder")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding(.vertical, 8)
+                }
+            }
+
             if !outgoingRequests.isEmpty {
                 Section("Sent") {
                     ForEach(outgoingRequests) { connection in
@@ -2253,6 +2738,15 @@ struct SocialConnectionsView: View {
             if socialStore.isConnectionsLoading && socialStore.connections.isEmpty {
                 ProgressView()
             }
+        }
+    }
+
+    private func trackDiscoveryAction(_ selection: String) {
+        Task {
+            await analyticsManager?.track(.init(.socialDiscoveryActionSelected, properties: [
+                .selectionType: .string(selection),
+                .entrySource: .string("people_empty"),
+            ]))
         }
     }
 
