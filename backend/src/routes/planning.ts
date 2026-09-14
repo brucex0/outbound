@@ -18,6 +18,11 @@ import {
 } from "../services/planning/planningService.js";
 import type { AppEnv } from "../types/hono.js";
 import { standaloneWorkoutCatalog } from "../data/standaloneWorkouts.js";
+import {
+  getPlanIntakeContext,
+  interpretPlanIntake,
+  planIntakeInterpretSchema,
+} from "../services/planning/planIntake.js";
 
 const router = new Hono<AppEnv>();
 
@@ -27,7 +32,7 @@ router.get("/standalone-workouts", async (c) => {
   return c.json(standaloneWorkoutCatalog);
 });
 
-const objectiveSchema = z.enum(["eventPreparation", "endurance", "speed", "strength", "weightLoss", "fitnessMaintenance", "healthEnergy", "other"]);
+const objectiveSchema = z.enum(["eventPreparation", "endurance", "speed", "strength", "weightLoss", "healthEnergy"]);
 const activitySchema = z.enum(["run", "walk", "bike"]);
 const goalSchema = z.object({
   type: objectiveSchema,
@@ -36,6 +41,12 @@ const goalSchema = z.object({
   targetDate: z.string().optional().nullable(),
   targetDistanceMeters: z.number().positive().optional().nullable(),
   targetEventName: z.string().max(120).optional().nullable(),
+  eventIntent: z.enum(["finish", "perform", "targetTime"]).optional().nullable(),
+  targetTimeSeconds: z.number().int().positive().optional().nullable(),
+  reviewHorizonWeeks: z.union([z.literal(4), z.literal(8), z.literal(12)]).optional().nullable(),
+  successSignal: z.string().trim().max(120).optional().nullable(),
+  goalDescription: z.string().trim().max(500).optional().nullable(),
+  intakeContextVersion: z.string().max(240).optional().nullable(),
   priority: z.string().min(1).max(64).optional(),
   preferredDays: z.array(z.string().min(1).max(16)).optional(),
   preferredLongSessionDay: z.string().min(1).max(16).optional().nullable(),
@@ -120,10 +131,38 @@ router.get("/goals", async (c) => {
   return c.json({ goal: state.goal, plan: state.plan });
 });
 
+router.get("/intake-context", async (c) => {
+  const user = await requirePlanningUser(c);
+  if (user instanceof Response) return user;
+  return c.json(await getPlanIntakeContext(
+    user.id,
+    c.req.query("objective"),
+    c.req.header("X-Plainstride-Time-Zone")
+  ));
+});
+
+router.post("/intake/interpret", zValidator("json", planIntakeInterpretSchema), async (c) => {
+  const user = await requirePlanningUser(c);
+  if (user instanceof Response) return user;
+  const current = await getPlanIntakeContext(
+    user.id,
+    c.req.valid("json").draft.objective,
+    c.req.header("X-Plainstride-Time-Zone")
+  );
+  if (current.contextVersion !== c.req.valid("json").contextVersion) {
+    return c.json({ error: "Planning context changed. Refresh the intake summary before continuing.", context: current }, 409);
+  }
+  return c.json(await interpretPlanIntake(c.req.valid("json"), c.get("locale"), current));
+});
+
 router.post("/goals", zValidator("json", goalSchema), async (c) => {
   const user = await requirePlanningUser(c);
   if (user instanceof Response) return user;
-  return c.json(await createGoal(user.id, c.req.valid("json")), 201);
+  try {
+    return c.json(await createGoal(user.id, c.req.valid("json")), 201);
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : "Unable to create plan." }, 400);
+  }
 });
 
 router.post("/readiness", zValidator("json", readinessSchema), async (c) => {

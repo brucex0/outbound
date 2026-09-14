@@ -97,7 +97,11 @@ function legacyClientData(activity: {
   const durationSecs = activity.durationSecs ?? 1;
   const route = activity.route as {
     geometry?: { coordinates?: number[][] };
-    properties?: { timestamps?: string[]; verticalAccuracy?: Array<number | null> };
+    properties?: {
+      timestamps?: string[];
+      verticalAccuracy?: Array<number | null>;
+      elevationMetadata?: ActivityRoutePayload["elevationMetadata"];
+    };
   } | null;
   const coordinates = route?.geometry?.coordinates ?? [];
   const timestamps = route?.properties?.timestamps ?? [];
@@ -129,6 +133,7 @@ function legacyClientData(activity: {
         altitude: coordinate[2] ?? null,
         verticalAccuracy: verticalAccuracy[index] ?? null,
       })),
+      elevationMetadata: route?.properties?.elevationMetadata ?? null,
     },
     photos: [],
   };
@@ -164,6 +169,13 @@ const createSchema = z.object({
         )
         .max(MAX_ACTIVITY_ROUTE_POINTS),
       visibility: z.string().optional().nullable(),
+      elevationMetadata: z.object({
+        algorithmVersion: z.string().min(1).max(64),
+        provider: z.string().min(1).max(100),
+        attributionText: z.string().min(1).max(200),
+        attributionURL: z.string().url().max(500),
+        modified: z.boolean(),
+      }).optional().nullable(),
     })
     .optional()
     .nullable(),
@@ -223,6 +235,7 @@ function normalizeRoute(route: ActivityRoutePayload | null | undefined) {
       visibility: route.visibility ?? "private",
       timestamps: route.points.map((point) => point.timestamp),
       verticalAccuracy: route.points.map((point) => point.verticalAccuracy ?? null),
+      elevationMetadata: route.elevationMetadata ?? null,
     },
   };
 }

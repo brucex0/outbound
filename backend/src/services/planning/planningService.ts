@@ -6,6 +6,7 @@ import { generateInitialPlan, normalizeGoalInput } from "./generator.js";
 import { createPlanVersionWithWorkouts, json } from "./persistence.js";
 import { processDuePlanningEventsForUser, processPlanningEventById } from "./processor.js";
 import { applyCalorieTargets, resolveLearnedRunPace } from "./runGoalEstimator.js";
+import { getPlanIntakeContext } from "./planIntake.js";
 import { getPrismaClient } from "../prisma.js";
 import { loadTrainingPlanCatalog } from "../trainingPlanCatalog.js";
 import { buildTrainingPlanState } from "../trainingPlans.js";
@@ -29,11 +30,29 @@ export async function createGoal(
   input: CreateTrainingGoalInput
 ): Promise<PlanningState> {
   const prisma = getPrismaClient();
-  const [activities, profile, calibration] = await Promise.all([
+  const [activities, plannedWorkouts, readiness, profile, calibration] = await Promise.all([
     recentActivities(userId),
+    recentPlannedWorkouts(userId),
+    recentReadiness(userId),
     prisma.runnerProfile.findUnique({ where: { userId } }),
     prisma.calibrationProgram.findUnique({ where: { userId } }),
   ]);
+  if (!profile?.sexAtBirth || !profile.birthDate || profile.weightKilograms == null) {
+    throw new Error("Birth date, sex assigned at birth, and weight are required to create a personalized plan.");
+  }
+  const age = ageYears(profile.birthDate, new Date());
+  if (age < 13 || age > 100) {
+    throw new Error("Enter a valid birth date before creating a personalized plan.");
+  }
+  if (input.type === "eventPreparation" && (!input.targetDate || !input.targetDistanceMeters)) {
+    throw new Error("Event date and distance are required for an event-preparation plan.");
+  }
+  if (input.intakeContextVersion) {
+    const currentContext = await getPlanIntakeContext(userId, input.type);
+    if (currentContext.contextVersion !== input.intakeContextVersion) {
+      throw new Error("Planning context changed. Review the updated assumptions before creating the plan.");
+    }
+  }
   const normalized = normalizeGoalInput({
     ...input,
     primaryMotivation: input.primaryMotivation ?? profile?.primaryMotivation as CreateTrainingGoalInput["primaryMotivation"],
@@ -41,8 +60,8 @@ export async function createGoal(
   });
   const athleteState = computeAthleteTrainingState({
     activities,
-    plannedWorkouts: [],
-    readiness: [],
+    plannedWorkouts,
+    readiness,
   });
   const generated = generateInitialPlan({
     goal: normalized,
@@ -90,6 +109,12 @@ export async function createGoal(
         targetDate: input.targetDate ? new Date(input.targetDate) : null,
         targetDistanceMeters: input.targetDistanceMeters ?? null,
         targetEventName: input.targetEventName ?? null,
+        eventIntent: input.type === "eventPreparation" ? input.eventIntent ?? "finish" : null,
+        targetTimeSeconds: input.type === "eventPreparation" ? input.targetTimeSeconds ?? null : null,
+        reviewHorizonWeeks: input.type === "eventPreparation" ? null : input.reviewHorizonWeeks ?? 8,
+        successSignal: input.successSignal ?? null,
+        goalDescription: input.goalDescription ?? null,
+        intakeContextVersion: input.intakeContextVersion ?? null,
         priority: normalized.priority,
         preferredDays: normalized.preferredDays,
         preferredLongSessionDay: normalized.preferredLongSessionDay,
@@ -115,7 +140,15 @@ export async function createGoal(
       versionNumber: 1,
       reason: "initial",
       summary: generation.summary,
-      engineInputs: { athleteState: stateForJson(athleteState), goal: normalized },
+      engineInputs: {
+        athleteState: stateForJson(athleteState),
+        goal: normalized,
+        planningProfile: {
+          ageYears: age,
+          sexAtBirth: profile.sexAtBirth,
+          weightKilograms: profile.weightKilograms,
+        },
+      },
       engineDecision: generation.engineDecision,
       workouts: generation.workouts,
     });
@@ -488,7 +521,7 @@ function activeTemplateIdFor(plan: Awaited<ReturnType<typeof activePlanForUser>>
 
 async function recentActivities(userId: string): Promise<ActivityForPlanning[]> {
   return getPrismaClient().activity.findMany({
-    where: { userId, startedAt: { gte: addDays(new Date(), -90) } },
+    where: { userId, deletedAt: null, startedAt: { gte: addDays(new Date(), -90) } },
     orderBy: { startedAt: "desc" },
     select: {
       id: true,
@@ -500,6 +533,48 @@ async function recentActivities(userId: string): Promise<ActivityForPlanning[]> 
       avgHeartRate: true,
     },
   }) as Promise<ActivityForPlanning[]>;
+}
+
+async function recentPlannedWorkouts(userId: string): Promise<PlannedWorkoutForState[]> {
+  return getPrismaClient().plannedWorkout.findMany({
+    where: { userId, scheduledDate: { gte: addDays(new Date(), -35) } },
+    orderBy: { scheduledDate: "desc" },
+    select: {
+      id: true,
+      scheduledDate: true,
+      modality: true,
+      stimulus: true,
+      durationSeconds: true,
+      distanceMeters: true,
+      targetCalories: true,
+      isKeyWorkout: true,
+      status: true,
+    },
+  }) as Promise<PlannedWorkoutForState[]>;
+}
+
+async function recentReadiness(userId: string): Promise<ReadinessForPlanning[]> {
+  return getPrismaClient().readinessCheckIn.findMany({
+    where: { userId, date: { gte: addDays(new Date(), -14) } },
+    orderBy: { date: "desc" },
+    select: {
+      date: true,
+      energy: true,
+      soreness: true,
+      sleepQuality: true,
+      stress: true,
+      motivation: true,
+      illnessOrPain: true,
+    },
+  }) as Promise<ReadinessForPlanning[]>;
+}
+
+function ageYears(birthDate: Date, now: Date) {
+  let age = now.getUTCFullYear() - birthDate.getUTCFullYear();
+  const beforeBirthday = now.getUTCMonth() < birthDate.getUTCMonth()
+    || (now.getUTCMonth() === birthDate.getUTCMonth() && now.getUTCDate() < birthDate.getUTCDate());
+  if (beforeBirthday) age -= 1;
+  return age;
 }
 
 async function trainingPlanRecommendationsForUser(userId: string) {

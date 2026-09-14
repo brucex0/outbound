@@ -12,6 +12,8 @@ Plainstride Plus is one user-facing bundle backed by separate server capabilitie
 
 The backend is authoritative. A live-sharing session snapshots voice-cheer access at creation so expiration cannot interrupt an active run.
 
+The persisted `paywall_enabled` feature control defaults to disabled when no row exists. While disabled, every user is allowed all three Plus capabilities and clients hide purchase entry points. Enabling it restores entitlement-based access checks.
+
 ## Personal Invitation Rewards
 
 - Each `ReferralLink` is a permanent eight-character personal code using lowercase letters and digits. The backend enforces uniqueness and retries collisions. Loading the personal surface once replaces an older-format pre-release code; the resulting eight-character code does not rotate.
@@ -63,6 +65,8 @@ All routes below require a valid Plainstride bearer token whose account email ap
 
 - `GET /v1/admin/rewards/me`: verify the current administrator.
 - `GET /v1/admin/rewards/summary`: dashboard counts.
+- `GET /v1/admin/rewards/feature-controls`: read the current paywall control.
+- `PUT /v1/admin/rewards/feature-controls/paywall`: enable or disable entitlement enforcement with `{ "enabled": boolean, "reason": string }`.
 - `GET /v1/admin/rewards/codes`: list and filter contribution codes without exposing code material.
 - `POST /v1/admin/rewards/codes`: issue a code with label, duration, redemption limit, expiration, and required reason. The plaintext code is returned once.
 - `PATCH /v1/admin/rewards/codes/:id`: update a code label, expiration, or redemption limit without exposing its digest.
@@ -78,6 +82,8 @@ All routes below require a valid Plainstride bearer token whose account email ap
 List endpoints accept bounded `limit` and `offset` pagination. Mutation bodies require a human-readable `reason`. Issuance, status changes, grants, and revocations are committed atomically with an `AdminRewardAuditEvent`. Audit metadata excludes plaintext reward codes.
 
 Revoking an entitlement code blocks future use but deliberately leaves prior grants intact. Revoke an already-issued user entitlement separately when required.
+
+Routine operations start in the same-origin web portal at `/admin`, with rewards at `/admin/rewards`. See `docs/rewards-admin-portal.md` for OAuth setup, deployment configuration, security boundaries, and operator workflows.
 
 Example issuance body:
 

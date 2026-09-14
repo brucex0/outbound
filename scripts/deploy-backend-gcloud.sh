@@ -21,6 +21,8 @@ Environment overrides:
   APPLE_KEY_ID            default: 8Z4P665DD3
   AUTH_ACCESS_KEY_ID      default: production-v1
   GOOGLE_AUTH_CLIENT_IDS  default: production Google OAuth client
+  REWARDS_ADMIN_EMAILS    verified account allowlist; defaults to GCLOUD_ACCOUNT in production
+  REWARDS_ADMIN_GOOGLE_CLIENT_ID OAuth web client used by the same-origin admin portal; production default is Plainstride's web/server client
   IOS_APP_STORE_URL       default: Plainstride's direct App Store listing
   CLOUD_SQL_INSTANCE      default: PROJECT_ID:REGION:outbound-db
   CLOUD_RUN_CONCURRENCY   default: 100
@@ -110,6 +112,8 @@ if [[ "$production_profile" == "1" ]]; then
   default_live_coach_manifest_url="https://storage.googleapis.com/outbound-494602-live-coach-audio/live-coach/2026-09-08.1/manifest.json"
   default_live_coach_asset_base_url="https://storage.googleapis.com/outbound-494602-live-coach-audio/live-coach/2026-09-08.1/assets"
   default_ai_route_policy_version=2
+  default_rewards_admin_emails="$GCLOUD_ACCOUNT"
+  default_rewards_admin_google_client_id="186140050970-9modifn0lqrpgvm62udhnjap2m1pk7cm.apps.googleusercontent.com"
 else
   default_min_instances=0
   default_max_instances=1
@@ -123,6 +127,8 @@ else
   default_live_coach_manifest_url=""
   default_live_coach_asset_base_url=""
   default_ai_route_policy_version=1
+  default_rewards_admin_emails=""
+  default_rewards_admin_google_client_id=""
 fi
 RUNTIME_SERVICE_ACCOUNT="${RUNTIME_SERVICE_ACCOUNT:-outbound-api-runtime@$PROJECT_ID.iam.gserviceaccount.com}"
 APPLE_CLIENT_ID="${APPLE_CLIENT_ID:-plainstride.outbound}"
@@ -130,6 +136,8 @@ APPLE_TEAM_ID="${APPLE_TEAM_ID:-WT54K7D7VH}"
 APPLE_KEY_ID="${APPLE_KEY_ID:-8Z4P665DD3}"
 AUTH_ACCESS_KEY_ID="${AUTH_ACCESS_KEY_ID:-production-v1}"
 GOOGLE_AUTH_CLIENT_IDS="${GOOGLE_AUTH_CLIENT_IDS:-186140050970-8ft54ba43tqp5pvha14o1uu8tlvg274k.apps.googleusercontent.com,186140050970-9modifn0lqrpgvm62udhnjap2m1pk7cm.apps.googleusercontent.com}"
+REWARDS_ADMIN_EMAILS="${REWARDS_ADMIN_EMAILS-$default_rewards_admin_emails}"
+REWARDS_ADMIN_GOOGLE_CLIENT_ID="${REWARDS_ADMIN_GOOGLE_CLIENT_ID-$default_rewards_admin_google_client_id}"
 IOS_APP_STORE_URL="${IOS_APP_STORE_URL:-https://apps.apple.com/us/app/plainstride/id6800191455}"
 CLOUD_SQL_INSTANCE="${CLOUD_SQL_INSTANCE:-$PROJECT_ID:$REGION:outbound-db}"
 CLOUD_RUN_CONCURRENCY="${CLOUD_RUN_CONCURRENCY:-100}"
@@ -253,6 +261,8 @@ environment_bindings=(
   "APPLE_KEY_ID=$APPLE_KEY_ID"
   "AUTH_ACCESS_KEY_ID=$AUTH_ACCESS_KEY_ID"
   "GOOGLE_AUTH_CLIENT_IDS=$GOOGLE_AUTH_CLIENT_IDS"
+  "REWARDS_ADMIN_EMAILS=$REWARDS_ADMIN_EMAILS"
+  "REWARDS_ADMIN_GOOGLE_CLIENT_ID=$REWARDS_ADMIN_GOOGLE_CLIENT_ID"
   "AUTH_ACCEPT_LEGACY_FIREBASE=true"
   "IOS_APP_STORE_URL=$IOS_APP_STORE_URL"
   "CIRCLE_MEMBER_LIMIT=$CIRCLE_MEMBER_LIMIT"

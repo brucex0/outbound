@@ -12,6 +12,7 @@ import {
   rewardsAdmin,
   rewardsAdminMiddleware,
 } from "../services/rewardsAdmin.js";
+import { featureControlSummary, PAYWALL_FEATURE_CONTROL } from "../services/featureControls.js";
 
 const router = new Hono<AppEnv>();
 router.use("*", async (c, next) => {
@@ -49,10 +50,33 @@ const grantSchema = z.object({
   durationDays: z.number().int().min(1).max(3_650).nullable(),
   reason: z.string().trim().min(1).max(500),
 }).strict();
+const featureControlSchema = z.object({
+  enabled: z.boolean(),
+  reason: z.string().trim().min(1).max(500),
+}).strict();
+const telemetrySchema = z.object({
+  event: z.enum(["portal_loaded", "section_viewed", "search_performed", "mutation_result"]),
+  section: z.enum(["home", "rewards", "dashboard", "controls", "codes", "redemptions", "referrals", "users", "audit"]).optional(),
+  operation: z.enum(["code_issue", "code_update", "code_revoke", "code_activate", "plus_grant", "entitlement_revoke", "paywall_control_update"]).optional(),
+  result: z.enum(["success", "failure"]).optional(),
+}).strict().superRefine((value, context) => {
+  if (value.event === "mutation_result" && (!value.operation || !value.result)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Mutation telemetry requires operation and result." });
+  }
+  if (value.event !== "mutation_result" && !value.section) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Navigation telemetry requires section." });
+  }
+});
 
 router.get("/me", async (c) => {
   const actor = rewardsAdmin(c);
   return c.json({ id: actor.id, email: actor.normalizedEmail, displayName: actor.displayName });
+});
+
+router.post("/telemetry", zValidator("json", telemetrySchema), async (c) => {
+  // Bounded operational data only: never add actor, user, code, label, reason, or timestamp fields here.
+  console.info("[rewards-admin] portal event", c.req.valid("json"));
+  return c.body(null, 204);
 });
 
 router.get("/summary", async (c) => {
@@ -67,6 +91,32 @@ router.get("/summary", async (c) => {
     prisma.user.count(),
   ]);
   return c.json({ activeCodes, totalRedemptions, activeEntitlements, pendingReferrals, rewardedReferrals, users });
+});
+
+router.get("/feature-controls", async (c) => {
+  return c.json(await featureControlSummary(getPrismaClient()));
+});
+
+router.put("/feature-controls/paywall", zValidator("json", featureControlSchema), async (c) => {
+  const body = c.req.valid("json");
+  const prisma = getPrismaClient();
+  const actor = rewardsAdmin(c);
+  const control = await prisma.$transaction(async (tx) => {
+    const updated = await tx.featureControl.upsert({
+      where: { key: PAYWALL_FEATURE_CONTROL },
+      update: { enabled: body.enabled },
+      create: { key: PAYWALL_FEATURE_CONTROL, enabled: body.enabled },
+    });
+    await auditRewardAdminAction(tx, actor, {
+      action: "feature_control_updated",
+      targetType: "feature_control",
+      targetId: PAYWALL_FEATURE_CONTROL,
+      reason: body.reason,
+      metadata: { enabled: body.enabled },
+    });
+    return updated;
+  });
+  return c.json({ paywallEnabled: control.enabled, updatedAt: control.updatedAt });
 });
 
 router.get("/codes", zValidator("query", codeListSchema), async (c) => {

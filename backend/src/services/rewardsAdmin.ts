@@ -27,8 +27,8 @@ export const rewardsAdminMiddleware: MiddlewareHandler<AppEnv> = async (c, next)
   await next();
 };
 
-export function configuredAdminEmails(): Set<string> {
-  return new Set((process.env.REWARDS_ADMIN_EMAILS ?? "")
+export function configuredAdminEmails(env: NodeJS.ProcessEnv = process.env): Set<string> {
+  return new Set((env.REWARDS_ADMIN_EMAILS ?? "")
     .split(",")
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean));

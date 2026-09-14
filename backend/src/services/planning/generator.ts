@@ -7,6 +7,7 @@ import type {
   PlannedWorkoutDraft,
   PrimaryMotivation,
   RunGoalType,
+  TrainingPlanPhase,
   TrainingStimulus,
 } from "./types.js";
 
@@ -22,6 +23,11 @@ export interface GeneratePlanInput {
     riskTolerance: string;
     primaryMotivation: PrimaryMotivation;
     preferredRunGoalType: RunGoalType;
+    targetDate?: string | Date | null;
+    targetDistanceMeters?: number | null;
+    eventIntent?: "finish" | "perform" | "targetTime" | null;
+    targetTimeSeconds?: number | null;
+    reviewHorizonWeeks?: 4 | 8 | 12 | null;
   };
   athleteState: AthleteTrainingStateSnapshot;
   now?: Date;
@@ -41,6 +47,11 @@ export function normalizeGoalInput(input: CreateTrainingGoalInput) {
     riskTolerance: input.riskTolerance ?? "balanced",
     primaryMotivation: input.primaryMotivation ?? "generalFitness",
     preferredRunGoalType: input.preferredRunGoalType ?? "time",
+    targetDate: input.targetDate ?? null,
+    targetDistanceMeters: input.targetDistanceMeters ?? null,
+    eventIntent: input.eventIntent ?? null,
+    targetTimeSeconds: input.targetTimeSeconds ?? null,
+    reviewHorizonWeeks: input.reviewHorizonWeeks ?? null,
     constraints: input.constraints ?? {},
   };
 }
@@ -55,12 +66,13 @@ export function generateNextWindow(input: GeneratePlanInput): PlanGenerationResu
 
 function generateWindow(input: GeneratePlanInput, summaryPrefix: string): PlanGenerationResult {
   const now = input.now ?? new Date();
+  const phase = phaseForGoal(input.goal, now);
   const dates = scheduledDates({
     now,
     preferredDays: input.goal.preferredDays,
     preferredLongSessionDay: input.goal.preferredLongSessionDay,
     sessionsPerWeek: input.goal.daysPerWeekTarget,
-    horizonDays: 14,
+    horizonDays: horizonDaysFor(input.goal, now),
   });
   const workouts = dates.map((date, index) =>
     workoutForDate({
@@ -70,12 +82,13 @@ function generateWindow(input: GeneratePlanInput, summaryPrefix: string): PlanGe
       isPreferredLongSessionDay: isDay(date, input.goal.preferredLongSessionDay),
       goal: input.goal,
       athleteState: input.athleteState,
+      phase,
     })
   );
 
   return {
     summary: `${summaryPrefix}: ${workouts.length} sessions over the next two weeks.`,
-    phase: phaseForGoal(input.goal.type),
+    phase,
     workouts,
     engineDecision: {
       reason: input.reason ?? "initial",
@@ -86,6 +99,13 @@ function generateWindow(input: GeneratePlanInput, summaryPrefix: string): PlanGe
       baselineContext: input.goal.baselineContext,
       preferredRunGoalType: input.goal.preferredRunGoalType,
       fatigueRisk: input.athleteState.fatigueRisk,
+      adherenceRate: input.athleteState.adherenceRate,
+      consistencyScore: input.athleteState.consistencyScore,
+      targetDate: input.goal.targetDate ?? null,
+      targetDistanceMeters: input.goal.targetDistanceMeters ?? null,
+      eventIntent: input.goal.eventIntent ?? null,
+      targetTimeSeconds: input.goal.targetTimeSeconds ?? null,
+      reviewHorizonWeeks: input.goal.reviewHorizonWeeks ?? null,
     },
   };
 }
@@ -97,18 +117,20 @@ function workoutForDate(params: {
   isPreferredLongSessionDay: boolean;
   goal: GeneratePlanInput["goal"];
   athleteState: AthleteTrainingStateSnapshot;
+  phase: TrainingPlanPhase;
 }): PlannedWorkoutDraft {
   const stimulus = stimulusFor(
     params.index,
     params.total,
     params.goal,
     params.athleteState,
-    params.isPreferredLongSessionDay
+    params.isPreferredLongSessionDay,
+    params.phase
   );
   const modality = modalityFor(params.goal, stimulus, params.index);
-  const durationMinutes = durationFor(stimulus, params.goal, params.athleteState);
+  const durationMinutes = durationFor(stimulus, params.goal, params.athleteState, params.phase);
   const adapter = adapterFor(modality, stimulus);
-  return adapter.generateWorkout({
+  const workout = adapter.generateWorkout({
     scheduledDate: params.date,
     modality,
     stimulus,
@@ -116,6 +138,15 @@ function workoutForDate(params: {
     isKeyWorkout: stimulus === "longEndurance" || stimulus === "threshold" || stimulus === "strength",
     athleteState: params.athleteState,
   });
+  const targetPace = eventTargetPaceSecondsPerKilometer(params.goal);
+  if (targetPace == null || modality !== "run" || stimulus !== "threshold") return workout;
+  return {
+    ...workout,
+    prescription: {
+      ...workout.prescription,
+      eventTargetPaceSecondsPerKilometer: targetPace,
+    },
+  };
 }
 
 function stimulusFor(
@@ -123,7 +154,8 @@ function stimulusFor(
   total: number,
   goal: GeneratePlanInput["goal"],
   athleteState: AthleteTrainingStateSnapshot,
-  isPreferredLongSessionDay: boolean
+  isPreferredLongSessionDay: boolean,
+  phase: TrainingPlanPhase
 ): TrainingStimulus {
   if (athleteState.fatigueRisk === "high") {
     return index % 2 === 0 ? "recovery" : "mobility";
@@ -132,9 +164,15 @@ function stimulusFor(
   if (sessionsPerWeek > 1 && isPreferredLongSessionDay) return "longEndurance";
   const positionInWeek = index % sessionsPerWeek;
   if (positionInWeek === sessionsPerWeek - 1 && total >= 2) return "longEndurance";
-  if (sessionsPerWeek >= 3 && positionInWeek === 1 && athleteState.fatigueRisk === "low") {
+  if (phase === "taper" && positionInWeek !== 0) return "easyAerobic";
+  if (sessionsPerWeek >= 3
+      && positionInWeek === 1
+      && athleteState.fatigueRisk === "low"
+      && athleteState.adherenceRate >= 0.5) {
     const hasQualityActivity = goal.activities.some((activity) => activity === "run" || activity === "bike");
-    return hasQualityActivity && (goal.type === "eventPreparation" || goal.type === "speed") ? "threshold" : "easyAerobic";
+    const qualityFocusedGoal = goal.type === "speed"
+      || (goal.type === "eventPreparation" && goal.eventIntent !== "finish");
+    return hasQualityActivity && qualityFocusedGoal ? "threshold" : "easyAerobic";
   }
   return "easyAerobic";
 }
@@ -158,20 +196,30 @@ function activitySupports(activity: Modality, stimulus: TrainingStimulus): boole
 function durationFor(
   stimulus: TrainingStimulus,
   goal: GeneratePlanInput["goal"],
-  athleteState: AthleteTrainingStateSnapshot
+  athleteState: AthleteTrainingStateSnapshot,
+  phase: TrainingPlanPhase
 ): number {
   const baseline = athleteState.fourWeekAvgMinutes > 0
     ? Math.max(20, Math.round(athleteState.fourWeekAvgMinutes / Math.max(1, goal.daysPerWeekTarget)))
     : Math.min(goal.maxSessionMinutes, 30);
   const cap = goal.maxSessionMinutes;
   const riskMultiplier = goal.riskTolerance === "stretch" ? 1.12 : goal.riskTolerance === "conservative" ? 0.88 : 1;
+  const adherenceMultiplier = athleteState.adherenceRate < 0.5
+    ? 0.85
+    : athleteState.adherenceRate < 0.75 ? 0.93 : 1;
+  const progressionMultiplier = riskMultiplier * adherenceMultiplier;
+  const phaseMultiplier = phase === "taper" ? 0.8 : phase === "sharpen" ? 0.95 : 1;
 
   switch (stimulus) {
-    case "longEndurance":
-      return Math.min(cap, Math.max(baseline + 10, Math.round(baseline * 1.35 * riskMultiplier)));
+    case "longEndurance": {
+      if (phase === "taper") return Math.min(cap, Math.max(20, Math.round(baseline * phaseMultiplier)));
+      const minimumProgression = athleteState.adherenceRate < 0.75 ? 5 : 10;
+      const distanceMultiplier = longSessionMultiplier(goal.targetDistanceMeters);
+      return Math.min(cap, Math.max(baseline + minimumProgression, Math.round(baseline * distanceMultiplier * progressionMultiplier)));
+    }
     case "threshold":
     case "speed":
-      return Math.min(cap, Math.max(25, Math.round(baseline * riskMultiplier)));
+      return Math.min(cap, Math.max(25, Math.round(baseline * progressionMultiplier * phaseMultiplier)));
     case "strength":
       return Math.min(cap, Math.max(25, baseline));
     case "mobility":
@@ -179,7 +227,7 @@ function durationFor(
     case "recovery":
       return Math.min(cap, Math.max(15, Math.round(baseline * 0.7)));
     default:
-      return Math.min(cap, Math.max(20, Math.round(baseline * riskMultiplier)));
+      return Math.min(cap, Math.max(20, Math.round(baseline * progressionMultiplier * phaseMultiplier)));
   }
 }
 
@@ -243,9 +291,42 @@ function isDay(date: Date, day: string | null): boolean {
   return dayIndexFor(day) === date.getDay();
 }
 
-function phaseForGoal(type: string) {
-  if (type === "eventPreparation") return "build";
-  return "base";
+function phaseForGoal(goal: GeneratePlanInput["goal"], now: Date): TrainingPlanPhase {
+  if (goal.type !== "eventPreparation") return "base";
+  const days = daysUntil(goal.targetDate, now);
+  if (days == null || days > 112) return "base";
+  if (days <= 21) return "taper";
+  if (days <= 49) return "sharpen";
+  return "build";
+}
+
+function horizonDaysFor(goal: GeneratePlanInput["goal"], now: Date) {
+  const days = daysUntil(goal.targetDate, now);
+  return days == null ? 14 : Math.max(1, Math.min(14, days));
+}
+
+function daysUntil(value: string | Date | null | undefined, now: Date) {
+  if (!value) return null;
+  const target = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(target.getTime())) return null;
+  return Math.ceil((target.getTime() - startOfDay(now).getTime()) / 86_400_000);
+}
+
+function longSessionMultiplier(distanceMeters: number | null | undefined) {
+  if (!distanceMeters) return 1.35;
+  if (distanceMeters <= 5_000) return 1.15;
+  if (distanceMeters <= 10_000) return 1.25;
+  if (distanceMeters <= 21_097.5) return 1.35;
+  return 1.45;
+}
+
+function eventTargetPaceSecondsPerKilometer(goal: GeneratePlanInput["goal"]) {
+  if (goal.eventIntent !== "targetTime"
+      || !goal.targetTimeSeconds
+      || !goal.targetDistanceMeters
+      || goal.targetDistanceMeters <= 0) return null;
+  const pace = Math.round(goal.targetTimeSeconds / (goal.targetDistanceMeters / 1_000));
+  return pace >= 150 && pace <= 1_200 ? pace : null;
 }
 
 function defaultPriorityFor(type: string): string {

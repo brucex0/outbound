@@ -94,7 +94,7 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
 
     const [activities, plannedWorkouts, readiness, profile, calibration] = await Promise.all([
       prisma.activity.findMany({
-        where: { userId: event.userId, startedAt: { gte: addDays(new Date(), -90) } },
+        where: { userId: event.userId, deletedAt: null, startedAt: { gte: addDays(new Date(), -90) } },
         orderBy: { startedAt: "desc" },
         select: {
           id: true,
@@ -159,6 +159,11 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
         riskTolerance: plan.goal.riskTolerance,
         primaryMotivation: plan.goal.primaryMotivation as "generalFitness" | "consistency" | "performance" | "weightLoss" | "weightMaintenance",
         preferredRunGoalType: plan.goal.preferredRunGoalType as "time" | "distance" | "calories",
+        targetDate: plan.goal.targetDate,
+        targetDistanceMeters: plan.goal.targetDistanceMeters,
+        eventIntent: plan.goal.eventIntent as "finish" | "perform" | "targetTime" | null,
+        targetTimeSeconds: plan.goal.targetTimeSeconds,
+        reviewHorizonWeeks: plan.goal.reviewHorizonWeeks as 4 | 8 | 12 | null,
       },
       athleteState,
       latestReadiness,

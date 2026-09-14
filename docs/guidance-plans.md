@@ -50,7 +50,7 @@ Explicit inputs:
 - confidence and motivation mode
 - injury caution or recovery constraints
 
-Do not present consistency as a user objective. Consistency is a planning and adherence strategy used in service of an outcome such as endurance, speed, strength, event preparation, weight change, fitness maintenance, or health and energy. Treat starting out and returning after a break as baseline context.
+Do not present consistency as a user objective. Consistency is a planning and adherence strategy used in service of an outcome such as endurance, speed, strength, event preparation, weight change, or health and energy. Treat starting out and returning after a break as baseline context.
 
 One session per week is a valid commitment. The plan should preserve that commitment and may add only clearly optional recovery or mobility work.
 
@@ -63,6 +63,14 @@ Observed inputs:
 - readiness check-ins
 - skipped-day patterns after hard sessions
 - gaps in activity and comeback behavior
+
+Plan setup uses the observed inputs dynamically rather than asking every runner the same baseline questions. An established baseline requires six supported activities across three of the last four weeks and an activity in the last 14 days. This deliberately avoids a universal stale-after duration: coverage, recency, and the consequence of the field determine whether the builder infers, confirms, or asks.
+
+For an established baseline, intake derives a single visible setup from synced activities: modalities ranked by frequency, four-week sessions per week, median comfortable duration, an upper-typical duration cap, and the most frequent local weekdays. The runner accepts that bundle once or enters the manual activity, baseline, and schedule controls. Current injury, illness, travel, and schedule changes remain explicit because prior behavior cannot prove that they are still safe or available.
+
+Initial plan generation combines that confirmed goal setup with the backend athlete state computed from recent activities: 7-day and 28-day minutes and distance, longest recent session, active-week consistency, modality breakdown, fatigue risk, prior-plan adherence when available, and learned running pace for workout targets. Event date controls the initial horizon and base/build/sharpen/taper phase, distance scales long-session progression, and an explicit target time supplies event-target pace context to threshold work. Birth date, sex assigned at birth, and weight are versioned planning inputs; weight is also used for calorie targets. The intake AI receives only privacy-filtered aggregates and question state, not raw activity rows, body measurements, free-text constraints, or social data.
+
+Birth date, sex assigned at birth, and weight are required private inputs for personalized plan creation. Weight enables calorie calculations. Height is optional until a validated planning or energy policy needs it. Connected health data may autofill these values, but runners can always enter and correct them manually.
 
 Future inputs:
 
@@ -146,7 +154,7 @@ An active plan has one primary objective. Supporting objectives and activities t
 
 Recommended high-level definitions:
 
-- `Goal`: the user's outcome, such as event preparation, endurance, speed, strength, weight change, fitness maintenance, or health and energy
+- `Goal`: the user's outcome, such as event preparation, endurance, speed, strength, weight change, or health and energy
 - `Sport`: run, walk, ride, strength, mobility, mixed, and future types
 - `PlanTemplate`: the versioned progression blueprint
 - `ActivePlan`: one user's personalized plan instance

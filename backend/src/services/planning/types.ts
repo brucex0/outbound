@@ -51,6 +51,12 @@ export interface CreateTrainingGoalInput {
   targetDate?: string | null;
   targetDistanceMeters?: number | null;
   targetEventName?: string | null;
+  eventIntent?: "finish" | "perform" | "targetTime" | null;
+  targetTimeSeconds?: number | null;
+  reviewHorizonWeeks?: 4 | 8 | 12 | null;
+  successSignal?: string | null;
+  goalDescription?: string | null;
+  intakeContextVersion?: string | null;
   priority?: string;
   preferredDays?: string[];
   preferredLongSessionDay?: string | null;

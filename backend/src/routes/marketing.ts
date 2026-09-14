@@ -45,7 +45,7 @@ const pageShell = ({
   <meta property="og:site_name" content="Plainstride">
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${description}">
-  <meta property="og:url" content="https://run.plainstride.com${path}">
+  <meta property="og:url" content="https://plainstride.ai${path}">
   <style>
     :root {
       color-scheme: light;

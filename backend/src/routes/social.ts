@@ -1490,7 +1490,7 @@ function isAcceptableText(text: string) {
 }
 
 function publicWebBaseURL() {
-  return (process.env.PUBLIC_WEB_BASE_URL?.trim() || "https://run.plainstride.com").replace(/\/$/, "");
+  return (process.env.PUBLIC_WEB_BASE_URL?.trim() || "https://plainstride.ai").replace(/\/$/, "");
 }
 
 export default router;

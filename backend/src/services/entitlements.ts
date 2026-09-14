@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomInt } from "node:crypto";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { isFoundingMember } from "./foundingMembers.js";
+import { isPaywallEnabled } from "./featureControls.js";
 
 export const PAID_CAPABILITIES = [
   "ai_planning_dynamic",
@@ -75,6 +76,7 @@ export async function hasActiveCapability(
   capability: PaidCapability,
   now = new Date(),
 ): Promise<boolean> {
+  if (!(await isPaywallEnabled(prisma))) return true;
   return (await prisma.featureEntitlement.count({ where: {
     userId,
     capability,
@@ -85,6 +87,7 @@ export async function hasActiveCapability(
 }
 
 export async function entitlementSummary(prisma: PrismaClient, userId: string, now = new Date()) {
+  const paywallEnabled = await isPaywallEnabled(prisma);
   const grants = await prisma.featureEntitlement.findMany({
     where: { userId, status: "active", startsAt: { lte: now }, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
     orderBy: { createdAt: "desc" },
@@ -94,7 +97,7 @@ export async function entitlementSummary(prisma: PrismaClient, userId: string, n
     const permanent = matching.some((grant) => grant.expiresAt == null);
     const expiresAt = permanent ? null : matching.reduce<Date | null>((latest, grant) =>
       !latest || (grant.expiresAt && grant.expiresAt > latest) ? grant.expiresAt : latest, null);
-    return { capability, allowed: matching.length > 0, expiresAt, sources: [...new Set(matching.map((grant) => grant.source))] };
+    return { capability, allowed: !paywallEnabled || matching.length > 0, expiresAt, sources: [...new Set(matching.map((grant) => grant.source))] };
   });
 }
 

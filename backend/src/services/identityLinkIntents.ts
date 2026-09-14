@@ -18,7 +18,7 @@ export async function createIdentityLinkIntent(userId: string) {
     await tx.identityLinkIntent.create({ data: { userId, tokenHash: hash(code), expiresAt } });
   });
   return { code: formatCode(code), expiresAt: expiresAt.toISOString(),
-    url: `https://run.plainstride.com/account-link?code=${encodeURIComponent(formatCode(code))}` };
+    url: `https://plainstride.ai/account-link?code=${encodeURIComponent(formatCode(code))}` };
 }
 
 export async function consumeGoogleIdentityLinkIntent(input: {

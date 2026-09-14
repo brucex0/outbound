@@ -2,6 +2,7 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 import type { LiveCoachFeatureConfig } from "./liveCoachFeatureConfig.js";
 import type { LiveCoachAccessDecision } from "./liveCoachTypes.js";
 import { FOUNDING_ENTITLEMENT_SOURCE } from "../foundingMembers.js";
+import { isPaywallEnabled } from "../featureControls.js";
 
 export const LIVE_COACH_CAPABILITY = "live_coach_dynamic";
 export const LIVE_COACH_FOUNDING_SOURCE = FOUNDING_ENTITLEMENT_SOURCE;
@@ -16,6 +17,7 @@ export class DatabaseLiveCoachEntitlementResolver implements LiveCoachEntitlemen
 
   async resolve(userId: string, now: Date, config: LiveCoachFeatureConfig): Promise<LiveCoachAccessDecision> {
     if (config.mode !== "dynamic") return decision(false, "feature_disabled");
+    if (!(await isPaywallEnabled(this.prisma))) return decision(true, "open_beta");
     if (config.accessMode === "open_beta") return decision(true, "open_beta");
 
     const entitlement = await this.activeEntitlement(userId, now);

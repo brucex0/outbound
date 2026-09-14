@@ -127,6 +127,7 @@ Responsibilities:
 - normalize uploaded route points into an `Activity.route` GeoJSON Feature, using `[longitude, latitude, altitude]` coordinates when altitude is available and preserving per-point timestamps/vertical accuracy in route properties
 - trigger downstream guide and plan work
 - reconcile every canonical saved running activity into each eligible Circle week by activity start time; activity deletion removes the same idempotent contributions
+- correct outdoor route altitude against global Mapzen terrain tiles before local save; the authenticated `POST /v1/elevation/correct` boundary accepts at most 512 sampled coordinates, never logs coordinates, and returns a smoothed profile plus prominence-filtered gain
 
 Rules:
 

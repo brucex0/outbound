@@ -31,6 +31,7 @@ Open this when configuring, releasing, or troubleshooting Plainstride Plus purch
 - Configure only after authentication with the known Plainstride account UUID. Do not call RevenueCat logout; purchase surfaces are unavailable while Plainstride is signed out, and the next account is selected with RevenueCat login. This avoids anonymous customers and cross-account entitlement transfer.
 - iOS implementation lives in `Core/Subscriptions/RevenueCatSubscriptionStore.swift` and `App/PlusView.swift`; Android uses `subscriptions/RevenueCatCoordinator.kt` and `RewardsScreen.kt`. Both subscribe to customer-info updates, check `plainstride_pro`, present RevenueCat's hosted paywall, handle purchase/restore completion, and route active customers to Customer Center. Plus is a dedicated Me destination. Rewards Center and My invitation code are separate Me destinations, and code entry lives on a dedicated redemption screen reached from Rewards Center.
 - Live Guidance shows a contextual Plus entry only when `/v1/live-coach/config` returns `paywallAvailable = true`. The backend returns that flag only for an entitlement-required runner and only when `LIVE_COACH_PAID_MODE_READY=true`; fixed guidance continues without interruption.
+- The database-backed `paywall_enabled` admin feature control is the master switch. It defaults off, grants all users the Plus capabilities while off, and hides the Plus destination on Me. Turn it on only after the rest of this release gate is complete.
 
 ## Reconciliation
 

@@ -73,7 +73,7 @@ async function inviteLanding(c: Context<AppEnv>) {
     }
   }
 
-  const canonicalURL = `https://run.plainstride.com${requestedURL.pathname}`;
+  const canonicalURL = `https://plainstride.ai${requestedURL.pathname}`;
   const escapedCanonicalURL = escapeHTML(canonicalURL);
   const isApple = /iPhone|iPad|iPod|Macintosh/i.test(userAgent);
   const isAndroid = /Android/i.test(userAgent);

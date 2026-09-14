@@ -392,6 +392,13 @@ model AdminRewardAuditEvent {
   @@index([targetType, targetId, createdAt])
 }
 
+model FeatureControl {
+  key       String   @id
+  enabled   Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
 model Activity {
   id               String  @id @default(cuid())
   userId           String
@@ -730,6 +737,12 @@ model TrainingGoal {
   targetDate           DateTime?
   targetDistanceMeters Float?
   targetEventName      String?
+  eventIntent          String?
+  targetTimeSeconds    Int?
+  reviewHorizonWeeks   Int?
+  successSignal        String?
+  goalDescription      String?
+  intakeContextVersion String?
   priority             String
   preferredDays        String[]  @default([])
   preferredLongSessionDay String?

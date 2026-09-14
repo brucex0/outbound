@@ -132,6 +132,8 @@ $HOME/google-cloud-sdk/bin/gcloud scheduler jobs describe outbound-planning-main
 
 Android weather uses the authenticated `GET /v1/weather/current` proxy. The proxy rounds coordinates to two decimals, keeps account/locale/location results in memory for 30 minutes, honors MET Norway conditional responses, and never logs coordinates. It uses the keyless global Locationforecast API because Google Weather requires billing and a server credential; the provider boundary can move to Google without changing the Android contract. Set `WEATHER_PROVIDER_USER_AGENT` to an identifying application/domain plus support contact before production deployment (for example `Plainstride/1.0 https://plainstride.run`). Display the response attribution wherever weather data appears; the response is derived from MET Norway data licensed under CC BY 4.0.
 
+Outdoor elevation correction uses the public Mapzen Terrain Tiles dataset hosted through the AWS Registry of Open Data. It requires no API secret. Cloud Run fetches only the zoom-14 tiles intersecting the sampled route, keeps a bounded in-memory tile cache, and does not log coordinates. Activity detail links the required Mapzen/source-agency attribution. If terrain lookup is unavailable, iOS preserves the activity and uses its stricter on-device GPS-altitude fallback.
+
 Raw command equivalent:
 
 ```sh
@@ -232,7 +234,7 @@ Publication requires `LIVE_COACH_AUDIO_MANIFEST_SIGNING_KEY_ID=live-coach-audio-
 
 First-party authentication additionally requires `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, `AUTH_ACCESS_KEY_ID`, `AUTH_ACCESS_PRIVATE_KEY`, and `AUTH_ACCESS_PUBLIC_KEYS` (a JSON map containing the current and immediately previous ES256 public keys). Android Google sign-in requires `GOOGLE_AUTH_CLIENT_IDS`, a comma-separated allowlist of OAuth client IDs whose audiences the backend accepts. Keep both the iOS client ID and the Android Credential Manager web/server client ID in the production allowlist; debug and release Android packages can share that server client ID when each package and signing certificate has its own Android OAuth credential. Production startup fails when this allowlist is empty. The deploy helper carries the production allowlist explicitly so a later service update cannot silently drop it. Store private keys in Secret Manager. Set `AUTH_ACCEPT_LEGACY_FIREBASE=true` only during beta migration.
 
-Rewards administration requires `REWARDS_ADMIN_EMAILS`, a comma-separated allowlist of verified Plainstride account emails. The admin API denies all access when it is absent. Keep the allowlist narrow, require MFA on the underlying identity-provider accounts, and use the audited admin API instead of direct database edits for routine code and grant operations.
+Rewards administration requires `REWARDS_ADMIN_EMAILS`, a comma-separated allowlist of verified Plainstride account emails. The production deploy profile defaults this to `GCLOUD_ACCOUNT`; explicitly pass an empty value to disable administration. The admin portal starts at `/admin`, with feature controls at `/admin/feature-controls` and rewards operations at `/admin/rewards`, and requires `REWARDS_ADMIN_GOOGLE_CLIENT_ID`; that web client ID must also appear in `GOOGLE_AUTH_CLIENT_IDS`. Keep the allowlist narrow, require MFA on the underlying identity-provider accounts, and use the audited admin API instead of direct database edits for routine code and grant operations. See `docs/rewards-admin-portal.md` for the OAuth origin and deployment checklist.
 
 Local stack startup generates an ephemeral ES256 access-token key pair in memory when those auth variables are not supplied. Do not create or commit development PEM files; set the environment variables explicitly only when stable local keys are required across restarts.
 
@@ -398,15 +400,15 @@ If you want the IAM user to be able to change ownership or manage privileges cre
 
 ## Public Invite Links
 
-- Canonical invite host: `https://run.plainstride.com`.
-- Map that host to the `outbound-api` Cloud Run service and set `PUBLIC_WEB_BASE_URL=https://run.plainstride.com`.
+- Canonical invite host: `https://plainstride.ai`.
+- Map that host to the `outbound-api` Cloud Run service and set `PUBLIC_WEB_BASE_URL=https://plainstride.ai`.
 - The same service serves the Plainstride marketing homepage at `/`, support at `/support`, Terms of Service at `/terms`, the public privacy policy at `/privacy`, and the public Android waitlist submission route at `POST /waitlist/android`.
 - Android waitlist submissions are rate-limited, deduplicated by normalized email, and stored in `AndroidWaitlistEntry`. Deploy the API and run the pinned `outbound-db-push` job before directing visitors to the form.
 - `IOS_APP_STORE_URL` defaults to the direct Plainstride App Store listing: `https://apps.apple.com/us/app/plainstride/id6800191455`.
 - Set `ANDROID_PLAY_STORE_URL` to the production Play Store listing. Set `IOS_BETA_URL` and `ANDROID_BETA_URL` to TestFlight and Google Play testing enrollment links when those programs are active; omitted beta URLs are not shown.
 - For Android App Links, set `ANDROID_PACKAGE_NAME` and comma-separated `ANDROID_SHA256_CERT_FINGERPRINTS` for every beta/production signing certificate that may open the canonical host.
 - The backend serves `/.well-known/apple-app-site-association`, `/.well-known/assetlinks.json`, `/invite`, `/invite/*`, and `/live/group/:token` without API authentication.
-- The iOS app declares `applinks:run.plainstride.com` and accepts live-group invitations immediately when authenticated or after the recipient signs in.
+- The iOS app declares `applinks:plainstride.ai` and accepts live-group invitations immediately when authenticated or after the recipient signs in.
 - The referral URL stays canonical across platforms and release channels. Installed apps claim it through Universal Links/App Links; otherwise the landing page shows the matching production store and any configured beta enrollment destination.
 
 ## Environment Reality Check

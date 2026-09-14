@@ -28,7 +28,7 @@ export function assertGoogleAuthConfiguration(env: NodeJS.ProcessEnv = process.e
   if (ids.length === 0) throw new Error("GOOGLE_AUTH_CLIENT_IDS must contain at least one OAuth client ID in production");
 }
 
-function configuredGoogleClientIds(env: NodeJS.ProcessEnv = process.env) {
+export function configuredGoogleClientIds(env: NodeJS.ProcessEnv = process.env) {
   return (env.GOOGLE_AUTH_CLIENT_IDS ?? env.GOOGLE_ANDROID_CLIENT_ID ?? "")
     .split(",")
     .map((value) => value.trim())

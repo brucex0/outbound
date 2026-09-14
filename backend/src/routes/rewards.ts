@@ -19,6 +19,7 @@ import {
   RevenueCatConfigurationError,
   RevenueCatUpstreamError,
 } from "../services/revenueCat.js";
+import { featureControlSummary } from "../services/featureControls.js";
 
 const router = new Hono<AppEnv>();
 const codeSchema = z.object({ code: z.string().trim().min(6).max(64) }).strict();
@@ -27,7 +28,7 @@ router.get("/", async (c) => {
   const unavailable = requireDatabase(c); if (unavailable) return unavailable;
   const user = await getAuthenticatedAppUser(c); if (!user) return c.json({ error: "Authentication required." }, 401);
   const prisma = getPrismaClient();
-  const [referralCode, entitlements, claim, qualifiedCount, pendingCount, referralProgram, bankedRewardDays] = await Promise.all([
+  const [referralCode, entitlements, claim, qualifiedCount, pendingCount, referralProgram, bankedRewardDays, featureControls] = await Promise.all([
     ensurePersonalReferralCode(prisma, user.id),
     entitlementSummary(prisma, user.id),
     prisma.referralClaim.findUnique({ where: { claimantId: user.id }, select: { status: true } }),
@@ -35,11 +36,12 @@ router.get("/", async (c) => {
     prisma.referralClaim.count({ where: { referralLink: { creatorId: user.id }, status: "claimed" } }),
     referralProgramForUser(prisma, user.id),
     bankedPlusDays(prisma, user.id),
+    featureControlSummary(prisma),
   ]);
   return c.json({
     referral: {
       code: referralCode,
-      shareURL: `https://run.plainstride.com/invite/r/${referralCode}`,
+      shareURL: `https://plainstride.ai/invite/r/${referralCode}`,
       claimStatus: claim?.status ?? null,
       qualifiedCount,
       pendingCount,
@@ -47,6 +49,7 @@ router.get("/", async (c) => {
     referralProgram,
     bankedRewardDays,
     entitlements,
+    featureControls,
   });
 });
 
