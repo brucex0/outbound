@@ -300,6 +300,12 @@ struct ActivityDetailView: View {
                 photos: currentActivity.photos,
                 selectedIndex: $selectedPhotoPage,
                 imageURL: activityStore.imageURL(for:),
+                onZoom: { control in
+                    track(.init(.photoZoomed, properties: [
+                        .sourceType: .string("activity_detail"),
+                        .control: .string(control),
+                    ]))
+                },
                 onClose: { lightboxPhotoIndex = nil }
             )
         }
@@ -336,7 +342,10 @@ struct ActivityDetailView: View {
             photos: currentActivity.photos,
             bottomInset: bottomInset,
             isRouteProminent: sheetDetent != .expanded,
-            selectedPhotoID: selectedPhotoID
+            selectedPhotoID: selectedPhotoID,
+            onPhotoSelected: { photoID in
+                openPhotoPreview(photoID: photoID, sourceType: "route_annotation")
+            }
         )
         .ignoresSafeArea()
     }
@@ -657,7 +666,7 @@ struct ActivityDetailView: View {
                             isSelected: photo.id == selectedPhotoID,
                             action: {
                                 if selectedPhotoPage == index {
-                                    lightboxPhotoIndex = index
+                                    openPhotoPreview(at: index, sourceType: "activity_detail_carousel")
                                 } else {
                                     withAnimation(.snappy) { selectedPhotoPage = index }
                                 }
@@ -682,6 +691,20 @@ struct ActivityDetailView: View {
                 withAnimation(.snappy) { reader.scrollTo(currentActivity.photos[index].id, anchor: .center) }
             }
         }
+    }
+
+    private func openPhotoPreview(photoID: UUID, sourceType: String) {
+        guard let index = currentActivity.photos.firstIndex(where: { $0.id == photoID }) else { return }
+        openPhotoPreview(at: index, sourceType: sourceType)
+    }
+
+    private func openPhotoPreview(at index: Int, sourceType: String) {
+        guard currentActivity.photos.indices.contains(index) else { return }
+        selectedPhotoPage = index
+        lightboxPhotoIndex = index
+        track(.init(.photoPreviewed, properties: [
+            .sourceType: .string(sourceType),
+        ]))
     }
 
     private func photoCaption(_ photo: SavedPhoto, index: Int, compact: Bool) -> String {
@@ -1145,6 +1168,7 @@ private struct ActivityPhotoLightbox: View {
     let photos: [SavedPhoto]
     @Binding var selectedIndex: Int
     let imageURL: (SavedPhoto) -> URL?
+    let onZoom: (String) -> Void
     let onClose: () -> Void
 
     var body: some View {
@@ -1154,10 +1178,19 @@ private struct ActivityPhotoLightbox: View {
             TabView(selection: $selectedIndex) {
                 ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
                     if let url = imageURL(photo) {
-                        LocalImageView(url: url) { Color.black }
-                            .scaledToFit()
+                        ZoomableActivityPhotoView(
+                            url: url,
+                            isActive: selectedIndex == index,
+                            onZoom: onZoom
+                        )
                             .padding(.vertical, 72)
                             .tag(index)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(lightboxCaption(photo, index: index))
+                            .accessibilityHint(String(
+                                localized: "activity.photos.zoom_hint",
+                                defaultValue: "Pinch or double tap to zoom the photo"
+                            ))
                     }
                 }
             }
@@ -1204,6 +1237,198 @@ private struct ActivityPhotoLightbox: View {
     }
 }
 
+private struct ZoomableActivityPhotoView: UIViewRepresentable {
+    let url: URL
+    let isActive: Bool
+    let onZoom: (String) -> Void
+
+    func makeUIView(context: Context) -> ZoomingPhotoScrollView {
+        let scrollView = ZoomingPhotoScrollView()
+        scrollView.delegate = context.coordinator
+        scrollView.minimumZoomScale = 1
+        scrollView.maximumZoomScale = 4
+        scrollView.bouncesZoom = true
+        scrollView.decelerationRate = .fast
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.panGestureRecognizer.isEnabled = false
+
+        let doubleTap = UITapGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handleDoubleTap(_:))
+        )
+        doubleTap.numberOfTapsRequired = 2
+        scrollView.addGestureRecognizer(doubleTap)
+
+        context.coordinator.scrollView = scrollView
+        context.coordinator.update(url: url, in: scrollView)
+        return scrollView
+    }
+
+    func updateUIView(_ scrollView: ZoomingPhotoScrollView, context: Context) {
+        context.coordinator.onZoom = onZoom
+        context.coordinator.update(url: url, in: scrollView)
+        if !isActive {
+            context.coordinator.resetZoom(in: scrollView)
+        }
+    }
+
+    static func dismantleUIView(_ uiView: ZoomingPhotoScrollView, coordinator: Coordinator) {
+        coordinator.cancelImageLoad()
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onZoom: onZoom)
+    }
+
+    final class Coordinator: NSObject, UIScrollViewDelegate {
+        weak var scrollView: ZoomingPhotoScrollView?
+        var onZoom: (String) -> Void
+
+        private var representedURL: URL?
+        private var imageTask: URLSessionDataTask?
+        private var localImageTask: Task<Void, Never>?
+
+        init(onZoom: @escaping (String) -> Void) {
+            self.onZoom = onZoom
+        }
+
+        func update(url: URL, in scrollView: ZoomingPhotoScrollView) {
+            guard representedURL != url else { return }
+            representedURL = url
+            cancelImageLoad()
+            resetZoom(in: scrollView)
+            scrollView.imageView.image = nil
+
+            if url.isFileURL {
+                let path = url.path(percentEncoded: false)
+                localImageTask = Task { @MainActor [weak self, weak scrollView] in
+                    let image = await Task.detached(priority: .userInitiated) {
+                        UIImage(contentsOfFile: path)
+                    }.value
+                    guard let self,
+                          let scrollView,
+                          self.representedURL == url,
+                          !Task.isCancelled else { return }
+                    scrollView.imageView.image = image
+                }
+                return
+            }
+
+            var request = URLRequest(url: url)
+            request.cachePolicy = .returnCacheDataElseLoad
+            imageTask = URLSession.shared.dataTask(with: request) { [weak self, weak scrollView] data, response, _ in
+                guard let data,
+                      let httpResponse = response as? HTTPURLResponse,
+                      (200..<300).contains(httpResponse.statusCode),
+                      let image = UIImage(data: data) else { return }
+                DispatchQueue.main.async {
+                    guard let self,
+                          let scrollView,
+                          self.representedURL == url else { return }
+                    scrollView.imageView.image = image
+                }
+            }
+            imageTask?.resume()
+        }
+
+        func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+            (scrollView as? ZoomingPhotoScrollView)?.imageView
+        }
+
+        func scrollViewWillBeginZooming(_ scrollView: UIScrollView, with view: UIView?) {
+            onZoom("pinch")
+        }
+
+        func scrollViewDidZoom(_ scrollView: UIScrollView) {
+            guard let scrollView = scrollView as? ZoomingPhotoScrollView else { return }
+            scrollView.panGestureRecognizer.isEnabled = scrollView.zoomScale > scrollView.minimumZoomScale + 0.01
+            scrollView.centerZoomedImage()
+        }
+
+        @objc func handleDoubleTap(_ recognizer: UITapGestureRecognizer) {
+            guard let scrollView else { return }
+            onZoom("double_tap")
+
+            if scrollView.zoomScale > scrollView.minimumZoomScale + 0.01 {
+                scrollView.setZoomScale(scrollView.minimumZoomScale, animated: true)
+                return
+            }
+
+            let targetScale = min(2.5, scrollView.maximumZoomScale)
+            let point = recognizer.location(in: scrollView.imageView)
+            let width = scrollView.bounds.width / targetScale
+            let height = scrollView.bounds.height / targetScale
+            let zoomRect = CGRect(
+                x: point.x - width / 2,
+                y: point.y - height / 2,
+                width: width,
+                height: height
+            )
+            scrollView.zoom(to: zoomRect, animated: true)
+        }
+
+        func resetZoom(in scrollView: ZoomingPhotoScrollView) {
+            guard scrollView.zoomScale != scrollView.minimumZoomScale else {
+                scrollView.panGestureRecognizer.isEnabled = false
+                return
+            }
+            scrollView.setZoomScale(scrollView.minimumZoomScale, animated: false)
+            scrollView.panGestureRecognizer.isEnabled = false
+            scrollView.contentOffset = .zero
+            scrollView.centerZoomedImage()
+        }
+
+        func cancelImageLoad() {
+            imageTask?.cancel()
+            imageTask = nil
+            localImageTask?.cancel()
+            localImageTask = nil
+        }
+    }
+}
+
+private final class ZoomingPhotoScrollView: UIScrollView {
+    let imageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFit
+        imageView.clipsToBounds = true
+        imageView.backgroundColor = .black
+        return imageView
+    }()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .black
+        addSubview(imageView)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if zoomScale == minimumZoomScale {
+            imageView.frame = CGRect(origin: .zero, size: bounds.size)
+        }
+        centerZoomedImage()
+    }
+
+    func centerZoomedImage() {
+        let boundsSize = bounds.size
+        var center = CGPoint(x: contentSize.width / 2, y: contentSize.height / 2)
+        if contentSize.width < boundsSize.width {
+            center.x = boundsSize.width / 2
+        }
+        if contentSize.height < boundsSize.height {
+            center.y = boundsSize.height / 2
+        }
+        imageView.center = center
+    }
+}
+
 // MARK: - Route Map
 
 private struct ActivityRouteMapView: View {
@@ -1214,6 +1439,7 @@ private struct ActivityRouteMapView: View {
     let bottomInset: CGFloat
     let isRouteProminent: Bool
     var selectedPhotoID: UUID? = nil
+    let onPhotoSelected: (UUID) -> Void
 
     var body: some View {
         Group {
@@ -1225,7 +1451,8 @@ private struct ActivityRouteMapView: View {
                     photos: photos,
                     bottomInset: bottomInset,
                     isRouteProminent: isRouteProminent,
-                    selectedPhotoID: selectedPhotoID
+                    selectedPhotoID: selectedPhotoID,
+                    onPhotoSelected: onPhotoSelected
                 )
             } else {
                 Color(.systemGroupedBackground)
@@ -1252,6 +1479,7 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
     let bottomInset: CGFloat
     let isRouteProminent: Bool
     let selectedPhotoID: UUID?
+    let onPhotoSelected: (UUID) -> Void
 
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView(frame: .zero)
@@ -1272,11 +1500,12 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
         context.coordinator.bottomInset = bottomInset
         context.coordinator.isRouteProminent = isRouteProminent
         context.coordinator.selectedPhotoID = selectedPhotoID
+        context.coordinator.onPhotoSelected = onPhotoSelected
         context.coordinator.refresh(mapView)
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator()
+        Coordinator(onPhotoSelected: onPhotoSelected)
     }
 
     final class Coordinator: NSObject, MKMapViewDelegate {
@@ -1287,6 +1516,7 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
         var bottomInset: CGFloat = 0
         var isRouteProminent = true
         var selectedPhotoID: UUID?
+        var onPhotoSelected: (UUID) -> Void
 
         private var previousRouteSignature: String?
         private var previousPhotoSignature: String?
@@ -1295,6 +1525,10 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
         private var previousMapSize: CGSize?
         private var hasSetInitialRegion = false
         private var previousSelectedPhotoID: UUID?
+
+        init(onPhotoSelected: @escaping (UUID) -> Void) {
+            self.onPhotoSelected = onPhotoSelected
+        }
 
         func refresh(_ mapView: MKMapView) {
             let segmentSignature = routeCoordinateSegments.map(\.count).map(String.init).joined(separator: ",")
@@ -1358,8 +1592,25 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
                 photoView.transform = photoAnnotation.photoID == selectedPhotoID
                     ? CGAffineTransform(scaleX: 1.22, y: 1.22)
                     : .identity
+                photoView.isAccessibilityElement = true
+                photoView.accessibilityLabel = String(
+                    localized: "activity.map.photo",
+                    defaultValue: "Activity photo"
+                )
+                photoView.accessibilityHint = String(
+                    localized: "activity.photos.open",
+                    defaultValue: "Open photo full screen"
+                )
             }
             return view
+        }
+
+        func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+            guard let photoAnnotation = view.annotation as? ActivityRoutePhotoAnnotation else { return }
+            onPhotoSelected(photoAnnotation.photoID)
+            DispatchQueue.main.async {
+                mapView.deselectAnnotation(photoAnnotation, animated: false)
+            }
         }
 
         private func updateSelectedPhoto(in mapView: MKMapView) {
@@ -1376,7 +1627,6 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
                   let annotation = mapView.annotations.compactMap({ $0 as? ActivityRoutePhotoAnnotation })
                     .first(where: { $0.photoID == selectedPhotoID }) else { return }
             mapView.setCenter(annotation.coordinate, animated: true)
-            mapView.selectAnnotation(annotation, animated: true)
         }
 
         private func addRouteOverlays(to mapView: MKMapView) {

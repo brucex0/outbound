@@ -144,6 +144,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case photoCaptureAttempted = "photo_capture_attempted"
     case photoCaptured = "photo_captured"
     case photoPreviewed = "photo_previewed"
+    case photoZoomed = "photo_zoomed"
     case photoRemoved = "photo_removed"
     case photoReordered = "photo_reordered"
     case photoAlbumExportCompleted = "photo_album_export_completed"
@@ -432,6 +433,7 @@ enum ProductAnalyticsSchema {
         .photoCaptureAttempted: [.sourceType],
         .photoCaptured: [.sourceType, .locationAttached],
         .photoPreviewed: [.sourceType],
+        .photoZoomed: [.sourceType, .control],
         .photoRemoved: [.sourceType],
         .photoReordered: [.sourceType],
         .photoAlbumExportCompleted: [.result, .sourceType, .countBucket],

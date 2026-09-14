@@ -14136,6 +14136,29 @@
         }
       }
     },
+    "activity.map.photo": {
+      "comment": "Accessibility label for a photo annotation on a completed activity route map.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activity photo"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foto de la actividad"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "活动照片"
+          }
+        }
+      }
+    },
     "activity.meta.cadence.title": {
       "comment": "Title for the cadence section in the activity metadata. [android:activity] Generated Android name: activity_meta_cadence_title.",
       "extractionState": "extracted_with_value",
@@ -14281,6 +14304,29 @@
         }
       }
     },
+    "activity.photos.open": {
+      "comment": "Accessibility hint for opening a completed activity photo in the full-screen lightbox.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open photo full screen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir la foto a pantalla completa"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全屏打开照片"
+          }
+        }
+      }
+    },
     "activity.photos.title": {
       "comment": "A label displayed above a list of photos.",
       "extractionState": "extracted_with_value",
@@ -14302,6 +14348,29 @@
           "stringUnit": {
             "state": "translated",
             "value": "照片"
+          }
+        }
+      }
+    },
+    "activity.photos.zoom_hint": {
+      "comment": "Accessibility hint explaining how to zoom a photo in the completed-activity lightbox.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pinch or double tap to zoom the photo"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pellizca o toca dos veces para ampliar la foto"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "双指捏合或轻点两下来缩放照片"
           }
         }
       }
