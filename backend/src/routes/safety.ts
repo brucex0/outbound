@@ -106,7 +106,15 @@ router.get("/live-shares/invited", async (c) => {
   const user = await getAuthenticatedAppUser(c); if (!user) return c.json({ error: "Authentication is required." }, 401);
   const shares = await getPrismaClient().safetyLiveShare.findMany({
     where: { recipients: { some: { recipientId: user.id } }, status: "active", expiresAt: { gt: new Date() } },
-    include: { user: { select: { id: true, displayName: true, username: true, avatarUrl: true } } },
+    include: {
+      user: { select: { id: true, displayName: true, username: true, avatarUrl: true } },
+      cheers: {
+        where: { senderId: user.id },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { id: true, createdAt: true, deliveredAt: true, playedAt: true, acknowledgedAt: true },
+      },
+    },
     orderBy: { startedAt: "desc" }, take: 10,
   });
   return c.json({ sessions: shares.map(followerPayload) });
@@ -117,7 +125,15 @@ router.get("/live-shares/invited/:id", async (c) => {
   const user = await getAuthenticatedAppUser(c); if (!user) return c.json({ error: "Authentication is required." }, 401);
   const share = await getPrismaClient().safetyLiveShare.findFirst({
     where: { id: c.req.param("id"), recipients: { some: { recipientId: user.id } } },
-    include: { user: { select: { id: true, displayName: true, username: true, avatarUrl: true } } },
+    include: {
+      user: { select: { id: true, displayName: true, username: true, avatarUrl: true } },
+      cheers: {
+        where: { senderId: user.id },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { id: true, createdAt: true, deliveredAt: true, playedAt: true, acknowledgedAt: true },
+      },
+    },
   });
   if (!share) return c.json({ error: "Live session not found." }, 404);
   return c.json(followerPayload(share));
@@ -134,7 +150,7 @@ router.post("/live-shares/invited/:id/cheers", zValidator("json", cheerSchema), 
   const audio = Buffer.from(body.audioBase64, "base64");
   if (audio.length === 0 || audio.length > 1_000_000) return c.json({ error: "Voice cheer is too large." }, 413);
   const cheer = await prisma.safetyLiveShareCheer.create({ data: { shareId: share.id, senderId: user.id, audio, contentType: body.contentType, durationMs: body.durationMs } });
-  return c.json({ id: cheer.id, createdAt: cheer.createdAt }, 201);
+  return c.json(cheerReceiptPayload(cheer), 201);
 });
 
 router.get("/live-shares/:id/cheers", async (c) => {
@@ -143,9 +159,60 @@ router.get("/live-shares/:id/cheers", async (c) => {
   const prisma = getPrismaClient();
   const share = await prisma.safetyLiveShare.findFirst({ where: { id: c.req.param("id"), userId: user.id } });
   if (!share) return c.json({ error: "Live share not found." }, 404);
-  const cheers = await prisma.safetyLiveShareCheer.findMany({ where: { shareId: share.id, playedAt: null }, orderBy: { createdAt: "asc" }, take: 10 });
-  if (cheers.length > 0) await prisma.safetyLiveShareCheer.updateMany({ where: { id: { in: cheers.map((cheer) => cheer.id) } }, data: { playedAt: new Date() } });
-  return c.json({ cheers: cheers.map((cheer) => ({ id: cheer.id, audioBase64: Buffer.from(cheer.audio).toString("base64"), contentType: cheer.contentType, durationMs: cheer.durationMs, createdAt: cheer.createdAt })) });
+  const cheer = await prisma.safetyLiveShareCheer.findFirst({
+    where: { shareId: share.id, deliveredAt: null },
+    include: { sender: { select: { id: true, displayName: true, avatarUrl: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!cheer) return c.json({ cheers: [] });
+  const deliveredAt = new Date();
+  const delivery = await prisma.safetyLiveShareCheer.updateMany({
+    where: { id: cheer.id, deliveredAt: null },
+    data: { deliveredAt },
+  });
+  if (delivery.count === 0) return c.json({ cheers: [] });
+  return c.json({
+    cheers: [{
+      id: cheer.id,
+      audioBase64: Buffer.from(cheer.audio).toString("base64"),
+      contentType: cheer.contentType,
+      durationMs: cheer.durationMs,
+      createdAt: cheer.createdAt,
+      deliveredAt,
+      sender: cheer.sender,
+    }],
+  });
+});
+
+router.post("/live-shares/:id/cheers/:cheerId/played", async (c) => {
+  const unavailable = requireDatabase(c); if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c); if (!user) return c.json({ error: "Authentication is required." }, 401);
+  const prisma = getPrismaClient();
+  const cheer = await prisma.safetyLiveShareCheer.findFirst({
+    where: { id: c.req.param("cheerId"), shareId: c.req.param("id"), share: { userId: user.id } },
+  });
+  if (!cheer) return c.json({ error: "Voice cheer not found." }, 404);
+  const updated = await prisma.safetyLiveShareCheer.update({
+    where: { id: cheer.id },
+    data: { deliveredAt: cheer.deliveredAt ?? new Date(), playedAt: cheer.playedAt ?? new Date() },
+  });
+  return c.json(cheerReceiptPayload(updated));
+});
+
+router.post("/live-shares/:id/cheers/:cheerId/acknowledge", async (c) => {
+  const unavailable = requireDatabase(c); if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c); if (!user) return c.json({ error: "Authentication is required." }, 401);
+  const prisma = getPrismaClient();
+  const cheer = await prisma.safetyLiveShareCheer.findFirst({
+    where: { id: c.req.param("cheerId"), shareId: c.req.param("id"), share: { userId: user.id } },
+  });
+  if (!cheer) return c.json({ error: "Voice cheer not found." }, 404);
+  if (!cheer.playedAt) return c.json({ error: "Voice cheer has not been heard yet." }, 409);
+  const updated = await prisma.safetyLiveShareCheer.update({
+    where: { id: cheer.id },
+    data: { acknowledgedAt: cheer.acknowledgedAt ?? new Date() },
+  });
+  return c.json(cheerReceiptPayload(updated));
 });
 
 router.get("/live-shares/:id", async (c) => {
@@ -288,7 +355,23 @@ export async function liveShareViewer(c: Context<AppEnv>) {
 }
 
 function followerPayload(share: any) {
-  return { id: share.id, status: share.status, runner: share.user, sport: share.sport ?? "run", title: share.title ?? "Live run", voiceCheerEnabled: share.voiceCheerEnabled, startedAt: share.startedAt, expiresAt: share.expiresAt, endedAt: share.endedAt, lastLocationAt: share.lastLocationAt, lastLocation: share.lastLocation, routePreview: share.routePreview, elapsedSeconds: share.elapsedSeconds, distanceM: share.distanceM, currentPaceSecsPerKm: share.currentPaceSecsPerKm, heartRate: share.heartRate };
+  return { id: share.id, status: share.status, runner: share.user, sport: share.sport ?? "run", title: share.title ?? "Live run", voiceCheerEnabled: share.voiceCheerEnabled, startedAt: share.startedAt, expiresAt: share.expiresAt, endedAt: share.endedAt, lastLocationAt: share.lastLocationAt, lastLocation: share.lastLocation, routePreview: share.routePreview, elapsedSeconds: share.elapsedSeconds, distanceM: share.distanceM, currentPaceSecsPerKm: share.currentPaceSecsPerKm, heartRate: share.heartRate, latestCheer: share.cheers?.[0] ? cheerReceiptPayload(share.cheers[0]) : null };
+}
+
+function cheerReceiptPayload(cheer: {
+  id: string;
+  createdAt: Date;
+  deliveredAt: Date | null;
+  playedAt: Date | null;
+  acknowledgedAt: Date | null;
+}) {
+  return {
+    id: cheer.id,
+    createdAt: cheer.createdAt,
+    deliveredAt: cheer.deliveredAt,
+    playedAt: cheer.playedAt,
+    acknowledgedAt: cheer.acknowledgedAt,
+  };
 }
 
 async function publicLiveSharePayload(token: string) {

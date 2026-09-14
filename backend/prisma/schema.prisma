@@ -578,7 +578,9 @@ model SafetyLiveShareCheer {
   contentType String          @default("audio/mp4")
   durationMs  Int
   createdAt   DateTime        @default(now())
+  deliveredAt DateTime?
   playedAt    DateTime?
+  acknowledgedAt DateTime?
 
   @@index([shareId, createdAt])
   @@index([senderId, createdAt])
