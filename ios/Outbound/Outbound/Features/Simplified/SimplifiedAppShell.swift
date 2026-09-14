@@ -4283,6 +4283,8 @@ private struct ProfilePhotoPreviewView: View {
     @State private var showsPhotoLibrary = false
     @State private var showsCamera = false
     @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var pendingCrop: ProfilePhotoCropCandidate?
+    @State private var queuedCameraCrop: ProfilePhotoCropCandidate?
     @State private var isUpdating = false
     @State private var toast: ProfileToast?
 
@@ -4375,15 +4377,29 @@ private struct ProfilePhotoPreviewView: View {
                 selection: $selectedPhotoItem,
                 matching: .images
             )
-            .sheet(isPresented: $showsCamera) {
+            .sheet(isPresented: $showsCamera, onDismiss: presentQueuedCameraCrop) {
                 ProfilePhotoCameraPicker(
                     onImage: { image in
+                        queuedCameraCrop = ProfilePhotoCropCandidate(image: image, action: "take")
                         showsCamera = false
-                        Task { await upload(image: image, action: "take") }
                     },
                     onCancel: { showsCamera = false }
                 )
                 .ignoresSafeArea()
+            }
+            .fullScreenCover(item: $pendingCrop) { candidate in
+                ProfilePhotoCropView(
+                    image: candidate.image,
+                    onCancel: {
+                        track(action: candidate.action, result: "crop_cancelled")
+                        pendingCrop = nil
+                    },
+                    onUsePhoto: { image in
+                        track(action: candidate.action, result: "crop_saved")
+                        pendingCrop = nil
+                        Task { await upload(image: image, action: candidate.action) }
+                    }
+                )
             }
             .overlay(alignment: .top) {
                 if let toast {
@@ -4402,13 +4418,13 @@ private struct ProfilePhotoPreviewView: View {
             }
             .onChange(of: selectedPhotoItem) { _, item in
                 guard let item else { return }
-                Task { await upload(item: item) }
+                Task { await prepareCrop(item: item) }
             }
         }
         .presentationDetents([.medium, .large])
     }
 
-    private func upload(item: PhotosPickerItem) async {
+    private func prepareCrop(item: PhotosPickerItem) async {
         defer { selectedPhotoItem = nil }
         do {
             guard let sourceData = try await item.loadTransferable(type: Data.self),
@@ -4417,11 +4433,22 @@ private struct ProfilePhotoPreviewView: View {
                 showToast(String(localized: "That photo could not be used."), style: .error)
                 return
             }
-            await upload(image: image, action: "choose")
+            presentCrop(image: image, action: "choose")
         } catch {
             track(action: "choose", result: "failure")
             showToast(String(localized: "Could not upload photo. Try again."), style: .error)
         }
+    }
+
+    private func presentQueuedCameraCrop() {
+        guard let candidate = queuedCameraCrop else { return }
+        queuedCameraCrop = nil
+        presentCrop(image: candidate.image, action: candidate.action)
+    }
+
+    private func presentCrop(image: UIImage, action: String) {
+        track(action: action, result: "crop_opened")
+        pendingCrop = ProfilePhotoCropCandidate(image: image, action: action)
     }
 
     private func upload(image: UIImage, action: String) async {
@@ -4497,6 +4524,17 @@ private struct ProfilePhotoPreviewView: View {
         let renderer = UIGraphicsImageRenderer(size: size)
         let resized = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
         return resized.jpegData(compressionQuality: 0.82)
+    }
+}
+
+private struct ProfilePhotoCropCandidate: Identifiable {
+    let id = UUID()
+    let image: UIImage
+    let action: String
+
+    init(image: UIImage, action: String) {
+        self.image = image.normalizedForProfileCrop()
+        self.action = action
     }
 }
 
