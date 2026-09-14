@@ -19,6 +19,7 @@ final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate {
 
     private var player: AVAudioPlayer?
     private var queuedAudio: [Data] = []
+    private var sequenceCompletion: (() -> Void)?
     private var audioEngine: AVAudioEngine?
     private var playerNode: AVAudioPlayerNode?
     private var streamTask: Task<Void, Never>?
@@ -113,10 +114,13 @@ final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate {
         }
     }
 
-    func playSequence(_ data: [Data]) {
+    @discardableResult
+    func playSequence(_ data: [Data], completion: (() -> Void)? = nil) -> Bool {
         stopSpeaking(at: .immediate)
         queuedAudio = data
+        sequenceCompletion = completion
         playNext()
+        return isSpeaking
     }
 
     func stopSpeaking(at boundary: StopBoundary) {
@@ -130,8 +134,15 @@ final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate {
 
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         self.player = nil
-        if queuedAudio.isEmpty {
+        guard flag else {
             finishSpeaking()
+            return
+        }
+        if queuedAudio.isEmpty {
+            let completion = sequenceCompletion
+            sequenceCompletion = nil
+            finishSpeaking()
+            completion?()
         } else {
             playNext()
         }
@@ -195,6 +206,7 @@ final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate {
         didEmitPlaybackRoute = false
         player = nil
         queuedAudio = []
+        sequenceCompletion = nil
         stopPCMResources()
         #if os(iOS)
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)

@@ -137,9 +137,10 @@ final class VirtualGuide: NSObject, ObservableObject {
         }
     }
 
-    func playVoiceCheers(_ recordings: [Data]) {
-        guard speechEnabled, !recordings.isEmpty, !audioPlayer.isSpeaking else { return }
-        audioPlayer.playSequence(recordings)
+    @discardableResult
+    func playVoiceCheer(_ recording: Data, completion: @escaping () -> Void) -> Bool {
+        guard speechEnabled, !recording.isEmpty, !audioPlayer.isSpeaking else { return false }
+        return audioPlayer.playSequence([recording], completion: completion)
     }
 
     var canPlayVoiceCheers: Bool { speechEnabled && !audioPlayer.isSpeaking }

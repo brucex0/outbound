@@ -816,6 +816,14 @@ final class APIClient {
         try await get("/safety/live-shares/\(shareID)/cheers")
     }
 
+    func markVoiceCheerPlayed(shareID: String, cheerID: String) async throws -> VoiceCheerReceiptDTO {
+        try await post("/safety/live-shares/\(shareID)/cheers/\(cheerID)/played", body: EmptyBody())
+    }
+
+    func acknowledgeVoiceCheer(shareID: String, cheerID: String) async throws -> VoiceCheerReceiptDTO {
+        try await post("/safety/live-shares/\(shareID)/cheers/\(cheerID)/acknowledge", body: EmptyBody())
+    }
+
     func createLiveGroupRun(_ request: LiveGroupCreateRequest) async throws -> LiveGroupSessionResponse {
         try await post("/live/group-runs", body: request)
     }
@@ -2362,14 +2370,23 @@ struct InvitedLiveShareDTO: Decodable, Identifiable {
     let voiceCheerEnabled: Bool; let startedAt: Date; let expiresAt: Date; let endedAt: Date?; let lastLocationAt: Date?
     let lastLocation: LiveSharePointDTO?; let routePreview: [LiveSharePointDTO]
     let elapsedSeconds: Int; let distanceM: Double; let currentPaceSecsPerKm: Double?; let heartRate: Int?
+    let latestCheer: VoiceCheerReceiptDTO?
 }
 private struct VoiceCheerUploadRequest: Encodable { let audioBase64: String; let contentType: String; let durationMs: Int }
-struct VoiceCheerReceiptDTO: Decodable { let id: String; let createdAt: Date }
+struct VoiceCheerReceiptDTO: Decodable, Identifiable {
+    let id: String
+    let createdAt: Date
+    let deliveredAt: Date?
+    let playedAt: Date?
+    let acknowledgedAt: Date?
+}
 struct VoiceCheersResponse: Decodable { let cheers: [VoiceCheerDTO] }
 struct VoiceCheerDTO: Decodable, Identifiable {
-    let id: String; let audioBase64: String; let contentType: String; let durationMs: Int; let createdAt: Date
+    let id: String; let audioBase64: String; let contentType: String; let durationMs: Int; let createdAt: Date; let deliveredAt: Date
+    let sender: VoiceCheerSenderDTO
     var audioData: Data? { Data(base64Encoded: audioBase64) }
 }
+struct VoiceCheerSenderDTO: Decodable { let id: String; let displayName: String; let avatarUrl: URL? }
 
 struct RewardsStatusDTO: Decodable {
     let referral: RewardsReferralDTO

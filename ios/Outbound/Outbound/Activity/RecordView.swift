@@ -268,9 +268,17 @@ struct RecordView: View {
             liveShareStore.ingest(snapshot)
             if liveShareStore.isSharing, guide.canPlayVoiceCheers {
                 Task { @MainActor in
-                    let recordings = await liveShareStore.takePendingVoiceCheers()
-                    guide.playVoiceCheers(recordings)
-                    if !recordings.isEmpty { track(.init(.liveVoiceCheerPlayed, properties: [.countBucket: .string(ProductAnalyticsBucket.count(recordings.count))])) }
+                    guard let cheer = await liveShareStore.takePendingVoiceCheer(),
+                          let audio = cheer.audioData
+                    else { return }
+                    guide.playVoiceCheer(audio) {
+                        Task { @MainActor in
+                            guard await liveShareStore.markVoiceCheerPlayed(cheer) else { return }
+                            track(.init(.liveVoiceCheerPlayed, properties: [
+                                .countBucket: .string(ProductAnalyticsBucket.count(1))
+                            ]))
+                        }
+                    }
                 }
             }
             liveGroupStore.ingest(snapshot)
@@ -801,6 +809,25 @@ struct RecordView: View {
         .overlay(alignment: .topTrailing) {
             if isEmbeddedInToday, !isLiveWorkoutPanelExpanded {
                 embeddedActivityAssistantButton
+            }
+        }
+        .overlay(alignment: .top) {
+            if countdownStep == nil, let cheer = liveShareStore.mostRecentlyHeardCheer {
+                HeardVoiceCheerBanner(
+                    senderDisplayName: cheer.senderDisplayName,
+                    onAcknowledge: {
+                        Task { @MainActor in
+                            let acknowledged = await liveShareStore.acknowledgeMostRecentlyHeardCheer()
+                            track(.init(.liveVoiceCheerAcknowledged, properties: [
+                                .result: .string(acknowledged ? "success" : "failure")
+                            ]))
+                        }
+                    },
+                    onDismiss: liveShareStore.dismissMostRecentlyHeardCheer
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 54)
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
     }

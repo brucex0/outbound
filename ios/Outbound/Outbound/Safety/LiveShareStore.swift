@@ -15,6 +15,12 @@ struct LiveShareSession: Identifiable, Hashable {
     }
 }
 
+struct HeardVoiceCheer: Identifiable, Equatable {
+    let id: String
+    let shareID: String
+    let senderDisplayName: String
+}
+
 @MainActor
 final class LiveShareStore: ObservableObject {
     @Published private(set) var activeSession: LiveShareSession?
@@ -24,6 +30,7 @@ final class LiveShareStore: ObservableObject {
     @Published private(set) var isStarting = false
     @Published private(set) var isUpdating = false
     @Published var selectedConnections: [SocialConnectionDTO] = []
+    @Published private(set) var mostRecentlyHeardCheer: HeardVoiceCheer?
 
     private let api: APIClient
     private var lastSentAt: Date?
@@ -135,6 +142,7 @@ final class LiveShareStore: ObservableObject {
         lastSentAt = nil
         lastSentDistanceM = nil
         lastCheerFetchAt = nil
+        mostRecentlyHeardCheer = nil
 
         Task { [api] in
             // A cancelled URL request may still be finishing on the server. Wait for it
@@ -151,15 +159,49 @@ final class LiveShareStore: ObservableObject {
         }
     }
 
-    func takePendingVoiceCheers(now: Date = Date()) async -> [Data] {
-        guard let session = activeSession, session.isActive else { return [] }
-        if let lastCheerFetchAt, now.timeIntervalSince(lastCheerFetchAt) < 4 { return [] }
+    func takePendingVoiceCheer(now: Date = Date()) async -> VoiceCheerDTO? {
+        guard let session = activeSession, session.isActive else { return nil }
+        if let lastCheerFetchAt, now.timeIntervalSince(lastCheerFetchAt) < 4 { return nil }
         lastCheerFetchAt = now
         do {
-            return try await api.fetchVoiceCheers(shareID: session.id).cheers.compactMap(\.audioData)
+            return try await api.fetchVoiceCheers(shareID: session.id).cheers.first
         } catch {
-            return []
+            return nil
         }
+    }
+
+    @discardableResult
+    func markVoiceCheerPlayed(_ cheer: VoiceCheerDTO) async -> Bool {
+        guard let session = activeSession, session.isActive else { return false }
+        do {
+            _ = try await api.markVoiceCheerPlayed(shareID: session.id, cheerID: cheer.id)
+            mostRecentlyHeardCheer = HeardVoiceCheer(
+                id: cheer.id,
+                shareID: session.id,
+                senderDisplayName: cheer.sender.displayName
+            )
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    @discardableResult
+    func acknowledgeMostRecentlyHeardCheer() async -> Bool {
+        guard let cheer = mostRecentlyHeardCheer else { return false }
+        do {
+            _ = try await api.acknowledgeVoiceCheer(shareID: cheer.shareID, cheerID: cheer.id)
+            if mostRecentlyHeardCheer?.id == cheer.id {
+                mostRecentlyHeardCheer = nil
+            }
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    func dismissMostRecentlyHeardCheer() {
+        mostRecentlyHeardCheer = nil
     }
 
     private func shouldSend(snapshot: ActiveSessionSnapshot) -> Bool {

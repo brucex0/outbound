@@ -9,6 +9,7 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
     @Published var session: InvitedLiveShareDTO?
     @Published var isRecording = false
     @Published var statusMessage: String?
+    @Published var latestCheer: VoiceCheerReceiptDTO?
     private var recorder: AVAudioRecorder?
     private var recordingStartedAt: Date?
     private let usesFixture: Bool
@@ -16,6 +17,7 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
 
     init(initialSession: InvitedLiveShareDTO? = nil) {
         session = initialSession
+        latestCheer = initialSession?.latestCheer
         usesFixture = initialSession != nil
         super.init()
     }
@@ -23,7 +25,10 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
     func refreshSessions() async { sessions = (try? await api.fetchInvitedLiveShares().sessions) ?? sessions }
     func refresh(id: String) async {
         guard !usesFixture else { return }
-        if let value = try? await api.fetchInvitedLiveShare(id: id) { session = value }
+        if let value = try? await api.fetchInvitedLiveShare(id: id) {
+            session = value
+            latestCheer = value.latestCheer
+        }
     }
 
     func beginRecording() {
@@ -56,7 +61,10 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
         try? FileManager.default.removeItem(at: recorder.url)
         self.recorder = nil
         Task {
-            do { _ = try await api.sendVoiceCheer(shareID: session.id, audio: audio, durationMs: durationMs); statusMessage = String(localized: "cheer.sent", defaultValue: "Voice cheer sent") }
+            do {
+                latestCheer = try await api.sendVoiceCheer(shareID: session.id, audio: audio, durationMs: durationMs)
+                statusMessage = String(localized: "cheer.sent", defaultValue: "Voice cheer sent")
+            }
             catch { statusMessage = String(localized: "cheer.send.failed", defaultValue: "Couldn’t send your cheer.") }
         }
     }
@@ -105,7 +113,11 @@ struct LiveCheerView: View {
                             String(localized: "session.metric.heart_rate", defaultValue: "Heart rate")
                         )
                     }
-                    Text(session.status == "active" ? "\(session.runner.displayName) is moving" : "This activity has ended")
+                    Text(
+                        session.status == "active"
+                            ? String(format: String(localized: "cheer.runner.moving", defaultValue: "%@ is moving"), session.runner.displayName)
+                            : String(localized: "cheer.activity.ended", defaultValue: "This activity has ended")
+                    )
                         .font(.headline)
                     if session.status == "active" && session.voiceCheerEnabled {
                         Image(systemName: store.isRecording ? "waveform.circle.fill" : "mic.circle.fill")
@@ -113,16 +125,31 @@ struct LiveCheerView: View {
                             .onLongPressGesture(minimumDuration: 0.15, maximumDistance: 80, pressing: { pressing in
                                 if pressing { store.beginRecording() } else if store.isRecording { store.finishAndSend() }
                             }, perform: {})
-                        Text(store.isRecording ? "Release to send" : "Hold to cheer")
+                        Text(
+                            store.isRecording
+                                ? String(localized: "cheer.release_to_send", defaultValue: "Release to send")
+                                : String(localized: "cheer.hold_to_record", defaultValue: "Hold to cheer")
+                        )
                     } else if session.status == "active" {
                         Label(String(localized: "rewards.voice_cheer_locked", table: "Rewards"), systemImage: "lock.fill")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
-                    if let message = store.statusMessage { Text(message).font(.caption).foregroundStyle(.secondary) }
+                    if let receipt = store.latestCheer {
+                        VoiceCheerDeliveryStatus(receipt: receipt)
+                    }
+                    if let message = store.statusMessage,
+                       message != String(localized: "cheer.sent", defaultValue: "Voice cheer sent") {
+                        Text(message).font(.caption).foregroundStyle(.secondary)
+                    }
                 }
                 .padding()
-                .navigationTitle("Cheer \(session.runner.displayName) on")
+                .navigationTitle(
+                    String(
+                        format: String(localized: "cheer.navigation.title", defaultValue: "Cheer %@ on"),
+                        session.runner.displayName
+                    )
+                )
             } else { ProgressView() }
         }
         .task {
@@ -215,7 +242,8 @@ struct DebugLiveCheerFollowerHarness: View {
         elapsedSeconds: 1_718,
         distanceM: 4_730,
         currentPaceSecsPerKm: 362,
-        heartRate: 148
+        heartRate: 148,
+        latestCheer: nil
     )
 
     private static func point(_ latitude: Double, _ longitude: Double, offset: TimeInterval) -> LiveSharePointDTO {
@@ -227,3 +255,41 @@ struct DebugLiveCheerFollowerHarness: View {
     }
 }
 #endif
+
+private struct VoiceCheerDeliveryStatus: View {
+    let receipt: VoiceCheerReceiptDTO
+
+    var body: some View {
+        Label(statusText, systemImage: statusSymbol)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(statusColor)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(statusColor.opacity(0.12), in: Capsule())
+            .accessibilityLabel(statusText)
+    }
+
+    private var statusText: String {
+        if receipt.acknowledgedAt != nil {
+            return String(localized: "cheer.status.acknowledged", defaultValue: "❤️ Heard you")
+        }
+        if receipt.playedAt != nil {
+            return String(localized: "cheer.status.heard", defaultValue: "Heard")
+        }
+        if receipt.deliveredAt != nil {
+            return String(localized: "cheer.status.delivered", defaultValue: "Delivered")
+        }
+        return String(localized: "cheer.status.sent", defaultValue: "Sent")
+    }
+
+    private var statusSymbol: String {
+        if receipt.acknowledgedAt != nil { return "heart.fill" }
+        if receipt.playedAt != nil { return "speaker.wave.2.fill" }
+        if receipt.deliveredAt != nil { return "iphone.radiowaves.left.and.right" }
+        return "paperplane.fill"
+    }
+
+    private var statusColor: Color {
+        receipt.acknowledgedAt != nil ? .pink : .orange
+    }
+}

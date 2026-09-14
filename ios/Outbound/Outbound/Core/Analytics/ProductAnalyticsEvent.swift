@@ -157,6 +157,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case liveCheerFollowerOpened = "live_cheer_follower_opened"
     case liveVoiceCheerSent = "live_voice_cheer_sent"
     case liveVoiceCheerPlayed = "live_voice_cheer_played"
+    case liveVoiceCheerAcknowledged = "live_voice_cheer_acknowledged"
     case rewardsCenterOpened = "rewards_center_opened"
     case rewardCodeRedeemed = "reward_code_redeemed"
     case referralCodeShared = "referral_code_shared"
@@ -352,6 +353,7 @@ enum ProductAnalyticsSchema {
         .liveCheerFollowerOpened: [.entrySource, .selectionType],
         .liveVoiceCheerSent: [.result, .durationBucket],
         .liveVoiceCheerPlayed: [.countBucket],
+        .liveVoiceCheerAcknowledged: [.result],
         .rewardsCenterOpened: [],
         .rewardCodeRedeemed: [.sourceType, .result],
         .referralCodeShared: [.sourceType, .selectionType],
