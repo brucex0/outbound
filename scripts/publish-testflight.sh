@@ -8,6 +8,7 @@ SCHEME="Outbound"
 APP_BUNDLE_ID="plainstride.outbound"
 APP_APPLE_ID="6800191455"
 EXTENSION_BUNDLE_ID="${APP_BUNDLE_ID}.liveactivity"
+WATCH_BUNDLE_ID="${APP_BUNDLE_ID}.watchkitapp"
 DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM:-WT54K7D7VH}"
 RELEASE_DOC="docs/testflight-1.0.md"
 ASC_API_BASE_URL="https://api.appstoreconnect.apple.com"
@@ -240,9 +241,9 @@ elif [[ "$dry_run" == true && "$beta_setup_only" == false && -n "$(git status --
   log "Warning: tracked files are modified; a real publish would stop"
 fi
 
-version_info="$({ PROJECT_FILE="$PROJECT_FILE" APP_BUNDLE_ID="$APP_BUNDLE_ID" EXTENSION_BUNDLE_ID="$EXTENSION_BUNDLE_ID" ruby <<'RUBY'
+version_info="$({ PROJECT_FILE="$PROJECT_FILE" APP_BUNDLE_ID="$APP_BUNDLE_ID" EXTENSION_BUNDLE_ID="$EXTENSION_BUNDLE_ID" WATCH_BUNDLE_ID="$WATCH_BUNDLE_ID" ruby <<'RUBY'
 path = ENV.fetch("PROJECT_FILE")
-bundle_ids = [ENV.fetch("APP_BUNDLE_ID"), ENV.fetch("EXTENSION_BUNDLE_ID")]
+bundle_ids = [ENV.fetch("APP_BUNDLE_ID"), ENV.fetch("EXTENSION_BUNDLE_ID"), ENV.fetch("WATCH_BUNDLE_ID")]
 lines = File.readlines(path, encoding: "UTF-8")
 builds = []
 versions = []
@@ -261,9 +262,9 @@ lines.each_index do |start|
   versions << version
 end
 
-abort "expected 4 app/extension build-setting blocks, found #{builds.length}" unless builds.length == 4
-abort "app and extension build numbers differ: #{builds.uniq.join(', ')}" unless builds.uniq.length == 1
-abort "app and extension marketing versions differ: #{versions.uniq.join(', ')}" unless versions.uniq.length == 1
+abort "expected 6 distributable build-setting blocks, found #{builds.length}" unless builds.length == 6
+abort "distributable target build numbers differ: #{builds.uniq.join(', ')}" unless builds.uniq.length == 1
+abort "distributable target marketing versions differ: #{versions.uniq.join(', ')}" unless versions.uniq.length == 1
 puts "#{versions.first}\t#{builds.first}"
 RUBY
   } 2>&1)" || fail "$version_info"
@@ -395,9 +396,9 @@ if [[ "$dry_run" == true ]]; then
 fi
 
 if [[ "$beta_setup_only" == false ]]; then
-PROJECT_FILE="$PROJECT_FILE" APP_BUNDLE_ID="$APP_BUNDLE_ID" EXTENSION_BUNDLE_ID="$EXTENSION_BUNDLE_ID" OLD_VERSION="$current_marketing_version" NEW_VERSION="$marketing_version" OLD_BUILD="$current_build" NEW_BUILD="$next_build" ruby <<'RUBY'
+PROJECT_FILE="$PROJECT_FILE" APP_BUNDLE_ID="$APP_BUNDLE_ID" EXTENSION_BUNDLE_ID="$EXTENSION_BUNDLE_ID" WATCH_BUNDLE_ID="$WATCH_BUNDLE_ID" OLD_VERSION="$current_marketing_version" NEW_VERSION="$marketing_version" OLD_BUILD="$current_build" NEW_BUILD="$next_build" ruby <<'RUBY'
 path = ENV.fetch("PROJECT_FILE")
-bundle_ids = [ENV.fetch("APP_BUNDLE_ID"), ENV.fetch("EXTENSION_BUNDLE_ID")]
+bundle_ids = [ENV.fetch("APP_BUNDLE_ID"), ENV.fetch("EXTENSION_BUNDLE_ID"), ENV.fetch("WATCH_BUNDLE_ID")]
 old_version = ENV.fetch("OLD_VERSION")
 new_version = ENV.fetch("NEW_VERSION")
 old_build = ENV.fetch("OLD_BUILD")
@@ -414,18 +415,18 @@ lines.each_index do |start|
   next unless bundle_ids.any? { |bundle_id| block.include?("PRODUCT_BUNDLE_IDENTIFIER = #{bundle_id};") }
 
   index = (start..finish).find { |line_index| lines[line_index].include?("CURRENT_PROJECT_VERSION = #{old_build};") }
-  abort "expected build #{old_build} in app/extension block" unless index
+  abort "expected build #{old_build} in distributable target block" unless index
   lines[index] = lines[index].sub("CURRENT_PROJECT_VERSION = #{old_build};", "CURRENT_PROJECT_VERSION = #{new_build};")
   updated_builds += 1
 
   index = (start..finish).find { |line_index| lines[line_index].include?("MARKETING_VERSION = #{old_version};") }
-  abort "expected marketing version #{old_version} in app/extension block" unless index
+  abort "expected marketing version #{old_version} in distributable target block" unless index
   lines[index] = lines[index].sub("MARKETING_VERSION = #{old_version};", "MARKETING_VERSION = #{new_version};")
   updated_versions += 1
 end
 
-abort "expected to update 4 app/extension build numbers, updated #{updated_builds}" unless updated_builds == 4
-abort "expected to update 4 app/extension marketing versions, updated #{updated_versions}" unless updated_versions == 4
+abort "expected to update 6 distributable build numbers, updated #{updated_builds}" unless updated_builds == 6
+abort "expected to update 6 distributable marketing versions, updated #{updated_versions}" unless updated_versions == 6
 temporary_path = "#{path}.publish-tmp"
 File.write(temporary_path, lines.join)
 File.rename(temporary_path, path)
