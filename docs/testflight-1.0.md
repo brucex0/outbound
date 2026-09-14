@@ -1,4 +1,4 @@
-# TestFlight and App Store 1.6 Submission Sheet
+# TestFlight and App Store 1.7 Submission Sheet
 
 Open this for the current TestFlight upload and public App Store release. Product behavior and release mechanics remain in `docs/app-store-release.md`.
 
@@ -7,7 +7,7 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - App Store name: `Plainstride` (confirm availability in App Store Connect).
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
-- Version: `1.6`
+- Version: `1.7`
 - Build: `43`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
@@ -60,7 +60,7 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### App Store What's New
 
-Plainstride 1.6 makes every run easier to start, guide, and finish. A redesigned map-first setup brings workouts, goals, Music, Live Track, shoes, environment, and voice guidance together. Live coaching now supports planned and standalone workouts, while improved recovery protects finished activities until they are saved. This release also strengthens recognition milestones, routes, Apple Health import, social and profile navigation, activity photos, and access to versioned Terms of Service.
+Plainstride 1.7 makes every run easier to start, guide, and finish. A redesigned map-first setup brings workouts, goals, Music, Live Track, shoes, environment, and voice guidance together. Live coaching now supports planned and standalone workouts, while improved recovery protects finished activities until they are saved. This release also strengthens recognition milestones, routes, Apple Health import, social and profile navigation, activity photos, and access to versioned Terms of Service.
 
 ### How to Report Feedback
 
@@ -175,6 +175,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.6 (43)`, validate, and upload from Xcode Organizer.
+- Archive `1.7 (43)`, validate, and upload from Xcode Organizer.
 - After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.
