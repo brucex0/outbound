@@ -13,6 +13,14 @@ export type PushNotificationPayload = {
 type PushPlatform = "ios" | "android";
 type DeliveryErrorCategory = "invalid_token" | "credentials" | "rate_limited" | "provider_unavailable" | "invalid_payload" | "unknown";
 
+const ACTIONABLE_NOTIFICATION_TYPES = new Set([
+  "liveCheerInvitation",
+  "connectionRequest",
+  "runInvitation",
+  "circleInvitation",
+  "groupRunInvitation",
+]);
+
 export async function deliverPushNotification(notification: PushNotificationPayload) {
   const prisma = getPrismaClient();
   const devices = await prisma.pushDevice.findMany({
@@ -38,7 +46,16 @@ export async function deliverPushNotification(notification: PushNotificationPayl
         destination: "social.notifications",
       },
       ...(platform === "ios"
-        ? { apns: { payload: { aps: { sound: "default", badge: 1 } } } }
+        ? {
+            apns: {
+              payload: {
+                aps: {
+                  sound: "default",
+                  ...(ACTIONABLE_NOTIFICATION_TYPES.has(notification.type) ? { badge: 1 } : {}),
+                },
+              },
+            },
+          }
         : { android: { priority: "high", notification: { channelId: "social", sound: "default" } } }),
     });
     result.responses.forEach((response, index) => {
