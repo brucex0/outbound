@@ -1,4 +1,4 @@
-# TestFlight and App Store 1.7 Submission Sheet
+# TestFlight and App Store 1.7.1 Submission Sheet
 
 Open this for the current TestFlight upload and public App Store release. Product behavior and release mechanics remain in `docs/app-store-release.md`.
 
@@ -7,8 +7,8 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - App Store name: `Plainstride` (confirm availability in App Store Connect).
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
-- Version: `1.7`
-- Build: `44`
+- Version: `1.7.1`
+- Build: `45`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -54,12 +54,10 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- [iOS] Preserve Social activity split timing
-- [iOS] Keep elapsed time aligned after auto-pause
-- [iOS] Add runner cheer acknowledgments
-- [BE] Add live cheer delivery receipts
-- [iOS] Add activity photo pin preview and zoom
-- Plus 2 more fixes and improvements
+- Merge notification center prioritization
+- [iOS] Redesign Social with feature tabs
+- [iOS] Prioritize notification center attention
+- [BE] Limit push badges to actionable notifications
 
 ### App Store What's New
 
@@ -178,6 +176,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.7 (44)`, validate, and upload from Xcode Organizer.
+- Archive `1.7.1 (45)`, validate, and upload from Xcode Organizer.
 - After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.
