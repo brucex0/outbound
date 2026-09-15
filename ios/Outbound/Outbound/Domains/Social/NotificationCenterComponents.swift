@@ -29,7 +29,7 @@ func notificationCenterAccessibilityValue(count: Int) -> String {
     return String(
         format: String(
             localized: "notification.center.badge.count",
-            defaultValue: "New items: %d"
+            defaultValue: "Needs your attention: %d"
         ),
         locale: .autoupdatingCurrent,
         count

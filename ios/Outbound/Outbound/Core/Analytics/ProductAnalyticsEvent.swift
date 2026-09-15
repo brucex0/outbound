@@ -66,6 +66,9 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case connectionsSearchCompleted = "connections_search_completed"
     case socialProfileOpened = "social_profile_opened"
     case socialInboxOpened = "social_inbox_opened"
+    case notificationCenterOpened = "notification_center_opened"
+    case notificationSectionExposed = "notification_section_exposed"
+    case notificationActionSelected = "notification_action_selected"
     case profileQRCodeOpened = "profile_qr_code_opened"
     case connectionQRCodeRequestResult = "connection_qr_code_request_result"
     case socialOperationFailed = "social_operation_failed"
@@ -218,6 +221,8 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case destination
     case entrySource = "entry_source"
     case feature
+    case section
+    case category
     case changeType = "change_type"
     case selectionType = "selection_type"
     case sourceType = "source_type"
@@ -346,6 +351,9 @@ enum ProductAnalyticsSchema {
         .connectionsSearchCompleted: [.sourceType, .inputScript, .queryLengthBucket, .countBucket, .matchMode, .result],
         .socialProfileOpened: [.entrySource],
         .socialInboxOpened: [.entrySource],
+        .notificationCenterOpened: [.countBucket],
+        .notificationSectionExposed: [.section, .countBucket],
+        .notificationActionSelected: [.section, .category, .selectionType, .countBucket],
         .profileQRCodeOpened: [.entrySource],
         .connectionQRCodeRequestResult: [.result],
         .socialOperationFailed: [.sourceType, .errorCategory],
