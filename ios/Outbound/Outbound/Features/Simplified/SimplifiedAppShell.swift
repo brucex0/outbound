@@ -1223,7 +1223,7 @@ private struct SimplifiedTodayView: View {
     }
 
     private var notificationCenterBadgeCount: Int {
-        socialStore.unreadNotificationCount + (healthImportStore.importCandidates.isEmpty ? 0 : 1)
+        socialStore.actionableNotificationCount + (healthImportStore.importCandidates.isEmpty ? 0 : 1)
     }
 
     private var activityOverflowMenu: some View {
@@ -3188,7 +3188,7 @@ private struct SimplifiedMeView: View {
     }
 
     private var notificationCenterBadgeCount: Int {
-        socialStore.unreadNotificationCount + (healthImportStore.importCandidates.isEmpty ? 0 : 1)
+        socialStore.actionableNotificationCount + (healthImportStore.importCandidates.isEmpty ? 0 : 1)
     }
 
     private func showManualWorkoutToast() {

@@ -125,12 +125,29 @@ data class P0IntegrationState(
     fun publishRoute(activityId:String,name:String,description:String?)=viewModelScope.launch{routes.publish(activityId,name,description).onSuccess{refreshRoutes()}}
     fun refreshInbox()=viewModelScope.launch{safety.inbox().onSuccess{response->mutable.update{it.copy(notifications=response.notifications)}}}
     fun openInbox() {
+        val items = NotificationPresentationPolicy.items(mutable.value.notifications)
         val readAt = Instant.now().toString()
         mutable.update { state -> state.copy(notifications = state.notifications.map { notification ->
             if (notification.readAt == null) notification.copy(readAt = readAt) else notification
         }) }
-        analytics.record(AnalyticsEvent("notification_inbox_opened"))
+        analytics.record(AnalyticsEvent("notification_center_opened", mapOf(
+            AnalyticsProperty.CountBucket to notificationCountBucket(items.size),
+        )))
+        items.groupBy { it.presentation.section }.forEach { (section, sectionItems) ->
+            analytics.record(AnalyticsEvent("notification_section_exposed", mapOf(
+                AnalyticsProperty.Section to section.analyticsValue,
+                AnalyticsProperty.CountBucket to notificationCountBucket(sectionItems.size),
+            )))
+        }
         viewModelScope.launch { safety.markInboxRead() }
+    }
+    fun openNotification(item: NotificationCenterItem) {
+        analytics.record(AnalyticsEvent("notification_action_selected", mapOf(
+            AnalyticsProperty.Section to item.presentation.section.analyticsValue,
+            AnalyticsProperty.Category to item.presentation.category.analyticsValue,
+            AnalyticsProperty.SelectionType to if (item.notifications.size > 1) "aggregated" else "single",
+            AnalyticsProperty.CountBucket to notificationCountBucket(item.notifications.size),
+        )))
     }
     fun completePlannedWorkout(launch: RecordingLaunchConfiguration, review: RecordedActivityReview) { val id=accountId?:return; val workoutId=launch.plannedWorkoutId?:return; viewModelScope.launch { today.completeWorkout(id,locale,workoutId,PlannedWorkoutCompletionRequest(completedAt=Instant.now().toString(),durationSeconds=review.snapshot.elapsedSeconds.toInt(),distanceMeters=review.snapshot.distanceMeters,completionQuality=review.reflection.name.lowercase())) } }
     private fun observeRoutes(){val id=accountId?:return;routeObservation?.cancel();routeObservation=viewModelScope.launch{routes.observe(id,locale,mutable.value.routeScope).collect{value->mutable.update{s->s.copy(routes=value)}}}}
@@ -144,5 +161,12 @@ data class P0IntegrationState(
         AnalyticsProperty.Result to if (success) "success" else "failure",
         AnalyticsProperty.Source to "document_picker",
     )))
+    private fun notificationCountBucket(count: Int): String = when {
+        count <= 0 -> "0"
+        count == 1 -> "1"
+        count <= 3 -> "2_3"
+        count <= 9 -> "4_9"
+        else -> "10_plus"
+    }
     private companion object{const val PUSH_ENABLED="push_enabled"}
 }

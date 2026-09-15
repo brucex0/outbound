@@ -721,7 +721,7 @@ struct SocialHomeView: View {
     }
 
     private var notificationCenterBadgeCount: Int {
-        socialStore.unreadNotificationCount + (healthImportStore.importCandidates.isEmpty ? 0 : 1)
+        socialStore.actionableNotificationCount + (healthImportStore.importCandidates.isEmpty ? 0 : 1)
     }
 
     private func incomingRequestCard(_ connection: SocialConnectionDTO) -> some View {
@@ -1933,79 +1933,36 @@ struct SocialNotificationsView: View {
     @EnvironmentObject private var healthImportStore: HealthImportStore
     @State private var selectedNotification: SocialNotificationDTO?
 
+    private var presentationItems: [NotificationCenterPresentationItem] {
+        NotificationPresentationPolicy.items(from: socialStore.notifications)
+    }
+
     var body: some View {
         List {
-            if !healthImportStore.importCandidates.isEmpty {
-                Section {
-                    Button {
-                        healthImportStore.isReviewPresented = true
-                    } label: {
-                        HStack(alignment: .top, spacing: OutboundSpacing.compact) {
-                            Image(systemName: "heart.text.clipboard.fill")
-                                .font(.title3)
-                                .foregroundStyle(OutboundPalette.companion)
-                                .frame(width: 36, height: 36)
-                                .background(OutboundPalette.companion.opacity(0.12), in: Circle())
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(String(
-                                    localized: "health.import.notification.title",
-                                    defaultValue: "New Apple Health workouts"
-                                ))
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(.primary)
-                                Text(healthImportNotificationDetail)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint(String(
-                        localized: "health.import.notification.hint",
-                        defaultValue: "Review and choose which workouts to import."
-                    ))
-                    .swipeActions {
-                        Button(role: .destructive) {
-                            healthImportStore.dismissCandidates()
-                        } label: {
-                            Label(
-                                String(localized: "common.dismiss", defaultValue: "Dismiss"),
-                                systemImage: "xmark"
-                            )
-                        }
-                    }
-                }
-            }
-
             if socialStore.notifications.isEmpty && healthImportStore.importCandidates.isEmpty {
                 ContentUnavailableView("No notifications", systemImage: "bell", description: Text("Connection requests, Cheers, comments, and run invitations appear here."))
             } else {
-                ForEach(socialStore.notifications) { notification in
-                    Button {
-                        selectedNotification = notification
-                    } label: {
-                        HStack(alignment: .top, spacing: OutboundSpacing.compact) {
-                            SocialAvatar(name: notification.actor?.displayName ?? "Plainstride", avatarURL: notification.actor?.avatarUrl)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(localizedCircleNotificationMessage(notification))
-                                    .font(notification.readAt == nil ? .body.weight(.semibold) : .body)
-                                    .foregroundStyle(.primary)
-                                Text(notification.createdAt.formatted(.relative(presentation: .named)))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                ForEach(NotificationCenterTier.allCases) { tier in
+                    let items = presentationItems.filter { $0.presentation.tier == tier }
+                    if !items.isEmpty || (tier == .needsYou && !healthImportStore.importCandidates.isEmpty) {
+                        Section(tier.localizedTitle) {
+                            if tier == .needsYou {
+                                ForEach(items.filter { $0.presentation.urgencyRank == 0 }) { item in
+                                    notificationButton(item)
+                                }
+                                if !healthImportStore.importCandidates.isEmpty {
+                                    healthImportButton
+                                }
+                                ForEach(items.filter { $0.presentation.urgencyRank != 0 }) { item in
+                                    notificationButton(item)
+                                }
+                            } else {
+                                ForEach(items) { item in
+                                    notificationButton(item)
+                                }
                             }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.tertiary)
                         }
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityHint(notificationAccessibilityHint(notification))
                 }
             }
         }
@@ -2025,6 +1982,7 @@ struct SocialNotificationsView: View {
                 selectedNotification = notification
                 pushNotifications.consumePendingNotification()
             }
+            await trackCenterExposure()
             await socialStore.markNotificationsRead()
             await pushNotifications.clearAppIconBadge()
         }
@@ -2042,52 +2000,151 @@ struct SocialNotificationsView: View {
         )
     }
 
+    private var healthImportButton: some View {
+        Button {
+            Task {
+                await analyticsManager?.track(.init(.notificationActionSelected, properties: [
+                    .section: .string(NotificationCenterTier.needsYou.analyticsValue),
+                    .category: .string("health_import"),
+                    .selectionType: .string("batched"),
+                    .countBucket: .string(ProductAnalyticsBucket.count(healthImportStore.importCandidates.count)),
+                ]))
+            }
+            healthImportStore.isReviewPresented = true
+        } label: {
+            HStack(alignment: .top, spacing: OutboundSpacing.compact) {
+                Image(systemName: "heart.text.clipboard.fill")
+                    .font(.title3)
+                    .foregroundStyle(OutboundPalette.companion)
+                    .frame(width: 36, height: 36)
+                    .background(OutboundPalette.companion.opacity(0.12), in: Circle())
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(String(localized: "health.import.notification.title", defaultValue: "New Apple Health workouts"))
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(healthImportNotificationDetail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(String(localized: "health.import.notification.hint", defaultValue: "Review and choose which workouts to import."))
+        .swipeActions {
+            Button(role: .destructive) {
+                healthImportStore.dismissCandidates()
+            } label: {
+                Label(String(localized: "common.dismiss", defaultValue: "Dismiss"), systemImage: "xmark")
+            }
+        }
+    }
+
+    private func notificationButton(_ item: NotificationCenterPresentationItem) -> some View {
+        Button {
+            Task {
+                await analyticsManager?.track(.init(.notificationActionSelected, properties: [
+                    .section: .string(item.presentation.tier.analyticsValue),
+                    .category: .string(item.presentation.category.rawValue),
+                    .selectionType: .string(item.notifications.count > 1 ? "aggregated" : "single"),
+                    .countBucket: .string(ProductAnalyticsBucket.count(item.notifications.count)),
+                ]))
+            }
+            selectedNotification = item.primary
+        } label: {
+            HStack(alignment: .top, spacing: OutboundSpacing.compact) {
+                SocialAvatar(name: item.primary.actor?.displayName ?? "Plainstride", avatarURL: item.primary.actor?.avatarUrl)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(localizedCircleNotificationMessage(item.primary))
+                        .font(item.hasUnread ? .body.weight(.semibold) : .body)
+                        .foregroundStyle(.primary)
+                    if item.additionalCount > 0 {
+                        Text(String(
+                            format: String(localized: "safety.inbox.additional_count", defaultValue: "%d more"),
+                            locale: .autoupdatingCurrent,
+                            item.additionalCount
+                        ))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                    Text(item.primary.createdAt.formatted(.relative(presentation: .named)))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(notificationAccessibilityHint(item.primary))
+    }
+
+    private func trackCenterExposure() async {
+        await analyticsManager?.track(.init(.notificationCenterOpened, properties: [
+            .countBucket: .string(ProductAnalyticsBucket.count(presentationItems.count + (healthImportStore.importCandidates.isEmpty ? 0 : 1))),
+        ]))
+        for tier in NotificationCenterTier.allCases {
+            let itemCount = presentationItems.count { $0.presentation.tier == tier }
+                + (tier == .needsYou && !healthImportStore.importCandidates.isEmpty ? 1 : 0)
+            guard itemCount > 0 else { continue }
+            await analyticsManager?.track(.init(.notificationSectionExposed, properties: [
+                .section: .string(tier.analyticsValue),
+                .countBucket: .string(ProductAnalyticsBucket.count(itemCount)),
+            ]))
+        }
+    }
+
     @ViewBuilder
     private func notificationDestination(_ notification: SocialNotificationDTO) -> some View {
-        switch notification.type {
-        case "liveCheerInvitation":
+        switch NotificationPresentationPolicy.presentation(for: notification.type, objectID: notification.objectId).destination {
+        case .liveCheer:
             if let sessionID = notification.objectId {
                 LiveCheerView(sessionID: sessionID, entrySource: "notification_inbox")
             } else {
                 SocialNotificationDetailView(notification: notification)
             }
-        case "connectionRequest", "connectionAccepted":
+        case .connections:
             SocialConnectionsView()
-        case "cheer", "comment":
+        case .post:
             SocialNotificationActivityView(notification: notification)
-        case "runInvitation":
+        case .runInvitation:
             SocialRunInvitationActionView(notification: notification)
-        case "invitationAccepted":
+        case .activityEvent:
             if let runID = notification.objectId,
                let run = socialStore.state.upcomingRuns.first(where: { $0.id == runID }) {
                 ActivityEventDetailView(run: run)
             } else {
                 SocialNotificationDetailView(notification: notification)
             }
-        case "circleInvitation":
+        case .circleInvitation:
             CircleNotificationInvitationView(notification: notification)
-        case "circleInvitationAccepted", "circleCheer", "circleWeeklyGoalCompleted", "circleOwnershipTransferred":
+        case .circle:
             if let circleID = notification.objectId,
                let circle = circleStore.circles.first(where: { $0.id == circleID }) {
                 CircleDetailView(circle: circle)
             } else {
                 SocialNotificationDetailView(notification: notification)
             }
-        default:
+        case .generic:
             SocialNotificationDetailView(notification: notification)
         }
     }
 
     private func notificationAccessibilityHint(_ notification: SocialNotificationDTO) -> String {
-        switch notification.type {
-        case "liveCheerInvitation": return String(localized: "Opens the live activity")
-        case "connectionRequest", "connectionAccepted": return String(localized: "Opens Connections")
-        case "cheer", "comment": return String(localized: "Opens the activity")
-        case "runInvitation": return String(localized: "Opens the invitation")
-        case "invitationAccepted": return String(localized: "Opens the group run")
-        case "circleInvitation": return String(localized: "circle.notification.open_invitation", defaultValue: "Opens the Circle invitation")
-        case "circleInvitationAccepted", "circleCheer", "circleWeeklyGoalCompleted", "circleOwnershipTransferred": return String(localized: "circle.notification.open", defaultValue: "Opens the Circle")
-        default: return String(localized: "Opens notification details")
+        switch NotificationPresentationPolicy.presentation(for: notification.type, objectID: notification.objectId).destination {
+        case .liveCheer: return String(localized: "Opens the live activity")
+        case .connections: return String(localized: "Opens Connections")
+        case .post: return String(localized: "Opens the activity")
+        case .runInvitation: return String(localized: "Opens the invitation")
+        case .activityEvent: return String(localized: "Opens the group run")
+        case .circleInvitation: return String(localized: "circle.notification.open_invitation", defaultValue: "Opens the Circle invitation")
+        case .circle: return String(localized: "circle.notification.open", defaultValue: "Opens the Circle")
+        case .generic: return String(localized: "Opens notification details")
         }
     }
 }

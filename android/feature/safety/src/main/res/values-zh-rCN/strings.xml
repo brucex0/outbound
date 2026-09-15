@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
+    <string name="inbox_additional_count">另有 %1$d 条</string>
+    <string name="inbox_cheers_milestones">加油与里程碑</string>
+    <string name="inbox_detail_title">通知</string>
     <string name="inbox_empty">暂无新通知。</string>
+    <string name="inbox_needs_you">待你处理</string>
     <string name="inbox_title">通知中心</string>
+    <string name="inbox_updates">最新动态</string>
     <string name="safety_add_contact">添加信任联系人</string>
     <string name="safety_allow">允许通知</string>
     <string name="safety_contacts">信任联系人</string>

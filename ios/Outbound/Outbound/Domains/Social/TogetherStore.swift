@@ -816,6 +816,9 @@ final class TogetherStore: ObservableObject {
     }
 
     var unreadNotificationCount: Int { notifications.filter { $0.readAt == nil }.count }
+    var actionableNotificationCount: Int {
+        NotificationPresentationPolicy.actionableAttentionCount(in: notifications)
+    }
     var pendingInvitationCount: Int {
         connections.filter { $0.status == "pending" && $0.direction == "incoming" }.count
             + notifications.filter { $0.type == "runInvitation" }.count

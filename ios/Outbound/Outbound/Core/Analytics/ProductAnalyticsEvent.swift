@@ -77,6 +77,9 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case socialUpcomingSelected = "social_upcoming_selected"
     case socialDiscoveryActionSelected = "social_discovery_action_selected"
     case socialFeedFirstCardVisible = "social_feed_first_card_visible"
+    case notificationCenterOpened = "notification_center_opened"
+    case notificationSectionExposed = "notification_section_exposed"
+    case notificationActionSelected = "notification_action_selected"
     case profileQRCodeOpened = "profile_qr_code_opened"
     case connectionQRCodeRequestResult = "connection_qr_code_request_result"
     case socialOperationFailed = "social_operation_failed"
@@ -229,6 +232,8 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case destination
     case entrySource = "entry_source"
     case feature
+    case section
+    case category
     case changeType = "change_type"
     case selectionType = "selection_type"
     case sourceType = "source_type"
@@ -368,6 +373,9 @@ enum ProductAnalyticsSchema {
         .socialUpcomingSelected: [.selectionType, .entrySource],
         .socialDiscoveryActionSelected: [.selectionType, .entrySource],
         .socialFeedFirstCardVisible: [.sourceType],
+        .notificationCenterOpened: [.countBucket],
+        .notificationSectionExposed: [.section, .countBucket],
+        .notificationActionSelected: [.section, .category, .selectionType, .countBucket],
         .profileQRCodeOpened: [.entrySource],
         .connectionQRCodeRequestResult: [.result],
         .socialOperationFailed: [.sourceType, .errorCategory],

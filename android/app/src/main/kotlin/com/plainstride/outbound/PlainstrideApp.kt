@@ -228,6 +228,7 @@ private fun SignedInApp(
     var socialTarget by remember { mutableStateOf<Pair<String,String>?>(null) }
     var activityTarget by remember { mutableStateOf<String?>(null) }
     var safetyTarget by remember { mutableStateOf<Pair<String,String>?>(null) }
+    var notificationDetailID by remember { mutableStateOf<String?>(null) }
     var reminderWorkoutId by remember { mutableStateOf<String?>(null) }
     var todayStartRequest by remember { mutableStateOf(0) }
     var todayRefreshRequest by remember { mutableStateOf(0) }
@@ -266,7 +267,8 @@ private fun SignedInApp(
             "assistant" -> navController.navigate(ASSISTANT_ROUTE)
             "inbox" -> navController.navigate(NOTIFICATIONS_ROUTE)
             "activity" -> { activityTarget=navigationUri.getQueryParameter("id");navController.navigate(ACTIVITY_HISTORY_ROUTE) }
-            "connections", "event", "circle", "group", "post", "invitation" -> { socialTarget=destination to navigationUri.getQueryParameter("id").orEmpty();navController.navigate(TopLevelDestination.Social.route) }
+            "connections", "event", "circle", "post", "invitation" -> { socialTarget=destination to navigationUri.getQueryParameter("id").orEmpty();navController.navigate(TopLevelDestination.Social.route) }
+            "group" -> { safetyTarget="group" to navigationUri.getQueryParameter("id").orEmpty();navController.navigate(SAFETY_ROUTE) }
             "live" -> { safetyTarget="live" to navigationUri.getQueryParameter("id").orEmpty();navController.navigate(SAFETY_ROUTE) }
             else -> navController.navigate(NOTIFICATIONS_ROUTE)
         }
@@ -374,7 +376,7 @@ private fun SignedInApp(
                             onOpenInbox = { navController.navigate(NOTIFICATIONS_ROUTE) },
                             onFindRoute = { navController.navigate(COMMUNITY_ROUTES_ROUTE) },
                             useFahrenheit = settingsState.preferences.temperature == com.plainstride.outbound.feature.settings.TemperatureUnit.Fahrenheit,
-                            inboxCount = integration.notifications.count { it.readAt == null },
+                            inboxCount = NotificationPresentationPolicy.actionableAttentionCount(integration.notifications),
                             startRequest = todayStartRequest,
                             refreshRequest = todayRefreshRequest,
                             onMessage = { message ->
@@ -486,7 +488,7 @@ private fun SignedInApp(
                             onMessage = { message -> snackbar.showSnackbar(resources.getString(settingsMessageResource(message))) },
                         )
                     } else if (destination == TopLevelDestination.Social && accountId != null) {
-                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.first,socialTarget?.second,inboxCount=integration.notifications.count { it.readAt == null },onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE)},onActivity={id->activityTarget=id;navController.navigate(ACTIVITY_HISTORY_ROUTE)},onMyInvite={navController.navigate(MY_QR_ROUTE){launchSingleTop=true}},onConnectionLinkConsumed={socialTarget=null;onConnectionCodeConsumed()})
+                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.first,socialTarget?.second,inboxCount=NotificationPresentationPolicy.actionableAttentionCount(integration.notifications),onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE)},onActivity={id->activityTarget=id;navController.navigate(ACTIVITY_HISTORY_ROUTE)},onMyInvite={navController.navigate(MY_QR_ROUTE){launchSingleTop=true}},onConnectionLinkConsumed={socialTarget=null;onConnectionCodeConsumed()})
                     } else {
                         FoundationScreen(destination, authState, authViewModel)
                     }
@@ -560,7 +562,13 @@ private fun SignedInApp(
             composable(HEALTH_ROUTE) { HealthDestination(healthPermissions, healthViewModel::refresh) { navController.popBackStack() } }
             composable(NOTIFICATIONS_ROUTE, deepLinks = listOf(navDeepLink { uriPattern = "plainstride://notification/{destination}?id={id}&notification={notification}" })) {
                 LaunchedEffect(Unit) { integrationViewModel.openInbox() }
-                NotificationInbox(integration.notifications) { destination -> when(destination){ NotificationDestination.Connections -> { socialTarget="connections" to "";navController.navigate(TopLevelDestination.Social.route) };is NotificationDestination.Activity -> { activityTarget=destination.id;navController.navigate(ACTIVITY_HISTORY_ROUTE) };is NotificationDestination.Post -> {socialTarget="post" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Event -> {socialTarget="event" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Invitation -> {socialTarget="invitation" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Circle -> {socialTarget="circle" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Group -> {safetyTarget="group" to destination.id;navController.navigate(SAFETY_ROUTE)};is NotificationDestination.Live -> {safetyTarget="live" to destination.id;navController.navigate(SAFETY_ROUTE)};NotificationDestination.Inbox -> Unit } }
+                NotificationInbox(integration.notifications) { item ->
+                    integrationViewModel.openNotification(item)
+                    when(val destination = item.presentation.destination){ NotificationDestination.Connections -> { socialTarget="connections" to "";navController.navigate(TopLevelDestination.Social.route) };is NotificationDestination.Activity -> { activityTarget=destination.id;navController.navigate(ACTIVITY_HISTORY_ROUTE) };is NotificationDestination.Post -> {socialTarget="post" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Event -> {socialTarget="event" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Invitation -> {socialTarget="invitation" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Circle -> {socialTarget="circle" to destination.id;navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Group -> {safetyTarget="group" to destination.id;navController.navigate(SAFETY_ROUTE)};is NotificationDestination.Live -> {safetyTarget="live" to destination.id;navController.navigate(SAFETY_ROUTE)};NotificationDestination.Inbox -> {notificationDetailID=item.primary.id;navController.navigate(NOTIFICATION_DETAIL_ROUTE)} }
+                }
+            }
+            composable(NOTIFICATION_DETAIL_ROUTE) {
+                NotificationDetail(integration.notifications.firstOrNull { it.id == notificationDetailID })
             }
             composable(REWARDS_ROUTE) { RewardsRoute(onBack = { navController.popBackStack() }, onRedeem = { navController.navigate(REWARD_REDEMPTION_ROUTE) }) }
             composable(REWARD_REDEMPTION_ROUTE) { RewardRedemptionRoute(onBack = { navController.popBackStack() }) }
@@ -644,6 +652,7 @@ private const val COMMUNITY_ROUTES_ROUTE = "community_routes"
 private const val SAFETY_ROUTE = "safety"
 private const val HEALTH_ROUTE = "health"
 private const val NOTIFICATIONS_ROUTE = "notifications"
+private const val NOTIFICATION_DETAIL_ROUTE = "notification_detail"
 private const val REWARDS_ROUTE = "rewards"
 private const val REWARD_REDEMPTION_ROUTE = "reward-redemption"
 private const val INVITATION_CODE_ROUTE = "invitation-code"

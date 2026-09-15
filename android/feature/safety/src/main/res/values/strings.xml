@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
+    <string name="inbox_additional_count">%1$d more</string>
+    <string name="inbox_cheers_milestones">Cheers &amp; milestones</string>
+    <string name="inbox_detail_title">Notification</string>
     <string name="inbox_empty">You’re all caught up.</string>
+    <string name="inbox_needs_you">Needs you</string>
     <string name="inbox_title">Notification Center</string>
+    <string name="inbox_updates">Updates</string>
     <string name="safety_add_contact">Add trusted contact</string>
     <string name="safety_allow">Allow notifications</string>
     <string name="safety_contacts">Trusted contacts</string>

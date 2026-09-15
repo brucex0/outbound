@@ -10,6 +10,7 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.plainstride.outbound.MainActivity
 import com.plainstride.outbound.R
+import com.plainstride.outbound.feature.safety.NotificationPresentationPolicy
 
 class PlainstrideMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
@@ -22,17 +23,7 @@ class PlainstrideMessagingService : FirebaseMessagingService() {
         val notificationId = message.data["notificationId"]?.take(160).orEmpty()
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(NotificationChannel(CHANNEL_SOCIAL, getString(R.string.notification_channel_social), NotificationManager.IMPORTANCE_DEFAULT))
-        val destination = message.data["targetType"]?.takeIf { it in setOf("invitation","event") } ?: when (type) {
-            "connectionRequest", "connectionAccepted" -> "connections"
-            "cheer", "comment" -> "activity"
-            "runInvitation" -> "invitation"
-            "invitationAccepted", "activityEventJoined" -> "event"
-            "circleInvitation" -> "invitation"
-            "circleInvitationAccepted", "circleCheer", "circleWeeklyGoalCompleted", "circleOwnershipTransferred" -> "circle"
-            "groupRunInvitation", "groupRunStarted", "groupRunUpdated" -> "group"
-            "liveShare", "liveShareStarted", "liveShareUpdated" -> "live"
-            else -> "inbox"
-        }
+        val destination = NotificationPresentationPolicy.deepLinkDestination(type, objectId)
         val intent = Intent(this, MainActivity::class.java).apply {
             data = Uri.Builder().scheme("plainstride").authority("notification").appendPath(destination).appendQueryParameter("id", objectId).appendQueryParameter("notification", notificationId).build()
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP

@@ -39,4 +39,81 @@ enum class NotificationPermissionState { UNKNOWN, GRANTED, DENIED, PERMANENTLY_D
  }
 }
 
-@Composable fun NotificationInbox(notifications:List<InboxNotification>,onOpen:(NotificationDestination)->Unit){LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){item{Text(stringResource(R.string.inbox_title),style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold)};items(notifications,key=InboxNotification::id){notification->OutlinedCard({onOpen(routeNotification(notification.type,notification.objectId))},Modifier.fillMaxWidth()){Row(Modifier.padding(16.dp)){Icon(Icons.Outlined.Notifications,null);Spacer(Modifier.width(12.dp));Text(notification.message,Modifier.weight(1f));if(notification.readAt==null)Badge()}}};if(notifications.isEmpty())item{Text(stringResource(R.string.inbox_empty),Modifier.padding(24.dp))}}}
+@Composable
+fun NotificationInbox(
+    notifications: List<InboxNotification>,
+    onOpen: (NotificationCenterItem) -> Unit,
+) {
+    val presentations = remember(notifications) { NotificationPresentationPolicy.items(notifications) }
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item { Text(stringResource(R.string.inbox_title), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold) }
+        NotificationCenterSection.entries.forEach { section ->
+            val sectionItems = presentations.filter { it.presentation.section == section }
+            if (sectionItems.isNotEmpty()) {
+                item("section:${section.name}") {
+                    Text(
+                        text = stringResource(
+                            when (section) {
+                                NotificationCenterSection.NEEDS_YOU -> R.string.inbox_needs_you
+                                NotificationCenterSection.UPDATES -> R.string.inbox_updates
+                                NotificationCenterSection.CHEERS_AND_MILESTONES -> R.string.inbox_cheers_milestones
+                            },
+                        ),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+                items(sectionItems, key = NotificationCenterItem::id) { item ->
+                    OutlinedCard({ onOpen(item) }, Modifier.fillMaxWidth()) {
+                        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
+                            Icon(
+                                imageVector = when (section) {
+                                    NotificationCenterSection.NEEDS_YOU -> Icons.Outlined.NotificationsActive
+                                    NotificationCenterSection.UPDATES -> Icons.Outlined.Notifications
+                                    NotificationCenterSection.CHEERS_AND_MILESTONES -> Icons.Outlined.FavoriteBorder
+                                },
+                                contentDescription = null,
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(item.primary.message, fontWeight = if (item.unread) FontWeight.SemiBold else FontWeight.Normal)
+                                if (item.additionalCount > 0) {
+                                    Text(
+                                        stringResource(R.string.inbox_additional_count, item.additionalCount),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            if (item.unread) Badge()
+                        }
+                    }
+                }
+            }
+        }
+        if (notifications.isEmpty()) item { Text(stringResource(R.string.inbox_empty), Modifier.padding(24.dp)) }
+    }
+}
+
+@Composable
+fun NotificationDetail(notification: InboxNotification?) {
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        item {
+            Text(
+                stringResource(R.string.inbox_detail_title),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        item { Text(notification?.message.orEmpty(), style = MaterialTheme.typography.bodyLarge) }
+    }
+}
