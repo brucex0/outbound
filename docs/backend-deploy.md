@@ -401,8 +401,10 @@ If you want the IAM user to be able to change ownership or manage privileges cre
 ## Public Invite Links
 
 - Canonical invite host: `https://plainstride.ai`.
-- Map that host to the `outbound-api` Cloud Run service and set `PUBLIC_WEB_BASE_URL=https://plainstride.ai`.
-- The same service serves the Plainstride marketing homepage at `/`, support at `/support`, Terms of Service at `/terms`, the public privacy policy at `/privacy`, and the public Android waitlist submission route at `POST /waitlist/android`.
+- Keep `run.plainstride.com` mapped to the `outbound-api` Cloud Run service and set `PUBLIC_WEB_BASE_URL=https://plainstride.ai` so generated links remain canonical.
+- The apex `plainstride.ai` host is served by the Cloudflare `plainstride` Worker from the separate `~/dev/plainstride` repository. Its Worker must reverse-proxy `/.well-known/apple-app-site-association`, `/apple-app-site-association`, `/.well-known/assetlinks.json`, `/invite`, `/invite/*`, `/connect/*`, and `/live/group/*` to `https://run.plainstride.com`; keep the same paths in `assets.run_worker_first` so static-asset 404 handling cannot intercept them.
+- Deploy changes to that routing from the website repository with `npx --yes wrangler@latest deploy`, then verify the public `plainstride.ai` URLs rather than only the `workers.dev` preview.
+- The Cloud Run service also exposes the Plainstride marketing homepage at `/`, support at `/support`, Terms of Service at `/terms`, the public privacy policy at `/privacy`, and the public Android waitlist submission route at `POST /waitlist/android`; the Cloudflare Worker owns the public apex versions of the static pages.
 - Android waitlist submissions are rate-limited, deduplicated by normalized email, and stored in `AndroidWaitlistEntry`. Deploy the API and run the pinned `outbound-db-push` job before directing visitors to the form.
 - `IOS_APP_STORE_URL` defaults to the direct Plainstride App Store listing: `https://apps.apple.com/us/app/plainstride/id6800191455`.
 - Set `ANDROID_PLAY_STORE_URL` to the production Play Store listing. Set `IOS_BETA_URL` and `ANDROID_BETA_URL` to TestFlight and Google Play testing enrollment links when those programs are active; omitted beta URLs are not shown.
