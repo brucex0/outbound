@@ -2891,15 +2891,25 @@ private extension TogetherActivityDTO {
         let resolvedStartedAt = startedAt ?? postCreatedAt.addingTimeInterval(TimeInterval(-duration))
         let resolvedEndedAt = endedAt ?? resolvedStartedAt.addingTimeInterval(TimeInterval(duration))
         let coordinates = route?.geometry.coordinates ?? []
+        let routeProperties = route?.properties
         let routePoints = coordinates.enumerated().compactMap { index, coordinate -> SavedRoutePoint? in
             guard coordinate.count >= 2 else { return nil }
             let progress = coordinates.count > 1 ? Double(index) / Double(coordinates.count - 1) : 0
+            let fallbackTimestamp = resolvedStartedAt.addingTimeInterval(TimeInterval(duration) * progress)
+            let timestamp = Self.routeTimestamp(
+                at: index,
+                in: routeProperties?.timestamps
+            ) ?? fallbackTimestamp
+            let verticalAccuracy = Self.routeVerticalAccuracy(
+                at: index,
+                in: routeProperties?.verticalAccuracy
+            )
             return SavedRoutePoint(
-                timestamp: resolvedStartedAt.addingTimeInterval(TimeInterval(duration) * progress),
+                timestamp: timestamp,
                 latitude: coordinate[1],
                 longitude: coordinate[0],
                 altitude: coordinate.count > 2 && coordinate[2].isFinite ? coordinate[2] : nil,
-                verticalAccuracy: nil
+                verticalAccuracy: verticalAccuracy
             )
         }
         let savedPhotos = (photos ?? []).compactMap { photo -> SavedPhoto? in
@@ -2944,6 +2954,23 @@ private extension TogetherActivityDTO {
             photos: savedPhotos,
             sync: nil
         )
+    }
+
+    static func parseRouteTimestamp(_ rawValue: String) -> Date? {
+        if let date = try? Date.ISO8601FormatStyle(includingFractionalSeconds: true).parse(rawValue) {
+            return date
+        }
+        return try? Date.ISO8601FormatStyle(includingFractionalSeconds: false).parse(rawValue)
+    }
+
+    static func routeTimestamp(at index: Int, in timestamps: [String]?) -> Date? {
+        guard let timestamps, timestamps.indices.contains(index) else { return nil }
+        return parseRouteTimestamp(timestamps[index])
+    }
+
+    static func routeVerticalAccuracy(at index: Int, in accuracies: [Double?]?) -> Double? {
+        guard let accuracies, accuracies.indices.contains(index) else { return nil }
+        return accuracies[index]
     }
 }
 

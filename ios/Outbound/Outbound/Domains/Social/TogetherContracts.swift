@@ -387,6 +387,8 @@ struct TogetherActivityRouteDTO: Codable, Sendable {
 }
 
 struct TogetherActivityRoutePropertiesDTO: Codable, Sendable {
+    let timestamps: [String]?
+    let verticalAccuracy: [Double?]?
     let elevationMetadata: ActivityElevationMetadata?
 }
 
