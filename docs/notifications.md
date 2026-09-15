@@ -5,8 +5,8 @@ Open this when changing notification creation, delivery, device registration, fo
 ## Product Contract
 
 - The backend notification record is the source of truth. Push is a best-effort delivery channel, not a second inbox.
-- V1 sends push for existing Social notification types: `connectionRequest`, `connectionAccepted`, `cheer`, `comment`, `runInvitation`, `invitationAccepted`, and `activityEventJoined`.
-- Circle creates durable in-app records for `circleInvitation`, `circleInvitationAccepted`, `circleCheer`, `circleWeeklyGoalCompleted`, and `circleOwnershipTransferred`. Their object IDs route to an invitation or Circle; optional Cheer/completion delivery respects the per-Circle mute preference, while membership-critical state remains visible.
+- The durable inbox currently receives `connectionRequest`, `connectionAccepted`, `cheer`, `comment`, `runInvitation`, `invitationAccepted`, `activityEventJoined`, `circleInvitation`, `circleInvitationAccepted`, `circleCheer`, `circleWeeklyGoalCompleted`, `circleOwnershipTransferred`, and `liveCheerInvitation` records. Push delivery remains type-dependent; a durable record does not imply that an OS push is enabled for that type.
+- Circle object IDs route to an invitation or Circle. Optional Cheer/completion creation respects the per-Circle mute preference, while membership-critical state remains visible.
 - The in-app destination is named Notification Center and remains available when push permission is denied or delivery fails.
 - Foreground push notifications use the system banner, sound, and badge. Tapping a connection request selects Social and opens Connections; other pushes open Notification Center.
 - Apple Health foreground scans are silent. When new workouts are found, one local-only Notification Center item appears and opens the import review on demand; health details are never sent to the notification backend.
@@ -86,10 +86,60 @@ Delivery logs contain only platform, a stable category (`invalid_token`, `creden
 - Registration occurs after authentication and retries on foreground activation.
 - The app icon badge is preserved when the app becomes active and is cleared after Notification Center marks durable Social notifications read.
 - A notification tap records its durable ID and type. The app selects Social and routes connection requests directly to Connections; other types open Notification Center, refresh its durable items, and route to the matching detail when present.
-- The in-app bell uses a high-contrast numeric badge for unread durable notifications plus one actionable item when Apple Health imports await review.
+- The in-app bell counts unresolved actionable durable notifications, whether read or unread, plus one actionable item when Apple Health imports await review. Cheers and informational updates do not inflate it.
 - Circle inbox rows render localized client copy from the semantic type and actor rather than displaying server-authored English. The Circle MVP is complete without push; adding Circle types to OS delivery remains subject to a later notification rollout.
 - `push_notification_opened` records the share-safe notification type and selected destination (`connections` or `notifications`).
 - User-facing permission text is provided by the system. Any future custom permission primer must use localized strings.
+
+## Notification Center Presentation Policy
+
+The clients centralize classification, ranking, aggregation eligibility, and destination selection in a notification presentation policy. Views do not independently reinterpret raw type strings. Sections always appear in this order:
+
+1. **Needs you**: unresolved actions or genuinely time-sensitive invitations.
+2. **Updates**: substantive state changes and conversations.
+3. **Cheers & milestones**: encouragement and completed shared goals.
+
+Within **Needs you**, `liveCheerInvitation` sorts first because the type itself identifies an active, expiring live session. On iOS, the single Apple Health batch follows live invitations. Remaining actionable items sort newest first. The payload does not currently expose event start times or invitation expiry, so clients must not infer starting-soon or expiring-soon priority for other types. **Updates** and **Cheers & milestones** sort newest first. The server still returns at most 50 durable records.
+
+### Type, tier, and routing table
+
+| Type/source | Current source | Tier | iOS destination | Android destination |
+| --- | --- | --- | --- | --- |
+| `liveCheerInvitation` | Backend durable | Needs you, live-first | Authorized live Cheer follower | Live sharing/follower |
+| `connectionRequest` | Backend durable | Needs you | Connections | Connections |
+| `runInvitation` | Backend durable | Needs you | Activity-event invitation actions | Social invitation |
+| `circleInvitation` | Backend durable | Needs you | Circle invitation actions | Social invitation |
+| `groupRunInvitation` | Route-only/future | Needs you | Generic notification detail until a standalone safe group-session destination exists | Live group run |
+| Apple Health import candidates | iOS local-only batch | Needs you, after live | Import review | Not applicable; no synthetic Health Connect inbox item |
+| `connectionAccepted` | Backend durable | Updates | Connections | Connections |
+| `comment` | Backend durable | Updates | Shared activity/post | Shared activity/post |
+| `invitationAccepted` | Backend durable | Updates | Activity event when locally available, otherwise generic detail | Activity event |
+| `activityEventJoined` | Backend durable | Updates | Activity event when locally available, otherwise generic detail | Activity event |
+| `circleInvitationAccepted` | Backend durable | Updates | Circle when locally available, otherwise generic detail | Circle |
+| `circleOwnershipTransferred` | Backend durable | Updates | Circle when locally available, otherwise generic detail | Circle |
+| `activity` | Route-only/future | Updates | Generic notification detail | Activity history/detail |
+| `groupRunStarted` / `groupRunUpdated` | Route-only/future | Updates | Generic notification detail until a standalone safe group-session destination exists | Live group run |
+| `liveShare` / `liveShareStarted` / `liveShareUpdated` | Route-only/future | Updates | Authorized live follower | Live sharing/follower |
+| `cheer` | Backend durable | Cheers & milestones | Shared activity/post | Shared activity/post |
+| `circleCheer` | Backend durable | Cheers & milestones | Circle when locally available, otherwise generic detail | Circle |
+| `circleWeeklyGoalCompleted` | Backend durable | Cheers & milestones | Circle when locally available, otherwise generic detail | Circle |
+| Unknown future durable type | Future backend | Updates | Generic notification detail | Generic notification detail |
+| `local_workout_reminder` | OS-only local schedule | Outside inbox | Today/start context | Platform reminder destination; never durable inbox data |
+
+An unknown type is never filtered out. It receives the default **Updates** classification, renders the backend's existing share-safe message, and opens a generic detail destination. A missing object ID also degrades to generic detail instead of crashing.
+
+### Read, resolution, aggregation, and attention
+
+- Opening Notification Center marks durable records read. Reading is presentation state only; it does not accept, decline, cancel, or otherwise resolve an invitation.
+- Existing mutations remain the authority for resolution. Handled connection, activity-event, and Circle invitations delete their matching durable notification. Read actionable records continue to count in the in-app attention badge until the backend removes them.
+- Repeated `cheer` records collapse only when they share the same non-empty post ID. Repeated `circleCheer` records collapse only when they share the same non-empty Circle ID. The newest real notification supplies the visible message, actor/avatar, date, and tap destination; the row adds only a localized count of additional records. Notifications with missing object IDs never aggregate.
+- `circleWeeklyGoalCompleted` is already deduplicated by its backend key. The iOS Health import card remains a single local batch with its real candidate count.
+- iOS push sets the app-icon badge only for actionable durable types (`liveCheerInvitation`, `connectionRequest`, `runInvitation`, `circleInvitation`, and future `groupRunInvitation`). Informational pushes leave the current system badge unchanged. Opening Notification Center clears the system badge after marking records read; the in-app bell continues to show unresolved actionable attention.
+- Android's prominent in-app bell uses the same actionable policy. OS launcher dots remain platform-controlled delivery affordances rather than a second inbox count.
+
+### Analytics
+
+The provider-neutral contract records `notification_center_opened`, one `notification_section_exposed` event per visible tier, and `notification_action_selected`. Properties are bounded to section (`needs_you`, `updates`, or `cheers_milestones`), category (`actionable`, `update`, `support`, or the local `health_import` category), single/aggregated/batched selection, and coarse count bucket. Notification copy, actor names, object IDs, titles, and health details are never analytics properties. There is no aggregation-expansion event because aggregated rows do not expose a separate expansion control.
 
 ## Configuration and Rollout
 
@@ -126,4 +176,4 @@ iOS Focus modes, notification settings, Scheduled Summary, device power state, a
 - Motivation notifications.
 - Delivery analytics and an outbox worker with retries.
 - Notification Service Extension media or mutable content.
-- Android channel/provider support; see `docs/mainland-china-readiness.md` before choosing that architecture.
+- Additional non-FCM Android providers; see `docs/mainland-china-readiness.md` before choosing that architecture.
