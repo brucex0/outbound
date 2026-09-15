@@ -3043,9 +3043,16 @@ struct RecordView: View {
         guard state != previousRecorderState else { return }
         switch (previousRecorderState, state) {
         case (.active, .paused):
-            track(.init(.activityPaused))
+            track(.init(.activityPaused, properties: [
+                .sourceType: .string(recorder.autoPaused ? "automatic" : "manual")
+            ]))
         case (.paused, .active):
-            track(.init(.activityResumed))
+            track(.init(.activityResumed, properties: [
+                .sourceType: .string(recorder.autoPaused ? "automatic" : "manual"),
+                .durationBucket: .string(ProductAnalyticsBucket.duration(
+                    seconds: recorder.lastAutoPauseRecoveredDurationSeconds
+                ))
+            ]))
         default:
             break
         }

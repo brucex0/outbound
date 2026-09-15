@@ -41,6 +41,7 @@ final class ActivityRecorder: ObservableObject {
     @Published private(set) var heartRateEffort: PlainstrideHeartRateEffort = .unavailable
     @Published var liveSnapshot: ActiveSessionSnapshot = .empty
     @Published var autoPaused = false
+    @Published private(set) var lastAutoPauseRecoveredDurationSeconds = 0
     @Published private(set) var recoveredSession = false
     @Published private(set) var recoveredAwaitingSave = false
     @Published private(set) var recoveredRouteGuidance: ActiveRouteGuidanceJournal?
@@ -127,6 +128,7 @@ final class ActivityRecorder: ObservableObject {
         let resolvedStartDate = canonicalStartDate.map { min($0, now) } ?? now
         state = .active
         autoPaused = false
+        lastAutoPauseRecoveredDurationSeconds = 0
         autoPauseCandidateStart = nil
         startDate = resolvedStartDate
         currentSegmentStartDate = now
@@ -201,19 +203,22 @@ final class ActivityRecorder: ObservableObject {
     func resume() {
         guard state == .paused else { return }
         let wasAutoPaused = autoPaused
+        let now = Date()
+        let recoveredDuration = tracksLocation
+            ? locationManager.resumeTracking(fromAutoPause: wasAutoPaused)
+            : 0
+        lastAutoPauseRecoveredDurationSeconds = Int(recoveredDuration.rounded())
+        accumulatedActiveDuration += recoveredDuration
         state = .active
         autoPaused = false
         autoPauseCandidateStart = nil
         autoResumeCandidateStart = nil
-        currentSegmentStartDate = Date()
-        if tracksLocation {
-            locationManager.resumeTracking(fromAutoPause: wasAutoPaused)
-        }
-        liveSnapshot = makeSnapshot()
+        currentSegmentStartDate = now
+        updateSessionMetrics(now: now)
         persistJournal(force: true)
         ActivityDiagnosticLog.notice(
             .lifecycle,
-            "Recording resumed source=\(wasAutoPaused ? "automatic_pause" : "manual_pause")"
+            "Recording resumed source=\(wasAutoPaused ? "automatic_pause" : "manual_pause") recovered_duration=\(ActivityDiagnosticLog.durationBucket(seconds: lastAutoPauseRecoveredDurationSeconds))"
         )
 #if DEBUG
         guard runSimulationState == nil else { return }

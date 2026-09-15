@@ -281,11 +281,14 @@ final class LocationManager: NSObject, ObservableObject {
         currentMotionSpeed = 0
     }
 
-    func resumeTracking(fromAutoPause: Bool = false) {
-        guard wantsTracking else { return }
+    @discardableResult
+    func resumeTracking(fromAutoPause: Bool = false) -> TimeInterval {
+        guard wantsTracking else { return 0 }
+        let promotedActiveDuration: TimeInterval
         if fromAutoPause {
-            promoteAutoPauseProbe()
+            promotedActiveDuration = promoteAutoPauseProbe()
         } else {
+            promotedActiveDuration = 0
             requiresNewSegment = true
             filter.reset()
             pedometerDistanceAtLastTrackPoint = pedometerDistanceMeters
@@ -294,6 +297,7 @@ final class LocationManager: NSObject, ObservableObject {
         isAutoPauseProbing = false
         probeLocations = []
         startTrackingIfPermitted()
+        return promotedActiveDuration
     }
 
     func stopTracking() -> StoppedLocationTrack {
@@ -537,12 +541,21 @@ final class LocationManager: NSObject, ObservableObject {
         activityType == .walking && CMPedometer.isStepCountingAvailable()
     }
 
-    private func promoteAutoPauseProbe() {
+    private func promoteAutoPauseProbe() -> TimeInterval {
         guard !probeLocations.isEmpty else {
             requiresNewSegment = true
             filter.reset()
             pedometerDistanceAtLastTrackPoint = pedometerDistanceMeters
-            return
+            return 0
+        }
+        let configuration = LocationFilterConfiguration(activityType: activityType)
+        let promotedActiveDuration = zip(probeLocations, probeLocations.dropFirst()).reduce(0.0) {
+            duration, edge in
+            let interval = edge.1.timestamp.timeIntervalSince(edge.0.timestamp)
+            guard interval > 0, interval <= 30 else { return duration }
+            let speed = edge.0.distance(from: edge.1) / interval
+            guard speed >= configuration.stationarySpeedMetersPerSecond else { return duration }
+            return duration + interval
         }
         requiresNewSegment = true
         filter.reset()
@@ -563,6 +576,7 @@ final class LocationManager: NSObject, ObservableObject {
         }
         filter.reset(with: probeLocations.last)
         pedometerDistanceAtLastTrackPoint = pedometerDistanceMeters
+        return promotedActiveDuration
     }
 
     private func beginSegment(with location: CLLocation) {
