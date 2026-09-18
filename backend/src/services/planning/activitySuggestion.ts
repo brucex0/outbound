@@ -187,7 +187,13 @@ export async function buildActivitySuggestion(
       base,
       source: "plan",
       relationship: "todayPlannedWorkout",
-      primary: plannedWorkoutSuggestion(todayWorkout, "This is today's planned session."),
+      primary: plannedWorkoutSuggestion(
+        todayWorkout,
+        "This is today's planned session.",
+        athleteState,
+        typedActivities,
+        latestReadiness
+      ),
       alternates: [],
       guideLine: "This is the next planned step. Keep the effort matched to the prescription.",
       reasons: ["active_plan_present", "today_planned_workout"],
@@ -199,7 +205,13 @@ export async function buildActivitySuggestion(
       base,
       source: "plan",
       relationship: "planFallback",
-      primary: plannedWorkoutSuggestion(upcomingWorkout, "There is no workout specifically scheduled today, so this is the next plan session."),
+      primary: plannedWorkoutSuggestion(
+        upcomingWorkout,
+        "There is no workout specifically scheduled today, so this is the next plan session.",
+        athleteState,
+        typedActivities,
+        latestReadiness
+      ),
       alternates: [],
       guideLine: "There is no specific workout on today's calendar. This is the next useful plan step when you are ready.",
       reasons: ["active_plan_present", "no_today_workout", "next_planned_workout"],
@@ -316,7 +328,13 @@ function chooseNoPlanSuggestion(
   };
 }
 
-function plannedWorkoutSuggestion(workout: PlannedWorkoutWithBlocks, why: string): ActivitySuggestion {
+function plannedWorkoutSuggestion(
+  workout: PlannedWorkoutWithBlocks,
+  why: string,
+  athleteState: AthleteTrainingStateSnapshot,
+  activities: ActivityForPlanning[],
+  readiness?: ReadinessForPlanning
+): ActivitySuggestion {
   const steps = workout.targetCalories ? [] : workout.blocks.flatMap((block) =>
     block.steps.length > 0
       ? block.steps.map((step) => step.label)
@@ -334,13 +352,50 @@ function plannedWorkoutSuggestion(workout: PlannedWorkoutWithBlocks, why: string
     effortLabel: effortLabelFor(workout.stimulus),
     intensityModel: toIntensityModel(workout.intensityModel),
     intensityTarget: jsonObject(workout.intensityTarget),
-    why,
+    why: plannedWorkoutReason(workout, why, athleteState, activities, readiness),
     steps: workout.targetCalories ? [] : (steps.length > 0 ? steps : [workout.title]),
     startLabel: startLabelFor(workout.modality),
     plannedWorkoutId: workout.id,
     archetypeId: null,
     optional: false,
   };
+}
+
+function plannedWorkoutReason(
+  workout: PlannedWorkoutWithBlocks,
+  fallback: string,
+  athleteState: AthleteTrainingStateSnapshot,
+  activities: ActivityForPlanning[],
+  readiness?: ReadinessForPlanning
+): string {
+  const recentMinutes = Math.round(activities
+    .filter((activity) => activity.startedAt >= addDays(new Date(), -7))
+    .reduce((sum, activity) => sum + (activity.durationSecs ?? 0), 0) / 60);
+  const recentDistanceKm = activities
+    .filter((activity) => activity.startedAt >= addDays(new Date(), -7))
+    .reduce((sum, activity) => sum + (activity.distanceM ?? 0), 0) / 1000;
+  const loadComparison = athleteState.fourWeekAvgMinutes > 0
+    ? `${recentMinutes} min in the last 7 days versus a ${athleteState.fourWeekAvgMinutes} min four-week weekly average`
+    : `${recentMinutes} min in the last 7 days`;
+  const distance = recentDistanceKm > 0 ? `, including ${recentDistanceKm.toFixed(1)} km` : "";
+  const readinessText = readiness
+    ? ` Your latest check-in is energy ${readiness.energy}/5, soreness ${readiness.soreness}/5, and stress ${readiness.stress}/5.`
+    : " No readiness check-in is available, so the plan prescription is being used as the baseline.";
+  const stimulusText = stimulusReason(workout.stimulus);
+  return `${fallback} It is a ${stimulusText} chosen for the active plan. Your current training signal is ${loadComparison}${distance}, with fatigue risk ${athleteState.fatigueRisk}.${readinessText}`;
+}
+
+function stimulusReason(stimulus: string): string {
+  switch (stimulus) {
+    case "easyAerobic": return "low-stress aerobic session";
+    case "longEndurance": return "longer endurance session";
+    case "threshold": return "controlled quality session";
+    case "speed": return "short speed-focused session";
+    case "recovery": return "recovery session";
+    case "mobility": return "mobility-focused recovery session";
+    case "strength": return "strength session";
+    default: return "plan-specific session";
+  }
 }
 
 function archetypeSuggestion(id: string, why: string): ActivitySuggestion {
