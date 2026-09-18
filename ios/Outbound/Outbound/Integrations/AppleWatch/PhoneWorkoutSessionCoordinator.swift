@@ -38,6 +38,14 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
     private var hasTrackedConnectionAttempt = false
     private var hasTrackedWorkoutOrigin = false
     private var installedHandler = false
+    private var pendingWatchAutoSave: PendingWatchAutoSave?
+
+    private struct PendingWatchAutoSave {
+        let sessionUUID: UUID
+        let identity: PlainstrideWorkoutIdentity
+        let finalMetrics: PlainstrideFinalWorkoutMetrics
+        let externalReference: String?
+    }
 
     private override init() {
         super.init()
@@ -92,6 +100,22 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
 
     func bind(activityStore: ActivityStore) {
         self.activityStore = activityStore
+        flushPendingWatchAutoSave()
+    }
+
+    private func flushPendingWatchAutoSave() {
+        guard let pendingWatchAutoSave else { return }
+        Task { @MainActor in
+            let saved = await activityStore?.saveWatchWorkoutIfNeeded(
+                sessionUUID: pendingWatchAutoSave.sessionUUID,
+                identity: pendingWatchAutoSave.identity,
+                finalMetrics: pendingWatchAutoSave.finalMetrics,
+                externalReference: pendingWatchAutoSave.externalReference
+            )
+            if saved != nil {
+                self.pendingWatchAutoSave = nil
+            }
+        }
     }
 
     func preparePhoneFirst(
@@ -318,6 +342,19 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
                         )
                     }
                 }
+                if recorder == nil,
+                   let sessionUUID = currentSessionUUID,
+                   let identity = pendingIdentity,
+                   let completedMetrics = message.finalMetrics ?? finalMetrics {
+                    let pending = PendingWatchAutoSave(
+                        sessionUUID: sessionUUID,
+                        identity: identity,
+                        finalMetrics: completedMetrics,
+                        externalReference: message.externalWorkoutReference
+                    )
+                    pendingWatchAutoSave = pending
+                    flushPendingWatchAutoSave()
+                }
                 lifecycle = message.lifecycle
                     ?? (message.externalWorkoutReference == nil ? .failed : .finished)
                 finishRequestToken &+= 1
@@ -433,6 +470,7 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
         latestMetrics = nil
         finalMetrics = nil
         savedWorkoutExternalReference = nil
+        pendingWatchAutoSave = nil
         receivedFirstHeartRate = false
         hasTrackedConnectionAttempt = false
         hasTrackedWorkoutOrigin = false
