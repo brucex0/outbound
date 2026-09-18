@@ -164,8 +164,8 @@ struct ActivityDetailView: View {
                 activitySheet(height: interactiveSheetHeight, proxy: proxy)
                     .simultaneousGesture(sheetDragGesture(in: proxy))
             }
-            .ignoresSafeArea(.container, edges: .bottom)
         }
+        .ignoresSafeArea(.container, edges: .bottom)
         .navigationTitle(currentActivity.title)
         .navigationBarTitleDisplayMode(.inline)
         .task(id: currentActivity.id) {
