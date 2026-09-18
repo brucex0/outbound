@@ -25,6 +25,10 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activityResumed = "activity_resumed"
     case activityFinished = "activity_finished"
     case activitySaved = "activity_saved"
+    case postWorkoutStretchOffered = "post_workout_stretch_offered"
+    case postWorkoutStretchStarted = "post_workout_stretch_started"
+    case postWorkoutStretchCompleted = "post_workout_stretch_completed"
+    case postWorkoutStretchDismissed = "post_workout_stretch_dismissed"
     case activitySaveIneligibleShown = "activity_save_ineligible_shown"
     case activityDiscardPrompted = "activity_discard_prompted"
     case activityDiscarded = "activity_discarded"
@@ -283,6 +287,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case routeMatchResult = "route_match_result"
     case documentType = "document_type"
     case termsVersion = "terms_version"
+    case routineID = "routine_id"
 }
 
 struct ProductAnalyticsEvent: Sendable, Equatable {
@@ -316,6 +321,10 @@ enum ProductAnalyticsSchema {
         .activityPaused: [.sourceType],
         .activityResumed: [.sourceType, .durationBucket],
         .activityFinished: [.durationBucket, .distanceBucket, .goalCompletionBucket],
+        .postWorkoutStretchOffered: [.activityType, .routineID],
+        .postWorkoutStretchStarted: [.activityType, .routineID],
+        .postWorkoutStretchCompleted: [.activityType, .routineID],
+        .postWorkoutStretchDismissed: [.activityType, .routineID, .result],
         .activitySaved: [.activityType, .goalType, .durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket, .musicEnabled, .routeSelected, .shoeSelected, .groupRunEnabled, .indoor],
         .activitySaveIneligibleShown: [.activityType, .durationBucket, .distanceBucket],
         .activityDiscardPrompted: [.durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket],

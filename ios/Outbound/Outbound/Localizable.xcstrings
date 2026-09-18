@@ -2,6 +2,7 @@
   "sourceLanguage": "en",
   "strings": {
     "": {},
+    "stretch.saved": {"localizations":{"en":{"stringUnit":{"state":"translated","value":"Activity saved"}},"es":{"stringUnit":{"state":"translated","value":"Actividad guardada"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"活动已保存"}}}},
     "cheer.activity.ended": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "This activity has ended" } }, "es": { "stringUnit": { "state": "translated", "value": "Esta actividad ha terminado" } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "本次活动已结束" } } } },
     "cheer.hold_to_record": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Hold to cheer" } }, "es": { "stringUnit": { "state": "translated", "value": "Mantén pulsado para animar" } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "按住录制加油" } } } },
     "cheer.navigation.title": { "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Cheer %@ on" } }, "es": { "stringUnit": { "state": "translated", "value": "Anima a %@" } }, "zh-Hans": { "stringUnit": { "state": "translated", "value": "为 %@ 加油" } } } },

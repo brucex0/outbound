@@ -117,6 +117,7 @@ struct RecordView: View {
     @State private var isPreActivityPhotoPreviewPresented = false
     @State private var selectedPreActivityPhotoItem: PhotosPickerItem?
     @State private var pendingActivity: PendingFinishedActivity?
+    @State private var postSaveStretchContext: PostSavedStretchContext?
     @State private var elevationCorrectionTask: Task<ActivitySummary, Never>?
     @State private var plannedIntent: SessionIntent?
     @State private var activeIntent: SessionIntent?
@@ -256,7 +257,7 @@ struct RecordView: View {
                             }
                     }
                 }
-            } else if showCamera || pendingActivity != nil {
+            } else if showCamera || pendingActivity != nil || postSaveStretchContext != nil {
                 activityFullscreenSurface
             } else {
                 readyView
@@ -641,7 +642,7 @@ struct RecordView: View {
     }
 
     private var showsEmbeddedLiveSurface: Bool {
-        isEmbeddedInToday && isVisible && (showCamera || pendingActivity != nil)
+        isEmbeddedInToday && isVisible && (showCamera || pendingActivity != nil || postSaveStretchContext != nil)
     }
 
     private func trackRecoveryPresentationIfNeeded(result: String) {
@@ -659,11 +660,9 @@ struct RecordView: View {
             Color(.systemBackground)
                 .ignoresSafeArea()
 
-            if let pendingActivity {
-                postRunSummarySurface(pendingActivity)
-                    .transition(postRunSummaryTransition)
-                    .zIndex(1)
-            } else {
+            if let postSaveStretchContext { PostWorkoutStretchView(context: postSaveStretchContext, onExit: finishPostSaveStretch).zIndex(2) }
+            else if let pendingActivity { postRunSummarySurface(pendingActivity).transition(postRunSummaryTransition).zIndex(1) }
+            else {
                 liveRecordingSurface
                     .transition(liveRunCompletionTransition)
                     .zIndex(0)
@@ -1560,10 +1559,13 @@ struct RecordView: View {
             activities: activityStore.activities,
             phase: DailyMotivationEngine.phase(for: activityStore.activities)
         )
+        if let routine = PostWorkoutStretchCatalog.routine(for: savedActivity.activityType), savedActivity.source.kind == .outbound { postSaveStretchContext = PostSavedStretchContext(activityType: savedActivity.activityType, routine: routine) }
         clearPending(recoveryReason: .saved)
-        onCloseRequest?(false)
+        if postSaveStretchContext == nil { onCloseRequest?(false) }
         return true
     }
+
+    private func finishPostSaveStretch() { postSaveStretchContext = nil; onCloseRequest?(false) }
 
     private func discardPendingActivity() {
         if let pendingActivity {
