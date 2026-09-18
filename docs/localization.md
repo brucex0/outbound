@@ -156,6 +156,10 @@ Unsupported recognition or synthesis must degrade visibly and safely; it must no
 - Keep terminology consistent for run, workout, pace, split, effort, readiness, recovery, calibration, live sharing, and training-plan concepts.
 - Review translations in the rendered app, not only in a string table.
 
+## Post-Activity Stretch Coverage
+
+The optional flow includes reviewed English, Spanish, and Simplified Chinese saved-state, control, movement, safety, disclaimer, and completion copy.
+
 ## Verification
 
 For each supported language:
