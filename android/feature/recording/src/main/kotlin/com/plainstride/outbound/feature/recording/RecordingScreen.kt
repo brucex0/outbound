@@ -123,6 +123,7 @@ fun RecordingRoute(
     accountId: String,
     launch: RecordingLaunchConfiguration,
     onSaved: (RecordedActivityReview, ActivityPhotoAlbumExportResult?) -> Unit,
+    onSavedSideEffects: (RecordedActivityReview) -> Unit = {},
     onExit: () -> Unit,
     saveActivityPhotosToAlbum: Boolean = true,
     onPhotoAlbumPermissionDenied: () -> Unit = {},
@@ -143,6 +144,8 @@ fun RecordingRoute(
     var showLocationEducation by remember { mutableStateOf(false) }
     var showCameraEducation by remember { mutableStateOf(false) }
     var pendingPhotoAlbumSave by remember { mutableStateOf<RecordedActivityReview?>(null) }
+    var postSaveStretchKind by remember { mutableStateOf<ActivityKind?>(null) }
+    var postSaveReview by remember { mutableStateOf<RecordedActivityReview?>(null) }
     val saveSnackbar = remember { SnackbarHostState() }
     val saveFailedMessage = stringResource(R.string.recording_save_failed)
 
@@ -151,8 +154,7 @@ fun RecordingRoute(
             scope.launch {
                 val result = viewModel.saveFinished(review, exportPhoto)
                 if (result.saved) {
-                    viewModel.markSaved()
-                    onSaved(review, overrideResult ?: result.photoAlbumExport)
+                    viewModel.markSaved(); onSavedSideEffects(review); val kind=review.snapshot.activityKind; if(PostWorkoutStretchCatalog.routine(kind)!=null){postSaveReview=review;postSaveStretchKind=kind}else onSaved(review,overrideResult?:result.photoAlbumExport)
                 } else {
                     saveSnackbar.showSnackbar(saveFailedMessage)
                 }
@@ -342,10 +344,7 @@ fun RecordingRoute(
         }
     }
 
-    Box(modifier.fillMaxSize()) {
-        content()
-        SnackbarHost(saveSnackbar, Modifier.align(Alignment.BottomCenter))
-    }
+    Box(modifier.fillMaxSize()) { if(postSaveStretchKind!=null) PostWorkoutStretchRoute(requireNotNull(postSaveStretchKind),{val r=postSaveReview;postSaveReview=null;postSaveStretchKind=null;if(r!=null)onSaved(r,null)},{n,result->viewModel.trackStretchEvent(n,requireNotNull(postSaveStretchKind),result)}) else {content();SnackbarHost(saveSnackbar,Modifier.align(Alignment.BottomCenter))} }
 
     if (showLocationEducation) PermissionEducationDialog(
         title = stringResource(R.string.recording_location_permission_title),

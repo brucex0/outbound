@@ -512,10 +512,8 @@ private fun SignedInApp(
                     launch = recordingLaunch,
                     unitSystem = measurementUnitSystem,
                     weightKilograms = integration.weightKilograms,
+                    onSavedSideEffects = { review -> suppressRecordingRecovery = true; healthViewModel.export(review); integrationViewModel.completePlannedWorkout(recordingLaunch, review) },
                     onSaved = { review: RecordedActivityReview, photoAlbumExport: ActivityPhotoAlbumExportResult? ->
-                        suppressRecordingRecovery = true
-                        healthViewModel.export(review)
-                        integrationViewModel.completePlannedWorkout(recordingLaunch, review)
                         val photoMessage = when (photoAlbumExport) {
                             ActivityPhotoAlbumExportResult.SAVED -> R.string.photo_album_saved
                             ActivityPhotoAlbumExportResult.PERMISSION_DENIED -> R.string.photo_album_permission_denied

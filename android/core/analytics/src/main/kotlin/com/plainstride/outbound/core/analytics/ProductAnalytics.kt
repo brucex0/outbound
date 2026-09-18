@@ -7,7 +7,7 @@ enum class AnalyticsProperty(val wireName: String) {
     ChangeType("change_type"),
     Result("result"),
     Trigger("trigger"),
-    ActivityType("activity_type"),
+    ActivityType("activity_type"), RoutineId("routine_id"),
     GoalType("goal_type"),
     Permission("permission"),
     ErrorCategory("error_category"),
