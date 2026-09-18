@@ -159,7 +159,7 @@ async function socialHome(c: Context<AppEnv>) {
       include: {
         user: { select: socialPersonSelect },
         activity: { select: socialPostActivitySelect },
-        reactions: { select: { id: true, userId: true, type: true } },
+        reactions: { select: { id: true, userId: true, type: true, user: { select: socialPersonSelect } }, orderBy: { createdAt: "asc" as const } },
         comments: {
           include: { author: { select: socialPersonSelect } },
           orderBy: { createdAt: "asc" },
@@ -1244,7 +1244,7 @@ function connectionPayload(
 const socialPostInclude = {
   user: { select: socialPersonSelect },
   activity: { select: socialPostActivitySelect },
-  reactions: { select: { id: true, userId: true, type: true } },
+  reactions: { select: { id: true, userId: true, type: true, user: { select: socialPersonSelect } }, orderBy: { createdAt: "asc" as const } },
   comments: {
     include: { author: { select: socialPersonSelect } },
     orderBy: { createdAt: "asc" as const },
@@ -1280,9 +1280,20 @@ async function postPayload(post: any, currentUserId: string) {
     user: post.user,
     activity,
     reactionCount: post.reactions.length,
+    cheers: post.reactions.map((reaction: { user?: unknown }) => cheererPayload(reaction.user)),
     currentUserCheered: post.reactions.some((reaction: { userId: string }) => reaction.userId === currentUserId),
     commentCount: post._count.comments,
     comments: post.comments.map((comment: any) => commentPayload(comment, currentUserId, post.userId)),
+  };
+}
+
+function cheererPayload(user: unknown) {
+  const person = user as { id: string; username: string; displayName: string; avatarUrl: string | null } | undefined;
+  return {
+    id: person?.id ?? "",
+    username: person?.username ?? "",
+    displayName: person?.displayName ?? "Runner",
+    avatarUrl: person?.avatarUrl ?? null,
   };
 }
 

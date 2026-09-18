@@ -801,6 +801,10 @@ final class TogetherStore: ObservableObject {
                     user: maya,
                     activity: TogetherActivityDTO(id: "ui-test-social-activity", title: "Presidio Morning Run", durationSecs: 2_040, distanceM: 5_800, avgPace: 352, route: nil),
                     reactionCount: 2,
+                    cheers: [
+                        SocialPersonDTO(id: "ui-test-leo", username: "leo.runs", displayName: "Leo Martinez", avatarUrl: nil),
+                        SocialPersonDTO(id: "ui-test-priya", username: "priya.trails", displayName: "Priya Shah", avatarUrl: nil),
+                    ],
                     currentUserCheered: false,
                     commentCount: 1,
                     comments: [TogetherCommentDTO(
@@ -1046,6 +1050,9 @@ final class TogetherStore: ObservableObject {
                 user: current.user,
                 activity: current.activity,
                 reactionCount: max(0, current.reactionCount + (cheered ? 1 : -1)),
+                cheers: cheered
+                    ? current.cheers + [Self.currentCheerer]
+                    : current.cheers.filter { $0.id != Self.currentCheerer.id },
                 currentUserCheered: cheered,
                 commentCount: current.commentCount,
                 comments: current.comments
@@ -1065,6 +1072,7 @@ final class TogetherStore: ObservableObject {
                 user: current.user,
                 activity: current.activity,
                 reactionCount: current.reactionCount,
+                cheers: current.cheers,
                 currentUserCheered: current.currentUserCheered,
                 commentCount: max(0, current.commentCount + commentCountDelta),
                 comments: current.comments
@@ -1085,6 +1093,12 @@ final class TogetherStore: ObservableObject {
                 )
                 : $0
         }
+    }
+
+    private static let uiTestCheererID = "current-user"
+
+    private static var currentCheerer: SocialPersonDTO {
+        SocialPersonDTO(id: uiTestCheererID, username: "you", displayName: "You", avatarUrl: nil)
     }
 
     private static let uiTestConnections = [

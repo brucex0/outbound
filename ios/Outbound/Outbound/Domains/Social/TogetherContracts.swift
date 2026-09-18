@@ -404,6 +404,7 @@ struct TogetherPostDTO: Codable, Identifiable, Sendable {
     let user: TogetherPersonDTO
     let activity: TogetherActivityDTO?
     let reactionCount: Int
+    let cheers: [SocialPersonDTO]
     let currentUserCheered: Bool
     let commentCount: Int
     let comments: [TogetherCommentDTO]

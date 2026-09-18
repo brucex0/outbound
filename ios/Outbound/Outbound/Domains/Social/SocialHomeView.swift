@@ -3367,6 +3367,10 @@ private struct SocialActivityDetailView: View {
 
             socialActionBar
 
+            if currentPost.reactionCount > 0 {
+                SocialCheerSummaryView(post: currentPost)
+            }
+
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 16)
@@ -3525,14 +3529,125 @@ private extension TogetherActivityDTO {
     }
 }
 
+struct SocialCheerSummaryView: View {
+    let post: TogetherPostDTO
+    @State private var showsFullList = false
+
+    private var displayedCheerers: [SocialPersonDTO] {
+        post.cheers.prefix(5).map { $0 }
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: -6) {
+                ForEach(displayedCheerers) { cheerer in
+                    SocialAvatar(name: cheerer.displayName, avatarURL: cheerer.avatarUrl, size: 24)
+                        .overlay(
+                            Circle().strokeBorder(Color(.systemBackground), lineWidth: 1.5)
+                        )
+                }
+                if post.reactionCount > displayedCheerers.count {
+                    moreBadge
+                }
+            }
+            .accessibilityHidden(true)
+
+            Button {
+                showsFullList = true
+            } label: {
+                Text("\(post.reactionCount)")
+                    .font(.subheadline.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "activity.social.cheer_count", defaultValue: "Cheers"))
+            .accessibilityValue("\(post.reactionCount)")
+            .accessibilityHint(String(localized: "activity.social.cheer_count.hint", defaultValue: "Shows the full list of people who cheered"))
+
+            Spacer(minLength: 0)
+        }
+        .sheet(isPresented: $showsFullList) {
+            SocialCheersListView(post: post)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    private var moreBadge: some View {
+        ZStack {
+            Circle().fill(Color(.secondarySystemBackground))
+            Text("+\(post.reactionCount - displayedCheerers.count)")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+        }
+        .frame(width: 24, height: 24)
+        .overlay(
+            Circle().strokeBorder(Color(.systemBackground), lineWidth: 1.5)
+        )
+    }
+}
+
+struct SocialCheersListView: View {
+    @Environment(\.dismiss) private var dismiss
+    let post: TogetherPostDTO
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if post.cheers.isEmpty {
+                    ContentUnavailableView(
+                        String(localized: "activity.social.cheer_count", defaultValue: "Cheers"),
+                        systemImage: "heart",
+                        description: Text(String(localized: "activity.social.cheers.empty", defaultValue: "No cheers yet. Be the first to send one."))
+                    )
+                } else {
+                    List(post.cheers) { cheerer in
+                        SocialProfileLink(person: cheerer, entrySource: "social_activity_cheers") {
+                            HStack(spacing: 12) {
+                                SocialAvatar(name: cheerer.displayName, avatarURL: cheerer.avatarUrl)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(cheerer.displayName).font(.subheadline.weight(.semibold))
+                                    if !cheerer.username.isEmpty {
+                                        Text("@\(cheerer.username)").font(.caption).foregroundStyle(.secondary)
+                                    }
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle(String(localized: "activity.social.cheer_count", defaultValue: "Cheers"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button { dismiss() } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel(String(localized: "Close", defaultValue: "Close"))
+                }
+            }
+        }
+    }
+}
+
 struct SocialAvatar: View {
     let name: String
     let avatarURL: String?
+    var size: CGFloat = 40
     @StateObject private var loader: AvatarImageLoader
 
-    init(name: String, avatarURL: String?) {
+    init(name: String, avatarURL: String?, size: CGFloat = 40) {
         self.name = name
         self.avatarURL = avatarURL
+        self.size = size
         _loader = StateObject(wrappedValue: AvatarImageLoader(url: avatarURL))
     }
 
@@ -3547,7 +3662,7 @@ struct SocialAvatar: View {
                 }
             }
         }
-        .frame(width: 40, height: 40)
+        .frame(width: size, height: size)
         .clipShape(Circle())
         .accessibilityLabel(name)
         .task(id: avatarURL) { await loader.load(url: avatarURL) }

@@ -14615,6 +14615,30 @@
       },
       "comment": "[android:activity] Generated Android name: activity_share."
     },
+    "activity.social.cheer_count": {
+      "comment": "Tappable cheer count and title of the full cheerers list. [android:activity] Generated Android name: activity_social_cheer_count.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Cheers" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Ánimos" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "加油" } }
+      }
+    },
+    "activity.social.cheer_count.hint": {
+      "comment": "Accessibility hint for the tappable cheer count. [android:activity] Generated Android name: activity_social_cheer_count_hint.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Shows the full list of people who cheered" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Muestra la lista completa de personas que animaron" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "显示所有加油用户的完整列表" } }
+      }
+    },
+    "activity.social.cheers.empty": {
+      "comment": "Empty state for the full cheerers list. [android:activity] Generated Android name: activity_social_cheers_empty.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No cheers yet. Be the first to send one." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Aún no hay ánimos. Sé el primero en enviar uno." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "还没有加油，来做第一个加油的人吧。" } }
+      }
+    },
     "activity.share_route.unable": {
       "extractionState": "extracted_with_value",
       "localizations": {
