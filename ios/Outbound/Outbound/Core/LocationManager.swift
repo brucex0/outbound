@@ -67,6 +67,9 @@ final class LocationManager: NSObject, ObservableObject {
     private let maximumFutureLocationSeconds: TimeInterval = 5
     private let maximumPreparationLocationAgeSeconds: TimeInterval = 8
     private let motionGapThresholdSeconds: TimeInterval = 8
+    /// A fix older than this cannot anchor a new recording and must be
+    /// refreshed before activity start is allowed.
+    private let maximumPublishedLocationAgeSeconds: TimeInterval = 15
 
     private let manager = CLLocationManager()
     private let pedometer = CMPedometer()
@@ -124,6 +127,60 @@ final class LocationManager: NSObject, ObservableObject {
 
     var trackCoordinateSegments: [[CLLocationCoordinate2D]] {
         locationSegments.map { $0.map(\.coordinate) }
+    }
+
+    /// True when iOS grants the app live location updates. `notDetermined` is
+    /// treated as not granted because no fix can arrive until the user answers
+    /// the system prompt.
+    var isLocationPermissionGranted: Bool {
+        switch manager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse: return true
+        case .notDetermined, .denied, .restricted: return false
+        @unknown default: return false
+        }
+    }
+
+    /// True when the app holds a recent, sufficiently accurate fix suitable for
+    /// starting an outdoor recording.
+    var hasRecentValidLocation: Bool {
+#if DEBUG
+        if isSimulatingLocations { return true }
+        if testDistanceMeters != nil { return true }
+#endif
+        guard isLocationPermissionGranted, let location else { return false }
+        return isPublishable(location)
+            && Date().timeIntervalSince(location.timestamp) <= maximumPublishedLocationAgeSeconds
+    }
+
+    /// Re-checks permission and pulls a fresh fix when the app returns to the
+    /// foreground, so a permission revoked in Settings cannot keep a stale
+    /// readiness state alive.
+    func refreshForForeground() {
+        authorizationStatus = manager.authorizationStatus
+        accuracyAuthorization = manager.accuracyAuthorization
+        updateSignalQuality(using: location)
+        guard wantsTracking || wantsPreparation else { return }
+        switch manager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            requestTemporaryFullAccuracyIfNeeded()
+            manager.startUpdatingLocation()
+        case .notDetermined:
+            break
+        case .denied, .restricted:
+            wantsTracking = false
+            wantsPreparation = false
+            manager.stopUpdatingLocation()
+        @unknown default:
+            break
+        }
+    }
+
+    /// Forces a one-shot refresh of the published location for screens that
+    /// need current data without recording. Never triggers the permission
+    /// prompt.
+    func requestForegroundLocationRefresh() {
+        guard isLocationPermissionGranted else { return }
+        requestCurrentLocation()
     }
 
     var locationSegments: [[CLLocation]] {

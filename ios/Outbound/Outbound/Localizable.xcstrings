@@ -7498,6 +7498,28 @@
         }
       }
     },
+    "record.location.waiting": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting for GPS signal…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando la señal de GPS…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在等待 GPS 信号…"
+          }
+        }
+      }
+    },
     "record.setup.indoor": {
       "localizations": {
         "en": {

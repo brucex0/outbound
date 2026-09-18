@@ -171,6 +171,7 @@ struct RecordView: View {
     @State private var didTrackRecoveryPresentation = false
     @State private var didRestoreSessionPhotos = false
     @State private var isCapturingSessionPhoto = false
+    @State private var isWaitingForLocation = false
 #if DEBUG
     @State private var isRunSimulationEnabled = false
     @State private var didConfigureRequestedRunSimulation = false
@@ -346,7 +347,7 @@ struct RecordView: View {
         }
         .onChange(of: startRequest) { _, _ in
             guard isEmbeddedInToday, isVisible, !showCamera else { return }
-            startRecording()
+            ensureLocationReadyThenStart()
         }
         .onChange(of: preActivityPhotoRequest) { _, _ in
             handlePreActivityPhotoRequest()
@@ -377,7 +378,10 @@ struct RecordView: View {
             workoutPresence.sync(with: recorder.state)
             if recorder.state == .idle {
                 applyTrustedContactDefault()
+                // Warm the GPS fix and refresh the cached authorization
+                // snapshot for the next outdoor start.
                 recorder.locationManager.requestCurrentLocation()
+                recorder.locationManager.refreshForForeground()
             } else if phoneWorkoutCoordinator.origin == .appleWatch {
                 adoptWatchInitiatedSessionIfNeeded()
             }
@@ -408,6 +412,7 @@ struct RecordView: View {
             if newPhase == .active {
                 guideCatalog.refreshInstalledVoices()
                 workoutPresence.sync(with: recorder.state)
+                refreshLocationForForeground()
             }
             guard newPhase == .active, recorder.state == .active else { return }
             Task { await musicStore.retryPendingWorkoutPlaybackIfNeeded() }
@@ -433,6 +438,13 @@ struct RecordView: View {
         }
         .onDisappear {
             cancelStartCountdown(returnToSetup: recorder.state == .idle)
+            cancelLocationWait()
+        }
+        .onReceive(recorder.locationManager.$authorizationStatus) { _ in
+            retryBlockedStartIfNeeded()
+        }
+        .onReceive(recorder.locationManager.$location) { _ in
+            retryBlockedStartIfNeeded()
         }
         .overlay(alignment: .topLeading) {
             if isVisible,
@@ -443,6 +455,9 @@ struct RecordView: View {
                 Button {
                     if isCountingDown {
                         cancelStartCountdown(returnToSetup: true)
+                    } else if isWaitingForLocation {
+                        cancelLocationWait()
+                        onCloseRequest(false)
                     } else {
                         onCloseRequest(false)
                     }
@@ -735,7 +750,7 @@ struct RecordView: View {
                     lastCapturedPhoto: capturedPhotos.last?.0,
                     activePage: $activePage,
                     isWorkoutPanelExpanded: liveWorkoutPanelBinding(source: .camera),
-                    onStart: startRecording,
+                    onStart: ensureLocationReadyThenStart,
                     onPause: pauseRecording,
                     onResume: resumeRecording,
                     onFinish: finishRecording,
@@ -762,7 +777,7 @@ struct RecordView: View {
                     lastCapturedPhoto: capturedPhotos.last?.0,
                     activePage: $activePage,
                     isWorkoutPanelExpanded: liveWorkoutPanelBinding(source: .map),
-                    onStart: startRecording,
+                    onStart: ensureLocationReadyThenStart,
                     onPause: pauseRecording,
                     onResume: resumeRecording,
                     onFinish: finishRecording,
@@ -866,6 +881,80 @@ struct RecordView: View {
         guard recorder.state == .idle, !isCountingDown else { return }
         guard !isStartingActivity else { return }
         beginStartRecording()
+    }
+
+    /// Outdoor recording must not start without location permission and a
+    /// recent valid fix. Blocks the start behind a permission prompt or a
+    /// location wait and resumes automatically once a valid fix arrives.
+    private func ensureLocationReadyThenStart() {
+        guard recorder.state == .idle, !isCountingDown else { return }
+#if DEBUG
+        if isRunSimulationEnabled {
+            startRecording()
+            return
+        }
+#endif
+        let locationManager = recorder.locationManager
+        guard locationManager.isLocationPermissionGranted else {
+            cancelLocationWait()
+            isWaitingForLocation = true
+            locationManager.requestPermission()
+            showSetupToast(String(
+                localized: "recording.location.permission.denied",
+                defaultValue: "Location access is off. Enable it in Settings to record an outdoor activity."
+            ))
+            return
+        }
+        if isIndoorSession || locationManager.hasRecentValidLocation {
+            isWaitingForLocation = false
+            startRecording()
+            return
+        }
+        beginLocationWait()
+    }
+
+    private func beginLocationWait() {
+        let isFirstEntry = !isWaitingForLocation
+        isWaitingForLocation = true
+        recorder.locationManager.prepareForRecording(
+            activityType: activeIntent?.resolvedActivityType ?? plannedIntent?.resolvedActivityType ?? .running
+        )
+        guard isFirstEntry else { return }
+        showSetupToast(String(
+            localized: "record.location.waiting",
+            defaultValue: "Waiting for GPS signal…"
+        ))
+    }
+
+    private func cancelLocationWait() {
+        guard isWaitingForLocation else { return }
+        isWaitingForLocation = false
+        if recorder.state == .idle {
+            recorder.locationManager.cancelPreparation()
+        }
+    }
+
+    /// Resumes a blocked start once permission is granted or a valid fix
+    /// arrives.
+    private func retryBlockedStartIfNeeded() {
+        guard isWaitingForLocation, recorder.state == .idle else { return }
+        isWaitingForLocation = false
+        if activeIntent != nil {
+            // A countdown completed while waiting on location; finish that
+            // start directly instead of replaying the countdown.
+            completeStartCountdown()
+        } else {
+            ensureLocationReadyThenStart()
+        }
+    }
+
+    /// Re-checks permission and pulls a fresh fix whenever the app returns to
+    /// the foreground, so a permission revoked in Settings while backgrounded
+    /// is detected before the next activity start.
+    private func refreshLocationForForeground() {
+        recorder.locationManager.refreshForForeground()
+        guard recorder.state == .idle else { return }
+        recorder.locationManager.requestForegroundLocationRefresh()
     }
 
     private func applyTrustedContactDefault() {
@@ -1137,6 +1226,24 @@ struct RecordView: View {
 
         countdownStep = nil
         countdownTask = nil
+#if DEBUG
+        let isSimulatedStart = isRunSimulationEnabled
+#else
+        let isSimulatedStart = false
+#endif
+        if !isIndoorSession,
+           !isSimulatedStart,
+           !recorder.locationManager.hasRecentValidLocation {
+            // Never begin recording without valid location data: park the
+            // start and release it automatically once a fix arrives.
+            phoneWorkoutCoordinator.cancelPreparation()
+            beginLocationWait()
+            if !recorder.locationManager.isLocationPermissionGranted {
+                recorder.locationManager.requestPermission()
+            }
+            return
+        }
+        isWaitingForLocation = false
         let routeGuidance = activeIntent?.preparedRoute.map {
             ActiveRouteGuidanceJournal(route: $0, recoverySeed: nil)
         }
@@ -2005,7 +2112,7 @@ struct RecordView: View {
     }
 
     private var contextualStartControl: some View {
-        Button(action: startRecording) {
+        Button(action: ensureLocationReadyThenStart) {
             VStack(spacing: 1) {
                 Group {
                     if isStartingActivity {

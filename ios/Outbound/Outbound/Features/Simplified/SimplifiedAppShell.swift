@@ -1165,7 +1165,14 @@ private struct SimplifiedTodayView: View {
                 customizedRunIntent = nil
             }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { refreshCurrentDayIfNeeded() }
+                if phase == .active {
+                    refreshCurrentDayIfNeeded()
+                    // Pull a fresh fix on foreground so activity start never
+                    // anchors on a stale location and permission revocations
+                    // made in Settings are detected immediately.
+                    launchLocationManager.refreshForForeground()
+                    launchLocationManager.requestForegroundLocationRefresh()
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
                 refreshCurrentDayIfNeeded()

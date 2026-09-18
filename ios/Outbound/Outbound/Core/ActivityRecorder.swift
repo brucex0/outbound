@@ -163,6 +163,12 @@ final class ActivityRecorder: ObservableObject {
         }
         liveSnapshot = makeSnapshot()
         persistJournal(force: true)
+        if tracksLocation, !locationManager.hasRecentValidLocation {
+            ActivityDiagnosticLog.notice(
+                .lifecycle,
+                "Recording started without valid location fix permission_granted=\(locationManager.isLocationPermissionGranted)"
+            )
+        }
         ActivityDiagnosticLog.notice(
             .lifecycle,
             "Recording started type=\(activityType.rawValue) route_selected=\(routeGuidance != nil)"
