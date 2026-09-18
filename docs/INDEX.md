@@ -75,6 +75,7 @@ Primary flow:
 | Progress comparisons, trend ranges, training load, insight eligibility, and grounded explanations | `docs/progress-insights.md` | V1-V4 Progress contract, thresholds, privacy boundaries, and extension rules |
 | Apple Music, Spotify, playback UX, and music-provider rollout planning | `docs/music-integration.md` | Concrete music integration plan, provider constraints, Swift module boundaries, plist/auth changes, and phased delivery |
 | Motivation UX, daily guide loops, comeback flows, and home-screen engagement | `docs/motivation-ux.md` | UX spec for daily spark, compact `Now` action, momentum states, and post-activity reflection |
+| Optional post-save stretching implementation handoff | `docs/post-workout-stretch-implementation-prompt.md` | Copy-ready iOS and Android prompt covering non-walking eligibility, routines, timers, safety, analytics, localization, and verification |
 | Badge strategy, recognition UX, unlock rules, and reward system rollout | `docs/recognition-rewards.md` | Product spec for Outbound's recognition layer, V1 badge families, unlock logic, and Me/post-run/Social placement |
 | Goal setting, weekly progress, and guide-led focus flows | `docs/goals-progress.md` | Product and implementation spec for local-first goals, progress tracking, and conversational setup |
 | Community route discovery, owner publishing, bookmarks, import/export, route privacy | `docs/route-saving-sharing.md` | Public route-library UX, backend model/API, safety trimming, GPX/GeoJSON preparation, and route-guided recording |
