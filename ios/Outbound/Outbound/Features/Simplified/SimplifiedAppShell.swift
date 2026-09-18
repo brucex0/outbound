@@ -748,6 +748,8 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
     }
 
     final class Coordinator {
+        private static let maximumPlausibleTabBarHeight: CGFloat = 120
+
         private struct VisualState {
             let showsStart: Bool
             let actionColor: UIColor
@@ -900,7 +902,9 @@ private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
 
         private func reportTabBarHeight() {
             guard let height = tabBarController?.tabBar.bounds.height,
-                  height >= AssistantLauncherButton.diameter
+                  height.isFinite,
+                  height >= AssistantLauncherButton.diameter,
+                  height <= Self.maximumPlausibleTabBarHeight
             else { return }
             onTabBarHeightChange?(height)
         }
