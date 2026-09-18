@@ -673,7 +673,7 @@ struct ActivityDetailView: View {
                             }
                         ) {
                             if let url = activityStore.imageURL(for: photo) {
-                                LocalImageView(url: url) { Color(.secondarySystemBackground) }
+                                LocalImageView(url: url, maxPixelSize: 232) { Color(.secondarySystemBackground) }
                             }
                         }
                         .id(photo.id)
@@ -1287,7 +1287,6 @@ private struct ZoomableActivityPhotoView: UIViewRepresentable {
         var onZoom: (String) -> Void
 
         private var representedURL: URL?
-        private var imageTask: URLSessionDataTask?
         private var localImageTask: Task<Void, Never>?
 
         init(onZoom: @escaping (String) -> Void) {
@@ -1299,38 +1298,17 @@ private struct ZoomableActivityPhotoView: UIViewRepresentable {
             representedURL = url
             cancelImageLoad()
             resetZoom(in: scrollView)
-            scrollView.imageView.image = nil
+            scrollView.imageView.image = ActivityPhotoCache.shared.cachedImage(for: url)
+            if scrollView.imageView.image != nil { return }
 
-            if url.isFileURL {
-                let path = url.path(percentEncoded: false)
-                localImageTask = Task { @MainActor [weak self, weak scrollView] in
-                    let image = await Task.detached(priority: .userInitiated) {
-                        UIImage(contentsOfFile: path)
-                    }.value
-                    guard let self,
-                          let scrollView,
-                          self.representedURL == url,
-                          !Task.isCancelled else { return }
-                    scrollView.imageView.image = image
-                }
-                return
+            localImageTask = Task { @MainActor [weak self, weak scrollView] in
+                let image = await ActivityPhotoCache.shared.image(for: url)
+                guard let self,
+                      let scrollView,
+                      self.representedURL == url,
+                      !Task.isCancelled else { return }
+                scrollView.imageView.image = image
             }
-
-            var request = URLRequest(url: url)
-            request.cachePolicy = .returnCacheDataElseLoad
-            imageTask = URLSession.shared.dataTask(with: request) { [weak self, weak scrollView] data, response, _ in
-                guard let data,
-                      let httpResponse = response as? HTTPURLResponse,
-                      (200..<300).contains(httpResponse.statusCode),
-                      let image = UIImage(data: data) else { return }
-                DispatchQueue.main.async {
-                    guard let self,
-                          let scrollView,
-                          self.representedURL == url else { return }
-                    scrollView.imageView.image = image
-                }
-            }
-            imageTask?.resume()
         }
 
         func viewForZooming(in scrollView: UIScrollView) -> UIView? {
@@ -1381,8 +1359,6 @@ private struct ZoomableActivityPhotoView: UIViewRepresentable {
         }
 
         func cancelImageLoad() {
-            imageTask?.cancel()
-            imageTask = nil
             localImageTask?.cancel()
             localImageTask = nil
         }
@@ -1709,15 +1685,13 @@ private final class ActivityRoutePhotoAnnotation: NSObject, MKAnnotation {
     let photoID: UUID
     let imageURL: URL
 
-    nonisolated init?(photo: SavedPhoto) {
+    init?(photo: SavedPhoto) {
         guard let photoCoordinate = photo.coordinate else { return nil }
         photoID = photo.id
-        if let remoteURL = URL(string: photo.relativePath),
-           ["http", "https"].contains(remoteURL.scheme?.lowercased() ?? "") {
-            imageURL = remoteURL
-        } else {
-            imageURL = ActivityPersistence.imageURL(for: photo)
-        }
+        imageURL = ActivityPhotoCache.shared.renderedURL(
+            for: photo,
+            thumbnailPixelHeight: ActivityRoutePhotoAnnotationView.thumbnailPixelHeight
+        )
         coordinate = CLLocationCoordinate2D(
             latitude: photoCoordinate.latitude,
             longitude: photoCoordinate.longitude
@@ -1727,9 +1701,11 @@ private final class ActivityRoutePhotoAnnotation: NSObject, MKAnnotation {
 }
 
 private final class ActivityRoutePhotoAnnotationView: MKAnnotationView {
+    static let thumbnailPixelHeight: CGFloat = 84
+
     private let thumbnailView = UIImageView()
     private var representedImageURL: URL?
-    private var imageTask: URLSessionDataTask?
+    private var imageLoadTask: Task<Void, Never>?
 
     override init(annotation: (any MKAnnotation)?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
@@ -1759,37 +1735,30 @@ private final class ActivityRoutePhotoAnnotationView: MKAnnotationView {
 
     override func prepareForReuse() {
         super.prepareForReuse()
-        imageTask?.cancel()
-        imageTask = nil
+        imageLoadTask?.cancel()
+        imageLoadTask = nil
         representedImageURL = nil
         showPlaceholder()
     }
 
     func setImage(from url: URL) {
-        imageTask?.cancel()
-        imageTask = nil
+        imageLoadTask?.cancel()
+        imageLoadTask = nil
         representedImageURL = url
 
-        if url.isFileURL {
-            let image = UIImage(contentsOfFile: url.path(percentEncoded: false))
+        if let image = ActivityPhotoCache.shared.cachedImage(for: url, maxPixelSize: Self.thumbnailPixelHeight) {
             setThumbnail(image)
             return
         }
 
         showPlaceholder()
-        var request = URLRequest(url: url)
-        request.cachePolicy = .returnCacheDataElseLoad
-        imageTask = URLSession.shared.dataTask(with: request) { [weak self] data, response, _ in
-            guard let data,
-                  let httpResponse = response as? HTTPURLResponse,
-                  (200..<300).contains(httpResponse.statusCode),
-                  let image = UIImage(data: data) else { return }
-            DispatchQueue.main.async {
-                guard let self, self.representedImageURL == url else { return }
+        imageLoadTask = Task { @MainActor [weak self] in
+            let image = await ActivityPhotoCache.shared.image(for: url, maxPixelSize: Self.thumbnailPixelHeight)
+            guard let self, !Task.isCancelled, self.representedImageURL == url else { return }
+            if let image {
                 self.setThumbnail(image)
             }
         }
-        imageTask?.resume()
     }
 
     private func showPlaceholder() {
@@ -2213,7 +2182,7 @@ private struct SavedActivityPhotoManager: View {
                         ForEach(keptPhotos) { photo in
                             HStack(spacing: 12) {
                                 if let url = activityStore.imageURL(for: photo) {
-                                    LocalImageView(url: url) { Color(.systemGroupedBackground) }
+                                    LocalImageView(url: url, maxPixelSize: 112) { Color(.systemGroupedBackground) }
                                         .frame(width: 72, height: 56)
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
                                 }

@@ -279,12 +279,11 @@ final class ActivityStore: ObservableObject {
         }
     }
 
+    /// Render URL for a saved photo, routing through the photo cache so
+    /// previously uploaded or downloaded photos render from a stable local
+    /// cache file instead of a freshly signed remote URL.
     func imageURL(for photo: SavedPhoto) -> URL? {
-        if let remoteURL = URL(string: photo.relativePath),
-           ["http", "https"].contains(remoteURL.scheme?.lowercased() ?? "") {
-            return remoteURL
-        }
-        return ActivityPersistence.imageURL(for: photo)
+        ActivityPhotoCache.shared.renderedURL(for: photo)
     }
 
     func activity(id: UUID) -> SavedActivity? {
@@ -838,6 +837,10 @@ final class ActivityStore: ObservableObject {
                     )
                 )
                 await markPhotoUploaded(photo.id, remote: remote, activityID: activityID)
+                ActivityPhotoCache.shared.rememberUploadedPhoto(
+                    photo,
+                    savedAt: ActivityPersistence.imageURL(for: photo)
+                )
                 uploadedCount += 1
             } catch {
                 failedCount += 1

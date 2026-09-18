@@ -300,7 +300,7 @@ private struct ActivityRowCard: View {
     @ViewBuilder
     private var thumbnail: some View {
         if let photo = activity.photos.first, let url = activityStore.imageURL(for: photo) {
-            LocalImageView(url: url) {
+            LocalImageView(url: url, maxPixelSize: 120) {
                 Color.orange.opacity(0.25)
             }
             .frame(width: 60, height: 60)

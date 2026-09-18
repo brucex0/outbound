@@ -139,6 +139,7 @@ Future phases needing backend:
 
 - `ios/Outbound/Outbound/Activity/ActivityDetailView.swift` — main detail view
 - `ios/Outbound/Outbound/Core/LocalActivityStore.swift` — `SavedActivity`, `SavedRoutePoint`, `RouteExportFormat`
+- `ios/Outbound/Outbound/Core/ActivityPhotoCache.swift` — saved-photo render-URL cache, thumbnail variants, upload mapping
 - `ios/Outbound/Outbound/Activity/ActivityStore.swift` — `exportRoute()`
 - `android/feature/activity/src/main/kotlin/com/plainstride/outbound/feature/activity/ActivityScreen.kt` — stored-activity map, sheet, stats, photos, elevation, splits, and metadata
 - `android/feature/activity/src/main/kotlin/com/plainstride/outbound/feature/activity/ActivityViewModel.kt` — mutations, share-card rendering, and analytics
@@ -156,6 +157,7 @@ The layout uses a persistent full-screen route map with a bottom information she
 6. **Content order** — stats, elevation, splits, activity metadata when relevant, guide card
 7. **Media layout** — the route map remains the full-screen background without a floating thumbnail; the sheet owns a horizontal photo strip, the active photo drives the selected map annotation, and a second tap opens the immersive lightbox
 8. **Photo interaction and editing** — Edit Activity opens the same take/delete/reorder photo manager used after finishing an activity. The map initially selects the first GPS-tagged photo so its pin is visible; photos without an available coordinate remain saved but do not produce a misleading pin. Tapping a photo pin opens that photo in the lightbox and synchronizes the selected carousel thumbnail. The lightbox supports paging, pinch-to-zoom, panning while zoomed, and double-tap zoom/reset.
+9. **Photo rendering and caching** — all saved-photo surfaces (history/feed thumbnails, detail carousel, map pins, lightbox) resolve URLs through `ActivityPhotoCache` (`ios/Outbound/Outbound/Core/ActivityPhotoCache.swift`). The cache keys content by stable photo identity (remote photo id when present, otherwise the stored relative path) and maps identities to local files, so uploaded or restored photos keep rendering from disk instead of a freshly signed remote URL. Remote bytes are persisted into `Application Support/Outbound/PhotosCache`, thumbnail surfaces request downsampled decodes (`maxPixelSize`) so full-size camera JPEGs never inflate small views, and the identity-to-file mapping persists across launches via `PhotoCacheMappings.plist`.
 9. **Readability** — the sheet uses an opaque system background so map colors do not wash out text or chart labels
 10. **Disclosure animations** — inline sections such as elevation and splits fade in place rather than sliding over nearby content
 11. **Stats layout** — activity title plus a two-column Strava-style metric grid: Distance, Avg Pace, Moving Time, Elev Gain, and available extras

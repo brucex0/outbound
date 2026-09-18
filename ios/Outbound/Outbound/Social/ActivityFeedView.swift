@@ -394,7 +394,7 @@ private struct ShareLatestRunCard: View {
     @ViewBuilder
     private var thumbnail: some View {
         if let photo = activity.photos.first, let url = activityStore.imageURL(for: photo) {
-            LocalImageView(url: url) {
+            LocalImageView(url: url, maxPixelSize: 128) {
                 Color.orange.opacity(0.18)
             }
             .frame(width: 64, height: 64)
