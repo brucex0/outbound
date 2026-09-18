@@ -14,6 +14,7 @@ final class ActivityStore: ObservableObject {
     private let analyticsManager: AnalyticsManager?
     private var activityRevision = 0
     private var elevationCorrectionIDs = Set<UUID>()
+    private var watchAutoSaveInFlight = Set<UUID>()
 
     var pendingActivityCount: Int {
         activities.filter { !($0.sync?.isSynced ?? false) }.count
@@ -174,6 +175,91 @@ final class ActivityStore: ObservableObject {
                 .persistence,
                 "Watch workout reference reconciliation failed error=\(ActivityDiagnosticLog.errorCategory(error))"
             )
+        }
+    }
+
+    /// Saves a watch-owned workout when no phone recorder was alive to create the normal post-run review.
+    /// The session UUID makes repeated HealthKit mirror callbacks idempotent.
+    @discardableResult
+    func saveWatchWorkoutIfNeeded(
+        sessionUUID: UUID,
+        identity: PlainstrideWorkoutIdentity,
+        finalMetrics: PlainstrideFinalWorkoutMetrics,
+        externalReference: String?
+    ) async -> SavedActivity? {
+        if !hasLoadedActivities {
+            await loadActivities()
+        }
+        guard !activities.contains(where: { $0.recordingSession?.sessionUUID == sessionUUID }) else {
+            return activities.first { $0.recordingSession?.sessionUUID == sessionUUID }
+        }
+        guard watchAutoSaveInFlight.insert(sessionUUID).inserted else { return nil }
+        defer { watchAutoSaveInFlight.remove(sessionUUID) }
+
+        let startedAt = identity.canonicalStartDate ?? Date().addingTimeInterval(-finalMetrics.elapsedTime)
+        let endedAt = startedAt.addingTimeInterval(max(0, finalMetrics.elapsedTime))
+        let distance = max(0, finalMetrics.distanceMeters ?? 0)
+        let summary = ActivitySummary(
+            startedAt: startedAt,
+            endedAt: endedAt,
+            durationSecs: max(0, Int(finalMetrics.elapsedTime.rounded())),
+            distanceM: distance,
+            avgPace: distance > 0 ? finalMetrics.elapsedTime / (distance / 1_000) : nil,
+            elevationGainM: 0,
+            walkingStepCount: nil,
+            healthMetrics: ActivityHealthMetrics(
+                averageHeartRateBPM: finalMetrics.averageBPM,
+                maxHeartRateBPM: finalMetrics.maximumBPM,
+                heartRateSampleCount: finalMetrics.averageBPM == nil && finalMetrics.maximumBPM == nil ? 0 : 1
+            ),
+            heartRateZones: nil,
+            sessionMetadata: ActivityRecordingSessionMetadata(
+                sessionUUID: sessionUUID,
+                origin: .appleWatch,
+                recordingDevice: .appleWatch,
+                healthKitOwnership: externalReference == nil ? .phoneWriteBack : .appleWatchPrimary,
+                healthKitWorkoutExternalReference: externalReference
+            ),
+            routeGuidance: nil,
+            trackPoints: [],
+            trackSegmentStartIndices: []
+        )
+        guard ActivitySaveEligibility.evaluate(
+            durationSecs: summary.durationSecs,
+            distanceM: summary.distanceM
+        ) == .eligible else {
+            ActivityDiagnosticLog.notice(.persistence, "Watch workout auto-save skipped because it was too short")
+            return nil
+        }
+
+        let activityType: ActivityType = switch identity.activity {
+        case .running: .running
+        case .walking: .walking
+        case .cycling: .cycling
+        case .hiking: .hiking
+        case .swimming: .swimming
+        case .strength: .strengthTraining
+        case .mobility: .mobility
+        }
+        do {
+            let saved = try await save(
+                summary: summary,
+                photos: [],
+                activityType: activityType,
+                reflection: nil,
+                energyKilocalories: finalMetrics.activeEnergyKilocalories.map { Int($0.rounded()) },
+                title: "Apple Watch \(activityType.rawValue)",
+                source: .outboundRecorded,
+                recordingSession: summary.sessionMetadata
+            )
+            ActivityDiagnosticLog.notice(.persistence, "Watch workout auto-saved session=\(sessionUUID.uuidString)")
+            return saved
+        } catch {
+            ActivityDiagnosticLog.error(
+                .persistence,
+                "Watch workout auto-save failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
+            return nil
         }
     }
 
