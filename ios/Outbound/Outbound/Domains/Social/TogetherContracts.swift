@@ -414,6 +414,26 @@ struct TogetherPostDTO: Codable, Identifiable, Sendable {
     }
 }
 
+extension TogetherPostDTO {
+    /// Tolerates older servers that predate the cheers payload so a contract
+    /// mismatch degrades to an empty cheerer list instead of failing the whole
+    /// `/social/home` decode and bricking the Social feed refresh.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        caption = try container.decodeIfPresent(String.self, forKey: .caption)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        isCurrentUser = try container.decode(Bool.self, forKey: .isCurrentUser)
+        user = try container.decode(TogetherPersonDTO.self, forKey: .user)
+        activity = try container.decodeIfPresent(TogetherActivityDTO.self, forKey: .activity)
+        reactionCount = try container.decode(Int.self, forKey: .reactionCount)
+        cheers = try container.decodeIfPresent([SocialPersonDTO].self, forKey: .cheers) ?? []
+        currentUserCheered = try container.decode(Bool.self, forKey: .currentUserCheered)
+        commentCount = try container.decode(Int.self, forKey: .commentCount)
+        comments = try container.decode([TogetherCommentDTO].self, forKey: .comments)
+    }
+}
+
 struct SocialReportRequestDTO: Codable, Sendable {
     let targetType: String
     let targetId: String
