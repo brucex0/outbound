@@ -2,7 +2,12 @@ import { createPrivateKey, createPublicKey, sign, verify, type JsonWebKey } from
 
 const issuer = "https://api.outbound.run";
 const audience = "plainstride-api";
-const lifetimeSeconds = 15 * 60;
+// 24h by product decision. Access-token verification is stateless (signature
+// + exp only), so this lifetime is the bound on: a stolen token's usable
+// window, and how long a logged-out or deleted account can keep calling the
+// API after revoking its refresh token. Client auto-refresh makes the
+// lifetime invisible to users either way.
+const lifetimeSeconds = 24 * 60 * 60;
 
 type Header = { alg: "ES256"; kid: string; typ: "JWT" };
 type Claims = { iss: string; aud: string; sub: string; sid: string; iat: number; exp: number };
