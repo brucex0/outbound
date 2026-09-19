@@ -787,16 +787,6 @@ struct SocialHomeView: View {
                 .foregroundStyle(OutboundPalette.companion)
                 .disabled(!socialStore.hasLoadedConnections || acceptedConnections.isEmpty)
                 .accessibilityLabel(String(localized: "circle.create.navigation", defaultValue: "Create your Circle"))
-
-                NavigationLink {
-                    CirclesListView()
-                } label: {
-                    SocialSectionHeaderIcon(systemName: "ellipsis")
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(OutboundPalette.companion)
-                .disabled(circleStore.circles.isEmpty)
-                .accessibilityLabel(String(localized: "circle.list.open", defaultValue: "Show all Circles"))
             }
             ForEach(circleStore.invitations) { invitation in
                 circleInvitationCard(invitation)
@@ -835,13 +825,15 @@ struct SocialHomeView: View {
                     }
                     .buttonStyle(.plain)
                 }
-            } else if let circle = circleStore.primaryCircle {
-                NavigationLink {
-                    CircleDetailView(circle: circle)
-                } label: {
-                    CircleCompactCard(circle: circle, isPrimary: circle.id == circleStore.primaryCircleID)
+            } else {
+                ForEach(circleStore.circles) { circle in
+                    NavigationLink {
+                        CircleDetailView(circle: circle)
+                    } label: {
+                        CircleCompactCard(circle: circle, isPrimary: circle.id == circleStore.primaryCircleID)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
     }

@@ -151,40 +151,6 @@ struct CircleCompactContent: View {
     }
 }
 
-struct CirclesListView: View {
-    @Environment(\.analyticsManager) private var analyticsManager
-    @EnvironmentObject private var circleStore: CircleStore
-
-    var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                ForEach(circleStore.circles) { circle in
-                    NavigationLink {
-                        CircleDetailView(circle: circle)
-                    } label: {
-                        CircleCompactCard(
-                            circle: circle,
-                            isPrimary: circle.id == circleStore.primaryCircleID
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(OutboundSpacing.screen)
-        }
-        .background(OutboundPalette.background)
-        .navigationTitle(String(localized: "circle.list.title", defaultValue: "Your Circles"))
-        .navigationBarTitleDisplayMode(.inline)
-        .task {
-            await analyticsManager?.track(.init(.circleListOpened, properties: [
-                .entrySource: .string("social"),
-                .countBucket: .string(ProductAnalyticsBucket.count(circleStore.circles.count)),
-            ]))
-            await circleStore.refresh()
-        }
-    }
-}
-
 struct CircleCreateView: View {
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var circleStore: CircleStore
