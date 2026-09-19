@@ -1138,11 +1138,7 @@ struct SocialHomeView: View {
                             Button {
                                 Task { await toggleCheer(on: post) }
                             } label: {
-                                Label {
-                                    Text(String(localized: "Cheers"))
-                                } icon: {
-                                    Image(systemName: post.currentUserCheered ? "heart.fill" : "heart")
-                                }
+                                Image(systemName: post.currentUserCheered ? "heart.fill" : "heart")
                             }
                             .buttonStyle(SocialFeedActionButtonStyle(isActive: post.currentUserCheered))
                             .disabled(socialStore.isSocialMutationPending)
@@ -3305,6 +3301,7 @@ private struct SocialActivityDetailView: View {
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     let post: TogetherPostDTO
     @State private var showsComments = false
+    @State private var showsCheers = false
     @State private var toastMessage: String?
 
     private var currentPost: TogetherPostDTO {
@@ -3324,6 +3321,11 @@ private struct SocialActivityDetailView: View {
                 supplementalContent: AnyView(socialCard),
                 bottomContent: AnyView(socialCompanionCard)
             )
+            .sheet(isPresented: $showsCheers) {
+                SocialCheersListView(post: currentPost)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
             .sheet(isPresented: $showsComments) {
                 SocialCommentsView(post: currentPost)
                     .presentationDetents([.medium, .large])
@@ -3375,10 +3377,6 @@ private struct SocialActivityDetailView: View {
 
             socialActionBar
 
-            if currentPost.reactionCount > 0 {
-                SocialCheerSummaryView(post: currentPost)
-            }
-
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 16)
@@ -3389,17 +3387,19 @@ private struct SocialActivityDetailView: View {
             Button {
                 Task { await toggleCheer() }
             } label: {
-                Label {
-                    Text("\(String(localized: "Cheers")) · \(currentPost.reactionCount)")
-                } icon: {
-                    Image(systemName: currentPost.currentUserCheered ? "heart.fill" : "heart")
-                }
+                Image(systemName: currentPost.currentUserCheered ? "heart.fill" : "heart")
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(SocialFeedActionButtonStyle(isActive: currentPost.currentUserCheered))
             .disabled(socialStore.isSocialMutationPending)
             .accessibilityLabel(currentPost.currentUserCheered ? String(localized: "Remove cheer") : String(localized: "Cheer"))
             .accessibilityValue("\(currentPost.reactionCount)")
+
+            if currentPost.reactionCount > 0 {
+                SocialCheerAvatarsButton(post: currentPost) {
+                    showsCheers = true
+                }
+            }
 
             Button { showsComments = true } label: {
                 Label {
@@ -3587,65 +3587,6 @@ struct SocialCheerAvatarsButton: View {
         .accessibilityLabel(String(localized: "activity.social.cheer_count", defaultValue: "Cheers"))
         .accessibilityValue("\(post.reactionCount)")
         .accessibilityHint(String(localized: "activity.social.cheer_count.hint", defaultValue: "Shows the full list of people who cheered"))
-    }
-}
-
-struct SocialCheerSummaryView: View {
-    let post: TogetherPostDTO
-    @State private var presentsSheet = false
-
-    private var displayedCheerers: [SocialPersonDTO] {
-        post.cheers.prefix(5).map { $0 }
-    }
-
-    var body: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: -6) {
-                ForEach(displayedCheerers) { cheerer in
-                    SocialAvatar(name: cheerer.displayName, avatarURL: cheerer.avatarUrl, size: 24)
-                        .overlay(
-                            Circle().strokeBorder(Color(.systemBackground), lineWidth: 1.5)
-                        )
-                }
-                if post.reactionCount > displayedCheerers.count {
-                    moreBadge
-                }
-            }
-            .accessibilityHidden(true)
-
-            Text("\(post.reactionCount)")
-                .font(.subheadline.weight(.semibold))
-                .monospacedDigit()
-                .foregroundStyle(.primary)
-
-            Spacer(minLength: 0)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture { presentsSheet = true }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(localized: "activity.social.cheer_count", defaultValue: "Cheers"))
-        .accessibilityValue("\(post.reactionCount)")
-        .accessibilityHint(String(localized: "activity.social.cheer_count.hint", defaultValue: "Shows the full list of people who cheered"))
-        .accessibilityAddTraits(.isButton)
-        .sheet(isPresented: $presentsSheet) {
-            SocialCheersListView(post: post)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-        }
-    }
-
-    private var moreBadge: some View {
-        ZStack {
-            Circle().fill(Color(.secondarySystemBackground))
-            Text("+\(post.reactionCount - displayedCheerers.count)")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-        }
-        .frame(width: 24, height: 24)
-        .overlay(
-            Circle().strokeBorder(Color(.systemBackground), lineWidth: 1.5)
-        )
     }
 }
 
