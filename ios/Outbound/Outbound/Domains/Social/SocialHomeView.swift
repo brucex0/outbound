@@ -1,3 +1,4 @@
+import CryptoKit
 import MapKit
 import SwiftUI
 
@@ -1112,7 +1113,7 @@ struct SocialHomeView: View {
                             Text(post.activity?.title ?? String(localized: "Run")).font(.headline).foregroundStyle(.primary)
                             if let activity = post.activity {
                                 ZStack(alignment: .bottom) {
-                                    SocialRouteMap(route: activity.route)
+                                    SocialRoutePreviewImage(activity: activity)
                                     HStack(spacing: 0) {
                                         socialStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
                                         socialStat(activity.durationSecs.map(socialDuration) ?? "—", "Time")
@@ -1122,7 +1123,7 @@ struct SocialHomeView: View {
                                     .padding(.vertical, 10)
                                     .background(.regularMaterial)
                                 }
-                                .frame(height: 210)
+                                .aspectRatio(1.5, contentMode: .fit)
                                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                                 .overlay(alignment: .topLeading) {
                                     if let milestone = milestone(for: activity, isCurrentUser: post.isCurrentUser) {
@@ -2222,7 +2223,7 @@ private struct SocialNotificationActivityView: View {
                         Text(post.activity?.title ?? String(localized: "Run")).font(.headline)
                         if let activity = post.activity {
                             ZStack(alignment: .bottom) {
-                                SocialRouteMap(route: activity.route)
+                                SocialRoutePreviewImage(activity: activity)
                                 HStack(spacing: 0) {
                                     stat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", String(localized: "Distance"))
                                     stat(activity.durationSecs.map(duration) ?? "—", String(localized: "Time"))
@@ -2232,7 +2233,7 @@ private struct SocialNotificationActivityView: View {
                                 .padding(.vertical, 10)
                                 .background(.regularMaterial)
                             }
-                            .frame(height: 240)
+                            .aspectRatio(1.5, contentMode: .fit)
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         }
                         if let caption = post.caption, !caption.isEmpty { Text(caption).font(.subheadline) }
@@ -3673,79 +3674,171 @@ struct SocialAvatar: View {
     }
 }
 
-private struct SocialRouteMap: View {
-    private let points: [CGPoint]
+private struct SocialRoutePreviewImage: View {
+    let activity: TogetherActivityDTO
 
-    init(route: TogetherActivityRouteDTO?) {
-        let coordinates = route?.geometry.coordinates.compactMap { coordinate -> CLLocationCoordinate2D? in
-            guard coordinate.count >= 2,
-                  (-180...180).contains(coordinate[0]),
-                  (-90...90).contains(coordinate[1]) else { return nil }
-            return CLLocationCoordinate2D(latitude: coordinate[1], longitude: coordinate[0])
-        } ?? []
+    @State private var image: UIImage?
 
-        // MapKit is relatively expensive to create for every feed cell and can
-        // monopolize the main thread as cells enter the viewport. Store a
-        // compact, normalized polyline instead and draw it with Canvas.
-        let stride = max(1, Int(ceil(Double(coordinates.count) / 240.0)))
-        let sampled = coordinates.enumerated().compactMap { index, coordinate in
-            index.isMultiple(of: stride) ? CGPoint(x: coordinate.longitude, y: coordinate.latitude) : nil
+    var body: some View {
+        GeometryReader { proxy in
+            Group {
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                } else {
+                    placeholder
+                }
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
         }
-        let allPoints = sampled + (coordinates.last.map { [CGPoint(x: $0.longitude, y: $0.latitude)] } ?? [])
-        guard allPoints.count > 1,
-              let minX = allPoints.map(\.x).min(),
-              let maxX = allPoints.map(\.x).max(),
-              let minY = allPoints.map(\.y).min(),
-              let maxY = allPoints.map(\.y).max() else {
-            points = []
-            return
-        }
-
-        let width = max(maxX - minX, 0.000001)
-        let height = max(maxY - minY, 0.000001)
-        points = allPoints.map {
-            CGPoint(
-                x: ($0.x - minX) / width,
-                y: 1 - (($0.y - minY) / height)
-            )
+        .aspectRatio(1.5, contentMode: .fit)
+        .frame(maxWidth: .infinity)
+        .allowsHitTesting(false)
+        .accessibilityLabel("Activity route preview")
+        .task(id: SocialRoutePreviewCache.cacheKey(for: activity)) {
+            guard activity.route?.geometry.coordinates.count ?? 0 > 1 else { return }
+            guard let data = await SocialRoutePreviewCache.shared.imageData(for: activity),
+                  !Task.isCancelled else { return }
+            image = UIImage(data: data)
         }
     }
 
-    var body: some View {
-        Group {
-            if points.count > 1 {
-                Canvas { context, size in
-                    var path = Path()
-                    for (index, point) in points.enumerated() {
-                        let location = CGPoint(x: point.x * size.width, y: point.y * size.height)
-                        if index == 0 {
-                            path.move(to: location)
-                        } else {
-                            path.addLine(to: location)
-                        }
-                    }
-                    context.stroke(
-                        path,
-                        with: .color(OutboundPalette.companion),
-                        style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round)
-                    )
-                }
-                .background(OutboundPalette.companion.opacity(0.08))
-            } else {
-            LinearGradient(
-                colors: [OutboundPalette.companion.opacity(0.28), OutboundPalette.background],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .overlay {
-                Image(systemName: "point.topleft.down.to.point.bottomright.curvepath")
-                    .font(.system(size: 54, weight: .light))
-                    .foregroundStyle(OutboundPalette.companion.opacity(0.65))
-                }
-            }
+    private var placeholder: some View {
+        LinearGradient(
+            colors: [OutboundPalette.companion.opacity(0.28), OutboundPalette.background],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .overlay {
+            Image(systemName: "point.topleft.down.to.point.bottomright.curvepath")
+                .font(.system(size: 54, weight: .light))
+                .foregroundStyle(OutboundPalette.companion.opacity(0.65))
         }
-        .allowsHitTesting(false)
-        .accessibilityLabel(points.count > 1 ? "Activity route map" : "Activity without route data")
+    }
+}
+
+private actor SocialRoutePreviewCache {
+    static let shared = SocialRoutePreviewCache()
+
+    private static let imageSize = CGSize(width: 720, height: 480)
+    private static let maxRoutePoints = 360
+    private static let memoryLimit = 24
+
+    private var memory: [String: Data] = [:]
+    private var inFlight: [String: Task<Data?, Never>] = [:]
+    private var generationTail: Task<Void, Never> = Task {}
+
+    static func cacheKey(for activity: TogetherActivityDTO) -> String {
+        let coordinates = activity.route?.geometry.coordinates ?? []
+        let routeSignature = coordinates.prefix(maxRoutePoints).map { coordinate in
+            coordinate.prefix(2).map { String(format: "%.6f", $0) }.joined(separator: ",")
+        }.joined(separator: ";")
+        let raw = "\(activity.id)|\(coordinates.count)|\(routeSignature)"
+        let digest = SHA256.hash(data: Data(raw.utf8))
+        return digest.map { String(format: "%02x", $0) }.joined()
+    }
+
+    func imageData(for activity: TogetherActivityDTO) async -> Data? {
+        let key = Self.cacheKey(for: activity)
+        if let data = memory[key] { return data }
+        if let data = Self.readCachedData(for: key) {
+            remember(data, for: key)
+            return data
+        }
+        if let task = inFlight[key] { return await task.value }
+
+        let previous = generationTail
+        let task = Task<Data?, Never> { [weak self] in
+            _ = await previous.value
+            guard let self else { return nil }
+            return await self.generate(activity: activity, key: key)
+        }
+        inFlight[key] = task
+        generationTail = Task { _ = await task.value }
+        let data = await task.value
+        inFlight[key] = nil
+        return data
+    }
+
+    private func generate(activity: TogetherActivityDTO, key: String) async -> Data? {
+        let coordinates = (activity.route?.geometry.coordinates ?? []).compactMap { value -> CLLocationCoordinate2D? in
+            guard value.count >= 2,
+                  value[0].isFinite,
+                  value[1].isFinite,
+                  (-180...180).contains(value[0]),
+                  (-90...90).contains(value[1]) else { return nil }
+            return CLLocationCoordinate2D(latitude: value[1], longitude: value[0])
+        }
+        guard coordinates.count > 1 else { return nil }
+
+        let stride = max(1, Int(ceil(Double(coordinates.count) / Double(Self.maxRoutePoints))))
+        let route = coordinates.enumerated().compactMap { index, coordinate in
+            index.isMultiple(of: stride) ? coordinate : nil
+        } + [coordinates.last!]
+
+        var mapRect = route.reduce(MKMapRect.null) { rect, coordinate in
+            let point = MKMapPoint(coordinate)
+            return rect.union(MKMapRect(x: point.x, y: point.y, width: 1, height: 1))
+        }
+        let horizontalPadding = max(mapRect.width * 0.12, 1_500)
+        let verticalPadding = max(mapRect.height * 0.24, 2_500)
+        mapRect = mapRect.insetBy(dx: -horizontalPadding, dy: -verticalPadding)
+
+        let options = MKMapSnapshotter.Options()
+        options.size = Self.imageSize
+        options.scale = 2
+        options.mapType = .standard
+        options.pointOfInterestFilter = .excludingAll
+        options.showsBuildings = false
+        options.region = MKCoordinateRegion(mapRect)
+        guard let snapshot = try? await MKMapSnapshotter(options: options).start() else { return nil }
+
+        let renderer = UIGraphicsImageRenderer(size: Self.imageSize)
+        let image = renderer.image { context in
+            snapshot.image.draw(in: CGRect(origin: .zero, size: Self.imageSize))
+            let path = CGMutablePath()
+            for (index, coordinate) in route.enumerated() {
+                let point = snapshot.point(for: coordinate)
+                if index == 0 { path.move(to: point) } else { path.addLine(to: point) }
+            }
+            context.cgContext.addPath(path)
+            context.cgContext.setStrokeColor(UIColor.white.withAlphaComponent(0.92).cgColor)
+            context.cgContext.setLineWidth(14)
+            context.cgContext.setLineCap(.round)
+            context.cgContext.setLineJoin(.round)
+            context.cgContext.strokePath()
+            context.cgContext.addPath(path)
+            context.cgContext.setStrokeColor(UIColor.systemOrange.cgColor)
+            context.cgContext.setLineWidth(8)
+            context.cgContext.strokePath()
+        }
+        guard let data = image.jpegData(compressionQuality: 0.82) else { return nil }
+        remember(data, for: key)
+        Self.writeCachedData(data, for: key)
+        return data
+    }
+
+    private func remember(_ data: Data, for key: String) {
+        memory[key] = data
+        if memory.count > Self.memoryLimit, let oldest = memory.keys.first {
+            memory.removeValue(forKey: oldest)
+        }
+    }
+
+    private static func cacheDirectory() -> URL? {
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("SocialRoutePreviews", isDirectory: true)
+    }
+
+    private static func readCachedData(for key: String) -> Data? {
+        guard let directory = cacheDirectory() else { return nil }
+        return try? Data(contentsOf: directory.appendingPathComponent("\(key).jpg"))
+    }
+
+    private static func writeCachedData(_ data: Data, for key: String) {
+        guard let directory = cacheDirectory() else { return }
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try? data.write(to: directory.appendingPathComponent("\(key).jpg"), options: .atomic)
     }
 }
 
