@@ -34,6 +34,7 @@ final class ActivityRecorder: ObservableObject {
     @Published var distanceMeters: Double = 0
     @Published var elevationGainMeters: Double = 0
     @Published private(set) var walkingStepCount: Int?
+    @Published private(set) var companionType: ActivityCompanionType?
     @Published var currentPace: Double?   // secs/km
     @Published private(set) var heartRate: Int?
     @Published private(set) var heartRateSignalState: HeartRateSignalState = .waitingForFirstReading
@@ -115,7 +116,8 @@ final class ActivityRecorder: ObservableObject {
         activityType: ActivityType = .running,
         routeGuidance: ActiveRouteGuidanceJournal? = nil,
         canonicalStartDate: Date? = nil,
-        sessionMetadata: ActivityRecordingSessionMetadata? = nil
+        sessionMetadata: ActivityRecordingSessionMetadata? = nil,
+        companionType: ActivityCompanionType? = nil
     ) {
 #if DEBUG
         resetRunSimulation()
@@ -135,6 +137,7 @@ final class ActivityRecorder: ObservableObject {
         accumulatedActiveDuration = max(0, now.timeIntervalSince(resolvedStartDate))
         self.activityType = activityType
         self.sessionMetadata = sessionMetadata
+        self.companionType = companionType
         recoveredWatchLifecycle = nil
         recoveredWatchMessageSequence = nil
         self.routeGuidance = routeGuidance
@@ -353,6 +356,7 @@ final class ActivityRecorder: ObservableObject {
         distanceMeters = 0
         elevationGainMeters = 0
         currentPace = nil
+        companionType = nil
         heartRate = nil
         heartRateSignalState = .waitingForFirstReading
         heartRateZone = nil
@@ -678,6 +682,7 @@ final class ActivityRecorder: ObservableObject {
         currentSegmentStartDate = nil
         elapsedSeconds = journal.elapsedSeconds
         activityType = journal.activityType ?? .running
+        companionType = journal.companionType
         locationManager.restoreTracking(
             from: points,
             segmentStartIndices: segmentStarts,
@@ -762,6 +767,7 @@ final class ActivityRecorder: ObservableObject {
             wasPaused: state == .paused,
             activityType: activityType,
             walkingStepCount: walkingStepCount,
+            companionType: companionType,
             routeGuidanceRecoverySeed: routeGuidance?.recoverySeed,
             sessionMetadata: sessionMetadata,
             heartRateEffortEngine: heartRateEngine,

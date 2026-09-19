@@ -49,7 +49,8 @@ final class ActivityStore: ObservableObject {
         recordingSession: ActivityRecordingSessionMetadata? = nil,
         activityEventID: String? = nil,
         followedRoute: FollowedRouteMetadata? = nil,
-        recognitionBadgeIDs: [RecognitionBadgeID] = []
+        recognitionBadgeIDs: [RecognitionBadgeID] = [],
+        companionType: ActivityCompanionType? = nil
     ) async throws -> SavedActivity {
         let resolvedTitle = title ?? autoTitle(for: summary.startedAt)
         ActivityDiagnosticLog.notice(
@@ -76,9 +77,10 @@ final class ActivityStore: ObservableObject {
                 recordingSession: recordingSession,
                 activityEventID: activityEventID,
                 followedRoute: followedRoute,
-                recognitionBadgeIDs: recognitionBadgeIDs
+                recognitionBadgeIDs: recognitionBadgeIDs,
+                companionType: companionType
             )
-        } catch {
+            } catch {
             ActivityDiagnosticLog.error(
                 .persistence,
                 "Local activity save failed type=\(activityType.rawValue) source=\(source.kind.rawValue) error=\(ActivityDiagnosticLog.errorCategory(error))"
@@ -250,7 +252,8 @@ final class ActivityStore: ObservableObject {
                 energyKilocalories: finalMetrics.activeEnergyKilocalories.map { Int($0.rounded()) },
                 title: "Apple Watch \(activityType.rawValue)",
                 source: .outboundRecorded,
-                recordingSession: summary.sessionMetadata
+                recordingSession: summary.sessionMetadata,
+                companionType: ActivityCompanionType(safeDecoding: identity.companionType)
             )
             ActivityDiagnosticLog.notice(.persistence, "Watch workout auto-saved session=\(sessionUUID.uuidString)")
             return saved
@@ -350,6 +353,7 @@ final class ActivityStore: ObservableObject {
                 walkingStepCount: activity.walkingStepCount,
                 healthMetrics: activity.healthMetrics,
                 goal: activity.goal,
+                companionType: activity.companionType,
                 source: activity.source,
                 gear: activity.gear,
                 manualEdits: activity.manualEdits,
@@ -431,6 +435,7 @@ final class ActivityStore: ObservableObject {
             walkingStepCount: activity.walkingStepCount,
             healthMetrics: activity.healthMetrics,
             goal: activity.goal,
+            companionType: activity.companionType,
             source: editedFields.isEmpty ? activity.source : ActivitySourceMetadata(
                 kind: activity.source.kind == .manual ? .manual : activity.source.kind,
                 displayName: activity.source.displayName,
@@ -587,6 +592,7 @@ final class ActivityStore: ObservableObject {
                     avgPace: activity.avgPace,
                     avgHeartRate: activity.healthMetrics?.averageHeartRateBPM,
                     energyKilocalories: activity.energyKilocalories,
+                    companionType: activity.companionType?.rawValue,
                     activityEventId: activity.activityEventID,
                     followedRouteId: activity.followedRoute?.source == .community ? activity.followedRoute?.routeID : nil,
                     followedRouteCompleted: activity.followedRoute?.source == .community ? activity.followedRoute?.arrived : nil,
@@ -690,6 +696,7 @@ final class ActivityStore: ObservableObject {
             walkingStepCount: current.walkingStepCount,
             healthMetrics: current.healthMetrics,
             goal: current.goal,
+            companionType: current.companionType,
             source: current.source,
             gear: current.gear,
             manualEdits: current.manualEdits,
@@ -944,6 +951,7 @@ final class ActivityStore: ObservableObject {
             walkingStepCount: activity.walkingStepCount,
             healthMetrics: activity.healthMetrics,
             goal: activity.goal,
+            companionType: activity.companionType,
             source: activity.source,
             gear: activity.gear,
             manualEdits: activity.manualEdits,
@@ -1058,7 +1066,8 @@ final class ActivityStore: ObservableObject {
         distanceM: Double,
         avgPace: Double,
         elevationGainM: Double,
-        serverActivityID: String? = nil
+        serverActivityID: String? = nil,
+        includeCompanion: Bool = false
     ) -> SavedActivity {
         let points = [
             SavedRoutePoint(location: CLLocation(latitude: 37.7749, longitude: -122.4194)),
@@ -1084,6 +1093,7 @@ final class ActivityStore: ObservableObject {
                 heartRateSampleCount: 12
             ),
             goal: .distanceMeters(5_000),
+            companionType: includeCompanion ? .dog : nil,
             route: SavedRoute(points: points),
             photos: [],
             sync: serverActivityID.map {

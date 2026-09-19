@@ -50,6 +50,10 @@ struct PlainstrideWorkoutIdentity: Codable, Equatable, Sendable {
     let isIndoor: Bool
     let origin: PlainstrideWorkoutOrigin
     let canonicalStartDate: Date?
+
+    /// Optional `With dog` context configured on the phone. Optional and
+    /// raw-encoded so older watch/phone builds ignore the field safely.
+    var companionType: String? = nil
 }
 
 struct PlainstrideZoneDuration: Codable, Equatable, Sendable {

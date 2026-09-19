@@ -8,6 +8,7 @@ struct ActiveSessionJournal {
     let wasPaused: Bool
     let activityType: ActivityType?
     let walkingStepCount: Int?
+    let companionType: ActivityCompanionType?
     let routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?
     let sessionMetadata: ActivityRecordingSessionMetadata?
     let heartRateEffortEngine: HeartRateEffortEngine?
@@ -22,6 +23,7 @@ struct ActiveSessionJournal {
         wasPaused: Bool,
         activityType: ActivityType?,
         walkingStepCount: Int? = nil,
+        companionType: ActivityCompanionType? = nil,
         routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?,
         sessionMetadata: ActivityRecordingSessionMetadata? = nil,
         heartRateEffortEngine: HeartRateEffortEngine? = nil,
@@ -35,6 +37,7 @@ struct ActiveSessionJournal {
         self.wasPaused = wasPaused
         self.activityType = activityType
         self.walkingStepCount = walkingStepCount
+        self.companionType = companionType
         self.routeGuidanceRecoverySeed = routeGuidanceRecoverySeed
         self.sessionMetadata = sessionMetadata
         self.heartRateEffortEngine = heartRateEffortEngine
@@ -55,6 +58,7 @@ struct ActiveSessionJournal {
                 wasPaused: metadata.wasPaused,
                 activityType: metadata.activityType,
                 walkingStepCount: metadata.walkingStepCount,
+                companionType: metadata.companionType,
                 routeGuidanceRecoverySeed: metadata.routeGuidanceRecoverySeed,
                 sessionMetadata: metadata.sessionMetadata,
                 heartRateEffortEngine: metadata.heartRateEffortEngine,
@@ -81,6 +85,7 @@ struct ActiveSessionJournal {
                 wasPaused: wasPaused,
                 activityType: activityType,
                 walkingStepCount: walkingStepCount,
+                companionType: companionType,
                 routeGuidanceRecoverySeed: routeGuidanceRecoverySeed,
                 sessionMetadata: sessionMetadata,
                 heartRateEffortEngine: heartRateEffortEngine,
@@ -132,6 +137,7 @@ struct ActiveSessionJournal {
         let wasPaused: Bool
         let activityType: ActivityType?
         let walkingStepCount: Int?
+        let companionType: ActivityCompanionType?
         let routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?
         let sessionMetadata: ActivityRecordingSessionMetadata?
         let heartRateEffortEngine: HeartRateEffortEngine?

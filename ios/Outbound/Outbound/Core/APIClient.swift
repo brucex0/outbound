@@ -2223,6 +2223,7 @@ struct ActivityUploadRequest: Encodable {
     let avgPace: Double?
     let avgHeartRate: Int?
     let energyKilocalories: Int?
+    let companionType: String?
     let activityEventId: String?
     let followedRouteId: String?
     let followedRouteCompleted: Bool?

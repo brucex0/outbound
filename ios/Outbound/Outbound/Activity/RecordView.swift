@@ -141,6 +141,7 @@ struct RecordView: View {
     @State private var didApplySmartGoalDefault = false
     @State private var didApplyDefaultSessionShoe = false
     @State private var isIndoorSession = false
+    @State private var companionType: ActivityCompanionType?
     @State private var isStartingActivity = false
     @State private var selectedSessionShoeID: UUID?
     @State private var isGroupJoinAlertPresented = false
@@ -793,7 +794,8 @@ struct RecordView: View {
                 ActivityStartCountdownOverlay(
                     step: countdownStep,
                     reduceMotion: reduceMotion,
-                    signalQuality: recorder.locationManager.signalQuality
+                    signalQuality: recorder.locationManager.signalQuality,
+                    companionType: isCompanionContextEligible ? companionType : nil
                 )
                     .transition(.opacity)
             }
@@ -1177,7 +1179,8 @@ struct RecordView: View {
         showCamera = true
         phoneWorkoutCoordinator.preparePhoneFirst(
             activityType: activeIntent?.resolvedActivityType ?? .running,
-            isIndoor: isIndoorSession
+            isIndoor: isIndoorSession,
+            companionType: isCompanionContextEligible ? companionType : nil
         )
         beginStartCountdown()
     }
@@ -1298,7 +1301,8 @@ struct RecordView: View {
             activityType: activeIntent?.resolvedActivityType ?? .running,
             routeGuidance: routeGuidance,
             canonicalStartDate: phoneWorkoutCoordinator.canonicalStartDate,
-            sessionMetadata: phoneWorkoutCoordinator.recordingMetadata()
+            sessionMetadata: phoneWorkoutCoordinator.recordingMetadata(),
+            companionType: isCompanionContextEligible ? companionType : nil
         )
         phoneWorkoutCoordinator.markPhoneRecorderStarted()
     }
@@ -1334,6 +1338,8 @@ struct RecordView: View {
         if returnToSetup {
             showCamera = false
         }
+        // The companion choice belongs to the retained setup, not the canceled
+        // countdown, so the next start keeps it when the sport stays eligible.
     }
 
     private var isCountingDown: Bool {
@@ -1588,9 +1594,7 @@ struct RecordView: View {
                 reflection: reflection,
                 goal: activeIntent?.activityGoal,
                 energyKilocalories: energyKilocalories,
-                title: activeIntent?.preparedRoute == nil && savedActivityType == .running
-                    ? nil
-                    : activeIntent?.title,
+                title: savedActivityTitle(for: savedActivityType),
                 source: .outboundRecorded,
                 gear: savedActivityType == .running ? gearStore.attachment(for: selectedSessionShoe) : nil,
                 indoor: isIndoorSession ? ActivityIndoorMetadata(isIndoor: true, mode: "treadmill") : nil,
@@ -1600,7 +1604,8 @@ struct RecordView: View {
                     ? socialStore.recordingActivityEventID
                     : nil,
                 followedRoute: followedRoute,
-                recognitionBadgeIDs: resolvedActivity.recognitionPreviews.map(\.badgeID)
+                recognitionBadgeIDs: resolvedActivity.recognitionPreviews.map(\.badgeID),
+                companionType: isCompanionContextEligible ? companionType : nil
             )
         } catch {
             ActivityDiagnosticLog.error(
@@ -1619,6 +1624,7 @@ struct RecordView: View {
         savedProperties[.shoeSelected] = .boolean(selectedSessionShoe != nil)
         savedProperties[.groupRunEnabled] = .boolean(activityStartedWithGroupRun)
         savedProperties[.indoor] = .boolean(isIndoorSession)
+        savedProperties[.dogCompanionEnabled] = .boolean(activeIntent?.resolvedActivityType.ineligibleForCompanion != true && companionType != nil)
         track(.init(.activitySaved, properties: savedProperties))
         if let followedRoute {
             track(.init(.routeGuidanceCompleted, properties: [
@@ -1717,6 +1723,7 @@ struct RecordView: View {
         selectedSessionShoeID = nil
         didApplyDefaultSessionShoe = false
         isIndoorSession = false
+        companionType = nil
         activityStartedWithGroupRun = false
         intentBeforeSelectedRoute = nil
         selectedRouteDistanceMeters = nil
@@ -2001,6 +2008,7 @@ struct RecordView: View {
                         launchVoiceGuideControl
                         launchCheerMeOnControl
                         launchShoeControl
+                        launchCompanionControl
                         launchEnvironmentControl
                     }
                     .padding(.leading, 16)
@@ -2098,6 +2106,101 @@ struct RecordView: View {
                 .selectionType: .string(isIndoorSession ? "indoor" : "outdoor")
             ]))
         })
+    }
+
+    /// One paw-icon toggle beside the other setup settings. It is hidden for
+    /// sports that cannot carry the context and explains an automatic clear
+    /// with the existing temporary toast.
+    private var launchCompanionControl: AnyView {
+        guard isCompanionControlAvailable else { return AnyView(EmptyView()) }
+        let isSelected = companionType != nil
+        return AnyView(
+            Button {
+                toggleCompanionContext()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: ActivityCompanionType.dog.systemImage)
+                    Text(ActivityCompanionType.dog.displayName)
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(isSelected ? Color.white : Color.primary)
+                .lineLimit(1)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 44)
+                .background(
+                    isSelected ? theme.accentColor : Color(.secondarySystemBackground),
+                    in: Capsule()
+                )
+                .overlay {
+                    Capsule()
+                        .stroke(isSelected ? Color.clear : Color.primary.opacity(0.08), lineWidth: 1)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "recording.companion.accessibility", defaultValue: "With dog"))
+            .accessibilityValue(String(localized: "activity.companion.dog.title", defaultValue: "With dog"))
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+            .accessibilityHint(String(localized: "recording.companion.accessibility_hint", defaultValue: "Tags this activity as taken with your dog"))
+        )
+    }
+
+    private var isCompanionControlAvailable: Bool {
+        (plannedIntent ?? .freestyleRun).resolvedActivityType.ineligibleForCompanion == false
+    }
+
+    /// The context survives workout, goal, and curated changes while the
+    /// resolved sport stays eligible; it must never ride into an incompatible
+    /// session.
+    /// Localized `Dog walk`/`Dog run` titles apply only to freestyle sessions;
+    /// planned, curated, route, race, and event sessions keep their own titles.
+    private func savedActivityTitle(for savedActivityType: ActivityType) -> String? {
+        if isCompanionContextEligible, isFreestyleSession {
+            return companionType?.defaultFreestyleTitle(for: savedActivityType)
+        }
+        return activeIntent?.preparedRoute == nil && savedActivityType == .running
+            ? nil
+            : activeIntent?.title
+    }
+
+    private var isFreestyleSession: Bool {
+        guard let intent = activeIntent ?? plannedIntent else { return true }
+        return intent.preparedRoute == nil
+            && intent.workoutSteps.isEmpty
+            && intent.raceIntent == nil
+            && intent.workoutReference == nil
+            && intent.activityEvent == nil
+    }
+
+    private var isCompanionContextEligible: Bool {
+        guard companionType != nil else { return false }
+        let resolvedType = (activeIntent ?? plannedIntent ?? .freestyleRun).resolvedActivityType
+        return ActivityCompanionType.isEligible(for: resolvedType)
+    }
+
+    private func toggleCompanionContext() {
+        let willEnable = companionType == nil
+        companionType = willEnable ? .dog : nil
+        track(.init(.activityConfigurationChanged, properties: [
+            .changeType: .string("companion"),
+            .selectionType: .string(willEnable ? "dog" : "off")
+        ]))
+        if willEnable {
+            trackFeatureExposure("dog_companion")
+        }
+    }
+
+    /// Clears an incompatible retained selection after workout or route
+    /// changes, mirroring the temporary-toast pattern used by setup changes.
+    private func reconcileCompanionContextAfterSportChange(previousType: ActivityType?, newType: ActivityType) {
+        guard companionType != nil, ActivityCompanionType.isEligible(for: newType) == false else { return }
+        companionType = nil
+        showSetupToast(String(
+            localized: "recording.companion.cleared.message", defaultValue: "With dog is only available for runs, walks, hikes, and rides."
+        ))
+        track(.init(.activityConfigurationChanged, properties: [
+            .changeType: .string("companion"),
+            .selectionType: .string("cleared")
+        ]))
     }
 
     private var launchGoalPillRow: some View {
@@ -2436,6 +2539,7 @@ struct RecordView: View {
             }
         }
         let selectedRoute = plannedIntent?.preparedRoute
+        let previousResolvedType = plannedIntent?.resolvedActivityType
         let nextBaseIntent: SessionIntent
         var restoredManualGoal: ActivityGoal?
 
@@ -2458,6 +2562,10 @@ struct RecordView: View {
             nextBaseIntent = freestyleFallback(for: sport)
             restoredManualGoal = goal
         }
+        reconcileCompanionContextAfterSportChange(
+            previousType: previousResolvedType,
+            newType: nextBaseIntent.resolvedActivityType
+        )
 
         if let selectedRoute {
             intentBeforeSelectedRoute = nextBaseIntent
@@ -3137,7 +3245,7 @@ struct RecordView: View {
         didTrackSetupView = true
         track(.init(.activitySetupViewed, properties: [.entrySource: .string(analyticsEntrySource)]))
         track(.init(.watchFeatureExposed, properties: [.sourceType: .string("iphone")]))
-        ["music", "routes", "shoes", "photos", "group_run"].forEach(trackFeatureExposure)
+        ["music", "routes", "shoes", "photos", "group_run", "dog_companion"].forEach(trackFeatureExposure)
     }
 
     private func trackFeatureExposure(_ feature: String) {
@@ -3240,7 +3348,8 @@ struct RecordView: View {
             .liveShareEnabled: .boolean(liveShareStore.isArmedForNextActivity),
             .indoor: .boolean(isIndoorSession),
             .voiceGuideEnabled: .boolean(voiceGuideSpeechEnabled),
-            .participantCountBucket: .string(ProductAnalyticsBucket.count(liveGroupStore.participants.count))
+            .participantCountBucket: .string(ProductAnalyticsBucket.count(liveGroupStore.participants.count)),
+            .dogCompanionEnabled: .boolean(intent.resolvedActivityType.ineligibleForCompanion != true && companionType != nil)
         ]
     }
 
@@ -4826,8 +4935,13 @@ struct RecordView: View {
                 intentBeforeSelectedRoute = currentIntent
             }
             let baseIntent = intentBeforeSelectedRoute ?? currentIntent
-            plannedIntent = routeIntent(route, appliedTo: baseIntent)
+            let nextIntent = routeIntent(route, appliedTo: baseIntent)
+            plannedIntent = nextIntent
             selectedRouteDistanceMeters = Self.calculatePreparedRouteDistance(route)
+            reconcileCompanionContextAfterSportChange(
+                previousType: currentIntent.resolvedActivityType,
+                newType: nextIntent.resolvedActivityType
+            )
         } else {
             let baseIntent = intentBeforeSelectedRoute ?? freestyleFallback(for: currentIntent.sport)
             let restoredBase = currentIntent.activityGoal == baseIntent.activityGoal
@@ -5529,6 +5643,7 @@ private struct ActivityStartCountdownOverlay: View {
     let step: ActivityStartCountdownStep
     let reduceMotion: Bool
     let signalQuality: LocationSignalQuality
+    var companionType: ActivityCompanionType? = nil
 
     var body: some View {
         ZStack {
@@ -5564,6 +5679,15 @@ private struct ActivityStartCountdownOverlay: View {
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.86))
                     .lineLimit(1)
+
+                if let companionType {
+                    Label(companionType.displayName, systemImage: companionType.systemImage)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(.black.opacity(0.28), in: Capsule())
+                }
 
                 Label(gpsStatusText, systemImage: gpsStatusIcon)
                     .font(.caption.weight(.semibold))

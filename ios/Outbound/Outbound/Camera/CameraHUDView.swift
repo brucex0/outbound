@@ -69,8 +69,9 @@ struct CameraHUDView: View {
                 SessionStatusCard(
                         state: recorder.state,
                         isExpanded: $isWorkoutPanelExpanded,
-                        expandedHeight: geometry.size.height,
-                        intent: intent,
+                    expandedHeight: geometry.size.height,
+                    intent: intent,
+                    companionType: recorder.companionType,
                         elapsedText: recorder.elapsedSeconds.formatted(),
                         elapsedSeconds: recorder.elapsedSeconds,
                         paceLabel: recorder.state == .paused
@@ -595,6 +596,7 @@ struct SessionStatusCard: View {
     @Binding var isExpanded: Bool
     let expandedHeight: CGFloat
     let intent: SessionIntent?
+    let companionType: ActivityCompanionType?
     let elapsedText: String
     let elapsedSeconds: Int
     let paceLabel: String
@@ -1006,6 +1008,11 @@ struct SessionStatusCard: View {
                     .accessibilityLabel(String(localized: "session.offline.accessibility", defaultValue: "Offline. Activity saved on this device and will sync later."))
             }
 
+            if let companionType {
+                companionType.liveBadge
+                    .accessibilityLabel(companionType.displayName)
+            }
+
             if let musicPlayback {
                 Button(action: onTogglePlayback) {
                     musicIcon(isPlaying: musicPlayback.isPlaying, symbolName: "music.note")
@@ -1067,6 +1074,11 @@ struct SessionStatusCard: View {
                     .accessibilityLabel(headerText)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let companionType {
+                companionType.liveBadge
+                    .accessibilityLabel(companionType.displayName)
+            }
 
         }
         .frame(minHeight: 34)

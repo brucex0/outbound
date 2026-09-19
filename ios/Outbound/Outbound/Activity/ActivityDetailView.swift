@@ -606,11 +606,18 @@ struct ActivityDetailView: View {
 
     private var statsHeroSection: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text(currentActivity.title)
-                .font(.title3.weight(.bold))
-                .foregroundStyle(.primary)
-                .padding(.horizontal, 20)
-                .lineLimit(2)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(currentActivity.title)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 20)
+                    .lineLimit(2)
+
+                if let companionType = currentActivity.companionType {
+                    companionType.savedPill
+                        .padding(.horizontal, 20)
+                }
+            }
 
             if !currentActivity.photos.isEmpty {
                 activityPhotoStrip

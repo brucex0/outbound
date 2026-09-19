@@ -27,7 +27,8 @@ actor ActivityPersistence {
         recordingSession: ActivityRecordingSessionMetadata?,
         activityEventID: String?,
         followedRoute: FollowedRouteMetadata?,
-        recognitionBadgeIDs: [RecognitionBadgeID]
+        recognitionBadgeIDs: [RecognitionBadgeID],
+        companionType: ActivityCompanionType?
     ) throws -> SavedActivity {
         try LocalActivityStore.save(
             summary: summary,
@@ -47,7 +48,8 @@ actor ActivityPersistence {
             recordingSession: recordingSession,
             activityEventID: activityEventID,
             followedRoute: followedRoute,
-            recognitionBadgeIDs: recognitionBadgeIDs
+            recognitionBadgeIDs: recognitionBadgeIDs,
+            companionType: companionType
         )
     }
 
@@ -114,7 +116,8 @@ private nonisolated enum LocalActivityStore {
         recordingSession: ActivityRecordingSessionMetadata? = nil,
         activityEventID: String? = nil,
         followedRoute: FollowedRouteMetadata? = nil,
-        recognitionBadgeIDs: [RecognitionBadgeID] = []
+        recognitionBadgeIDs: [RecognitionBadgeID] = [],
+        companionType: ActivityCompanionType? = nil
     ) throws -> SavedActivity {
         let activityId = UUID()
         let activityDirectory = try directory(for: activityId)
@@ -146,6 +149,7 @@ private nonisolated enum LocalActivityStore {
             healthMetrics: summary.healthMetrics,
             goal: goal,
             energyKilocalories: energyKilocalories,
+            companionType: companionType,
             source: source,
             gear: gear,
             manualEdits: manualEdits,
@@ -248,6 +252,7 @@ private nonisolated enum LocalActivityStore {
             walkingStepCount: activity.walkingStepCount,
             healthMetrics: activity.healthMetrics,
             goal: activity.goal,
+            companionType: activity.companionType,
             source: activity.source,
             gear: activity.gear,
             manualEdits: activity.manualEdits,
@@ -431,6 +436,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     let healthMetrics: ActivityHealthMetrics?
     let goal: ActivityGoal?
     let energyKilocalories: Int?
+    let companionType: ActivityCompanionType?
     let source: ActivitySourceMetadata
     let gear: ActivityGearAttachment?
     let manualEdits: ActivityManualEdits?
@@ -490,6 +496,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         }
         goal = try c.decodeIfPresent(ActivityGoal.self, forKey: .goal)
         energyKilocalories = try c.decodeIfPresent(Int.self, forKey: .energyKilocalories)
+        companionType = ActivityCompanionType(safeDecoding: try c.decodeIfPresent(String.self, forKey: .companionType))
         source = try c.decodeIfPresent(ActivitySourceMetadata.self, forKey: .source) ?? .outboundRecorded
         gear = try c.decodeIfPresent(ActivityGearAttachment.self, forKey: .gear)
         manualEdits = try c.decodeIfPresent(ActivityManualEdits.self, forKey: .manualEdits)
@@ -520,6 +527,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
          walkingStepCount: Int? = nil,
          healthMetrics: ActivityHealthMetrics? = nil, goal: ActivityGoal? = nil,
          energyKilocalories: Int? = nil,
+         companionType: ActivityCompanionType? = nil,
          source: ActivitySourceMetadata = .outboundRecorded,
          gear: ActivityGearAttachment? = nil,
          manualEdits: ActivityManualEdits? = nil,
@@ -540,6 +548,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         self.healthMetrics = healthMetrics
         self.goal = goal
         self.energyKilocalories = energyKilocalories
+        self.companionType = companionType
         self.source = source
         self.gear = gear
         self.manualEdits = manualEdits
@@ -572,6 +581,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         case avgHeartRate
         case goal
         case energyKilocalories
+        case companionType
         case source
         case gear
         case manualEdits
@@ -606,6 +616,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         try c.encodeIfPresent(healthMetrics, forKey: .healthMetrics)
         try c.encodeIfPresent(goal, forKey: .goal)
         try c.encodeIfPresent(energyKilocalories, forKey: .energyKilocalories)
+        try c.encodeIfPresent(companionType?.rawValue, forKey: .companionType)
         try c.encode(source, forKey: .source)
         try c.encodeIfPresent(gear, forKey: .gear)
         try c.encodeIfPresent(manualEdits, forKey: .manualEdits)
@@ -641,6 +652,7 @@ nonisolated extension SavedActivity {
             healthMetrics: healthMetrics,
             goal: goal,
             energyKilocalories: energyKilocalories,
+            companionType: companionType,
             source: source,
             gear: gear,
             manualEdits: manualEdits,

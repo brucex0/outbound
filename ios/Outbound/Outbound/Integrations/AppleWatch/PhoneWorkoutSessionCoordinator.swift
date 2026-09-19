@@ -121,6 +121,7 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
     func preparePhoneFirst(
         activityType: ActivityType,
         isIndoor: Bool,
+        companionType: ActivityCompanionType? = nil,
         sessionUUID: UUID = UUID()
     ) {
         resetForNewSession(sessionUUID: sessionUUID)
@@ -129,7 +130,8 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
             activity: PlainstrideWorkoutActivity(activityType),
             isIndoor: isIndoor,
             origin: .iPhone,
-            canonicalStartDate: nil
+            canonicalStartDate: nil,
+            companionType: companionType?.rawValue
         )
         lifecycle = .preparing
         connection = .connecting
@@ -407,7 +409,8 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
                 recordingDevice: .appleWatch,
                 healthKitOwnership: .appleWatchPrimary,
                 healthKitWorkoutExternalReference: nil
-            )
+            ),
+            companionType: ActivityCompanionType(safeDecoding: incoming.identity.companionType)
         )
     }
 

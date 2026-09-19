@@ -280,6 +280,10 @@ private struct ActivityRowCard: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
+
+                    if let companionType = activity.companionType {
+                        companionType.savedPill
+                    }
                 }
 
                 Spacer(minLength: 0)

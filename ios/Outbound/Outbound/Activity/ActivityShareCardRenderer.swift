@@ -173,6 +173,12 @@ private struct ActivityShareCardView: View {
                         .lineLimit(2)
                         .minimumScaleFactor(0.72)
 
+                    if let companionType = activity.companionType {
+                        Label(companionType.displayName, systemImage: companionType.systemImage)
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.86))
+                    }
+
                     Text(dateText.uppercased())
                         .font(.system(size: 24, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.76))

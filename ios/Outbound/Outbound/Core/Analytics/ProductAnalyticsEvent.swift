@@ -252,6 +252,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case liveShareEnabled = "live_share_enabled"
     case indoor
     case voiceGuideEnabled = "voice_guide_enabled"
+    case dogCompanionEnabled = "dog_companion_enabled"
     case durationBucket = "duration_bucket"
     case distanceBucket = "distance_bucket"
     case photoCountBucket = "photo_count_bucket"
@@ -311,11 +312,11 @@ enum ProductAnalyticsSchema {
         .appStartupResolved: [.destination, .latencyBucket, .sourceType],
         .activitySetupViewed: [.entrySource],
         .activityConfigurationChanged: [.changeType, .selectionType, .activityType, .goalType, .targetBucket, .sourceType],
-        .activityStarted: [.entrySource, .activityType, .goalType, .targetBucket, .musicEnabled, .routeSelected, .shoeSelected, .preRunPhotoAdded, .groupRunEnabled, .liveShareEnabled, .indoor, .voiceGuideEnabled, .participantCountBucket],
+        .activityStarted: [.entrySource, .activityType, .goalType, .targetBucket, .musicEnabled, .routeSelected, .shoeSelected, .preRunPhotoAdded, .groupRunEnabled, .liveShareEnabled, .indoor, .voiceGuideEnabled, .dogCompanionEnabled, .participantCountBucket],
         .activityPaused: [.sourceType],
         .activityResumed: [.sourceType, .durationBucket],
         .activityFinished: [.durationBucket, .distanceBucket, .goalCompletionBucket],
-        .activitySaved: [.activityType, .goalType, .durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket, .musicEnabled, .routeSelected, .shoeSelected, .groupRunEnabled, .indoor],
+        .activitySaved: [.activityType, .goalType, .durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket, .musicEnabled, .routeSelected, .shoeSelected, .groupRunEnabled, .indoor, .dogCompanionEnabled],
         .activitySaveIneligibleShown: [.activityType, .durationBucket, .distanceBucket],
         .activityDiscardPrompted: [.durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket],
         .activityDiscarded: [.durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket],

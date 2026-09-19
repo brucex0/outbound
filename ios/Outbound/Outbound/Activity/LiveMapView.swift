@@ -236,6 +236,7 @@ struct LiveMapView: View {
             isExpanded: $isWorkoutPanelExpanded,
             expandedHeight: expandedHeight,
             intent: intent,
+            companionType: recorder.companionType,
             elapsedText: recorder.elapsedSeconds.formatted(),
             elapsedSeconds: recorder.elapsedSeconds,
             paceLabel: recorder.state == .paused
