@@ -1197,6 +1197,7 @@ const socialActivitySelect = {
   elevationM: true,
   avgPace: true,
   energyKilocalories: true,
+  companionType: true,
   route: true,
 } as const;
 

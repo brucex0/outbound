@@ -16,6 +16,7 @@ import { reconcileActivityToCircles } from "../services/circles.js";
 
 const router = new Hono<AppEnv>();
 const activityTypes = ["running", "cycling", "hiking", "walking", "swimming", "strength", "mobility"] as const;
+const companionTypes = ["dog"] as const;
 const MAX_ACTIVITY_ROUTE_POINTS = 100_000;
 
 router.get("/", async (c) => {
@@ -89,6 +90,7 @@ function legacyClientData(activity: {
   elevationM: number | null;
   avgPace: number | null;
   avgHeartRate: number | null;
+  companionType: string | null;
   route: unknown;
   reflection: unknown;
   createdAt: Date;
@@ -112,6 +114,7 @@ function legacyClientData(activity: {
     title: activity.title ?? "Restored Run",
     guideNudge: "",
     reflection: activity.reflection,
+    companionType: activity.companionType,
     createdAt: activity.createdAt,
     startedAt: activity.startedAt,
     endedAt: activity.endedAt ?? new Date(activity.startedAt.getTime() + durationSecs * 1000),
@@ -155,6 +158,7 @@ const createSchema = z.object({
   followedRouteId: z.string().min(1).max(128).optional(),
   followedRouteCompleted: z.boolean().optional(),
   energyKilocalories: z.number().int().nonnegative().optional(),
+  companionType: z.enum(companionTypes).optional().nullable(),
   route: z
     .object({
       points: z
@@ -278,6 +282,7 @@ router.post("/", zValidator("json", createSchema), async (c) => {
     avgPace: body.avgPace,
     avgHeartRate: body.avgHeartRate,
     energyKilocalories: body.energyKilocalories,
+    companionType: body.companionType,
     followedRouteId: resolvedFollowedRouteId,
     route: normalizeRoute(body.route),
     splits: body.splits,

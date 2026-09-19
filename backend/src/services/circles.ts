@@ -276,6 +276,7 @@ export async function circlePayload(circleId: string, viewerId: string, includeH
           avgPace: true,
           avgHeartRate: true,
           energyKilocalories: true,
+          companionType: true,
         },
       },
     },

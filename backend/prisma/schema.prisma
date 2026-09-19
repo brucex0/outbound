@@ -419,6 +419,11 @@ model Activity {
   avgHeartRate       Int?
   energyKilocalories Int?
 
+  // Optional activity companion context. Only "dog" is supported; null means
+  // no companion. It records that the person brought a dog and never measures
+  // or describes the dog itself.
+  companionType      String?
+
   route                      Json? // GeoJSON Feature with LineString geometry
   splits                     Json? // Split[]
   reflection                 Json? // post-activity finish reflection saved by the client
