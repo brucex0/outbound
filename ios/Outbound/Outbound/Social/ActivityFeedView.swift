@@ -45,14 +45,7 @@ struct ActivityFeedView: View {
                         )
                     }
 
-                    switch selectedScope {
-                    case .squad:
-                        squadFeed
-                    case .clubs:
-                        clubsAndChallenges
-                    case .rivals:
-                        rivalBoard
-                    }
+                    feedRows
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
@@ -149,70 +142,81 @@ struct ActivityFeedView: View {
         .pickerStyle(.segmented)
     }
 
-    private var squadFeed: some View {
-        LazyVStack(spacing: 12) {
-            ForEach(socialStore.relayInvites) { invite in
-                RelayInviteCard(invite: invite)
-            }
+    // Keep all feed entries as direct children of the outer lazy stack. Nested lazy stacks
+    // create a second layout/cache boundary and make scrolling noticeably less smooth.
+    @ViewBuilder
+    private var feedRows: some View {
+        switch selectedScope {
+        case .squad:
+            squadFeedRows
+        case .clubs:
+            clubsAndChallengesRows
+        case .rivals:
+            rivalBoardRows
+        }
+    }
 
-            ForEach(SocialSeed.feedPosts) { post in
-                if !socialStore.blockedPersonIDs.contains(post.author.id) && !socialStore.reportedContentIDs.contains(post.id) {
-                    SocialFeedPostCard(
-                        post: post,
-                        isCheered: socialStore.cheeredPostIDs.contains(post.id),
-                        commentCount: socialStore.commentCount(for: post),
-                        onCheer: {
-                            toggleCheer(for: post)
-                        },
-                        onComment: {
-                            selectedCommentPost = post
-                        },
-                        onRunRoute: {
-                            routePrompt = "\(post.activity.routeName) is queued as a route idea for your next start."
-                        },
-                        onReport: {
-                            socialStore.reportContent(post.id)
-                        },
-                        onBlock: {
-                            socialStore.blockPerson(post.author.id)
-                        }
-                    )
-                }
+    @ViewBuilder
+    private var squadFeedRows: some View {
+        ForEach(socialStore.relayInvites) { invite in
+            RelayInviteCard(invite: invite)
+        }
+
+        ForEach(SocialSeed.feedPosts) { post in
+            if !socialStore.blockedPersonIDs.contains(post.author.id) && !socialStore.reportedContentIDs.contains(post.id) {
+                SocialFeedPostCard(
+                    post: post,
+                    isCheered: socialStore.cheeredPostIDs.contains(post.id),
+                    commentCount: socialStore.commentCount(for: post),
+                    onCheer: {
+                        toggleCheer(for: post)
+                    },
+                    onComment: {
+                        selectedCommentPost = post
+                    },
+                    onRunRoute: {
+                        routePrompt = "\(post.activity.routeName) is queued as a route idea for your next start."
+                    },
+                    onReport: {
+                        socialStore.reportContent(post.id)
+                    },
+                    onBlock: {
+                        socialStore.blockPerson(post.author.id)
+                    }
+                )
             }
         }
     }
 
-    private var clubsAndChallenges: some View {
-        LazyVStack(spacing: 12) {
-            ForEach(SocialSeed.clubs) { club in
-                SocialClubCard(
-                    club: club,
-                    isJoined: socialRecognitionStore.joinedClubIDs.contains(club.id)
-                ) {
-                    toggleClub(club)
-                }
+    @ViewBuilder
+    private var clubsAndChallengesRows: some View {
+        ForEach(SocialSeed.clubs) { club in
+            SocialClubCard(
+                club: club,
+                isJoined: socialRecognitionStore.joinedClubIDs.contains(club.id)
+            ) {
+                toggleClub(club)
             }
+        }
 
-            ForEach(SocialSeed.challenges) { challenge in
-                SocialChallengeCard(
-                    challenge: challenge,
-                    isJoined: socialStore.joinedChallengeIDs.contains(challenge.id)
-                ) {
-                    socialStore.toggleChallenge(challenge.id)
-                }
+        ForEach(SocialSeed.challenges) { challenge in
+            SocialChallengeCard(
+                challenge: challenge,
+                isJoined: socialStore.joinedChallengeIDs.contains(challenge.id)
+            ) {
+                socialStore.toggleChallenge(challenge.id)
             }
         }
     }
 
-    private var rivalBoard: some View {
-        LazyVStack(spacing: 12) {
-            RivalryHeaderCard(hasClaimedEdge: socialRecognitionStore.claimedRivalEdge) {
-                _ = socialRecognitionStore.claimRivalEdge()
-            }
+    @ViewBuilder
+    private var rivalBoardRows: some View {
+        RivalryHeaderCard(hasClaimedEdge: socialRecognitionStore.claimedRivalEdge) {
+            _ = socialRecognitionStore.claimRivalEdge()
+        }
 
-            ForEach(SocialSeed.rivals) { rival in
-                RivalRow(rival: rival)
-            }
+        ForEach(SocialSeed.rivals) { rival in
+            RivalRow(rival: rival)
         }
     }
 
