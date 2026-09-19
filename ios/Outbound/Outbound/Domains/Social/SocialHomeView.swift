@@ -1128,6 +1128,9 @@ struct SocialHomeView: View {
                         if let caption = post.caption, !caption.isEmpty {
                             Text(caption).font(.subheadline)
                         }
+                        if post.reactionCount > 0 {
+                            SocialCheerSummaryView(post: post)
+                        }
                         HStack(spacing: OutboundSpacing.compact) {
                             Button {
                                 Task { await toggleCheer(on: post) }
