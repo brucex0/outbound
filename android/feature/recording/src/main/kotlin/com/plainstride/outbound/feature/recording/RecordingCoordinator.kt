@@ -20,6 +20,7 @@ import com.plainstride.outbound.core.analytics.AnalyticsProperty
 import com.plainstride.outbound.core.analytics.ProductAnalytics
 import com.plainstride.outbound.core.database.ActiveSessionJournalDao
 import com.plainstride.outbound.core.database.ActiveSessionJournalEntity
+import com.plainstride.outbound.core.model.activity.ActivityCompanionType
 import java.util.UUID
 
 internal interface RecordingClock {
@@ -84,6 +85,7 @@ class RecordingCoordinator internal constructor(
         accountId: String,
         activityKind: ActivityKind,
         sessionId: String = UUID.randomUUID().toString(),
+        companionType: ActivityCompanionType? = null,
     ) = serialized(commandId) {
         if (_snapshot.value.status != RecordingStatus.IDLE) {
             ignored(commandId, "session_already_exists")
@@ -120,6 +122,7 @@ class RecordingCoordinator internal constructor(
             revision = 1,
             startedAtEpochMilliseconds = nowUtc,
             recordedAtEpochMilliseconds = nowUtc,
+            companionType = companionType,
         )
         beginCollection()
         persist(force = true)

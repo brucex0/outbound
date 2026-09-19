@@ -1,5 +1,6 @@
 package com.plainstride.outbound.feature.recording
 
+import com.plainstride.outbound.core.model.activity.ActivityCompanionType
 import kotlinx.serialization.Serializable
 
 enum class RecordingGoalType { FREESTYLE, DISTANCE, TIME, CALORIES, WORKOUT }
@@ -48,6 +49,7 @@ enum class RecordingGoalType { FREESTYLE, DISTANCE, TIME, CALORIES, WORKOUT }
     val indoor: Boolean = false,
     val voiceGuideEnabled: Boolean = true,
     val startImmediately: Boolean = false,
+    val companionType: ActivityCompanionType? = null,
 )
 
 enum class RecordingSurfaceMode { MAP, CAMERA }

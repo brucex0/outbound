@@ -19,6 +19,8 @@
     <string name="today_cheer">Anímame</string>
     <string name="today_choose_curated">Elige un entrenamiento guiado</string>
     <string name="today_collapse_card">Contraer tarjeta de entrenamiento</string>
+    <string name="today_companion_dog_title">Con perro</string>
+    <string name="today_companion_cleared_message">Con perro solo está disponible al correr, caminar, hacer senderismo o salir en bici.</string>
     <string name="today_companion_line">Una sesión clara, adaptada al trabajo que ya has hecho.</string>
     <string name="today_completed_reflection">Hoy cumpliste. Dale valor.</string>
     <string name="today_curated">Guiado</string>

@@ -27,6 +27,7 @@ import com.plainstride.outbound.core.database.ActivityTrackPointEntity
 import com.plainstride.outbound.core.database.ActivityWithDetails
 import com.plainstride.outbound.core.database.PlainstrideDatabase
 import com.plainstride.outbound.core.database.SyncOutboxEntity
+import com.plainstride.outbound.core.model.activity.ActivityCompanionType
 import com.plainstride.outbound.core.model.activity.ActivityPage
 import com.plainstride.outbound.core.model.activity.ActivityPhoto
 import com.plainstride.outbound.core.model.activity.ActivityReflection
@@ -196,6 +197,7 @@ private fun SavedActivity.toUploadRequest(): ActivityUploadRequest {
         route = track.takeIf { it.size > 1 }?.let { points -> ActivityRouteDto(points.map { ActivityRoutePointDto(it.timestamp, it.latitude, it.longitude, it.altitude, it.verticalAccuracy, it.startsNewSegment) }) },
         splits = PlainstrideJson.encodeToJsonElement(ListSerializer(ActivitySplit.serializer()), splits),
         reflection = reflection?.let { ActivityReflectionDto(it.title, it.body, it.highlight, it.progressNote) },
+        companionType = companionType?.name,
         clientData = clientData, clientUpdatedAt = localUpdatedAt,
     )
 }
@@ -206,7 +208,7 @@ private fun SavedActivity.toEntity() = ActivityEntity(
     elevationGainM, walkingStepCount, averageHeartRateBpm, maximumHeartRateBpm, heartRateSampleCount, energyKilocalories,
     PlainstrideJson.encodeToString(source), gearJson, goalJson, indoorJson, cadenceJson, heartRateZonesJson, activityEventId,
     followedRouteId, followedRouteCompleted, PlainstrideJson.encodeToString(recognitionBadgeIds), parseEpoch(localUpdatedAt),
-    serverUpdatedAt?.let(::parseEpoch), deletedAt?.let(::parseEpoch),
+    serverUpdatedAt?.let(::parseEpoch), deletedAt?.let(::parseEpoch), companionType?.name,
 )
 
 private fun ActivityTrackPoint.toEntity(activity: SavedActivity, index: Int) = ActivityTrackPointEntity(activity.accountId, activity.id, index, parseEpoch(timestamp), latitude, longitude, altitude, verticalAccuracy, startsNewSegment)
@@ -224,6 +226,7 @@ private fun ActivityWithDetails.toDomain(): SavedActivity = with(activity) {
         splits.sortedBy { it.splitIndex }.map { ActivitySplit(it.splitIndex, it.distanceM, it.durationSecs, it.paceSecsPerKm, it.elevationGainM, it.averageHeartRateBpm) },
         photos.sortedBy { it.takenAtEpochMs }.map { ActivityPhoto(it.photoId, instant(it.takenAtEpochMs), it.paceAtShot, it.heartRateAtShot, it.distanceAtShotM, it.latitude, it.longitude, it.captureContext, it.localRelativePath, it.remotePhotoId, it.remoteUpdatedAtEpochMs?.let(::instant), it.byteSize, it.sha256) },
         instant(localUpdatedAtEpochMs), serverUpdatedAtEpochMs?.let(::instant), deletedAtEpochMs?.let(::instant),
+        companionType?.let { value -> runCatching { ActivityCompanionType.valueOf(value) }.getOrNull() },
     )
 }
 
@@ -251,6 +254,7 @@ private fun JsonObject.toDomain(accountId: String, remote: RemoteActivityDto): S
             ?: array("recognitionBadgeIDs")?.mapNotNull { it.jsonPrimitive.contentOrNull }.orEmpty(),
         track = routePoints, splits = array("splits")?.mapIndexedNotNull(::split).orEmpty(),
         photos = remote.photos.map { ActivityPhoto(it.clientPhotoId ?: it.id, it.takenAt, it.paceAtShot, it.hrAtShot, it.distAtShot, it.latitude, it.longitude, it.captureContext, null, it.id, it.updatedAt, it.byteSize, it.sha256) },
+        companionType = string("companionType")?.let { value -> runCatching { ActivityCompanionType.valueOf(value.lowercase()) }.getOrNull() },
         localUpdatedAt = remote.clientUpdatedAt ?: remote.updatedAt, serverUpdatedAt = remote.updatedAt,
     )
 }.getOrNull()

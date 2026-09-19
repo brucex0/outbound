@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.plainstride.outbound.core.model.activity.ActivityCompanionType
 
 /** Lifecycle-neutral UI gateway; a ViewModel can connect/disconnect without owning recording. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -53,7 +54,8 @@ class RecordingSessionClient(context: Context) : AutoCloseable {
         activityKind: ActivityKind,
         permission: LocationPermissionState,
         commandId: String,
-    ) = RecordingService.start(appContext, accountId, activityKind, permission, commandId)
+        companionType: ActivityCompanionType? = null,
+    ) = RecordingService.start(appContext, accountId, activityKind, permission, commandId, companionType = companionType)
 
     fun recover(
         accountId: String,

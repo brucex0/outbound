@@ -50,6 +50,7 @@ data class SavedActivity(
     val localUpdatedAt: String,
     val serverUpdatedAt: String? = null,
     val deletedAt: String? = null,
+    val companionType: ActivityCompanionType? = null,
 )
 
 data class ActivityPage(val activities: List<SavedActivity>, val offset: Int, val limit: Int, val hasMore: Boolean)

@@ -1,5 +1,6 @@
 package com.plainstride.outbound.feature.recording
 
+import com.plainstride.outbound.core.model.activity.ActivityCompanionType
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -48,6 +49,7 @@ data class RecordingSnapshot(
     val latestLocation: RecordedLocationSample? = null,
     val track: List<RecordedLocationSample> = emptyList(),
     val recovered: Boolean = false,
+    val companionType: ActivityCompanionType? = null,
 ) {
     val saveEligibility: ActivitySaveEligibility
         get() = ActivitySaveEligibility.evaluate(elapsedSeconds, distanceMeters)

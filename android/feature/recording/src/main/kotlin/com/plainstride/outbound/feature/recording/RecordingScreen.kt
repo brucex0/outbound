@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -48,6 +49,7 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
@@ -667,6 +669,14 @@ private fun CompactSessionDashboard(
                     contentDescription = stringResource(if (snapshot.status == RecordingStatus.ACTIVE) R.string.recording_pause else R.string.recording_resume),
                 )
             }
+            if (configuration.companionType != null) {
+                Icon(
+                    Icons.Filled.Pets,
+                    contentDescription = stringResource(R.string.recording_companion_accessibility),
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
             if (snapshot.status == RecordingStatus.PAUSED) FilledIconButton(
                 onClick = onFinish,
                 enabled = finishEnabled,
@@ -701,6 +711,14 @@ private fun ExpandedSessionDashboard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Box(Modifier.size(8.dp).background(if (paused) finishColor else actionColor, CircleShape))
+            if (configuration.companionType != null) {
+                Icon(
+                    Icons.Filled.Pets,
+                    contentDescription = stringResource(R.string.recording_companion_accessibility),
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
             Column(Modifier.weight(1f)) {
                 Text(
                     configuration.title ?: stringResource(R.string.recording_activity_in_progress),

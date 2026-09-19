@@ -12,6 +12,13 @@
     <string name="recording_cancel">取消</string>
     <string name="recording_capture_photo">拍照</string>
     <string name="recording_close">关闭</string>
+    <string name="recording_companion_accessibility">和狗狗一起</string>
+    <string name="recording_companion_accessibility_hint">将这次活动标记为与爱犬同行</string>
+    <string name="recording_companion_cleared_message">“和狗狗一起”仅适用于跑步、步行、徒步和骑行。</string>
+    <string name="recording_companion_title_hike">带狗徒步</string>
+    <string name="recording_companion_title_ride">带狗骑行</string>
+    <string name="recording_companion_title_run">带狗跑步</string>
+    <string name="recording_companion_title_walk">带狗步行</string>
     <string name="recording_continue">继续</string>
     <string name="recording_default_activity_title">Plainstride 活动</string>
     <string name="recording_discard">丢弃</string>

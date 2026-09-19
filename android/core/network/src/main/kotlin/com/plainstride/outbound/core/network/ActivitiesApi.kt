@@ -49,6 +49,7 @@ data class ActivityUploadRequest(
     val route: ActivityRouteDto? = null,
     val splits: JsonElement? = null,
     val reflection: ActivityReflectionDto? = null,
+    val companionType: String? = null,
     val clientData: JsonObject,
     val clientUpdatedAt: String,
 )
@@ -88,6 +89,7 @@ data class RemoteActivityDto(
     val createdAt: String,
     val updatedAt: String,
     val photos: List<RemoteActivityPhotoDto> = emptyList(),
+    val companionType: String? = null,
 )
 
 @Serializable data class ActivityListResponse(val activities: List<RemoteActivityDto>, val hasMore: Boolean)

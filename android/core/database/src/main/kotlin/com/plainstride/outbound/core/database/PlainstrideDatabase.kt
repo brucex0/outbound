@@ -19,7 +19,7 @@ import androidx.room.withTransaction
         CyclePreferenceEntity::class,
         CycleWellbeingEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class PlainstrideDatabase : RoomDatabase() {

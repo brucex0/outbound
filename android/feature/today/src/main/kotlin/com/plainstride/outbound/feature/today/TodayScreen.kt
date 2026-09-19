@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Hiking
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material.icons.filled.SpeakerNotesOff
@@ -80,6 +81,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalUriHandler
+import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -114,6 +116,7 @@ data class TodayManualLaunch(
     val voiceGuideEnabled: Boolean = true,
     val curatedWorkout: StandaloneWorkout? = null,
     val curatedWorkoutCatalogVersion: Int? = null,
+    val companionType: com.plainstride.outbound.core.model.activity.ActivityCompanionType? = null,
 )
 data class TodayLaunchOptions(val indoor: Boolean, val voiceGuideEnabled: Boolean)
 
@@ -229,6 +232,7 @@ fun TodayScreen(
     var goalChoice by rememberSaveable { mutableStateOf(TodayGoalChoice.FREE) }
     var indoor by rememberSaveable { mutableStateOf(false) }
     var voiceGuideEnabled by rememberSaveable { mutableStateOf(true) }
+    var companionType by rememberSaveable { mutableStateOf<com.plainstride.outbound.core.model.activity.ActivityCompanionType?>(null) }
     var curatedWorkout by remember { mutableStateOf<StandaloneWorkout?>(null) }
     var distanceMeters by rememberSaveable { mutableStateOf(5_000.0) }
     var durationSeconds by rememberSaveable { mutableStateOf(1_800L) }
@@ -255,7 +259,7 @@ fun TodayScreen(
                 ?: onStartFreestyle()
         } else {
             val catalogVersion = (state.catalog as? CachedResource.Available)?.value?.version
-            onStartManual(TodayManualLaunch(activityChoice, goalChoice, distanceMeters, durationSeconds, calories, indoor, voiceGuideEnabled, curatedWorkout, catalogVersion))
+            onStartManual(TodayManualLaunch(activityChoice, goalChoice, distanceMeters, durationSeconds, calories, indoor, voiceGuideEnabled, curatedWorkout, catalogVersion, companionType))
         }
     }
     LaunchedEffect(startRequest) {
@@ -331,6 +335,12 @@ fun TodayScreen(
                 }
             }
             }
+            if (companionType != null &&
+                (activityChoice == TodayActivityChoice.PLANNED || !com.plainstride.outbound.core.model.activity.ActivityCompanionType.isEligibleFor(activityChoice.toActivityType()))
+            ) {
+                companionType = null
+                Toast.makeText(context, context.getString(R.string.today_companion_cleared_message), Toast.LENGTH_SHORT).show()
+            }
             ActivityLaunchDock(
                 suggestion = suggestion,
                 activeSession = state.activeSession,
@@ -339,10 +349,15 @@ fun TodayScreen(
                 goalChoice = goalChoice,
                 indoor = indoor,
                 voiceGuideEnabled = voiceGuideEnabled,
+                companionType = companionType,
                 onActivityChoice = { activityChoice = it; onLaunchConfigurationChanged("activity_type", it.name.lowercase()) },
                 onGoalChoice = { goalChoice = it; if (it == TodayGoalChoice.CURATED) showsCatalog = true; onLaunchConfigurationChanged("goal", it.name.lowercase()) },
                 onIndoorChanged = { indoor = it; onLaunchConfigurationChanged("environment", if (it) "indoor" else "outdoor") },
                 onVoiceGuideChanged = { voiceGuideEnabled = it; onLaunchConfigurationChanged("voice_guide", if (it) "on" else "off") },
+                onCompanionChanged = { enabled ->
+                    companionType = if (enabled) com.plainstride.outbound.core.model.activity.ActivityCompanionType.dog else null
+                    onLaunchConfigurationChanged("companion", if (enabled) "on" else "off")
+                },
                 onReturnToSession = onReturnToSession,
                 onOpenDetails = { showsDetail = true },
                 onOpenMusic = onOpenMusic,
@@ -553,10 +568,12 @@ private fun ActivityLaunchDock(
     goalChoice: TodayGoalChoice,
     indoor: Boolean,
     voiceGuideEnabled: Boolean,
+    companionType: com.plainstride.outbound.core.model.activity.ActivityCompanionType?,
     onActivityChoice: (TodayActivityChoice) -> Unit,
     onGoalChoice: (TodayGoalChoice) -> Unit,
     onIndoorChanged: (Boolean) -> Unit,
     onVoiceGuideChanged: (Boolean) -> Unit,
+    onCompanionChanged: (Boolean) -> Unit,
     onReturnToSession: () -> Unit,
     onOpenDetails: () -> Unit,
     onOpenMusic: () -> Unit,
@@ -582,6 +599,14 @@ private fun ActivityLaunchDock(
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 UtilityButton(stringResource(R.string.today_music), Icons.Default.LibraryMusic, onOpenMusic)
                 UtilityButton(stringResource(R.string.today_voice_guide), if (voiceGuideEnabled) Icons.Default.Speaker else Icons.Default.SpeakerNotesOff, { onVoiceGuideChanged(!voiceGuideEnabled) }, voiceGuideEnabled)
+                if (activityChoice != TodayActivityChoice.PLANNED && com.plainstride.outbound.core.model.activity.ActivityCompanionType.isEligibleFor(activityChoice.toActivityType())) {
+                    UtilityButton(
+                        label = stringResource(R.string.today_companion_dog_title),
+                        icon = Icons.Default.Pets,
+                        onClick = { onCompanionChanged(companionType == null) },
+                        selected = companionType != null,
+                    )
+                }
                 UtilityButton(stringResource(R.string.today_cheer), Icons.Default.NotificationsActive, onOpenLiveTrack)
                 UtilityButton(stringResource(R.string.today_shoes), Icons.Default.DirectionsRun, onOpenShoes)
                 UtilityButton(stringResource(if (indoor) R.string.today_indoor else R.string.today_outdoor), if (indoor) Icons.Default.HomeWork else Icons.Default.WbSunny, { onIndoorChanged(!indoor) }, true)
@@ -644,6 +669,14 @@ private fun TodayActivityChoice.catalogSportNames(): Set<String> = when (this) {
     TodayActivityChoice.WALK -> setOf("walk", "walking")
     TodayActivityChoice.HIKE -> setOf("hike", "hiking")
     TodayActivityChoice.BIKE -> setOf("bike", "biking", "cycle", "cycling")
+}
+
+private fun TodayActivityChoice.toActivityType(): com.plainstride.outbound.core.model.activity.ActivityType = when (this) {
+    // PLANNED resolves through the plan; the companion control is never shown for it.
+    TodayActivityChoice.PLANNED, TodayActivityChoice.RUN -> com.plainstride.outbound.core.model.activity.ActivityType.running
+    TodayActivityChoice.WALK -> com.plainstride.outbound.core.model.activity.ActivityType.walking
+    TodayActivityChoice.HIKE -> com.plainstride.outbound.core.model.activity.ActivityType.hiking
+    TodayActivityChoice.BIKE -> com.plainstride.outbound.core.model.activity.ActivityType.cycling
 }
 
 private fun TodayActivityChoice.labelResource() = when (this) {

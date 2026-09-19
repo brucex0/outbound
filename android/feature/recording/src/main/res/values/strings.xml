@@ -12,6 +12,13 @@
     <string name="recording_cancel">Cancel</string>
     <string name="recording_capture_photo">Capture photo</string>
     <string name="recording_close">Close</string>
+    <string name="recording_companion_accessibility">With dog</string>
+    <string name="recording_companion_accessibility_hint">Tags this activity as taken with your dog</string>
+    <string name="recording_companion_cleared_message">With dog is only available for runs, walks, hikes, and rides.</string>
+    <string name="recording_companion_title_hike">Dog hike</string>
+    <string name="recording_companion_title_ride">Dog ride</string>
+    <string name="recording_companion_title_run">Dog run</string>
+    <string name="recording_companion_title_walk">Dog walk</string>
     <string name="recording_continue">Continue</string>
     <string name="recording_default_activity_title">Plainstride activity</string>
     <string name="recording_discard">Discard</string>

@@ -48,6 +48,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
+import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Close
@@ -370,7 +371,17 @@ private fun ActivityHistoryScreen(
                     Text(activity.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(activityDate(activity.startedAt), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                ActivityTypeBadge(activity.type)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    ActivityTypeBadge(activity.type)
+                    if (activity.companionType != null) {
+                        Icon(
+                            Icons.Filled.Pets,
+                            contentDescription = null,
+                            modifier = Modifier.padding(top = 4.dp).size(14.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 SummaryMetric(formatDistance(activity.distanceM, unitSystem), stringResource(R.string.activity_distance))
@@ -629,7 +640,17 @@ private fun ActivityStatsHero(
     Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(activity.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 2)
-            Text(activityDate(activity.startedAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (activity.companionType != null) {
+                    Icon(
+                        Icons.Filled.Pets,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Text(activityDate(activity.startedAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         if (activity.photos.isNotEmpty()) ActivityPhotoStrip(activity.photos, selectedPhotoIndex, onSelectPhoto, photoBytes, unitSystem)
         Column(Modifier.padding(horizontal = 28.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {

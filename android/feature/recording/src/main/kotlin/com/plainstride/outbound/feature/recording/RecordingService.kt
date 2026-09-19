@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import com.plainstride.outbound.core.analytics.ProductAnalytics
 import com.plainstride.outbound.core.database.PlainstrideDatabase
+import com.plainstride.outbound.core.model.activity.ActivityCompanionType
 import java.util.UUID
 import javax.inject.Inject
 
@@ -72,6 +73,9 @@ class RecordingService : Service() {
                     accountId = intent.requireStringExtra(EXTRA_ACCOUNT_ID),
                     activityKind = intent.activityKindExtra(),
                     sessionId = intent.getStringExtra(EXTRA_SESSION_ID) ?: UUID.randomUUID().toString(),
+                    companionType = intent.getStringExtra(EXTRA_COMPANION_TYPE)?.let { raw ->
+                        runCatching { ActivityCompanionType.valueOf(raw) }.getOrNull()
+                    },
                 )
                 ACTION_RECOVER -> coordinator.recover(intent.requireStringExtra(EXTRA_ACCOUNT_ID), commandId)
                 ACTION_PAUSE -> coordinator.pause(commandId)
@@ -177,6 +181,7 @@ class RecordingService : Service() {
         private const val EXTRA_SESSION_ID = "recording.session_id"
         private const val EXTRA_ACTIVITY_KIND = "recording.activity_kind"
         private const val EXTRA_PERMISSION = "recording.permission"
+        private const val EXTRA_COMPANION_TYPE = "recording.companion_type"
         private const val ACTION_START = "com.plainstride.outbound.recording.START"
         private const val ACTION_RECOVER = "com.plainstride.outbound.recording.RECOVER"
         private const val ACTION_PAUSE = "com.plainstride.outbound.recording.PAUSE"
@@ -192,6 +197,7 @@ class RecordingService : Service() {
             permission: LocationPermissionState,
             commandId: String = UUID.randomUUID().toString(),
             sessionId: String = UUID.randomUUID().toString(),
+            companionType: ActivityCompanionType? = null,
         ) = dispatch(context, ACTION_START, commandId) {
             require(permission == LocationPermissionState.PRECISE || permission == LocationPermissionState.APPROXIMATE) {
                 "Location permission must be granted before starting an outdoor recording."
@@ -200,6 +206,7 @@ class RecordingService : Service() {
             putExtra(EXTRA_ACTIVITY_KIND, activityKind.name)
             putExtra(EXTRA_PERMISSION, permission.name)
             putExtra(EXTRA_SESSION_ID, sessionId)
+            companionType?.let { putExtra(EXTRA_COMPANION_TYPE, it.name) }
         }
 
         fun recover(

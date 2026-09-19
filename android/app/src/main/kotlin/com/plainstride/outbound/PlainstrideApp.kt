@@ -748,6 +748,7 @@ private fun TodayManualLaunch.toRecordingLaunch(defaultGearId: String?): Recordi
         indoor = indoor,
         voiceGuideEnabled = voiceGuideEnabled,
         startImmediately = true,
+        companionType = companionType,
     )
 }
 

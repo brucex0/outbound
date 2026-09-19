@@ -12,6 +12,13 @@
     <string name="recording_cancel">Cancelar</string>
     <string name="recording_capture_photo">Hacer foto</string>
     <string name="recording_close">Cerrar</string>
+    <string name="recording_companion_accessibility">Con perro</string>
+    <string name="recording_companion_accessibility_hint">Marca esta actividad como realizada con tu perro</string>
+    <string name="recording_companion_cleared_message">Con perro solo está disponible al correr, caminar, hacer senderismo o salir en bici.</string>
+    <string name="recording_companion_title_hike">Senderismo con perro</string>
+    <string name="recording_companion_title_ride">Ciclismo con perro</string>
+    <string name="recording_companion_title_run">Carrera con perro</string>
+    <string name="recording_companion_title_walk">Paseo con perro</string>
     <string name="recording_continue">Continuar</string>
     <string name="recording_default_activity_title">Actividad de Plainstride</string>
     <string name="recording_discard">Descartar</string>

@@ -19,6 +19,8 @@
     <string name="today_cheer">为我加油</string>
     <string name="today_choose_curated">选择精选训练</string>
     <string name="today_collapse_card">收起训练卡片</string>
+    <string name="today_companion_dog_title">和狗狗一起</string>
+    <string name="today_companion_cleared_message">“和狗狗一起”仅适用于跑步、步行、徒步和骑行。</string>
     <string name="today_companion_line">结合你已经完成的训练，为今天安排一节清晰的课程。</string>
     <string name="today_completed_reflection">你今天做到了，这一步值得肯定。</string>
     <string name="today_curated">精选</string>

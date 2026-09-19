@@ -53,6 +53,7 @@ data class ActivityEntity(
     val localUpdatedAtEpochMs: Long,
     val serverUpdatedAtEpochMs: Long?,
     val deletedAtEpochMs: Long?,
+    val companionType: String?,
 )
 
 @Entity(

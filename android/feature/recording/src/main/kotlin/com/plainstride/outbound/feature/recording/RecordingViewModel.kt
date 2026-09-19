@@ -25,6 +25,7 @@ import com.plainstride.outbound.core.data.ActivitySyncScheduler
 import com.plainstride.outbound.core.data.RecordedActivityDraft
 import com.plainstride.outbound.core.data.RecordedActivityFactory
 import com.plainstride.outbound.core.data.RecordedTrackPointDraft
+import com.plainstride.outbound.core.model.activity.ActivityCompanionType
 import com.plainstride.outbound.core.model.activity.ActivityPhoto
 import com.plainstride.outbound.core.model.activity.ActivityReflection
 import com.plainstride.outbound.core.model.activity.ActivityType
@@ -124,13 +125,14 @@ class RecordingViewModel @Inject constructor(
         val launch = mutableState.value.launch
         mutableState.value = mutableState.value.copy(startRequested = true, countdown = null, countdownVoiceReady = false)
         context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).edit().putString(LAUNCH_KEY,launchJson.encodeToString(launch)).apply()
-        client.start(accountId, launch.activityKind, permission, newCommandId())
+        client.start(accountId, launch.activityKind, permission, newCommandId(), launch.companionType)
         analytics.record(AnalyticsEvent("activity_started", mapOf(
             AnalyticsProperty.Source to launch.entrySource,
             AnalyticsProperty.ActivityType to launch.activityKind.name.lowercase(),
             AnalyticsProperty.GoalType to launch.goal.type.name.lowercase(),
             AnalyticsProperty.Permission to permission.name.lowercase(),
             AnalyticsProperty.VoiceGuideEnabled to launch.voiceGuideEnabled,
+            AnalyticsProperty.DogCompanionEnabled to (launch.companionType != null),
             AnalyticsProperty.UnitSystem to presentationUnitSystem.name,
         )))
     }
@@ -218,6 +220,18 @@ class RecordingViewModel @Inject constructor(
     fun markSaved(){client.markSaved(newCommandId());clearLaunch()}
     private fun clearLaunch(){context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).edit().remove(LAUNCH_KEY).apply()}
 
+    private fun companionTitleRes(kind: ActivityKind): Int = when (kind) {
+        ActivityKind.WALKING -> R.string.recording_companion_title_walk
+        ActivityKind.HIKING -> R.string.recording_companion_title_hike
+        ActivityKind.CYCLING -> R.string.recording_companion_title_ride
+        else -> R.string.recording_companion_title_run
+    }
+
+    /** Freestyle saves earn a localized Dog run/walk/hike/ride title; planned and curated keep theirs. */
+    private fun savedActivityTitle(launch: RecordingLaunchConfiguration): String = launch.title
+        ?: launch.companionType?.let { context.getString(companionTitleRes(launch.activityKind)) }
+        ?: context.getString(R.string.recording_default_activity_title)
+
     /** Returns only after the activity and its outbox operation are committed to Room. */
     suspend fun saveFinished(
         review: RecordedActivityReview,
@@ -238,7 +252,7 @@ class RecordingViewModel @Inject constructor(
                     sessionId = sessionId,
                     accountId = accountId,
                     type = snapshot.activityKind.toActivityType(),
-                    title = mutableState.value.launch.title ?: context.getString(R.string.recording_default_activity_title),
+                    title = savedActivityTitle(mutableState.value.launch),
                     startedAtEpochMs = startedAt,
                     endedAtEpochMs = snapshot.recordedAtEpochMilliseconds,
                     durationSecs = snapshot.elapsedSeconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
@@ -254,6 +268,7 @@ class RecordingViewModel @Inject constructor(
                             startsNewSegment = index == 0,
                         )
                     },
+                    companionType = mutableState.value.launch.companionType,
                 ),
                 savedAt,
             )
@@ -275,6 +290,8 @@ class RecordingViewModel @Inject constructor(
                 ReflectionChoice.TOUGH -> R.string.recording_reflection_tough
             })
             activities.save(base.copy(
+                title = savedActivityTitle(mutableState.value.launch),
+                companionType = mutableState.value.launch.companionType,
                 gearJson=mutableState.value.launch.gearId?.let { "{\"id\":\"$it\"}" },
                 indoorJson="{\"indoor\":${mutableState.value.launch.indoor}}",
                 followedRouteId=mutableState.value.launch.followedRoute?.id,
@@ -309,6 +326,7 @@ class RecordingViewModel @Inject constructor(
             analytics.record(AnalyticsEvent("activity_saved_locally", mapOf(
                 AnalyticsProperty.Result to "success",
                 AnalyticsProperty.ActivityType to snapshot.activityKind.name.lowercase(),
+                AnalyticsProperty.DogCompanionEnabled to (mutableState.value.launch.companionType != null),
             )))
             RecordedActivitySaveResult(saved = true, photoAlbumExport = photoAlbumExport)
         }.getOrElse {

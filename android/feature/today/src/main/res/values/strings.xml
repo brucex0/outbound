@@ -19,6 +19,8 @@
     <string name="today_cheer">Cheer me on</string>
     <string name="today_choose_curated">Choose a curated workout</string>
     <string name="today_collapse_card">Collapse workout card</string>
+    <string name="today_companion_dog_title">With dog</string>
+    <string name="today_companion_cleared_message">With dog is only available for runs, walks, hikes, and rides.</string>
     <string name="today_companion_line">A clear session, shaped around the work you have already done.</string>
     <string name="today_completed_reflection">You showed up today. Let that count.</string>
     <string name="today_curated">Curated</string>

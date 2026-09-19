@@ -1,6 +1,7 @@
 package com.plainstride.outbound.core.data
 
 import java.time.Instant
+import com.plainstride.outbound.core.model.activity.ActivityCompanionType
 import com.plainstride.outbound.core.model.activity.ActivityTrackPoint
 import com.plainstride.outbound.core.model.activity.ActivityType
 import com.plainstride.outbound.core.model.activity.SavedActivity
@@ -17,6 +18,7 @@ data class RecordedActivityDraft(
     val distanceM: Double,
     val elevationGainM: Double,
     val track: List<RecordedTrackPointDraft>,
+    val companionType: ActivityCompanionType? = null,
 )
 
 data class RecordedTrackPointDraft(
@@ -55,6 +57,7 @@ object RecordedActivityFactory {
                 )
             },
             localUpdatedAt = savedAt.toString(),
+            companionType = draft.companionType,
         )
     }
 }
