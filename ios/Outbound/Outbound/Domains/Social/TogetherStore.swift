@@ -135,11 +135,23 @@ final class TogetherStore: ObservableObject {
             errorMessage = nil
             homeRefreshRevision += 1
         } catch {
-            guard generation == authGeneration else { return }
+            // SwiftUI cancels this task whenever the view's `.task(id:)`
+            // identity changes or the view disappears — for example when a
+            // background activity sync lands mid-pull. Cancellation means the
+            // request never finished through no fault of its own; treating it
+            // as a failure surfaced a bogus "couldn't refresh" toast even
+            // though the server responded fine.
+            guard !Self.isCancellation(error), generation == authGeneration else { return }
             errorMessage = state.upcomingRuns.isEmpty && state.posts.isEmpty
                 ? "Together is unavailable. Your private training remains available."
                 : "Showing saved Together activity."
         }
+    }
+
+    private static func isCancellation(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+        if let urlError = error as? URLError { return urlError.code == .cancelled }
+        return false
     }
 
     // Session recovery after a refresh-token rotation blip can take a beat
@@ -543,7 +555,9 @@ final class TogetherStore: ObservableObject {
             persistConnections()
             errorMessage = nil
         } catch {
-            guard generation == authGeneration else { return }
+            // A cancelled refresh (view identity change, navigation away)
+            // is not a refresh failure — stay silent.
+            guard !Self.isCancellation(error), generation == authGeneration else { return }
             errorMessage = error.localizedDescription
         }
     }
@@ -858,7 +872,9 @@ final class TogetherStore: ObservableObject {
             notifications = refreshedNotifications
             errorMessage = nil
         } catch {
-            guard generation == authGeneration else { return }
+            // A cancelled refresh (view identity change, navigation away)
+            // is not a refresh failure — stay silent.
+            guard !Self.isCancellation(error), generation == authGeneration else { return }
             errorMessage = error.localizedDescription
         }
     }
@@ -911,7 +927,9 @@ final class TogetherStore: ObservableObject {
             discoverableGroups = refreshedGroups
             errorMessage = nil
         } catch {
-            guard generation == authGeneration else { return }
+            // A cancelled refresh (view identity change, navigation away)
+            // is not a refresh failure — stay silent.
+            guard !Self.isCancellation(error), generation == authGeneration else { return }
             errorMessage = error.localizedDescription
         }
     }
