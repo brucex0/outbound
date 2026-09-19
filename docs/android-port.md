@@ -236,7 +236,7 @@ Gate:
 
 Deliverables:
 
-- Foreground recording service, map/camera modes, countdown, goals, structured workouts, GPS filtering, elevation, pause segments, live metrics, photo capture, active-session journal, finish reflection, discard confirmation, and local save.
+- Foreground recording service, map/camera modes, countdown, goals, structured workouts, GPS filtering, elevation, pause segments, live metrics, photo capture, active-session journal, finish reflection, discard confirmation, and local save. Launch state carries the optional `With dog` companion context through the journal, saved activities, and upload/restore; see `docs/dog-companion-activities.md`.
 - Notification-channel and permission flows needed for recording.
 - Battery, thermal, storage, lifecycle, and process-death handling.
 

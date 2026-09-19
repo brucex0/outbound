@@ -2,7 +2,16 @@
 
 Open this when designing or implementing the `With dog` activity context across setup, recording, saved activities, progress, coaching, or Social.
 
-Status: approved product direction; not yet implemented.
+Status: implemented across backend, iOS, and Android.
+
+## Implementation Notes
+
+- Contracts represent the context as the optional typed value `companionType: null | "dog"` (Prisma `Activity.companionType` with a nullable-column migration, no backfill; Swift `ActivityCompanionType`; Kotlin `@Serializable ActivityCompanionType`). Missing data decodes as `null` everywhere; unknown read values are dropped safely and never re-sent.
+- The activity create/update validator accepts only `"dog"` or `null`. Uploads that omit the field do not erase a stored value during conflict resolution; an explicit `null` clears it.
+- iOS threads the value through `RecordView` prepared/active state, `ActiveSessionJournal` recovery, every `SavedActivity` reconstruction path, uploads, sync snapshots, and phone/watch handoff via `PlainstrideWorkoutIdentity`. Android threads it through the Today launch configuration, `RecordingService` intents, `RecordingSnapshot` (serialized into the active-session journal), `SavedActivity`/Room, upload requests, and remote restore.
+- Freestyle saves gain localized Dog run/walk/hike/ride titles; planned and curated workout titles are untouched, and the canonical activity type never changes.
+- Analytics add the bounded `dog_companion_enabled` boolean to `activity_started` and `activity_saved`, reuse `activity_configuration_changed` with `companion: on/off`, and emit `feature_exposed` with `feature=dog_companion` on first setup use. No pet identity, pet metrics, or free text is ever recorded.
+- The Android Room schema bumps to version 4; pre-release destructive migration resets local activity data per the data policy.
 
 ## Product Decision
 
