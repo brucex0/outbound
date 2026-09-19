@@ -223,6 +223,47 @@ final class OutboundUITests: XCTestCase {
     }
 
     @MainActor
+    func testDemoCaptureHarvestHalfMarathon() throws {
+        let app = launchDemoCaptureApp()
+
+        let todayTab = app.tabBars.buttons["Today"]
+        XCTAssertTrue(todayTab.waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["Redmond Harvest Half Marathon"].waitForExistence(timeout: 8))
+        pacedPause(6)
+
+        todayTab.tap()
+
+        let pauseButton = app.buttons["Pause activity"]
+        XCTAssertTrue(pauseButton.waitForExistence(timeout: 12))
+        XCTAssertTrue(app.staticTexts["Run Simulation"].waitForExistence(timeout: 5))
+        pacedPause(3)
+
+        let advanceButton = app.buttons["+5m"]
+        XCTAssertTrue(advanceButton.waitForExistence(timeout: 5))
+        advanceButton.tap()
+        pacedPause(2)
+        advanceButton.tap()
+        pacedPause(4)
+
+        pauseButton.tap()
+        let resumeButton = app.buttons["Resume activity"]
+        XCTAssertTrue(resumeButton.waitForExistence(timeout: 5))
+        pacedPause(2)
+        resumeButton.tap()
+        XCTAssertTrue(pauseButton.waitForExistence(timeout: 5))
+        pacedPause(3)
+
+        pauseButton.tap()
+        let finishButton = app.buttons["Finish activity"]
+        XCTAssertTrue(finishButton.waitForExistence(timeout: 5))
+        pacedPause(1)
+        finishButton.tap()
+
+        XCTAssertTrue(app.buttons["Save activity"].waitForExistence(timeout: 8))
+        pacedPause(6)
+    }
+
+    @MainActor
     func testLaunchPerformance() throws {
         // This measures how long it takes to launch your application.
         measure(metrics: [XCTApplicationLaunchMetric()]) {
@@ -244,6 +285,29 @@ final class OutboundUITests: XCTestCase {
         app.launchArguments += extraArguments
         app.launch()
         return app
+    }
+
+    @MainActor
+    private func launchDemoCaptureApp() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US",
+            "-OutboundUseMockMusic",
+            "-OutboundDisableFirebase",
+            "-OutboundSkipOnboarding",
+            "-OutboundDemoCapture",
+            "-OutboundSimulatedHarvestRun",
+            "-measurement_unit_system_v1", "metric",
+            "-workout_reminders_enabled_v1", "NO",
+            "-new_user_onboarding_completed_v2.UI test session", "YES",
+        ]
+        app.launch()
+        return app
+    }
+
+    private func pacedPause(_ seconds: TimeInterval) {
+        Thread.sleep(forTimeInterval: seconds)
     }
 
     @MainActor

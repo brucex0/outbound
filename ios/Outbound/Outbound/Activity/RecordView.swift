@@ -1177,11 +1177,21 @@ struct RecordView: View {
         )
         trackFeatureExposure("live_guidance")
         showCamera = true
+#if DEBUG
+        if !ProcessInfo.processInfo.arguments.contains("-OutboundDemoCapture") {
+            phoneWorkoutCoordinator.preparePhoneFirst(
+                activityType: activeIntent?.resolvedActivityType ?? .running,
+                isIndoor: isIndoorSession,
+                companionType: isCompanionContextEligible ? companionType : nil
+            )
+        }
+#else
         phoneWorkoutCoordinator.preparePhoneFirst(
             activityType: activeIntent?.resolvedActivityType ?? .running,
             isIndoor: isIndoorSession,
             companionType: isCompanionContextEligible ? companionType : nil
         )
+#endif
         beginStartCountdown()
     }
 

@@ -97,6 +97,7 @@ Primary flow:
 | First-party Apple authentication and sessions | `docs/superpowers/specs/2026-08-20-first-party-auth-sessions-design.md` | Approved identity, token, refresh, migration, and iOS security contract |
 | First-party auth implementation steps | `docs/superpowers/plans/2026-08-20-first-party-auth-sessions.md` | Backend, iOS, tooling, documentation, and verification tasks |
 | Builds, tests, device install, signing, simulator IDs | `docs/build-test-device.md` | Build-only checks, test commands, device IDs, entitlement constraints |
+| Repeatable iOS demo video capture and exports | `docs/ios-demo-capture.md` | Harvest Half Marathon UI-test story, Simulator recording, privacy controls, and raw/social/loop outputs |
 | TestFlight, App Store archive, metadata, privacy, submission | `docs/app-store-release.md` | Release build checklist, App Store Connect inputs, privacy review, and owner decisions |
 | Current TestFlight and App Store submission copy and owner fill-ins | `docs/testflight-1.0.md` | Copy-ready beta description, public-release notes, test instructions, review notes, privacy draft, and upload checklist |
 

@@ -194,6 +194,11 @@ final class TooltipCoordinator: ObservableObject {
     }
 
     private func isEligible(_ tooltip: AppTooltip) -> Bool {
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-OutboundDemoCapture") {
+            return false
+        }
+#endif
         let legacyDismissed = tooltip.legacyDismissedKey.map(defaults.bool(forKey:)) ?? false
         return !legacyDismissed
             && !defaults.bool(forKey: dismissedKey(for: tooltip))
