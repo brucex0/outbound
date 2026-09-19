@@ -1055,6 +1055,14 @@ nonisolated enum APIError: LocalizedError, Sendable {
 }
 
 extension Error {
+    /// True when the server rejected the request's credentials (401). Used by
+    /// callers that can safely wait out a transient auth blip and retry once.
+    nonisolated var isAuthenticationRejected: Bool {
+        guard let apiError = self as? APIError,
+              case let .http(statusCode, _, _) = apiError else { return false }
+        return statusCode == 401
+    }
+
     nonisolated var isPermanentSessionRefreshFailure: Bool {
         guard let apiError = self as? APIError,
               case let .http(statusCode, _, code) = apiError else { return false }

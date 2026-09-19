@@ -84,9 +84,21 @@ actor SessionCoordinator {
             if let persisted = try? repository.load(),
                persisted.refreshToken != attemptedRefreshToken,
                persisted.isRefreshUsable {
+                // A newer session was persisted by another in-process refresh
+                // (single actor, so the keychain is authoritative here). Adopt
+                // it, then make sure we hand back a usable access token: the
+                // persisted access token may already be expired, in which case
+                // refresh once against the persisted (current) refresh token.
                 session = persisted
                 notifyRecovery(.newerPersistedSession)
-                return persisted.accessToken
+                if persisted.hasUsableAccessToken() { return persisted.accessToken }
+                // refreshTask is still this invocation's (failed) task here;
+                // clear it so the recursive refresh starts a new task using
+                // the persisted (current) refresh token instead of re-awaiting
+                // the failure. One level deep at most: the persisted token
+                // equals the attempted token on any second pass.
+                refreshTask = nil
+                return try await refresh(using: persisted)
             }
             if error.isPermanentSessionRefreshFailure {
                 clear(notify: true)

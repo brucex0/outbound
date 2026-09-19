@@ -5,7 +5,12 @@ import { issueAccessToken } from "./accessTokens.js";
 import { CURRENT_TERMS_VERSION } from "./legal.js";
 
 const refreshLifetimeMs = 30 * 24 * 60 * 60 * 1000;
-const refreshRotationGraceMs = 60 * 1000;
+// Window in which a replay of the previous refresh token is treated as a
+// recoverable rotation race instead of a token-family theft. Concurrent app
+// surfaces (widget/audio extensions, the Watch bridge) can hold a snapshot
+// for tens of seconds, so the grace must comfortably exceed a request burst,
+// not just a single in-flight call.
+const refreshRotationGraceMs = 10 * 60 * 1000;
 export type SessionUser = Pick<User, "id" | "username" | "displayName" | "avatarUrl" | "normalizedEmail" | "termsAcceptedVersion" | "onboardingStatus">;
 
 export async function issueSession(user: SessionUser, platform: string, deviceLabel?: string | null) {

@@ -128,7 +128,7 @@ final class TogetherStore: ObservableObject {
             }
         }
         do {
-            let refreshedState = try await api.fetchTogether()
+            let refreshedState = try await refreshHomeOnce()
             guard generation == authGeneration, activeUserID != nil else { return }
             state = refreshedState
             persist()
@@ -139,6 +139,20 @@ final class TogetherStore: ObservableObject {
             errorMessage = state.upcomingRuns.isEmpty && state.posts.isEmpty
                 ? "Together is unavailable. Your private training remains available."
                 : "Showing saved Together activity."
+        }
+    }
+
+    // Session recovery after a refresh-token rotation blip can take a beat
+    // (a sibling surface races the rotation and the session heals moments
+    // later), and a pull-to-refresh that lands in that window should not
+    // surface a failure toast. Give the request one bounded second attempt
+    // before reporting failure.
+    private func refreshHomeOnce() async throws -> TogetherResponseDTO {
+        do {
+            return try await api.fetchTogether()
+        } catch let apiError as APIError where apiError.isAuthenticationRejected {
+            try? await Task.sleep(for: .seconds(1.5))
+            return try await api.fetchTogether()
         }
     }
 
