@@ -3674,55 +3674,78 @@ struct SocialAvatar: View {
 }
 
 private struct SocialRouteMap: View {
-    let route: TogetherActivityRouteDTO?
+    private let points: [CGPoint]
 
-    private var coordinates: [CLLocationCoordinate2D] {
-        route?.geometry.coordinates.compactMap { coordinate in
+    init(route: TogetherActivityRouteDTO?) {
+        let coordinates = route?.geometry.coordinates.compactMap { coordinate -> CLLocationCoordinate2D? in
             guard coordinate.count >= 2,
                   (-180...180).contains(coordinate[0]),
                   (-90...90).contains(coordinate[1]) else { return nil }
             return CLLocationCoordinate2D(latitude: coordinate[1], longitude: coordinate[0])
         } ?? []
-    }
 
-    private var position: MapCameraPosition {
-        guard coordinates.count > 1 else { return .automatic }
-        let latitudes = coordinates.map(\.latitude)
-        let longitudes = coordinates.map(\.longitude)
-        let center = CLLocationCoordinate2D(
-            latitude: ((latitudes.min() ?? 0) + (latitudes.max() ?? 0)) / 2,
-            longitude: ((longitudes.min() ?? 0) + (longitudes.max() ?? 0)) / 2
-        )
-        let span = MKCoordinateSpan(
-            latitudeDelta: max(((latitudes.max() ?? 0) - (latitudes.min() ?? 0)) * 1.7, 0.006),
-            longitudeDelta: max(((longitudes.max() ?? 0) - (longitudes.min() ?? 0)) * 1.7, 0.006)
-        )
-        return .region(MKCoordinateRegion(center: center, span: span))
+        // MapKit is relatively expensive to create for every feed cell and can
+        // monopolize the main thread as cells enter the viewport. Store a
+        // compact, normalized polyline instead and draw it with Canvas.
+        let stride = max(1, Int(ceil(Double(coordinates.count) / 240.0)))
+        let sampled = coordinates.enumerated().compactMap { index, coordinate in
+            index.isMultiple(of: stride) ? CGPoint(x: coordinate.longitude, y: coordinate.latitude) : nil
+        }
+        let allPoints = sampled + (coordinates.last.map { [CGPoint(x: $0.longitude, y: $0.latitude)] } ?? [])
+        guard allPoints.count > 1,
+              let minX = allPoints.map(\.x).min(),
+              let maxX = allPoints.map(\.x).max(),
+              let minY = allPoints.map(\.y).min(),
+              let maxY = allPoints.map(\.y).max() else {
+            points = []
+            return
+        }
+
+        let width = max(maxX - minX, 0.000001)
+        let height = max(maxY - minY, 0.000001)
+        points = allPoints.map {
+            CGPoint(
+                x: ($0.x - minX) / width,
+                y: 1 - (($0.y - minY) / height)
+            )
+        }
     }
 
     var body: some View {
         Group {
-            if coordinates.count > 1 {
-                Map(position: .constant(position), interactionModes: []) {
-                    MapPolyline(coordinates: coordinates)
-                        .stroke(OutboundPalette.companion, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+            if points.count > 1 {
+                Canvas { context, size in
+                    var path = Path()
+                    for (index, point) in points.enumerated() {
+                        let location = CGPoint(x: point.x * size.width, y: point.y * size.height)
+                        if index == 0 {
+                            path.move(to: location)
+                        } else {
+                            path.addLine(to: location)
+                        }
+                    }
+                    context.stroke(
+                        path,
+                        with: .color(OutboundPalette.companion),
+                        style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round)
+                    )
                 }
-                .mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
+                .background(OutboundPalette.companion.opacity(0.08))
             } else {
-                LinearGradient(
-                    colors: [OutboundPalette.companion.opacity(0.28), OutboundPalette.background],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .overlay {
-                    Image(systemName: "point.topleft.down.to.point.bottomright.curvepath")
-                        .font(.system(size: 54, weight: .light))
-                        .foregroundStyle(OutboundPalette.companion.opacity(0.65))
+            LinearGradient(
+                colors: [OutboundPalette.companion.opacity(0.28), OutboundPalette.background],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .overlay {
+                Image(systemName: "point.topleft.down.to.point.bottomright.curvepath")
+                    .font(.system(size: 54, weight: .light))
+                    .foregroundStyle(OutboundPalette.companion.opacity(0.65))
                 }
             }
         }
         .allowsHitTesting(false)
-        .accessibilityLabel(coordinates.count > 1 ? "Activity route map" : "Activity without route data")
+        .accessibilityLabel(points.count > 1 ? "Activity route map" : "Activity without route data")
     }
 }
 
