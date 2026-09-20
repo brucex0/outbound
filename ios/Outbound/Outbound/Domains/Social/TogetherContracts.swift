@@ -382,18 +382,51 @@ struct TogetherActivityPhotoDTO: Codable, Sendable {
 }
 
 struct TogetherActivityRouteDTO: Codable, Sendable {
-    let geometry: TogetherActivityRouteGeometryDTO
-    let properties: TogetherActivityRoutePropertiesDTO?
+    let format: String
+    let encodedPolyline: String
+    let pointCount: Int
+    let bounds: TogetherActivityRouteBoundsDTO
+
+    nonisolated var coordinates: [[Double]] {
+        guard format == "polyline5", (2...120).contains(pointCount) else { return [] }
+        let bytes = Array(encodedPolyline.utf8)
+        var index = 0
+        var latitude = 0
+        var longitude = 0
+        var decoded: [[Double]] = []
+        decoded.reserveCapacity(pointCount)
+        while index < bytes.count,
+              let latitudeDelta = Self.decodeDelta(bytes, index: &index),
+              let longitudeDelta = Self.decodeDelta(bytes, index: &index) {
+            latitude += latitudeDelta
+            longitude += longitudeDelta
+            decoded.append([Double(longitude) / 100_000, Double(latitude) / 100_000])
+        }
+        return decoded.count == pointCount && index == bytes.count ? decoded : []
+    }
+
+    nonisolated private static func decodeDelta(_ bytes: [UInt8], index: inout Int) -> Int? {
+        var result = 0
+        var shift = 0
+        while index < bytes.count, shift <= 30 {
+            let value = Int(bytes[index]) - 63
+            index += 1
+            guard (0...63).contains(value) else { return nil }
+            result |= (value & 0x1f) << shift
+            if value < 0x20 {
+                return (result & 1) == 0 ? result >> 1 : ~(result >> 1)
+            }
+            shift += 5
+        }
+        return nil
+    }
 }
 
-struct TogetherActivityRoutePropertiesDTO: Codable, Sendable {
-    let timestamps: [String]?
-    let verticalAccuracy: [Double?]?
-    let elevationMetadata: ActivityElevationMetadata?
-}
-
-struct TogetherActivityRouteGeometryDTO: Codable, Sendable {
-    let coordinates: [[Double]]
+struct TogetherActivityRouteBoundsDTO: Codable, Sendable {
+    let south: Double
+    let west: Double
+    let north: Double
+    let east: Double
 }
 
 struct TogetherPostDTO: Codable, Identifiable, Sendable {

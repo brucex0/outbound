@@ -3436,26 +3436,17 @@ private extension TogetherActivityDTO {
         let duration = max(0, durationSecs ?? 0)
         let resolvedStartedAt = startedAt ?? postCreatedAt.addingTimeInterval(TimeInterval(-duration))
         let resolvedEndedAt = endedAt ?? resolvedStartedAt.addingTimeInterval(TimeInterval(duration))
-        let coordinates = route?.geometry.coordinates ?? []
-        let routeProperties = route?.properties
+        let coordinates = route?.coordinates ?? []
         let routePoints = coordinates.enumerated().compactMap { index, coordinate -> SavedRoutePoint? in
             guard coordinate.count >= 2 else { return nil }
             let progress = coordinates.count > 1 ? Double(index) / Double(coordinates.count - 1) : 0
             let fallbackTimestamp = resolvedStartedAt.addingTimeInterval(TimeInterval(duration) * progress)
-            let timestamp = Self.routeTimestamp(
-                at: index,
-                in: routeProperties?.timestamps
-            ) ?? fallbackTimestamp
-            let verticalAccuracy = Self.routeVerticalAccuracy(
-                at: index,
-                in: routeProperties?.verticalAccuracy
-            )
             return SavedRoutePoint(
-                timestamp: timestamp,
+                timestamp: fallbackTimestamp,
                 latitude: coordinate[1],
                 longitude: coordinate[0],
-                altitude: coordinate.count > 2 && coordinate[2].isFinite ? coordinate[2] : nil,
-                verticalAccuracy: verticalAccuracy
+                altitude: nil,
+                verticalAccuracy: nil
             )
         }
         let savedPhotos = (photos ?? []).compactMap { photo -> SavedPhoto? in
@@ -3493,31 +3484,12 @@ private extension TogetherActivityDTO {
             avgPace: avgPace,
             elevationGainM: elevationM,
             energyKilocalories: energyKilocalories,
-            route: routePoints.isEmpty ? nil : SavedRoute(
-                points: routePoints,
-                elevationMetadata: route?.properties?.elevationMetadata
-            ),
+            route: routePoints.isEmpty ? nil : SavedRoute(points: routePoints),
             photos: savedPhotos,
             sync: nil
         )
     }
 
-    static func parseRouteTimestamp(_ rawValue: String) -> Date? {
-        if let date = try? Date.ISO8601FormatStyle(includingFractionalSeconds: true).parse(rawValue) {
-            return date
-        }
-        return try? Date.ISO8601FormatStyle(includingFractionalSeconds: false).parse(rawValue)
-    }
-
-    static func routeTimestamp(at index: Int, in timestamps: [String]?) -> Date? {
-        guard let timestamps, timestamps.indices.contains(index) else { return nil }
-        return parseRouteTimestamp(timestamps[index])
-    }
-
-    static func routeVerticalAccuracy(at index: Int, in accuracies: [Double?]?) -> Double? {
-        guard let accuracies, accuracies.indices.contains(index) else { return nil }
-        return accuracies[index]
-    }
 }
 
 struct SocialCheerAvatarsButton: View {
@@ -3675,7 +3647,7 @@ private struct SocialRoutePreviewImage: View {
         .allowsHitTesting(false)
         .accessibilityLabel("Activity route preview")
         .task(id: SocialRoutePreviewCache.cacheKey(for: activity)) {
-            guard activity.route?.geometry.coordinates.count ?? 0 > 1 else { return }
+            guard activity.route?.coordinates.count ?? 0 > 1 else { return }
             guard let data = await SocialRoutePreviewCache.shared.imageData(for: activity),
                   !Task.isCancelled else { return }
             image = UIImage(data: data)
@@ -3708,7 +3680,7 @@ private actor SocialRoutePreviewCache {
     private var generationTail: Task<Void, Never> = Task {}
 
     static func cacheKey(for activity: TogetherActivityDTO) -> String {
-        let coordinates = activity.route?.geometry.coordinates ?? []
+        let coordinates = activity.route?.coordinates ?? []
         let stride = max(1, Int(ceil(Double(coordinates.count) / Double(maxRoutePoints))))
         let sampledCoordinates = coordinates.enumerated().compactMap { index, coordinate in
             index.isMultiple(of: stride) || index == coordinates.count - 1
@@ -3746,7 +3718,7 @@ private actor SocialRoutePreviewCache {
     }
 
     private func generate(activity: TogetherActivityDTO, key: String) async -> Data? {
-        let coordinates = (activity.route?.geometry.coordinates ?? []).compactMap { value -> CLLocationCoordinate2D? in
+        let coordinates = (activity.route?.coordinates ?? []).compactMap { value -> CLLocationCoordinate2D? in
             guard value.count >= 2,
                   value[0].isFinite,
                   value[1].isFinite,
