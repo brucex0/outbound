@@ -131,7 +131,15 @@ final class APIClient {
 
     func mediaURL(_ url: URL) -> URL {
         guard url.scheme == nil else { return url }
-        return self.url(for: url.absoluteString)
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            return self.url(for: url.absoluteString)
+        }
+        var resolved = self.url(for: components.path)
+        if let query = components.query, var resolvedComponents = URLComponents(url: resolved, resolvingAgainstBaseURL: false) {
+            resolvedComponents.percentEncodedQuery = query
+            resolved = resolvedComponents.url ?? resolved
+        }
+        return resolved
     }
 
     func downloadActivityPhoto(id: String) async throws -> Data {

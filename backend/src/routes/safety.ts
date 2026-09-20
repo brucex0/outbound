@@ -9,6 +9,7 @@ import { getPrismaClient } from "../services/prisma.js";
 import { deliverPushNotification } from "../services/pushNotifications.js";
 import type { AppEnv } from "../types/hono.js";
 import { hasActiveCapability } from "../services/entitlements.js";
+import { compactPerson } from "../services/apiAssetURLs.js";
 
 const router = new Hono<AppEnv>();
 
@@ -179,7 +180,7 @@ router.get("/live-shares/:id/cheers", async (c) => {
       durationMs: cheer.durationMs,
       createdAt: cheer.createdAt,
       deliveredAt,
-      sender: cheer.sender,
+      sender: compactPerson(cheer.sender),
     }],
   });
 });
@@ -355,7 +356,7 @@ export async function liveShareViewer(c: Context<AppEnv>) {
 }
 
 function followerPayload(share: any) {
-  return { id: share.id, status: share.status, runner: share.user, sport: share.sport ?? "run", title: share.title ?? "Live run", voiceCheerEnabled: share.voiceCheerEnabled, startedAt: share.startedAt, expiresAt: share.expiresAt, endedAt: share.endedAt, lastLocationAt: share.lastLocationAt, lastLocation: share.lastLocation, routePreview: share.routePreview, elapsedSeconds: share.elapsedSeconds, distanceM: share.distanceM, currentPaceSecsPerKm: share.currentPaceSecsPerKm, heartRate: share.heartRate, latestCheer: share.cheers?.[0] ? cheerReceiptPayload(share.cheers[0]) : null };
+  return { id: share.id, status: share.status, runner: share.user ? compactPerson(share.user) : null, sport: share.sport ?? "run", title: share.title ?? "Live run", voiceCheerEnabled: share.voiceCheerEnabled, startedAt: share.startedAt, expiresAt: share.expiresAt, endedAt: share.endedAt, lastLocationAt: share.lastLocationAt, lastLocation: share.lastLocation, routePreview: share.routePreview, elapsedSeconds: share.elapsedSeconds, distanceM: share.distanceM, currentPaceSecsPerKm: share.currentPaceSecsPerKm, heartRate: share.heartRate, latestCheer: share.cheers?.[0] ? cheerReceiptPayload(share.cheers[0]) : null };
 }
 
 function cheerReceiptPayload(cheer: {

@@ -11,6 +11,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Named
 import com.plainstride.outbound.BuildConfig
 import com.plainstride.outbound.core.analytics.AnalyticsSink
 import com.plainstride.outbound.core.analytics.ProductAnalytics
@@ -129,6 +130,8 @@ object FoundationModule {
         CredentialManager.create(context)
 
     @Provides @GoogleServerClientId fun googleServerClientId(): String = BuildConfig.GOOGLE_SERVER_CLIENT_ID
+
+    @Provides @Singleton @Named("apiBaseUrl") fun apiBaseUrl(): String = BuildConfig.API_BASE_URL
 
     @Provides @Singleton fun httpClient(): OkHttpClient {
         Log.i(NETWORK_TAG, "Configuring API client: baseUrl=${BuildConfig.API_BASE_URL}")

@@ -32,6 +32,7 @@ import kotlinx.coroutines.coroutineScope
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import javax.inject.Named
 
 private object AvatarCache {
     val bitmaps = LruCache<String, Bitmap>(8 * 1024 * 1024)
@@ -42,21 +43,23 @@ private object AvatarCache {
 @InstallIn(SingletonComponent::class)
 internal interface SocialAvatarDependencies {
     fun httpClient(): OkHttpClient
+    @Named("apiBaseUrl") fun apiBaseUrl(): String
 }
 
 @Composable
 fun SocialAvatar(person: SocialPerson, size: Dp = 42.dp, modifier: Modifier = Modifier) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val source = normalizedAvatarUrl(person.avatarUrl)
+    val dependencies = EntryPointAccessors.fromApplication(
+        context.applicationContext,
+        SocialAvatarDependencies::class.java,
+    )
+    val source = normalizedAvatarUrl(person.avatarUrl, dependencies.apiBaseUrl())
     val cachedBitmap = source?.let(AvatarCache.bitmaps::get)
     val bitmap by produceState<Bitmap?>(cachedBitmap, source) {
         source ?: return@produceState
         if (value == null) value = coroutineScope {
             AvatarCache.requests[source] ?: async(Dispatchers.IO) {
-                val client = EntryPointAccessors.fromApplication(
-                    context.applicationContext,
-                    SocialAvatarDependencies::class.java,
-                ).httpClient()
+                val client = dependencies.httpClient()
                 runCatching {
                     client.newCall(Request.Builder().url(source).build()).execute().use { response ->
                         if (!response.isSuccessful) return@use null
@@ -79,10 +82,16 @@ fun SocialAvatar(person: SocialPerson, size: Dp = 42.dp, modifier: Modifier = Mo
     }
 }
 
-private fun normalizedAvatarUrl(value: String?): String? {
-    val url = value?.trim()?.toHttpUrlOrNull() ?: return null
-    if (url.isHttps || url.host in LocalDevelopmentHosts) return url.toString()
-    return url.newBuilder().scheme("https").build().toString()
+private fun normalizedAvatarUrl(value: String?, baseUrl: String): String? {
+    val trimmed = value?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    val url = trimmed.toHttpUrlOrNull()
+    if (url != null) {
+        if (url.isHttps || url.host in LocalDevelopmentHosts) return url.toString()
+        return url.newBuilder().scheme("https").build().toString()
+    }
+    val base = baseUrl.toHttpUrlOrNull() ?: return null
+    val apiPath = if (base.encodedPath.trimEnd('/').endsWith("/v1")) trimmed.trimStart('/') else "v1/${trimmed.trimStart('/')}"
+    return base.resolve(apiPath)?.toString()
 }
 
 private val LocalDevelopmentHosts = setOf("localhost", "127.0.0.1", "10.0.2.2")

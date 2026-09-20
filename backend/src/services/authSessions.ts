@@ -3,6 +3,7 @@ import type { Prisma, User } from "@prisma/client";
 import { getPrismaClient } from "./prisma.js";
 import { issueAccessToken } from "./accessTokens.js";
 import { CURRENT_TERMS_VERSION } from "./legal.js";
+import { compactAvatarURL } from "./apiAssetURLs.js";
 
 const refreshLifetimeMs = 30 * 24 * 60 * 60 * 1000;
 // Window in which a replay of the previous refresh token is treated as a
@@ -96,7 +97,7 @@ function response(
       id: user.id,
       username: user.username,
       displayName: user.displayName,
-      avatarUrl: user.avatarUrl,
+      avatarUrl: compactAvatarURL(user.avatarUrl),
       email: user.normalizedEmail,
       onboardingStatus,
       onboardingCompleted: onboardingStatus !== "pending",

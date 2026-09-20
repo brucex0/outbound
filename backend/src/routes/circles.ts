@@ -7,6 +7,7 @@ import type { AppEnv } from "../types/hono.js";
 import { requireDatabase } from "../services/database.js";
 import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import { getPrismaClient } from "../services/prisma.js";
+import { compactPerson } from "../services/apiAssetURLs.js";
 import {
   assertAcceptedConnection,
   assertCircleMember,
@@ -172,7 +173,7 @@ router.get("/invitations/inbox", async (c) => {
     try {
       await assertAcceptedConnection(invitation.senderId, user.id);
       await assertNoBlockedCircleMember(invitation.circleId, user.id);
-      invitations.push(invitation);
+      invitations.push({ ...invitation, sender: compactPerson(invitation.sender) });
     } catch { /* Blocked and disconnected invitations are intentionally hidden. */ }
   }
   return c.json({ invitations });

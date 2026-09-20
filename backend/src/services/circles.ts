@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { getPrismaClient } from "./prisma.js";
 import type { SupportedLocale } from "../middleware/locale.js";
+import { compactPerson } from "./apiAssetURLs.js";
 
 export const CIRCLE_MEMBER_LIMIT_DEFAULT = 6;
 export const CIRCLE_MEMBER_LIMIT_MAXIMUM = 100;
@@ -290,7 +291,7 @@ export async function circlePayload(circleId: string, viewerId: string, includeH
     name: circle.name,
     lifecycle: circle.lifecycle,
     role: circle.members.find((m) => m.userId === viewerId)?.role ?? null,
-    owner: circle.owner,
+    owner: compactPerson(circle.owner),
     resetWeekday: circle.resetWeekday,
     timeZone: circle.timeZone,
     memberLimit: circle.memberLimit,
@@ -300,7 +301,7 @@ export async function circlePayload(circleId: string, viewerId: string, includeH
       const commitment = commitments.find((item) => item.memberId === member.id);
       return {
         id: member.id,
-        user: member.user,
+        user: compactPerson(member.user),
         role: member.role,
         isCurrentUser: member.userId === viewerId,
         commitment: commitment ? { targetCount: commitment.targetCount, skipped: commitment.skipped } : null,
@@ -313,7 +314,7 @@ export async function circlePayload(circleId: string, viewerId: string, includeH
     currentUserMuted: viewerMembership?.notificationMuted ?? false,
     completionPresentationPending: week.state === "completed" && completionPresentation != null && completionPresentation.presentedAt == null,
     cheers: cheers.map((cheer) => ({ id: cheer.id, senderUserId: cheer.senderId, recipientUserId: cheer.recipientId, presetType: cheer.presetType, createdAt: cheer.createdAt })),
-    invitations: invitations.map((invitation) => ({ id: invitation.id, circleId: invitation.circleId, circle: invitation.circle, sender: invitation.sender, recipient: invitation.recipient, status: invitation.status, createdAt: invitation.createdAt, expiresAt: invitation.expiresAt })),
+    invitations: invitations.map((invitation) => ({ id: invitation.id, circleId: invitation.circleId, circle: invitation.circle, sender: compactPerson(invitation.sender), recipient: compactPerson(invitation.recipient), status: invitation.status, createdAt: invitation.createdAt, expiresAt: invitation.expiresAt })),
     upcomingActivities: activityEvents
       .filter((event) => ["scheduled", "active"].includes(event.status))
       .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
@@ -325,7 +326,7 @@ export async function circlePayload(circleId: string, viewerId: string, includeH
         locationName: event.locationName,
         paceNote: event.note,
         status: event.status,
-        creator: event.creator,
+        creator: compactPerson(event.creator),
         attendeeCount: event.participants.length,
         currentUserGoing: event.participants.some((participant) => participant.userId === viewerId),
         currentUserRole: event.creatorId === viewerId

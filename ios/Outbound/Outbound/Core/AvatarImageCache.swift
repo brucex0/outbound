@@ -25,7 +25,8 @@ final class AvatarImageCache {
     }
 
     func image(for url: String?) async -> UIImage? {
-        guard let url, let remoteURL = URL(string: url) else { return nil }
+        guard let url, let rawURL = URL(string: url) else { return nil }
+        let remoteURL = APIClient.shared.mediaURL(rawURL)
         if let image = cachedImage(for: url) { return image }
         if let request = requests[url] { return await request.value }
 

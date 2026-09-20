@@ -7,6 +7,7 @@ import { requireDatabase } from "../services/database.js";
 import { getPrismaClient } from "../services/prisma.js";
 import type { AppEnv } from "../types/hono.js";
 import { decodeStoredActivityRoute } from "../services/activityRouteCodec.js";
+import { compactPerson } from "../services/apiAssetURLs.js";
 
 const router = new Hono<AppEnv>();
 const publishSchema = z.object({
@@ -295,7 +296,7 @@ function haversine(a: Coordinate, b: Coordinate) { const rad = Math.PI / 180, dL
 function elevationGain(points: Coordinate[]) { let gain = 0, samples = 0; for (let i = 1; i < points.length; i++) if (points[i][2] != null && points[i - 1][2] != null) { gain += Math.max(0, points[i][2]! - points[i - 1][2]!); samples++; } return samples ? gain : null; }
 function classifyShape(points: Coordinate[], distanceM: number) { return haversine(points[0], points.at(-1)!) < Math.min(250, distanceM * 0.08) ? "loop" : "point_to_point"; }
 function finiteQuery(value?: string) { const number = Number(value); return value != null && Number.isFinite(number) ? number : null; }
-function routeSummaryDTO(route: RouteSummaryRecord, userId: string, latitude?: number, longitude?: number) { return { id: route.id, name: route.name, description: route.description, activityType: route.activityType, visibility: route.visibility, distanceM: route.distanceM, elevationGainM: route.elevationGainM, routeShape: route.routeShape, bookmarkCount: route.bookmarkCount, completionCount: route.completionCount, isBookmarked: route.bookmarks.length > 0, isOwnedByCurrentUser: route.ownerId === userId, owner: route.owner, createdAt: route.createdAt, updatedAt: route.updatedAt, distanceFromSearchM: latitude == null || longitude == null ? null : haversine([longitude, latitude], [route.startLongitude, route.startLatitude]) }; }
+function routeSummaryDTO(route: RouteSummaryRecord, userId: string, latitude?: number, longitude?: number) { return { id: route.id, name: route.name, description: route.description, activityType: route.activityType, visibility: route.visibility, distanceM: route.distanceM, elevationGainM: route.elevationGainM, routeShape: route.routeShape, bookmarkCount: route.bookmarkCount, completionCount: route.completionCount, isBookmarked: route.bookmarks.length > 0, isOwnedByCurrentUser: route.ownerId === userId, owner: compactPerson(route.owner), createdAt: route.createdAt, updatedAt: route.updatedAt, distanceFromSearchM: latitude == null || longitude == null ? null : haversine([longitude, latitude], [route.startLongitude, route.startLatitude]) }; }
 function routeDetailDTO(route: RouteDetailRecord, userId: string) { const geometry = route.geometry as { coordinates?: Coordinate[] }; return { ...routeSummaryDTO(route, userId), geometry: { type: "LineString", coordinates: geometry.coordinates ?? [] } }; }
 
 export default router;

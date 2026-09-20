@@ -19,6 +19,7 @@ import { Prisma } from "@prisma/client";
 import { acceptCurrentTerms, CURRENT_TERMS_VERSION } from "../services/legal.js";
 import { changeUsername, UsernameChangeError } from "../services/usernames.js";
 import { consumeGoogleIdentityLinkIntent, createIdentityLinkIntent, IdentityLinkIntentError } from "../services/identityLinkIntents.js";
+import { compactPerson } from "../services/apiAssetURLs.js";
 
 const router = new Hono<AppEnv>();
 
@@ -311,7 +312,7 @@ router.post(
       username: body.username,
       displayName: body.displayName,
     });
-    return c.json(user, 201);
+    return c.json(user ? compactPerson(user) : user, 201);
   }
 );
 
@@ -340,7 +341,7 @@ router.get("/me", async (c) => {
     return c.json({ error: "Authenticated user has not been registered yet." }, 404);
   }
   return c.json({
-    ...userWithProfile,
+    ...compactPerson(userWithProfile),
     onboardingStatus: userWithProfile.onboardingStatus,
     onboardingCompleted: userWithProfile.onboardingStatus !== "pending",
   });
@@ -435,7 +436,7 @@ router.patch(
           },
         });
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-      return c.json(updated);
+      return c.json(compactPerson(updated));
     } catch (error) {
       if (error instanceof UsernameChangeError) {
         const message = error.code === "username_taken"
@@ -481,10 +482,10 @@ router.patch(
       }
       const origin = requestURL.origin;
       const avatarUrl = `${origin}/v1/auth/avatars/${user.id}?v=${Date.now()}`;
-      return c.json(await getPrismaClient().user.update({
+      return c.json(compactPerson(await getPrismaClient().user.update({
         where: { id: user.id },
         data: { avatarUrl },
-      }));
+      })));
     } catch (error) {
       console.error("[avatar] upload failed", error);
       return c.json({ error: error instanceof Error ? error.message : "Avatar upload failed." }, 503);
@@ -499,10 +500,10 @@ router.delete("/me/avatar", async (c) => {
   if (!user) return c.json({ error: "Authentication required." }, 401);
   try {
     await deleteAvatar(user.id);
-    return c.json(await getPrismaClient().user.update({
+    return c.json(compactPerson(await getPrismaClient().user.update({
       where: { id: user.id },
       data: { avatarUrl: null },
-    }));
+    })));
   } catch (error) {
     console.error("[avatar] removal failed", error);
     return c.json({ error: error instanceof Error ? error.message : "Avatar removal failed." }, 503);

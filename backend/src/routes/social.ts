@@ -15,6 +15,7 @@ import {
 } from "../services/recognition.js";
 import { assertCircleMember } from "../services/circles.js";
 import { decodeStoredActivityRoute } from "../services/activityRouteCodec.js";
+import { compactPerson } from "../services/apiAssetURLs.js";
 import {
   claimReferral,
   ensurePersonalReferralCode,
@@ -192,7 +193,7 @@ async function socialHome(c: Context<AppEnv>) {
     pastEvents: pastEvents.map((activity) => activityEventPayload(activity, user.id, connections)),
     clubs: memberships.map((membership) => ({ ...membership.club, role: membership.role })),
     posts: await Promise.all(feedPosts.map((post) => postPayload(post, user.id))),
-    invitations: invitations.map((invitation) => ({ id: invitation.id, kind: "activityEvent", title: invitation.activityEvent?.title ?? "Activity invitation", sender: invitation.sender, objectId: invitation.activityEventId })),
+    invitations: invitations.map((invitation) => ({ id: invitation.id, kind: "activityEvent", title: invitation.activityEvent?.title ?? "Activity invitation", sender: compactPerson(invitation.sender), objectId: invitation.activityEventId })),
     nextFeedCursor,
   });
 }
@@ -306,7 +307,7 @@ router.get("/people/search", async (c) => {
         id: person.id,
         username: person.username,
         displayName: person.displayName,
-        avatarUrl: person.avatarUrl,
+        avatarUrl: compactPerson(person).avatarUrl,
         relationship: relationship
           ? {
               id: relationship.id,
@@ -439,7 +440,7 @@ router.get("/connection-links/:code", async (c) => {
   });
   return c.json({
     person: {
-      ...link.creator,
+      ...compactPerson(link.creator),
       relationship: relationship ? {
         id: relationship.id,
         status: relationship.status,
@@ -463,7 +464,7 @@ router.post("/connection-links/:code/request", async (c) => {
   });
   if (!link) return c.json({ error: "Connection link not found." }, 404);
   if (link.creatorId === user.id) {
-    return c.json({ result: "self", person: link.creator, relationship: null });
+    return c.json({ result: "self", person: compactPerson(link.creator), relationship: null });
   }
 
   const outcome = await createConnectionRequest(user, link.creatorId);
@@ -477,7 +478,7 @@ router.post("/connection-links/:code/request", async (c) => {
   }
   return c.json({
     result: outcome.result,
-    person: link.creator,
+    person: compactPerson(link.creator),
     relationship: {
       id: outcome.connection.id,
       status: outcome.connection.status,
@@ -532,7 +533,7 @@ router.get("/users/:id/profile", async (c) => {
   });
   if (!person) return c.json({ error: "Profile not found." }, 404);
   return c.json({
-    person,
+    person: compactPerson(person),
     recognitions: await recognitionAwards(personId, true),
   });
 });
@@ -552,7 +553,7 @@ router.get("/blocks", async (c) => {
     include: { blocked: { select: socialPersonSelect } },
     orderBy: { createdAt: "desc" },
   });
-  return c.json({ blocks: blocks.map((block) => ({ id: block.id, person: block.blocked })) });
+  return c.json({ blocks: blocks.map((block) => ({ id: block.id, person: compactPerson(block.blocked) })) });
 });
 
 router.post("/reports", zValidator("json", reportSchema), async (c) => {
@@ -574,7 +575,10 @@ router.get("/notifications", async (c) => {
     orderBy: { createdAt: "desc" },
     take: 50,
   });
-  return c.json({ notifications });
+  return c.json({ notifications: notifications.map((notification) => ({
+    ...notification,
+    actor: notification.actor ? compactPerson(notification.actor) : notification.actor,
+  })) });
 });
 
 router.post("/notifications/read-all", async (c) => {
@@ -1239,7 +1243,7 @@ function connectionPayload(
     id: connection.id,
     status: connection.status,
     direction: isOutgoing ? "outgoing" : "incoming",
-    person,
+    person: compactPerson(person),
     isInActiveWorkout: connection.status === "accepted" && activeUserIDs.has(person.id),
   };
 }
@@ -1286,7 +1290,7 @@ async function postPayload(post: any, currentUserId: string) {
     createdAt: post.createdAt,
     visibility: post.visibility,
     isCurrentUser: post.userId === currentUserId,
-    user: post.user,
+    user: compactPerson(post.user),
     activity,
     reactionCount: post.reactions.length,
     cheers: post.reactions.map((reaction: { user?: unknown }) => cheererPayload(reaction.user)),
@@ -1413,7 +1417,7 @@ function cheererPayload(user: unknown) {
     id: person?.id ?? "",
     username: person?.username ?? "",
     displayName: person?.displayName ?? "Runner",
-    avatarUrl: person?.avatarUrl ?? null,
+    avatarUrl: compactPerson(person ?? { id: "", username: "", displayName: "Runner", avatarUrl: null }).avatarUrl,
   };
 }
 
@@ -1422,7 +1426,7 @@ function commentPayload(comment: any, currentUserId: string, postOwnerId: string
     id: comment.id,
     body: comment.body,
     createdAt: comment.createdAt,
-    author: comment.author,
+    author: compactPerson(comment.author),
     canDelete: comment.authorId === currentUserId || postOwnerId === currentUserId,
   };
 }
@@ -1510,12 +1514,12 @@ function activityEventPayload(activity: any, currentUserId: string, connectionId
     visibility: activity.visibility,
     status: activity.status,
     club: activity.club,
-    creator: activity.creator,
+    creator: compactPerson(activity.creator),
     groups: activity.options,
     options: activity.options,
     source,
     attendeeCount: going.length,
-    attendeePreview: going.slice(0, 3).map((participant: any) => participant.user),
+    attendeePreview: going.slice(0, 3).map((participant: any) => compactPerson(participant.user)),
     currentUserGoing: currentParticipant?.status === "going",
     currentUserOutcome: currentParticipant?.outcome ?? null,
     currentUserAttendanceMode: currentParticipant?.attendanceMode ?? null,
@@ -1523,14 +1527,14 @@ function activityEventPayload(activity: any, currentUserId: string, connectionId
     compatibility: shareSafeCompatibility(activity.options),
   };
   if (includeParticipants) {
-    payload.participants = going.map((participant: any) => ({ person: participant.user, status: participant.status, outcome: participant.outcome, attendanceMode: participant.attendanceMode }));
+    payload.participants = going.map((participant: any) => ({ person: compactPerson(participant.user), status: participant.status, outcome: participant.outcome, attendanceMode: participant.attendanceMode }));
     if (activity.creatorId === currentUserId) {
       payload.invitedUserIds = activity.invitations
         .filter((invitation: any) => invitation.recipientId && ["pending", "accepted"].includes(invitation.status))
         .map((invitation: any) => invitation.recipientId);
       payload.pendingInvitations = activity.invitations
         .filter((invitation: any) => invitation.status === "pending" && invitation.recipient)
-        .map((invitation: any) => ({ id: invitation.id, recipient: invitation.recipient, createdAt: invitation.createdAt }));
+        .map((invitation: any) => ({ id: invitation.id, recipient: compactPerson(invitation.recipient), createdAt: invitation.createdAt }));
     }
   }
   return payload;
@@ -1549,7 +1553,7 @@ function activityEventResultsPayload(activity: any, currentUserId: string, conne
     combinedDistanceMeters: visibleRecorded.reduce((sum: number, participant: any) => sum + (participant.recordedActivity.distanceM ?? 0), 0),
     combinedDurationSeconds: visibleRecorded.reduce((sum: number, participant: any) => sum + (participant.recordedActivity.durationSecs ?? 0), 0),
     participants: participants.map((participant: any) => ({
-      person: participant.user,
+      person: compactPerson(participant.user),
       outcome: participant.outcome,
       result: participant.recordedActivity && canSeeDetails(participant) ? participant.recordedActivity : null,
     })),
