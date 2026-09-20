@@ -593,7 +593,7 @@ final class ActivityStore: ObservableObject {
                     followedRouteCompleted: activity.followedRoute?.source == .community ? activity.followedRoute?.arrived : nil,
                     route: uploadableRoute(for: activity),
                     reflection: activity.reflection,
-                    clientData: syncSnapshot(for: activity),
+                    clientData: ActivityClientExtras(from: activity),
                     clientUpdatedAt: attemptState.localUpdatedAt ?? activity.createdAt,
                     recognitionContext: RecognitionContextDTO(
                         timeZoneIdentifier: TimeZone.current.identifier,
@@ -744,7 +744,7 @@ final class ActivityStore: ObservableObject {
                     continue
                 }
 
-                guard let snapshot = remote.clientData else { continue }
+                guard let clientExtras = remote.clientData else { continue }
                 let local = activity(id: activityID)
                 if let local, remote.clientUpdatedAt == nil {
                     let upgradeState = SavedActivitySyncState(
@@ -774,11 +774,36 @@ final class ActivityStore: ObservableObject {
                     lastError: nil,
                     localUpdatedAt: remote.clientUpdatedAt ?? remote.updatedAt
                 )
-                let restored = copy(
-                    snapshot,
+                let restored = SavedActivity(
+                    id: activityID,
+                    activityType: remote.activityType,
+                    title: remote.title,
+                    guideNudge: clientExtras.guideNudge,
+                    reflection: remote.reflection,
+                    createdAt: remote.createdAt,
+                    startedAt: remote.startedAt,
+                    endedAt: remote.endedAt,
+                    durationSecs: remote.durationSecs,
+                    distanceM: remote.distanceM,
+                    avgPace: remote.avgPace,
+                    elevationGainM: remote.elevationGainM,
+                    walkingStepCount: clientExtras.walkingStepCount,
+                    healthMetrics: clientExtras.healthMetrics,
+                    goal: clientExtras.goal,
+                    energyKilocalories: clientExtras.energyKilocalories,
+                    source: clientExtras.source,
+                    gear: clientExtras.gear,
+                    manualEdits: clientExtras.manualEdits,
+                    indoor: clientExtras.indoor,
+                    cadence: clientExtras.cadence,
+                    heartRateZones: clientExtras.heartRateZones,
+                    recordingSession: clientExtras.recordingSession,
+                    activityEventID: clientExtras.activityEventID,
+                    followedRoute: clientExtras.followedRoute ?? local?.followedRoute,
+                    recognitionBadgeIDs: clientExtras.recognitionBadgeIDs,
+                    route: remote.route,
                     photos: local?.photos ?? [],
-                    sync: synced,
-                    preservedFollowedRoute: local?.followedRoute
+                    sync: synced
                 )
                 try await persistence.replaceOrInsert(restored)
                 if let index = activities.firstIndex(where: { $0.id == activityID }) {
@@ -911,10 +936,6 @@ final class ActivityStore: ObservableObject {
             remotePhotoId: remotePhotoId,
             remoteUploadedAt: remoteUploadedAt
         )
-    }
-
-    private func syncSnapshot(for activity: SavedActivity) -> SavedActivity {
-        copy(activity, photos: [], sync: nil, stripImportedFollowedRoute: true)
     }
 
     private func copy(
