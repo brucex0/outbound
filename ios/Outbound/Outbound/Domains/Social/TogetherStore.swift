@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import os
 
 struct SocialPeopleSearchOutcome: Sendable {
     let count: Int
@@ -128,7 +129,7 @@ final class TogetherStore: ObservableObject {
             }
         }
         do {
-            let refreshedState = try await refreshHomeOnce()
+            let refreshedState = try await withTransientNetworkRetry { try await self.refreshHomeOnce() }
             guard generation == authGeneration, activeUserID != nil else { return }
             state = refreshedState
             persist()
@@ -142,6 +143,7 @@ final class TogetherStore: ObservableObject {
             // as a failure surfaced a bogus "couldn't refresh" toast even
             // though the server responded fine.
             guard !Self.isCancellation(error), generation == authGeneration else { return }
+            Self.logger.error("Social home refresh failed (\(Self.networkErrorCode(error), privacy: .public)): \(error.localizedDescription, privacy: .public)")
             errorMessage = state.upcomingRuns.isEmpty && state.posts.isEmpty
                 ? "Together is unavailable. Your private training remains available."
                 : "Showing saved Together activity."
@@ -152,6 +154,50 @@ final class TogetherStore: ObservableObject {
         if error is CancellationError { return true }
         if let urlError = error as? URLError { return urlError.code == .cancelled }
         return false
+    }
+
+    private nonisolated static let logger = Logger(subsystem: "plainstride.outbound", category: "Social")
+
+    /// True for failures that heal on their own a beat later: the device log
+    /// shows the launch-time request wave losing connections ("Operation timed
+    /// out" right after process start) and recovering within seconds once the
+    /// radio is warm. Server rejections and decoding errors never qualify —
+    /// retrying those is pointless.
+    private nonisolated static func isTransientNetworkError(_ error: Error) -> Bool {
+        guard let urlError = error as? URLError else { return false }
+        switch urlError.code {
+        case .timedOut, .cannotFindHost, .cannotConnectToHost, .networkConnectionLost,
+                .dnsLookupFailed, .notConnectedToInternet:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private nonisolated static func networkErrorCode(_ error: Error) -> String {
+        if let urlError = error as? URLError { return String(urlError.errorCode) }
+        if let apiError = error as? APIError,
+           case let .http(statusCode, _, _) = apiError {
+            return "http_\(statusCode)"
+        }
+        return String(describing: type(of: error))
+    }
+
+    // One bounded retry for transient network failures (see
+    // isTransientNetworkError). A pull-to-refresh landing in a launch-window
+    // blip surfaced the "couldn't fully refresh" toast for a condition the
+    // very next request would have healed; waiting out a short backoff and
+    // retrying once keeps that toast reserved for real, persistent failures.
+    private func withTransientNetworkRetry<T>(_ operation: () async throws -> T) async throws -> T {
+        do {
+            return try await operation()
+        } catch {
+            guard Self.isTransientNetworkError(error), !Task.isCancelled else { throw error }
+            Self.logger.error("Social refresh hit a transient network error (code \(Self.networkErrorCode(error), privacy: .public)); retrying once")
+            try? await Task.sleep(for: .seconds(1.5))
+            if Task.isCancelled { throw CancellationError() }
+            return try await operation()
+        }
     }
 
     // Session recovery after a refresh-token rotation blip can take a beat
@@ -547,7 +593,7 @@ final class TogetherStore: ObservableObject {
             }
         }
         do {
-            let page = try await api.fetchSocialConnections()
+            let page = try await withTransientNetworkRetry { try await self.api.fetchSocialConnections() }
             guard generation == authGeneration, activeUserID != nil else { return }
             connections = page.connections
             hasLoadedConnections = true
@@ -558,6 +604,7 @@ final class TogetherStore: ObservableObject {
             // A cancelled refresh (view identity change, navigation away)
             // is not a refresh failure — stay silent.
             guard !Self.isCancellation(error), generation == authGeneration else { return }
+            Self.logger.error("Social connections refresh failed (\(Self.networkErrorCode(error), privacy: .public)): \(error.localizedDescription, privacy: .public)")
             errorMessage = error.localizedDescription
         }
     }
@@ -867,7 +914,7 @@ final class TogetherStore: ObservableObject {
             return
         }
         do {
-            let refreshedNotifications = try await api.fetchSocialNotifications().notifications
+            let refreshedNotifications = try await withTransientNetworkRetry { try await self.api.fetchSocialNotifications() }.notifications
             guard generation == authGeneration, activeUserID != nil else { return }
             notifications = refreshedNotifications
             errorMessage = nil
@@ -875,6 +922,7 @@ final class TogetherStore: ObservableObject {
             // A cancelled refresh (view identity change, navigation away)
             // is not a refresh failure — stay silent.
             guard !Self.isCancellation(error), generation == authGeneration else { return }
+            Self.logger.error("Social notifications refresh failed (\(Self.networkErrorCode(error), privacy: .public)): \(error.localizedDescription, privacy: .public)")
             errorMessage = error.localizedDescription
         }
     }
@@ -922,7 +970,7 @@ final class TogetherStore: ObservableObject {
             return
         }
         do {
-            let refreshedGroups = try await api.fetchSocialGroups().groups
+            let refreshedGroups = try await withTransientNetworkRetry { try await self.api.fetchSocialGroups() }.groups
             guard generation == authGeneration, activeUserID != nil else { return }
             discoverableGroups = refreshedGroups
             errorMessage = nil
@@ -930,6 +978,7 @@ final class TogetherStore: ObservableObject {
             // A cancelled refresh (view identity change, navigation away)
             // is not a refresh failure — stay silent.
             guard !Self.isCancellation(error), generation == authGeneration else { return }
+            Self.logger.error("Social groups refresh failed (\(Self.networkErrorCode(error), privacy: .public)): \(error.localizedDescription, privacy: .public)")
             errorMessage = error.localizedDescription
         }
     }
