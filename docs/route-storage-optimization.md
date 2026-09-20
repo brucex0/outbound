@@ -11,6 +11,17 @@ Routes are time-series data and are stored independently from activity metadata.
 
 Updating an activity title, reflection, photos, or client extras therefore does not rewrite the route sidecar/file or backend route blob unless route points actually changed.
 
+## Storage medium decision (final)
+
+Backend route bytes intentionally live in Postgres (`Activity.routeBlob`, `bytea`) — this is the final state, not an interim step toward files/object storage:
+
+- The blob is written once at upload and never rewritten by activity metadata updates.
+- Postgres TOAST stores bytea values out-of-line, so the activity row stays small and non-route reads pay nothing for it.
+- Measured with the production codec: a 21 km / 1,850-point route encodes to **13.7 KB** versus 164 KB of legacy GeoJSON (12× smaller) — smaller than one photo.
+- Transactional with the activity row; sync restore remains a single request.
+
+Object storage (Firebase Storage, following the photo/avatar pattern in `activityPhotoStorage.ts`) remains a documented future option if a driver appears: route sizes growing well beyond tens of KB (watch imports, all-day hikes, GPX), or a need for clients to download routes directly. That move would require a backfill script, delete lifecycle handling, and either proxied reads or a signed-URL client contract on iOS and Android.
+
 ## Compact encoding
 
 The route codec uses:
@@ -46,6 +57,8 @@ npm run migrate:activity-client-data
 ```
 
 `migrate:activity-routes` rewrites the temporary JSON blobs into the compact binary format. The application can read the temporary JSON form during the short migration window, so the route remains recoverable if the commands are run separately. New uploads are compact immediately.
+
+Production uses Prisma schema push instead of migration execution. Its `db:push` command first runs `prepareActivityRouteStorage`, which creates the new columns when needed, encodes every legacy route, and fails closed if any route cannot be converted. Only after that preparation succeeds may Prisma remove the legacy JSON column.
 
 ## Verification
 
