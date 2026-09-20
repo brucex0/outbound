@@ -26,6 +26,10 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activityFinished = "activity_finished"
     case activitySaved = "activity_saved"
     case activitySaveIneligibleShown = "activity_save_ineligible_shown"
+    case postWorkoutStretchOffered = "post_workout_stretch_offered"
+    case postWorkoutStretchStarted = "post_workout_stretch_started"
+    case postWorkoutStretchCompleted = "post_workout_stretch_completed"
+    case postWorkoutStretchDismissed = "post_workout_stretch_dismissed"
     case activityDiscardPrompted = "activity_discard_prompted"
     case activityDiscarded = "activity_discarded"
     case activityDeleted = "activity_deleted"
@@ -240,6 +244,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case timestampSource = "timestamp_source"
     case direction
     case activityType = "activity_type"
+    case routineID = "routine_id"
     case goalType = "goal_type"
     case targetBucket = "target_bucket"
     case progressPercent = "progress_percent"
