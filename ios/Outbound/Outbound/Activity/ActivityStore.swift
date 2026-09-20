@@ -908,6 +908,10 @@ final class ActivityStore: ObservableObject {
         if let index = activities.firstIndex(where: { $0.id == activityID }) { activities[index] = updated }
     }
 
+    private func syncSnapshot(for activity: SavedActivity) -> SavedActivity {
+        copy(activity, photos: [], sync: nil, stripImportedFollowedRoute: true)
+    }
+
     private func copy(_ photo: SavedPhoto, remotePhotoId: String?, remoteUploadedAt: Date?) -> SavedPhoto {
         SavedPhoto(
             id: photo.id,
@@ -921,10 +925,6 @@ final class ActivityStore: ObservableObject {
             remotePhotoId: remotePhotoId,
             remoteUploadedAt: remoteUploadedAt
         )
-    }
-
-    private func syncSnapshot(for activity: SavedActivity) -> SavedActivity {
-        copy(activity, photos: [], sync: nil, stripImportedFollowedRoute: true)
     }
 
     private func copy(

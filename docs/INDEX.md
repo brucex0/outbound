@@ -79,6 +79,7 @@ Primary flow:
 | Badge strategy, recognition UX, unlock rules, and reward system rollout | `docs/recognition-rewards.md` | Product spec for Outbound's recognition layer, V1 badge families, unlock logic, and Me/post-run/Social placement |
 | Goal setting, weekly progress, and guide-led focus flows | `docs/goals-progress.md` | Product and implementation spec for local-first goals, progress tracking, and conversational setup |
 | Community route discovery, owner publishing, bookmarks, import/export, route privacy | `docs/route-saving-sharing.md` | Public route-library UX, backend model/API, safety trimming, GPX/GeoJSON preparation, and route-guided recording |
+| Recorded route storage, sampling normalization, compact encoding, and migration | `docs/route-storage-optimization.md` | Versioned route blob design, post-recording resampling, precision policy, local/backend boundaries, and verification |
 | Activity detail page, maps, elevation, splits, route controls | `docs/activity-detail.md` | Current activity-detail layout, data model needs, elevation-profile behavior, and rollout notes |
 | Social tab, feed, clubs, relays, challenges, rivalry loops | `docs/social.md` | Social product loops, current local UI shape, future backend contracts |
 | Android Social feature-parity implementation prompt | `docs/android-social-parity-prompt.md` | Copy-ready Android engineering prompt grounded in the production iOS Social, Circle, event, notification, analytics, privacy, and offline behavior |
