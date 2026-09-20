@@ -92,10 +92,47 @@ router.post("/activity-photos", zValidator("json", activityPhotoSchema), async (
 router.get("/activity-photos/:id/content", async (c) => {
   const user = await requireUser(c);
   if (user instanceof Response) return user;
-  const photo = await getPrismaClient().photo.findFirst({
-    where: { id: c.req.param("id"), activity: { userId: user.id, deletedAt: null } },
+  const prisma = getPrismaClient();
+  const photo = await prisma.photo.findUnique({
+    where: { id: c.req.param("id") },
+    include: { activity: { select: { userId: true, deletedAt: true } } },
   });
-  if (!photo) return c.json({ error: "Photo not found." }, 404);
+  if (!photo || photo.activity.deletedAt) return c.json({ error: "Photo not found." }, 404);
+
+  // Activity owners can always read their own media. Feed viewers may read it
+  // only while the activity is still represented by a visible social post and
+  // the post's connection-level visibility permits the requester.
+  let canRead = photo.activity.userId === user.id;
+  if (!canRead) {
+    const post = await prisma.post.findFirst({
+      where: {
+        activityId: photo.activityId,
+        deletedAt: null,
+        OR: [
+          { visibility: "public" },
+          { visibility: "connections" },
+        ],
+      },
+      select: { userId: true, visibility: true },
+    });
+    if (post?.visibility === "public") {
+      canRead = true;
+    } else if (post?.visibility === "connections") {
+      const connection = await prisma.connection.findFirst({
+        where: {
+          status: "accepted",
+          OR: [
+            { requesterId: post.userId, addresseeId: user.id },
+            { requesterId: user.id, addresseeId: post.userId },
+          ],
+        },
+        select: { id: true },
+      });
+      canRead = connection !== null;
+    }
+  }
+  if (!canRead) return c.json({ error: "Photo not found." }, 404);
+
   const localData = await readActivityPhoto(photo.storageKey);
   if (localData) {
     return new Response(new Uint8Array(localData), { headers: { "Content-Type": "image/jpeg", "Cache-Control": "private, max-age=3600" } });

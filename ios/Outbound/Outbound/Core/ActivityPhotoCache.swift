@@ -137,11 +137,21 @@ final class ActivityPhotoCache {
             return image
         }
 
-        var request = URLRequest(url: url)
-        request.cachePolicy = .returnCacheDataElseLoad
-        guard let (data, response) = try? await URLSession.shared.data(for: request),
-              let httpResponse = response as? HTTPURLResponse,
-              (200..<300).contains(httpResponse.statusCode) else { return nil }
+        let data: Data
+        if let photoID = Self.activityPhotoID(from: url) {
+            // Social feed URLs are intentionally short and authenticated. Use
+            // APIClient here so the bearer token is attached; a raw URLSession
+            // request would otherwise turn the compact URL into a 401.
+            guard let downloaded = try? await APIClient.shared.downloadActivityPhoto(id: photoID) else { return nil }
+            data = downloaded
+        } else {
+            var request = URLRequest(url: url)
+            request.cachePolicy = .returnCacheDataElseLoad
+            guard let (downloaded, response) = try? await URLSession.shared.data(for: request),
+                  let httpResponse = response as? HTTPURLResponse,
+                  (200..<300).contains(httpResponse.statusCode) else { return nil }
+            data = downloaded
+        }
 
         let image = await Task.detached(priority: .userInitiated) {
             ActivityPhotoCache.decodedImage(data: data, maxPixelSize: maxPixelSize)
@@ -295,6 +305,14 @@ final class ActivityPhotoCache {
     }
 
     // MARK: - Decoding
+
+    nonisolated private static func activityPhotoID(from url: URL) -> String? {
+        let components = url.pathComponents
+        guard let marker = components.firstIndex(of: "activity-photos"),
+              components.indices.contains(marker + 2),
+              components[marker + 2] == "content" else { return nil }
+        return components[marker + 1]
+    }
 
     nonisolated private static func decodedImage(data: Data, maxPixelSize: CGFloat?) -> UIImage? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }

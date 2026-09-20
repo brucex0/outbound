@@ -8,7 +8,6 @@ import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import { getPrismaClient } from "../services/prisma.js";
 import type { AppEnv } from "../types/hono.js";
 import { deliverPushNotification } from "../services/pushNotifications.js";
-import { signedActivityPhotoURL } from "../services/activityPhotoStorage.js";
 import {
   awardRecognition,
   evaluateGoodTeammate,
@@ -1267,7 +1266,10 @@ async function postPayload(post: any, currentUserId: string) {
         photos: await Promise.all(post.activity.photos.map(async (photo: any) => ({
           id: photo.id,
           clientPhotoId: photo.clientPhotoId,
-          url: await signedActivityPhotoURL(photo.storageKey),
+          // Keep the feed payload compact. The authenticated media endpoint owns
+          // authorization and redirects to a short-lived signed URL only when
+          // the image is actually requested.
+          url: `/media/activity-photos/${photo.id}/content`,
           takenAt: photo.takenAt,
           paceAtShot: photo.paceAtShot,
           hrAtShot: photo.hrAtShot,
