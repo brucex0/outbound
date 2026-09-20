@@ -773,7 +773,7 @@ struct RecordView: View {
                     lastCapturedPhoto: capturedPhotos.last?.0,
                     activePage: $activePage,
                     isWorkoutPanelExpanded: liveWorkoutPanelBinding(source: .camera),
-                    onStart: ensureLocationReadyThenStart,
+                    onStart: { ensureLocationReadyThenStart() },
                     onPause: pauseRecording,
                     onResume: resumeRecording,
                     onFinish: finishRecording,
@@ -800,7 +800,7 @@ struct RecordView: View {
                     lastCapturedPhoto: capturedPhotos.last?.0,
                     activePage: $activePage,
                     isWorkoutPanelExpanded: liveWorkoutPanelBinding(source: .map),
-                    onStart: ensureLocationReadyThenStart,
+                    onStart: { ensureLocationReadyThenStart() },
                     onPause: pauseRecording,
                     onResume: resumeRecording,
                     onFinish: finishRecording,
@@ -1947,7 +1947,7 @@ struct RecordView: View {
 #if DEBUG
         if isRunSimulationEnabled { return false }
 #endif
-        !isLocationPermissionGranted && !isIndoorSession
+        return !isLocationPermissionGranted && !isIndoorSession
     }
 
     private var enableLocationChip: some View {
@@ -2316,7 +2316,7 @@ struct RecordView: View {
     }
 
     private var contextualStartControl: some View {
-        Button(action: ensureLocationReadyThenStart) {
+        Button(action: { ensureLocationReadyThenStart() }) {
             VStack(spacing: 1) {
                 Group {
                     if isStartingActivity {
