@@ -174,7 +174,7 @@ private struct ActivityShareCardView: View {
                         .minimumScaleFactor(0.72)
 
                     if let companionType = activity.companionType {
-                        Label(companionType.displayName, systemImage: companionType.systemImage)
+                        Text(companionType.displayName)
                             .font(.system(size: 24, weight: .semibold))
                             .foregroundStyle(.white.opacity(0.86))
                     }

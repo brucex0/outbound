@@ -2118,7 +2118,7 @@ struct RecordView: View {
         })
     }
 
-    /// One paw-icon toggle beside the other setup settings. It is hidden for
+    /// One text-only toggle beside the other setup settings. It is hidden for
     /// sports that cannot carry the context and explains an automatic clear
     /// with the existing temporary toast.
     private var launchCompanionControl: AnyView {
@@ -2128,11 +2128,8 @@ struct RecordView: View {
             Button {
                 toggleCompanionContext()
             } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: ActivityCompanionType.dog.systemImage)
-                    Text(ActivityCompanionType.dog.displayName)
-                }
-                .font(.subheadline.weight(.semibold))
+                Text(ActivityCompanionType.dog.displayName)
+                    .font(.subheadline.weight(.semibold))
                 .foregroundStyle(isSelected ? Color.white : Color.primary)
                 .lineLimit(1)
                 .padding(.horizontal, 14)
@@ -5691,7 +5688,7 @@ private struct ActivityStartCountdownOverlay: View {
                     .lineLimit(1)
 
                 if let companionType {
-                    Label(companionType.displayName, systemImage: companionType.systemImage)
+                    Text(companionType.displayName)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.white.opacity(0.9))
                         .padding(.horizontal, 12)
