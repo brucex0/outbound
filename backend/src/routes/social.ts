@@ -1260,7 +1260,7 @@ async function postPayload(post: any, currentUserId: string) {
   const activity = post.activity
     ? {
         ...post.activity,
-        route: decodeStoredActivityRoute(post.activity.routeBlob, post.activity.routeMetadata),
+        route: socialRoutePayload(post.activity.routeBlob, post.activity.routeMetadata),
         routeBlob: undefined,
         routeMetadata: undefined,
         photos: await Promise.all(post.activity.photos.map(async (photo: any) => ({
@@ -1290,6 +1290,26 @@ async function postPayload(post: any, currentUserId: string) {
     currentUserCheered: post.reactions.some((reaction: { userId: string }) => reaction.userId === currentUserId),
     commentCount: post._count.comments,
     comments: post.comments.map((comment: any) => commentPayload(comment, currentUserId, post.userId)),
+  };
+}
+
+function socialRoutePayload(routeBlob: Uint8Array | null | undefined, routeMetadata: unknown) {
+  const route = decodeStoredActivityRoute(routeBlob, routeMetadata);
+  if (!route || route.points.length < 2) return null;
+  return {
+    type: "Feature",
+    geometry: {
+      type: "LineString",
+      coordinates: route.points.map((point) => point.altitude == null
+        ? [point.longitude, point.latitude]
+        : [point.longitude, point.latitude, point.altitude]),
+    },
+    properties: {
+      timestamps: route.points.map((point) => point.timestamp),
+      verticalAccuracy: route.points.map((point) => point.verticalAccuracy ?? null),
+      visibility: route.visibility,
+      elevationMetadata: route.elevationMetadata,
+    },
   };
 }
 
