@@ -17,14 +17,15 @@ export class DatabaseLiveCoachEntitlementResolver implements LiveCoachEntitlemen
 
   async resolve(userId: string, now: Date, config: LiveCoachFeatureConfig): Promise<LiveCoachAccessDecision> {
     if (config.mode !== "dynamic") return decision(false, "feature_disabled");
-    if (!(await isPaywallEnabled(this.prisma))) return decision(true, "open_beta");
-    if (config.accessMode === "open_beta") return decision(true, "open_beta");
 
     const entitlement = await this.activeEntitlement(userId, now);
     if (entitlement) return decision(true, subscriptionSources.has(entitlement.source) ? "verified_subscription" : "promotion");
 
+    if (!(await isPaywallEnabled(this.prisma))) return decision(true, "open_beta");
+    if (config.accessMode === "open_beta") return decision(true, "open_beta");
+
     if (config.accessMode === "subscription_required") {
-      return decision(false, "entitlement_required", config.paywallAvailable);
+      return decision(false, "entitlement_required", { paywallAvailable: config.paywallAvailable });
     }
 
     const foundingEntitlement = await this.ensureFoundingEntitlement(userId, now, config.foundingUserLimit);
@@ -40,8 +41,8 @@ export class DatabaseLiveCoachEntitlementResolver implements LiveCoachEntitlemen
     });
     const consumed = (usage?.successfulCount ?? 0) + (usage?.reservedCount ?? 0);
     return consumed < config.trialRunLimit
-      ? decision(true, "open_beta")
-      : decision(false, "entitlement_required", config.paywallAvailable);
+      ? decision(true, "open_beta", { requiresTrialReservation: true })
+      : decision(false, "entitlement_required", { paywallAvailable: config.paywallAvailable });
   }
 
   async reserveTrialRun(userId: string, config: LiveCoachFeatureConfig): Promise<boolean> {
@@ -169,7 +170,13 @@ const subscriptionSources = new Set(["app_store", "google_play", "verified_subsc
 function decision(
   allowed: boolean,
   reason: LiveCoachAccessDecision["reason"],
-  paywallAvailable = false
+  options: { paywallAvailable?: boolean; requiresTrialReservation?: boolean } = {}
 ): LiveCoachAccessDecision {
-  return { capability: "live_coach_dynamic", allowed, reason, paywallAvailable };
+  return {
+    capability: "live_coach_dynamic",
+    allowed,
+    reason,
+    paywallAvailable: options.paywallAvailable ?? false,
+    requiresTrialReservation: options.requiresTrialReservation ?? false,
+  };
 }

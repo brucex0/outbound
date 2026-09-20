@@ -212,7 +212,7 @@ Read these database fields together:
 | `plannerStatus=fallback` | The dynamic plan was not generated; deterministic guidance was used. |
 | `source=cached_fallback`, `resultCategory=unavailable` | The server could not return a matching playable cached asset for that cue. |
 | `dynamicCueCount=0` | No dynamic cue completed successfully. |
-| `successfulCount` at `limitSnapshot` | The trial allowance is exhausted. |
+| `successfulCount` at `limitSnapshot` | The trial allowance is exhausted when paywall enforcement is enabled; it must not restrict open access while the paywall is disabled. |
 
 Duplicate cue rows a fraction of a second apart usually mean the client submitted the same detected moment more than once with different request IDs. Note this separately from the audio-access failure.
 

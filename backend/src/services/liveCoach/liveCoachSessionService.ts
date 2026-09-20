@@ -76,7 +76,7 @@ export class LiveCoachSessionService {
     }
 
     let trialReserved = false;
-    if (effectiveMode === "dynamic" && feature.accessMode === "founding_trial" && access.reason === "open_beta") {
+    if (effectiveMode === "dynamic" && access.requiresTrialReservation) {
       trialReserved = await accessResolver.reserveTrialRun(userId, feature);
       if (!trialReserved) {
         access = {
@@ -84,6 +84,7 @@ export class LiveCoachSessionService {
           allowed: false,
           reason: "entitlement_required",
           paywallAvailable: feature.paywallAvailable,
+          requiresTrialReservation: false,
         };
         effectiveMode = "fixed_only";
         route = null;
@@ -254,5 +255,6 @@ function accessFromSession(session: LiveCoachSession): LiveCoachAccessDecision {
     allowed: ["open_beta", "verified_subscription", "promotion"].includes(reason),
     reason,
     paywallAvailable: false,
+    requiresTrialReservation: false,
   };
 }

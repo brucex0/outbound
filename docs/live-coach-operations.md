@@ -236,6 +236,8 @@ Production uses `LIVE_COACH_ACCESS_MODE=founding_trial`, a founding limit of 1,0
 
 A trial is consumed only after the first successful dynamic cue in that workout, then the rest of that workout remains uncapped. Canceled starts, Quiet guidance, safety-forced fixed sessions, expired sessions without a dynamic success, and provider failures do not consume a run.
 
+The database-backed `paywall_enabled` control overrides trial enforcement. While the paywall is disabled, non-entitled accounts receive unlimited open-beta access without reserving or consuming trial runs, and existing founding or subscription entitlements retain their more specific access reason for diagnostics.
+
 ## Release Gate
 
 Production dynamic coaching is enabled after the Google APIs, runtime IAM, schema, signed fallback pack, Gemini strict-JSON response, and streamed TTS first chunk were verified. The remaining product-quality gate is a representative real-device benchmark with provider-result/fallback telemetry visible; the on-device deadline must continue to speak exact progress instead of `progress.steady` when cloud audio misses 1.5 seconds.

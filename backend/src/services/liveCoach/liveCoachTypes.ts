@@ -183,6 +183,7 @@ export type LiveCoachAccessDecision = {
   allowed: boolean;
   reason: LiveCoachAccessReason;
   paywallAvailable: boolean;
+  requiresTrialReservation: boolean;
 };
 
 export type CompiledLiveCoachSessionContext = {
