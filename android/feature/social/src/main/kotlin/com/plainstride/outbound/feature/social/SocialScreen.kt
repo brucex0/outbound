@@ -484,9 +484,34 @@ private fun formatSocialDate(value:String)=runCatching{java.time.OffsetDateTime.
 
 private fun JsonElement?.routeCoordinates(): List<MapCoordinate> {
     val root = this as? JsonObject ?: return emptyList()
-    val raw = (root["coordinates"] ?: (root["geometry"] as? JsonObject)?.get("coordinates")) as? JsonArray ?: return emptyList()
-    val line = if (raw.firstOrNull() is JsonPrimitive) listOf(raw) else raw.mapNotNull { it as? JsonArray }
-    return line.mapNotNull { pair -> val lon=(pair.getOrNull(0) as? JsonPrimitive)?.doubleOrNull; val lat=(pair.getOrNull(1) as? JsonPrimitive)?.doubleOrNull; if(lat!=null&&lon!=null) MapCoordinate(lat,lon) else null }
+    if ((root["format"] as? JsonPrimitive)?.contentOrNull != "polyline5") return emptyList()
+    val encoded = (root["encodedPolyline"] as? JsonPrimitive)?.contentOrNull ?: return emptyList()
+    val pointCount = (root["pointCount"] as? JsonPrimitive)?.intOrNull ?: return emptyList()
+    if (pointCount !in 2..120) return emptyList()
+    var index = 0
+    var latitude = 0
+    var longitude = 0
+    fun nextDelta(): Int? {
+        var result = 0
+        var shift = 0
+        while (index < encoded.length && shift <= 30) {
+            val value = encoded[index++].code - 63
+            if (value !in 0..63) return null
+            result = result or ((value and 0x1f) shl shift)
+            if (value < 0x20) return if ((result and 1) == 0) result shr 1 else (result shr 1).inv()
+            shift += 5
+        }
+        return null
+    }
+    val coordinates = mutableListOf<MapCoordinate>()
+    while (index < encoded.length) {
+        val latitudeDelta = nextDelta() ?: return emptyList()
+        val longitudeDelta = nextDelta() ?: return emptyList()
+        latitude += latitudeDelta
+        longitude += longitudeDelta
+        coordinates += MapCoordinate(latitude / 100_000.0, longitude / 100_000.0)
+    }
+    return coordinates.takeIf { it.size == pointCount } ?: emptyList()
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
