@@ -6,6 +6,7 @@ import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import { requireDatabase } from "../services/database.js";
 import { getPrismaClient } from "../services/prisma.js";
 import type { AppEnv } from "../types/hono.js";
+import { decodeStoredActivityRoute } from "../services/activityRouteCodec.js";
 
 const router = new Hono<AppEnv>();
 const publishSchema = z.object({
@@ -120,7 +121,7 @@ router.post("/from-activity/:activityId", zValidator("json", publishSchema), asy
   if (!user) return c.json({ error: "Authentication is required." }, 401);
   const activity = await prisma.activity.findFirst({ where: { OR: [{ id: c.req.param("activityId") }, { clientActivityId: c.req.param("activityId") }], userId: user.id, deletedAt: null } });
   if (!activity) return c.json({ error: "Only your own saved activity can become a route." }, 404);
-  const parsedCoordinates = coordinatesFromActivity(activity.route);
+  const parsedCoordinates = coordinatesFromActivity(decodeStoredActivityRoute(activity.routeBlob, activity.routeMetadata));
   if (!parsedCoordinates.ok) return c.json({ error: parsedCoordinates.error }, 422);
   const coordinates = parsedCoordinates.coordinates;
   if (polylineDistance(coordinates) < MIN_CANONICAL_ROUTE_DISTANCE_M) {
@@ -194,8 +195,10 @@ async function bookmark(c: any, add: boolean) {
 }
 
 function coordinatesFromActivity(value: unknown): { ok: true; coordinates: Coordinate[] } | { ok: false; error: string } {
-  const route = value as { geometry?: { coordinates?: unknown[] } } | null;
-  const rawCoordinates = route?.geometry?.coordinates;
+  const route = value as { points?: Array<{ longitude: number; latitude: number; altitude?: number | null }> } | null;
+  const rawCoordinates = route?.points?.map((point) => point.altitude == null
+    ? [point.longitude, point.latitude]
+    : [point.longitude, point.latitude, point.altitude]);
   if (!Array.isArray(rawCoordinates) || rawCoordinates.length < 2) {
     return { ok: false, error: "This activity does not contain a usable route." };
   }

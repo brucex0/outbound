@@ -12,6 +12,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
@@ -187,7 +188,28 @@ class OfflineFirstActivityRepository(
 }
 
 private fun SavedActivity.toUploadRequest(): ActivityUploadRequest {
-    val clientData = PlainstrideJson.encodeToJsonElement(SavedActivity.serializer(), this).jsonObject
+    val clientData = buildJsonObject {
+        put("guideNudge", JsonPrimitive(guideNudge))
+        walkingStepCount?.let { put("walkingStepCount", JsonPrimitive(it)) }
+        if (averageHeartRateBpm != null || maximumHeartRateBpm != null || heartRateSampleCount != null) {
+            put("healthMetrics", buildJsonObject {
+                averageHeartRateBpm?.let { put("averageHeartRateBPM", JsonPrimitive(it)) }
+                maximumHeartRateBpm?.let { put("maxHeartRateBPM", JsonPrimitive(it)) }
+                heartRateSampleCount?.let { put("heartRateSampleCount", JsonPrimitive(it)) }
+            })
+        }
+        energyKilocalories?.let { put("energyKilocalories", JsonPrimitive(it)) }
+        goalJson?.let { put("goal", PlainstrideJson.parseToJsonElement(it)) }
+        put("source", PlainstrideJson.parseToJsonElement(PlainstrideJson.encodeToString(source)))
+        gearJson?.let { put("gear", PlainstrideJson.parseToJsonElement(it)) }
+        indoorJson?.let { put("indoor", PlainstrideJson.parseToJsonElement(it)) }
+        cadenceJson?.let { put("cadence", PlainstrideJson.parseToJsonElement(it)) }
+        heartRateZonesJson?.let { put("heartRateZones", PlainstrideJson.parseToJsonElement(it)) }
+        activityEventId?.let { put("activityEventID", JsonPrimitive(it)) }
+        followedRouteId?.let { put("followedRouteId", JsonPrimitive(it)) }
+        put("followedRouteCompleted", JsonPrimitive(followedRouteCompleted))
+        put("recognitionBadgeIDs", PlainstrideJson.parseToJsonElement(PlainstrideJson.encodeToString(recognitionBadgeIds)))
+    }
     return ActivityUploadRequest(
         clientActivityId = id, type = type.name, title = title, startedAt = startedAt, endedAt = endedAt,
         durationSecs = durationSecs, distanceM = distanceM, elevationM = elevationGainM,

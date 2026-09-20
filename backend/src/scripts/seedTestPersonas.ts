@@ -4,6 +4,7 @@ import path from "node:path";
 import { resolveAuthenticatedAppUser } from "../services/currentUser.js";
 import { activityPhotoSHA256, activityPhotoStorageKey, deleteUserActivityPhotos, saveActivityPhoto } from "../services/activityPhotoStorage.js";
 import { ensureCurrentWeek } from "../services/circles.js";
+import { encodeActivityRoute, legacyGeoJSONToRoute, decodeStoredActivityRoute } from "../services/activityRouteCodec.js";
 
 const prisma = new PrismaClient();
 
@@ -294,7 +295,8 @@ function createActivity(userId: string, clientActivityId: string, title: string,
       avgPace,
       elevationM: 42,
       energyKilocalories: Math.round(distanceM / 10),
-      route: makeSeedRoute(startedAt, durationSecs, distanceM, Number(clientActivityId.at(-1)) - 1),
+      routeBlob: encodeActivityRoute(legacyGeoJSONToRoute(makeSeedRoute(startedAt, durationSecs, distanceM, Number(clientActivityId.at(-1)) - 1))!.points),
+      routeMetadata: { visibility: "private", elevationMetadata: null },
       clientUpdatedAt: endedAt,
     },
   });
@@ -348,7 +350,7 @@ async function seedActivityPhotos(userId: string, activities: Awaited<ReturnType
   if (!activity) return;
 
   await Promise.all(seeds.map(async (seed) => {
-    const coordinate = seedRouteCoordinateAtDistance(activity.route, seed.distance);
+    const coordinate = seedRouteCoordinateAtDistance(decodeStoredActivityRoute(activity.routeBlob, activity.routeMetadata), seed.distance);
     const data = await readFile(path.resolve(process.cwd(), "src", "scripts", "assets", "running-photos", seed.file));
     const storageKey = activityPhotoStorageKey(userId, activity.id, seed.clientPhotoId);
     await saveActivityPhoto(storageKey, data);
@@ -373,14 +375,8 @@ async function seedActivityPhotos(userId: string, activities: Awaited<ReturnType
   }));
 }
 
-function seedRouteCoordinateAtDistance(route: Prisma.JsonValue, targetDistanceM: number) {
-  if (typeof route !== "object" || route == null || Array.isArray(route)) return null;
-  const geometry = "geometry" in route ? route.geometry : null;
-  if (typeof geometry !== "object" || geometry == null || Array.isArray(geometry) || !("coordinates" in geometry)) return null;
-  const coordinates = Array.isArray(geometry.coordinates)
-    ? geometry.coordinates.filter((coordinate): coordinate is number[] =>
-        Array.isArray(coordinate) && typeof coordinate[0] === "number" && typeof coordinate[1] === "number")
-    : [];
+function seedRouteCoordinateAtDistance(route: { points?: Array<{ latitude: number; longitude: number }> } | null, targetDistanceM: number) {
+  const coordinates = route?.points?.map((point) => [point.longitude, point.latitude]) ?? [];
   if (coordinates.length === 0) return null;
 
   let traversedM = 0;

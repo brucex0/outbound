@@ -424,7 +424,8 @@ model Activity {
   // or describes the dog itself.
   companionType      String?
 
-  route                      Json? // GeoJSON Feature with LineString geometry
+  routeBlob                  Bytes? // Compact versioned route payload; never rewritten with activity metadata
+  routeMetadata              Json? // Small route metadata (visibility/elevation attribution)
   splits                     Json? // Split[]
   reflection                 Json? // post-activity finish reflection saved by the client
   clientData                 Json? // lossless client snapshot used to restore local-first history
@@ -1207,6 +1208,10 @@ model AthleteTrainingState {
   weeklyDistanceMeters        Float     @default(0)
   fourWeekAvgMinutes          Int       @default(0)
   fourWeekAvgDistanceMeters   Float     @default(0)
+  recentRunSessions3Days      Int       @default(0)
+  recentRunSessions7Days      Int       @default(0)
+  recentRunDistance7DaysMeters Float     @default(0)
+  consecutiveActiveDays       Int       @default(0)
   longestRecentSessionSeconds Int       @default(0)
   lastHardWorkoutAt           DateTime?
   modalityBreakdown           Json      @default("{}")

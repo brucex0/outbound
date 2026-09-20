@@ -70,6 +70,44 @@ struct LocalActivityStorePhotoTests {
         #expect(UIImage(contentsOfFile: photoURL.path(percentEncoded: false)) != nil)
     }
 
+    @Test func saveStoresRouteOutsideManifestAndRoundTripsSidecar() throws {
+        let startedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let summary = ActivitySummary(
+            startedAt: startedAt,
+            endedAt: startedAt.addingTimeInterval(60),
+            durationSecs: 60,
+            distanceM: 500,
+            avgPace: 120,
+            trackPoints: [
+                CLLocation(latitude: 37.3317, longitude: -122.0301),
+                CLLocation(latitude: 37.3321, longitude: -122.0310),
+                CLLocation(latitude: 37.3330, longitude: -122.0320),
+            ]
+        )
+        let saved = try LocalActivityStore.save(
+            summary: summary,
+            photos: [],
+            title: "Route Sidecar Test",
+            guideNudge: "",
+            reflection: nil,
+            goal: nil
+        )
+        defer { try? LocalActivityStore.delete(saved) }
+
+        let manifestURL = URL.applicationSupportDirectory
+            .appendingPathComponent("Outbound/Activities/activities.json")
+        let manifest = try String(contentsOf: manifestURL)
+        let sidecarURL = URL.applicationSupportDirectory
+            .appendingPathComponent("Outbound/Activities/\(saved.id.uuidString)/route.bin")
+        #expect(!manifest.contains("\"points\""))
+        #expect(FileManager.default.fileExists(atPath: sidecarURL.path))
+        #expect(try Data(contentsOf: sidecarURL).count < manifest.utf8.count)
+
+        let restored = try #require(LocalActivityStore.load().first { $0.id == saved.id })
+        #expect(restored.routePoints.count == saved.routePoints.count)
+        #expect(abs(restored.routePoints[1].latitude - saved.routePoints[1].latitude) < 0.000001)
+    }
+
     @MainActor
     private func makeTestImage() -> UIImage {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8))

@@ -15,6 +15,7 @@ import {
   recognitionAwards,
 } from "../services/recognition.js";
 import { assertCircleMember } from "../services/circles.js";
+import { decodeStoredActivityRoute } from "../services/activityRouteCodec.js";
 import {
   claimReferral,
   ensurePersonalReferralCode,
@@ -1198,7 +1199,8 @@ const socialActivitySelect = {
   avgPace: true,
   energyKilocalories: true,
   companionType: true,
-  route: true,
+  routeBlob: true,
+  routeMetadata: true,
 } as const;
 
 const socialPostActivitySelect = {
@@ -1258,6 +1260,9 @@ async function postPayload(post: any, currentUserId: string) {
   const activity = post.activity
     ? {
         ...post.activity,
+        route: decodeStoredActivityRoute(post.activity.routeBlob, post.activity.routeMetadata),
+        routeBlob: undefined,
+        routeMetadata: undefined,
         photos: await Promise.all(post.activity.photos.map(async (photo: any) => ({
           id: photo.id,
           clientPhotoId: photo.clientPhotoId,

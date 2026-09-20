@@ -13,6 +13,7 @@ import { Prisma } from "@prisma/client";
 import { deleteActivityPhotos } from "../services/activityPhotoStorage.js";
 import { backfillActivityRecognitions } from "../services/recognition.js";
 import { reconcileActivityToCircles } from "../services/circles.js";
+import { decodeStoredActivityRoute, encodeActivityRoute, legacyGeoJSONToRoute } from "../services/activityRouteCodec.js";
 
 const router = new Hono<AppEnv>();
 const activityTypes = ["running", "cycling", "hiking", "walking", "swimming", "strength", "mobility"] as const;
@@ -50,7 +51,7 @@ router.get("/", async (c) => {
       distanceM: activity.distanceM ?? 0,
       avgPace: activity.avgPace,
       elevationGainM: activity.elevationM,
-      route: legacyClientData(activity)?.route ?? null,
+      route: decodeStoredActivityRoute(activity.routeBlob, activity.routeMetadata),
       clientUpdatedAt: activity.clientUpdatedAt,
       deletedAt: activity.deletedAt,
       createdAt: activity.createdAt,
@@ -87,7 +88,11 @@ router.get("/:id", async (c) => {
     include: { photos: true, posts: true },
   });
   if (!activity) return c.json({ error: "Not found" }, 404);
-  return c.json(activity);
+  const { routeBlob, routeMetadata, ...activityWithoutRouteBlob } = activity;
+  return c.json({
+    ...activityWithoutRouteBlob,
+    route: decodeStoredActivityRoute(routeBlob, routeMetadata),
+  });
 });
 
 function emptyClientExtras() {
@@ -122,25 +127,15 @@ function legacyClientData(activity: {
   avgPace: number | null;
   avgHeartRate: number | null;
   companionType: string | null;
-  route: unknown;
+  routeBlob: Uint8Array | null;
+  routeMetadata: unknown;
   reflection: unknown;
   createdAt: Date;
 }) {
   if (!activity.clientActivityId) return null;
   const durationSecs = activity.durationSecs ?? 1;
-  const route = activity.route as {
-    geometry?: { coordinates?: number[][] };
-    properties?: {
-      timestamps?: string[];
-      verticalAccuracy?: Array<number | null>;
-      segmentStarts?: boolean[];
-      elevationMetadata?: ActivityRoutePayload["elevationMetadata"];
-    };
-  } | null;
-  const coordinates = route?.geometry?.coordinates ?? [];
-  const timestamps = route?.properties?.timestamps ?? [];
-  const verticalAccuracy = route?.properties?.verticalAccuracy ?? [];
-  const segmentStarts = route?.properties?.segmentStarts ?? [];
+  const decodedRoute = decodeStoredActivityRoute(activity.routeBlob, activity.routeMetadata);
+  const routePoints = decodedRoute?.points ?? [];
   return {
     id: activity.clientActivityId,
     activityType: activity.type,
@@ -161,16 +156,10 @@ function legacyClientData(activity: {
       heartRateSampleCount: 0,
     },
     source: { kind: "outbound", displayName: "Plainstride" },
-    route: coordinates.length < 2 ? null : {
-      points: coordinates.map((coordinate, index) => ({
-        timestamp: timestamps[index] ?? activity.startedAt,
-        latitude: coordinate[1],
-        longitude: coordinate[0],
-        altitude: coordinate[2] ?? null,
-        verticalAccuracy: verticalAccuracy[index] ?? null,
-        startsNewSegment: segmentStarts[index] ?? index === 0,
-      })),
-      elevationMetadata: route?.properties?.elevationMetadata ?? null,
+    route: routePoints.length < 2 ? null : {
+      points: routePoints,
+      elevationMetadata: decodedRoute?.elevationMetadata ?? null,
+      visibility: decodedRoute?.visibility ?? "private",
     },
     photos: [],
   };
@@ -320,7 +309,11 @@ router.post("/", zValidator("json", createSchema), async (c) => {
     energyKilocalories: body.energyKilocalories,
     companionType: body.companionType,
     followedRouteId: resolvedFollowedRouteId,
-    route: normalizeRoute(body.route),
+    routeBlob: body.route ? encodeActivityRoute(body.route.points) : undefined,
+    routeMetadata: body.route ? {
+      visibility: body.route.visibility ?? "private",
+      elevationMetadata: body.route.elevationMetadata ?? null,
+    } as Prisma.InputJsonValue : undefined,
     splits: body.splits,
     reflection: body.reflection ?? undefined,
     clientData: body.clientData as Prisma.InputJsonValue | undefined,

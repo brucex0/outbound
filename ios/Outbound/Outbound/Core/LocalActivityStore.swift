@@ -132,6 +132,12 @@ private nonisolated enum LocalActivityStore {
             return SavedPhoto(metadata: capture.1, relativePath: "\(activityId.uuidString)/photos/\(fileName)")
         }
 
+        let route = SavedRoute(
+            points: SavedRoutePoint.simplified(from: summary.trackSegments),
+            elevationMetadata: summary.elevationMetadata
+        )
+        try saveRoute(route, for: activityId)
+
         let activity = SavedActivity(
             id: activityId,
             activityType: activityType,
@@ -160,10 +166,7 @@ private nonisolated enum LocalActivityStore {
             activityEventID: activityEventID,
             followedRoute: followedRoute,
             recognitionBadgeIDs: recognitionBadgeIDs,
-            route: SavedRoute(
-                points: SavedRoutePoint.simplified(from: summary.trackSegments),
-                elevationMetadata: summary.elevationMetadata
-            ),
+            route: route,
             photos: savedPhotos,
             sync: SavedActivitySyncState(
                 clientActivityId: activityId.uuidString,
@@ -185,21 +188,29 @@ private nonisolated enum LocalActivityStore {
         let manifest = try manifestURL()
         guard FileManager.default.fileExists(atPath: manifest.path) else { return [] }
         let data = try Data(contentsOf: manifest)
-        return try decoder.decode([SavedActivity].self, from: data)
+        let manifestActivities = try decoder.decode([SavedActivity].self, from: data)
+        return try manifestActivities.map { activity in
+            guard activity.route == nil else {
+                try? saveRoute(activity.route!, for: activity.id)
+                return activity.withRoute(try loadRoute(for: activity.id))
+            }
+            return activity.withRoute(try loadRoute(for: activity.id))
+        }
     }
 
     static func delete(_ activity: SavedActivity) throws {
         var activities = try load()
         activities.removeAll { $0.id == activity.id }
         try saveManifest(activities)
-        let photoDir = try activitiesDirectory().appendingPathComponent(activity.id.uuidString)
-        try? FileManager.default.removeItem(at: photoDir)
+        let activityDir = try activitiesDirectory().appendingPathComponent(activity.id.uuidString)
+        try? FileManager.default.removeItem(at: activityDir)
     }
 
     static func replace(_ activity: SavedActivity) throws {
         var activities = try load()
         guard let index = activities.firstIndex(where: { $0.id == activity.id }) else { return }
-        activities[index] = activity
+        activities[index] = activity.withRoute(nil)
+        try saveRoute(activity.route, for: activity.id)
         try saveManifest(activities)
     }
 
@@ -281,10 +292,11 @@ private nonisolated enum LocalActivityStore {
     static func replaceOrInsert(_ activity: SavedActivity) throws {
         var activities = try load()
         if let index = activities.firstIndex(where: { $0.id == activity.id }) {
-            activities[index] = activity
+            activities[index] = activity.withRoute(nil)
         } else {
-            activities.append(activity)
+            activities.append(activity.withRoute(nil))
         }
+        try saveRoute(activity.route, for: activity.id)
         activities.sort { $0.startedAt > $1.startedAt }
         try saveManifest(activities)
     }
@@ -337,6 +349,41 @@ private nonisolated enum LocalActivityStore {
         )
     }
 
+    private static let routeFileName = "route.bin"
+    private static let routeMetadataFileName = "route.meta.json"
+
+    private static func saveRoute(_ route: SavedRoute?, for activityID: UUID) throws {
+        let directory = try self.directory(for: activityID)
+        let url = directory.appendingPathComponent(routeFileName)
+        let metadataURL = directory.appendingPathComponent(routeMetadataFileName)
+        guard let route, route.points.count >= 2 else {
+            try? FileManager.default.removeItem(at: url)
+            try? FileManager.default.removeItem(at: metadataURL)
+            return
+        }
+        let encodedRoute = RouteSidecarCodec.encode(route.points)
+        if (try? Data(contentsOf: url)) != encodedRoute {
+            try encodedRoute.write(to: url, options: .atomic)
+        }
+        let metadata = try JSONEncoder().encode(route.elevationMetadata)
+        if (try? Data(contentsOf: metadataURL)) != metadata {
+            try metadata.write(to: metadataURL, options: .atomic)
+        }
+    }
+
+    private static func loadRoute(for activityID: UUID) throws -> SavedRoute? {
+        let directory = try activitiesDirectory().appendingPathComponent(activityID.uuidString)
+        let url = directory.appendingPathComponent(routeFileName)
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        let data = try Data(contentsOf: url)
+        let points = try RouteSidecarCodec.decode(data)
+        let metadataURL = directory.appendingPathComponent(routeMetadataFileName)
+        let metadata = FileManager.default.fileExists(atPath: metadataURL.path)
+            ? try JSONDecoder().decode(ActivityElevationMetadata?.self, from: Data(contentsOf: metadataURL))
+            : nil
+        return SavedRoute(points: points, elevationMetadata: metadata)
+    }
+
     private static func saveManifest(_ activities: [SavedActivity]) throws {
         let data = try encoder.encode(activities)
         try data.write(to: try manifestURL(), options: .atomic)
@@ -376,6 +423,23 @@ private nonisolated enum LocalActivityStore {
         d.dateDecodingStrategy = .iso8601
         return d
     }()
+}
+
+nonisolated extension SavedActivity {
+    func withRoute(_ replacement: SavedRoute?) -> SavedActivity {
+        SavedActivity(
+            id: id, activityType: activityType, title: title, guideNudge: guideNudge,
+            reflection: reflection, createdAt: createdAt, startedAt: startedAt, endedAt: endedAt,
+            durationSecs: durationSecs, distanceM: distanceM, avgPace: avgPace,
+            elevationGainM: elevationGainM, walkingStepCount: walkingStepCount,
+            healthMetrics: healthMetrics, goal: goal, energyKilocalories: energyKilocalories,
+            companionType: companionType, source: source, gear: gear, manualEdits: manualEdits,
+            indoor: indoor, cadence: cadence, heartRateZones: heartRateZones,
+            recordingSession: recordingSession, activityEventID: activityEventID,
+            followedRoute: followedRoute, recognitionBadgeIDs: recognitionBadgeIDs,
+            route: replacement, photos: photos, sync: sync
+        )
+    }
 }
 
 nonisolated struct FollowedRouteMetadata: Codable, Hashable {
@@ -662,7 +726,7 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
         try c.encodeIfPresent(recordingSession, forKey: .recordingSession)
         try c.encodeIfPresent(activityEventID, forKey: .activityEventID)
         try c.encodeIfPresent(followedRoute, forKey: .followedRoute)
-        try c.encodeIfPresent(route, forKey: .route)
+        // Route points live in a sidecar file and are intentionally absent from activities.json.
         try c.encode(photos, forKey: .photos)
         try c.encodeIfPresent(sync, forKey: .sync)
     }
