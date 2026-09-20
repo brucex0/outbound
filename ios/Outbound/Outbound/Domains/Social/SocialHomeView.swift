@@ -3370,12 +3370,11 @@ private struct SocialActivityDetailView: View {
     }
 
     private var socialActionBar: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: OutboundSpacing.compact) {
             Button {
                 Task { await toggleCheer() }
             } label: {
                 Image(systemName: currentPost.currentUserCheered ? "heart.fill" : "heart")
-                    .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(SocialFeedActionButtonStyle(isActive: currentPost.currentUserCheered))
             .disabled(socialStore.isSocialMutationPending)
@@ -3389,16 +3388,13 @@ private struct SocialActivityDetailView: View {
             }
 
             Button { showsComments = true } label: {
-                Label {
-                    Text("\(String(localized: "Comments")) · \(currentPost.commentCount)")
-                } icon: {
-                    Image(systemName: "bubble.left")
-                }
-                    .frame(maxWidth: .infinity, minHeight: 44)
+                Label("\(currentPost.commentCount)", systemImage: "bubble.left")
             }
             .buttonStyle(SocialFeedActionButtonStyle())
             .accessibilityLabel(String(localized: "Comments"))
             .accessibilityValue("\(currentPost.commentCount)")
+
+            Spacer()
         }
     }
 
