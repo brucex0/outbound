@@ -298,6 +298,7 @@ struct OutboundApp: App {
                         workouts: trainingPlanStore.scheduledWorkouts,
                         reason: "activity_saved"
                     )
+                    await personalizationStore.refresh()
                 }
             }
     }

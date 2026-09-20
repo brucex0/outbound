@@ -6,6 +6,7 @@ import { createPlanVersionWithWorkouts, json } from "./persistence.js";
 import { getPrismaClient } from "../prisma.js";
 import { applyCalorieTargets, resolveLearnedRunPace } from "./runGoalEstimator.js";
 import { evaluationAdmission } from "./evaluationPolicy.js";
+import { assessPlanFit } from "./planFit.js";
 import { evaluateAndProposePlanAdjustment } from "./aiPlanningEvaluator.js";
 import type {
   ActivityForPlanning,
@@ -145,6 +146,11 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
     });
     const latestReadiness = readiness[0] as ReadinessForPlanning | undefined;
     const activeVersion = plan.versions[0];
+    const planFit = assessPlanFit({
+      activities: activities as ActivityForPlanning[],
+      athleteState,
+      readiness: latestReadiness,
+    });
     const eventType = event.type as PlanningEventType;
     const adaptation = adaptPlan({
       eventType,
@@ -189,6 +195,10 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
             weeklyDistanceMeters: athleteState.weeklyDistanceMeters,
             fourWeekAvgMinutes: athleteState.fourWeekAvgMinutes,
             fourWeekAvgDistanceMeters: athleteState.fourWeekAvgDistanceMeters,
+            recentRunSessions3Days: athleteState.recentRunSessions3Days,
+            recentRunSessions7Days: athleteState.recentRunSessions7Days,
+            recentRunDistance7DaysMeters: athleteState.recentRunDistance7DaysMeters,
+            consecutiveActiveDays: athleteState.consecutiveActiveDays,
             longestRecentSessionSeconds: athleteState.longestRecentSessionSeconds,
             lastHardWorkoutAt: athleteState.lastHardWorkoutAt,
             modalityBreakdown: json(athleteState.modalityBreakdown),
@@ -204,6 +214,8 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
         eventType,
         eventId: event.id,
         athleteState,
+        recentActivities: activities as ActivityForPlanning[],
+        planFit,
       });
       return {
         eventId: event.id,
@@ -228,6 +240,10 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
           weeklyDistanceMeters: athleteState.weeklyDistanceMeters,
           fourWeekAvgMinutes: athleteState.fourWeekAvgMinutes,
           fourWeekAvgDistanceMeters: athleteState.fourWeekAvgDistanceMeters,
+          recentRunSessions3Days: athleteState.recentRunSessions3Days,
+          recentRunSessions7Days: athleteState.recentRunSessions7Days,
+          recentRunDistance7DaysMeters: athleteState.recentRunDistance7DaysMeters,
+          consecutiveActiveDays: athleteState.consecutiveActiveDays,
           longestRecentSessionSeconds: athleteState.longestRecentSessionSeconds,
           lastHardWorkoutAt: athleteState.lastHardWorkoutAt,
           modalityBreakdown: json(athleteState.modalityBreakdown),
@@ -247,6 +263,7 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
           eventId: event.id,
           eventType,
           athleteState,
+          planFit,
         },
         engineDecision: adaptation.engineDecision,
         workouts: adaptedWorkouts,
@@ -260,7 +277,7 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
           eventType,
           message: adaptation.adjustmentMessage,
           changedWorkoutIds: [],
-          engineInputs: json({ eventId: event.id, eventType, athleteState }),
+          engineInputs: json({ eventId: event.id, eventType, athleteState, planFit }),
           engineDecision: json(adaptation.engineDecision),
         },
       });

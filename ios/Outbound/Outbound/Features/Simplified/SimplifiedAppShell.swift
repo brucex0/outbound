@@ -1065,6 +1065,7 @@ private struct SimplifiedTodayView: View {
     @State private var activityLaunchFloatingContentHeight: CGFloat = 0
     @State private var lastExposedTodayCircleID: String?
     @State private var showsSocialInbox = false
+    @State private var presentedAdjustmentID: String?
 
     var body: some View {
         NavigationStack {
@@ -1148,6 +1149,10 @@ private struct SimplifiedTodayView: View {
             .onAppear {
                 launchLocationManager.requestCurrentLocation()
                 trackTodayCircleExposureIfNeeded()
+                presentPendingAdjustmentIfNeeded(personalizationStore.snapshot.pendingAdjustment?.id)
+            }
+            .onChange(of: personalizationStore.snapshot.pendingAdjustment?.id, initial: true) { _, adjustmentID in
+                presentPendingAdjustmentIfNeeded(adjustmentID)
             }
             .task {
                 await loadCompanionTodayMessage()
@@ -1820,6 +1825,15 @@ private struct SimplifiedTodayView: View {
         )
     }
 
+    private func presentPendingAdjustmentIfNeeded(_ adjustmentID: String?) {
+        guard isSelected,
+              let adjustmentID,
+              adjustmentID != presentedAdjustmentID,
+              !isActivityFullscreenVisible else { return }
+        presentedAdjustmentID = adjustmentID
+        showsChangeSheet = true
+    }
+
     private var companionInsightMessage: String {
         if let companionTodayMessage { return companionTodayMessage }
         if let activity = completedActivityToday {
@@ -1891,6 +1905,9 @@ private struct SimplifiedTodayView: View {
 
     private var todayExplanation: String {
         if let workout = currentCalibrationWorkout { return localizedAppCopy(workout.purpose) }
+        if let evidence = trainingPlanStore.activitySuggestion?.primary?.why {
+            return localizedAppCopy(evidence)
+        }
         let copy = trainingPlanStore.todaySuggestion?.adjustmentLine
             ?? trainingPlanStore.todaySuggestion?.guideLine
             ?? "This approachable run builds consistency while Plainstride learns your natural easy effort."

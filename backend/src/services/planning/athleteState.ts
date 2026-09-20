@@ -23,6 +23,10 @@ export function computeAthleteTrainingState(input: AthleteStateInput): AthleteTr
   const fourWeekMinutes = minutesFor(fourWeekActivities);
   const weeklyDistanceMeters = distanceFor(weekActivities);
   const fourWeekDistanceMeters = distanceFor(fourWeekActivities);
+  const recentRunSessions3Days = runActivities(recentActivities.filter((activity) => activity.startedAt >= addDays(now, -3))).length;
+  const recentRunSessions7Days = runActivities(weekActivities).length;
+  const recentRunDistance7DaysMeters = distanceFor(runActivities(weekActivities));
+  const consecutiveActiveDays = consecutiveActiveDayCount(recentActivities, now);
   const completedOrSkipped = input.plannedWorkouts.filter((workout) =>
     ["completed", "skipped"].includes(workout.status)
   );
@@ -45,6 +49,10 @@ export function computeAthleteTrainingState(input: AthleteStateInput): AthleteTr
     weeklyDistanceMeters,
     fourWeekAvgMinutes: Math.round(fourWeekMinutes / 4),
     fourWeekAvgDistanceMeters: fourWeekDistanceMeters / 4,
+    recentRunSessions3Days,
+    recentRunSessions7Days,
+    recentRunDistance7DaysMeters,
+    consecutiveActiveDays,
     longestRecentSessionSeconds: Math.max(0, ...fourWeekActivities.map((activity) => activity.durationSecs ?? 0)),
     adherenceRate,
     consistencyScore,
@@ -66,6 +74,42 @@ function minutesFor(activities: ActivityForPlanning[]): number {
 
 function distanceFor(activities: ActivityForPlanning[]): number {
   return activities.reduce((sum, activity) => sum + (activity.distanceM ?? 0), 0);
+}
+
+function runActivities(activities: ActivityForPlanning[]): ActivityForPlanning[] {
+  return activities.filter((activity) => {
+    const type = activity.type.toLowerCase();
+    return type.includes("run") || type.includes("jog");
+  });
+}
+
+function consecutiveActiveDayCount(activities: ActivityForPlanning[], now: Date): number {
+  const activeDays = new Set(
+    activities
+      .filter((activity) => activity.startedAt <= now && activity.startedAt >= addDays(now, -14))
+      .map((activity) => dayKey(activity.startedAt))
+  );
+  const latestActivity = activities
+    .filter((activity) => activity.startedAt <= now)
+    .sort((left, right) => right.startedAt.getTime() - left.startedAt.getTime())[0];
+  if (!latestActivity) return 0;
+  let count = 0;
+  let cursor = startOfDay(latestActivity.startedAt);
+  while (activeDays.has(dayKey(cursor))) {
+    count += 1;
+    cursor = addDays(cursor, -1);
+  }
+  return count;
+}
+
+function dayKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function startOfDay(date: Date): Date {
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
+  return result;
 }
 
 function fatigueRiskFor(params: {

@@ -1,4 +1,5 @@
 import { computeAthleteTrainingState } from "./athleteState.js";
+import { assessPlanFit } from "./planFit.js";
 import { getPrismaClient } from "../prisma.js";
 import type {
   ActivityForPlanning,
@@ -150,22 +151,39 @@ export async function buildActivitySuggestion(
   }
 
   if (plan && todayWorkout) {
+    const planFit = assessPlanFit({
+      activities: typedActivities,
+      athleteState,
+      workout: plannedWorkoutForState(todayWorkout),
+      readiness: latestReadiness,
+      now,
+    });
+
     if (todayActivities.length > 0 || todayWorkout.status === "completed") {
+      const completedTodayWhy = todayActivities.length > 0
+        ? `You already logged ${formatActivitySummary(todayActivities)} today. ${planFit.explanation} No additional training is needed; recovery is optional.`
+        : "Today's planned session is already complete. No additional training is needed; recovery is optional.";
       return responseWithPrimary({
         base,
         source: "recovery",
         relationship: "optionalRecovery",
-        primary: archetypeSuggestion("recovery-walk-20", "You already logged activity today, so this is optional recovery only."),
+        primary: {
+          ...archetypeSuggestion("recovery-walk-20", completedTodayWhy),
+          why: completedTodayWhy,
+        },
         alternates: [],
         guideLine: "You already have the meaningful work for today. Only add this if it genuinely helps you loosen up.",
-        reasons: ["activity_already_completed_today", "active_plan_present"],
+        reasons: ["activity_already_completed_today", "active_plan_present", ...planFit.reasons],
+        safetyFlags: planFit.safetyFlags,
       });
     }
 
-    if (shouldSoftenToday(todayWorkout, athleteState, latestReadiness)) {
+    if (planFit.action === "recover" || shouldSoftenToday(todayWorkout, athleteState, latestReadiness)) {
       const fallback = archetypeSuggestion(
         recoveryArchetypeFor(todayWorkout.modality),
-        "Today's plan is being softened because current readiness or load asks for less stress."
+        planFit.action === "recover"
+          ? planFit.explanation
+          : "Today's plan is being softened because current readiness or load asks for less stress."
       );
       return responseWithPrimary({
         base,
@@ -178,8 +196,34 @@ export async function buildActivitySuggestion(
         },
         alternates: [],
         guideLine: "Keep the plan alive by lowering the strain today. This protects the next useful workout.",
-        reasons: ["active_plan_present", "planned_workout_softened", athleteState.fatigueRisk],
-        safetyFlags: athleteState.fatigueRisk === "low" ? [] : [`fatigue_${athleteState.fatigueRisk}`],
+        reasons: ["active_plan_present", "planned_workout_softened", ...planFit.reasons, athleteState.fatigueRisk],
+        safetyFlags: [...planFit.safetyFlags, ...(athleteState.fatigueRisk === "low" ? [] : [`fatigue_${athleteState.fatigueRisk}`])],
+      });
+    }
+
+    if (planFit.action === "useObservedBaseline" && todayWorkout.modality === "run") {
+      const durationMinutes = Math.max(30, Math.min(90, planFit.observedAverageRunMinutes));
+      const observed = archetypeSuggestion(
+        "easy-run-30",
+        planFit.explanation
+      );
+      return responseWithPrimary({
+        base,
+        source: "adaptive",
+        relationship: "adjustedFromPlan",
+        primary: {
+          ...observed,
+          id: `observed-baseline-${todayWorkout.id}`,
+          title: `${durationMinutes} min easy run`,
+          durationMinutes,
+          steps: [`5 min easy warmup`, `${Math.max(1, durationMinutes - 10)} min relaxed continuous run`, `5 min easy cooldown`],
+          plannedWorkoutId: todayWorkout.id,
+          archetypeId: "easy-run-observed-baseline",
+          optional: false,
+        },
+        alternates: [],
+        guideLine: "Your recent running supports continuous easy running, but today stays conversational and avoids extra intensity.",
+        reasons: ["active_plan_present", ...planFit.reasons],
       });
     }
 
@@ -196,7 +240,7 @@ export async function buildActivitySuggestion(
       ),
       alternates: [],
       guideLine: "This is the next planned step. Keep the effort matched to the prescription.",
-      reasons: ["active_plan_present", "today_planned_workout"],
+      reasons: ["active_plan_present", "today_planned_workout", ...planFit.reasons],
     });
   }
 
@@ -368,6 +412,12 @@ function plannedWorkoutReason(
   activities: ActivityForPlanning[],
   readiness?: ReadinessForPlanning
 ): string {
+  const planFit = assessPlanFit({
+    activities,
+    athleteState,
+    readiness,
+    now: new Date(),
+  });
   const recentMinutes = Math.round(activities
     .filter((activity) => activity.startedAt >= addDays(new Date(), -7))
     .reduce((sum, activity) => sum + (activity.durationSecs ?? 0), 0) / 60);
@@ -382,7 +432,15 @@ function plannedWorkoutReason(
     ? ` Your latest check-in is energy ${readiness.energy}/5, soreness ${readiness.soreness}/5, and stress ${readiness.stress}/5.`
     : " No readiness check-in is available, so the plan prescription is being used as the baseline.";
   const stimulusText = stimulusReason(workout.stimulus);
-  return `${fallback} It is a ${stimulusText} chosen for the active plan. Your current training signal is ${loadComparison}${distance}, with fatigue risk ${athleteState.fatigueRisk}.${readinessText}`;
+  return `${fallback} It is a ${stimulusText} chosen for the active plan. Your current training signal is ${loadComparison}${distance}, with fatigue risk ${athleteState.fatigueRisk}. ${planFit.explanation}${readinessText}`;
+}
+
+function formatActivitySummary(activities: ActivityForPlanning[]): string {
+  const distanceKm = activities.reduce((sum, activity) => sum + (activity.distanceM ?? 0), 0) / 1_000;
+  const minutes = Math.round(activities.reduce((sum, activity) => sum + (activity.durationSecs ?? 0), 0) / 60);
+  const count = activities.length;
+  if (distanceKm > 0 && minutes > 0) return `${distanceKm.toFixed(1)} km across ${count} session${count === 1 ? "" : "s"} (${minutes} min)`;
+  return `${count} session${count === 1 ? "" : "s"}`;
 }
 
 function stimulusReason(stimulus: string): string {

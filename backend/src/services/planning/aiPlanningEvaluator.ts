@@ -1,7 +1,8 @@
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import { getPrismaClient } from "../prisma.js";
-import type { AthleteTrainingStateSnapshot, PlanningEventType } from "./types.js";
+import type { ActivityForPlanning, AthleteTrainingStateSnapshot, PlanningEventType } from "./types.js";
+import type { PlanFitAssessment } from "./planFit.js";
 import { hasActiveCapability } from "../entitlements.js";
 
 const POLICY_VERSION = "ai-planning-v1";
@@ -35,6 +36,8 @@ export async function evaluateAndProposePlanAdjustment(input: {
   eventType: PlanningEventType;
   eventId: string;
   athleteState: AthleteTrainingStateSnapshot;
+  recentActivities?: ActivityForPlanning[];
+  planFit?: PlanFitAssessment;
 }): Promise<{ status: "proposed" | "unchanged" | "existing"; provider: "gemini" | "fallback"; candidateId: string; adjustmentId?: string; explanation: string }> {
   const prisma = getPrismaClient();
   const existing = await prisma.personalizationAdjustment.findFirst({
@@ -62,6 +65,15 @@ export async function evaluateAndProposePlanAdjustment(input: {
   const context = {
     trigger: input.eventType,
     athleteState: serializableState(input.athleteState),
+    planFit: input.planFit ?? null,
+    recentActivities: (input.recentActivities ?? []).slice(0, 12).map((activity) => ({
+      startedAt: activity.startedAt.toISOString(),
+      type: activity.type,
+      durationMinutes: activity.durationSecs == null ? null : Math.round(activity.durationSecs / 60),
+      distanceKm: activity.distanceM == null ? null : Math.round(activity.distanceM / 100) / 10,
+      avgPaceSecondsPerKm: activity.avgPace,
+      avgHeartRate: activity.avgHeartRate,
+    })),
     upcoming: workouts.map((workout) => ({
       title: workout.title, durationMinutes: Math.round(workout.durationSeconds / 60), stimulus: workout.stimulus,
       daysFromNow: Math.max(0, Math.round((workout.scheduledDate.getTime() - Date.now()) / 86_400_000)), key: workout.isKeyWorkout,
@@ -149,10 +161,14 @@ async function chooseWithGemini(context: unknown): Promise<z.infer<typeof output
   try {
     const response = await client.models.generateContent({
       model: process.env.AI_PLANNING_MODEL || "gemini-3.1-pro-preview",
-      contents: JSON.stringify({ task: "Select the safest useful near-term training-plan candidate and explain it without diagnosis.", context }),
+      contents: JSON.stringify({
+        task: "Select the safest useful near-term training-plan candidate and explain it without diagnosis. Use the recent activity timeline and plan-fit assessment when present; do not treat an old plan prescription as stronger evidence than repeated completed activity.",
+        context,
+      }),
+
       config: {
         abortSignal: controller.signal,
-        systemInstruction: "You are Plainstride's planning evaluator. Use only supplied evidence. Prefer maintaining the plan when evidence is weak. Never override safety constraints. Do not repeat private facts or invent measurements. Return strict JSON.",
+        systemInstruction: "You are Plainstride's planning evaluator. Use only supplied evidence, including the recent activity timeline and deterministic plan-fit assessment. Prefer maintaining the plan when evidence is weak, but respect repeated completed activity when the deterministic safety policy allows a bounded adjustment. Never override pain, illness, or fatigue safety constraints. Do not diagnose, repeat private facts, invent measurements, or create an unlisted workout. Return strict JSON.",
         responseMimeType: "application/json", responseJsonSchema, thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }, temperature: 0.2, maxOutputTokens: 1_200,
       },
     });

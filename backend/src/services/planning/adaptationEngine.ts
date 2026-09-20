@@ -87,7 +87,10 @@ function resultForEvent(input: AdaptationInput, base: PlanGenerationResult): Pla
     };
   }
 
-  if (input.eventType === "painFlagged" || input.athleteState.fatigueRisk === "high") {
+  if (
+    input.eventType === "painFlagged"
+    || input.athleteState.fatigueRisk === "high"
+  ) {
     return {
       ...base,
       summary: "Reduced near-term load to protect recovery.",
@@ -102,6 +105,11 @@ function resultForEvent(input: AdaptationInput, base: PlanGenerationResult): Pla
 
 function shouldCreateVersion(input: AdaptationInput): boolean {
   if (input.eventType === "planReviewRequested") return false;
+
+  // Activity completion is reassessed immediately, but meaningful load changes
+  // become a confirmation proposal. Today can still react safely through the
+  // activity-suggestion endpoint while the multi-workout change is pending.
+  if (input.eventType === "activityCompleted") return false;
 
   if (input.eventType === "readinessSubmitted") {
     return Boolean(
@@ -121,7 +129,8 @@ function shouldCreateVersion(input: AdaptationInput): boolean {
     "painFlagged",
     "healthImportCompleted",
     "workoutMissed",
-  ].includes(input.eventType) || input.athleteState.fatigueRisk === "high";
+  ].includes(input.eventType)
+    || input.athleteState.fatigueRisk === "high";
 }
 
 function softenWorkout(workout: PlannedWorkoutDraft, recoveryOnly: boolean): PlannedWorkoutDraft {

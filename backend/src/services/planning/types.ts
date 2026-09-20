@@ -137,6 +137,10 @@ export interface AthleteTrainingStateSnapshot {
   weeklyDistanceMeters: number;
   fourWeekAvgMinutes: number;
   fourWeekAvgDistanceMeters: number;
+  recentRunSessions3Days: number;
+  recentRunSessions7Days: number;
+  recentRunDistance7DaysMeters: number;
+  consecutiveActiveDays: number;
   longestRecentSessionSeconds: number;
   adherenceRate: number;
   consistencyScore: number;
