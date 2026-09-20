@@ -599,10 +599,19 @@ router.delete("/connections/:id", async (c) => {
       id: c.req.param("id"),
       OR: [{ requesterId: user.id }, { addresseeId: user.id }],
     },
-    select: { id: true, addresseeId: true },
+    select: { id: true, requesterId: true, addresseeId: true },
   });
   if (!connection) return c.json({ error: "Connection not found." }, 404);
   await getPrismaClient().connection.delete({ where: { id: connection.id } });
+  // Removing a connection also removes it from either person's trusted contacts.
+  await getPrismaClient().safetyTrustedContact.deleteMany({
+    where: {
+      OR: [
+        { userId: connection.requesterId, contactId: connection.addresseeId },
+        { userId: connection.addresseeId, contactId: connection.requesterId },
+      ],
+    },
+  });
   await dismissSocialNotification(connection.addresseeId, "connectionRequest", connection.id);
   return c.json({ ok: true });
 });

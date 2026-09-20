@@ -3,30 +3,38 @@ package com.plainstride.outbound.feature.safety
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.provider.ContactsContract
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.plainstride.outbound.feature.social.SocialPerson
 
-/** Feature-owned Android integration for contact picking, permissions, and safe link sharing. */
+/** Feature-owned Android integration for permissions, contact picking, and safe link sharing. */
 @Composable
-fun SafetyRoute(targetId: String? = null, targetKind: String = "group", viewModel: SafetySettingsViewModel = hiltViewModel()) {
-    val context = LocalContext.current
+fun SafetyRoute(
+    targetId: String? = null,
+    targetKind: String = "group",
+    connections: List<SocialPerson> = emptyList(),
+    accountId: String? = null,
+    viewModel: SafetySettingsViewModel = hiltViewModel(),
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val contacts by viewModel.trustedContacts.collectAsStateWithLifecycle()
     val activeShare by viewModel.activeShare.collectAsStateWithLifecycle()
     val groupRun by viewModel.groupRun.collectAsStateWithLifecycle()
     val follower by viewModel.follower.collectAsStateWithLifecycle()
     val followerLoading by viewModel.followerLoading.collectAsStateWithLifecycle()
     val followerMessage by viewModel.followerMessage.collectAsStateWithLifecycle()
-    androidx.compose.runtime.LaunchedEffect(targetId, targetKind) { targetId?.takeIf(String::isNotBlank)?.let { if(targetKind=="live") viewModel.openLiveShare(it) else viewModel.openGroup(it) } }
+    LaunchedEffect(targetId, targetKind) { targetId?.takeIf(String::isNotBlank)?.let { if(targetKind=="live") viewModel.openLiveShare(it) else viewModel.openGroup(it) } }
+    LaunchedEffect(accountId) { viewModel.onAccountActivated(accountId) }
+    LaunchedEffect(connections) { viewModel.onConnectionsUpdated(connections) }
     val permissionPrefs=remember{context.getSharedPreferences("notification_permission",android.content.Context.MODE_PRIVATE)}
     var requested by remember { mutableStateOf(permissionPrefs.getBoolean("requested",false)) }
     val activity = context.findActivity()
@@ -35,21 +43,16 @@ fun SafetyRoute(targetId: String? = null, targetKind: String = "group", viewMode
         requested = true;permissionPrefs.edit().putBoolean("requested",true).apply()
         permission = notificationPermissionState(context, requested, activity?.shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)==true)
     }
-    val contactPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        result.data?.data?.let { uri ->
-            context.contentResolver.query(
-                uri,
-                arrayOf(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME, ContactsContract.CommonDataKinds.Phone.NUMBER),
-                null,
-                null,
-                null,
-            )?.use { cursor ->
-                if (cursor.moveToFirst()) viewModel.add(PickedContact(cursor.getString(0), cursor.getString(1)))
-            }
-        }
-    }
     val share: (String) -> Unit = { url ->
         context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, url), null))
+    }
+    var pickingConnection by remember { mutableStateOf(false) }
+    if (pickingConnection) {
+        TrustedConnectionPickerDialog(
+            connections = connections.filter { contact -> contacts.none { it.id == contact.id } },
+            close = { pickingConnection = false },
+            confirm = { contact -> pickingConnection = false; viewModel.add(contact) },
+        )
     }
     if(targetKind=="live"&&targetId!=null){LiveCheerFollowerScreen(follower,followerLoading,followerMessage,viewModel::sendVoiceCheer);return}
     SafetySettingsScreen(
@@ -57,7 +60,7 @@ fun SafetyRoute(targetId: String? = null, targetKind: String = "group", viewMode
         permission = permission,
         onRequestPermission = { requested=true;permissionPrefs.edit().putBoolean("requested",true).apply();permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
         onOpenSettings = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${context.packageName}"))) },
-        onAdd = { contactPicker.launch(Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)) },
+        onAdd = { pickingConnection = true },
         onRemove = viewModel::remove,
         onArm = viewModel::arm,
         activeShare = activeShare,

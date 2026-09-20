@@ -59,6 +59,8 @@ model User {
   agentActions                AgentAction[]
   agentOutcomes               AgentOutcome[]
   safetyLiveShares            SafetyLiveShare[]
+  safetyTrustedContactsOwned  SafetyTrustedContact[]       @relation("SafetyTrustedContactOwner")
+  safetyTrustedContactsMarked SafetyTrustedContact[]       @relation("SafetyTrustedContactLink")
   liveShareInvitations        SafetyLiveShareRecipient[]   @relation("LiveShareRecipient")
   liveShareCheersSent         SafetyLiveShareCheer[]       @relation("LiveShareCheerSender")
   liveGroupSessionsCreated    LiveGroupSession[]           @relation("LiveGroupSessionCreator")
@@ -560,6 +562,20 @@ model SafetyLiveShare {
 
   @@index([userId, status])
   @@index([expiresAt])
+}
+
+model SafetyTrustedContact {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("SafetyTrustedContactOwner", fields: [userId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   User     @relation("SafetyTrustedContactLink", fields: [contactId], references: [id], onDelete: Cascade)
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, contactId])
+  @@index([userId, createdAt])
 }
 
 model SafetyLiveShareRecipient {

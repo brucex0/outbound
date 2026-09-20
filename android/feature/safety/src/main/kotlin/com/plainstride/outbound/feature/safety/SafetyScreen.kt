@@ -14,8 +14,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.plainstride.outbound.core.designsystem.MapCoordinate
 import com.plainstride.outbound.core.designsystem.PlainstrideRouteMap
+import com.plainstride.outbound.feature.social.SocialAvatar
+import com.plainstride.outbound.feature.social.SocialPerson
 
-interface TrustedContactStore { suspend fun contacts():List<TrustedContact>; suspend fun save(contact:TrustedContact); suspend fun remove(id:String) }
+interface TrustedContactStore {
+ suspend fun contacts():List<TrustedContact>
+ suspend fun save(contact:TrustedContact)
+ suspend fun remove(id:String)
+ suspend fun migrateToServerBackedContacts()
+ suspend fun pull(accountId:String)
+ suspend fun push()
+}
 enum class NotificationPermissionState { UNKNOWN, GRANTED, DENIED, PERMANENTLY_DENIED }
 
 @Composable fun SafetySettingsScreen(contacts:List<TrustedContact>, permission:NotificationPermissionState,onRequestPermission:()->Unit,onOpenSettings:()->Unit,onAdd:()->Unit,onRemove:(TrustedContact)->Unit,onArm:()->Unit,activeShare:LiveShare?,groupRun:GroupRun?,onShare:(String)->Unit,onCreateGroup:()->Unit,onJoinGroup:(String)->Unit,onLeaveGroup:()->Unit){
@@ -25,7 +34,8 @@ enum class NotificationPermissionState { UNKNOWN, GRANTED, DENIED, PERMANENTLY_D
   item{Text(stringResource(R.string.safety_explanation))}
   if(permission!=NotificationPermissionState.GRANTED)item{ElevatedCard(Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp)){Text(stringResource(R.string.safety_notification_title),fontWeight=FontWeight.SemiBold);Text(stringResource(R.string.safety_notification_body));Button(if(permission==NotificationPermissionState.PERMANENTLY_DENIED)onOpenSettings else onRequestPermission,Modifier.padding(top=8.dp)){Text(stringResource(if(permission==NotificationPermissionState.PERMANENTLY_DENIED)R.string.safety_settings else R.string.safety_allow))}}}}
   item{Row(verticalAlignment=Alignment.CenterVertically){Text(stringResource(R.string.safety_contacts),style=MaterialTheme.typography.titleLarge,modifier=Modifier.weight(1f));IconButton(onAdd){Icon(Icons.Outlined.PersonAdd,stringResource(R.string.safety_add_contact))}}}
-  items(contacts,key=TrustedContact::id){contact->OutlinedCard(Modifier.fillMaxWidth()){Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){Icon(Icons.Outlined.HealthAndSafety,null);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text(contact.displayName);Text(stringResource(if(contact.channel=="sms")R.string.safety_sms else R.string.safety_push),style=MaterialTheme.typography.bodySmall)};IconButton({onRemove(contact)}){Icon(Icons.Outlined.Delete,stringResource(R.string.safety_remove_contact))}}}}
+  if(contacts.isEmpty())item{OutlinedCard(Modifier.fillMaxWidth()){Text(stringResource(R.string.safety_contacts_empty),Modifier.padding(16.dp))}}
+  items(contacts,key=TrustedContact::id){contact->OutlinedCard(Modifier.fillMaxWidth()){Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){Icon(Icons.Outlined.HealthAndSafety,null);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text(contact.displayName);if(contact.isDefault)Text(stringResource(R.string.safety_default_contact),style=MaterialTheme.typography.bodySmall)};IconButton({onRemove(contact)}){Icon(Icons.Outlined.Delete,stringResource(R.string.safety_remove_contact))}}}}
   item{Button(onArm,Modifier.fillMaxWidth(),enabled=contacts.isNotEmpty()){Text(stringResource(R.string.safety_arm))}}
   activeShare?.shareURL?.let{url->item{OutlinedButton({onShare(url)},Modifier.fillMaxWidth()){Icon(Icons.Outlined.Share,null);Spacer(Modifier.width(8.dp));Text(stringResource(R.string.safety_share_link))}}}
   item{Text(stringResource(R.string.safety_group_title),style=MaterialTheme.typography.titleLarge)}
@@ -116,4 +126,40 @@ fun NotificationDetail(notification: InboxNotification?) {
         }
         item { Text(notification?.message.orEmpty(), style = MaterialTheme.typography.bodyLarge) }
     }
+}
+
+/** Pick a trusted contact from accepted in-app connections; nothing from the phone's contact book is used. */
+@Composable
+fun TrustedConnectionPickerDialog(
+    connections: List<SocialPerson>,
+    close: () -> Unit,
+    confirm: (TrustedContact) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = close,
+        title = { Text(stringResource(R.string.safety_add_contact)) },
+        text = {
+            if (connections.isEmpty()) {
+                Text(stringResource(R.string.safety_contacts_empty))
+            } else {
+                LazyColumn {
+                    items(connections, key = SocialPerson::id) { person ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            SocialAvatar(person)
+                            Spacer(Modifier.width(12.dp))
+                            Text(person.displayName, Modifier.weight(1f))
+                            TextButton({ confirm(TrustedContact(person.id, person.displayName, "push", "", false)) }) {
+                                Text(stringResource(R.string.safety_add_contact))
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(close) { Text(stringResource(android.R.string.cancel)) } },
+    )
 }

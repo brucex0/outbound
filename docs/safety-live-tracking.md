@@ -136,11 +136,14 @@ Do not put networking directly in `ActivityRecorder`; keep recording stable even
 ### Current End-To-End Slice
 
 - Backend routes live in `backend/src/routes/safety.ts`.
-- Prisma models are `SafetyLiveShare` and `SafetyLiveSharePoint`.
+- Prisma models are `SafetyLiveShare`, `SafetyLiveSharePoint`, and `SafetyTrustedContact`.
 - App APIs:
   - `POST /v1/safety/live-shares`
   - `PATCH /v1/safety/live-shares/:id/location`
   - `POST /v1/safety/live-shares/:id/end`
+  - `GET /v1/safety/trusted-contacts`
+  - `PUT /v1/safety/trusted-contacts`
+- Trusted contacts are server-owned: `SafetyTrustedContact` stores accepted-connection pairs so the list survives delete/reinstall on both platforms. iOS marks accepted connections in settings; Android picks from the same accepted connections (the phone contact book is never persisted server-side).
 - `POST /v1/safety/live-shares` accepts selected accepted-connection user IDs, verifies the relationship, and creates in-app/push invitations.
 - Invitees use authenticated `GET /v1/safety/live-shares/invited` and `GET /v1/safety/live-shares/invited/:id`; no public link is involved in the product flow.
 - Live snapshots include exact route, pace, distance, elapsed time, and heart rate for invited users.

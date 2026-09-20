@@ -11,7 +11,10 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 
 @Serializable data class TrustedContact(val id:String,val displayName:String,val channel:String,val address:String,val isDefault:Boolean=false)
 @Serializable data class DeliveryTarget(val channel:String,val label:String?=null,val address:String?=null)
-@Serializable data class CreateLiveShareRequest(val activityId:String?=null,val recipientLabel:String?=null,val deliveryTargets:List<DeliveryTarget> = emptyList(),val sport:String?=null,val title:String?=null,val expiresInSeconds:Int=14400)
+@Serializable data class SyncedTrustedContacts(val contractVersion:Int=1,val contactUserIds:List<String> = emptyList(),val defaultContactUserId:String?=null,val updatedAt:String?=null)
+@Serializable data class PutTrustedContactsRequest(val contactUserIds:List<String>,val defaultContactUserId:String?=null)
+@Serializable data class PutTrustedContactsResponse(val contractVersion:Int=1,val contactUserIds:List<String>,val defaultContactUserId:String?=null,val updatedAt:String?=null)
+@Serializable data class CreateLiveShareRequest(val activityId:String?=null,val recipientUserIds:List<String> = emptyList(),val sport:String?=null,val title:String?=null,val expiresInSeconds:Int=14400)
 @Serializable data class LiveShare(val id:String,val shareURL:String?=null,val status:String,val startedAt:String,val expiresAt:String,val stale:Boolean=false)
 @Serializable data class LiveLocation(val recordedAt:String,val latitude:Double,val longitude:Double,val altitudeM:Double?=null,val accuracyM:Double?=null,val elapsedSeconds:Int,val distanceM:Double)
 @Serializable data class LiveRunner(val id:String,val displayName:String,val username:String?=null,val avatarUrl:String?=null)
@@ -33,6 +36,8 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 @Serializable data class GroupLocationUpdate(val recordedAt:String,val latitude:Double,val longitude:Double,val altitudeM:Double?=null,val accuracyM:Double?=null,val elapsedSeconds:Int,val distanceM:Double,val paceSecondsPerKM:Double?=null)
 
 interface SafetyApi {
+ @GET("v1/safety/trusted-contacts") suspend fun trustedContacts(@Header("Authorization") auth:String):Response<SyncedTrustedContacts>
+ @PUT("v1/safety/trusted-contacts") suspend fun putTrustedContacts(@Header("Authorization") auth:String,@Body body:PutTrustedContactsRequest):Response<PutTrustedContactsResponse>
  @POST("v1/safety/live-shares") suspend fun create(@Header("Authorization") auth:String,@Body body:CreateLiveShareRequest):Response<LiveShare>
  @GET("v1/safety/live-shares/{id}") suspend fun liveShare(@Header("Authorization") auth:String,@Path("id") id:String):Response<LiveShare>
  @PATCH("v1/safety/live-shares/{id}/location") suspend fun update(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:LiveLocation):Response<LiveShare>

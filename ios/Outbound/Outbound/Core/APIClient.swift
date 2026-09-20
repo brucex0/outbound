@@ -802,6 +802,14 @@ final class APIClient {
         try await post("/safety/live-shares", body: request)
     }
 
+    func fetchTrustedContacts() async throws -> TrustedContactsResponse {
+        try await get("/safety/trusted-contacts")
+    }
+
+    func updateTrustedContacts(_ request: TrustedContactsUpdateRequest) async throws -> TrustedContactsResponse {
+        try await put("/safety/trusted-contacts", body: request)
+    }
+
     func updateLiveShareLocation(
         shareID: String,
         request: LiveShareLocationUpdateRequest
@@ -2354,6 +2362,18 @@ struct ActivityDeleteResponse: Decodable {
     let status: String
     let id: String?
     let deletedAt: Date?
+}
+
+struct TrustedContactsResponse: Decodable {
+    let contractVersion: Int
+    let contactUserIds: [String]
+    let defaultContactUserId: String?
+    let updatedAt: Date?
+}
+
+struct TrustedContactsUpdateRequest: Encodable {
+    let contactUserIds: [String]
+    let defaultContactUserId: String?
 }
 
 struct LiveShareCreateRequest: Encodable {

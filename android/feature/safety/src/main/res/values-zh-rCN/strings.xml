@@ -11,6 +11,8 @@
     <string name="safety_add_contact">添加信任联系人</string>
     <string name="safety_allow">允许通知</string>
     <string name="safety_contacts">信任联系人</string>
+    <string name="safety_contacts_empty">还没有信任联系人。从你的好友中添加一位。</string>
+    <string name="safety_default_contact">默认</string>
     <string name="safety_disclaimer">Plainstride 实时位置并非紧急救援服务。如需紧急帮助，请联系当地急救机构。</string>
     <string name="safety_explanation">向信任的人分享有时限的私密链接。实时位置默认关闭，并会在你停止或结束活动时终止。</string>
     <string name="safety_notification_body">允许接收邀请、鼓励和重要圈子动态。即使拒绝权限，站内通知仍然可用。</string>

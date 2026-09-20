@@ -11,6 +11,8 @@
     <string name="safety_add_contact">Add trusted contact</string>
     <string name="safety_allow">Allow notifications</string>
     <string name="safety_contacts">Trusted contacts</string>
+    <string name="safety_contacts_empty">No trusted contacts yet. Add someone from your connections.</string>
+    <string name="safety_default_contact">Default</string>
     <string name="safety_disclaimer">Plainstride live sharing is not an emergency service. Call local emergency services when you need urgent help.</string>
     <string name="safety_explanation">Share a time-limited private link with people you trust. Live sharing is off by default and ends when you stop or finish.</string>
     <string name="safety_notification_body">Allow notifications for invitations, Cheers, and important Circle updates. Your inbox still works if you decline.</string>

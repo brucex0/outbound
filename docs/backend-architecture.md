@@ -337,6 +337,8 @@ Recommended early API shape:
 - `PATCH /v1/safety/live-shares/:id/location`
 - `POST /v1/safety/live-shares/:id/end`
 - `GET /live/:token`
+- `GET /v1/safety/trusted-contacts` (authenticated; returns the account's trusted-connection ids and default)
+- `PUT /v1/safety/trusted-contacts` (authenticated; validates every id is an accepted connection)
 
 Current V1:
 
@@ -344,6 +346,8 @@ Current V1:
 - `GET /live/:token` serves the public viewer HTML, and `GET /live/:token?format=json` serves the polling payload.
 - `SafetyLiveShare` stores session state, hashed token, expiry, latest location, route preview, elapsed time, and distance.
 - `SafetyLiveSharePoint` stores live-share points for the active session history.
+- `SafetyTrustedContact` stores the runner's trusted connections (`userId` + `contactId`, unique per pair, default flag) so the list survives delete/reinstall; removing a connection clears the pair for both sides.
+- Trusted contacts reference in-app connections only — the phone contact book is never persisted server-side.
 - Public tokens are random 32-byte base64url strings and only SHA-256 hashes are stored.
 - iOS throttles updates to every 10 seconds or 25 meters and continues recording if sharing fails.
 
@@ -415,7 +419,6 @@ Add after the first server-owned plan pass:
 - `ReadinessCheckIn`
 - `PlanAdaptation`
 - `SafetyShareSession`
-- `TrustedContact`
 - `GearItem`
 - `ActivityGear`
 - optional `ActivityEdit` audit records

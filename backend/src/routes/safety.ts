@@ -39,6 +39,106 @@ const cheerSchema = z.object({
   durationMs: z.number().int().min(250).max(15_000),
 });
 
+const trustedContactsSchema = z.object({
+  contactUserIds: z.array(z.string().min(1).max(128)).max(50),
+  defaultContactUserId: z.string().min(1).max(128).nullable().optional(),
+});
+
+router.get("/trusted-contacts", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const user = await getAuthenticatedAppUser(c);
+  if (!user) return c.json({ error: "Authentication is required." }, 401);
+
+  const prisma = getPrismaClient();
+  const rows = await prisma.safetyTrustedContact.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "asc" },
+  });
+  const defaultContact = rows.find((row) => row.isDefault) ?? null;
+  return c.json({
+    contractVersion: 1,
+    contactUserIds: rows.map((row) => row.contactId),
+    defaultContactUserId: defaultContact?.contactId ?? null,
+    updatedAt: rows.length > 0 ? rows[0].updatedAt.toISOString() : null,
+  });
+});
+
+router.put("/trusted-contacts", zValidator("json", trustedContactsSchema), async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const user = await getAuthenticatedAppUser(c);
+  if (!user) return c.json({ error: "Authentication is required." }, 401);
+
+  const body = c.req.valid("json");
+  const prisma = getPrismaClient();
+  const contactUserIds = [...new Set(body.contactUserIds)].filter((id) => id !== user.id);
+
+  const requestedIds = contactUserIds.length > 0 || body.defaultContactUserId
+    ? new Set([...contactUserIds, ...(body.defaultContactUserId ? [body.defaultContactUserId] : [])])
+    : new Set<string>();
+  if (requestedIds.size > 0) {
+    const acceptedConnections = await prisma.connection.findMany({
+      where: {
+        status: "accepted",
+        OR: [
+          { requesterId: user.id, addresseeId: { in: [...requestedIds] } },
+          { addresseeId: user.id, requesterId: { in: [...requestedIds] } },
+        ],
+      },
+      select: { requesterId: true, addresseeId: true },
+    });
+    const connectedIds = new Set(
+      acceptedConnections.map((connection) => connection.requesterId === user.id ? connection.addresseeId : connection.requesterId)
+    );
+    const missing = [...requestedIds].filter((id) => !connectedIds.has(id));
+    if (missing.length > 0) {
+      return c.json({ error: "Every trusted contact must be an accepted connection.", code: "not_connected", contactUserIds: missing }, 403);
+    }
+  }
+
+  const defaultContactUserId = body.defaultContactUserId && contactUserIds.includes(body.defaultContactUserId)
+    ? body.defaultContactUserId
+    : null;
+  const now = new Date();
+  await prisma.$transaction(async (tx) => {
+    await tx.safetyTrustedContact.deleteMany({
+      where: { userId: user.id, ...(contactUserIds.length > 0 ? { contactId: { notIn: contactUserIds } } : {}) },
+    });
+    for (const contactId of contactUserIds) {
+      await tx.safetyTrustedContact.upsert({
+        where: { userId_contactId: { userId: user.id, contactId } },
+        create: { userId: user.id, contactId },
+        update: {},
+      });
+    }
+    await tx.safetyTrustedContact.updateMany({
+      where: { userId: user.id, isDefault: true },
+      data: { isDefault: false },
+    });
+    if (defaultContactUserId) {
+      await tx.safetyTrustedContact.updateMany({
+        where: { userId: user.id, contactId: defaultContactUserId },
+        data: { isDefault: true },
+      });
+    }
+  });
+
+  const rows = await prisma.safetyTrustedContact.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "asc" },
+  });
+  const defaultContact = rows.find((row) => row.isDefault) ?? null;
+  return c.json({
+    contractVersion: 1,
+    contactUserIds: rows.map((row) => row.contactId),
+    defaultContactUserId: defaultContact?.contactId ?? null,
+    updatedAt: rows.length > 0 ? rows[0].updatedAt.toISOString() : null,
+  });
+});
+
 router.post("/live-shares", zValidator("json", createLiveShareSchema), async (c) => {
   const unavailable = requireDatabase(c);
   if (unavailable) return unavailable;
