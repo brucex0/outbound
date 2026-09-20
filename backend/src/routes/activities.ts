@@ -39,7 +39,7 @@ router.get("/", async (c) => {
     activities: activities.map((activity) => ({
       id: activity.id,
       clientActivityId: activity.clientActivityId,
-      clientData: activity.clientData ?? {},
+      clientData: activity.clientData ?? emptyClientExtras(),
       activityType: activity.type,
       title: activity.title ?? "Restored Run",
       reflection: activity.reflection,
@@ -90,6 +90,26 @@ router.get("/:id", async (c) => {
   return c.json(activity);
 });
 
+function emptyClientExtras() {
+  return {
+    guideNudge: "",
+    walkingStepCount: null,
+    healthMetrics: null,
+    goal: null,
+    energyKilocalories: null,
+    source: { kind: "outbound", displayName: "Plainstride", deviceName: null, externalID: null, importedAt: null },
+    gear: null,
+    manualEdits: null,
+    indoor: null,
+    cadence: null,
+    heartRateZones: null,
+    recordingSession: null,
+    activityEventID: null,
+    followedRoute: null,
+    recognitionBadgeIDs: [],
+  };
+}
+
 function legacyClientData(activity: {
   clientActivityId: string | null;
   type: string;
@@ -113,12 +133,14 @@ function legacyClientData(activity: {
     properties?: {
       timestamps?: string[];
       verticalAccuracy?: Array<number | null>;
+      segmentStarts?: boolean[];
       elevationMetadata?: ActivityRoutePayload["elevationMetadata"];
     };
   } | null;
   const coordinates = route?.geometry?.coordinates ?? [];
   const timestamps = route?.properties?.timestamps ?? [];
   const verticalAccuracy = route?.properties?.verticalAccuracy ?? [];
+  const segmentStarts = route?.properties?.segmentStarts ?? [];
   return {
     id: activity.clientActivityId,
     activityType: activity.type,
@@ -146,7 +168,7 @@ function legacyClientData(activity: {
         longitude: coordinate[0],
         altitude: coordinate[2] ?? null,
         verticalAccuracy: verticalAccuracy[index] ?? null,
-        startsNewSegment: false,
+        startsNewSegment: segmentStarts[index] ?? index === 0,
       })),
       elevationMetadata: route?.properties?.elevationMetadata ?? null,
     },
@@ -181,6 +203,7 @@ const createSchema = z.object({
             longitude: z.number().finite().min(-180).max(180),
             altitude: z.number().finite().optional().nullable(),
             verticalAccuracy: z.number().finite().optional().nullable(),
+            startsNewSegment: z.boolean().optional(),
           })
         )
         .max(MAX_ACTIVITY_ROUTE_POINTS),
@@ -251,6 +274,7 @@ function normalizeRoute(route: ActivityRoutePayload | null | undefined) {
       visibility: route.visibility ?? "private",
       timestamps: route.points.map((point) => point.timestamp),
       verticalAccuracy: route.points.map((point) => point.verticalAccuracy ?? null),
+      segmentStarts: route.points.map((point) => point.startsNewSegment ?? false),
       elevationMetadata: route.elevationMetadata ?? null,
     },
   };

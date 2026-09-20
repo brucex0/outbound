@@ -797,6 +797,7 @@ final class ActivityStore: ObservableObject {
                     healthMetrics: clientExtras.healthMetrics,
                     goal: clientExtras.goal,
                     energyKilocalories: clientExtras.energyKilocalories,
+                    companionType: remote.companionType,
                     source: clientExtras.source,
                     gear: clientExtras.gear,
                     manualEdits: clientExtras.manualEdits,

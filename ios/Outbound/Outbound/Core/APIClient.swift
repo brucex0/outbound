@@ -2293,6 +2293,7 @@ struct RemoteActivityRecord: Decodable {
     let activityType: ActivityType
     let title: String
     let reflection: FinishReflection?
+    let companionType: ActivityCompanionType?
     let startedAt: Date
     let endedAt: Date
     let durationSecs: Int

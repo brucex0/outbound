@@ -35,7 +35,7 @@ function extrasFrom(snapshot: LegacySnapshot) {
 
 async function main() {
   const activities = await prisma.activity.findMany({
-    where: { clientData: { not: null } },
+    where: { clientData: { not: Prisma.JsonNull } },
     select: { id: true, clientData: true },
   });
   let migrated = 0;

@@ -165,7 +165,7 @@ class OfflineFirstActivityRepository(
             dao.tombstone(accountId, clientId, parseEpoch(remoteDeletedAt))
             return true
         }
-        val snapshot = remote.clientData ?: return false
+        val snapshot = remote.clientData ?: JsonObject(emptyMap())
         val decoded = snapshot.toDomain(accountId, remote) ?: return false
         persist(decoded, enqueue = false)
         return true
@@ -231,30 +231,50 @@ private fun ActivityWithDetails.toDomain(): SavedActivity = with(activity) {
 }
 
 private fun JsonObject.toDomain(accountId: String, remote: RemoteActivityDto): SavedActivity? = runCatching {
-    val activityType = string("type") ?: string("activityType") ?: "running"
-    val routePoints = (this["track"] as? JsonArray)?.mapNotNull(::trackPoint)
-        ?: this["route"]?.jsonObject?.get("points")?.jsonArray?.mapNotNull(::trackPoint).orEmpty()
+    fun element(key: String): JsonElement? = this[key] ?: when (key) {
+        "activityType" -> JsonPrimitive(remote.activityType)
+        "title" -> JsonPrimitive(remote.title)
+        "startedAt" -> remote.startedAt?.let(::JsonPrimitive)
+        "endedAt" -> remote.endedAt?.let(::JsonPrimitive)
+        "durationSecs" -> JsonPrimitive(remote.durationSecs)
+        "distanceM" -> JsonPrimitive(remote.distanceM)
+        "avgPace" -> remote.avgPace?.let(::JsonPrimitive)
+        "elevationGainM" -> remote.elevationGainM?.let(::JsonPrimitive)
+        else -> null
+    }
+    fun stringValue(key: String) = element(key)?.takeUnless { it is JsonNull }?.jsonPrimitive?.contentOrNull
+    fun doubleValue(key: String) = element(key)?.jsonPrimitive?.doubleOrNull
+    fun intValue(key: String) = element(key)?.jsonPrimitive?.intOrNull
+    fun boolValue(key: String) = element(key)?.jsonPrimitive?.booleanOrNull
+    fun objectValue(key: String) = element(key)?.takeUnless { it is JsonNull }?.let { runCatching { it.jsonObject }.getOrNull() }
+    fun rawValue(key: String) = element(key)?.takeUnless { it is JsonNull }?.toString()
+    val routePoints = remote.route?.get("points")?.jsonArray?.mapNotNull(::trackPoint)
+        ?: (this["track"] as? JsonArray)?.mapNotNull(::trackPoint).orEmpty()
+    val health = objectValue("healthMetrics")
     SavedActivity(
         id = remote.clientActivityId!!, accountId = accountId, serverActivityId = remote.id,
-        type = ActivityType.valueOf(activityType), title = string("title") ?: "Activity", guideNudge = string("guideNudge") ?: "",
-        reflection = obj("reflection")?.let { ActivityReflection(it.string("title") ?: "", it.string("body") ?: "", it.string("highlight") ?: "", it.string("progressNote")) },
-        createdAt = string("createdAt") ?: remote.createdAt, startedAt = string("startedAt")!!,
-        endedAt = string("endedAt") ?: string("startedAt")!!, durationSecs = int("durationSecs") ?: 0,
-        distanceM = double("distanceM") ?: 0.0, averagePaceSecsPerKm = double("averagePaceSecsPerKm") ?: double("avgPace"),
-        elevationGainM = double("elevationGainM") ?: double("elevationM"), walkingStepCount = int("walkingStepCount"),
-        averageHeartRateBpm = obj("healthMetrics")?.int("averageHeartRateBPM") ?: int("averageHeartRateBpm"),
-        maximumHeartRateBpm = obj("healthMetrics")?.int("maxHeartRateBPM") ?: int("maximumHeartRateBpm"),
-        heartRateSampleCount = obj("healthMetrics")?.int("heartRateSampleCount") ?: int("heartRateSampleCount"),
-        energyKilocalories = int("energyKilocalories"),
-        source = obj("source")?.let { ActivitySource(it.string("kind") ?: "outbound", it.string("displayName") ?: "Plainstride", it.string("deviceName"), it.string("externalId") ?: it.string("externalID"), it.string("importedAt")) } ?: ActivitySource(),
-        gearJson = raw("gear"), goalJson = raw("goal"), indoorJson = raw("indoor"), cadenceJson = raw("cadence"), heartRateZonesJson = raw("heartRateZones"),
-        activityEventId = string("activityEventId") ?: string("activityEventID"), followedRouteId = string("followedRouteId"),
-        followedRouteCompleted = bool("followedRouteCompleted") ?: false,
+        type = ActivityType.valueOf(stringValue("activityType") ?: "running"),
+        title = stringValue("title") ?: "Activity", guideNudge = stringValue("guideNudge") ?: "",
+        reflection = remote.reflection?.let { ActivityReflection(it.title, it.body, it.highlight, it.progressNote) }
+            ?: objectValue("reflection")?.let { ActivityReflection(it.string("title") ?: "", it.string("body") ?: "", it.string("highlight") ?: "", it.string("progressNote")) },
+        createdAt = remote.createdAt, startedAt = stringValue("startedAt") ?: remote.createdAt,
+        endedAt = stringValue("endedAt") ?: stringValue("startedAt") ?: remote.createdAt,
+        durationSecs = intValue("durationSecs") ?: 0, distanceM = doubleValue("distanceM") ?: 0.0,
+        averagePaceSecsPerKm = doubleValue("averagePaceSecsPerKm") ?: doubleValue("avgPace"),
+        elevationGainM = doubleValue("elevationGainM") ?: doubleValue("elevationM"), walkingStepCount = intValue("walkingStepCount"),
+        averageHeartRateBpm = health?.int("averageHeartRateBPM") ?: intValue("averageHeartRateBpm"),
+        maximumHeartRateBpm = health?.int("maxHeartRateBPM") ?: intValue("maximumHeartRateBpm"),
+        heartRateSampleCount = health?.int("heartRateSampleCount") ?: intValue("heartRateSampleCount"),
+        energyKilocalories = intValue("energyKilocalories"),
+        source = objectValue("source")?.let { ActivitySource(it.string("kind") ?: "outbound", it.string("displayName") ?: "Plainstride", it.string("deviceName"), it.string("externalId") ?: it.string("externalID"), it.string("importedAt")) } ?: ActivitySource(),
+        gearJson = rawValue("gear"), goalJson = rawValue("goal"), indoorJson = rawValue("indoor"), cadenceJson = rawValue("cadence"), heartRateZonesJson = rawValue("heartRateZones"),
+        activityEventId = stringValue("activityEventId") ?: stringValue("activityEventID"), followedRouteId = stringValue("followedRouteId"),
+        followedRouteCompleted = boolValue("followedRouteCompleted") ?: false,
         recognitionBadgeIds = array("recognitionBadgeIds")?.mapNotNull { it.jsonPrimitive.contentOrNull }
             ?: array("recognitionBadgeIDs")?.mapNotNull { it.jsonPrimitive.contentOrNull }.orEmpty(),
         track = routePoints, splits = array("splits")?.mapIndexedNotNull(::split).orEmpty(),
         photos = remote.photos.map { ActivityPhoto(it.clientPhotoId ?: it.id, it.takenAt, it.paceAtShot, it.hrAtShot, it.distAtShot, it.latitude, it.longitude, it.captureContext, null, it.id, it.updatedAt, it.byteSize, it.sha256) },
-        companionType = string("companionType")?.let { value -> runCatching { ActivityCompanionType.valueOf(value.lowercase()) }.getOrNull() },
+        companionType = remote.companionType?.let { value -> runCatching { ActivityCompanionType.valueOf(value.lowercase()) }.getOrNull() },
         localUpdatedAt = remote.clientUpdatedAt ?: remote.updatedAt, serverUpdatedAt = remote.updatedAt,
     )
 }.getOrNull()
