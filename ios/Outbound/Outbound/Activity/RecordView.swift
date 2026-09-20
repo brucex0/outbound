@@ -174,6 +174,8 @@ struct RecordView: View {
     @State private var didRestoreSessionPhotos = false
     @State private var isCapturingSessionPhoto = false
     @State private var isWaitingForLocation = false
+    @State private var isLocationPermissionGranted = false
+    @State private var isLocationPermissionModalPresented = false
 #if DEBUG
     @State private var isRunSimulationEnabled = false
     @State private var didConfigureRequestedRunSimulation = false
@@ -442,7 +444,11 @@ struct RecordView: View {
             cancelStartCountdown(returnToSetup: recorder.state == .idle)
             cancelLocationWait()
         }
-        .onReceive(recorder.locationManager.$authorizationStatus) { _ in
+        .onReceive(recorder.locationManager.$authorizationStatus) { status in
+            isLocationPermissionGranted = status == .authorizedAlways || status == .authorizedWhenInUse
+            if isLocationPermissionGranted, isLocationPermissionModalPresented {
+                isLocationPermissionModalPresented = false
+            }
             retryBlockedStartIfNeeded()
         }
         .onReceive(recorder.locationManager.$location) { _ in
@@ -654,6 +660,23 @@ struct RecordView: View {
             }
         } message: {
             Text(String(localized: "record.group.join.help", defaultValue: "Paste the Plainstride group run invite from another runner."))
+        }
+        .alert(
+            String(localized: "record.location.permission.title", defaultValue: "Enable location"),
+            isPresented: $isLocationPermissionModalPresented
+        ) {
+            Button(String(localized: "record.location.permission.enable", defaultValue: "Enable location")) {
+                enableLocationFromPermissionModal()
+            }
+
+            Button(String(localized: "common.close", defaultValue: "Close"), role: .cancel) {
+                cancelLocationWait()
+            }
+        } message: {
+            Text(String(
+                localized: "record.location.permission.message",
+                defaultValue: "Outdoor activities need location to map your route and record pace. Grant access to start, or turn it on in Settings if it was denied before."
+            ))
         }
     }
 
@@ -885,9 +908,10 @@ struct RecordView: View {
     }
 
     /// Outdoor recording must not start without location permission and a
-    /// recent valid fix. Blocks the start behind a permission prompt or a
-    /// location wait and resumes automatically once a valid fix arrives.
-    private func ensureLocationReadyThenStart() {
+    /// recent valid fix. User-initiated starts park behind an explicit
+    /// permission modal; a granted answer or a valid fix resumes the start
+    /// automatically.
+    private func ensureLocationReadyThenStart(isUserInitiated: Bool = true) {
         guard recorder.state == .idle, !isCountingDown else { return }
 #if DEBUG
         if isRunSimulationEnabled {
@@ -897,13 +921,7 @@ struct RecordView: View {
 #endif
         let locationManager = recorder.locationManager
         guard locationManager.isLocationPermissionGranted else {
-            cancelLocationWait()
-            isWaitingForLocation = true
-            locationManager.requestPermission()
-            showSetupToast(String(
-                localized: "recording.location.permission.denied",
-                defaultValue: "Location access is off. Enable it in Settings to record an outdoor activity."
-            ))
+            handleMissingLocationPermissionForStart(isUserInitiated: isUserInitiated)
             return
         }
         if isIndoorSession || locationManager.hasRecentValidLocation {
@@ -935,6 +953,38 @@ struct RecordView: View {
         }
     }
 
+    /// Parks a user-initiated start behind an explicit permission decision.
+    /// The modal offers to grant access directly or open Settings when iOS
+    /// can no longer prompt; a granted answer resumes the start. Automatic
+    /// retries stay silent so denying the system prompt cannot loop the
+    /// modal — the Today chip remains as the standing reminder.
+    private func handleMissingLocationPermissionForStart(isUserInitiated: Bool) {
+        guard isUserInitiated else { return }
+        cancelLocationWait()
+        isWaitingForLocation = true
+        isLocationPermissionModalPresented = true
+    }
+
+    private func enableLocationFromPermissionModal() {
+        isLocationPermissionModalPresented = false
+        let locationManager = recorder.locationManager
+        if locationManager.authorizationStatus == .notDetermined {
+            // The system prompt is the only surface iOS offers to grant
+            // access directly.
+            isWaitingForLocation = true
+            locationManager.requestPermission()
+        } else {
+            openSystemLocationSettings()
+        }
+    }
+
+    /// iOS has no public deep link to the app's Location settings row, so
+    /// this lands on the app's own Settings page where the toggle lives.
+    private func openSystemLocationSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+
     /// Resumes a blocked start once permission is granted or a valid fix
     /// arrives.
     private func retryBlockedStartIfNeeded() {
@@ -945,7 +995,7 @@ struct RecordView: View {
             // start directly instead of replaying the countdown.
             completeStartCountdown()
         } else {
-            ensureLocationReadyThenStart()
+            ensureLocationReadyThenStart(isUserInitiated: false)
         }
     }
 
@@ -1249,9 +1299,12 @@ struct RecordView: View {
             // Never begin recording without valid location data: park the
             // start and release it automatically once a fix arrives.
             phoneWorkoutCoordinator.cancelPreparation()
-            beginLocationWait()
-            if !recorder.locationManager.isLocationPermissionGranted {
-                recorder.locationManager.requestPermission()
+            if recorder.locationManager.isLocationPermissionGranted {
+                beginLocationWait()
+            } else {
+                // Permission vanished mid-countdown: park behind the explicit
+                // permission modal instead of a doomed GPS wait.
+                handleMissingLocationPermissionForStart(isUserInitiated: true)
             }
             return
         }
@@ -1807,6 +1860,10 @@ struct RecordView: View {
                         .padding(.bottom, 2)
                 }
 
+                if showsEnableLocationChip {
+                    enableLocationChip
+                }
+
                 launchDock
             }
             .padding(.bottom, isEmbeddedInToday ? 8 : 70)
@@ -1864,6 +1921,11 @@ struct RecordView: View {
                     .padding(.vertical, 10)
             }
 
+            if showsEnableLocationChip {
+                enableLocationChip
+                    .padding(.bottom, 10)
+            }
+
             launchDock
         }
         .onAppear {
@@ -1877,6 +1939,36 @@ struct RecordView: View {
 
     private var usesEmbeddedPlannedContent: Bool {
         isEmbeddedInToday && selectedWorkoutChoice == .planned
+    }
+
+    /// Standing affordance for outdoor recording while location access is
+    /// off. Indoor sessions and simulated runs do not need location.
+    private var showsEnableLocationChip: Bool {
+#if DEBUG
+        if isRunSimulationEnabled { return false }
+#endif
+        !isLocationPermissionGranted && !isIndoorSession
+    }
+
+    private var enableLocationChip: some View {
+        Button {
+            isLocationPermissionModalPresented = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "location.slash.fill")
+                    .font(.caption.weight(.bold))
+                Text(String(localized: "record.location.chip.label", defaultValue: "Enable location"))
+                    .font(.caption.weight(.bold))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 34)
+            .background(theme.actionColor, in: Capsule())
+            .shadow(color: .black.opacity(0.16), radius: 8, y: 3)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(String(localized: "record.location.chip.accessibility", defaultValue: "Enable location access"))
+        .accessibilityHint(String(localized: "record.location.chip.accessibility_hint", defaultValue: "Opens options to turn location access on"))
     }
 
     private var showsLaunchGoalCard: Bool {
