@@ -7,6 +7,7 @@
     <string name="activity_cancel">Cancelar</string>
     <string name="activity_completed_duration_format">%1$d min</string>
     <string name="activity_completed_duration_calories_format">%1$d min · %2$d cal</string>
+    <string name="activity_companion_dog_title">Con perro</string>
     <string name="activity_delete">Eliminar actividad</string>
     <string name="activity_delete_body">Se eliminará de este dispositivo y del historial sincronizado. Esta acción no se puede deshacer.</string>
     <string name="activity_delete_title">¿Eliminar esta actividad?</string>

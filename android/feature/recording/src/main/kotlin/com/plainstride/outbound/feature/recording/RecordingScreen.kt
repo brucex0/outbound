@@ -49,7 +49,6 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
@@ -670,11 +669,11 @@ private fun CompactSessionDashboard(
                 )
             }
             if (configuration.companionType != null) {
-                Icon(
-                    Icons.Filled.Pets,
-                    contentDescription = stringResource(R.string.recording_companion_accessibility),
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.primary,
+                Text(
+                    stringResource(R.string.recording_companion_accessibility),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
             if (snapshot.status == RecordingStatus.PAUSED) FilledIconButton(
@@ -712,11 +711,10 @@ private fun ExpandedSessionDashboard(
         ) {
             Box(Modifier.size(8.dp).background(if (paused) finishColor else actionColor, CircleShape))
             if (configuration.companionType != null) {
-                Icon(
-                    Icons.Filled.Pets,
-                    contentDescription = stringResource(R.string.recording_companion_accessibility),
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary,
+                Text(
+                    stringResource(R.string.recording_companion_accessibility),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
             Column(Modifier.weight(1f)) {

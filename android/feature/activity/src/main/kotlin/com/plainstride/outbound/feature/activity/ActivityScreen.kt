@@ -48,7 +48,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
-import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Close
@@ -374,11 +373,11 @@ private fun ActivityHistoryScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     ActivityTypeBadge(activity.type)
                     if (activity.companionType != null) {
-                        Icon(
-                            Icons.Filled.Pets,
-                            contentDescription = null,
-                            modifier = Modifier.padding(top = 4.dp).size(14.dp),
-                            tint = MaterialTheme.colorScheme.primary,
+                        Text(
+                            stringResource(R.string.activity_companion_dog_title),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 4.dp),
                         )
                     }
                 }
@@ -642,11 +641,10 @@ private fun ActivityStatsHero(
             Text(activity.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 2)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (activity.companionType != null) {
-                    Icon(
-                        Icons.Filled.Pets,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.primary,
+                    Text(
+                        stringResource(R.string.activity_companion_dog_title),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
                 Text(activityDate(activity.startedAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
