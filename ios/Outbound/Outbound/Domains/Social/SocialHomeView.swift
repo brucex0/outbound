@@ -3535,40 +3535,36 @@ struct SocialCheerAvatarsButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                HStack(spacing: -5) {
+                HStack(spacing: -6) {
                     ForEach(displayedCheerers) { cheerer in
-                        SocialAvatar(name: cheerer.displayName, avatarURL: cheerer.avatarUrl, size: 18)
+                        SocialAvatar(name: cheerer.displayName, avatarURL: cheerer.avatarUrl, size: 24)
                             .overlay(
-                                Circle().strokeBorder(Color(.systemBackground), lineWidth: 1)
+                                Circle().strokeBorder(Color(.systemBackground), lineWidth: 1.5)
                             )
                     }
                     if post.reactionCount > displayedCheerers.count {
                         ZStack {
                             Circle().fill(Color(.secondarySystemBackground))
                             Text("+\(post.reactionCount - displayedCheerers.count)")
-                                .font(.system(size: 8, weight: .semibold))
+                                .font(.caption2.weight(.semibold))
                                 .monospacedDigit()
                                 .foregroundStyle(.secondary)
                         }
-                        .frame(width: 18, height: 18)
+                        .frame(width: 24, height: 24)
                         .overlay(
-                            Circle().strokeBorder(Color(.systemBackground), lineWidth: 1)
+                            Circle().strokeBorder(Color(.systemBackground), lineWidth: 1.5)
                         )
                     }
                 }
+                .accessibilityHidden(true)
 
                 Text("\(post.reactionCount)")
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
                     .foregroundStyle(.primary)
             }
-            .padding(.horizontal, 12)
-            .frame(minHeight: 40)
-            .background(
-                OutboundPalette.companion.opacity(0.08),
-                in: Capsule()
-            )
-            .contentShape(Capsule())
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(String(localized: "activity.social.cheer_count", defaultValue: "Cheers"))
