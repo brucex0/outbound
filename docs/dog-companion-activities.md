@@ -23,7 +23,7 @@ Status: implemented across backend, iOS, and Android.
 - A dog activity counts toward the same sport totals, goals, plan completion, progress trends, and race models as the workout actually performed.
 - The context records that the person brought a dog. It does not measure the dog or assert that the activity was suitable for the dog.
 
-The user-facing label is `With dog`, paired with a paw icon. Internal contracts should use an optional typed companion value such as `dog`, rather than creating `dogWalk`, `dogRun`, or other parallel activity types.
+The user-facing label is `With dog`, presented as text only — no icon. Internal contracts should use an optional typed companion value such as `dog`, rather than creating `dogWalk`, `dogRun`, or other parallel activity types.
 
 ## Why This Shape
 
@@ -36,7 +36,7 @@ The user-facing label is `With dog`, paired with a paw icon. Internal contracts 
 
 ### Setup
 
-- Add one paw-icon `With dog` control to the existing horizontally scrolling settings row beside Music, Live Track, Shoes, Indoor/Outdoor, and Voice Guide.
+- Add one text-only `With dog` control to the existing horizontally scrolling settings row beside Music, Live Track, Shoes, Indoor/Outdoor, and Voice Guide.
 - Use the same selected and unselected treatment as the other independent settings controls, with a minimum 44-point iOS or 48-dp Android target.
 - Do not add a dog sport, a second setup page, a modal, or a required pet profile.
 - Preserve the selection when switching among Run, Walk, Hike, Bike, Planned, Curated, and goal modes as long as the resolved sport remains eligible.
@@ -47,7 +47,7 @@ The user-facing label is `With dog`, paired with a paw icon. Internal contracts 
 ### Countdown and live activity
 
 - Reuse the existing countdown, recording state machine, camera/map surfaces, and controls.
-- Show a compact paw marker with the activity label where session context is already summarized; do not add a new card or compete with the primary workout metric.
+- Show a compact text marker with the activity label where session context is already summarized; do not add a new card or compete with the primary workout metric.
 - Keep sport-specific metrics unchanged. All distance, pace, steps, elevation, heart rate, calories, and workout targets describe the person.
 - Do not automatically change auto-pause, goals, structured phases, plan completion, target alerts, or Voice Guide cadence.
 - Persist the context in interrupted-session recovery and phone/watch handoff so it cannot disappear after relaunch or recording-device changes.
@@ -57,7 +57,7 @@ The user-facing label is `With dog`, paired with a paw icon. Internal contracts 
 
 - Reuse the existing reflection, photo, Save Activity, and discard flows.
 - Default titles for freestyle activities may use localized sport-specific forms such as `Dog walk`, `Dog run`, `Dog hike`, or `Dog ride`; planned and curated activities retain their workout title. The underlying sport remains unchanged and the title remains editable where currently supported.
-- Show a small paw marker in recent activity cards, history, activity detail, and share-safe Social activity surfaces.
+- Show a small text marker in recent activity cards, history, activity detail, and share-safe Social activity surfaces.
 - Include the context in activity sync and cross-device restoration.
 - Treat `dog` as share-safe metadata. Never include a dog name, photo identity, health data, or free text in the V1 contract.
 - Imported and manually entered activities are not tagged in V1 unless a later activity editor explicitly adds support.
@@ -98,9 +98,9 @@ companionType: null | "dog"
 
 - Localize every visible string in English, Spanish, and Simplified Chinese using the existing platform localization systems.
 - Recommended labels are `With dog`, `Con perro`, and `带狗狗`; translators should preserve the friendly activity context rather than use clinical pet terminology.
-- The control exposes a localized label, paw meaning, and selected state to VoiceOver and TalkBack without relying on color.
+- The control exposes a localized label and selected state to VoiceOver and TalkBack without relying on color.
 - Announce automatic clearing when the user moves to an incompatible sport.
-- Paw markers are decorative when the adjacent text already communicates the context; otherwise they need an accessible label.
+- Companion markers are text-only and carry an accessible label wherever the surrounding text does not already communicate the context.
 
 ## Deferred Scope
 
@@ -120,7 +120,7 @@ companionType: null | "dog"
 - Countdown cancellation and interrupted-session recovery preserve the context, while Save and Discard reset the next setup to off.
 - Live metrics, auto-pause, structured workout behavior, and plan completion remain driven by the original sport and workout.
 - Saved local, synced backend, restored cross-device, and Android/iOS representations agree on `null | dog`.
-- History, detail, and permitted Social surfaces show a localized, accessible paw treatment without creating a new activity category.
+- History, detail, and permitted Social surfaces show a localized, accessible companion treatment without creating a new activity category.
 - Progress, goals, race predictions, and calorie calculations continue to classify the activity by its canonical sport.
 - Analytics use only the allowlisted boolean/bounded values and contain no pet identity or location data.
 - English, Spanish, and Simplified Chinese UI, large text, VoiceOver/TalkBack, dark mode, and supported themes remain usable.
