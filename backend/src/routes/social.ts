@@ -27,6 +27,7 @@ import {
 const router = new Hono<AppEnv>();
 const activityEventReconciliationWindowMs = 4 * 60 * 60 * 1000;
 const socialFeedPageSize = 12;
+const socialRoutePreviewMaxPoints = 120;
 const socialConnectionsPageSize = 20;
 const socialPeopleSearchLimit = 20;
 const workoutPresenceTTLms = 3 * 60 * 1000;
@@ -1296,21 +1297,112 @@ async function postPayload(post: any, currentUserId: string) {
 function socialRoutePayload(routeBlob: Uint8Array | null | undefined, routeMetadata: unknown) {
   const route = decodeStoredActivityRoute(routeBlob, routeMetadata);
   if (!route || route.points.length < 2) return null;
+  const sourcePoints = route.points.filter((point) => (
+    Number.isFinite(point.latitude)
+    && Number.isFinite(point.longitude)
+    && point.latitude >= -90
+    && point.latitude <= 90
+    && point.longitude >= -180
+    && point.longitude <= 180
+  ));
+  if (sourcePoints.length < 2) return null;
+  const points = simplifySocialRoute(sourcePoints, socialRoutePreviewMaxPoints);
+  const bounds = sourcePoints.reduce((result, point) => ({
+    south: Math.min(result.south, point.latitude),
+    west: Math.min(result.west, point.longitude),
+    north: Math.max(result.north, point.latitude),
+    east: Math.max(result.east, point.longitude),
+  }), {
+    south: sourcePoints[0].latitude,
+    west: sourcePoints[0].longitude,
+    north: sourcePoints[0].latitude,
+    east: sourcePoints[0].longitude,
+  });
   return {
-    type: "Feature",
-    geometry: {
-      type: "LineString",
-      coordinates: route.points.map((point) => point.altitude == null
-        ? [point.longitude, point.latitude]
-        : [point.longitude, point.latitude, point.altitude]),
-    },
-    properties: {
-      timestamps: route.points.map((point) => point.timestamp),
-      verticalAccuracy: route.points.map((point) => point.verticalAccuracy ?? null),
-      visibility: route.visibility,
-      elevationMetadata: route.elevationMetadata,
-    },
+    format: "polyline5",
+    encodedPolyline: encodePolyline5(points),
+    pointCount: points.length,
+    bounds,
   };
+}
+
+type SocialRoutePoint = { latitude: number; longitude: number };
+
+function simplifySocialRoute(points: SocialRoutePoint[], maxPoints: number): SocialRoutePoint[] {
+  if (points.length <= maxPoints) return points;
+  let toleranceMeters = 5;
+  let simplified = points;
+  while (simplified.length > maxPoints && toleranceMeters < 1_000_000) {
+    simplified = simplifyRouteWithTolerance(points, toleranceMeters);
+    toleranceMeters *= 2;
+  }
+  if (simplified.length <= maxPoints) return simplified;
+  const step = (simplified.length - 1) / (maxPoints - 1);
+  return Array.from({ length: maxPoints }, (_, index) => (
+    simplified[Math.round(index * step)]
+  ));
+}
+
+function simplifyRouteWithTolerance(points: SocialRoutePoint[], toleranceMeters: number): SocialRoutePoint[] {
+  const keep = new Set([0, points.length - 1]);
+  const stack: Array<[number, number]> = [[0, points.length - 1]];
+  const toleranceSquared = toleranceMeters * toleranceMeters;
+  while (stack.length > 0) {
+    const [start, end] = stack.pop()!;
+    let farthestIndex = -1;
+    let farthestDistance = 0;
+    for (let index = start + 1; index < end; index += 1) {
+      const distance = routePointSegmentDistanceSquared(points[index], points[start], points[end]);
+      if (distance > farthestDistance) {
+        farthestDistance = distance;
+        farthestIndex = index;
+      }
+    }
+    if (farthestIndex >= 0 && farthestDistance > toleranceSquared) {
+      keep.add(farthestIndex);
+      stack.push([start, farthestIndex], [farthestIndex, end]);
+    }
+  }
+  return [...keep].sort((left, right) => left - right).map((index) => points[index]);
+}
+
+function routePointSegmentDistanceSquared(point: SocialRoutePoint, start: SocialRoutePoint, end: SocialRoutePoint) {
+  const latitudeRadians = ((start.latitude + end.latitude) / 2) * Math.PI / 180;
+  const metersPerLongitudeDegree = 111_320 * Math.cos(latitudeRadians);
+  const x = (point.longitude - start.longitude) * metersPerLongitudeDegree;
+  const y = (point.latitude - start.latitude) * 110_540;
+  const endX = (end.longitude - start.longitude) * metersPerLongitudeDegree;
+  const endY = (end.latitude - start.latitude) * 110_540;
+  const lengthSquared = endX * endX + endY * endY;
+  const progress = lengthSquared === 0 ? 0 : Math.max(0, Math.min(1, (x * endX + y * endY) / lengthSquared));
+  const dx = x - progress * endX;
+  const dy = y - progress * endY;
+  return dx * dx + dy * dy;
+}
+
+function encodePolyline5(points: SocialRoutePoint[]) {
+  let previousLatitude = 0;
+  let previousLongitude = 0;
+  let encoded = "";
+  for (const point of points) {
+    const latitude = Math.round(point.latitude * 100_000);
+    const longitude = Math.round(point.longitude * 100_000);
+    encoded += encodePolylineDelta(latitude - previousLatitude);
+    encoded += encodePolylineDelta(longitude - previousLongitude);
+    previousLatitude = latitude;
+    previousLongitude = longitude;
+  }
+  return encoded;
+}
+
+function encodePolylineDelta(delta: number) {
+  let value = delta < 0 ? ~(delta << 1) : delta << 1;
+  let encoded = "";
+  while (value >= 0x20) {
+    encoded += String.fromCharCode((0x20 | (value & 0x1f)) + 63);
+    value >>= 5;
+  }
+  return encoded + String.fromCharCode(value + 63);
 }
 
 function cheererPayload(user: unknown) {

@@ -7,7 +7,7 @@ Routes are time-series data and are stored independently from activity metadata.
 - **iOS local store:** `activities.json` contains activity metadata only. Each activity owns `UUID/route.bin`, a compact versioned binary sidecar. Photos remain in the same activity directory.
 - **Android local store:** Room already stores route points in `activity_track_points`, separate from the activity row.
 - **Backend:** `Activity.routeBlob` is a compact versioned binary payload and `Activity.routeMetadata` contains only visibility/elevation attribution. The old `Activity.route` JSON column is removed by the migration.
-- **API:** uploads may use the readable `{ route: { points } }` contract; the server immediately encodes it. Downloads expand the blob to that contract. GeoJSON is produced only for exports, social/public route geometry, or other explicit presentation boundaries.
+- **API:** uploads may use the readable `{ route: { points } }` contract; the server immediately encodes it. Activity downloads expand the blob to that contract. The Social feed returns a shape-only encoded-polyline preview, while GeoJSON is reserved for exports and explicit interoperability boundaries.
 
 Updating an activity title, reflection, photos, or client extras therefore does not rewrite the route sidecar/file or backend route blob unless route points actually changed.
 
@@ -22,6 +22,10 @@ The route codec uses:
 - signed varints and a small versioned header.
 
 The in-memory iOS/Android models remain normal route points. Encoding happens only at persistence/sync boundaries, preserving map, export, and editing behavior.
+
+### Social route previews
+
+`/v1/social/home` and `/v1/social/together` return routes as `polyline5` previews capped at 120 points. The payload includes the encoded shape, decoded point count, and geographic bounds; it intentionally omits timestamps, altitude, accuracy, visibility, and elevation attribution. This keeps the paginated feed small while activity sync remains the source for full-fidelity route data.
 
 ## Sampling policy
 
