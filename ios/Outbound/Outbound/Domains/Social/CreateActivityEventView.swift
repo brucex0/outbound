@@ -310,7 +310,7 @@ struct CreateActivityEventView: View {
 
     private var planningTitle: String {
         sourceCircleID == nil
-            ? String(localized: "Plan a run")
+            ? String(localized: "social.create.plan", defaultValue: "Plan an activity")
             : String(localized: "circle.event.plan", defaultValue: "Plan an activity")
     }
 

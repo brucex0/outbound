@@ -25287,18 +25287,18 @@
         }
       }
     },
-    "Plan a run": {
+    "Plan an activity": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Planear una salida"
+            "value": "Planear una actividad"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "发起跑步活动"
+            "value": "计划活动"
           }
         }
       }
@@ -48769,8 +48769,8 @@
     "social.activities.past": {"comment":"Past shared activity-event section. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Past activities"}},"es":{"stringUnit":{"state":"translated","value":"Actividades pasadas"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"过往活动"}}}},
     "social.create.circle": {"comment":"Create menu action. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Create Circle"}},"es":{"stringUnit":{"state":"translated","value":"Crear un Círculo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"创建朋友圈"}}}},
     "social.create.menu": {"comment":"Accessibility label for the fixed Social create menu. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Create or add"}},"es":{"stringUnit":{"state":"translated","value":"Crear o añadir"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"创建或添加"}}}},
-    "social.create.person": {"comment":"Create menu action. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Add person"}},"es":{"stringUnit":{"state":"translated","value":"Añadir persona"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"添加跑友"}}}},
-    "social.create.plan": {"comment":"Create menu action. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Plan a run"}},"es":{"stringUnit":{"state":"translated","value":"Planear una carrera"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"计划跑步"}}}},
+    "social.create.person": {"comment":"Create menu action. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Add connection"}},"es":{"stringUnit":{"state":"translated","value":"Añadir contacto"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"添加跑友"}}}},
+    "social.create.plan": {"comment":"Create menu action. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Plan an activity"}},"es":{"stringUnit":{"state":"translated","value":"Planear una actividad"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"计划活动"}}}},
     "social.create.route": {"comment":"Create menu action using the currently supported file-import flow. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Import a route"}},"es":{"stringUnit":{"state":"translated","value":"Importar una ruta"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"导入路线"}}}},
     "social.groups.discover": {"comment":"Group discovery section. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Discover"}},"es":{"stringUnit":{"state":"translated","value":"Descubrir"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"发现"}}}},
     "social.groups.discover.description": {"comment":"Group discovery empty-state detail. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Pull to refresh as more running Groups become available."}},"es":{"stringUnit":{"state":"translated","value":"Desliza hacia abajo para actualizar cuando haya más Grupos de running."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"下拉刷新，查看新开放的跑步群组。"}}}},

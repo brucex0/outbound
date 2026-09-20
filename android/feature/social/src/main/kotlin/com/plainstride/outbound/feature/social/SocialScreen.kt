@@ -174,7 +174,6 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
         }
         item { SectionHeader(stringResource(R.string.social_connections), action = stringResource(R.string.social_all), onAction = openConnections) }
         item { SocialConnectionsPreview(acceptedConnections, state.loading, openConnections, openProfile) }
-        item { SectionHeader(stringResource(R.string.social_circle), action = if (state.home.circles.isNotEmpty()) stringResource(R.string.social_circle_create) else null, onAction = createCircle) }
         items(circleInvitations, key = SocialInvitation::id) { InvitationCard(it) { invitation -> openTarget("invitation", invitation.id) } }
         if (state.home.circles.isNotEmpty()) items(state.home.circles, key = CircleSummary::id) { circle ->
             CompanionCard(onClick = { openCircle(circle) }) {

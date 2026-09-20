@@ -91,14 +91,14 @@ struct SocialHomeView: View {
                             isCreateActivityEventPresented = true
                             trackUpcomingInteraction("plan")
                         } label: {
-                            Label(String(localized: "social.create.plan", defaultValue: "Plan a run"), systemImage: "calendar.badge.plus")
+                            Label(String(localized: "social.create.plan", defaultValue: "Plan an activity"), systemImage: "calendar.badge.plus")
                         }
 
                         Button {
                             selectFeatureTab(.people, entrySource: "create_menu")
                             peopleFocusRequestID += 1
                         } label: {
-                            Label(String(localized: "social.create.person", defaultValue: "Add person"), systemImage: "person.badge.plus")
+                            Label(String(localized: "social.create.person", defaultValue: "Add connection"), systemImage: "person.badge.plus")
                         }
 
                         Button {
@@ -781,20 +781,6 @@ struct SocialHomeView: View {
     @ViewBuilder
     private var yourCircleSection: some View {
         VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-            HStack {
-                Text(String(localized: "circle.section.title", defaultValue: "Your Circle"))
-                    .socialSectionLabel()
-                Spacer()
-                NavigationLink {
-                    CircleCreateView()
-                } label: {
-                    SocialSectionHeaderIcon(systemName: "plus")
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(OutboundPalette.companion)
-                .disabled(!socialStore.hasLoadedConnections || acceptedConnections.isEmpty)
-                .accessibilityLabel(String(localized: "circle.create.navigation", defaultValue: "Create your Circle"))
-            }
             ForEach(circleStore.invitations) { invitation in
                 circleInvitationCard(invitation)
             }
@@ -909,7 +895,7 @@ struct SocialHomeView: View {
             Spacer()
             SocialSectionHeaderAction(
                 systemName: "plus",
-                accessibilityLabel: String(localized: "Plan a run"),
+                accessibilityLabel: String(localized: "social.create.plan", defaultValue: "Plan an activity"),
                 action: { isCreateActivityEventPresented = true }
             )
             NavigationLink {
