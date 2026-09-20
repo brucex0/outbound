@@ -173,6 +173,10 @@ The backend remains the contract authority. Avoid maintaining independent Swift 
    - recognition claims.
 7. Contract changes are complete only when the backend, iOS decoder, Android decoder, examples, and relevant documentation agree.
 
+## Optional Post-Save Stretch Parity
+
+Android enters its in-memory stretch state only after durable save success and after existing save side effects run once. Canonical ActivityKind eligibility includes Run, Bike, Hike, and Swim and excludes Walk; lifecycle stop pauses and process death loses only stretch progress.
+
 ## Phase Plan
 
 ### Phase 0 — Scope And Contracts

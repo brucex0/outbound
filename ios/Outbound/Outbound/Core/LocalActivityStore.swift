@@ -417,6 +417,42 @@ nonisolated struct ActivityRecordingSessionMetadata: Codable, Hashable {
     let healthKitWorkoutExternalReference: String?
 }
 
+nonisolated struct ActivityClientExtras: Codable, Hashable {
+    let guideNudge: String
+    let walkingStepCount: Int?
+    let healthMetrics: ActivityHealthMetrics?
+    let goal: ActivityGoal?
+    let energyKilocalories: Int?
+    let source: ActivitySourceMetadata
+    let gear: ActivityGearAttachment?
+    let manualEdits: ActivityManualEdits?
+    let indoor: ActivityIndoorMetadata?
+    let cadence: ActivityCadenceSummary?
+    let heartRateZones: ActivityHeartRateZoneSummary?
+    let recordingSession: ActivityRecordingSessionMetadata?
+    let activityEventID: String?
+    let followedRoute: FollowedRouteMetadata?
+    let recognitionBadgeIDs: [RecognitionBadgeID]
+
+    init(from activity: SavedActivity) {
+        guideNudge = activity.guideNudge
+        walkingStepCount = activity.walkingStepCount
+        healthMetrics = activity.healthMetrics
+        goal = activity.goal
+        energyKilocalories = activity.energyKilocalories
+        source = activity.source
+        gear = activity.gear
+        manualEdits = activity.manualEdits
+        indoor = activity.indoor
+        cadence = activity.cadence
+        heartRateZones = activity.heartRateZones
+        recordingSession = activity.recordingSession
+        activityEventID = activity.activityEventID
+        followedRoute = activity.followedRoute
+        recognitionBadgeIDs = activity.recognitionBadgeIDs
+    }
+}
+
 nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     static func == (lhs: SavedActivity, rhs: SavedActivity) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }

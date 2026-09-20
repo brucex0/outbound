@@ -2237,7 +2237,7 @@ struct ActivityUploadRequest: Encodable {
     let followedRouteCompleted: Bool?
     let route: SavedRoute?
     let reflection: FinishReflection?
-    let clientData: SavedActivity
+    let clientData: ActivityClientExtras
     let clientUpdatedAt: Date
     let recognitionContext: RecognitionContextDTO
 }
@@ -2289,7 +2289,17 @@ struct ActivitySyncListResponse: Decodable {
 struct RemoteActivityRecord: Decodable {
     let id: String
     let clientActivityId: String?
-    let clientData: SavedActivity?
+    let clientData: ActivityClientExtras?
+    let activityType: ActivityType
+    let title: String
+    let reflection: FinishReflection?
+    let startedAt: Date
+    let endedAt: Date
+    let durationSecs: Int
+    let distanceM: Double
+    let avgPace: Double?
+    let elevationGainM: Double?
+    let route: SavedRoute?
     let clientUpdatedAt: Date?
     let deletedAt: Date?
     let createdAt: Date

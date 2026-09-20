@@ -70,6 +70,10 @@ The legacy provider methods still accept vendor-facing string names after the ma
 
 ## Measurement Model
 
+### Post-Workout Stretch Contract
+
+Both clients emit `post_workout_stretch_offered`, `post_workout_stretch_started`, `post_workout_stretch_completed`, and `post_workout_stretch_dismissed` with only canonical activity type, bounded routine ID, and bounded dismissal result.
+
 ### Core Activity Funnel
 
 Track:

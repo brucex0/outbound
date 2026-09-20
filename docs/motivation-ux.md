@@ -672,6 +672,10 @@ Examples:
 
 This keeps the UX structure stable while making each guide persona feel distinct.
 
+## Optional Post-Activity Stretch
+
+After a durable local save of an eligible recorded Run, Bike, Hike, or Swim, the user may start a deterministic four-movement local routine or choose Done. Walk and non-recorded activities are excluded.
+
 ## MVP Recommendation
 
 Ship the smallest complete loop first:
