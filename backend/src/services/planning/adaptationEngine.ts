@@ -120,7 +120,7 @@ function shouldCreateVersion(input: AdaptationInput): boolean {
     );
   }
 
-  return [
+  const versionCreatingEvents: PlanningEventType[] = [
     "workoutSkipped",
     "goalUpdated",
     "scheduleUpdated",
@@ -129,7 +129,8 @@ function shouldCreateVersion(input: AdaptationInput): boolean {
     "painFlagged",
     "healthImportCompleted",
     "workoutMissed",
-  ].includes(input.eventType)
+  ];
+  return versionCreatingEvents.includes(input.eventType)
     || input.athleteState.fatigueRisk === "high";
 }
 
