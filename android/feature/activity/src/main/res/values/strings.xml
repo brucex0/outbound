@@ -7,6 +7,7 @@
     <string name="activity_cancel">Cancel</string>
     <string name="activity_completed_duration_format">%1$d min</string>
     <string name="activity_completed_duration_calories_format">%1$d min · %2$d cal</string>
+    <string name="activity_companion_dog_title">With dog</string>
     <string name="activity_delete">Delete activity</string>
     <string name="activity_delete_body">It will be removed from this device and your synced history. This cannot be undone.</string>
     <string name="activity_delete_title">Delete this activity?</string>

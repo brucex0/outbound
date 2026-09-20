@@ -7,6 +7,7 @@
     <string name="activity_cancel">取消</string>
     <string name="activity_completed_duration_format">%1$d 分钟</string>
     <string name="activity_completed_duration_calories_format">%1$d 分钟 · %2$d 千卡</string>
+    <string name="activity_companion_dog_title">和狗狗一起</string>
     <string name="activity_delete">删除活动</string>
     <string name="activity_delete_body">它将从本设备和同步历史中移除，且无法撤销。</string>
     <string name="activity_delete_title">删除这次活动？</string>

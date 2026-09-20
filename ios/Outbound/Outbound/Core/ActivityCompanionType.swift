@@ -15,9 +15,6 @@ nonisolated enum ActivityCompanionType: String, Hashable, CaseIterable, Codable 
         }
     }
 
-    /// SF Symbols paw glyph shared by the setup control and saved markers.
-    var systemImage: String { "pawprint.fill" }
-
     /// Sports that may carry the companion context.
     nonisolated static let eligibleActivityTypes: Set<ActivityType> = [
         .running, .walking, .hiking, .cycling,
@@ -55,26 +52,22 @@ extension ActivityType {
 }
 
 extension ActivityCompanionType {
-    /// Compact paw treatment for countdown/live surfaces. Deliberately small
+    /// Compact text treatment for countdown/live surfaces. Deliberately small
     /// so it never displaces primary metrics.
     var liveBadge: some View {
-        HStack(spacing: 3) {
-            Image(systemName: systemImage)
-                .font(.caption2.weight(.bold))
-            Text(displayName)
-        }
-        .font(.caption2.weight(.semibold))
-        .foregroundStyle(OutboundPalette.companion)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(OutboundPalette.companion.opacity(0.12), in: Capsule())
-        .fixedSize()
-        .accessibilityElement(children: .combine)
+        Text(displayName)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(OutboundPalette.companion)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(OutboundPalette.companion.opacity(0.12), in: Capsule())
+            .fixedSize()
+            .accessibilityElement(children: .combine)
     }
 
-    /// Compact paw pill for saved history, detail, and share-safe social cards.
+    /// Compact text pill for saved history, detail, and share-safe social cards.
     var savedPill: some View {
-        Label(displayName, systemImage: systemImage)
+        Text(displayName)
             .font(.caption2.weight(.semibold))
             .foregroundStyle(OutboundPalette.companion)
             .padding(.horizontal, 8)

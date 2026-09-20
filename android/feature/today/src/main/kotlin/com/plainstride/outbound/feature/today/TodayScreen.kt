@@ -50,7 +50,6 @@ import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Hiking
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speaker
 import androidx.compose.material.icons.filled.SpeakerNotesOff
@@ -602,7 +601,6 @@ private fun ActivityLaunchDock(
                 if (activityChoice != TodayActivityChoice.PLANNED && com.plainstride.outbound.core.model.activity.ActivityCompanionType.isEligibleFor(activityChoice.toActivityType())) {
                     UtilityButton(
                         label = stringResource(R.string.today_companion_dog_title),
-                        icon = Icons.Default.Pets,
                         onClick = { onCompanionChanged(companionType == null) },
                         selected = companionType != null,
                     )
@@ -646,10 +644,12 @@ private fun GoalPill(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun UtilityButton(label: String, icon: ImageVector, onClick: () -> Unit, selected: Boolean = false) {
+private fun UtilityButton(label: String, icon: ImageVector? = null, onClick: () -> Unit, selected: Boolean = false) {
     Surface(onClick = onClick, shape = RoundedCornerShape(14.dp), color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant) {
         Column(Modifier.width(82.dp).heightIn(min = 60.dp).padding(horizontal = 6.dp, vertical = 7.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Icon(icon, null, tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+            if (icon != null) {
+                Icon(icon, null, tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Text(label, textAlign = androidx.compose.ui.text.style.TextAlign.Center, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelMedium, maxLines = 1)
         }
     }
