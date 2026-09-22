@@ -536,6 +536,7 @@ struct SocialHomeView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
+            ActivityEventContextIndicators(event: run)
             Label(
                 run.locationName == nil
                     ? String(localized: "social.upcoming.anywhere", defaultValue: "Join from anywhere")
@@ -935,6 +936,7 @@ struct SocialHomeView: View {
                                         .font(.caption.weight(.semibold))
                                         .foregroundStyle(.secondary)
                                     Text(run.title).font(.headline).foregroundStyle(.primary)
+                                    ActivityEventContextIndicators(event: run)
                                     Text(run.startsAt.formatted(date: .abbreviated, time: .shortened) + locationSuffix(run.locationName))
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
@@ -1557,6 +1559,10 @@ struct ActivityEventDetailView: View {
                 }
             }
             Section {
+                ActivityEventContextIndicators(
+                    event: run,
+                    attendanceMode: detail?.currentUserAttendanceMode
+                )
                 Label("Meet up or join from anywhere", systemImage: "person.2.wave.2")
                     .font(.headline)
                     .foregroundStyle(OutboundPalette.companion)
@@ -1889,6 +1895,60 @@ private struct PastActivityEventsView: View {
     }
 }
 
+private struct ActivityEventContextIndicators: View {
+    let event: ActivityEventDTO
+    var attendanceMode: String? = nil
+
+    private var indicators: [(label: String, icon: String)] {
+        var values: [(label: String, icon: String)] = []
+        if event.club != nil || event.source?.kind == "group" {
+            values.append((String(localized: "Group run", defaultValue: "Group run"), "person.3.fill"))
+        } else if let companionLabel {
+            values.append((companionLabel, "person.2.fill"))
+        }
+        if attendanceMode == "virtual" {
+            values.append((String(localized: "Virtual", defaultValue: "Virtual"), "wifi"))
+        }
+        return values
+    }
+
+    private var companionLabel: String? {
+        switch event.source?.kind {
+        case "connection", "directInvitation", "joined", "invitation":
+            return String(
+                format: String(localized: "social.event.with_person", defaultValue: "With %@"),
+                locale: .autoupdatingCurrent,
+                event.creator.displayName
+            )
+        case "createdByYou":
+            return (event.attendeeCount ?? 0) > 1
+                ? String(localized: "With others", defaultValue: "With others")
+                : nil
+        default:
+            return (event.attendeeCount ?? 0) > 1
+                ? String(localized: "With others", defaultValue: "With others")
+                : nil
+        }
+    }
+
+    var body: some View {
+        if indicators.isEmpty {
+            EmptyView()
+        } else {
+            HStack(spacing: 6) {
+                ForEach(Array(indicators.enumerated()), id: \.offset) { _, indicator in
+                    Label(indicator.label, systemImage: indicator.icon)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(OutboundPalette.companion)
+                        .lineLimit(1)
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(indicators.map(\.label).joined(separator: ", "))
+        }
+    }
+}
+
 private struct PastActivityEventRow: View {
     let event: ActivityEventDTO
 
@@ -1902,6 +1962,7 @@ private struct PastActivityEventRow: View {
                         .foregroundStyle(OutboundPalette.companion)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(event.title).font(.headline).foregroundStyle(.primary)
+                        ActivityEventContextIndicators(event: event)
                         Text(event.startsAt.formatted(date: .abbreviated, time: .shortened))
                             .font(.caption).foregroundStyle(.secondary)
                         Text(event.status == "reconciling" ? String(localized: "Collecting participant results") : String(localized: "View shared results"))

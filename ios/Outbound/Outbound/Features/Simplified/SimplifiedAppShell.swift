@@ -1154,6 +1154,13 @@ private struct SimplifiedTodayView: View {
             .onChange(of: personalizationStore.snapshot.pendingAdjustment?.id, initial: true) { _, adjustmentID in
                 presentPendingAdjustmentIfNeeded(adjustmentID)
             }
+            .task(id: isSelected) {
+                guard isSelected else { return }
+                // Today owns the event card, so refresh the shared social snapshot
+                // when this tab becomes visible. Creating an event from Social can
+                // happen while Today is already mounted with an older snapshot.
+                await socialStore.refresh()
+            }
             .task {
                 await loadCompanionTodayMessage()
             }
@@ -1171,6 +1178,7 @@ private struct SimplifiedTodayView: View {
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
+                    Task { await socialStore.refresh() }
                     refreshCurrentDayIfNeeded()
                     // Pull a fresh fix on foreground so activity start never
                     // anchors on a stale location and permission revocations
