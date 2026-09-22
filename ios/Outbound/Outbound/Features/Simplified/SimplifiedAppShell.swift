@@ -222,6 +222,7 @@ struct SimplifiedAppShell: View {
     let onPreActivityPhotoAction: () -> Void
     let onRouteSelectionAction: () -> Void
     let onRouteRemovalAction: () -> Void
+    let onGroupRunAction: () -> Void
     let onStartRun: (SessionIntent?) -> Void
     @State private var showsAssistant = false
     @State private var selectedRouteName: String?
@@ -260,6 +261,7 @@ struct SimplifiedAppShell: View {
                 onPreActivityPhotoAction: onPreActivityPhotoAction,
                 onRouteSelectionAction: onRouteSelectionAction,
                 onRouteRemovalAction: onRouteRemovalAction,
+                onGroupRunAction: onGroupRunAction,
                 onOpenPlan: { openPlanManagement(from: "today_planned_card_plan") },
                 onChangePlan: { presentPlanPicker(from: "today_planned_card_change") },
                 onStartRun: onStartRun
@@ -1014,6 +1016,7 @@ private extension Collection {
 private enum ActivityOverflowAction {
     case photo
     case route
+    case groupRun
     case removeRoute
 }
 
@@ -1048,6 +1051,7 @@ private struct SimplifiedTodayView: View {
     let onPreActivityPhotoAction: () -> Void
     let onRouteSelectionAction: () -> Void
     let onRouteRemovalAction: () -> Void
+    let onGroupRunAction: () -> Void
     let onOpenPlan: () -> Void
     let onChangePlan: () -> Void
     let onStartRun: (SessionIntent?) -> Void
@@ -1274,6 +1278,17 @@ private struct SimplifiedTodayView: View {
                 )
             }
 
+            Divider()
+
+            Button {
+                performActivityOverflowAction(.groupRun)
+            } label: {
+                Label(
+                    String(localized: "record.group.title", defaultValue: "Group run"),
+                    systemImage: "person.2.fill"
+                )
+            }
+
             if preActivityRoute != nil {
                 Divider()
                 Button(role: .destructive) {
@@ -1360,6 +1375,8 @@ private struct SimplifiedTodayView: View {
             onPreActivityPhotoAction()
         case .route:
             onRouteSelectionAction()
+        case .groupRun:
+            onGroupRunAction()
         case .removeRoute:
             onRouteRemovalAction()
         }
@@ -4704,6 +4721,7 @@ private extension RunnerConfidence {
         onPreActivityPhotoAction: {},
         onRouteSelectionAction: {},
         onRouteRemovalAction: {},
+        onGroupRunAction: {},
         onStartRun: { _ in }
     )
         .environmentObject(ActivityStore())

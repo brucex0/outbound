@@ -189,30 +189,40 @@ struct ActivityEventDTO: Codable, Identifiable, Sendable {
 
 extension SessionIntent {
     func paired(with event: ActivityEventDTO, attendanceMode: String? = nil) -> SessionIntent {
-        SessionIntent(
+        let eventDuration = event.endsAt.map { max(60, Int($0.timeIntervalSince(event.startsAt).rounded())) }
+        let eventDetail = eventDuration.map { duration in
+            String(
+                localized: "social.event.paired_workout_duration",
+                defaultValue: "Scheduled activity · \(max(1, duration / 60)) min"
+            )
+        } ?? String(
+                localized: "social.event.scheduled_activity",
+                defaultValue: "Scheduled activity"
+            )
+
+        // An activity event is a social commitment, not a wrapper around the
+        // user's personal training plan. Do not carry workout steps, targets,
+        // or workout references into the event: they would drive live coach
+        // cues and make the event look like (and save as) the planned workout.
+        return SessionIntent(
             id: "activity-event-\(event.id)-\(id)",
             sport: sport,
             title: event.title,
-            detail: String(
-                localized: "social.event.paired_workout_detail",
-                defaultValue: "Circle activity · \(detail)"
+            detail: eventDetail,
+            guideLine: String(
+                localized: "social.event.paired_workout.guide",
+                defaultValue: "Move together and settle into the group's agreed pace."
             ),
-            guideLine: guideLine,
-            startLabel: String(localized: "social.event.start_with_circle", defaultValue: "Start with Circle"),
-            targetDistanceMeters: targetDistanceMeters,
-            targetDurationSeconds: targetDurationSeconds,
-            targetCalories: targetCalories,
-            estimatedDistanceMeters: estimatedDistanceMeters,
-            estimatedDurationSeconds: estimatedDurationSeconds,
-            allowsCalorieGoal: allowsCalorieGoal,
-            routeName: routeName,
-            preparedRoute: preparedRoute,
+            startLabel: String(localized: "social.event.start", defaultValue: "Start activity"),
+            targetDurationSeconds: eventDuration,
+            routeName: nil,
+            preparedRoute: nil,
             activityTypeOverride: activityTypeOverride,
-            workoutSteps: workoutSteps,
-            coachingTarget: coachingTarget,
-            workoutReference: workoutReference,
-            workoutCues: workoutCues,
-            raceIntent: raceIntent,
+            workoutSteps: [],
+            coachingTarget: nil,
+            workoutReference: nil,
+            workoutCues: [],
+            raceIntent: nil,
             activityEvent: ActivityEventLaunchContext(
                 id: event.id,
                 title: event.title,
@@ -290,6 +300,18 @@ struct CreateActivityEventRequestDTO: Codable, Sendable {
     let note: String?
     var durationMinutes: Int = ActivityEventTiming.defaultDurationMinutes
     var sourceCircleId: String? = nil
+    var participationMode: String = "hybrid"
+}
+
+struct UpdateActivityEventRequestDTO: Codable, Sendable {
+    let title: String
+    let startsAt: Date
+    let locationName: String?
+    var latitude: Double? = nil
+    var longitude: Double? = nil
+    let note: String?
+    let durationMinutes: Int
+    var participationMode: String = "hybrid"
 }
 
 struct ActivityEventInvitationBatchRequestDTO: Codable, Sendable {

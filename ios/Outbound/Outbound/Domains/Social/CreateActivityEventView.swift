@@ -19,6 +19,7 @@ struct CreateActivityEventView: View {
     @State private var locationResolveToken = 0
     @State private var showsMapPicker = false
     @State private var note = ""
+    @State private var joinVirtually = true
     @State private var created: ActivityEventDetailDTO?
     @State private var selectedConnectionIDs: Set<String> = []
     @State private var shareURL: URL?
@@ -26,12 +27,24 @@ struct CreateActivityEventView: View {
     @FocusState private var isLocationFieldFocused: Bool
     let sourceCircleID: String?
     let additionalInvitees: [CirclePersonDTO]
+    let editingActivity: ActivityEventDetailDTO?
     let onCompleted: () -> Void
 
-    init(sourceCircleID: String? = nil, preselectedConnectionIDs: Set<String> = [], additionalInvitees: [CirclePersonDTO] = [], onCompleted: @escaping () -> Void = {}) {
+    init(sourceCircleID: String? = nil, preselectedConnectionIDs: Set<String> = [], additionalInvitees: [CirclePersonDTO] = [], editingActivity: ActivityEventDetailDTO? = nil, onCompleted: @escaping () -> Void = {}) {
         self.sourceCircleID = sourceCircleID
         self.additionalInvitees = additionalInvitees
+        self.editingActivity = editingActivity
         self.onCompleted = onCompleted
+        _title = State(initialValue: editingActivity?.title ?? "")
+        _startsAt = State(initialValue: editingActivity?.startsAt ?? Date().addingTimeInterval(86_400))
+        _durationMinutes = State(initialValue: editingActivity.flatMap { activity in
+            activity.endsAt.map { max(15, Int($0.timeIntervalSince(activity.startsAt) / 60)) }
+        } ?? 0)
+        _locationName = State(initialValue: editingActivity?.locationName ?? "")
+        _selectedLocationName = State(initialValue: editingActivity?.locationName)
+        _selectedLocationCoordinate = State(initialValue: editingActivity?.meetupCoordinate)
+        _note = State(initialValue: editingActivity?.paceNote ?? "")
+        _joinVirtually = State(initialValue: editingActivity?.participationMode != "in_person")
         _selectedConnectionIDs = State(initialValue: preselectedConnectionIDs)
     }
 
@@ -44,7 +57,7 @@ struct CreateActivityEventView: View {
                     planStep
                 }
             }
-            .navigationTitle(created == nil ? planningTitle : String(localized: "Invite friends"))
+            .navigationTitle(created == nil ? (editingActivity == nil ? planningTitle : "Edit activity") : String(localized: "Invite friends"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -165,8 +178,6 @@ struct CreateActivityEventView: View {
                 }
             } header: {
                 Text(String(localized: "social.event.meet_at", defaultValue: "Meet at"))
-            } footer: {
-                Text(String(localized: "social.event.location.detail", defaultValue: "Friends can meet here or join from anywhere."))
             }
 
             Section(noteLabel) {
@@ -175,20 +186,21 @@ struct CreateActivityEventView: View {
             }
 
             Section {
-                Label(String(localized: "social.event.flexible_location", defaultValue: "Meet up or join from anywhere"), systemImage: "person.2.wave.2")
-                    .font(.headline)
-                Text(String(localized: "social.event.location.detail", defaultValue: "Friends can meet here or join from anywhere."))
-                    .font(.subheadline)
+                Toggle(isOn: $joinVirtually) {
+                    Label("Join virtually", systemImage: "wifi")
+                }
+                Text("People can join without meeting at the listed location.")
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             Section {
                 Button {
-                    Task { await create() }
+                    Task { await submit() }
                 } label: {
                     HStack {
                         Spacer()
-                        if isSubmitting { ProgressView() } else { Text(String(localized: "social.event.create_and_invite", defaultValue: "Create and invite")).fontWeight(.semibold) }
+                        if isSubmitting { ProgressView() } else { Text(editingActivity == nil ? String(localized: "social.event.create_and_invite", defaultValue: "Create and invite") : "Save changes").fontWeight(.semibold) }
                         Spacer()
                     }
                 }
@@ -293,6 +305,33 @@ struct CreateActivityEventView: View {
         }
     }
 
+    private func submit() async {
+        if let editingActivity {
+            await update(editingActivity)
+        } else {
+            await create()
+        }
+    }
+
+    private func update(_ activity: ActivityEventDetailDTO) async {
+        isSubmitting = true
+        defer { isSubmitting = false }
+        let request = UpdateActivityEventRequestDTO(
+            title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+            startsAt: startsAt,
+            locationName: locationName.locationNameForSubmission,
+            latitude: selectedLocationCoordinate?.latitude,
+            longitude: selectedLocationCoordinate?.longitude,
+            note: note.nilIfBlank,
+            durationMinutes: durationMinutes == 0 ? ActivityEventTiming.defaultDurationMinutes : durationMinutes,
+            participationMode: joinVirtually ? "hybrid" : "in_person"
+        )
+        if await socialStore.updateActivityEvent(id: activity.id, request: request) != nil {
+            onCompleted()
+            dismiss()
+        }
+    }
+
     private func create() async {
         isSubmitting = true
         defer { isSubmitting = false }
@@ -304,7 +343,8 @@ struct CreateActivityEventView: View {
             longitude: selectedLocationCoordinate?.longitude,
             note: note.nilIfBlank,
             durationMinutes: durationMinutes == 0 ? ActivityEventTiming.defaultDurationMinutes : durationMinutes,
-            sourceCircleId: sourceCircleID
+            sourceCircleId: sourceCircleID,
+            participationMode: joinVirtually ? "hybrid" : "in_person"
         ))
     }
 
@@ -392,7 +432,8 @@ struct ActivityEventSummaryContent: View {
                 Text([startsAt.formatted(date: .omitted, time: .shortened), locationName].compactMap { $0 }.joined(separator: " · "))
                     .font(.subheadline).foregroundStyle(.secondary)
                 if let note { Text(note).font(.subheadline).foregroundStyle(.secondary) }
-                Label(String(localized: "social.event.flexible_location", defaultValue: "Meet up or join from anywhere"), systemImage: "person.2.wave.2")
+                Image(systemName: "person.2.wave.2")
+                    .accessibilityLabel(String(localized: "social.event.flexible_location", defaultValue: "Flexible attendance"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(OutboundPalette.companion)
             }

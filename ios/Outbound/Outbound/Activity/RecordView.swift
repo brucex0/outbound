@@ -12,6 +12,7 @@ private enum ActivitySetupSheet: String, Identifiable {
     case goal
     case music
     case more
+    case groupRun
 
     var id: String { rawValue }
 
@@ -20,6 +21,7 @@ private enum ActivitySetupSheet: String, Identifiable {
         case .goal: String(localized: "record.goal.edit", defaultValue: "Edit Goal")
         case .music: String(localized: "record.setup.music", defaultValue: "Music")
         case .more: String(localized: "record.setup.more", defaultValue: "More")
+        case .groupRun: String(localized: "record.group.title", defaultValue: "Group run")
         }
     }
 }
@@ -187,6 +189,9 @@ struct RecordView: View {
     private let preActivityPhotoRequest: Int
     private let routeSelectionRequest: Int
     private let routeRemovalRequest: Int
+    private let groupRunRequest: Int
+    private let startImmediately: Bool
+    private let onLocationPermissionRequired: (() -> Void)?
     private let shouldApplySmartGoalDefault: Bool
     private let onGoalModeChange: ((SessionGoalMode) -> Void)?
     private let onPlanBuilderRequested: (() -> Void)?
@@ -205,6 +210,9 @@ struct RecordView: View {
         preActivityPhotoRequest: Int = 0,
         routeSelectionRequest: Int = 0,
         routeRemovalRequest: Int = 0,
+        groupRunRequest: Int = 0,
+        startImmediately: Bool = false,
+        onLocationPermissionRequired: (() -> Void)? = nil,
         onGoalModeChange: ((SessionGoalMode) -> Void)? = nil,
         onPlanBuilderRequested: (() -> Void)? = nil,
         onPreActivityPhotoChange: ((UIImage?) -> Void)? = nil,
@@ -233,6 +241,9 @@ struct RecordView: View {
         self.preActivityPhotoRequest = preActivityPhotoRequest
         self.routeSelectionRequest = routeSelectionRequest
         self.routeRemovalRequest = routeRemovalRequest
+        self.groupRunRequest = groupRunRequest
+        self.startImmediately = startImmediately
+        self.onLocationPermissionRequired = onLocationPermissionRequired
         self.onGoalModeChange = onGoalModeChange
         self.onPlanBuilderRequested = onPlanBuilderRequested
         self.onPreActivityPhotoChange = onPreActivityPhotoChange
@@ -362,6 +373,9 @@ struct RecordView: View {
         .onChange(of: routeRemovalRequest) { _, _ in
             handleRouteRemovalRequest()
         }
+        .onChange(of: groupRunRequest) { _, _ in
+            handleGroupRunRequest()
+        }
         .onChange(of: selectedGoalMode, initial: true) { _, mode in
             onGoalModeChange?(mode)
         }
@@ -386,6 +400,12 @@ struct RecordView: View {
                 // snapshot for the next outdoor start.
                 recorder.locationManager.requestCurrentLocation()
                 recorder.locationManager.refreshForForeground()
+                if startImmediately {
+                    // Event launches use the same location gate as every other
+                    // start surface. This keeps permission/GPS prompts before
+                    // the countdown instead of interrupting it afterward.
+                    ensureLocationReadyThenStart()
+                }
             } else if phoneWorkoutCoordinator.origin == .appleWatch {
                 adoptWatchInitiatedSessionIfNeeded()
             }
@@ -907,10 +927,11 @@ struct RecordView: View {
         beginStartRecording()
     }
 
-    /// Outdoor recording must not start without location permission and a
-    /// recent valid fix. User-initiated starts park behind an explicit
-    /// permission modal; a granted answer or a valid fix resumes the start
-    /// automatically.
+    /// Shared start gate for Today, the live camera/map controls, and direct
+    /// activity-event launches. Outdoor recording must not start without
+    /// location permission and a recent valid fix. User-initiated starts park
+    /// behind an explicit permission modal; a granted answer or a valid fix
+    /// resumes the start automatically.
     private func ensureLocationReadyThenStart(isUserInitiated: Bool = true) {
         guard recorder.state == .idle, !isCountingDown else { return }
 #if DEBUG
@@ -962,7 +983,11 @@ struct RecordView: View {
         guard isUserInitiated else { return }
         cancelLocationWait()
         isWaitingForLocation = true
-        isLocationPermissionModalPresented = true
+        if let onLocationPermissionRequired {
+            onLocationPermissionRequired()
+        } else {
+            isLocationPermissionModalPresented = true
+        }
     }
 
     private func enableLocationFromPermissionModal() {
@@ -2255,6 +2280,12 @@ struct RecordView: View {
     /// Localized `Dog walk`/`Dog run` titles apply only to freestyle sessions;
     /// planned, curated, route, race, and event sessions keep their own titles.
     private func savedActivityTitle(for savedActivityType: ActivityType) -> String? {
+        // Event titles must win over the generic running fallback. The
+        // fallback used to turn a run whose live title was correct into e.g.
+        // “Monday evening run” when it was saved.
+        if let eventTitle = (activeIntent?.activityEvent ?? plannedIntent?.activityEvent)?.title {
+            return eventTitle
+        }
         if isCompanionContextEligible, isFreestyleSession {
             return companionType?.defaultFreestyleTitle(for: savedActivityType)
         }
@@ -2809,6 +2840,19 @@ struct RecordView: View {
         openRouteLibrary()
     }
 
+    /// Entry point from the Today overflow menu: jump straight into group run
+    /// setup instead of making the runner hunt for it inside “More options”.
+    private func handleGroupRunRequest() {
+        guard isEmbeddedInToday,
+              isVisible,
+              pendingActivity == nil,
+              recorder.state == .idle,
+              !showCamera
+        else { return }
+        trackFeatureExposure("group_run")
+        setupSheet = .groupRun
+    }
+
     private func handleRouteRemovalRequest() {
         guard isEmbeddedInToday,
               isVisible,
@@ -2990,6 +3034,8 @@ struct RecordView: View {
                     ScrollView { musicSetupChoices.padding() }
                 case .more:
                     moreSetupSheet
+                case .groupRun:
+                    groupRunSetupSheet
                 }
             }
             .navigationTitle(sheet.title)
@@ -3136,7 +3182,7 @@ struct RecordView: View {
                     .buttonStyle(.plain)
                 }
             }
-            Section {
+            Section(String(localized: "record.group.title", defaultValue: "Group run")) {
                 VStack(alignment: .leading, spacing: 12) { liveGroupSetup }
                     .padding(.vertical, 6)
             }
@@ -3792,11 +3838,27 @@ struct RecordView: View {
         .clipShape(RoundedRectangle(cornerRadius: startSetupCardCornerRadius, style: .continuous))
     }
 
+    private var groupRunSetupSheet: some View {
+        List {
+            Section(String(localized: "record.group.title", defaultValue: "Group run")) {
+                liveGroupSetup
+            }
+            Section {
+                Text(String(
+                    localized: "record.group.detail",
+                    defaultValue: "Everyone in the group appears on the map while you run. Group runs end automatically when the run ends."
+                ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        }
+    }
+
     private var liveGroupSetup: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Label(String(localized: "record.group.title", defaultValue: "Group run"), systemImage: "person.2.fill")
+                    Label(String(localized: "record.group.people", defaultValue: "Runners with you"), systemImage: "person.2.fill")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text(liveGroupStore.isSharing ? liveGroupStore.displayTitle : "Create or join a group run")

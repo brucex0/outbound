@@ -1007,6 +1007,21 @@ final class TogetherStore: ObservableObject {
         }
     }
 
+    func updateActivityEvent(id: String, request: UpdateActivityEventRequestDTO) async -> ActivityEventDetailDTO? {
+        if isUITestSeedData {
+            return await activityEventDetail(id: id)
+        }
+        do {
+            let updated = try await api.updateActivityEvent(id: id, request)
+            await refresh()
+            errorMessage = nil
+            return updated
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
     func activityEventDetail(id: String) async -> ActivityEventDetailDTO? {
         guard isUITestSeedData || activeUserID != nil else { return nil }
         let generation = authGeneration

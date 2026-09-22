@@ -28,6 +28,7 @@ struct MainTabView: View {
     @State private var preActivityPhotoRequest = 0
     @State private var routeSelectionRequest = 0
     @State private var routeRemovalRequest = 0
+    @State private var groupRunRequest = 0
     @State private var preActivityPhoto: UIImage?
     @State private var preActivityRoute: PreparedRoute?
     @State private var launchGoalMode: SessionGoalMode = .freestyle
@@ -221,6 +222,9 @@ struct MainTabView: View {
             },
             onRouteRemovalAction: {
                 routeRemovalRequest += 1
+            },
+            onGroupRunAction: {
+                groupRunRequest += 1
             }
         ) { intent in
             presentActivity(intent: intent)
@@ -237,6 +241,7 @@ struct MainTabView: View {
                 preActivityPhotoRequest: preActivityPhotoRequest,
                 routeSelectionRequest: routeSelectionRequest,
                 routeRemovalRequest: routeRemovalRequest,
+                groupRunRequest: groupRunRequest,
                 onGoalModeChange: { launchGoalMode = $0 },
                 onPlanBuilderRequested: {
                     onboardingStore.beginPlanBuilder(source: .plannedButton)

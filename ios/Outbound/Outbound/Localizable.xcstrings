@@ -1796,9 +1796,9 @@
     },
     "social.event.paired_workout_detail": {
       "localizations": {
-        "en": {"stringUnit": {"state": "translated", "value": "Circle activity · %@"}},
-        "es": {"stringUnit": {"state": "translated", "value": "Actividad del círculo · %@"}},
-        "zh-Hans": {"stringUnit": {"state": "translated", "value": "活力圈活动 · %@"}}
+        "en": {"stringUnit": {"state": "translated", "value": "Scheduled activity · %@"}},
+        "es": {"stringUnit": {"state": "translated", "value": "Actividad programada · %@"}},
+        "zh-Hans": {"stringUnit": {"state": "translated", "value": "计划活动 · %@"}}
       }
     },
     "social.event.start_with_circle": {
@@ -1806,6 +1806,20 @@
         "en": {"stringUnit": {"state": "translated", "value": "Start with Circle"}},
         "es": {"stringUnit": {"state": "translated", "value": "Empezar con el círculo"}},
         "zh-Hans": {"stringUnit": {"state": "translated", "value": "和活力圈一起开始"}}
+      }
+    },
+    "social.event.scheduled_activity": {
+      "localizations": {
+        "en": {"stringUnit": {"state": "translated", "value": "Scheduled activity"}},
+        "es": {"stringUnit": {"state": "translated", "value": "Actividad programada"}},
+        "zh-Hans": {"stringUnit": {"state": "translated", "value": "计划活动"}}
+      }
+    },
+    "social.event.start": {
+      "localizations": {
+        "en": {"stringUnit": {"state": "translated", "value": "Start activity"}},
+        "es": {"stringUnit": {"state": "translated", "value": "Iniciar actividad"}},
+        "zh-Hans": {"stringUnit": {"state": "translated", "value": "开始活动"}}
       }
     },
     "today.circle_activity": {

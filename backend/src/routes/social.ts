@@ -48,6 +48,7 @@ const createActivityEventSchema = z.object({
   longitude: z.number().finite().min(-180).max(180).nullable().optional(),
   note: z.string().trim().max(240).nullable().optional(),
   sourceCircleId: z.string().min(1).nullable().optional(),
+  participationMode: z.enum(["hybrid", "in_person"]).default("hybrid"),
 }).superRefine((value, context) => {
   if ((value.latitude == null) !== (value.longitude == null)) {
     context.addIssue({
@@ -58,6 +59,24 @@ const createActivityEventSchema = z.object({
   }
 });
 const invitationBatchSchema = z.object({ recipientUserIds: z.array(z.string().min(1)).min(1).max(50) });
+const updateActivityEventSchema = z.object({
+  title: z.string().trim().min(1).max(80).optional(),
+  startsAt: z.string().datetime().optional(),
+  durationMinutes: z.number().int().min(15).max(24 * 60).optional(),
+  locationName: z.string().trim().max(120).nullable().optional(),
+  latitude: z.number().finite().min(-90).max(90).nullable().optional(),
+  longitude: z.number().finite().min(-180).max(180).nullable().optional(),
+  note: z.string().trim().max(240).nullable().optional(),
+  participationMode: z.enum(["hybrid", "in_person"]).optional(),
+}).superRefine((value, context) => {
+  if ((value.latitude == null) !== (value.longitude == null) && (value.latitude !== undefined || value.longitude !== undefined)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Latitude and longitude must be provided together.",
+      path: [value.latitude == null ? "latitude" : "longitude"],
+    });
+  }
+});
 const linkActivityEventSchema = z.object({ activityId: z.string().min(1) });
 const attendanceModeSchema = z.object({ attendanceMode: z.enum(["in_person", "virtual"]) });
 const workoutPresenceSchema = z.object({ clientSessionId: z.string().uuid() }).strict();
@@ -716,7 +735,7 @@ router.post("/activity-events", zValidator("json", createActivityEventSchema), a
         latitude: input.latitude ?? null,
         longitude: input.longitude ?? null,
         note: input.note || null,
-        participationMode: "hybrid",
+        participationMode: input.participationMode,
         activityPolicy: "fixed",
         activityType: "running",
         visibility: "connections",
@@ -728,6 +747,35 @@ router.post("/activity-events", zValidator("json", createActivityEventSchema), a
     return prisma.activityEvent.findUniqueOrThrow({ where: { id: created.id }, include: activityEventInclude(user.id) });
   });
   return c.json(activityEventPayload(activity, user.id, []), 201);
+});
+
+router.patch("/activity-events/:id", zValidator("json", updateActivityEventSchema), async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const prisma = getPrismaClient();
+  const activity = await prisma.activityEvent.findFirst({ where: { id: c.req.param("id"), creatorId: user.id, status: "scheduled" } });
+  if (!activity) return c.json({ error: "Only scheduled activities you created can be edited." }, 404);
+  const input = c.req.valid("json");
+  const startsAt = input.startsAt ? new Date(input.startsAt) : activity.startsAt;
+  if (startsAt <= new Date()) return c.json({ error: "Choose a future date and time." }, 422);
+  const existingDurationMinutes = Math.max(15, Math.round((activity.endsAt.getTime() - activity.startsAt.getTime()) / 60000));
+  const durationMinutes = input.durationMinutes ?? existingDurationMinutes;
+  const updated = await prisma.activityEvent.update({
+    where: { id: activity.id },
+    data: {
+      ...(input.title !== undefined ? { title: input.title } : {}),
+      ...(input.startsAt !== undefined || input.durationMinutes !== undefined
+        ? { startsAt, endsAt: new Date(startsAt.getTime() + durationMinutes * 60 * 1000) }
+        : {}),
+      ...(input.locationName !== undefined ? { locationName: input.locationName || null } : {}),
+      ...(input.latitude !== undefined ? { latitude: input.latitude, longitude: input.longitude } : {}),
+      ...(input.note !== undefined ? { note: input.note || null } : {}),
+      ...(input.participationMode !== undefined ? { participationMode: input.participationMode } : {}),
+    },
+    include: activityEventInclude(user.id),
+  });
+  const connections = await acceptedConnectionIDs(user.id);
+  return c.json(activityEventPayload(updated, user.id, connections, true));
 });
 
 router.get("/activity-events/:id", async (c) => {
@@ -746,10 +794,14 @@ router.post("/activity-events/:id/rsvp", zValidator("json", attendanceModeSchema
   const connections = await acceptedConnectionIDs(user.id);
   const activity = await visibleActivityEvent(user.id, connections, c.req.param("id"));
   if (!activity || activity.status !== "scheduled") return c.json({ error: "Activity event not found." }, 404);
+  const attendanceMode = c.req.valid("json").attendanceMode;
+  if (attendanceMode === "virtual" && activity.participationMode !== "hybrid") {
+    return c.json({ error: "This activity is in-person only." }, 422);
+  }
   const participant = await getPrismaClient().activityEventParticipant.upsert({
     where: { activityEventId_userId: { activityEventId: activity.id, userId: user.id } },
-    create: { activityEventId: activity.id, userId: user.id, status: "going", attendanceMode: c.req.valid("json").attendanceMode },
-    update: { status: "going", attendanceMode: c.req.valid("json").attendanceMode, outcome: null, resolvedAt: null },
+    create: { activityEventId: activity.id, userId: user.id, status: "going", attendanceMode },
+    update: { status: "going", attendanceMode, outcome: null, resolvedAt: null },
   });
   if (activity.creatorId !== user.id) {
     await createSocialNotification(activity.creatorId, user.id, "activityEventJoined", activity.id, `${user.displayName} joined ${activity.title}.`);
@@ -1536,13 +1588,14 @@ function activityEventPayload(activity: any, currentUserId: string, connectionId
     compatibility: shareSafeCompatibility(activity.options),
   };
   if (includeParticipants) {
+    const goingUserIds = new Set(going.map((participant: any) => participant.userId));
     payload.participants = going.map((participant: any) => ({ person: compactPerson(participant.user), status: participant.status, outcome: participant.outcome, attendanceMode: participant.attendanceMode }));
     if (activity.creatorId === currentUserId) {
       payload.invitedUserIds = activity.invitations
         .filter((invitation: any) => invitation.recipientId && ["pending", "accepted"].includes(invitation.status))
         .map((invitation: any) => invitation.recipientId);
       payload.pendingInvitations = activity.invitations
-        .filter((invitation: any) => invitation.status === "pending" && invitation.recipient)
+        .filter((invitation: any) => invitation.status === "pending" && invitation.recipient && !goingUserIds.has(invitation.recipientId))
         .map((invitation: any) => ({ id: invitation.id, recipient: compactPerson(invitation.recipient), createdAt: invitation.createdAt }));
     }
   }

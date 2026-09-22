@@ -589,6 +589,10 @@ final class APIClient {
         try await post("/social/activity-events", body: request)
     }
 
+    func updateActivityEvent(id: String, _ request: UpdateActivityEventRequestDTO) async throws -> ActivityEventDetailDTO {
+        try await patch("/social/activity-events/\(id)", body: request)
+    }
+
     func inviteConnections(_ userIDs: [String], toActivityEvent id: String) async throws -> ActivityEventInvitationBatchResponseDTO {
         try await post(
             "/social/activity-events/\(id)/invitations/batch",

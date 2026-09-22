@@ -1,6 +1,7 @@
 import CryptoKit
 import MapKit
 import SwiftUI
+import UIKit
 
 struct SocialHomeView: View {
     private static let feedPageSize = 12
@@ -537,13 +538,9 @@ struct SocialHomeView: View {
                 .foregroundStyle(.primary)
                 .lineLimit(1)
             ActivityEventContextIndicators(event: run)
-            Label(
-                run.locationName == nil
-                    ? String(localized: "social.upcoming.anywhere", defaultValue: "Join from anywhere")
-                    : String(localized: "social.upcoming.meetup", defaultValue: "Meet up or join anywhere"),
-                systemImage: "person.2.wave.2"
-            )
-            .lineLimit(1)
+            Image(systemName: "person.2.wave.2")
+                .foregroundStyle(OutboundPalette.companion)
+                .accessibilityLabel(String(localized: "social.event.flexible_location", defaultValue: "Flexible attendance"))
             Label(
                 String(localized: "social.upcoming.attendees", defaultValue: "\(run.attendeeCount ?? 0) going"),
                 systemImage: "person.2"
@@ -947,8 +944,10 @@ struct SocialHomeView: View {
                                 .padding(.trailing, 44)
 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Label("Meet up or join from anywhere", systemImage: "person.2.wave.2")
-                                    Text("People going: \(run.attendeeCount ?? 0)")
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "person.2.wave.2")
+                                        Text("\(run.attendeeCount ?? 0) participants")
+                                    }
                                 }
                                 .font(.caption)
                                 .foregroundStyle(OutboundPalette.companion)
@@ -1422,7 +1421,8 @@ private struct SocialActivityDiscoveryView: View {
                             Text(activity.startsAt.formatted(date: .abbreviated, time: .shortened))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                            Label("Meet up or join from anywhere", systemImage: "person.2.wave.2")
+                            Image(systemName: "person.2.wave.2")
+                                .accessibilityLabel("Flexible attendance")
                                 .font(.caption)
                                 .foregroundStyle(OutboundPalette.companion)
                         }
@@ -1527,10 +1527,10 @@ private struct SocialGroupsView: View {
 
 struct ActivityEventDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
-    @EnvironmentObject private var appNavigationStore: AppNavigationStore
     let run: ActivityEventDTO
     var entrySource = "social_upcoming"
     @State private var detail: ActivityEventDetailDTO?
@@ -1540,36 +1540,28 @@ struct ActivityEventDetailView: View {
     @State private var isAttendanceChoicePresented = false
     @State private var invitationToDelete: ActivityEventPendingInvitationDTO?
     @State private var deletingInvitationIDs: Set<String> = []
+    @State private var isActivityStartPresented = false
+    @State private var isLocationPermissionPromptPresented = false
+    @State private var isActivityStartPendingPermission = false
+    @State private var isEditPresented = false
+    @StateObject private var startLocationManager = LocationManager()
+    @State private var showAllParticipants = false
     private var results: ActivityEventResultDTO? { socialStore.resultsByActivityEventID[run.id] }
     private var isCreator: Bool { (detail?.currentUserRole ?? run.currentUserRole) == "owner" }
     private var participantIDs: Set<String> { Set(detail?.participants?.map(\.person.id) ?? []) }
     private var invitedUserIDs: Set<String> { Set(detail?.invitedUserIds ?? []) }
+    private var visiblePendingInvitations: [ActivityEventPendingInvitationDTO] {
+        let goingIDs = participantIDs
+        let goingNames = Set((detail?.participants ?? []).map { $0.person.displayName.lowercased() })
+        return (detail?.pendingInvitations ?? []).filter {
+            !goingIDs.contains($0.recipient.id)
+                && !goingNames.contains($0.recipient.displayName.lowercased())
+        }
+    }
     private var eventEndsAt: Date? { detail?.endsAt ?? run.endsAt }
 
     var body: some View {
         List {
-            if let detail, detail.currentUserGoing, !isCreator {
-                Section {
-                    Label("You're going", systemImage: "checkmark.circle.fill")
-                        .font(.headline)
-                        .foregroundStyle(OutboundPalette.companion)
-                    Label(attendanceLabel(detail.currentUserAttendanceMode), systemImage: attendanceIcon(detail.currentUserAttendanceMode))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Section {
-                ActivityEventContextIndicators(
-                    event: run,
-                    attendanceMode: detail?.currentUserAttendanceMode
-                )
-                Label("Meet up or join from anywhere", systemImage: "person.2.wave.2")
-                    .font(.headline)
-                    .foregroundStyle(OutboundPalette.companion)
-                Text("Meet at the listed place or join from anywhere.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
             Section {
                 LabeledContent("Created by", value: run.creator.displayName)
                 LabeledContent("When", value: run.startsAt.formatted(date: .abbreviated, time: .shortened))
@@ -1578,19 +1570,33 @@ struct ActivityEventDetailView: View {
                     LabeledContent("Scheduled end", value: eventEndsAt.formatted(date: .abbreviated, time: .shortened))
                     LabeledContent("Results close", value: eventEndsAt.addingTimeInterval(ActivityEventTiming.reconciliationWindow).formatted(date: .abbreviated, time: .shortened))
                 }
-                if let location = run.locationName { LabeledContent("Where", value: location) }
                 if let pace = run.paceNote { LabeledContent("Pace / note", value: pace) }
-                if run.locationName == nil { LabeledContent("Where", value: "Join from anywhere") }
-                if let detail { LabeledContent("Going", value: "\(detail.attendeeCount)") }
             }
-            if let coordinate = detail?.meetupCoordinate ?? run.meetupCoordinate {
+            if let location = detail?.locationName ?? run.locationName {
                 Section {
-                    ActivityEventMeetingPointView(
-                        coordinate: coordinate,
-                        locationName: detail?.locationName ?? run.locationName
-                    )
+                    if detail?.participationMode == "hybrid" {
+                        Label("Join virtually or meet at:", systemImage: "person.2.wave.2")
+                            .font(.headline)
+                    } else {
+                        Label("Meet at:", systemImage: "mappin.and.ellipse")
+                            .font(.headline)
+                    }
+                    if let coordinate = detail?.meetupCoordinate ?? run.meetupCoordinate {
+                        ActivityEventMeetingPointView(
+                            coordinate: coordinate,
+                            locationName: location
+                        )
+                    } else {
+                        Text(location)
+                            .foregroundStyle(.secondary)
+                    }
                 } header: {
-                    Text(String(localized: "social.event.location.meeting_point", defaultValue: "Meeting point"))
+                    Text("Location")
+                }
+            } else if detail?.participationMode == "hybrid" {
+                Section {
+                    Label("Join virtually", systemImage: "wifi")
+                        .font(.headline)
                 }
             }
             if let compatibility = run.compatibility {
@@ -1610,22 +1616,32 @@ struct ActivityEventDetailView: View {
             }
             }
             if let participants = detail?.participants, !participants.isEmpty {
-                Section("Going") {
-                    ForEach(participants) { participant in
-                        HStack {
-                            SocialAvatar(name: participant.person.displayName, avatarURL: participant.person.avatarUrl)
-                            Text(participant.person.displayName)
-                            Spacer()
-                            Label(attendanceLabel(participant.attendanceMode), systemImage: attendanceIcon(participant.attendanceMode))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                Section {
+                    ForEach(showAllParticipants ? participants : Array(participants.prefix(3))) { participant in
+                        participantRow(participant)
+                    }
+                    if let results, results.status != "scheduled",
+                       detail?.currentUserGoing == true, detail?.currentUserOutcome == nil {
+                        Button("I joined without recording") {
+                            Task { _ = await socialStore.markActivityEventWithoutRecording(id: run.id) }
+                        }
+                    }
+                } header: {
+                    HStack {
+                        Text("Participants (\(detail?.attendeeCount ?? participants.count))")
+                        Spacer()
+                        if participants.count > 3 {
+                            Button(showAllParticipants ? "Less" : "More") {
+                                showAllParticipants.toggle()
+                            }
+                            .font(.caption.weight(.semibold))
                         }
                     }
                 }
             }
-            if isCreator, let invitations = detail?.pendingInvitations, !invitations.isEmpty {
+            if isCreator, !visiblePendingInvitations.isEmpty {
                 Section("Pending invitations") {
-                    ForEach(invitations) { invitation in
+                    ForEach(visiblePendingInvitations) { invitation in
                         HStack(spacing: 12) {
                             SocialAvatar(name: invitation.recipient.displayName, avatarURL: invitation.recipient.avatarUrl)
                             VStack(alignment: .leading, spacing: 2) {
@@ -1651,38 +1667,7 @@ struct ActivityEventDetailView: View {
                     }
                 }
             }
-            if let results, results.status != "scheduled" {
-                Section("Results") {
-                    LabeledContent("Results received", value: String(localized: "\(results.resolvedCount) of \(results.goingCount)"))
-                    if results.combinedDurationSeconds > 0 {
-                        LabeledContent("Combined time", value: String(localized: "\(max(1, results.combinedDurationSeconds / 60)) min"))
-                    }
-                    ForEach(results.participants) { participant in
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(participant.person.displayName).font(.headline)
-                            Text(resultLabel(participant)).font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                    if detail?.currentUserGoing == true && detail?.currentUserOutcome == nil {
-                        Button("I joined without recording") {
-                            Task { _ = await socialStore.markActivityEventWithoutRecording(id: run.id) }
-                        }
-                    }
-                }
-            }
             Section {
-                if canStartActivity {
-                    Button {
-                        startActivity()
-                    } label: {
-                        Label(
-                            String(localized: "social.event.start_with_circle", defaultValue: "Start with Circle"),
-                            systemImage: "figure.run"
-                        )
-                        .font(.headline)
-                    }
-                }
-
                 if !isCreator && ["scheduled", "active"].contains(detail?.status ?? run.status ?? "scheduled") {
                     Button {
                         guard let detail else { return }
@@ -1718,12 +1703,95 @@ struct ActivityEventDetailView: View {
             }
         }
         .navigationTitle(run.title)
-        .confirmationDialog("Meet up or join from anywhere", isPresented: $isAttendanceChoicePresented, titleVisibility: .visible) {
+        .toolbar {
+            if isCreator && (detail?.status ?? run.status) == "scheduled" {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isEditPresented = true
+                    } label: {
+                        Image(systemName: "pencil")
+                    }
+                    .accessibilityLabel("Edit activity")
+                }
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if canStartActivity {
+                Button {
+                    startActivity()
+                } label: {
+                    Label(
+                        String(localized: "social.event.start", defaultValue: "Start activity"),
+                        systemImage: "figure.run"
+                    )
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(OutboundPalette.companion)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 8)
+                .background(.bar)
+            }
+        }
+        .fullScreenCover(isPresented: $isActivityStartPresented) {
+            RecordView(
+                initialIntent: SessionIntent.freestyleRun.paired(
+                    with: run,
+                    attendanceMode: detail?.currentUserAttendanceMode
+                ),
+                isVisible: true,
+                startImmediately: true,
+                onLocationPermissionRequired: {
+                    isActivityStartPresented = false
+                    isLocationPermissionPromptPresented = true
+                },
+                onCloseRequest: { shouldKeepAlive in
+                    if !shouldKeepAlive { isActivityStartPresented = false }
+                }
+            )
+        }
+        .alert(
+            String(localized: "record.location.permission.title", defaultValue: "Enable location"),
+            isPresented: $isLocationPermissionPromptPresented
+        ) {
+            Button(String(localized: "record.location.permission.enable", defaultValue: "Enable location")) {
+                enableEventLocation()
+            }
+            Button(String(localized: "common.close", defaultValue: "Close"), role: .cancel) {
+                isActivityStartPendingPermission = false
+            }
+        } message: {
+            Text(String(
+                localized: "record.location.permission.message",
+                defaultValue: "Outdoor activities need location to map your route and record pace. Grant access to start, or turn it on in Settings if it was denied before."
+            ))
+        }
+        .onChange(of: startLocationManager.authorizationStatus) { _, _ in
+            continuePendingEventStartIfReady()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            startLocationManager.refreshForForeground()
+            continuePendingEventStartIfReady()
+        }
+        .sheet(isPresented: $isEditPresented) {
+            if let detail {
+                CreateActivityEventView(editingActivity: detail) {
+                    isEditPresented = false
+                    Task { self.detail = await socialStore.activityEventDetail(id: run.id) }
+                }
+            }
+        }
+        .confirmationDialog("Choose attendance", isPresented: $isAttendanceChoicePresented, titleVisibility: .visible) {
             Button(run.locationName ?? String(localized: "Meet in person")) {
                 join(attendanceMode: "in_person")
             }
-            Button("Join from anywhere") {
-                join(attendanceMode: "virtual")
+            if detail?.participationMode == "hybrid" {
+                Button("Join virtually") {
+                    join(attendanceMode: "virtual")
+                }
             }
             Button("Cancel", role: .cancel) {}
         }
@@ -1812,12 +1880,55 @@ struct ActivityEventDetailView: View {
     }
 
     private func startActivity() {
+        startLocationManager.refreshForForeground()
+        guard startLocationManager.isLocationPermissionGranted else {
+            isActivityStartPendingPermission = true
+            isLocationPermissionPromptPresented = true
+            return
+        }
+        presentActivityStart()
+    }
+
+    private func presentActivityStart() {
+        isActivityStartPendingPermission = false
         socialStore.prepareToRecord(activityEventID: run.id)
-        appNavigationStore.prepareActivityEvent(
-            run,
-            attendanceMode: detail?.currentUserAttendanceMode
-        )
-        dismiss()
+        isActivityStartPresented = true
+    }
+
+    private func continuePendingEventStartIfReady() {
+        guard isActivityStartPendingPermission,
+              isLocationPermissionPromptPresented == false,
+              startLocationManager.isLocationPermissionGranted
+        else { return }
+        presentActivityStart()
+    }
+
+    private func enableEventLocation() {
+        let locationManager = startLocationManager
+        if locationManager.authorizationStatus == .notDetermined {
+            locationManager.requestPermission()
+        } else if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
+    }
+
+    private func participantRow(_ participant: ActivityEventParticipantDTO) -> some View {
+        HStack(spacing: 10) {
+            SocialAvatar(name: participant.person.displayName, avatarURL: participant.person.avatarUrl)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(participant.person.displayName)
+                if let result = results?.participants.first(where: { $0.person.id == participant.person.id }) {
+                    Text(resultLabel(result))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            Image(systemName: attendanceIcon(participant.attendanceMode))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(attendanceLabel(participant.attendanceMode))
+        }
     }
 
     private func resultLabel(_ participant: ActivityEventResultParticipantDTO) -> String {
@@ -1898,6 +2009,7 @@ private struct PastActivityEventsView: View {
 private struct ActivityEventContextIndicators: View {
     let event: ActivityEventDTO
     var attendanceMode: String? = nil
+    var iconOnly = false
 
     private var indicators: [(label: String, icon: String)] {
         var values: [(label: String, icon: String)] = []
@@ -1937,10 +2049,17 @@ private struct ActivityEventContextIndicators: View {
         } else {
             HStack(spacing: 6) {
                 ForEach(Array(indicators.enumerated()), id: \.offset) { _, indicator in
-                    Label(indicator.label, systemImage: indicator.icon)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(OutboundPalette.companion)
-                        .lineLimit(1)
+                    if iconOnly {
+                        Image(systemName: indicator.icon)
+                            .font(.headline)
+                            .foregroundStyle(OutboundPalette.companion)
+                            .accessibilityLabel(indicator.label)
+                    } else {
+                        Label(indicator.label, systemImage: indicator.icon)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(OutboundPalette.companion)
+                            .lineLimit(1)
+                    }
                 }
             }
             .accessibilityElement(children: .combine)
