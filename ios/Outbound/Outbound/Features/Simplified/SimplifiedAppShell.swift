@@ -1385,7 +1385,7 @@ private struct SimplifiedTodayView: View {
     private var todayPeerCards: some View {
         VStack(spacing: OutboundSpacing.compact) {
             if preActivityRoute == nil {
-                if completedActivityToday == nil, let activityEventToday {
+                if let activityEventToday {
                     activityEventCard(activityEventToday)
                 } else if launchGoalMode == .planned {
                     plannedWorkoutCard
