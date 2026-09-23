@@ -32,6 +32,49 @@ Keep this distinction explicit, because the failure mode is building a second Ci
 - Do not add a leaderboard, points, levels, or streak punishment to Groups. It contradicts both `docs/your-circle.md` and the product direction in `docs/product-strategy.md`.
 - Neither Circle nor Group becomes chat. Notices are broadcast, not conversation.
 
+## Two Shapes, One Model
+
+A Group is either a formal run club or an informal run crew, and both belong in the same container. The mistake to avoid is shipping a type picker.
+
+Why formality is a set of independent axes rather than a type:
+
+- Creation happens before the creator knows what they are. A six-person Wednesday crew routinely becomes a dues-collecting club years later.
+- A type forks every downstream feature permanently: fields, permissions, notifications, admin screens, directory rules. The result is two half-built products.
+- A type is also a promotion path. With capability flags, an informal crew that grows up simply turns affordances on.
+- **Formality must never grant authorization.** Anyone can type "registered club". Verification is an identity claim reviewed by a human, not a permission escalation.
+
+| Axis | Informal crew | Formal club |
+| --- | --- | --- |
+| Discovery | unlisted by default | public, searchable, wants to be found |
+| Identity | a typed name | verified organization, affiliation reference, logo |
+| Joining | instant, or by invite link | dues, waiver, sometimes approval |
+| Roles | one owner, everyone else equal | officers, secretary, treasurer, coaches |
+| Schedule | episodic | season, recurring weekly series |
+| Liability | the organizer's own problem | waivers and insurance, so attendance records matter |
+| Continuity | dies when the founder's interest does | persists beyond any individual |
+| Scale | 3-15 | 50-2,000+ |
+
+What formal really means in the real world, and therefore what the extra surface has to support:
+
+- External affiliation rather than self-declaration. England Athletics affiliation, for example, is a paid, approved application, and athlete registration is gated on the club being affiliated.
+- Liability insurance and mandatory waivers. The RRCA requires member clubs to carry general liability coverage or prove coverage, and to obtain waivers of liability from members and participants at join and renewal.
+- Dues and a treasury, plus a registered-athlete relationship between a person and the club.
+- Officer structure and volunteer roles that outlive any single account.
+
+Two consequences that are easy to miss:
+
+- **Continuity.** A formal club is an institution that outlives its admins, so ownership must be transferable and should eventually attach to an organization identity rather than a personal account. An informal crew is usually one person's contact list, so it silently dies if that person changes jobs or moves unless transfer and stale-owner recovery are easy. Ownership transfer is therefore an MVP requirement, not an admin nicety.
+- **Liability.** If Plainstride becomes the system of record for who RSVP'd and who showed up at a club run, waiver acknowledgement becomes a real product question. Decide explicitly whether to store it or to stay out of it.
+
+Sequencing:
+
+- Build the informal shape first. Crews are the growth loop: colleagues and neighbors already share a channel, so invitation conversion is high and the cost is low because it maps onto the existing connection, activity-event, notification, and Circle contribution machinery.
+- Treat verified clubs as a supply play. Few accounts, many users each, and the segment most likely to pay for organizer tooling — but they cost verification, waivers, dues, public pages, and moderation. Add those affordances when a real club asks, not before.
+- Do not put informal crews into public discovery. Discoverability is its own axis and defaults to off.
+- Do not promise dues collection in the MVP. Charging for a real-world club is a payments, tax, and store-review question rather than a schema change, and it must be resolved before any in-app money movement is designed.
+
+User-facing vocabulary stays one noun. Formality appears as a plain-language descriptor plus, only after review, a verified badge.
+
 ## Product Model (proposal)
 
 - A Group is a persistent container with one owner, optional admins, and members.
@@ -49,6 +92,7 @@ Keep this distinction explicit, because the failure mode is building a second Ci
 5. **Do groups show member activities?** — this is the highest-risk product decision. Recommendation: no. A group shows upcoming runs, a coarse weekly aggregate, and completed group runs. A member's workout is exposed only through the existing connection-visible post rules. Reuse the Circle contribution reconciler instead of building a Group feed that leaks workout facts to strangers.
 6. **Name uniqueness** — recommendation: display names are not unique (real clubs collide legitimately); a separate unique slug exists only for share links and is auto-suffixed, not user-typed.
 7. **Group run capacity and RSVP** — activity events currently auto-join with no cap. Recommendation: defer capacity and waitlists; keep the existing going/not-going semantics and revisit only if large-group runs actually fill up.
+8. **Formal club versus informal crew** — recommendation: one container with independent discovery, verification, joining, roles, schedule, and money axes; never a type enum that drives permissions or forks features. Informal is the default shape and the first thing built; verification, waivers, and dues are earned affordances added later. See Two Shapes, One Model above.
 
 ## Group Notice
 
@@ -162,10 +206,13 @@ Authenticated, membership- and role-authorized, block-aware, idempotent, and ret
 3. Group notices with watermark unread, Groups badge, and moderation hooks.
 4. Group runs as single events first, then recurring series.
 5. Notification types, analytics funnel, recognition integration, Android parity.
+6. Formal-club affordances: organization verification and badge, waiver acknowledgement, public club page, affiliation reference, officer roles, and recurring series at scale. Only after a real club asks.
 
 ## MVP Acceptance Criteria
 
+- A runner can create an informal unlisted group from a name alone, with no configuration the creator cannot yet answer, and can later enable discovery, roles, and scheduled runs in place without recreating the group.
 - A runner can create a group, edit it, and is its owner; seeded official groups remain usable without granting ownership to a person.
+- Ownership transfer works for both shapes, and an informal group whose owner stops participating can be recovered by a remaining member.
 - Join policy is enforced server-side for instant, request, and invite paths, and repeated requests stay idempotent.
 - Owners and admins can manage members, roles, and ownership transfer; members can leave, mute, report, and block.
 - Only owners and admins can publish, edit, pin, or delete a notice; members see unread state via a watermark, and the Groups badge reflects it.
@@ -177,6 +224,9 @@ Authenticated, membership- and role-authorized, block-aware, idempotent, and ret
 ## Open Questions
 
 - Are Groups a directory of many public clubs, or mostly one or two official clubs plus unlisted private ones? The answer changes how much discovery, moderation, and capacity work the MVP needs.
+- Does Plainstride store waiver acknowledgement for formal club runs, or explicitly stay out of the liability record?
+- Does organization verification attach to a user account or to a standalone organization entity that can own multiple groups?
+- When a long-running informal crew outgrows its unlisted state, does it convert in place, and in what order do discovery, roles, and dues get enabled?
 - Should membership be publicly discoverable on a profile at all?
 - Do notices need read receipts for admins, or is unread count enough?
 - Should a group be able to own routes and gear recommendations, or only runs and notices?
@@ -190,3 +240,7 @@ Authenticated, membership- and role-authorized, block-aware, idempotent, and ret
 - Public group profile pages and SEO/web presence.
 - Automated moderation classification and an operator review console.
 - Paid or sponsored groups, and organizer tools beyond membership and notices.
+- In-app club dues, treasury, or any other money movement.
+- Organization verification, affiliation lookup, and public club web pages.
+- Waiver capture and liability record keeping.
+- A group type picker, a formality enum that gates permissions, or any surface that treats "formal" as an authority claim.
