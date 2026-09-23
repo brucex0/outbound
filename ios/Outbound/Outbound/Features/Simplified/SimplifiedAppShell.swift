@@ -1080,7 +1080,7 @@ private struct SimplifiedTodayView: View {
                         ActivityLaunchMap(
                             locationManager: launchLocationManager,
                             route: preActivityRoute,
-                            attributionBottomInset: mapAttributionBottomInset
+                            safeZone: ActivityMapSafeZone(bottomInset: mapAttributionBottomInset)
                         )
                         .clipped()
 

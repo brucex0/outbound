@@ -38,46 +38,6 @@ enum ActivityLaunchLayout {
     static let controlHeight: CGFloat = 64
 }
 
-struct MapAttributionOcclusionHeightPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
-}
-
-struct ActivityLaunchFloatingContentHeightPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
-}
-
-extension View {
-    func reportsMapAttributionOcclusionHeight() -> some View {
-        background {
-            GeometryReader { proxy in
-                Color.clear.preference(
-                    key: MapAttributionOcclusionHeightPreferenceKey.self,
-                    value: proxy.size.height
-                )
-            }
-        }
-    }
-
-    func reportsActivityLaunchFloatingContentHeight() -> some View {
-        background {
-            GeometryReader { proxy in
-                Color.clear.preference(
-                    key: ActivityLaunchFloatingContentHeightPreferenceKey.self,
-                    value: proxy.size.height
-                )
-            }
-        }
-    }
-}
-
 struct RecordView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -105,6 +65,8 @@ struct RecordView: View {
     @EnvironmentObject var tooltipCoordinator: TooltipCoordinator
     @EnvironmentObject var phoneWorkoutCoordinator: PhoneWorkoutSessionCoordinator
     @StateObject private var recorder: ActivityRecorder
+    @StateObject private var launchCoordinator = ActivityLaunchCoordinator()
+    @StateObject private var sessionController = ActivitySessionController()
     @StateObject private var guide = VirtualGuide()
     @StateObject private var liveActivityManager = SessionLiveActivityManager()
     @StateObject private var workoutPresence = WorkoutPresenceController()
@@ -309,7 +271,24 @@ struct RecordView: View {
             handleRouteGuidanceEvent(event)
         }
         .onReceive(recorder.$state) { state in
-            onSessionStateChange?(ActivitySessionPortalState(recordingState: state))
+            switch state {
+            case .active:
+                sessionController.beginRecording()
+            case .paused:
+                sessionController.pause()
+            case .idle:
+                if pendingActivity != nil {
+                    sessionController.beginReview()
+                } else if !isCountingDown {
+                    switch sessionController.phase {
+                    case .review, .saving, .postSave:
+                        break
+                    default:
+                        sessionController.prepare(intent: plannedIntent)
+                    }
+                }
+            }
+            onSessionStateChange?(sessionController.phase.portalState)
             if phoneWorkoutCoordinator.watchOwnsHealthKitPersistence {
                 if previousRecorderState == .active, state == .paused {
                     phoneWorkoutCoordinator.requestPause(autoTriggered: recorder.autoPaused)
@@ -393,6 +372,15 @@ struct RecordView: View {
 #if DEBUG
             configureRequestedRunSimulationIfNeeded()
 #endif
+            switch recorder.state {
+            case .active:
+                sessionController.beginRecording()
+            case .paused:
+                sessionController.beginRecording()
+                sessionController.pause()
+            case .idle:
+                if pendingActivity != nil { sessionController.beginReview() }
+            }
             workoutPresence.sync(with: recorder.state)
             if recorder.state == .idle {
                 applyTrustedContactDefault()
@@ -445,7 +433,11 @@ struct RecordView: View {
             guard showCamera else { return }
             preferredSessionPageRawValue = newPage.rawValue
         }
-        .onChange(of: plannedIntent) { _, _ in applyWorkoutMusicSuggestion() }
+        .onChange(of: plannedIntent) { _, intent in
+            applyWorkoutMusicSuggestion()
+            launchCoordinator.prepare(intent: intent)
+            sessionController.prepare(intent: intent)
+        }
         .onChange(of: setupSheet) { _, sheet in
             guard sheet == .music else { return }
             prepareMusicPicker()
@@ -701,7 +693,13 @@ struct RecordView: View {
     }
 
     private var showsEmbeddedLiveSurface: Bool {
-        isEmbeddedInToday && isVisible && (showCamera || pendingActivity != nil || postSaveStretchContext != nil)
+        guard isEmbeddedInToday, isVisible else { return false }
+        switch sessionController.phase {
+        case .countdown, .recording, .review, .saving, .postSave:
+            return true
+        case .setup, .preflighting:
+            return false
+        }
     }
 
     private func trackRecoveryPresentationIfNeeded(result: String) {
@@ -941,21 +939,26 @@ struct RecordView: View {
         }
 #endif
         let locationManager = recorder.locationManager
-        guard locationManager.isLocationPermissionGranted else {
+        switch ActivityLaunchPreflight.decision(
+            isIndoor: isIndoorSession,
+            permissionGranted: locationManager.isLocationPermissionGranted,
+            hasRecentValidLocation: locationManager.hasRecentValidLocation
+        ) {
+        case .requestPermission:
             handleMissingLocationPermissionForStart(isUserInitiated: isUserInitiated)
-            return
-        }
-        if isIndoorSession || locationManager.hasRecentValidLocation {
+        case .startImmediately:
             isWaitingForLocation = false
             startRecording()
-            return
+        case .waitForLocation:
+            beginLocationWait()
         }
-        beginLocationWait()
     }
 
     private func beginLocationWait() {
         let isFirstEntry = !isWaitingForLocation
         isWaitingForLocation = true
+        launchCoordinator.beginPreflight()
+        sessionController.beginPreflight()
         recorder.locationManager.prepareForRecording(
             activityType: activeIntent?.resolvedActivityType ?? plannedIntent?.resolvedActivityType ?? .running
         )
@@ -969,6 +972,7 @@ struct RecordView: View {
     private func cancelLocationWait() {
         guard isWaitingForLocation else { return }
         isWaitingForLocation = false
+        launchCoordinator.cancel()
         if recorder.state == .idle {
             recorder.locationManager.cancelPreparation()
         }
@@ -1271,6 +1275,8 @@ struct RecordView: View {
 
     private func beginStartCountdown() {
         countdownTask?.cancel()
+        launchCoordinator.beginCountdown()
+        sessionController.beginCountdown()
         guide.announceStartCountdown(ActivityStartCountdownStep.sequence.map(\.spokenText))
         countdownTask = Task { @MainActor in
             for step in ActivityStartCountdownStep.sequence {
@@ -1338,6 +1344,7 @@ struct RecordView: View {
             ActiveRouteGuidanceJournal(route: $0, recoverySeed: nil)
         }
         startRecorder(routeGuidance: routeGuidance)
+        sessionController.beginRecording()
         recordStartedGoalMode()
         if let route = activeIntent?.preparedRoute {
             track(.init(.routeNavigationStarted, properties: [
@@ -1416,6 +1423,7 @@ struct RecordView: View {
         countdownTask?.cancel()
         countdownTask = nil
         countdownStep = nil
+        launchCoordinator.cancel()
         if recorder.state == .idle {
             recorder.locationManager.cancelPreparation()
             phoneWorkoutCoordinator.cancelPreparation()
@@ -1447,6 +1455,7 @@ struct RecordView: View {
             phoneWorkoutCoordinator.requestFinish()
         }
         let summary = recorder.finish()
+        sessionController.beginReview()
         let eligibility = ActivitySaveEligibility.evaluate(
             durationSecs: summary.durationSecs,
             distanceM: summary.distanceM
@@ -1576,6 +1585,7 @@ struct RecordView: View {
         } else {
             recorder.resume()
         }
+        sessionController.resume()
         guard shouldRecoverWorkoutMusic else { return }
 
         Task {
@@ -1601,6 +1611,7 @@ struct RecordView: View {
         } else {
             recorder.pause()
         }
+        sessionController.pause()
     }
 
     private func adoptWatchInitiatedSessionIfNeeded() {
@@ -1630,6 +1641,7 @@ struct RecordView: View {
         photos: [(UIImage, PhotoMetadata)],
         reflection: FinishReflection
     ) async -> Bool {
+        sessionController.beginSaving()
         let correctedSummary = await elevationCorrectionTask?.value ?? activity.summary
         let resolvedActivity = PendingFinishedActivity(
             id: activity.id,
@@ -1648,6 +1660,7 @@ struct RecordView: View {
                 .persistence,
                 "Post-run save blocked eligibility=too_short duration=\(ActivityDiagnosticLog.durationBucket(seconds: resolvedActivity.summary.durationSecs)) distance=\(ActivityDiagnosticLog.distanceBucket(meters: resolvedActivity.summary.distanceM))"
             )
+            sessionController.saveFailed()
             return false
         }
 
@@ -1699,6 +1712,7 @@ struct RecordView: View {
                 .persistence,
                 "Post-run save failed error=\(ActivityDiagnosticLog.errorCategory(error))"
             )
+            sessionController.saveFailed()
             return false
         }
         ActivityDiagnosticLog.notice(.persistence, "Post-run save completed local_state=durable")
@@ -1762,6 +1776,7 @@ struct RecordView: View {
         )
         if let routine = PostWorkoutStretchCatalog.routine(for: savedActivity.activityType), savedActivity.source.kind == .outbound { postSaveStretchContext = PostSavedStretchContext(activityType: savedActivity.activityType, routine: routine) }
         clearPending(recoveryReason: .saved)
+        sessionController.completeSave(withPostSaveFlow: postSaveStretchContext != nil)
         if postSaveStretchContext == nil { onCloseRequest?(false) }
         return true
     }
@@ -1785,6 +1800,7 @@ struct RecordView: View {
         liveShareStore.end()
         liveGroupStore.finishActivity()
         clearPending(recoveryReason: .discarded)
+        sessionController.reset()
         onCloseRequest?(false)
         if let activityEventID {
             Task {
@@ -1804,6 +1820,7 @@ struct RecordView: View {
         clearSessionRecoveryArtifacts(reason: recoveryReason)
         onPreActivityPhotoChange?(nil)
         activeIntent = nil
+        sessionController.reset()
         plannedIntent = nil
         curatedWorkoutIntent = nil
         selectedWorkoutChoice = .sport(.run)
@@ -1862,103 +1879,68 @@ struct RecordView: View {
     }
 
     private var readyView: some View {
-        ZStack(alignment: .bottom) {
-            if !usesEmbeddedPlannedContent {
-                launchMap
-            }
-
-            VStack(spacing: 10) {
-                if connectivityStore.isOffline {
-                    OfflineStatusBanner(compact: true)
-                        .padding(.horizontal, 16)
-                }
-
-                Spacer(minLength: 96)
-
-                if showsLaunchGoalCard {
-                    launchGoalCard
-                        .padding(.horizontal, 18)
-                }
-
-                if showsManualGoalPills {
-                    launchGoalPillRow
-                        .padding(.bottom, 2)
-                }
-
-                if showsEnableLocationChip {
-                    enableLocationChip
-                }
-
-                launchDock
-            }
-            .padding(.bottom, isEmbeddedInToday ? 8 : 70)
-
-            if !isEmbeddedInToday {
-                contextualStartControl
-                    .padding(.bottom, 3)
-            }
-        }
-        .onAppear {
-            guideCatalog.refreshInstalledVoices()
-            applyLearnedGoalModeIfNeeded()
-            applySmartGoalDefaultIfNeeded()
-            applyDefaultSessionShoeIfNeeded()
-            trackSetupAndFeatureExposureIfNeeded()
-        }
+        ActivitySetupView(
+            isEmbeddedInToday: false,
+            usesEmbeddedPlannedContent: usesEmbeddedPlannedContent,
+            showsRouteCard: plannedIntent?.preparedRoute != nil,
+            showsLaunchGoalCard: showsLaunchGoalCard,
+            showsManualGoalPills: showsManualGoalPills,
+            showsEnableLocationChip: showsEnableLocationChip,
+            map: AnyView(launchMap),
+            offlineStatus: AnyView(offlineStatusBanner),
+            routeCard: AnyView(launchRouteCardView),
+            goalCard: AnyView(launchGoalCard),
+            goalPillRow: AnyView(launchGoalPillRow),
+            enableLocationChip: AnyView(enableLocationChip),
+            launchDock: AnyView(launchDock),
+            contextualStartControl: AnyView(contextualStartControl),
+            onAppear: prepareSetupSurface
+        )
     }
 
     private var embeddedReadyView: some View {
-        VStack(spacing: 0) {
-            ZStack(alignment: .bottom) {
-                Color.clear
-                    .allowsHitTesting(false)
+        ActivitySetupView(
+            isEmbeddedInToday: true,
+            usesEmbeddedPlannedContent: usesEmbeddedPlannedContent,
+            showsRouteCard: plannedIntent?.preparedRoute != nil,
+            showsLaunchGoalCard: showsLaunchGoalCard,
+            showsManualGoalPills: showsManualGoalPills,
+            showsEnableLocationChip: showsEnableLocationChip,
+            map: AnyView(EmptyView()),
+            offlineStatus: AnyView(offlineStatusBanner),
+            routeCard: AnyView(launchRouteCardView),
+            goalCard: AnyView(launchGoalCard),
+            goalPillRow: AnyView(launchGoalPillRow),
+            enableLocationChip: AnyView(enableLocationChip),
+            launchDock: AnyView(launchDock),
+            contextualStartControl: AnyView(EmptyView()),
+            onAppear: prepareSetupSurface
+        )
+    }
 
-                if showsLaunchGoalCard || plannedIntent?.preparedRoute != nil {
-                    VStack(spacing: 10) {
-                        if connectivityStore.isOffline {
-                            OfflineStatusBanner(compact: true)
-                                .padding(.horizontal, 16)
-                        }
+    private func prepareSetupSurface() {
+        guideCatalog.refreshInstalledVoices()
+        launchCoordinator.prepare(intent: plannedIntent)
+        sessionController.prepare(intent: plannedIntent)
+        applyLearnedGoalModeIfNeeded()
+        applySmartGoalDefaultIfNeeded()
+        applyDefaultSessionShoeIfNeeded()
+        trackSetupAndFeatureExposureIfNeeded()
+    }
 
-                        Spacer(minLength: 72)
-
-                        VStack(spacing: 10) {
-                            if let route = plannedIntent?.preparedRoute {
-                                launchRoutePreviewCard(route)
-                            }
-
-                            if showsLaunchGoalCard {
-                                launchGoalCard
-                            }
-                        }
-                        .padding(.horizontal, 18)
-                        .padding(.bottom, 12)
-                        .reportsActivityLaunchFloatingContentHeight()
-                        .reportsMapAttributionOcclusionHeight()
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipped()
-
-            if showsManualGoalPills {
-                launchGoalPillRow
-                    .padding(.vertical, 10)
-            }
-
-            if showsEnableLocationChip {
-                enableLocationChip
-                    .padding(.bottom, 10)
-            }
-
-            launchDock
+    @ViewBuilder
+    private var launchRouteCardView: some View {
+        if let route = plannedIntent?.preparedRoute {
+            launchRoutePreviewCard(route)
         }
-        .onAppear {
-            guideCatalog.refreshInstalledVoices()
-            applyLearnedGoalModeIfNeeded()
-            applySmartGoalDefaultIfNeeded()
-            applyDefaultSessionShoeIfNeeded()
-            trackSetupAndFeatureExposureIfNeeded()
+    }
+
+    private var offlineStatusBanner: some View {
+        Group {
+            if connectivityStore.isOffline {
+                OfflineStatusBanner(compact: true)
+                    .padding(.horizontal, 16)
+            }
         }
     }
 
@@ -5444,87 +5426,6 @@ struct RecordView: View {
             Spacer(minLength: 8)
         }
         .contentShape(Rectangle())
-    }
-}
-
-struct ActivityLaunchMap: View {
-    @Environment(\.outboundTheme) private var theme
-    @ObservedObject var locationManager: LocationManager
-    let route: PreparedRoute?
-    var attributionBottomInset: CGFloat = 0
-
-    @State private var position: MapCameraPosition = .userLocation(fallback: .automatic)
-
-    private var routeCoordinates: [CLLocationCoordinate2D] {
-        guard let route else { return [] }
-        return RouteWorkingGeometry.displayPoints(route.directedPoints).map(\.locationCoordinate)
-    }
-
-    private var routeCameraKey: String? {
-        route.map { "\($0.id):\($0.direction.rawValue)" }
-    }
-
-    private var routeEndpointsOverlap: Bool {
-        guard let start = routeCoordinates.first, let finish = routeCoordinates.last else { return false }
-        return CLLocation(latitude: start.latitude, longitude: start.longitude)
-            .distance(from: CLLocation(latitude: finish.latitude, longitude: finish.longitude)) <= 20
-    }
-
-    var body: some View {
-        Map(position: $position, interactionModes: [.pan, .zoom, .rotate]) {
-            if routeCoordinates.count > 1 {
-                MapPolyline(coordinates: routeCoordinates)
-                    .stroke(.white.opacity(0.9), lineWidth: 8)
-                MapPolyline(coordinates: routeCoordinates)
-                    .stroke(theme.actionColor, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
-            }
-
-            if let start = routeCoordinates.first {
-                Annotation(
-                    routeEndpointsOverlap
-                        ? String(localized: "route.guidance.map.start_finish", defaultValue: "Route start and finish")
-                        : String(localized: "route.guidance.map.start", defaultValue: "Route start"),
-                    coordinate: start
-                ) {
-                    Image(systemName: routeEndpointsOverlap ? "flag.checkered" : "figure.run")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 30, height: 30)
-                        .background(routeEndpointsOverlap ? theme.actionColor : Color.green, in: Circle())
-                        .overlay(Circle().stroke(.white, lineWidth: 2))
-                        .shadow(radius: 3)
-                }
-            }
-
-            if let finish = routeCoordinates.last, !routeEndpointsOverlap {
-                Annotation(String(localized: "route.guidance.map.finish", defaultValue: "Route finish"), coordinate: finish) {
-                    Image(systemName: "flag.checkered")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 30, height: 30)
-                        .background(theme.actionColor, in: Circle())
-                        .overlay(Circle().stroke(.white, lineWidth: 2))
-                        .shadow(radius: 3)
-                }
-            }
-
-            UserAnnotation()
-        }
-        .safeAreaPadding(.bottom, max(attributionBottomInset, 0))
-        .onAppear { frameRouteIfNeeded() }
-        .onChange(of: routeCameraKey) { _, _ in frameRouteIfNeeded() }
-    }
-
-    private func frameRouteIfNeeded() {
-        guard routeCoordinates.count > 1 else {
-            position = .userLocation(fallback: .automatic)
-            return
-        }
-
-        let rect = routeCoordinates.reduce(MKMapRect.null) { partial, coordinate in
-            partial.union(MKMapRect(origin: MKMapPoint(coordinate), size: MKMapSize(width: 1, height: 1)))
-        }
-        position = .rect(rect.insetBy(dx: -max(rect.width * 0.16, 400), dy: -max(rect.height * 0.16, 400)))
     }
 }
 

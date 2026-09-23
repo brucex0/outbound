@@ -78,7 +78,8 @@ struct LiveMapView: View {
     }
 
     private var mapSurface: some View {
-        Map(position: $mapPosition, interactionModes: [.pan, .zoom, .rotate]) {
+        ActivityMapSurface(safeZone: ActivityMapSafeZone(bottomInset: bottomOverlayHeight + 8)) {
+            Map(position: $mapPosition, interactionModes: [.pan, .zoom, .rotate]) {
             if plannedRouteCoordinates.count > 1 {
                 MapPolyline(coordinates: plannedRouteCoordinates)
                     .stroke(.white.opacity(0.9), style: selectedRouteHaloStyle)
@@ -156,8 +157,8 @@ struct LiveMapView: View {
                     }
                 }
             }
+            }
         }
-        .safeAreaPadding(.bottom, bottomOverlayHeight + 8)
         .onMapCameraChange(frequency: .onEnd) { _ in
             if mapPosition.positionedByUser {
                 isFollowingUser = false
@@ -231,7 +232,8 @@ struct LiveMapView: View {
     }
 
     private func statusCard(expandedHeight: CGFloat) -> some View {
-        SessionStatusCard(
+        ActivityControlSheet(isExpanded: isWorkoutPanelExpanded) {
+            SessionStatusCard(
             state: recorder.state,
             isExpanded: $isWorkoutPanelExpanded,
             expandedHeight: expandedHeight,
@@ -268,7 +270,8 @@ struct LiveMapView: View {
             onResume: onResume,
             onFinish: onFinish,
             isFinishEnabled: isFinishEnabled
-        )
+            )
+        }
         .background {
             GeometryReader { proxy in
                 Color.clear.preference(

@@ -66,7 +66,8 @@ struct CameraHUDView: View {
                     cameraPermissionMessage
                 }
 
-                SessionStatusCard(
+                ActivityControlSheet(isExpanded: isWorkoutPanelExpanded) {
+                    SessionStatusCard(
                         state: recorder.state,
                         isExpanded: $isWorkoutPanelExpanded,
                     expandedHeight: geometry.size.height,
@@ -114,7 +115,8 @@ struct CameraHUDView: View {
                     }
                     .padding(.horizontal, isWorkoutPanelExpanded ? 0 : 16)
                     .padding(.bottom, isWorkoutPanelExpanded ? 0 : 18)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                }
 
                 if !isWorkoutPanelExpanded {
                     VStack {
