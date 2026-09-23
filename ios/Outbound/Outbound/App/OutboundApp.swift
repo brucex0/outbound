@@ -117,6 +117,8 @@ struct OutboundApp: App {
             DebugLiveCheerFollowerHarness()
         } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugCommunityRoutes") {
             DebugCommunityRouteLibraryHarness()
+        } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugCircleMark") {
+            DebugCircleMarkReviewHarness()
         } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugPostRunSummary") {
             DebugPostRunSummaryHarness()
                 .environmentObject(measurementPreferences)
