@@ -14,6 +14,8 @@ The core loop is:
 
 Circle is not a leaderboard, public community, or chat product. It is a lightweight place to share workouts, stay connected, choose a meaningful weekly theme, notice effort, Cheer, and plan an activity.
 
+Circle uses a distinct sealed-huddle mark rather than generic two-person or three-person symbols. The outer ring should read as private and contained, while the two abstract figures leaning together should read as close and trusted. Use this mark consistently for Circle navigation, creation, active Circle cards, invitations, and transient Circle feedback; keep generic people symbols for connections and open groups.
+
 ## Product Principles
 
 - Make progress feel shared, not scored.

@@ -320,7 +320,12 @@ struct SimplifiedAppShell: View {
         }
         .overlay(alignment: .top) {
             if let circleToast {
-                Label(circleToast, systemImage: "person.3.fill")
+                Label {
+                    Text(circleToast)
+                } icon: {
+                    CircleMark()
+                        .frame(width: 18, height: 18)
+                }
                     .font(.subheadline.weight(.semibold))
                     .padding(.horizontal, 14).padding(.vertical, 10)
                     .background(.regularMaterial, in: Capsule())

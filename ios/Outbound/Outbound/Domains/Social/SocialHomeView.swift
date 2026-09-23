@@ -106,7 +106,12 @@ struct SocialHomeView: View {
                             selectFeatureTab(.circle, entrySource: "create_menu")
                             isCircleCreationPresented = true
                         } label: {
-                            Label(String(localized: "social.create.circle", defaultValue: "Create Circle"), systemImage: "person.3.sequence")
+                            Label {
+                                Text(String(localized: "social.create.circle", defaultValue: "Create Circle"))
+                            } icon: {
+                                CircleMark()
+                                    .frame(width: 18, height: 18)
+                            }
                         }
 
                         Button {
@@ -2330,7 +2335,12 @@ private struct CircleNotificationInvitationView: View {
 
     var body: some View {
         List {
-            Label(localizedCircleNotificationMessage(notification), systemImage: "person.3.fill")
+            Label {
+                Text(localizedCircleNotificationMessage(notification))
+            } icon: {
+                CircleMark()
+                    .frame(width: 18, height: 18)
+            }
             if let invitation {
                 Button(String(localized: "circle.invitation.accept", defaultValue: "Accept")) {
                     Task {

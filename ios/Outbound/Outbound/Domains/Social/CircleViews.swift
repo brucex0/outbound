@@ -32,8 +32,7 @@ struct CircleCompactContent: View {
 
     private var singleRowContent: some View {
         HStack(spacing: OutboundSpacing.compact) {
-            Image(systemName: circle.lifecycle == "archived" ? "archivebox" : "person.3.fill")
-                .font(.subheadline.weight(.semibold))
+            circleIcon
                 .foregroundStyle(theme.heroForegroundColor)
                 .frame(width: 34, height: 34)
                 .background(theme.heroForegroundColor.opacity(0.14), in: Circle())
@@ -68,8 +67,7 @@ struct CircleCompactContent: View {
 
     private var detailedContent: some View {
         HStack(spacing: OutboundSpacing.standard) {
-            Image(systemName: circle.lifecycle == "archived" ? "archivebox" : "person.3.fill")
-                .font(.title2)
+            circleIcon
                 .foregroundStyle(OutboundPalette.companion)
                 .frame(width: 44, height: 44)
                 .background(OutboundPalette.companion.opacity(0.12), in: Circle())
@@ -89,6 +87,17 @@ struct CircleCompactContent: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var circleIcon: some View {
+        if circle.lifecycle == "archived" {
+            Image(systemName: "archivebox")
+                .font(.title2)
+        } else {
+            CircleMark()
+                .frame(width: 22, height: 22)
+        }
     }
 
     @ViewBuilder

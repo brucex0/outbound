@@ -23,7 +23,7 @@ enum SocialFeatureTab: String, CaseIterable, Identifiable {
         switch self {
         case .feed: "rectangle.stack"
         case .people: "person.2"
-        case .circle: "person.3.sequence"
+        case .circle: "circle"
         case .groups: "flag"
         case .routes: "map"
         }
@@ -55,7 +55,7 @@ struct SocialFeatureTabBar: View {
                 } label: {
                     VStack(spacing: 3) {
                         ZStack(alignment: .topTrailing) {
-                            Image(systemName: tab.systemImage)
+                            tabIcon(tab)
                                 .font(.system(size: 15, weight: .semibold))
                                 .frame(width: 24, height: 19)
                             if let badge = badges[tab] {
@@ -82,6 +82,16 @@ struct SocialFeatureTabBar: View {
         .padding(.vertical, 3)
         .background(.bar)
         .overlay(alignment: .bottom) { Divider() }
+    }
+
+    @ViewBuilder
+    private func tabIcon(_ tab: SocialFeatureTab) -> some View {
+        if tab == .circle {
+            CircleMark()
+                .frame(width: 17, height: 17)
+        } else {
+            Image(systemName: tab.systemImage)
+        }
     }
 
     private func accessibilityValue(for tab: SocialFeatureTab) -> String {
