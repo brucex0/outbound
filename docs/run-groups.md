@@ -75,6 +75,44 @@ Sequencing:
 
 User-facing vocabulary stays one noun. Formality appears as a plain-language descriptor plus, only after review, a verified badge.
 
+## Should Circle And Group Merge?
+
+Verdict: the entity should eventually be one. The tables should not merge in this workstream. Merge the domain layer, vocabulary, and shared machinery now, keep two product shapes, and revisit the table merge only when Circle's contract can be re-verified end to end.
+
+Where the intuition is right:
+
+- Users do not think in two nouns, and "why do I create a Circle here and a Group there" has no good answer.
+- Circle already is an intimate, private group.
+- The recommended informal shape above — unlisted, invite-by-link, small, members see each other's workouts — is functionally close to Circle. That is the strongest argument for merging and should be conceded rather than dodged.
+- Most of the machinery is identical: membership and roles, invitations, activity-event attachment, activity contribution, notification families, member rows with recent workout context, management screens, analytics, and the offline cache. Duplicating that twice is the real cost; the second noun is nearly free.
+- Two vocabularies already cost the project: `docs/social.md` plus `docs/your-circle.md`, `CircleStore` plus `TogetherStore`, `circle*` plus `group*` notification types, and a Prisma `Club` the product calls a Group.
+
+Where merging breaks:
+
+- **The data-access default inverts.** Circle members legitimately see another member's workout type, title, timing, duration, distance, heart rate, and energy. A public Group member must not. One container means every workout-read path branches on the group's shape, and one missed branch leaks a friend's heart-rate data to strangers. Two containers keep the safe answer as the default.
+- **The emotional contract conflicts.** `docs/your-circle.md` defines Circle as explicitly not a leaderboard, not a public community, and not chat, with no obligation or behind-language. Groups bring discovery, admin hierarchy, and broadcast. Merging risks the private space inheriting public pressure, which is a product-safety regression rather than a refactor.
+- **Query shapes differ.** Circle snapshots capacity, materializes weeks, commitments, and contributions per week, and drives Today. Groups need cursor pagination, join requests, notice watermarks, and hundreds of members. The union is a wide nullable table with per-shape rules.
+- **Migration is not the expensive part; regression is.** Circle shipped as a permanent MVP with its own acceptance criteria, analytics funnel, Today card, and post-run contribution. Rewriting that vertical slice for a naming win can break working behavior.
+- **The jobs differ.** Circle paces a shared weekly intention; Groups coordinate who shows up and when. Different funnels, different retention roles.
+
+There is a cheap window, which is why this is worth deciding now rather than later:
+
+- Group schema work has not started, and the `Club` to `Group` rename with owner and roles is already a destructive migration, which the pre-publish policy explicitly allows.
+- Merging tables is therefore as cheap here as it will ever be, and it gets more expensive every month, especially once Android parity lands.
+- What stays expensive is the Circle rewrite, not the migration.
+- Recommendation: take the cheap half. Build Groups on the same domain layer and vocabulary Circle would use, so a later merge is a presentation change rather than a data migration.
+
+Decision test, used instead of size or privacy because both axes exist on both shapes:
+
+- Does the container pace a shared weekly intention with people the runner already trusts? That is the Circle shape.
+- Does it establish who we are and when we meet? That is the Group shape.
+- Guardrail either way: a private container never gains public discovery, ranking, or broadcast-by-default.
+
+Revisit trigger — merge when either condition holds:
+
+- users demonstrably confuse the two, visible as creation-flow abandonment, support contacts, or members asking how to add a friend to a Group; or
+- Groups grows private capabilities that make Circle's feature set a strict subset on one membership model.
+
 ## Product Model (proposal)
 
 - A Group is a persistent container with one owner, optional admins, and members.
@@ -93,6 +131,7 @@ User-facing vocabulary stays one noun. Formality appears as a plain-language des
 6. **Name uniqueness** — recommendation: display names are not unique (real clubs collide legitimately); a separate unique slug exists only for share links and is auto-suffixed, not user-typed.
 7. **Group run capacity and RSVP** — activity events currently auto-join with no cap. Recommendation: defer capacity and waitlists; keep the existing going/not-going semantics and revisit only if large-group runs actually fill up.
 8. **Formal club versus informal crew** — recommendation: one container with independent discovery, verification, joining, roles, schedule, and money axes; never a type enum that drives permissions or forks features. Informal is the default shape and the first thing built; verification, waivers, and dues are earned affordances added later. See Two Shapes, One Model above.
+9. **Circle versus Group** — recommendation: keep two containers and merge the domain layer, vocabulary, and shared machinery underneath them. Do not merge tables in this workstream, because the Circle rewrite is the expensive part and the naming win is small. Build Groups on the same domain layer so the later merge is presentational. See Should Circle And Group Merge? above.
 
 ## Group Notice
 
@@ -227,6 +266,8 @@ Authenticated, membership- and role-authorized, block-aware, idempotent, and ret
 - Does Plainstride store waiver acknowledgement for formal club runs, or explicitly stay out of the liability record?
 - Does organization verification attach to a user account or to a standalone organization entity that can own multiple groups?
 - When a long-running informal crew outgrows its unlisted state, does it convert in place, and in what order do discovery, roles, and dues get enabled?
+- Does "Circle" survive as a user-facing noun, or eventually become the private shape of Group with Circle kept only as capability names such as weekly theme and personal commitment?
+- Should a long-running private crew be promotable into a Circle, reparentable into a Group, or neither?
 - Should membership be publicly discoverable on a profile at all?
 - Do notices need read receipts for admins, or is unread count enough?
 - Should a group be able to own routes and gear recommendations, or only runs and notices?
@@ -244,3 +285,5 @@ Authenticated, membership- and role-authorized, block-aware, idempotent, and ret
 - Organization verification, affiliation lookup, and public club web pages.
 - Waiver capture and liability record keeping.
 - A group type picker, a formality enum that gates permissions, or any surface that treats "formal" as an authority claim.
+- Merging the `Circle` and Group tables into one entity in this workstream; share the domain layer first.
+- Promoting an informal crew into a Circle, or any cross-container migration between the two shapes.
