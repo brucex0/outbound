@@ -2135,7 +2135,7 @@ struct SocialNotificationsView: View {
 
     var body: some View {
         List {
-            if socialStore.notifications.isEmpty && healthImportStore.importCandidates.isEmpty {
+            if presentationItems.isEmpty && healthImportStore.importCandidates.isEmpty {
                 ContentUnavailableView("No notifications", systemImage: "bell", description: Text("Connection requests, Cheers, comments, and run invitations appear here."))
             } else {
                 ForEach(NotificationCenterTier.allCases) { tier in

@@ -894,7 +894,9 @@ final class TogetherStore: ObservableObject {
         )
     }
 
-    var unreadNotificationCount: Int { notifications.filter { $0.readAt == nil }.count }
+    var unreadNotificationCount: Int {
+        notifications.filter { $0.readAt == nil && NotificationPresentationPolicy.isCurrent($0) }.count
+    }
     var actionableNotificationCount: Int {
         NotificationPresentationPolicy.actionableAttentionCount(in: notifications)
     }
@@ -914,7 +916,18 @@ final class TogetherStore: ObservableObject {
             return
         }
         do {
-            let refreshedNotifications = try await withTransientNetworkRetry { try await self.api.fetchSocialNotifications() }.notifications
+            var refreshedNotifications = try await withTransientNetworkRetry { try await self.api.fetchSocialNotifications() }.notifications
+            if refreshedNotifications.contains(where: { $0.type == "liveCheerInvitation" }) {
+                if let liveShares = try? await api.fetchInvitedLiveShares() {
+                    let activeShareIDs = Set(liveShares.sessions.map(\.id))
+                    refreshedNotifications.removeAll { notification in
+                        notification.type == "liveCheerInvitation"
+                            && notification.objectId.map { activeShareIDs.contains($0) } != true
+                    }
+                } else {
+                    refreshedNotifications.removeAll { !NotificationPresentationPolicy.isCurrent($0) }
+                }
+            }
             guard generation == authGeneration, activeUserID != nil else { return }
             notifications = refreshedNotifications
             errorMessage = nil

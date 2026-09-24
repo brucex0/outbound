@@ -69,6 +69,15 @@ enum NotificationPresentationPolicy {
     static let localAppleHealthImportType = "local_apple_health_import"
     /// Workout reminders remain OS-only and never enter Notification Center.
     static let localWorkoutReminderType = "local_workout_reminder"
+    /// The backend caps a live share at eight hours. Notifications older than
+    /// that cannot still represent an active live session, even if a stale
+    /// backend record remains active.
+    static let maximumLiveCheerDuration: TimeInterval = 8 * 60 * 60
+
+    static func isCurrent(_ notification: SocialNotificationDTO, now: Date = Date()) -> Bool {
+        guard notification.type == "liveCheerInvitation" else { return true }
+        return notification.createdAt.addingTimeInterval(maximumLiveCheerDuration) > now
+    }
 
     static func presentation(for type: String, objectID: String?) -> NotificationPresentation {
         switch type {
@@ -108,8 +117,8 @@ enum NotificationPresentationPolicy {
         }
     }
 
-    static func items(from notifications: [SocialNotificationDTO]) -> [NotificationCenterPresentationItem] {
-        let sorted = notifications.sorted { lhs, rhs in
+    static func items(from notifications: [SocialNotificationDTO], now: Date = Date()) -> [NotificationCenterPresentationItem] {
+        let sorted = notifications.filter { isCurrent($0, now: now) }.sorted { lhs, rhs in
             let left = presentation(for: lhs.type, objectID: lhs.objectId)
             let right = presentation(for: rhs.type, objectID: rhs.objectId)
             if left.tier.rawValue != right.tier.rawValue { return left.tier.rawValue < right.tier.rawValue }
@@ -136,9 +145,10 @@ enum NotificationPresentationPolicy {
         }
     }
 
-    static func actionableAttentionCount(in notifications: [SocialNotificationDTO]) -> Int {
+    static func actionableAttentionCount(in notifications: [SocialNotificationDTO], now: Date = Date()) -> Int {
         notifications.count {
-            presentation(for: $0.type, objectID: $0.objectId).tier == .needsYou
+            isCurrent($0, now: now)
+                && presentation(for: $0.type, objectID: $0.objectId).tier == .needsYou
         }
     }
 
