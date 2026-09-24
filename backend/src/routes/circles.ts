@@ -116,7 +116,7 @@ router.get("/:id", async (c) => {
   try {
     await assertCircleMember(c.req.param("id"), user.id);
     const payload = await circlePayload(c.req.param("id"), user.id, true);
-    return payload ? c.json(payload) : c.json({ error: "Circle not found." }, 404);
+    return payload ? c.json(payload) : c.json({ error: "Group not found." }, 404);
   } catch (error) {
     return circleError(c, error);
   }
@@ -127,7 +127,7 @@ router.patch("/:id", zValidator("json", renameSchema), async (c) => {
   if (user instanceof Response) return user;
   await assertCircleMember(c.req.param("id"), user.id);
   const circle = await getPrismaClient().circle.findFirst({ where: { id: c.req.param("id"), ownerId: user.id, lifecycle: { not: "archived" } } });
-  if (!circle) return c.json({ error: "Circle not found." }, 404);
+  if (!circle) return c.json({ error: "Group not found." }, 404);
   await getPrismaClient().circle.update({ where: { id: circle.id }, data: { name: c.req.valid("json").name } });
   return c.json(await circlePayload(circle.id, user.id, true));
 });
@@ -140,10 +140,10 @@ router.post("/:id/invitations", zValidator("json", inviteSchema), async (c) => {
   const now = new Date();
   await prisma.circleInvitation.updateMany({ where: { circleId: c.req.param("id"), status: "pending", expiresAt: { lte: now } }, data: { status: "expired" } });
   const circle = await prisma.circle.findFirst({ where: { id: c.req.param("id"), ownerId: user.id, lifecycle: { not: "archived" } }, include: { members: { where: { status: "active" } }, invitations: { where: { status: "pending" } } } });
-  if (!circle) return c.json({ error: "Circle not found." }, 404);
+  if (!circle) return c.json({ error: "Group not found." }, 404);
   const ids = [...new Set(c.req.valid("json").recipientUserIds.filter((id) => id !== user.id))];
   const newRecipientIDs = ids.filter((id) => !circle.members.some((member) => member.userId === id) && !circle.invitations.some((invitation) => invitation.recipientId === id));
-  if (circle.members.length + circle.invitations.length + newRecipientIDs.length > circle.memberLimit) return c.json({ error: "Those invitations would exceed this Circle’s current capacity." }, 409);
+  if (circle.members.length + circle.invitations.length + newRecipientIDs.length > circle.memberLimit) return c.json({ error: "Those invitations would exceed this Group’s current capacity." }, 409);
   const results = [];
   for (const recipientId of ids) {
     try { await assertAcceptedConnection(user.id, recipientId); } catch (error) { results.push({ recipientUserId: recipientId, status: error instanceof CircleDomainError ? error.code : "rejected" }); continue; }
@@ -185,22 +185,22 @@ router.post("/invitations/:invitationId/accept", async (c) => {
   const prisma = getPrismaClient();
   try {
     const invitation = await prisma.circleInvitation.findFirst({ where: { id: c.req.param("invitationId"), recipientId: user.id }, include: { circle: { include: { members: { where: { status: "active" } } } } } });
-    if (!invitation) return c.json({ error: "Circle invitation not found." }, 404);
+    if (!invitation) return c.json({ error: "Group invitation not found." }, 404);
     if (invitation.status === "accepted") {
       await assertCircleMember(invitation.circleId, user.id);
       await prisma.socialNotification.deleteMany({ where: { recipientId: user.id, type: "circleInvitation", objectId: invitation.id } });
       return c.json(await circlePayload(invitation.circleId, user.id, true));
     }
-    if (invitation.status !== "pending") return c.json({ error: "This Circle invitation is no longer active." }, 409);
+    if (invitation.status !== "pending") return c.json({ error: "This Group invitation is no longer active." }, 409);
     await assertAcceptedConnection(invitation.senderId, user.id);
     if (invitation.expiresAt && invitation.expiresAt <= new Date()) {
       await prisma.circleInvitation.update({ where: { id: invitation.id }, data: { status: "expired" } });
-      return c.json({ error: "This Circle invitation has expired." }, 410);
+      return c.json({ error: "This Group invitation has expired." }, 410);
     }
     await assertNoBlockedCircleMember(invitation.circleId, user.id);
     const result = await prisma.$transaction(async (tx) => {
       const activeCount = await tx.circleMember.count({ where: { circleId: invitation.circleId, status: "active" } });
-      if (activeCount >= invitation.circle.memberLimit) throw new CircleDomainError("capacity", "This Circle is full.");
+      if (activeCount >= invitation.circle.memberLimit) throw new CircleDomainError("capacity", "This Group is full.");
       await tx.circleInvitation.updateMany({ where: { id: invitation.id, status: "pending" }, data: { status: "accepted", acceptedAt: new Date() } });
       await tx.circleMember.upsert({ where: { circleId_userId: { circleId: invitation.circleId, userId: user.id } }, create: { circleId: invitation.circleId, userId: user.id, role: "member", status: "active", displayNameSnapshot: user.displayName, avatarUrlSnapshot: user.avatarUrl }, update: { status: "active", role: "member", joinedAt: new Date(), displayNameSnapshot: user.displayName, avatarUrlSnapshot: user.avatarUrl } });
       const count = await tx.circleMember.count({ where: { circleId: invitation.circleId, status: "active" } });
@@ -232,7 +232,7 @@ router.post("/:id/invitations/:invitationId/cancel", async (c) => {
   if (user instanceof Response) return user;
   await assertCircleMember(c.req.param("id"), user.id);
   const invitation = await getPrismaClient().circleInvitation.findFirst({ where: { id: c.req.param("invitationId"), circleId: c.req.param("id"), senderId: user.id, circle: { ownerId: user.id } }, select: { id: true, recipientId: true, status: true } });
-  if (!invitation) return c.json({ error: "Circle invitation not found." }, 404);
+  if (!invitation) return c.json({ error: "Group invitation not found." }, 404);
   const result = await getPrismaClient().circleInvitation.updateMany({ where: { id: invitation.id, status: "pending" }, data: { status: "cancelled", cancelledAt: new Date() } });
   if (result.count) await getPrismaClient().socialNotification.deleteMany({ where: { recipientId: invitation.recipientId, type: "circleInvitation", objectId: invitation.id } });
   return c.json({
@@ -274,7 +274,7 @@ router.put("/:id/commitment", zValidator("json", commitmentSchema), async (c) =>
   const member = await assertCircleMember(c.req.param("id"), user.id);
   const input = c.req.valid("json");
   const week = await ensureCurrentWeek(getPrismaClient(), c.req.param("id"), new Date());
-  if (!week.focusConfigured || !["theme", "personal_targets"].includes(week.focusMode)) return c.json({ error: "Personal commitments are not available for this weekly focus." }, 422);
+  if (!week.focusConfigured || !["theme", "personal_targets"].includes(week.focusMode)) return c.json({ error: "Personal commitments are not available for this weekly theme." }, 422);
   if (input.clear) {
     await getPrismaClient().circleCommitment.deleteMany({ where: { weekId: week.id, memberId: member!.id } });
   } else {
@@ -290,7 +290,7 @@ router.post("/:id/cheers", zValidator("json", z.object({ recipientUserId: z.stri
   const member = await assertCircleMember(c.req.param("id"), user.id);
   const input = c.req.valid("json");
   const recipient = await assertCircleMember(c.req.param("id"), input.recipientUserId);
-  if (!recipient || !member) return c.json({ error: "Circle member not found." }, 404);
+  if (!recipient || !member) return c.json({ error: "Group member not found." }, 404);
   const week = await ensureCurrentWeek(getPrismaClient(), c.req.param("id"), new Date());
   const cheer = await getPrismaClient().circleCheer.upsert({ where: { weekId_senderId_recipientId_presetType: { weekId: week.id, senderId: user.id, recipientId: input.recipientUserId, presetType: input.presetType } }, create: { circleId: c.req.param("id"), weekId: week.id, senderId: user.id, recipientId: input.recipientUserId, presetType: input.presetType }, update: {} });
   if (input.recipientUserId !== user.id) await notify(input.recipientUserId, user.id, "circleCheer", c.req.param("id"), `${user.displayName} sent you a Cheer.`, c.req.param("id"), true, cheer.id);
@@ -331,7 +331,7 @@ router.put("/:id/primary", async (c) => {
   const user = await requireCircleUser(c);
   if (user instanceof Response) return user;
   const member = await assertCircleMember(c.req.param("id"), user.id);
-  if (member?.circle.lifecycle !== "active") return c.json({ error: "Only an active Circle can be primary." }, 422);
+  if (member?.circle.lifecycle !== "active") return c.json({ error: "Only an active Group can be selected." }, 422);
   await getPrismaClient().user.update({ where: { id: user.id }, data: { primaryCircleId: c.req.param("id") } });
   return c.json({
     primaryCircleId: c.req.param("id"),
@@ -355,7 +355,7 @@ router.post("/:id/transfer", zValidator("json", transferSchema), async (c) => {
     const circle = await getPrismaClient().circle.findFirst({ where: { id: c.req.param("id"), ownerId: user.id, lifecycle: { not: "archived" } } });
     if (!circle) return c.json({ error: "Owner access is required." }, 403);
     await transferCircleOwnership(circle.id, user.id, c.req.valid("json").recipientUserId);
-    await notify(c.req.valid("json").recipientUserId, user.id, "circleOwnershipTransferred", circle.id, `${user.displayName} transferred Circle ownership.`, circle.id, false);
+    await notify(c.req.valid("json").recipientUserId, user.id, "circleOwnershipTransferred", circle.id, `${user.displayName} transferred Group ownership.`, circle.id, false);
     return c.json(await circlePayload(circle.id, user.id, true));
   } catch (error) { return circleError(c, error); }
 });
@@ -364,7 +364,7 @@ router.post("/:id/leave", async (c) => {
   const user = await requireCircleUser(c);
   if (user instanceof Response) return user;
   const member = await assertCircleMember(c.req.param("id"), user.id);
-  if (member?.role === "owner") return c.json({ error: "Transfer ownership or archive the Circle before leaving." }, 422);
+  if (member?.role === "owner") return c.json({ error: "Transfer ownership or archive the Group before leaving." }, 422);
   await getPrismaClient().circleMember.update({ where: { circleId_userId: { circleId: c.req.param("id"), userId: user.id } }, data: { status: "left" } });
   await normalizeCircleAfterMembershipChange(c.req.param("id"), user.id);
   return c.json({ ok: true });
@@ -387,7 +387,7 @@ router.post("/:id/archive", async (c) => {
   if (user instanceof Response) return user;
   await assertCircleMember(c.req.param("id"), user.id);
   const result = await getPrismaClient().circle.updateMany({ where: { id: c.req.param("id"), ownerId: user.id, lifecycle: { not: "archived" } }, data: { lifecycle: "archived" } });
-  if (!result.count) return c.json({ error: "Circle not found." }, 404);
+  if (!result.count) return c.json({ error: "Group not found." }, 404);
   await getPrismaClient().user.updateMany({ where: { primaryCircleId: c.req.param("id") }, data: { primaryCircleId: null } });
   return c.json(await circlePayload(c.req.param("id"), user.id, true));
 });
@@ -408,7 +408,7 @@ router.post("/:id/reactivate", async (c) => {
   await assertCircleMember(c.req.param("id"), user.id);
   const activeCount = await getPrismaClient().circleMember.count({ where: { circleId: c.req.param("id"), status: "active" } });
   const result = await getPrismaClient().circle.updateMany({ where: { id: c.req.param("id"), ownerId: user.id, lifecycle: "archived" }, data: { lifecycle: activeCount >= 2 ? "active" : "awaiting_members" } });
-  if (!result.count) return c.json({ error: "Circle not found." }, 404);
+  if (!result.count) return c.json({ error: "Group not found." }, 404);
   return c.json(await circlePayload(c.req.param("id"), user.id, true));
 });
 
@@ -422,7 +422,7 @@ async function requireCircleUser(c: Context<AppEnv>) {
 function circleError(c: Context<AppEnv>, error: unknown) {
   if (error instanceof CircleDomainError) return c.json({ error: error.message, code: error.code }, error.code === "not_a_member" ? 403 : 409);
   console.error("[circle] request failed", error);
-  return c.json({ error: "Circle operation failed." }, 500);
+  return c.json({ error: "Group operation failed." }, 500);
 }
 
 router.onError((error, c) => circleError(c, error));

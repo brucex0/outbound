@@ -95,7 +95,7 @@ app.route("/v1/feedback", feedback);
 app.route("/v1/routes", routes);
 app.route("/v1/live-coach", liveCoach);
 app.route("/v1/recognition", recognition);
-app.route("/v1/circles", circles);
+app.route("/v1/groups", circles);
 app.route("/v1/weather", weather);
 app.route("/v1/elevation", elevation);
 app.route("/v1/rewards", rewards);

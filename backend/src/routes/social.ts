@@ -41,6 +41,7 @@ const reportSchema = z.object({
 });
 const createActivityEventSchema = z.object({
   title: z.string().trim().min(1).max(80),
+  activityType: z.enum(["running", "cycling", "hiking", "walking", "swimming", "strength", "mobility"]).default("running"),
   startsAt: z.string().datetime(),
   durationMinutes: z.number().int().min(15).max(24 * 60).default(60),
   locationName: z.string().trim().max(120).nullable().optional(),
@@ -61,6 +62,7 @@ const createActivityEventSchema = z.object({
 const invitationBatchSchema = z.object({ recipientUserIds: z.array(z.string().min(1)).min(1).max(50) });
 const updateActivityEventSchema = z.object({
   title: z.string().trim().min(1).max(80).optional(),
+  activityType: z.enum(["running", "cycling", "hiking", "walking", "swimming", "strength", "mobility"]).optional(),
   startsAt: z.string().datetime().optional(),
   durationMinutes: z.number().int().min(15).max(24 * 60).optional(),
   locationName: z.string().trim().max(120).nullable().optional(),
@@ -718,9 +720,9 @@ router.post("/activity-events", zValidator("json", createActivityEventSchema), a
   if (input.sourceCircleId) {
     try {
       const membership = await assertCircleMember(input.sourceCircleId, user.id);
-      if (membership?.circle.lifecycle !== "active") return c.json({ error: "The source Circle is not active." }, 422);
+      if (membership?.circle.lifecycle !== "active") return c.json({ error: "The source Group is not active." }, 422);
     } catch {
-      return c.json({ error: "Circle membership is required." }, 403);
+      return c.json({ error: "Group membership is required." }, 403);
     }
   }
   const activity = await getPrismaClient().$transaction(async (prisma) => {
@@ -737,7 +739,7 @@ router.post("/activity-events", zValidator("json", createActivityEventSchema), a
         note: input.note || null,
         participationMode: input.participationMode,
         activityPolicy: "fixed",
-        activityType: "running",
+        activityType: input.activityType,
         visibility: "connections",
       },
     });
@@ -764,6 +766,7 @@ router.patch("/activity-events/:id", zValidator("json", updateActivityEventSchem
     where: { id: activity.id },
     data: {
       ...(input.title !== undefined ? { title: input.title } : {}),
+      ...(input.activityType !== undefined ? { activityType: input.activityType } : {}),
       ...(input.startsAt !== undefined || input.durationMinutes !== undefined
         ? { startsAt, endsAt: new Date(startsAt.getTime() + durationMinutes * 60 * 1000) }
         : {}),

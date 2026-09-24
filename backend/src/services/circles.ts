@@ -48,7 +48,7 @@ export async function assertAcceptedConnection(userId: string, otherUserId: stri
     prisma.connection.findFirst({ where: { status: "accepted", OR: [{ requesterId: userId, addresseeId: otherUserId }, { requesterId: otherUserId, addresseeId: userId }] } }),
     prisma.socialBlock.findFirst({ where: blockedPairWhere(userId, otherUserId) }),
   ]);
-  if (!connection) throw new CircleDomainError("accepted_connection_required", "Circle members must be accepted connections.");
+  if (!connection) throw new CircleDomainError("accepted_connection_required", "Group members must be accepted connections.");
   if (block) throw new CircleDomainError("blocked", "This person is unavailable.");
 }
 
@@ -63,7 +63,7 @@ export async function assertCircleMember(circleId: string, userId: string, allow
     const invitation = await prisma.circleInvitation.findFirst({ where: { circleId, recipientId: userId, status: "pending", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } });
     if (invitation) return null;
   }
-  throw new CircleDomainError("not_a_member", "Circle membership is required.");
+  throw new CircleDomainError("not_a_member", "Group membership is required.");
 }
 
 export async function assertNoBlockedCircleMember(circleId: string, userId: string) {
@@ -71,18 +71,18 @@ export async function assertNoBlockedCircleMember(circleId: string, userId: stri
   const activeMembers = await prisma.circleMember.findMany({ where: { circleId, status: "active", userId: { not: userId } }, select: { userId: true } });
   if (!activeMembers.length) return;
   const block = await prisma.socialBlock.findFirst({ where: { OR: activeMembers.flatMap((active) => blockedPairWhere(userId, active.userId).OR) } });
-  if (block) throw new CircleDomainError("blocked", "This Circle is unavailable.");
+  if (block) throw new CircleDomainError("blocked", "This Group is unavailable.");
 }
 
 export async function createCircle(ownerId: string, input: CircleInput) {
   const memberLimit = configuredCircleMemberLimit();
   const memberIds = [...new Set(input.memberUserIds.filter((id) => id !== ownerId))];
   if (memberIds.length === 0) throw new CircleDomainError("members_required", "Choose at least one accepted connection.");
-  if (memberIds.length > memberLimit - 1) throw new CircleDomainError("capacity", "That is more people than this Circle can currently include.");
+  if (memberIds.length > memberLimit - 1) throw new CircleDomainError("capacity", "That is more people than this Group can currently include.");
   const timeZone = validTimeZone(input.timeZone) ? input.timeZone! : Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const resetWeekday = boundedWeekday(input.resetWeekday ?? 1);
   const prisma = getPrismaClient();
-  const name = input.name?.trim().slice(0, 80) || "Your Circle";
+  const name = input.name?.trim().slice(0, 80) || "Your Group";
   for (const memberId of memberIds) await assertAcceptedConnection(ownerId, memberId);
   return prisma.$transaction(async (tx) => {
     const owner = await tx.user.findUniqueOrThrow({ where: { id: ownerId }, select: { displayName: true, avatarUrl: true } });
@@ -378,10 +378,10 @@ function zonedLocalToUTC(localDate: Date, timeZone: string) {
 
 function generatedCircleName(names: string[], locale: SupportedLocale) {
   const firstNames = names.map((name) => name.trim().split(/\s+/)[0]).filter(Boolean).slice(0, 3);
-  if (!firstNames.length) return locale === "es" ? "Tu círculo" : locale === "zh-Hans" ? "你的活力圈" : "Your Circle";
-  if (locale === "zh-Hans") return `${firstNames.join("、")}的活力圈`;
-  if (locale === "es") return `Círculo de ${firstNames.join(", ")}`;
-  return `${firstNames.join(", ")}’s Circle`;
+  if (!firstNames.length) return locale === "es" ? "Tu grupo" : locale === "zh-Hans" ? "你的群组" : "Your Group";
+  if (locale === "zh-Hans") return `${firstNames.join("、")}的群组`;
+  if (locale === "es") return `Grupo de ${firstNames.join(", ")}`;
+  return `${firstNames.join(", ")}’s Group`;
 }
 
 function boundedWeekday(value: number) { return Number.isInteger(value) && value >= 1 && value <= 7 ? value : 1; }
