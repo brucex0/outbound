@@ -1,6 +1,8 @@
 # Your Circle
 
-Open this when designing or building invitation-only Circles, weekly shared motivation, Circle management, Circle celebrations, or Circle analytics.
+Status: current implementation and migration reference. `docs/run-groups.md` is the canonical target contract for the consolidated Group product. Do not extend Circle as a separate destination or persistence model.
+
+Open this when inspecting the existing invitation-only Circle behavior that must survive the Group migration: weekly shared motivation, Circle management, Circle celebrations, and Circle analytics.
 
 ## Product Decision
 

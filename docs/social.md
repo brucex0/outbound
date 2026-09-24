@@ -2,6 +2,8 @@
 
 ## Current Social implementation
 
+This section describes the shipped shape. `docs/run-groups.md` defines the recommended target that consolidates Circle and Groups into one Groups destination and one model.
+
 Social is the production social surface. `GET /v1/social/home` returns only the signed-in runner's accepted connections, joined groups, compatible upcoming group runs, and connection-visible posts. The previous `/v1/social/together` path remains as a temporary backend alias. The client caches the last successful response for a useful offline state. Invitations, Cheers, comments, group joins, and activity sharing are authenticated mutations. Compatibility explanations are share-safe and never expose private plan inputs or health reasons. The database and some internal DTOs retain `Club` names while the product consistently says `Group`.
 
 Social uses one sticky compact feature row with five destinations: `Feed`, `People`, `Circle`, `Groups`, and `Routes`. A runner with accepted connections initially lands on Feed; a runner without accepted connections initially lands on People. The choice is made only once per Social presentation, so a connection refresh never switches tabs underneath the runner. Each destination retains its production store and navigation destinations rather than nesting another navigation stack.
@@ -52,12 +54,12 @@ The end-to-end event flow was originally explored in `docs/prototypes/future-act
 
 Social is the app's network-effect surface. It should make runs feel shared, timely, and worth returning to even before a user starts recording.
 
-`Your Circle` is the next permanent private-relationship layer. Its canonical product, privacy, data, analytics, and implementation contract is `docs/your-circle.md`. Keep Circle separate from the legacy feature-flagged Social prototype and preserve the existing Social navigation and feed hierarchy while adding it.
+Groups are the permanent relationship layer. `docs/run-groups.md` is canonical for the target product, privacy, data, analytics, migration, and implementation contract. It consolidates the current private Circle and community Group shapes while retaining a hard trust-policy boundary for workout visibility.
 
 Core loops:
 
 - `Squad`: friends' runs, live relays, cheers, comments, and route prompts.
-- `Groups`: opt-in communities around time, place, identity, and recurring runs.
+- `Groups`: private shared motivation or community coordination around people, time, place, identity, and recurring runs.
 - `Rivals`: lightweight weekly competition and segment ownership.
 - `Activity visibility`: newly synced activities appear for Connections by default, with post deletion as the opt-out.
 
@@ -141,6 +143,6 @@ Production schema rollout uses the Cloud Run database job documented in `docs/ba
 ## Deferred
 
 - Push notification delivery; the inbox is complete without APNs.
-- Group creation and administration; launch Groups are managed/seeded.
-- Public following, public feed ranking, direct messages, rivals, challenges, and relays. Private Circles are specified in `docs/your-circle.md` and are no longer deferred.
+- Consolidated Group creation and administration are specified in `docs/run-groups.md` but not implemented.
+- Public following, public feed ranking, direct messages, rivals, challenges, and relays. The existing Circle implementation is a migration input for the consolidated Group product.
 - Automated moderation classification and an operator review console; reports are persisted but still require response ownership.
