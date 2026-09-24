@@ -25,7 +25,7 @@ final class CircleStore: ObservableObject {
 
     private let api: APIClient
     private let defaults: UserDefaults
-    private let cachePrefix = "circle_store_v3_account_"
+    private let cachePrefix = "group_store_v1_account_"
     private var activeUserID: String?
     private var authGeneration = 0
     private var contributionObserver: AnyCancellable?
@@ -105,7 +105,7 @@ final class CircleStore: ObservableObject {
             errorMessage = nil
         } catch {
             guard generation == authGeneration else { return }
-            errorMessage = String(localized: "circle.error.offline", defaultValue: "Your Circle is temporarily unavailable. Showing saved information.")
+            errorMessage = String(localized: "group.error.offline", defaultValue: "Your Group is temporarily unavailable. Showing saved information.")
         }
     }
 
@@ -120,7 +120,7 @@ final class CircleStore: ObservableObject {
             errorMessage = nil
         } catch {
             guard generation == authGeneration else { return }
-            errorMessage = String(localized: "circle.error.invitations", defaultValue: "Circle invitations could not be refreshed.")
+            errorMessage = String(localized: "group.error.invitations", defaultValue: "Group invitations could not be refreshed.")
         }
     }
 
@@ -134,7 +134,7 @@ final class CircleStore: ObservableObject {
             upsert(circle)
         } catch {
             guard generation == authGeneration else { return }
-            errorMessage = String(localized: "circle.error.operation", defaultValue: "That Circle update didn’t go through. Try again.")
+            errorMessage = String(localized: "group.error.operation", defaultValue: "That Group update didn’t go through. Try again.")
         }
     }
 
@@ -144,7 +144,7 @@ final class CircleStore: ObservableObject {
             let isoWeekday = ((appleWeekday + 5) % 7) + 1
             let circle = try await api.createCircle(.init(name: name?.nilIfBlank, memberUserIds: memberUserIDs, timeZone: TimeZone.current.identifier, resetWeekday: isoWeekday))
             upsert(circle)
-            toastMessage = String(localized: "circle.toast.created", defaultValue: "Circle created. Invitations sent.")
+            toastMessage = String(localized: "group.toast.created", defaultValue: "Group created. Invitations sent.")
             return circle
         } catch { return fail(error) }
     }
@@ -154,7 +154,7 @@ final class CircleStore: ObservableObject {
             let circle = try await api.acceptCircleInvitation(id: invitation.id)
             invitations.removeAll { $0.id == invitation.id }
             upsert(circle)
-            toastMessage = String(localized: "circle.toast.joined", defaultValue: "You joined the Circle.")
+            toastMessage = String(localized: "group.toast.joined", defaultValue: "You joined the Group.")
             return true
         } catch { _ = fail(error); return false }
     }
@@ -169,7 +169,7 @@ final class CircleStore: ObservableObject {
     }
 
     func updateName(circle: CircleDTO, name: String) async -> CircleDTO? {
-        await mutate(success: String(localized: "circle.toast.saved", defaultValue: "Circle updated.")) { try await api.updateCircleName(id: circle.id, name: name) }
+        await mutate(success: String(localized: "group.toast.saved", defaultValue: "Group updated.")) { try await api.updateCircleName(id: circle.id, name: name) }
     }
 
     func updateFocus(circle: CircleDTO, themeKey: String, customTitle: String?, customNote: String?, apply: String = "now") async -> CircleDTO? {

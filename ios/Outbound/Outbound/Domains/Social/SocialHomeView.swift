@@ -1482,7 +1482,7 @@ private struct SocialGroupsView: View {
                     ContentUnavailableView(
                         String(localized: "social.groups.discover.empty", defaultValue: "No new Groups right now"),
                         systemImage: "binoculars",
-                        description: Text(String(localized: "social.groups.discover.description", defaultValue: "Pull to refresh as more running Groups become available."))
+                        description: Text(String(localized: "social.groups.discover.description", defaultValue: "Pull to refresh as more activity Groups become available."))
                     )
                 } else {
                     ForEach(discoveryGroups) { group in

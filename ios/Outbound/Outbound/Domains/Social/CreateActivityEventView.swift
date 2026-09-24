@@ -404,7 +404,7 @@ struct CreateActivityEventView: View {
     private var inviteFriendsLabel: String {
         sourceGroupID == nil
             ? String(localized: "social.event.invite_friends", defaultValue: "Invite running friends")
-            : String(localized: "circle.event.invite", defaultValue: "Invite your Circle")
+            : String(localized: "group.event.invite", defaultValue: "Invite your Group")
     }
 
     private func select(_ completion: MKLocalSearchCompletion) async {
