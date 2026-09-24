@@ -88,6 +88,9 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case connectionQRCodeRequestResult = "connection_qr_code_request_result"
     case socialOperationFailed = "social_operation_failed"
     case circleSectionExposed = "circle_section_exposed"
+    case groupSectionExposed = "group_section_exposed"
+    case groupOpened = "group_opened"
+    case groupMembershipChanged = "group_membership_changed"
     case circleCreationStarted = "circle_creation_started"
     case circleCreationCompleted = "circle_creation_completed"
     case circleCreationFailed = "circle_creation_failed"
@@ -397,6 +400,9 @@ enum ProductAnalyticsSchema {
         .subscriptionCustomerCenterOpened: [.entrySource],
         .subscriptionReconciled: [.sourceType, .result],
         .circleSectionExposed: [.entrySource, .participantCountBucket],
+        .groupSectionExposed: [.entrySource, .participantCountBucket],
+        .groupOpened: [.entrySource, .selectionType, .participantCountBucket],
+        .groupMembershipChanged: [.entrySource, .selectionType, .result, .participantCountBucket],
         .circleCreationStarted: [.entrySource],
         .circleCreationCompleted: [.entrySource, .participantCountBucket],
         .circleCreationFailed: [.entrySource, .errorCategory],

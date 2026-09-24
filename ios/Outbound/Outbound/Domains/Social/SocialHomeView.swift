@@ -1446,6 +1446,7 @@ private struct SocialGroupsView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var circleStore: CircleStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
+    @Environment(\.analyticsManager) private var analyticsManager
     let embedded: Bool
 
     init(embedded: Bool = false) {
@@ -1498,6 +1499,9 @@ private struct SocialGroupsView: View {
             async let privateGroups: Void = circleStore.refresh()
             _ = await (groups, privateGroups)
         }
+        .onAppear {
+            Task { await analyticsManager?.track(.init(.groupSectionExposed, properties: [.entrySource: .string(embedded ? "social_embedded" : "social_groups")])) }
+        }
         .refreshable { await socialStore.refreshGroups() }
     }
 
@@ -1517,13 +1521,18 @@ private struct SocialGroupsView: View {
                     } label: {
                         Label(String(localized: "Open"), systemImage: "chevron.right")
                     }
+                    .simultaneousGesture(TapGesture().onEnded {
+                        Task { await analyticsManager?.track(.init(.groupOpened, properties: [.entrySource: .string("groups"), .selectionType: .string("private"), .participantCountBucket: .string(ProductAnalyticsBucket.count(group.memberCount))])) }
+                    })
                     .buttonStyle(.bordered)
                 } else if group.canJoin != false {
                     Button(group.membershipRole == nil ? String(localized: "Join") : String(localized: "Leave")) {
                         Task {
                             let isJoining = group.membershipRole == nil
-                            if await socialStore.toggleMembership(in: group), isJoining {
-                                _ = socialRecognitionStore.registerGroupJoin(groupID: group.id)
+                            let updated = await socialStore.toggleMembership(in: group)
+                            if updated {
+                                await analyticsManager?.track(.init(.groupMembershipChanged, properties: [.entrySource: .string("groups"), .selectionType: .string(isJoining ? "join" : "leave"), .result: .string("success"), .participantCountBucket: .string(ProductAnalyticsBucket.count(group.memberCount))]))
+                                if isJoining { _ = socialRecognitionStore.registerGroupJoin(groupID: group.id) }
                             }
                         }
                     }
