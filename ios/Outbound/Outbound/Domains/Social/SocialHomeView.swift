@@ -355,7 +355,7 @@ struct SocialHomeView: View {
 
     private var groupsTab: some View {
         VStack(spacing: 0) {
-            if !circleStore.circles.isEmpty || !circleStore.invitations.isEmpty || !acceptedConnections.isEmpty {
+            if !circleStore.invitations.isEmpty || (circleStore.circles.isEmpty && !acceptedConnections.isEmpty) {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: OutboundSpacing.standard) {
                         Text(String(localized: "social.groups.yours", defaultValue: "Your groups"))
@@ -374,15 +374,6 @@ struct SocialHomeView: View {
             async let invitations: Void = circleStore.refreshInvitations()
             _ = await (circles, invitations)
         }
-    }
-
-    private func groupDisplayName(_ circle: CircleDTO) -> String {
-        let normalized = circle.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let duplicateCount = circleStore.circles.filter {
-            $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalized
-        }.count
-        guard duplicateCount > 1 else { return circle.name }
-        return "\(circle.name) · \(circle.owner.displayName)"
     }
 
     @ViewBuilder
@@ -830,15 +821,6 @@ struct SocialHomeView: View {
                                     .foregroundStyle(OutboundPalette.companion)
                             }
                         }
-                    }
-                    .buttonStyle(.plain)
-                }
-            } else {
-                ForEach(circleStore.circles) { circle in
-                    NavigationLink {
-                        CircleDetailView(circle: circle)
-                    } label: {
-                        CircleCompactCard(circle: circle, isPrimary: false, displayName: groupDisplayName(circle))
                     }
                     .buttonStyle(.plain)
                 }
@@ -1462,6 +1444,7 @@ private struct SocialActivityDiscoveryView: View {
 
 private struct SocialGroupsView: View {
     @EnvironmentObject private var socialStore: TogetherStore
+    @EnvironmentObject private var circleStore: CircleStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     let embedded: Bool
 
@@ -1510,7 +1493,11 @@ private struct SocialGroupsView: View {
         }
         .navigationTitle(embedded ? "" : String(localized: "Groups"))
         .navigationBarTitleDisplayMode(.inline)
-        .task { await socialStore.refreshGroups() }
+        .task {
+            async let groups: Void = socialStore.refreshGroups()
+            async let privateGroups: Void = circleStore.refresh()
+            _ = await (groups, privateGroups)
+        }
         .refreshable { await socialStore.refreshGroups() }
     }
 
@@ -1518,27 +1505,48 @@ private struct SocialGroupsView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(group.name).font(.headline)
-                    Text([group.city, String(localized: "\(group.memberCount) members")].compactMap { $0 }.joined(separator: " · "))
+                    Text(groupDisplayName(group)).font(.headline)
+                    Text([group.groupType == "private" ? String(localized: "Private") : group.city, String(localized: "\(group.memberCount) members")].compactMap { $0 }.joined(separator: " · "))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button(group.membershipRole == nil ? String(localized: "Join") : String(localized: "Leave")) {
-                    Task {
-                        let isJoining = group.membershipRole == nil
-                        if await socialStore.toggleMembership(in: group), isJoining {
-                            _ = socialRecognitionStore.registerGroupJoin(groupID: group.id)
+                if group.groupType == "private", let circle = circleStore.circles.first(where: { $0.id == group.id }) {
+                    NavigationLink {
+                        CircleDetailView(circle: circle)
+                    } label: {
+                        Label(String(localized: "Open"), systemImage: "chevron.right")
+                    }
+                    .buttonStyle(.bordered)
+                } else if group.canJoin != false {
+                    Button(group.membershipRole == nil ? String(localized: "Join") : String(localized: "Leave")) {
+                        Task {
+                            let isJoining = group.membershipRole == nil
+                            if await socialStore.toggleMembership(in: group), isJoining {
+                                _ = socialRecognitionStore.registerGroupJoin(groupID: group.id)
+                            }
                         }
                     }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered)
             }
             if let description = group.description {
                 Text(description).font(.subheadline)
             }
         }
         .padding(.vertical, 4)
+    }
+
+    private func groupDisplayName(_ group: SocialGroupDTO) -> String {
+        let normalized = group.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let duplicates = socialStore.discoverableGroups.filter {
+            $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalized
+        }
+        guard duplicates.count > 1 else { return group.name }
+        if let circle = circleStore.circles.first(where: { $0.id == group.id }) {
+            return "\(group.name) · \(circle.owner.displayName)"
+        }
+        return group.city.map { "\(group.name) · \($0)" } ?? group.name
     }
 }
 
