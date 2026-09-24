@@ -216,7 +216,7 @@ router.get("/live-shares/invited", async (c) => {
         select: { id: true, createdAt: true, deliveredAt: true, playedAt: true, acknowledgedAt: true },
       },
     },
-    orderBy: { startedAt: "desc" }, take: 10,
+    orderBy: { startedAt: "desc" }, take: 50,
   });
   return c.json({ sessions: shares.map(followerPayload) });
 });
