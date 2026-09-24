@@ -52,14 +52,14 @@ The end-to-end event flow was originally explored in `docs/prototypes/future-act
 
 ## Product Direction
 
-Social is the app's network-effect surface. It should make runs feel shared, timely, and worth returning to even before a user starts recording.
+Social is the app's network-effect surface. It should make activities feel shared, timely, and worth returning to even before a user starts recording.
 
 Groups are the permanent relationship layer. `docs/run-groups.md` is canonical for the target product, privacy, data, analytics, migration, and implementation contract. It consolidates the current private Circle and community Group shapes while retaining a hard trust-policy boundary for workout visibility.
 
 Core loops:
 
-- `Squad`: friends' runs, live relays, cheers, comments, and route prompts.
-- `Groups`: private shared motivation or community coordination around people, time, place, identity, and recurring runs.
+- `Squad`: friends' activities, live relays, cheers, comments, and route prompts.
+- `Groups`: private shared motivation or community coordination around people, time, place, identity, and recurring activities across supported activity types.
 - `Rivals`: lightweight weekly competition and segment ownership.
 - `Activity visibility`: newly synced activities appear for Connections by default, with post deletion as the opt-out.
 
