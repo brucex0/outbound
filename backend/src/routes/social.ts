@@ -596,10 +596,23 @@ router.get("/notifications", async (c) => {
     orderBy: { createdAt: "desc" },
     take: 50,
   });
+  const invitationIDs = notifications
+    .filter((notification) => notification.type === "runInvitation" && notification.objectId)
+    .map((notification) => notification.objectId!);
+  const endedInvitations = invitationIDs.length === 0 ? [] : await getPrismaClient().invitation.findMany({
+    where: {
+      id: { in: invitationIDs },
+      recipientId: user.id,
+      status: "pending",
+      activityEvent: { endsAt: { lte: new Date() } },
+    },
+    select: { id: true },
+  });
+  const endedInvitationIDs = new Set(endedInvitations.map((invitation) => invitation.id));
   return c.json({ notifications: notifications.map((notification) => ({
     ...notification,
     actor: notification.actor ? compactPerson(notification.actor) : notification.actor,
-  })) });
+  })).filter((notification) => notification.type !== "runInvitation" || !notification.objectId || !endedInvitationIDs.has(notification.objectId)) });
 });
 
 router.post("/notifications/read-all", async (c) => {
