@@ -2069,6 +2069,7 @@ final class AppNavigationStore: ObservableObject {
     @Published private(set) var highlightedAssistantAnchorID: String?
     @Published var pendingActivityIntent: SessionIntent?
     @Published private(set) var pendingActivityEvent: ActivityEventDTO?
+    @Published var pendingLiveCheerPresentation: LiveCheerPresentationRequest?
     private(set) var pendingActivityEventAttendanceMode: String?
 
     func open(_ target: AssistantNavigationTarget) {
@@ -2083,6 +2084,14 @@ final class AppNavigationStore: ObservableObject {
     func prepareActivityEvent(_ event: ActivityEventDTO, attendanceMode: String?) {
         pendingActivityEventAttendanceMode = attendanceMode
         pendingActivityEvent = event
+    }
+
+    func presentLiveCheer(sessionID: String, entrySource: String) {
+        pendingLiveCheerPresentation = LiveCheerPresentationRequest(sessionID: sessionID, entrySource: entrySource)
+    }
+
+    func consumeLiveCheerPresentation() {
+        pendingLiveCheerPresentation = nil
     }
 
     func consumeStoredPreparedActivity(unitSystem: MeasurementUnitSystem) {
@@ -2107,6 +2116,13 @@ final class AppNavigationStore: ObservableObject {
         pendingActivityEvent = nil
         pendingActivityEventAttendanceMode = nil
     }
+}
+
+struct LiveCheerPresentationRequest: Identifiable, Equatable {
+    let sessionID: String
+    let entrySource: String
+
+    var id: String { "\(entrySource):\(sessionID)" }
 }
 
 @MainActor

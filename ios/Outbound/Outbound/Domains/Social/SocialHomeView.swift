@@ -29,7 +29,6 @@ struct SocialHomeView: View {
     @State private var showsNotifications = false
     @State private var showsConnections = false
     @State private var showsAddConnection = false
-    @State private var pushedLiveCheerSessionID: String?
     @State private var toastMessage: String?
     @State private var postPendingReport: TogetherPostDTO?
     @State private var postPendingBlock: TogetherPostDTO?
@@ -192,19 +191,10 @@ struct SocialHomeView: View {
             .navigationDestination(isPresented: $isGroupCreationPresented) {
                 CircleCreateView()
             }
-            .navigationDestination(item: $pushedLiveCheerSessionID) { sessionID in
-                LiveCheerView(sessionID: sessionID, entrySource: "push")
-            }
             .modifier(SocialActivityCardNavigation(post: $selectedActivityPost))
             .onChange(of: pushNotifications.pendingNotificationID, initial: true) { _, notificationID in
                 guard notificationID != nil else { return }
-                if pushNotifications.pendingNotificationType == "liveCheerInvitation",
-                   let sessionID = pushNotifications.pendingObjectID,
-                   !sessionID.isEmpty {
-                    pushedLiveCheerSessionID = sessionID
-                    trackPushOpen(type: "live_cheer_invitation", destination: "live_cheer")
-                    pushNotifications.consumePendingNotification()
-                } else if pushNotifications.pendingNotificationType == "connectionRequest" {
+                if pushNotifications.pendingNotificationType == "connectionRequest" {
                     selectFeatureTab(.people, entrySource: "push")
                     trackPushOpen(type: "connection_request", destination: "people")
                     pushNotifications.consumePendingNotification()
@@ -2132,6 +2122,7 @@ private struct PastActivityEventRow: View {
 
 struct SocialNotificationsView: View {
     @Environment(\.analyticsManager) private var analyticsManager
+    @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
     @EnvironmentObject private var circleStore: CircleStore
@@ -2184,7 +2175,12 @@ struct SocialNotificationsView: View {
             await socialStore.refreshNotifications()
             if let notificationID = pushNotifications.pendingNotificationID,
                let notification = socialStore.notifications.first(where: { $0.id == notificationID }) {
-                selectedNotification = notification
+                if NotificationPresentationPolicy.presentation(for: notification.type, objectID: notification.objectId).destination == .liveCheer,
+                   let sessionID = notification.objectId {
+                    appNavigationStore.presentLiveCheer(sessionID: sessionID, entrySource: "notification_inbox")
+                } else {
+                    selectedNotification = notification
+                }
                 pushNotifications.consumePendingNotification()
             } else if pushNotifications.pendingNotificationID != nil {
                 pushNotifications.consumePendingNotification()
@@ -2260,7 +2256,12 @@ struct SocialNotificationsView: View {
                     .countBucket: .string(ProductAnalyticsBucket.count(item.notifications.count)),
                 ]))
             }
-            selectedNotification = item.primary
+            if item.presentation.destination == .liveCheer,
+               let sessionID = item.primary.objectId {
+                appNavigationStore.presentLiveCheer(sessionID: sessionID, entrySource: "notification_inbox")
+            } else {
+                selectedNotification = item.primary
+            }
         } label: {
             HStack(alignment: .top, spacing: OutboundSpacing.compact) {
                 SocialAvatar(name: item.primary.actor?.displayName ?? "Plainstride", avatarURL: item.primary.actor?.avatarUrl)
@@ -2310,11 +2311,7 @@ struct SocialNotificationsView: View {
     private func notificationDestination(_ notification: SocialNotificationDTO) -> some View {
         switch NotificationPresentationPolicy.presentation(for: notification.type, objectID: notification.objectId).destination {
         case .liveCheer:
-            if let sessionID = notification.objectId {
-                LiveCheerView(sessionID: sessionID, entrySource: "notification_inbox")
-            } else {
-                SocialNotificationDetailView(notification: notification)
-            }
+            SocialNotificationDetailView(notification: notification)
         case .connections:
             SocialConnectionsView()
         case .post:

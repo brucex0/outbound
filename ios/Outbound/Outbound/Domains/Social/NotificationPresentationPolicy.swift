@@ -33,7 +33,7 @@ enum NotificationCenterCategory: String, Sendable {
     case support
 }
 
-enum NotificationCenterDestination: Sendable {
+enum NotificationCenterDestination: Sendable, Equatable {
     case connections
     case post
     case runInvitation

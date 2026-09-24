@@ -29,6 +29,18 @@ private enum ConnectionProfilePresentation: Identifiable {
     }
 }
 
+private enum SimplifiedAppShellPresentation: Identifiable {
+    case notifications
+    case liveCheer(LiveCheerPresentationRequest)
+
+    var id: String {
+        switch self {
+        case .notifications: "notification_center"
+        case .liveCheer(let request): request.id
+        }
+    }
+}
+
 private struct ConnectionLinkProfileLoadingView: View {
     var body: some View {
         ZStack {
@@ -232,7 +244,7 @@ struct SimplifiedAppShell: View {
     @State private var connectionFeedback: ConnectionLinkFeedback?
     @State private var connectionProfilePresentation: ConnectionProfilePresentation?
     @State private var tabBarHeight: CGFloat = 83
-    @State private var showsPushNotificationCenter = false
+    @State private var appShellPresentation: SimplifiedAppShellPresentation?
 
     var body: some View {
         TabView(selection: $selection) {
@@ -281,9 +293,14 @@ struct SimplifiedAppShell: View {
                 }
         }
         .tint(guideCatalog.selectedTheme.accentColor)
-        .fullScreenCover(isPresented: $showsPushNotificationCenter) {
+        .fullScreenCover(item: $appShellPresentation) { presentation in
             NavigationStack {
-                SocialNotificationsView()
+                switch presentation {
+                case .notifications:
+                    SocialNotificationsView()
+                case .liveCheer(let request):
+                    LiveCheerView(sessionID: request.sessionID, entrySource: request.entrySource)
+                }
             }
         }
         .background {
@@ -494,10 +511,24 @@ struct SimplifiedAppShell: View {
         .onChange(of: pushNotifications.pendingNotificationID, initial: true) { _, notificationID in
             guard notificationID != nil else { return }
             let type = pushNotifications.pendingNotificationType
-            if type == "liveCheerInvitation" || type == "connectionRequest" {
+            if type == "liveCheerInvitation",
+               let sessionID = pushNotifications.pendingObjectID,
+               !sessionID.isEmpty {
+                appShellPresentation = .liveCheer(LiveCheerPresentationRequest(
+                    sessionID: sessionID,
+                    entrySource: "push"
+                ))
+                pushNotifications.consumePendingNotification()
+                Task {
+                    await analyticsManager?.track(.init(.pushNotificationOpened, properties: [
+                        .sourceType: .string("live_cheer_invitation"),
+                        .selectionType: .string("live_cheer"),
+                    ]))
+                }
+            } else if type == "connectionRequest" {
                 selection = .social
             } else {
-                showsPushNotificationCenter = true
+                appShellPresentation = .notifications
                 Task {
                     await analyticsManager?.track(.init(.pushNotificationOpened, properties: [
                         .sourceType: .string(type ?? "unknown"),
@@ -505,6 +536,11 @@ struct SimplifiedAppShell: View {
                     ]))
                 }
             }
+        }
+        .onChange(of: appNavigationStore.pendingLiveCheerPresentation) { _, request in
+            guard let request else { return }
+            appShellPresentation = .liveCheer(request)
+            appNavigationStore.consumeLiveCheerPresentation()
         }
         .onChange(of: communityRouteStore.pendingLaunch) { _, route in
             guard let route else { return }

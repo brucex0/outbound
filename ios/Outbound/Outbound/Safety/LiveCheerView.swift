@@ -75,6 +75,7 @@ struct LiveCheerView: View {
     let entrySource: String
     @StateObject private var store: LiveCheerStore
     @Environment(\.analyticsManager) private var analyticsManager
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
 
     init(sessionID: String, entrySource: String = "social", initialSession: InvitedLiveShareDTO? = nil) {
@@ -150,6 +151,16 @@ struct LiveCheerView: View {
                         session.runner.displayName
                     )
                 )
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark")
+                        }
+                        .accessibilityLabel(String(localized: "common.close", defaultValue: "Close"))
+                    }
+                }
             } else { ProgressView() }
         }
         .task {
