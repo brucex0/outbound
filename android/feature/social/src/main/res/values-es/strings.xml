@@ -12,9 +12,9 @@
     <string name="social_checking_qr_code">Comprobando el código QR…</string>
     <string name="social_cancel">Cancelar</string>
     <string name="social_cheer">Enviar un ánimo privado</string>
-    <string name="social_circle">Tu Círculo</string>
-    <string name="social_circle_create">Crear Círculo</string>
-    <string name="social_circle_empty">Activos. Positivos. Juntos. Crea un Círculo privado con quienes te ayudan a seguir en movimiento.</string>
+    <string name="social_circle">Tus Grupos</string>
+    <string name="social_circle_create">Crear Grupo</string>
+    <string name="social_circle_empty">Activos. Positivos. Juntos. Crea un Grupo privado con quienes te ayudan a seguir en movimiento.</string>
     <string name="social_circle_progress">%1$d de %2$d actividades esta semana</string>
     <string name="social_circle_reactivate">Reactivar</string>
     <string name="social_close">Cerrar</string>

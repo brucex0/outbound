@@ -12,9 +12,9 @@
     <string name="social_checking_qr_code">正在检查二维码…</string>
     <string name="social_cancel">取消</string>
     <string name="social_cheer">发送私密鼓励</string>
-    <string name="social_circle">你的圈子</string>
-    <string name="social_circle_create">创建圈子</string>
-    <string name="social_circle_empty">保持活力，积极相伴。和支持你坚持运动的人创建一个私密圈子。</string>
+    <string name="social_circle">你的群组</string>
+    <string name="social_circle_create">创建群组</string>
+    <string name="social_circle_empty">保持活力，积极相伴。和支持你坚持运动的人创建一个私密群组。</string>
     <string name="social_circle_progress">本周已完成 %1$d/%2$d 次活动</string>
     <string name="social_circle_reactivate">重新启用</string>
     <string name="social_close">关闭</string>
