@@ -23,20 +23,20 @@ Read `docs/run-groups.md` for the canonical target product and technical contrac
 ## Current Implementation
 
 - Circle is the mature private-motivation vertical: weekly themes, commitments, contributions, Cheers, invitations, ownership, post-activity acknowledgement, notifications, and account-scoped caching. Its Group container and primary-selection behavior on Today are not carried forward.
-- Group is a minimal `Club`/`ClubMembership` directory with discoverable join/leave and no creation, detail, administration, notices, or writable activity-event attribution.
-- Social currently has separate Circle and Groups tabs.
-- `ActivityEvent` has both `sourceCircleId` and `clubId`; only the Circle source is writable.
-- None of the consolidated schema, API, or client design is implemented yet.
+- The public consolidation slice is implemented: one iOS Groups destination, no Circle container on Today, Group terminology and Weekly Theme copy, account-scoped Group cache reset, and localized Group copy on Android.
+- `GET /v1/social/groups` now projects private memberships and discoverable community Groups together, with owner/city context for duplicate names. Private Group mutations are also reachable under `/v1/social/groups`; the old `/v1/groups` mount is a migration seam.
+- Activity events accept the generic `activityType` set and `sourceGroupId`, and private or community membership can authorize the source. Responses expose one generic Group source while legacy storage fields remain internal.
+- Analytics includes Group exposure/open/membership events, and Android Social renders the unified projection instead of separate Circle and community collections.
+- The persistence layer is not yet cut over: Prisma still has Circle/Club tables and `ActivityEvent.sourceCircleId`/`clubId`; community creation, join requests, notices, share-link tokens, and full Group administration are still migration work.
 
 ## Implementation Order
 
-1. Build the unified `SocialGroup` schema and separate trusted/community authorization projections.
-2. Port Circle's private-motivation behavior into Group services and routes.
-3. Add community creation, membership requests, roles, notices, moderation, and `ActivityEvent.groupId`.
+1. Build the unified `SocialGroup` schema and migrate private/community authorization projections.
+2. Add community creation, join requests, roles, notices, moderation, and revocable Group invite links.
+3. Replace legacy `ActivityEvent.sourceCircleId`/`clubId` with `groupId` and remove Circle-specific notification destinations.
 4. Destructively remove Circle/Club data and reseed system-managed community Groups.
-5. Replace the separate iOS Circle and Groups destinations with the consolidated Groups UX and clear incompatible caches.
-6. Verify analytics privacy, localization, accessibility, notice attention, and community data projections.
-7. Complete Android parity against the same contract.
+5. Rename internal Circle stores/contracts and finish analytics/localization cleanup after the schema cutover.
+6. Verify privacy, accessibility, notice attention, and deep-link behavior, then complete Android parity against the final contract.
 
 Do not begin by sharing serializers or generalizing the current Circle contribution reconciler. Community queries must never load private workout fields, and community membership must never attach an unrelated personal activity.
 
