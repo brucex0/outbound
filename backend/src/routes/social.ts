@@ -596,23 +596,24 @@ router.get("/notifications", async (c) => {
     orderBy: { createdAt: "desc" },
     take: 50,
   });
-  const invitationIDs = notifications
-    .filter((notification) => notification.type === "runInvitation" && notification.objectId)
+  const liveShareIDs = notifications
+    .filter((notification) => notification.type === "liveCheerInvitation" && notification.objectId)
     .map((notification) => notification.objectId!);
-  const endedInvitations = invitationIDs.length === 0 ? [] : await getPrismaClient().invitation.findMany({
+  const activeLiveShares = liveShareIDs.length === 0 ? [] : await getPrismaClient().safetyLiveShare.findMany({
     where: {
-      id: { in: invitationIDs },
-      recipientId: user.id,
-      status: "pending",
-      activityEvent: { endsAt: { lte: new Date() } },
+      id: { in: liveShareIDs },
+      recipients: { some: { recipientId: user.id } },
+      status: "active",
+      endedAt: null,
+      expiresAt: { gt: new Date() },
     },
     select: { id: true },
   });
-  const endedInvitationIDs = new Set(endedInvitations.map((invitation) => invitation.id));
+  const activeLiveShareIDs = new Set(activeLiveShares.map((share) => share.id));
   return c.json({ notifications: notifications.map((notification) => ({
     ...notification,
     actor: notification.actor ? compactPerson(notification.actor) : notification.actor,
-  })).filter((notification) => notification.type !== "runInvitation" || !notification.objectId || !endedInvitationIDs.has(notification.objectId)) });
+  })).filter((notification) => notification.type !== "liveCheerInvitation" || (notification.objectId !== null && activeLiveShareIDs.has(notification.objectId))) });
 });
 
 router.post("/notifications/read-all", async (c) => {
