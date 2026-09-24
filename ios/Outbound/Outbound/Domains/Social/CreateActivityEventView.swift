@@ -10,6 +10,7 @@ struct CreateActivityEventView: View {
     @StateObject private var locationSearch = ActivityEventLocationSearchModel()
 
     @State private var title = ""
+    @State private var activityType = ActivityType.running.rawValue
     @State private var startsAt = Date().addingTimeInterval(86_400)
     @State private var durationMinutes = 0
     @State private var locationName = ""
@@ -36,6 +37,7 @@ struct CreateActivityEventView: View {
         self.editingActivity = editingActivity
         self.onCompleted = onCompleted
         _title = State(initialValue: editingActivity?.title ?? "")
+        _activityType = State(initialValue: editingActivity?.activityType ?? ActivityType.running.rawValue)
         _startsAt = State(initialValue: editingActivity?.startsAt ?? Date().addingTimeInterval(86_400))
         _durationMinutes = State(initialValue: editingActivity.flatMap { activity in
             activity.endsAt.map { max(15, Int($0.timeIntervalSince(activity.startsAt) / 60)) }
@@ -91,6 +93,14 @@ struct CreateActivityEventView: View {
                     .textInputAutocapitalization(.sentences)
             } header: {
                 Text(eventNameLabel)
+            }
+
+            Section(String(localized: "social.event.activity_type", defaultValue: "Activity")) {
+                Picker(String(localized: "social.event.activity_type", defaultValue: "Activity"), selection: $activityType) {
+                    ForEach(ActivityType.allCases, id: \.rawValue) { type in
+                        Text(activityTypeTitle(type.rawValue)).tag(type.rawValue)
+                    }
+                }
             }
 
             Section(String(localized: "social.event.date_time", defaultValue: "Date and time")) {
@@ -337,6 +347,7 @@ struct CreateActivityEventView: View {
         defer { isSubmitting = false }
         created = await socialStore.createActivityEvent(CreateActivityEventRequestDTO(
             title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+            activityType: activityType,
             startsAt: startsAt,
             locationName: locationName.locationNameForSubmission,
             latitude: selectedLocationCoordinate?.latitude,
@@ -352,6 +363,18 @@ struct CreateActivityEventView: View {
         sourceCircleID == nil
             ? String(localized: "social.create.plan", defaultValue: "Plan an activity")
             : String(localized: "circle.event.plan", defaultValue: "Plan an activity")
+    }
+
+    private func activityTypeTitle(_ rawValue: String) -> String {
+        switch rawValue {
+        case ActivityType.cycling.rawValue: return String(localized: "social.activity.cycling", defaultValue: "Cycling")
+        case ActivityType.hiking.rawValue: return String(localized: "social.activity.hiking", defaultValue: "Hiking")
+        case ActivityType.walking.rawValue: return String(localized: "social.activity.walking", defaultValue: "Walking")
+        case ActivityType.swimming.rawValue: return String(localized: "social.activity.swimming", defaultValue: "Swimming")
+        case ActivityType.strengthTraining.rawValue: return String(localized: "social.activity.strength", defaultValue: "Strength")
+        case ActivityType.mobility.rawValue: return String(localized: "social.activity.mobility", defaultValue: "Mobility")
+        default: return String(localized: "social.activity.running", defaultValue: "Running")
+        }
     }
 
     private var eventNameLabel: String {

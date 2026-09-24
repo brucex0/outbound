@@ -168,6 +168,7 @@ struct ActivityEventDTO: Codable, Identifiable, Sendable {
         return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
     let title: String
+    var activityType: String? = nil
     let startsAt: Date
     var endsAt: Date? = nil
     let locationName: String?
@@ -244,6 +245,7 @@ struct ActivityEventDetailDTO: Codable, Identifiable, Sendable {
         return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
     let title: String
+    var activityType: String? = nil
     let startsAt: Date
     var endsAt: Date? = nil
     let locationName: String?
@@ -293,6 +295,7 @@ struct ActivityEventAttendanceRequestDTO: Codable, Sendable {
 
 struct CreateActivityEventRequestDTO: Codable, Sendable {
     let title: String
+    var activityType: String = "running"
     let startsAt: Date
     let locationName: String?
     var latitude: Double? = nil
@@ -305,6 +308,7 @@ struct CreateActivityEventRequestDTO: Codable, Sendable {
 
 struct UpdateActivityEventRequestDTO: Codable, Sendable {
     let title: String
+    var activityType: String? = nil
     let startsAt: Date
     let locationName: String?
     var latitude: Double? = nil

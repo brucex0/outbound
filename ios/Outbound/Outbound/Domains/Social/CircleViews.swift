@@ -3,10 +3,11 @@ import SwiftUI
 struct CircleCompactCard: View {
     let circle: CircleDTO
     let isPrimary: Bool
+    var displayName: String? = nil
 
     var body: some View {
         OutboundCard(style: .companion) {
-            CircleCompactContent(circle: circle, isPrimary: isPrimary)
+            CircleCompactContent(circle: circle, isPrimary: isPrimary, displayName: displayName)
         }
     }
 }
@@ -15,6 +16,7 @@ struct CircleCompactContent: View {
     @Environment(\.outboundTheme) private var theme
     let circle: CircleDTO
     let isPrimary: Bool
+    var displayName: String? = nil
     var isSingleRow = false
     var showsNavigationIndicator = true
 
@@ -38,7 +40,7 @@ struct CircleCompactContent: View {
                 .background(theme.heroForegroundColor.opacity(0.14), in: Circle())
 
             HStack(spacing: 4) {
-                Text(circle.name)
+                Text(displayName ?? circle.name)
                     .lineLimit(1)
                     .truncationMode(.tail)
                 Text(verbatim: "(\(circle.memberCount))")
@@ -61,7 +63,7 @@ struct CircleCompactContent: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "\(circle.name), \(String(localized: "circle.members.count", defaultValue: "\(circle.memberCount) members")), \(statusText)"
+            "\(displayName ?? circle.name), \(String(localized: "group.members.count", defaultValue: "\(circle.memberCount) members")), \(statusText)"
         )
     }
 
@@ -73,7 +75,7 @@ struct CircleCompactContent: View {
                 .background(OutboundPalette.companion.opacity(0.12), in: Circle())
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text(circle.name).font(.headline).foregroundStyle(.primary).lineLimit(1)
+                    Text(displayName ?? circle.name).font(.headline).foregroundStyle(.primary).lineLimit(1)
                     if isPrimary { Image(systemName: "star.fill").font(.caption2).foregroundStyle(OutboundPalette.companion) }
                 }
                 Text(statusText)
@@ -220,7 +222,7 @@ struct CircleCreateView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(String(localized: "circle.create.name", defaultValue: "Name your Circle · Optional"))
+                            Text(String(localized: "group.create.name", defaultValue: "Name your Group · Optional"))
                                 .font(.headline)
                             TextField(String(localized: "circle.create.name_placeholder", defaultValue: "Weekend energy, Family movers…"), text: $name)
                                 .textInputAutocapitalization(.words)
@@ -232,7 +234,7 @@ struct CircleCreateView: View {
                         }
 
                         Label(
-                            String(localized: "circle.create.closeness", defaultValue: "Made for the family and friends who know you best."),
+                            String(localized: "group.create.closeness", defaultValue: "Made for the family and friends who know you best."),
                             systemImage: "heart.fill"
                         )
                         .font(.caption)
@@ -245,7 +247,7 @@ struct CircleCreateView: View {
                     Button { Task { await create() } } label: {
                         HStack {
                             Spacer()
-                            if isSubmitting { ProgressView() } else { Text(String(localized: "circle.create.action", defaultValue: "Create your Circle")).fontWeight(.semibold) }
+                            if isSubmitting { ProgressView() } else { Text(String(localized: "group.create.action", defaultValue: "Create your Group")).fontWeight(.semibold) }
                             Spacer()
                         }
                         .frame(minHeight: 50)
@@ -257,7 +259,7 @@ struct CircleCreateView: View {
                     .padding(.vertical, 10)
                     .background(.bar)
                 }
-                .navigationTitle(String(localized: "circle.create.navigation", defaultValue: "Create your Circle"))
+                .navigationTitle(String(localized: "group.create.navigation", defaultValue: "Create your Group"))
                 .navigationBarTitleDisplayMode(.inline)
             }
         }
@@ -353,7 +355,7 @@ private struct CircleCreatedView: View {
                     NavigationLink {
                         CircleDetailView(circle: current)
                     } label: {
-                        Text(String(localized: "circle.created.open", defaultValue: "Open Circle"))
+                        Text(String(localized: "group.created.open", defaultValue: "Open Group"))
                             .frame(maxWidth: .infinity, minHeight: 44)
                     }
                     .buttonStyle(.bordered)
@@ -417,7 +419,7 @@ struct CircleDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             NavigationLink { CircleManagementView(circle: current) } label: { Image(systemName: "gearshape") }
-                .accessibilityLabel(String(localized: "circle.management", defaultValue: "Circle settings"))
+                .accessibilityLabel(String(localized: "group.management", defaultValue: "Group settings"))
         }
         .sheet(isPresented: $showsPlanActivity, onDismiss: refreshAfterPlanning) {
             CreateActivityEventView(
@@ -490,7 +492,7 @@ struct CircleDetailView: View {
     private var header: some View {
         OutboundCard(style: .companion) {
             VStack(alignment: .leading, spacing: 12) {
-                Text(current.lifecycle == "awaiting_members" ? String(localized: "circle.status.awaiting", defaultValue: "Waiting for someone to join") : String(localized: "circle.private", defaultValue: "Trusted Circle"))
+                Text(current.lifecycle == "awaiting_members" ? String(localized: "circle.status.awaiting", defaultValue: "Waiting for someone to join") : String(localized: "group.private", defaultValue: "Trusted Group"))
                     .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 Text(String(localized: "circle.detail.inspiration", defaultValue: "Building a positive life, one activity at a time."))
                     .font(.headline)
@@ -523,7 +525,7 @@ struct CircleDetailView: View {
                 if !current.week.focusConfigured {
                     Text(current.role == "owner"
                         ? String(localized: "circle.theme.unconfigured.owner", defaultValue: "Choose a shared intention for the week.")
-                        : String(localized: "circle.theme.unconfigured.member", defaultValue: "The Circle owner hasn’t chosen this week’s theme yet."))
+                        : String(localized: "group.theme.unconfigured.member", defaultValue: "The Group owner hasn’t chosen this week’s theme yet."))
                         .font(.subheadline).foregroundStyle(.secondary)
                 } else if let themeTitle = CircleThemeCatalog.displayTitle(key: current.week.themeKey, customTitle: current.week.themeTitle) {
                     Label(themeTitle, systemImage: CircleThemeCatalog.definition(for: current.week.themeKey)?.systemImage ?? "sparkles")
@@ -636,7 +638,7 @@ struct CircleDetailView: View {
                             }
                         }
                         Spacer()
-                        Text(week.state == "completed" ? String(localized: "circle.completed", defaultValue: "Completed") : String(localized: "circle.week.recorded", defaultValue: "Week recorded")).foregroundStyle(.secondary)
+                        Text(week.state == "completed" ? String(localized: "group.completed", defaultValue: "Completed") : String(localized: "group.week.recorded", defaultValue: "Week recorded")).foregroundStyle(.secondary)
                     }
                     .frame(minHeight: 44)
                 }
@@ -717,7 +719,7 @@ struct CircleDetailView: View {
     private func momentText(_ moment: CircleMomentDTO) -> String {
         switch moment.type {
         case "completed_activity": return moment.title ?? String(localized: "circle.moment.activity_completed", defaultValue: "Activity completed")
-        case "weekly_completion": return String(localized: "circle.moment.completed", defaultValue: "Weekly focus completed")
+        case "weekly_completion": return String(localized: "group.moment.completed", defaultValue: "Weekly theme completed")
         default: return String(localized: "circle.moment.cheer", defaultValue: "A Cheer was sent")
         }
     }
@@ -753,7 +755,7 @@ struct CircleFocusEditor: View {
     var body: some View {
         Form {
             if circle.role == "owner" {
-                Section(String(localized: "circle.theme.recommended", defaultValue: "Recommended for your Circle")) {
+                Section(String(localized: "group.theme.recommended", defaultValue: "Recommended for your Group")) {
                     ForEach(recommendations) { theme in
                         themeButton(theme)
                     }
@@ -947,7 +949,6 @@ struct CircleManagementView: View {
                 } else if current.week.focusConfigured && ["theme", "personal_targets"].contains(current.week.focusMode) {
                     NavigationLink(String(localized: "circle.commitment.mine", defaultValue: "My commitment")) { CircleFocusEditor(circle: current) }
                 }
-                Button(current.id == circleStore.primaryCircleID ? String(localized: "circle.primary.current", defaultValue: "Primary Circle") : String(localized: "circle.primary.make", defaultValue: "Make primary")) { Task { if await circleStore.selectPrimary(current) { track(.circlePrimaryChanged, [.entrySource: .string("circle_settings")]) } } }.disabled(current.id == circleStore.primaryCircleID || !current.eligibleForToday)
                 Toggle(String(localized: "circle.notifications.mute", defaultValue: "Mute optional notifications"), isOn: $notificationMuted)
             }
 
@@ -970,14 +971,14 @@ struct CircleManagementView: View {
                         }
                     }
                 }
-                Section(String(localized: "circle.week.settings", defaultValue: "Circle week")) { Picker(String(localized: "circle.reset_day", defaultValue: "Reset day"), selection: $resetWeekday) { ForEach(1...7, id: \.self) { Text(isoWeekdayName($0)).tag($0) } }; TextField(String(localized: "circle.timezone", defaultValue: "Time zone"), text: $timeZone); Picker(String(localized: "circle.focus.apply", defaultValue: "Apply"), selection: $calendarApply) { Text(String(localized: "circle.apply.now", defaultValue: "Now")).tag("now"); Text(String(localized: "circle.apply.next", defaultValue: "Next week")).tag("next_week") } }
+                Section(String(localized: "group.week.settings", defaultValue: "Group week")) { Picker(String(localized: "circle.reset_day", defaultValue: "Reset day"), selection: $resetWeekday) { ForEach(1...7, id: \.self) { Text(isoWeekdayName($0)).tag($0) } }; TextField(String(localized: "circle.timezone", defaultValue: "Time zone"), text: $timeZone); Picker(String(localized: "circle.focus.apply", defaultValue: "Apply"), selection: $calendarApply) { Text(String(localized: "circle.apply.now", defaultValue: "Now")).tag("now"); Text(String(localized: "circle.apply.next", defaultValue: "Next week")).tag("next_week") } }
                 Section(String(localized: "circle.members.manage", defaultValue: "Members")) { ForEach(current.members.filter { !$0.isCurrentUser }) { member in Menu { Button(String(localized: "circle.transfer", defaultValue: "Transfer ownership")) { Task { if await circleStore.transferOwnership(of: current, to: member) != nil { track(.circleOwnershipTransferred, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } }; Button(String(localized: "circle.remove_member", defaultValue: "Remove member"), role: .destructive) { Task { if await circleStore.removeMember(member, from: current) != nil { track(.circleMemberRemoved, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } } } label: { HStack { Text(member.user.displayName); Spacer(); Image(systemName: "ellipsis").frame(width: 44, height: 44) } } } }
-                Section { if current.lifecycle == "archived" { Button(String(localized: "circle.reactivate", defaultValue: "Reactivate Circle")) { Task { if await circleStore.reactivate(current) != nil { track(.circleReactivated, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } } } else { Button(String(localized: "circle.archive", defaultValue: "Archive Circle"), role: .destructive) { Task { if await circleStore.archive(current) { track(.circleArchived, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } } } }
+                Section { if current.lifecycle == "archived" { Button(String(localized: "group.reactivate", defaultValue: "Reactivate Group")) { Task { if await circleStore.reactivate(current) != nil { track(.circleReactivated, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } } } else { Button(String(localized: "group.archive", defaultValue: "Archive Group"), role: .destructive) { Task { if await circleStore.archive(current) { track(.circleArchived, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } } } }
             } else {
-                Section { Button(String(localized: "circle.leave", defaultValue: "Leave Circle"), role: .destructive) { Task { if await circleStore.leave(current) { track(.circleMemberLeft, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]); dismiss() } } } }
+                Section { Button(String(localized: "group.leave", defaultValue: "Leave Group"), role: .destructive) { Task { if await circleStore.leave(current) { track(.circleMemberLeft, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]); dismiss() } } } }
             }
         }
-        .navigationTitle(String(localized: "circle.management", defaultValue: "Circle settings"))
+        .navigationTitle(String(localized: "group.management", defaultValue: "Group settings"))
         .sheet(isPresented: $showsInvite) { CircleInviteView(circle: current) }
         .onDisappear { saveDraftIfNeeded() }
     }
@@ -1047,7 +1048,7 @@ struct CircleCompletionCelebrationView: View {
                         .foregroundStyle(OutboundPalette.companion)
                         .symbolEffect(.bounce, options: .repeat(2))
                 }
-                Text(String(localized: "circle.celebration.title", defaultValue: "Your Circle completed the week"))
+                Text(String(localized: "group.celebration.title", defaultValue: "Your Group completed the week"))
                     .font(.largeTitle.bold())
                     .multilineTextAlignment(.center)
                 Text(circle.name).font(.title3).foregroundStyle(.secondary)

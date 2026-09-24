@@ -204,7 +204,6 @@ struct SimplifiedAppShell: View {
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
     @EnvironmentObject private var communityRouteStore: CommunityRouteStore
-    @EnvironmentObject private var circleStore: CircleStore
     @EnvironmentObject private var socialStore: TogetherStore
     @Binding var selection: SimplifiedAppTab
     let activitySessionState: ActivitySessionPortalState
@@ -230,8 +229,6 @@ struct SimplifiedAppShell: View {
     @State private var showsPlanPicker = false
     @State private var selectedPlanRecommendation: TrainingPlanRecommendation?
     @State private var replacementPlanRecommendation: TrainingPlanRecommendation?
-    @State private var completionCircle: CircleDTO?
-    @State private var circleToast: String?
     @State private var connectionFeedback: ConnectionLinkFeedback?
     @State private var connectionProfilePresentation: ConnectionProfilePresentation?
     @State private var tabBarHeight: CGFloat = 83
@@ -319,20 +316,7 @@ struct SimplifiedAppShell: View {
                 )
         }
         .overlay(alignment: .top) {
-            if let circleToast {
-                Label {
-                    Text(circleToast)
-                } icon: {
-                    CircleMark()
-                        .frame(width: 18, height: 18)
-                }
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 14).padding(.vertical, 10)
-                    .background(.regularMaterial, in: Capsule())
-                    .shadow(color: .black.opacity(0.12), radius: 12, y: 5)
-                    .padding(.top, 8)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            } else if let connectionFeedback {
+            if let connectionFeedback {
                 connectionFeedbackToast(connectionFeedback)
             } else if let notice = activityStore.photoAlbumNotice {
                 Label(
@@ -347,14 +331,7 @@ struct SimplifiedAppShell: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
-        .animation(.snappy, value: circleToast)
         .animation(.snappy, value: connectionFeedback)
-        .task(id: circleToast) {
-            guard circleToast != nil else { return }
-            try? await Task.sleep(for: .seconds(3.6))
-            guard !Task.isCancelled else { return }
-            circleToast = nil
-        }
         .task(id: connectionFeedback) {
             guard let connectionFeedback, connectionFeedback.style != .progress else { return }
             try? await Task.sleep(for: .seconds(3.6))
@@ -366,19 +343,6 @@ struct SimplifiedAppShell: View {
             try? await Task.sleep(for: .seconds(3.6))
             guard !Task.isCancelled else { return }
             activityStore.clearPhotoAlbumNotice()
-        }
-        .fullScreenCover(item: $completionCircle) { circle in
-            CircleCompletionCelebrationView(circle: circle) {
-                completionCircle = nil
-                Task {
-                    if await circleStore.presentCompletionIfNeeded(for: circle) {
-                        await analyticsManager?.track(.init(.circleWeeklyFocusCompleted, properties: [
-                            .selectionType: .string(circle.week.focusMode),
-                            .participantCountBucket: .string(ProductAnalyticsBucket.count(circle.memberCount))
-                        ]))
-                    }
-                }
-            }
         }
         .fullScreenCover(item: $connectionProfilePresentation) { presentation in
             switch presentation {
@@ -539,16 +503,6 @@ struct SimplifiedAppShell: View {
                 activityTypeOverride: route.activityType
             ))
             communityRouteStore.consumeLaunch()
-        }
-        .onChange(of: circleStore.pendingCompletion?.id, initial: true) { _, _ in
-            guard completionCircle == nil else { return }
-            circleToast = nil
-            completionCircle = circleStore.pendingCompletion
-        }
-        .onChange(of: circleStore.toastMessage) { _, message in
-            guard completionCircle == nil, let message else { return }
-            circleToast = message
-            circleStore.clearToast()
         }
         .onChange(of: socialStore.connectionLinkFeedback, initial: true) { _, feedback in
             guard let feedback else { return }
@@ -1037,7 +991,6 @@ private struct SimplifiedTodayView: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var healthImportStore: HealthImportStore
-    @EnvironmentObject private var circleStore: CircleStore
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
     @EnvironmentObject private var tooltipCoordinator: TooltipCoordinator
     @AppStorage("today_planned_workout_card_minimized_v1") private var isPlannedWorkoutCardMinimized = false
@@ -1072,7 +1025,6 @@ private struct SimplifiedTodayView: View {
     @State private var showsThemeChooser = false
     @State private var mapAttributionBottomInset: CGFloat = 0
     @State private var activityLaunchFloatingContentHeight: CGFloat = 0
-    @State private var lastExposedTodayCircleID: String?
     @State private var showsSocialInbox = false
     @State private var presentedAdjustmentID: String?
 
@@ -1091,8 +1043,7 @@ private struct SimplifiedTodayView: View {
 
                         if launchGoalMode == .planned
                             || activitySessionState != .idle
-                            || activityEventToday != nil
-                            || circleStore.eligiblePrimaryCircle != nil {
+                            || activityEventToday != nil {
                             todayPeerCards
                                 .padding(.horizontal, OutboundSpacing.screen)
                                 .padding(.bottom, todayPeerCardsBottomPadding)
@@ -1157,7 +1108,6 @@ private struct SimplifiedTodayView: View {
             }
             .onAppear {
                 launchLocationManager.requestCurrentLocation()
-                trackTodayCircleExposureIfNeeded()
                 presentPendingAdjustmentIfNeeded(personalizationStore.snapshot.pendingAdjustment?.id)
             }
             .onChange(of: personalizationStore.snapshot.pendingAdjustment?.id, initial: true) { _, adjustmentID in
@@ -1198,14 +1148,6 @@ private struct SimplifiedTodayView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
                 refreshCurrentDayIfNeeded()
-            }
-            .onChange(of: isSelected) { _, isSelected in
-                if isSelected {
-                    trackTodayCircleExposureIfNeeded()
-                }
-            }
-            .onChange(of: circleStore.eligiblePrimaryCircle?.id) { _, _ in
-                trackTodayCircleExposureIfNeeded()
             }
         }
         .sheet(isPresented: $showsPlannedWorkoutDetails) {
@@ -1422,10 +1364,6 @@ private struct SimplifiedTodayView: View {
                 }
             }
 
-            if let circle = circleStore.eligiblePrimaryCircle {
-                todayCircleCard(circle)
-            }
-
             if activitySessionState != .idle {
                 inProgressActivityCard
             }
@@ -1448,7 +1386,7 @@ private struct SimplifiedTodayView: View {
             OutboundCard(style: .companion) {
                 VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                     HStack {
-                        Text(String(localized: "today.circle_activity", defaultValue: "TODAY WITH YOUR CIRCLE"))
+                        Text(String(localized: "today.group_activity", defaultValue: "TODAY'S GROUP ACTIVITY"))
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                         Spacer()
@@ -1464,7 +1402,7 @@ private struct SimplifiedTodayView: View {
                     )
                     Label(
                         String(
-                            localized: "today.circle_activity.paired_format",
+                            localized: "today.group_activity.paired_format",
                             defaultValue: "Paired with \(todayWorkoutName) · \(todayTotalDuration)"
                         ),
                         systemImage: "checkmark.circle.fill"
@@ -1557,22 +1495,6 @@ private struct SimplifiedTodayView: View {
         }
     }
 
-    private func todayCircleCard(_ circle: CircleDTO) -> some View {
-        OutboundCard(style: .companion, contentPadding: 14) {
-            NavigationLink {
-                CircleDetailView(circle: circle)
-            } label: {
-                CircleCompactContent(
-                    circle: circle,
-                    isPrimary: true,
-                    isSingleRow: true,
-                    showsNavigationIndicator: false
-                )
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
     private func togglePlannedWorkoutCard() {
         let isMinimized = !isPlannedWorkoutCardMinimized
         withAnimation(.snappy) {
@@ -1595,19 +1517,6 @@ private struct SimplifiedTodayView: View {
             await analyticsManager?.track(.init(.todayCardDisplayChanged, properties: [
                 .sourceType: .string(sourceType),
                 .selectionType: .string(isMinimized ? "minimized" : "expanded"),
-            ]))
-        }
-    }
-
-    private func trackTodayCircleExposureIfNeeded() {
-        guard isSelected,
-              let circle = circleStore.eligiblePrimaryCircle,
-              circle.id != lastExposedTodayCircleID else { return }
-        lastExposedTodayCircleID = circle.id
-        Task {
-            await analyticsManager?.track(.init(.circleSectionExposed, properties: [
-                .entrySource: .string("today"),
-                .participantCountBucket: .string(ProductAnalyticsBucket.count(circle.memberCount)),
             ]))
         }
     }

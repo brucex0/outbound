@@ -3,7 +3,6 @@ import SwiftUI
 enum SocialFeatureTab: String, CaseIterable, Identifiable {
     case feed
     case people
-    case circle
     case groups
     case routes
 
@@ -13,7 +12,6 @@ enum SocialFeatureTab: String, CaseIterable, Identifiable {
         switch self {
         case .feed: String(localized: "social.tab.feed", defaultValue: "Feed")
         case .people: String(localized: "social.tab.people", defaultValue: "People")
-        case .circle: String(localized: "social.tab.circle", defaultValue: "Circle")
         case .groups: String(localized: "social.tab.groups", defaultValue: "Groups")
         case .routes: String(localized: "social.tab.routes", defaultValue: "Routes")
         }
@@ -23,7 +21,6 @@ enum SocialFeatureTab: String, CaseIterable, Identifiable {
         switch self {
         case .feed: "rectangle.stack"
         case .people: "person.2"
-        case .circle: "circle"
         case .groups: "flag"
         case .routes: "map"
         }
@@ -86,12 +83,7 @@ struct SocialFeatureTabBar: View {
 
     @ViewBuilder
     private func tabIcon(_ tab: SocialFeatureTab) -> some View {
-        if tab == .circle {
-            CircleMark()
-                .frame(width: 17, height: 17)
-        } else {
-            Image(systemName: tab.systemImage)
-        }
+        Image(systemName: tab.systemImage)
     }
 
     private func accessibilityValue(for tab: SocialFeatureTab) -> String {

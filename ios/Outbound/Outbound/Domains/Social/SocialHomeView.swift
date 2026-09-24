@@ -25,7 +25,7 @@ struct SocialHomeView: View {
     @State private var peopleFocusRequestID = 0
     @State private var routeImportRequestID = 0
     @State private var isCreateActivityEventPresented = false
-    @State private var isCircleCreationPresented = false
+    @State private var isGroupCreationPresented = false
     @State private var showsNotifications = false
     @State private var showsConnections = false
     @State private var showsAddConnection = false
@@ -63,7 +63,7 @@ struct SocialHomeView: View {
         var badges: [SocialFeatureTab: SocialTabBadge] = [:]
         if socialStore.hasUnseenFeedPosts { badges[.feed] = .dot }
         if incomingConnectionRequestCount > 0 { badges[.people] = .count(incomingConnectionRequestCount) }
-        if !circleStore.invitations.isEmpty { badges[.circle] = .count(circleStore.invitations.count) }
+        if !circleStore.invitations.isEmpty { badges[.groups] = .count(circleStore.invitations.count) }
         return badges
     }
 
@@ -103,11 +103,11 @@ struct SocialHomeView: View {
                         }
 
                         Button {
-                            selectFeatureTab(.circle, entrySource: "create_menu")
-                            isCircleCreationPresented = true
+                            selectFeatureTab(.groups, entrySource: "create_menu")
+                            isGroupCreationPresented = true
                         } label: {
                             Label {
-                                Text(String(localized: "social.create.circle", defaultValue: "Create Circle"))
+                                Text(String(localized: "social.create.group", defaultValue: "Create Group"))
                             } icon: {
                                 CircleMark()
                                     .frame(width: 18, height: 18)
@@ -189,7 +189,7 @@ struct SocialHomeView: View {
             .navigationDestination(isPresented: $showsAddConnection) {
                 SocialConnectionsView(startsAdding: true)
             }
-            .navigationDestination(isPresented: $isCircleCreationPresented) {
+            .navigationDestination(isPresented: $isGroupCreationPresented) {
                 CircleCreateView()
             }
             .navigationDestination(item: $pushedLiveCheerSessionID) { sessionID in
@@ -320,8 +320,7 @@ struct SocialHomeView: View {
                     focusRequestID: peopleFocusRequestID
                 )
             }
-            tabLayer(.circle) { circleTab }
-            tabLayer(.groups) { SocialGroupsView(embedded: true) }
+            tabLayer(.groups) { groupsTab }
             tabLayer(.routes) {
                 CommunityRouteLibraryView(
                     embedded: true,
@@ -354,18 +353,36 @@ struct SocialHomeView: View {
         .refreshable { await refreshFeed(clearUnseenBadge: true) }
     }
 
-    private var circleTab: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                yourCircleSection
+    private var groupsTab: some View {
+        VStack(spacing: 0) {
+            if !circleStore.circles.isEmpty || !circleStore.invitations.isEmpty || !acceptedConnections.isEmpty {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                        Text(String(localized: "social.groups.yours", defaultValue: "Your groups"))
+                            .socialSectionLabel()
+                        yourCircleSection
+                    }
+                    .padding(.horizontal, OutboundSpacing.screen)
+                    .padding(.vertical, 12)
+                }
+                .frame(maxHeight: 320)
             }
-            .padding(OutboundSpacing.screen)
+            SocialGroupsView(embedded: true)
         }
         .refreshable {
             async let circles: Void = circleStore.refresh()
             async let invitations: Void = circleStore.refreshInvitations()
             _ = await (circles, invitations)
         }
+    }
+
+    private func groupDisplayName(_ circle: CircleDTO) -> String {
+        let normalized = circle.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let duplicateCount = circleStore.circles.filter {
+            $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalized
+        }.count
+        guard duplicateCount > 1 else { return circle.name }
+        return "\(circle.name) · \(circle.owner.displayName)"
     }
 
     @ViewBuilder
@@ -600,11 +617,6 @@ struct SocialHomeView: View {
         if tab == .feed {
             trackFeedModuleExposuresIfNeeded()
             Task { await refreshFeed(clearUnseenBadge: true) }
-        } else if tab == .circle {
-            track(.circleSectionExposed, properties: [
-                .entrySource: .string(entrySource),
-                .participantCountBucket: .string(ProductAnalyticsBucket.count(circleStore.primaryCircle?.memberCount ?? 0)),
-            ])
         }
     }
 
@@ -807,13 +819,13 @@ struct SocialHomeView: View {
                                     Image(systemName: "arrow.right")
                                         .foregroundStyle(OutboundPalette.companion)
                                 }
-                                Text(String(localized: "circle.create.inspiration_title", defaultValue: "Active. Positive. Together."))
+                                Text(String(localized: "group.create.inspiration_title", defaultValue: "Active. Positive. Together."))
                                     .font(.title3.bold())
                                     .foregroundStyle(.primary)
-                                Text(String(localized: "circle.create.detail", defaultValue: "Share goals and progress with the people closest to you—and cheer each other on."))
+                                Text(String(localized: "group.create.detail", defaultValue: "Share activities and progress with the people closest to you—and cheer each other on."))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
-                                Text(String(localized: "circle.create.start", defaultValue: "Create your Circle"))
+                                Text(String(localized: "social.create.group.start", defaultValue: "Create your Group"))
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(OutboundPalette.companion)
                             }
@@ -826,7 +838,7 @@ struct SocialHomeView: View {
                     NavigationLink {
                         CircleDetailView(circle: circle)
                     } label: {
-                        CircleCompactCard(circle: circle, isPrimary: circle.id == circleStore.primaryCircleID)
+                        CircleCompactCard(circle: circle, isPrimary: false, displayName: groupDisplayName(circle))
                     }
                     .buttonStyle(.plain)
                 }
@@ -837,7 +849,7 @@ struct SocialHomeView: View {
     private func circleInvitationCard(_ invitation: CircleInvitationDTO) -> some View {
         OutboundCard(style: .companion) {
             VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                Text(String(localized: "circle.invitation.title", defaultValue: "You’re invited to a Circle"))
+                Text(String(localized: "group.invitation.title", defaultValue: "You’re invited to a Group"))
                     .font(.headline)
                 Text(String(
                     format: String(localized: "circle.invitation.from", defaultValue: "%@ invited you to %@"),
@@ -846,7 +858,7 @@ struct SocialHomeView: View {
                 ))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Text(String(localized: "circle.invitation.promise", defaultValue: "Share workouts, encourage each other, and build a healthier week together."))
+                Text(String(localized: "group.invitation.promise", defaultValue: "Share activities, encourage each other, and build a healthier week together."))
                     .font(.subheadline)
                 HStack {
                     Button(String(localized: "circle.invitation.accept", defaultValue: "Accept")) {
@@ -2318,8 +2330,8 @@ struct SocialNotificationsView: View {
         case .post: return String(localized: "Opens the activity")
         case .runInvitation: return String(localized: "Opens the invitation")
         case .activityEvent: return String(localized: "Opens the group run")
-        case .circleInvitation: return String(localized: "circle.notification.open_invitation", defaultValue: "Opens the Circle invitation")
-        case .circle: return String(localized: "circle.notification.open", defaultValue: "Opens the Circle")
+        case .circleInvitation: return String(localized: "group.notification.open_invitation", defaultValue: "Opens the Group invitation")
+        case .circle: return String(localized: "group.notification.open", defaultValue: "Opens the Group")
         case .generic: return String(localized: "Opens notification details")
         }
     }
@@ -2365,7 +2377,7 @@ private struct CircleNotificationInvitationView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .navigationTitle(String(localized: "circle.invitation.navigation", defaultValue: "Circle invitation"))
+        .navigationTitle(String(localized: "group.invitation.navigation", defaultValue: "Group invitation"))
         .task { await circleStore.refreshInvitations() }
     }
 }
@@ -4119,15 +4131,15 @@ private func localizedCircleNotificationMessage(_ notification: SocialNotificati
     let actorName = notification.actor?.displayName ?? String(localized: "circle.notification.someone", defaultValue: "Someone")
     switch notification.type {
     case "circleInvitation":
-        return String(format: String(localized: "circle.notification.invitation", defaultValue: "%@ invited you to a Circle."), actorName)
+        return String(format: String(localized: "group.notification.invitation", defaultValue: "%@ invited you to a Group."), actorName)
     case "circleInvitationAccepted":
-        return String(format: String(localized: "circle.notification.accepted", defaultValue: "%@ joined your Circle."), actorName)
+        return String(format: String(localized: "group.notification.accepted", defaultValue: "%@ joined your Group."), actorName)
     case "circleCheer":
         return String(format: String(localized: "circle.notification.cheer", defaultValue: "%@ sent you a Cheer."), actorName)
     case "circleWeeklyGoalCompleted":
-        return String(localized: "circle.notification.weekly_complete", defaultValue: "Your Circle completed this week’s focus.")
+        return String(localized: "group.notification.weekly_complete", defaultValue: "Your Group completed this week’s theme.")
     case "circleOwnershipTransferred":
-        return String(format: String(localized: "circle.notification.ownership", defaultValue: "%@ made you the Circle owner."), actorName)
+        return String(format: String(localized: "group.notification.ownership", defaultValue: "%@ made you the Group owner."), actorName)
     default:
         return notification.message
     }
