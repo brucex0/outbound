@@ -48,7 +48,7 @@ const createActivityEventSchema = z.object({
   latitude: z.number().finite().min(-90).max(90).nullable().optional(),
   longitude: z.number().finite().min(-180).max(180).nullable().optional(),
   note: z.string().trim().max(240).nullable().optional(),
-  sourceCircleId: z.string().min(1).nullable().optional(),
+  sourceGroupId: z.string().min(1).nullable().optional(),
   participationMode: z.enum(["hybrid", "in_person"]).default("hybrid"),
 }).superRefine((value, context) => {
   if ((value.latitude == null) !== (value.longitude == null)) {
@@ -717,9 +717,9 @@ router.post("/activity-events", zValidator("json", createActivityEventSchema), a
   const input = c.req.valid("json");
   const startsAt = new Date(input.startsAt);
   if (startsAt <= new Date()) return c.json({ error: "Choose a future date and time." }, 422);
-  if (input.sourceCircleId) {
+  if (input.sourceGroupId) {
     try {
-      const membership = await assertCircleMember(input.sourceCircleId, user.id);
+      const membership = await assertCircleMember(input.sourceGroupId, user.id);
       if (membership?.circle.lifecycle !== "active") return c.json({ error: "The source Group is not active." }, 422);
     } catch {
       return c.json({ error: "Group membership is required." }, 403);
@@ -729,7 +729,7 @@ router.post("/activity-events", zValidator("json", createActivityEventSchema), a
     const created = await prisma.activityEvent.create({
       data: {
         creatorId: user.id,
-        sourceCircleId: input.sourceCircleId ?? null,
+        sourceCircleId: input.sourceGroupId ?? null,
         title: input.title,
         startsAt,
         endsAt: new Date(startsAt.getTime() + input.durationMinutes * 60 * 1000),
