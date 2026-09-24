@@ -26,13 +26,13 @@ struct CreateActivityEventView: View {
     @State private var shareURL: URL?
     @State private var isSubmitting = false
     @FocusState private var isLocationFieldFocused: Bool
-    let sourceCircleID: String?
+    let sourceGroupID: String?
     let additionalInvitees: [CirclePersonDTO]
     let editingActivity: ActivityEventDetailDTO?
     let onCompleted: () -> Void
 
-    init(sourceCircleID: String? = nil, preselectedConnectionIDs: Set<String> = [], additionalInvitees: [CirclePersonDTO] = [], editingActivity: ActivityEventDetailDTO? = nil, onCompleted: @escaping () -> Void = {}) {
-        self.sourceCircleID = sourceCircleID
+    init(sourceGroupID: String? = nil, preselectedConnectionIDs: Set<String> = [], additionalInvitees: [CirclePersonDTO] = [], editingActivity: ActivityEventDetailDTO? = nil, onCompleted: @escaping () -> Void = {}) {
+        self.sourceGroupID = sourceGroupID
         self.additionalInvitees = additionalInvitees
         self.editingActivity = editingActivity
         self.onCompleted = onCompleted
@@ -354,13 +354,13 @@ struct CreateActivityEventView: View {
             longitude: selectedLocationCoordinate?.longitude,
             note: note.nilIfBlank,
             durationMinutes: durationMinutes == 0 ? ActivityEventTiming.defaultDurationMinutes : durationMinutes,
-            sourceCircleId: sourceCircleID,
+            sourceGroupId: sourceGroupID,
             participationMode: joinVirtually ? "hybrid" : "in_person"
         ))
     }
 
     private var planningTitle: String {
-        sourceCircleID == nil
+        sourceGroupID == nil
             ? String(localized: "social.create.plan", defaultValue: "Plan an activity")
             : String(localized: "circle.event.plan", defaultValue: "Plan an activity")
     }
@@ -378,31 +378,31 @@ struct CreateActivityEventView: View {
     }
 
     private var eventNameLabel: String {
-        sourceCircleID == nil
+        sourceGroupID == nil
             ? String(localized: "social.event.run_name", defaultValue: "Run name")
             : String(localized: "circle.event.name", defaultValue: "Activity name")
     }
 
     private var eventTitlePlaceholder: String {
-        sourceCircleID == nil
+        sourceGroupID == nil
             ? String(localized: "social.event.title.placeholder", defaultValue: "Saturday easy run")
             : String(localized: "circle.event.title.placeholder", defaultValue: "Saturday morning workout")
     }
 
     private var noteLabel: String {
-        sourceCircleID == nil
+        sourceGroupID == nil
             ? String(localized: "social.event.pace_note", defaultValue: "Pace / note")
             : String(localized: "circle.event.note", defaultValue: "Plan / note")
     }
 
     private var notePlaceholder: String {
-        sourceCircleID == nil
+        sourceGroupID == nil
             ? String(localized: "social.event.note.placeholder", defaultValue: "Easy, conversational pace")
             : String(localized: "circle.event.note.placeholder", defaultValue: "Walk, ride, gym session—anything that feels good")
     }
 
     private var inviteFriendsLabel: String {
-        sourceCircleID == nil
+        sourceGroupID == nil
             ? String(localized: "social.event.invite_friends", defaultValue: "Invite running friends")
             : String(localized: "circle.event.invite", defaultValue: "Invite your Circle")
     }

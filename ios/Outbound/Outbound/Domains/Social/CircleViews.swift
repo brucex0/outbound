@@ -423,7 +423,7 @@ struct CircleDetailView: View {
         }
         .sheet(isPresented: $showsPlanActivity, onDismiss: refreshAfterPlanning) {
             CreateActivityEventView(
-                sourceCircleID: current.id,
+                sourceGroupID: current.id,
                 preselectedConnectionIDs: Set(invitees.map(\.id)),
                 additionalInvitees: invitees
             ) {
