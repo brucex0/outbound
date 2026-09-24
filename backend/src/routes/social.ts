@@ -647,24 +647,49 @@ router.get("/clubs", async (c) => {
 router.get("/groups", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
-  const groups = await getPrismaClient().club.findMany({
-    where: { isDiscoverable: true },
-    include: {
-      _count: { select: { memberships: true } },
-      memberships: { where: { userId: user.id }, select: { role: true } },
-    },
-    orderBy: { name: "asc" },
-    take: 50,
-  });
+  const prisma = getPrismaClient();
+  const [clubs, privateGroups] = await Promise.all([
+    prisma.club.findMany({
+      where: { isDiscoverable: true },
+      include: {
+        _count: { select: { memberships: true } },
+        memberships: { where: { userId: user.id }, select: { role: true } },
+      },
+      orderBy: { name: "asc" },
+      take: 50,
+    }),
+    prisma.circleMember.findMany({
+      where: { userId: user.id, status: "active" },
+      include: { circle: { include: { _count: { select: { members: true } } } } },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+    }),
+  ]);
   return c.json({
-    groups: groups.map((group) => ({
+    groups: [
+      ...privateGroups.map(({ circle, role }) => ({
+        id: circle.id,
+        name: circle.name,
+        description: null,
+        city: null,
+        memberCount: circle._count.members,
+        membershipRole: role,
+        groupType: "private",
+        trustPolicy: "trusted_private",
+        canJoin: false,
+      })),
+      ...clubs.map((group) => ({
       id: group.id,
       name: group.name,
       description: group.description,
       city: group.city,
       memberCount: group._count.memberships,
       membershipRole: group.memberships[0]?.role ?? null,
-    })),
+      groupType: "community",
+      trustPolicy: "community",
+      canJoin: group.memberships.length === 0,
+      })),
+    ].sort((left, right) => left.name.localeCompare(right.name)),
   });
 });
 
