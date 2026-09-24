@@ -144,6 +144,7 @@ struct SocialGroupDTO: Codable, Identifiable, Sendable {
     var groupType: String? = nil
     var trustPolicy: String? = nil
     var canJoin: Bool? = nil
+    var contextLabel: String? = nil
 }
 
 struct SocialGroupsResponseDTO: Codable, Sendable { let groups: [SocialGroupDTO] }

@@ -1552,6 +1552,9 @@ private struct SocialGroupsView: View {
             $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalized
         }
         guard duplicates.count > 1 else { return group.name }
+        if let contextLabel = group.contextLabel, !contextLabel.isEmpty {
+            return "\(group.name) · \(contextLabel)"
+        }
         if let circle = circleStore.circles.first(where: { $0.id == group.id }) {
             return "\(group.name) · \(circle.owner.displayName)"
         }
