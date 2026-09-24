@@ -59,6 +59,7 @@ import kotlinx.serialization.json.JsonElement
     val groupType: String? = null,
     val trustPolicy: String? = null,
     val canJoin: Boolean? = null,
+    val contextLabel: String? = null,
 )
 @Serializable data class SocialEvent(
     val id: String,

@@ -178,7 +178,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
         item { SocialConnectionsPreview(acceptedConnections, state.loading, openConnections, openProfile) }
         items(circleInvitations, key = SocialInvitation::id) { InvitationCard(it) { invitation -> openTarget("invitation", invitation.id) } }
         if (state.home.unifiedGroups.isNotEmpty()) items(state.home.unifiedGroups, key = SocialGroup::id) { groupItem ->
-            GroupCard(groupItem) { group(groupItem) }
+            GroupCard(groupItem, groupDisplayName(groupItem, state.home.unifiedGroups)) { group(groupItem) }
         }
         else if (!state.loading && acceptedConnections.isNotEmpty()) item { CompanionCard(onClick = createCircle) { Text(stringResource(R.string.social_circle_empty), fontWeight = FontWeight.SemiBold); Spacer(Modifier.height(10.dp)); Text(stringResource(R.string.social_circle_create), fontWeight = FontWeight.Bold) } }
         if (state.home.recognitions.isNotEmpty()) item { SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column { Text(stringResource(R.string.social_guide_noticed), fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_recognition_earned), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } } } }
@@ -314,7 +314,12 @@ private fun ConnectionsDialog(
 }
 @Composable private fun InvitationCard(invitation: SocialInvitation, review:(SocialInvitation)->Unit) = SocialCard { Text(invitation.title, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_invited_by, invitation.sender.displayName), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Button({review(invitation)}, Modifier.padding(top = 8.dp)) { Text(stringResource(R.string.social_review)) } }
 @Composable private fun EventCard(event: SocialEvent, open:()->Unit) = SocialCard(onClick = open) { Text(event.name, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_hybrid), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall); event.locationName?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
-@Composable private fun GroupCard(group: SocialGroup, membership: () -> Unit) = SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.Flag, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(group.name, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_members, group.memberCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant); group.city?.takeIf(String::isNotBlank)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }; TextButton(membership) { Text(if (group.groupType == "private") stringResource(R.string.social_open) else stringResource(if (group.joined) R.string.social_leave else R.string.social_join)) } } }
+private fun groupDisplayName(group: SocialGroup, all: List<SocialGroup>): String {
+    val normalized = group.name.trim().lowercase()
+    val duplicates = all.count { it.name.trim().lowercase() == normalized }
+    return if (duplicates > 1 && !group.contextLabel.isNullOrBlank()) "${group.name} · ${group.contextLabel}" else group.name
+}
+@Composable private fun GroupCard(group: SocialGroup, displayName: String, membership: () -> Unit) = SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.Flag, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(displayName, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_members, group.memberCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; TextButton(membership) { Text(if (group.groupType == "private") stringResource(R.string.social_open) else stringResource(if (group.joined) R.string.social_leave else R.string.social_join)) } } }
 @Composable
 private fun PostCard(post: SocialPost, profile: () -> Unit, openActivity:()->Unit, cheer: () -> Unit, comments:()->Unit, safety: () -> Unit) =
     Card(
