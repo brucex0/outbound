@@ -744,19 +744,25 @@ router.post("/activity-events", zValidator("json", createActivityEventSchema), a
   const input = c.req.valid("json");
   const startsAt = new Date(input.startsAt);
   if (startsAt <= new Date()) return c.json({ error: "Choose a future date and time." }, 422);
+  let sourceCircleId: string | null = null;
+  let sourceClubId: string | null = null;
   if (input.sourceGroupId) {
     try {
       const membership = await assertCircleMember(input.sourceGroupId, user.id);
       if (membership?.circle.lifecycle !== "active") return c.json({ error: "The source Group is not active." }, 422);
+      sourceCircleId = input.sourceGroupId;
     } catch {
-      return c.json({ error: "Group membership is required." }, 403);
+      const communityMembership = await getPrismaClient().clubMembership.findUnique({ where: { clubId_userId: { clubId: input.sourceGroupId, userId: user.id } }, include: { club: { select: { isDiscoverable: true } } } });
+      if (!communityMembership) return c.json({ error: "Group membership is required." }, 403);
+      sourceClubId = input.sourceGroupId;
     }
   }
   const activity = await getPrismaClient().$transaction(async (prisma) => {
     const created = await prisma.activityEvent.create({
       data: {
         creatorId: user.id,
-        sourceCircleId: input.sourceGroupId ?? null,
+        sourceCircleId,
+        clubId: sourceClubId,
         title: input.title,
         startsAt,
         endsAt: new Date(startsAt.getTime() + input.durationMinutes * 60 * 1000),
@@ -1539,6 +1545,7 @@ async function visiblePost(postId: string, userId: string) {
 function activityEventInclude(_currentUserId: string) {
   return {
     club: true,
+    sourceCircle: { select: { id: true, name: true } },
     creator: { select: socialPersonSelect },
     options: { orderBy: { sortOrder: "asc" as const } },
     participants: {
@@ -1568,6 +1575,7 @@ async function visibleActivityEvent(userId: string, connectionIds: string[], id:
         { participants: { some: { userId } } },
         { invitations: { some: { recipientId: userId, status: { in: ["pending", "accepted"] } } } },
         { club: { memberships: { some: { userId } } } },
+        { sourceCircle: { members: { some: { userId, status: "active" } } } },
       ],
     },
     include: activityEventInclude(userId),
@@ -1584,8 +1592,8 @@ function activityEventPayload(activity: any, currentUserId: string, connectionId
       ? { kind: "joined", label: `Joined · From ${activity.creator.displayName}` }
       : directInvitation
         ? { kind: "directInvitation", label: `From ${directInvitation.sender.displayName} · Direct invitation` }
-        : activity.club
-          ? { kind: "group", label: `From ${activity.club.name} · Your group` }
+        : activity.sourceCircle || activity.club
+          ? { kind: "group", label: `From ${(activity.sourceCircle ?? activity.club).name} · Your group` }
           : connectionIds.includes(activity.creatorId)
             ? { kind: "connection", label: `From ${activity.creator.displayName} · Your connection` }
             : { kind: "invitation", label: `From ${activity.creator.displayName}` };
@@ -1605,6 +1613,11 @@ function activityEventPayload(activity: any, currentUserId: string, connectionId
     visibility: activity.visibility,
     status: activity.status,
     club: activity.club,
+    group: activity.sourceCircle
+      ? { id: activity.sourceCircle.id, name: activity.sourceCircle.name }
+      : activity.club
+        ? { id: activity.club.id, name: activity.club.name }
+        : null,
     creator: compactPerson(activity.creator),
     groups: activity.options,
     options: activity.options,
