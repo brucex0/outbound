@@ -232,6 +232,7 @@ struct SimplifiedAppShell: View {
     @State private var connectionFeedback: ConnectionLinkFeedback?
     @State private var connectionProfilePresentation: ConnectionProfilePresentation?
     @State private var tabBarHeight: CGFloat = 83
+    @State private var showsPushNotificationCenter = false
 
     var body: some View {
         TabView(selection: $selection) {
@@ -280,6 +281,11 @@ struct SimplifiedAppShell: View {
                 }
         }
         .tint(guideCatalog.selectedTheme.accentColor)
+        .fullScreenCover(isPresented: $showsPushNotificationCenter) {
+            NavigationStack {
+                SocialNotificationsView()
+            }
+        }
         .background {
             NativeContextualTabBarBridge(
                 selectedTab: selection,
@@ -485,9 +491,20 @@ struct SimplifiedAppShell: View {
                 selection = .me
             }
         }
-        .onChange(of: pushNotifications.pendingNotificationID) { _, notificationID in
+        .onChange(of: pushNotifications.pendingNotificationID, initial: true) { _, notificationID in
             guard notificationID != nil else { return }
-            selection = .social
+            let type = pushNotifications.pendingNotificationType
+            if type == "liveCheerInvitation" || type == "connectionRequest" {
+                selection = .social
+            } else {
+                showsPushNotificationCenter = true
+                Task {
+                    await analyticsManager?.track(.init(.pushNotificationOpened, properties: [
+                        .sourceType: .string(type ?? "unknown"),
+                        .selectionType: .string("notifications"),
+                    ]))
+                }
+            }
         }
         .onChange(of: communityRouteStore.pendingLaunch) { _, route in
             guard let route else { return }

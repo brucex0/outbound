@@ -208,9 +208,6 @@ struct SocialHomeView: View {
                     selectFeatureTab(.people, entrySource: "push")
                     trackPushOpen(type: "connection_request", destination: "people")
                     pushNotifications.consumePendingNotification()
-                } else {
-                    showsNotifications = true
-                    trackPushOpen(type: pushNotifications.pendingNotificationType ?? "unknown", destination: "notifications")
                 }
             }
             .overlay(alignment: .top) {
@@ -2188,6 +2185,8 @@ struct SocialNotificationsView: View {
             if let notificationID = pushNotifications.pendingNotificationID,
                let notification = socialStore.notifications.first(where: { $0.id == notificationID }) {
                 selectedNotification = notification
+                pushNotifications.consumePendingNotification()
+            } else if pushNotifications.pendingNotificationID != nil {
                 pushNotifications.consumePendingNotification()
             }
             await trackCenterExposure()
