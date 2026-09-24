@@ -87,6 +87,9 @@ app.route("/v1/personalization", personalization);
 app.route("/v1/companion", companion);
 app.route("/v1/notifications", notifications);
 app.route("/v1/social", social);
+// Private Group management shares the public Social Groups resource. The
+// legacy /v1/groups mount remains only as a short-lived migration seam.
+app.route("/v1/social/groups", circles);
 app.route("/v1/media", media);
 app.route("/v1/safety", safety);
 app.route("/v1/live", live);
