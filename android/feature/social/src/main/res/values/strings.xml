@@ -59,6 +59,7 @@
     <string name="social_notifications">Notification Center</string>
     <string name="social_offline">Showing saved Social activity</string>
     <string name="social_open_settings">Open Settings</string>
+    <string name="social_open">Open</string>
     <string name="social_pace">Pace</string>
     <string name="social_past_activities">Past activities</string>
     <string name="social_past_empty">No shared activity results yet.</string>

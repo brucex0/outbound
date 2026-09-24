@@ -74,7 +74,9 @@ import com.plainstride.outbound.core.designsystem.*
         else if(!state.loading&&targetType!=null&&targetId!=null)viewModel.openTarget(targetType,targetId)
     }
     if (selectedActivity == null) {
-        SocialScreen(state, inboxCount, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openCircle, viewModel::openComments, { activity -> selectedActivity = activity; viewModel.trackActivityDetailOpened() }, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, viewModel::joinGroup, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createCircle=true}, modifier)
+        SocialScreen(state, inboxCount, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openCircle, viewModel::openComments, { activity -> selectedActivity = activity; viewModel.trackActivityDetailOpened() }, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, { group ->
+            if (group.groupType == "private") state.home.circles.firstOrNull { it.id == group.id }?.let(viewModel::openCircle) else viewModel.joinGroup(group)
+        }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createCircle=true}, modifier)
     } else {
         BackHandler { selectedActivity = null }
         SocialActivityDetail(selectedActivity!!, { selectedActivity = null }, modifier)
@@ -175,34 +177,8 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
         item { SectionHeader(stringResource(R.string.social_connections), action = stringResource(R.string.social_all), onAction = openConnections) }
         item { SocialConnectionsPreview(acceptedConnections, state.loading, openConnections, openProfile) }
         items(circleInvitations, key = SocialInvitation::id) { InvitationCard(it) { invitation -> openTarget("invitation", invitation.id) } }
-        if (state.home.circles.isNotEmpty()) items(state.home.circles, key = CircleSummary::id) { circle ->
-            CompanionCard(onClick = { openCircle(circle) }) {
-                val theme = LocalPlainstrideThemeColors.current
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(shape = CircleShape, color = theme.heroForeground.copy(alpha = .14f)) {
-                        Icon(
-                            Icons.Outlined.Groups,
-                            null,
-                            Modifier.padding(10.dp).size(24.dp),
-                            tint = theme.heroForeground,
-                        )
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(circle.name, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            stringResource(R.string.social_members, circle.members.size),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = theme.heroForeground.copy(alpha = .78f),
-                        )
-                    }
-                    circle.target?.let {
-                        Text("${circle.completed}/$it", fontWeight = FontWeight.SemiBold)
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Icon(Icons.Outlined.ChevronRight, null, tint = theme.heroForeground.copy(alpha = .78f))
-                }
-            }
+        if (state.home.unifiedGroups.isNotEmpty()) items(state.home.unifiedGroups, key = SocialGroup::id) { groupItem ->
+            GroupCard(groupItem) { group(groupItem) }
         }
         else if (!state.loading && acceptedConnections.isNotEmpty()) item { CompanionCard(onClick = createCircle) { Text(stringResource(R.string.social_circle_empty), fontWeight = FontWeight.SemiBold); Spacer(Modifier.height(10.dp)); Text(stringResource(R.string.social_circle_create), fontWeight = FontWeight.Bold) } }
         if (state.home.recognitions.isNotEmpty()) item { SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column { Text(stringResource(R.string.social_guide_noticed), fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_recognition_earned), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } } } }
@@ -212,8 +188,6 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
         item { SectionHeader(stringResource(R.string.social_past_activities)) }
         items(state.home.pastEvents, key = SocialEvent::id) { event -> EventCard(event) { openTarget("event",event.id) } }
         if (state.home.pastEvents.isEmpty()) item { EmptyCard(stringResource(R.string.social_past_empty), Icons.Outlined.History) }
-        item { SectionHeader(stringResource(R.string.social_groups)) }
-        items(state.home.groups, key = SocialGroup::id) { GroupCard(it) { group(it) } }
         item { SectionHeader(stringResource(R.string.social_feed)) }
         items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, { openProfile(post.author) }, { post.activity?.let(openActivity) }, { cheer(post) }, { comments(post) }, { if (post.isCurrentUser) { if (skipDeletionConfirmation) deletePost(post) else deletionConfirmationPost = post } else safetyPost = post }) }
         if (!state.loading && state.home.posts.isEmpty()) item { EmptyCard(stringResource(R.string.social_feed_empty), Icons.Outlined.DirectionsRun) }
@@ -340,7 +314,7 @@ private fun ConnectionsDialog(
 }
 @Composable private fun InvitationCard(invitation: SocialInvitation, review:(SocialInvitation)->Unit) = SocialCard { Text(invitation.title, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_invited_by, invitation.sender.displayName), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Button({review(invitation)}, Modifier.padding(top = 8.dp)) { Text(stringResource(R.string.social_review)) } }
 @Composable private fun EventCard(event: SocialEvent, open:()->Unit) = SocialCard(onClick = open) { Text(event.name, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_hybrid), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall); event.locationName?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
-@Composable private fun GroupCard(group: SocialGroup, membership: () -> Unit) = SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.Flag, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(group.name, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_members, group.memberCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; TextButton(membership) { Text(stringResource(if (group.joined) R.string.social_leave else R.string.social_join)) } } }
+@Composable private fun GroupCard(group: SocialGroup, membership: () -> Unit) = SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.Flag, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(group.name, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_members, group.memberCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant); group.city?.takeIf(String::isNotBlank)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }; TextButton(membership) { Text(if (group.groupType == "private") stringResource(R.string.social_open) else stringResource(if (group.joined) R.string.social_leave else R.string.social_join)) } } }
 @Composable
 private fun PostCard(post: SocialPost, profile: () -> Unit, openActivity:()->Unit, cheer: () -> Unit, comments:()->Unit, safety: () -> Unit) =
     Card(

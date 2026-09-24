@@ -81,17 +81,20 @@ class OfflineFirstSocialRepository @Inject constructor(
             val home = async { apiCall { api.home(auth) } }
             val connections = async { apiCall { api.connections(auth, null) } }
             val circles = async { apiCall { api.circles(auth) } }
+            val unifiedGroups = async { apiCall { api.groups(auth) } }
             val awards = async { apiCall { api.awards(auth) } }
             val circleInvitations = async { apiCall { api.circleInvitations(auth) } }
             when (val core = home.await()) {
                 is ApiResult.Failure -> core
                 is ApiResult.Success -> {
                     val circleResult = circles.await()
+                    val groupResult = unifiedGroups.await()
                     ApiResult.Success(core.value.copy(
                     connections = (connections.await() as? ApiResult.Success)?.value?.connections.orEmpty().map { it.person.copy(relationshipDetails = SocialRelationship(it.id, it.status, it.direction), relationship = it.status, isActive = it.isInActiveWorkout, connectionId = it.id, connectionDirection=it.direction) },
                     invitations = (core.value.invitations + (circleInvitations.await() as? ApiResult.Success)?.value?.invitations.orEmpty().map { SocialInvitation(it.id,"circle",it.circle.name,it.sender,it.circle.id) }).distinctBy(SocialInvitation::id),
                     recognitions = (awards.await() as? ApiResult.Success)?.value?.awards.orEmpty(),
                     circles = (circleResult as? ApiResult.Success)?.value?.let { response -> response.circles.map { circle -> circle.copy(primary = circle.id == response.primaryCircleId) }.sortedByDescending { it.primary } }.orEmpty(),
+                    unifiedGroups = (groupResult as? ApiResult.Success)?.value?.groups.orEmpty(),
                 )) }
             }
         } }.onSuccess { home ->

@@ -86,22 +86,22 @@ interface SocialApiService {
     @POST("v1/social/invitations/{id}/accept") suspend fun acceptEventInvitation(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:AttendanceBody=AttendanceBody()):Response<Unit>
     @POST("v1/social/invitations/{id}/decline") suspend fun declineEventInvitation(@Header("Authorization") auth:String,@Path("id") id:String):Response<Unit>
     @GET("v1/groups") suspend fun circles(@Header("Authorization") auth: String): Response<CirclesResponse>
-    @GET("v1/groups/{id}") suspend fun circle(@Header("Authorization") auth: String, @Path("id") id: String): Response<CircleSummary>
-    @PATCH("v1/groups/{id}") suspend fun renameCircle(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:RenameCircleBody):Response<CircleSummary>
-    @PUT("v1/groups/{id}/commitment") suspend fun circleCommitment(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:CircleCommitmentBody):Response<CircleSummary>
-    @PUT("v1/groups/{id}/primary") suspend fun primaryCircle(@Header("Authorization") auth:String,@Path("id") id:String):Response<CirclePrimaryResponse>
-    @PUT("v1/groups/{id}/notifications") suspend fun muteCircle(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:CircleMuteBody):Response<CircleSummary>
-    @POST("v1/groups/{id}/leave") suspend fun leaveCircle(@Header("Authorization") auth:String,@Path("id") id:String):Response<Unit>
-    @DELETE("v1/groups/{id}/members/{userId}") suspend fun removeCircleMember(@Header("Authorization") auth:String,@Path("id") id:String,@Path("userId") userId:String):Response<CircleSummary>
-    @POST("v1/groups/{id}/cheers") suspend fun circleCheer(@Header("Authorization") auth: String, @Path("id") id: String, @Body body: CheerBody): Response<Unit>
-    @POST("v1/groups") suspend fun createCircle(@Header("Authorization") auth:String,@Body body:CreateCircleBody):Response<CircleSummary>
-    @POST("v1/groups/{id}/invitations") suspend fun inviteCircle(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:CircleInviteBody):Response<CircleMutationResponse>
-    @POST("v1/groups/{id}/focus") suspend fun focusCircle(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:CircleFocusBody):Response<CircleSummary>
-    @POST("v1/groups/{id}/archive") suspend fun archiveCircle(@Header("Authorization") auth:String,@Path("id") id:String):Response<CircleSummary>
-    @POST("v1/groups/{id}/reactivate") suspend fun reactivateCircle(@Header("Authorization") auth:String,@Path("id") id:String):Response<CircleSummary>
-    @POST("v1/groups/invitations/{id}/accept") suspend fun acceptCircleInvitation(@Header("Authorization") auth:String,@Path("id") id:String):Response<CircleSummary>
-    @POST("v1/groups/invitations/{id}/decline") suspend fun declineCircleInvitation(@Header("Authorization") auth:String,@Path("id") id:String):Response<Unit>
-    @GET("v1/groups/invitations/inbox") suspend fun circleInvitations(@Header("Authorization") auth:String):Response<CircleInvitationsResponse>
+    @GET("v1/social/groups/{id}") suspend fun circle(@Header("Authorization") auth: String, @Path("id") id: String): Response<CircleSummary>
+    @PATCH("v1/social/groups/{id}") suspend fun renameCircle(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:RenameCircleBody):Response<CircleSummary>
+    @PUT("v1/social/groups/{id}/commitment") suspend fun circleCommitment(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:CircleCommitmentBody):Response<CircleSummary>
+    @PUT("v1/social/groups/{id}/primary") suspend fun primaryCircle(@Header("Authorization") auth:String,@Path("id") id:String):Response<CirclePrimaryResponse>
+    @PUT("v1/social/groups/{id}/notifications") suspend fun muteCircle(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:CircleMuteBody):Response<CircleSummary>
+    @POST("v1/social/groups/{id}/leave") suspend fun leaveCircle(@Header("Authorization") auth:String,@Path("id") id:String):Response<Unit>
+    @DELETE("v1/social/groups/{id}/members/{userId}") suspend fun removeCircleMember(@Header("Authorization") auth:String,@Path("id") id:String,@Path("userId") userId:String):Response<CircleSummary>
+    @POST("v1/social/groups/{id}/cheers") suspend fun circleCheer(@Header("Authorization") auth: String, @Path("id") id: String, @Body body: CheerBody): Response<Unit>
+    @POST("v1/social/groups") suspend fun createCircle(@Header("Authorization") auth:String,@Body body:CreateCircleBody):Response<CircleSummary>
+    @POST("v1/social/groups/{id}/invitations") suspend fun inviteCircle(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:CircleInviteBody):Response<CircleMutationResponse>
+    @POST("v1/social/groups/{id}/focus") suspend fun focusCircle(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:CircleFocusBody):Response<CircleSummary>
+    @POST("v1/social/groups/{id}/archive") suspend fun archiveCircle(@Header("Authorization") auth:String,@Path("id") id:String):Response<CircleSummary>
+    @POST("v1/social/groups/{id}/reactivate") suspend fun reactivateCircle(@Header("Authorization") auth:String,@Path("id") id:String):Response<CircleSummary>
+    @POST("v1/social/groups/invitations/{id}/accept") suspend fun acceptCircleInvitation(@Header("Authorization") auth:String,@Path("id") id:String):Response<CircleSummary>
+    @POST("v1/social/groups/invitations/{id}/decline") suspend fun declineCircleInvitation(@Header("Authorization") auth:String,@Path("id") id:String):Response<Unit>
+    @GET("v1/social/groups/invitations/inbox") suspend fun circleInvitations(@Header("Authorization") auth:String):Response<CircleInvitationsResponse>
     @GET("v1/recognition") suspend fun awards(@Header("Authorization") auth: String): Response<AwardsResponse>
 }
 

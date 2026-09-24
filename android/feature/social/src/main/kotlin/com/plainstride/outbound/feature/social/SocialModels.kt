@@ -49,7 +49,17 @@ import kotlinx.serialization.json.JsonElement
     val isCurrentUser: Boolean = false,
     val createdAt: String? = null,
 )
-@Serializable data class SocialGroup(val id: String, val name: String, val description: String? = null, val memberCount: Int = 0, val joined: Boolean = false)
+@Serializable data class SocialGroup(
+    val id: String,
+    val name: String,
+    val description: String? = null,
+    val city: String? = null,
+    val memberCount: Int = 0,
+    val joined: Boolean = false,
+    val groupType: String? = null,
+    val trustPolicy: String? = null,
+    val canJoin: Boolean? = null,
+)
 @Serializable data class SocialEvent(
     val id: String,
     @SerialName("title") val name: String,
@@ -107,6 +117,7 @@ import kotlinx.serialization.json.JsonElement
     val pastEvents: List<SocialEvent> = emptyList(),
     val invitations: List<SocialInvitation> = emptyList(),
     val circles: List<CircleSummary> = emptyList(),
+    val unifiedGroups: List<SocialGroup> = emptyList(),
     val recognitions: List<RecognitionAward> = emptyList(),
     @SerialName("nextFeedCursor") val nextCursor: String? = null,
 )

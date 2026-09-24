@@ -59,6 +59,7 @@
     <string name="social_notifications">通知中心</string>
     <string name="social_offline">正在显示已保存的动态</string>
     <string name="social_open_settings">打开设置</string>
+    <string name="social_open">打开</string>
     <string name="social_pace">配速</string>
     <string name="social_past_activities">往期活动</string>
     <string name="social_past_empty">目前还没有共享活动结果。</string>
