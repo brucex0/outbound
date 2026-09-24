@@ -53,7 +53,7 @@ The Watch scheme requires the matching watchOS platform component in Xcode. If t
 - Finish while disconnected, reconnect, and confirm the delayed Apple Health workout UUID attaches to the existing activity. A later Apple Health import scan must not offer that workout again.
 - Deny Watch Health authorization or test without a paired/available Watch. After the six-second preparation window, confirm the iPhone begins a normal phone-only workout and performs its usual HealthKit write-back.
 
-After pulling the destructive pre-release Your Circle schema replacement, rebuild local backend data and generated Prisma types before launching the app:
+After pulling the destructive pre-release Social Groups schema replacement, rebuild local backend data and generated Prisma types before launching the app:
 
 ```sh
 cd backend

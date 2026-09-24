@@ -2,7 +2,7 @@
 
 Open this when designing or building Group creation, private motivation Groups, community activity Groups, membership, weekly themes, notices, scheduled activities, discovery, or moderation.
 
-Status: recommended target product and technical contract, pending owner acceptance. The consolidated model is not implemented yet. The current `Circle` and `Club` implementations are migration inputs, not parallel products to preserve.
+Status: approved target contract with the first public consolidation slice implemented on backend, iOS, and Android. The current persistence layer still uses legacy `Circle`/`Club` tables internally; the destructive `SocialGroup` schema cutover remains the final migration milestone.
 
 ## Product Decision
 
@@ -318,6 +318,8 @@ Primary success measures are invitation/request conversion, second- and fourth-w
 ## Migration And Rollout
 
 The project policy permits a destructive data reset. Prefer a clean cutover over a permanent compatibility layer.
+
+The current release slice already covers user-facing Group terminology, one Groups destination, Today boundaries, generic activity-event source typing, and the unified private/community list projection. The steps below are the remaining migration work; do not claim the persistence cutover complete until they are finished.
 
 1. Add the unified schema and authorization/projection services.
 2. Replace Circle and Club APIs with the unified Group API; wire `ActivityEvent.groupId`.
