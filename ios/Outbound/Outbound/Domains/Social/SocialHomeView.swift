@@ -341,26 +341,7 @@ struct SocialHomeView: View {
     }
 
     private var groupsTab: some View {
-        VStack(spacing: 0) {
-            if !circleStore.invitations.isEmpty || (circleStore.circles.isEmpty && !acceptedConnections.isEmpty) {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                        Text(String(localized: "social.groups.yours", defaultValue: "Your groups"))
-                            .socialSectionLabel()
-                        yourCircleSection
-                    }
-                    .padding(.horizontal, OutboundSpacing.screen)
-                    .padding(.vertical, 12)
-                }
-                .frame(maxHeight: 320)
-            }
-            SocialGroupsView(embedded: true)
-        }
-        .refreshable {
-            async let circles: Void = circleStore.refresh()
-            async let invitations: Void = circleStore.refreshInvitations()
-            _ = await (circles, invitations)
-        }
+        SocialGroupsView(embedded: true)
     }
 
     @ViewBuilder
@@ -766,89 +747,6 @@ struct SocialHomeView: View {
                         Label("Invite", systemImage: "square.and.arrow.up")
                     }
                     .buttonStyle(.bordered)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var yourCircleSection: some View {
-        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-            ForEach(circleStore.invitations) { invitation in
-                circleInvitationCard(invitation)
-            }
-            if circleStore.circles.isEmpty {
-                if circleStore.invitations.isEmpty,
-                   socialStore.hasLoadedConnections,
-                   !acceptedConnections.isEmpty {
-                    NavigationLink {
-                        CircleCreateView()
-                    } label: {
-                        OutboundCard(style: .companion) {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(spacing: 10) {
-                                    ForEach(["figure.walk", "figure.run", "figure.outdoor.cycle"], id: \.self) { symbol in
-                                        Image(systemName: symbol)
-                                            .foregroundStyle(OutboundPalette.companion)
-                                            .frame(width: 36, height: 36)
-                                            .background(OutboundPalette.companion.opacity(0.12), in: Circle())
-                                    }
-                                    Spacer()
-                                    Image(systemName: "arrow.right")
-                                        .foregroundStyle(OutboundPalette.companion)
-                                }
-                                Text(String(localized: "group.create.inspiration_title", defaultValue: "Active. Positive. Together."))
-                                    .font(.title3.bold())
-                                    .foregroundStyle(.primary)
-                                Text(String(localized: "group.create.detail", defaultValue: "Share activities and progress with the people closest to you—and cheer each other on."))
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                Text(String(localized: "social.create.group.start", defaultValue: "Create your Group"))
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(OutboundPalette.companion)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    private func circleInvitationCard(_ invitation: CircleInvitationDTO) -> some View {
-        OutboundCard(style: .companion) {
-            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                Text(String(localized: "group.invitation.title", defaultValue: "You’re invited to a Group"))
-                    .font(.headline)
-                Text(String(
-                    format: String(localized: "circle.invitation.from", defaultValue: "%@ invited you to %@"),
-                    invitation.sender.displayName,
-                    invitation.circle.name
-                ))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Text(String(localized: "group.invitation.promise", defaultValue: "Share activities, encourage each other, and build a healthier week together."))
-                    .font(.subheadline)
-                HStack {
-                    Button(String(localized: "circle.invitation.accept", defaultValue: "Accept")) {
-                        Task {
-                            if await circleStore.accept(invitation),
-                               let joined = circleStore.circles.first(where: { $0.id == invitation.circleId }) {
-                                await analyticsManager?.track(.init(.circleInvitationAccepted, properties: [
-                                    .entrySource: .string("social"),
-                                    .participantCountBucket: .string(ProductAnalyticsBucket.count(joined.memberCount))
-                                ]))
-                                if joined.lifecycle == "active" {
-                                    await analyticsManager?.track(.init(.circleActivated, properties: [
-                                        .participantCountBucket: .string(ProductAnalyticsBucket.count(joined.memberCount))
-                                    ]))
-                                }
-                            }
-                        }
-                    }
-                        .buttonStyle(.borderedProminent)
-                    Button(String(localized: "circle.invitation.decline", defaultValue: "Decline")) { Task { if await circleStore.decline(invitation) { await analyticsManager?.track(.init(.circleInvitationDeclined, properties: [.entrySource: .string("social")])) } } }
-                        .buttonStyle(.bordered)
                 }
             }
         }
@@ -1448,89 +1346,208 @@ private struct SocialGroupsView: View {
         socialStore.discoverableGroups.filter { $0.membershipRole == nil }
     }
 
+    private var acceptedConnections: [SocialConnectionDTO] {
+        socialStore.connections.filter { $0.status == "accepted" }
+    }
+
     var body: some View {
-        List {
-            Section(String(localized: "social.groups.joined", defaultValue: "Joined Groups")) {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                if !circleStore.invitations.isEmpty {
+                    Text(String(localized: "social.groups.invitations", defaultValue: "Invitations"))
+                        .socialSectionLabel()
+                    ForEach(circleStore.invitations) { invitation in
+                        invitationCard(invitation)
+                    }
+                }
+
+                Text(String(localized: "social.groups.yours", defaultValue: "Your groups"))
+                    .socialSectionLabel()
+
                 if joinedGroups.isEmpty {
-                    Label(
-                        String(localized: "social.groups.joined.empty", defaultValue: "Groups you join will appear here."),
-                        systemImage: "person.3"
-                    )
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    if socialStore.hasLoadedConnections, !acceptedConnections.isEmpty {
+                        firstGroupCard
+                    } else {
+                        Label(
+                            String(localized: "social.groups.connect_first", defaultValue: "Connect with people to create a private Group."),
+                            systemImage: "person.2"
+                        )
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .padding(.vertical, 8)
+                    }
                 } else {
                     ForEach(joinedGroups) { group in
                         groupRow(group)
                     }
                 }
-            }
 
-            Section(String(localized: "social.groups.discover", defaultValue: "Discover")) {
+                Text(String(localized: "social.groups.discover", defaultValue: "Discover"))
+                    .socialSectionLabel()
+
                 if discoveryGroups.isEmpty {
-                    ContentUnavailableView(
-                        String(localized: "social.groups.discover.empty", defaultValue: "No new Groups right now"),
-                        systemImage: "binoculars",
-                        description: Text(String(localized: "social.groups.discover.description", defaultValue: "Pull to refresh as more activity Groups become available."))
-                    )
+                    HStack(spacing: 12) {
+                        Image(systemName: "binoculars")
+                            .font(.title3)
+                            .foregroundStyle(OutboundPalette.companion)
+                            .frame(width: 36, height: 36)
+                            .background(OutboundPalette.companion.opacity(0.10), in: Circle())
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(String(localized: "social.groups.discover.empty", defaultValue: "No public Groups nearby yet"))
+                                .font(.subheadline.weight(.semibold))
+                            Text(String(localized: "social.groups.discover.description", defaultValue: "Check back as more activity Groups become available."))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 6)
                 } else {
                     ForEach(discoveryGroups) { group in
                         groupRow(group)
                     }
                 }
             }
+            .padding(.horizontal, OutboundSpacing.screen)
+            .padding(.vertical, 12)
         }
         .navigationTitle(embedded ? "" : String(localized: "Groups"))
         .navigationBarTitleDisplayMode(.inline)
-        .task {
-            async let groups: Void = socialStore.refreshGroups()
-            async let privateGroups: Void = circleStore.refresh()
-            _ = await (groups, privateGroups)
-        }
+        .task { await refresh() }
         .onAppear {
             Task { await analyticsManager?.track(.init(.groupSectionExposed, properties: [.entrySource: .string(embedded ? "social_embedded" : "social_groups")])) }
         }
-        .refreshable { await socialStore.refreshGroups() }
+        .refreshable { await refresh() }
     }
 
-    private func groupRow(_ group: SocialGroupDTO) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(groupDisplayName(group)).font(.headline)
-                    Text([group.groupType == "private" ? String(localized: "Private") : group.city, String(localized: "\(group.memberCount) members")].compactMap { $0 }.joined(separator: " · "))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                if group.groupType == "private", let circle = circleStore.circles.first(where: { $0.id == group.id }) {
-                    NavigationLink {
-                        CircleDetailView(circle: circle)
-                    } label: {
-                        Label(String(localized: "Open"), systemImage: "chevron.right")
+    private var firstGroupCard: some View {
+        NavigationLink {
+            CircleCreateView()
+        } label: {
+            OutboundCard {
+                HStack(spacing: 12) {
+                    Image(systemName: "person.3.fill")
+                        .font(.title3)
+                        .foregroundStyle(OutboundPalette.companion)
+                        .frame(width: 38, height: 38)
+                        .background(OutboundPalette.companion.opacity(0.10), in: Circle())
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(String(localized: "social.groups.create_first.title", defaultValue: "Create your first Group"))
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Text(String(localized: "social.groups.create_first.detail", defaultValue: "Stay active with people you trust."))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
-                    .simultaneousGesture(TapGesture().onEnded {
-                        Task { await analyticsManager?.track(.init(.groupOpened, properties: [.entrySource: .string("groups"), .selectionType: .string("private"), .participantCountBucket: .string(ProductAnalyticsBucket.count(group.memberCount))])) }
-                    })
-                    .buttonStyle(.bordered)
-                } else if group.canJoin != false {
-                    Button(group.membershipRole == nil ? String(localized: "Join") : String(localized: "Leave")) {
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(OutboundPalette.companion)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func groupRow(_ group: SocialGroupDTO) -> some View {
+        if group.groupType == "private", let circle = circleStore.circles.first(where: { $0.id == group.id }) {
+            NavigationLink {
+                CircleDetailView(circle: circle)
+            } label: {
+                OutboundCard {
+                    groupSummary(group, trailing: "chevron.right")
+                }
+            }
+            .buttonStyle(.plain)
+            .simultaneousGesture(TapGesture().onEnded {
+                Task { await analyticsManager?.track(.init(.groupOpened, properties: [.entrySource: .string("groups"), .selectionType: .string("private"), .participantCountBucket: .string(ProductAnalyticsBucket.count(group.memberCount))])) }
+            })
+        } else {
+            OutboundCard {
+                VStack(alignment: .leading, spacing: 8) {
+                    groupSummary(group)
+                    if let description = group.description, !description.isEmpty {
+                        Text(description)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+            }
+        }
+    }
+
+    private func groupSummary(_ group: SocialGroupDTO, trailing: String? = nil) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(groupDisplayName(group)).font(.headline)
+                Text([group.groupType == "private" ? String(localized: "Private") : group.city, String(localized: "\(group.memberCount) members")].compactMap { $0 }.joined(separator: " · "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if let trailing {
+                Image(systemName: trailing)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            } else if group.canJoin != false {
+                Button(group.membershipRole == nil ? String(localized: "Join") : String(localized: "Leave")) {
+                    Task {
+                        let isJoining = group.membershipRole == nil
+                        let updated = await socialStore.toggleMembership(in: group)
+                        if updated {
+                            await analyticsManager?.track(.init(.groupMembershipChanged, properties: [.entrySource: .string("groups"), .selectionType: .string(isJoining ? "join" : "leave"), .result: .string("success"), .participantCountBucket: .string(ProductAnalyticsBucket.count(group.memberCount))]))
+                            if isJoining { _ = socialRecognitionStore.registerGroupJoin(groupID: group.id) }
+                        }
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+    }
+
+    private func invitationCard(_ invitation: CircleInvitationDTO) -> some View {
+        OutboundCard(style: .companion, contentPadding: 16) {
+            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                Text(String(localized: "group.invitation.title", defaultValue: "You’re invited to a Group"))
+                    .font(.headline)
+                Text(String(
+                    format: String(localized: "circle.invitation.from", defaultValue: "%@ invited you to %@"),
+                    invitation.sender.displayName,
+                    invitation.circle.name
+                ))
+                    .font(.subheadline)
+                HStack {
+                    Button(String(localized: "circle.invitation.accept", defaultValue: "Accept")) {
                         Task {
-                            let isJoining = group.membershipRole == nil
-                            let updated = await socialStore.toggleMembership(in: group)
-                            if updated {
-                                await analyticsManager?.track(.init(.groupMembershipChanged, properties: [.entrySource: .string("groups"), .selectionType: .string(isJoining ? "join" : "leave"), .result: .string("success"), .participantCountBucket: .string(ProductAnalyticsBucket.count(group.memberCount))]))
-                                if isJoining { _ = socialRecognitionStore.registerGroupJoin(groupID: group.id) }
+                            if await circleStore.accept(invitation),
+                               let joined = circleStore.circles.first(where: { $0.id == invitation.circleId }) {
+                                await analyticsManager?.track(.init(.circleInvitationAccepted, properties: [
+                                    .entrySource: .string("social"),
+                                    .participantCountBucket: .string(ProductAnalyticsBucket.count(joined.memberCount))
+                                ]))
+                            }
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    Button(String(localized: "circle.invitation.decline", defaultValue: "Decline")) {
+                        Task {
+                            if await circleStore.decline(invitation) {
+                                await analyticsManager?.track(.init(.circleInvitationDeclined, properties: [.entrySource: .string("social")]))
                             }
                         }
                     }
                     .buttonStyle(.bordered)
                 }
             }
-            if let description = group.description {
-                Text(description).font(.subheadline)
-            }
         }
-        .padding(.vertical, 4)
+    }
+
+    private func refresh() async {
+        async let groups: Void = socialStore.refreshGroups()
+        async let privateGroups: Void = circleStore.refresh()
+        async let invitations: Void = circleStore.refreshInvitations()
+        _ = await (groups, privateGroups, invitations)
     }
 
     private func groupDisplayName(_ group: SocialGroupDTO) -> String {
