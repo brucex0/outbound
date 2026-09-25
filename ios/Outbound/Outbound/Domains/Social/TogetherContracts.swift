@@ -9,7 +9,7 @@ enum ActivityEventTiming {
 struct TogetherResponseDTO: Codable, Sendable {
     let upcomingRuns: [ActivityEventDTO]
     var pastEvents: [ActivityEventDTO] = []
-    let clubs: [TogetherClubDTO]
+    let groups: [TogetherGroupDTO]
     let posts: [TogetherPostDTO]
     var nextFeedCursor: String? = nil
 }
@@ -126,7 +126,7 @@ struct SocialConnectionMutationDTO: Codable, Sendable {
     let ok: Bool?
 }
 
-struct TogetherClubDTO: Codable, Identifiable, Sendable {
+struct TogetherGroupDTO: Codable, Identifiable, Sendable {
     let id: String
     let name: String
     let description: String?
@@ -147,7 +147,7 @@ struct SocialGroupDTO: Codable, Identifiable, Sendable {
     var contextLabel: String? = nil
 }
 
-struct SocialGroupsResponseDTO: Codable, Sendable { let groups: [SocialGroupDTO] }
+struct SocialGroupsResponseDTO: Codable, Sendable { let groups: [SocialGroupDTO]; let nextCursor: String? }
 
 struct TogetherRunGroupDTO: Codable, Identifiable, Sendable {
     let id: String
@@ -179,7 +179,7 @@ struct ActivityEventDTO: Codable, Identifiable, Sendable {
     var latitude: Double? = nil
     var longitude: Double? = nil
     let paceNote: String?
-    let club: TogetherClubDTO?
+    let group: TogetherGroupDTO?
     let creator: TogetherPersonDTO
     let groups: [TogetherRunGroupDTO]
     let compatibility: TogetherCompatibilityDTO?
@@ -256,7 +256,7 @@ struct ActivityEventDetailDTO: Codable, Identifiable, Sendable {
     var latitude: Double? = nil
     var longitude: Double? = nil
     let paceNote: String?
-    let club: TogetherClubDTO?
+    let group: TogetherGroupDTO?
     let creator: TogetherPersonDTO
     let groups: [TogetherRunGroupDTO]
     let attendeeCount: Int
@@ -306,7 +306,7 @@ struct CreateActivityEventRequestDTO: Codable, Sendable {
     var longitude: Double? = nil
     let note: String?
     var durationMinutes: Int = ActivityEventTiming.defaultDurationMinutes
-    var sourceGroupId: String? = nil
+    var groupId: String? = nil
     var participationMode: String = "hybrid"
 }
 

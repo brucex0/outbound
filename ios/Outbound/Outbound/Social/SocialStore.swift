@@ -4,7 +4,7 @@ import Foundation
 
 enum SocialVisibility: String, CaseIterable, Identifiable {
     case squad = "Squad"
-    case clubs = "Clubs"
+    case groups = "Groups"
     case privatePreview = "Private"
 
     var id: String { rawValue }

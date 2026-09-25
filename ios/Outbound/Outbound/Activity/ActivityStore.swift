@@ -620,10 +620,10 @@ final class ActivityStore: ObservableObject {
                 .activitySyncCompleted,
                 properties: syncAnalyticsProperties(for: activity)
             ))
-            if let contributions = response.circleContributions, !contributions.isEmpty {
-                CircleContributionCenter.shared.publish(contributions)
+            if let contributions = response.groupContributions, !contributions.isEmpty {
+                GroupContributionCenter.shared.publish(contributions)
                 for contribution in contributions {
-                    await analyticsManager?.track(.init(.circleActivityContributionReconciled, properties: [
+                    await analyticsManager?.track(.init(.groupActivityContributionReconciled, properties: [
                         .selectionType: .string(contribution.focusMode),
                         .participantCountBucket: .string(ProductAnalyticsBucket.count(contribution.memberCount)),
                         .result: .string(contribution.completed ? "completed" : "contributed")

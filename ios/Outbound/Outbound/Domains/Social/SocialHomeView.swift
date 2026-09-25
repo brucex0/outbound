@@ -8,7 +8,7 @@ struct SocialHomeView: View {
 
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var socialStore: TogetherStore
-    @EnvironmentObject private var circleStore: CircleStore
+    @EnvironmentObject private var groupStore: GroupStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var recognitionStore: RecognitionStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
@@ -62,7 +62,8 @@ struct SocialHomeView: View {
         var badges: [SocialFeatureTab: SocialTabBadge] = [:]
         if socialStore.hasUnseenFeedPosts { badges[.feed] = .dot }
         if incomingConnectionRequestCount > 0 { badges[.people] = .count(incomingConnectionRequestCount) }
-        if !circleStore.invitations.isEmpty { badges[.groups] = .count(circleStore.invitations.count) }
+        let groupAttention = groupStore.invitations.count + groupStore.groups.reduce(0) { $0 + $1.unreadNoticeCount } + socialStore.discoverableGroups.reduce(0) { $0 + ($1.membershipRole == nil && $1.contextLabel == "pending" ? 1 : 0) }
+        if groupAttention > 0 { badges[.groups] = .count(groupAttention) }
         return badges
     }
 
@@ -108,7 +109,7 @@ struct SocialHomeView: View {
                             Label {
                                 Text(String(localized: "social.create.group", defaultValue: "Create Group"))
                             } icon: {
-                                CircleMark()
+                                GroupMark()
                                     .frame(width: 18, height: 18)
                             }
                         }
@@ -138,9 +139,9 @@ struct SocialHomeView: View {
                 async let liveCheers: Void = liveCheerStore.refreshSessions()
                 async let connectionsRefresh: Void = socialStore.refreshConnections()
                 async let notificationsRefresh: Void = socialStore.refreshNotifications()
-                async let circleRefresh: Void = circleStore.refresh()
-                async let circleInvitations: Void = circleStore.refreshInvitations()
-                _ = await (connectionsRefresh, notificationsRefresh, circleRefresh, circleInvitations, liveCheers)
+                async let groupRefresh: Void = groupStore.refresh()
+                async let groupInvitations: Void = groupStore.refreshInvitations()
+                _ = await (connectionsRefresh, notificationsRefresh, groupRefresh, groupInvitations, liveCheers)
             }
             .onChange(of: socialStore.hasLoadedConnections, initial: true) { _, loaded in
                 guard loaded else { return }
@@ -153,15 +154,15 @@ struct SocialHomeView: View {
             .onChange(of: badgeAnalyticsSignature, initial: true) { _, _ in
                 trackNewBadgeExposures()
             }
-            .onChange(of: circleStore.errorMessage) { _, message in
+            .onChange(of: groupStore.errorMessage) { _, message in
                 guard let message else { return }
                 toastMessage = message
-                Task { await analyticsManager?.track(.init(.circleOperationFailed, properties: [.sourceType: .string("social_home"), .errorCategory: .string("api_unavailable")])) }
+                Task { await analyticsManager?.track(.init(.groupOperationFailed, properties: [.sourceType: .string("social_home"), .errorCategory: .string("api_unavailable")])) }
             }
-            .onChange(of: circleStore.toastMessage) { _, message in
+            .onChange(of: groupStore.toastMessage) { _, message in
                 guard let message else { return }
                 toastMessage = message
-                circleStore.clearToast()
+                groupStore.clearToast()
             }
             .onChange(of: socialStore.errorMessage) { _, message in
                 guard message != nil else { return }
@@ -189,7 +190,7 @@ struct SocialHomeView: View {
                 SocialConnectionsView(startsAdding: true)
             }
             .navigationDestination(isPresented: $isGroupCreationPresented) {
-                CircleCreateView()
+                GroupCreateView()
             }
             .modifier(SocialActivityCardNavigation(post: $selectedActivityPost))
             .onChange(of: pushNotifications.pendingNotificationID, initial: true) { _, notificationID in
@@ -886,10 +887,10 @@ struct SocialHomeView: View {
     }
 
     @ViewBuilder
-    private var joinedClubs: some View {
-        if !socialStore.state.clubs.isEmpty {
+    private var joinedGroups: some View {
+        if !socialStore.state.groups.isEmpty {
             Text("YOUR GROUPS").socialSectionLabel()
-            ForEach(socialStore.state.clubs.prefix(3)) { club in
+            ForEach(socialStore.state.groups.prefix(3)) { group in
                 NavigationLink {
                     SocialGroupsView()
                 } label: {
@@ -897,8 +898,8 @@ struct SocialHomeView: View {
                         HStack {
                             Image(systemName: "flag.fill").foregroundStyle(OutboundPalette.companion)
                             VStack(alignment: .leading) {
-                                Text(club.name).font(.headline).foregroundStyle(.primary)
-                                Text([club.city, club.role.map(localizedGroupRole)].compactMap { $0 }.joined(separator: " · "))
+                                Text(group.name).font(.headline).foregroundStyle(.primary)
+                                Text([group.city, group.role.map(localizedGroupRole)].compactMap { $0 }.joined(separator: " · "))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
@@ -1155,7 +1156,7 @@ struct SocialHomeView: View {
         case "directInvitation":
             return String(localized: "From \(run.creator.displayName) · Direct invitation")
         case "group":
-            return String(localized: "From \(run.club?.name ?? run.creator.displayName) · Your group")
+            return String(localized: "From \(run.group?.name ?? run.creator.displayName) · Your group")
         case "connection":
             return String(localized: "From \(run.creator.displayName) · Your connection")
         default:
@@ -1329,9 +1330,10 @@ private struct SocialActivityDiscoveryView: View {
 
 private struct SocialGroupsView: View {
     @EnvironmentObject private var socialStore: TogetherStore
-    @EnvironmentObject private var circleStore: CircleStore
+    @EnvironmentObject private var groupStore: GroupStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     @Environment(\.analyticsManager) private var analyticsManager
+    @State private var groupSearch = ""
     let embedded: Bool
 
     init(embedded: Bool = false) {
@@ -1353,10 +1355,10 @@ private struct SocialGroupsView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                if !circleStore.invitations.isEmpty {
+                if !groupStore.invitations.isEmpty {
                     Text(String(localized: "social.groups.invitations", defaultValue: "Invitations"))
                         .socialSectionLabel()
-                    ForEach(circleStore.invitations) { invitation in
+                    ForEach(groupStore.invitations) { invitation in
                         invitationCard(invitation)
                     }
                 }
@@ -1384,6 +1386,10 @@ private struct SocialGroupsView: View {
 
                 Text(String(localized: "social.groups.discover", defaultValue: "Discover"))
                     .socialSectionLabel()
+
+                TextField(String(localized: "social.groups.search", defaultValue: "Search Groups by name or city"), text: $groupSearch)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { Task { await refresh() } }
 
                 if discoveryGroups.isEmpty {
                     HStack(spacing: 12) {
@@ -1421,7 +1427,7 @@ private struct SocialGroupsView: View {
 
     private var firstGroupCard: some View {
         NavigationLink {
-            CircleCreateView()
+            GroupCreateView()
         } label: {
             OutboundCard {
                 HStack(spacing: 12) {
@@ -1450,9 +1456,9 @@ private struct SocialGroupsView: View {
 
     @ViewBuilder
     private func groupRow(_ group: SocialGroupDTO) -> some View {
-        if group.groupType == "private", let circle = circleStore.circles.first(where: { $0.id == group.id }) {
+        if (group.groupType == "private" || group.trustPolicy == "trusted_private"), let groupDetail = groupStore.groups.first(where: { $0.id == group.id }) {
             NavigationLink {
-                CircleDetailView(circle: circle)
+                GroupDetailView(group: groupDetail)
             } label: {
                 OutboundCard {
                     groupSummary(group, trailing: "chevron.right")
@@ -1463,17 +1469,20 @@ private struct SocialGroupsView: View {
                 Task { await analyticsManager?.track(.init(.groupOpened, properties: [.entrySource: .string("groups"), .selectionType: .string("private"), .participantCountBucket: .string(ProductAnalyticsBucket.count(group.memberCount))])) }
             })
         } else {
-            OutboundCard {
-                VStack(alignment: .leading, spacing: 8) {
-                    groupSummary(group)
-                    if let description = group.description, !description.isEmpty {
-                        Text(description)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
+            NavigationLink { GroupDirectoryDetailView(groupID: group.id) } label: {
+                OutboundCard {
+                    VStack(alignment: .leading, spacing: 8) {
+                        groupSummary(group, trailing: "chevron.right")
+                        if let description = group.description, !description.isEmpty {
+                            Text(description)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
                     }
                 }
             }
+            .buttonStyle(.plain)
         }
     }
 
@@ -1506,23 +1515,23 @@ private struct SocialGroupsView: View {
         }
     }
 
-    private func invitationCard(_ invitation: CircleInvitationDTO) -> some View {
+    private func invitationCard(_ invitation: GroupInvitationDTO) -> some View {
         OutboundCard(style: .companion, contentPadding: 16) {
             VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                 Text(String(localized: "group.invitation.title", defaultValue: "You’re invited to a Group"))
                     .font(.headline)
                 Text(String(
-                    format: String(localized: "circle.invitation.from", defaultValue: "%@ invited you to %@"),
+                    format: String(localized: "group.invitation.from", defaultValue: "%@ invited you to %@"),
                     invitation.sender.displayName,
-                    invitation.circle.name
+                    invitation.group.name
                 ))
                     .font(.subheadline)
                 HStack {
-                    Button(String(localized: "circle.invitation.accept", defaultValue: "Accept")) {
+                    Button(String(localized: "group.invitation.accept", defaultValue: "Accept")) {
                         Task {
-                            if await circleStore.accept(invitation),
-                               let joined = circleStore.circles.first(where: { $0.id == invitation.circleId }) {
-                                await analyticsManager?.track(.init(.circleInvitationAccepted, properties: [
+                            if await groupStore.accept(invitation),
+                               let joined = groupStore.groups.first(where: { $0.id == invitation.groupId }) {
+                                await analyticsManager?.track(.init(.groupInvitationAccepted, properties: [
                                     .entrySource: .string("social"),
                                     .participantCountBucket: .string(ProductAnalyticsBucket.count(joined.memberCount))
                                 ]))
@@ -1530,10 +1539,10 @@ private struct SocialGroupsView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
-                    Button(String(localized: "circle.invitation.decline", defaultValue: "Decline")) {
+                    Button(String(localized: "group.invitation.decline", defaultValue: "Decline")) {
                         Task {
-                            if await circleStore.decline(invitation) {
-                                await analyticsManager?.track(.init(.circleInvitationDeclined, properties: [.entrySource: .string("social")]))
+                            if await groupStore.decline(invitation) {
+                                await analyticsManager?.track(.init(.groupInvitationDeclined, properties: [.entrySource: .string("social")]))
                             }
                         }
                     }
@@ -1544,9 +1553,9 @@ private struct SocialGroupsView: View {
     }
 
     private func refresh() async {
-        async let groups: Void = socialStore.refreshGroups()
-        async let privateGroups: Void = circleStore.refresh()
-        async let invitations: Void = circleStore.refreshInvitations()
+        async let groups: Void = socialStore.refreshGroups(query: groupSearch)
+        async let privateGroups: Void = groupStore.refresh()
+        async let invitations: Void = groupStore.refreshInvitations()
         _ = await (groups, privateGroups, invitations)
     }
 
@@ -1559,8 +1568,8 @@ private struct SocialGroupsView: View {
         if let contextLabel = group.contextLabel, !contextLabel.isEmpty {
             return "\(group.name) · \(contextLabel)"
         }
-        if let circle = circleStore.circles.first(where: { $0.id == group.id }) {
-            return "\(group.name) · \(circle.owner.displayName)"
+        if let matchedGroup = groupStore.groups.first(where: { $0.id == group.id }) {
+            return "\(group.name) · \(matchedGroup.owner.displayName)"
         }
         return group.city.map { "\(group.name) · \($0)" } ?? group.name
     }
@@ -2054,7 +2063,7 @@ private struct ActivityEventContextIndicators: View {
 
     private var indicators: [(label: String, icon: String)] {
         var values: [(label: String, icon: String)] = []
-        if event.club != nil || event.source?.kind == "group" {
+        if event.group != nil || event.source?.kind == "group" {
             values.append((String(localized: "Group run", defaultValue: "Group run"), "person.3.fill"))
         } else if let companionLabel {
             values.append((companionLabel, "person.2.fill"))
@@ -2142,7 +2151,7 @@ struct SocialNotificationsView: View {
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
-    @EnvironmentObject private var circleStore: CircleStore
+    @EnvironmentObject private var groupStore: GroupStore
     @EnvironmentObject private var healthImportStore: HealthImportStore
     @State private var selectedNotification: SocialNotificationDTO?
 
@@ -2283,7 +2292,7 @@ struct SocialNotificationsView: View {
             HStack(alignment: .top, spacing: OutboundSpacing.compact) {
                 SocialAvatar(name: item.primary.actor?.displayName ?? "Plainstride", avatarURL: item.primary.actor?.avatarUrl)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(localizedCircleNotificationMessage(item.primary))
+                    Text(localizedGroupNotificationMessage(item.primary))
                         .font(item.hasUnread ? .body.weight(.semibold) : .body)
                         .foregroundStyle(.primary)
                     if item.additionalCount > 0 {
@@ -2342,12 +2351,12 @@ struct SocialNotificationsView: View {
             } else {
                 SocialNotificationDetailView(notification: notification)
             }
-        case .circleInvitation:
-            CircleNotificationInvitationView(notification: notification)
-        case .circle:
-            if let circleID = notification.objectId,
-               let circle = circleStore.circles.first(where: { $0.id == circleID }) {
-                CircleDetailView(circle: circle)
+        case .groupInvitation:
+            GroupNotificationInvitationView(notification: notification)
+        case .group:
+            if let groupID = notification.objectId,
+               let group = groupStore.groups.first(where: { $0.id == groupID }) {
+                GroupDetailView(group: group)
             } else {
                 SocialNotificationDetailView(notification: notification)
             }
@@ -2363,40 +2372,40 @@ struct SocialNotificationsView: View {
         case .post: return String(localized: "Opens the activity")
         case .runInvitation: return String(localized: "Opens the invitation")
         case .activityEvent: return String(localized: "Opens the group run")
-        case .circleInvitation: return String(localized: "group.notification.open_invitation", defaultValue: "Opens the Group invitation")
-        case .circle: return String(localized: "group.notification.open", defaultValue: "Opens the Group")
+        case .groupInvitation: return String(localized: "group.notification.open_invitation", defaultValue: "Opens the Group invitation")
+        case .group: return String(localized: "group.notification.open", defaultValue: "Opens the Group")
         case .generic: return String(localized: "Opens notification details")
         }
     }
 }
 
-private struct CircleNotificationInvitationView: View {
-    @EnvironmentObject private var circleStore: CircleStore
+private struct GroupNotificationInvitationView: View {
+    @EnvironmentObject private var groupStore: GroupStore
     @Environment(\.analyticsManager) private var analyticsManager
     @Environment(\.dismiss) private var dismiss
     let notification: SocialNotificationDTO
 
-    private var invitation: CircleInvitationDTO? { circleStore.invitations.first { $0.id == notification.objectId } }
+    private var invitation: GroupInvitationDTO? { groupStore.invitations.first { $0.id == notification.objectId } }
 
     var body: some View {
         List {
             Label {
-                Text(localizedCircleNotificationMessage(notification))
+                Text(localizedGroupNotificationMessage(notification))
             } icon: {
-                CircleMark()
+                GroupMark()
                     .frame(width: 18, height: 18)
             }
             if let invitation {
-                Button(String(localized: "circle.invitation.accept", defaultValue: "Accept")) {
+                Button(String(localized: "group.invitation.accept", defaultValue: "Accept")) {
                     Task {
-                        if await circleStore.accept(invitation),
-                           let joined = circleStore.circles.first(where: { $0.id == invitation.circleId }) {
-                            await analyticsManager?.track(.init(.circleInvitationAccepted, properties: [
+                        if await groupStore.accept(invitation),
+                           let joined = groupStore.groups.first(where: { $0.id == invitation.groupId }) {
+                            await analyticsManager?.track(.init(.groupInvitationAccepted, properties: [
                                 .entrySource: .string("notification_inbox"),
                                 .participantCountBucket: .string(ProductAnalyticsBucket.count(joined.memberCount))
                             ]))
                             if joined.lifecycle == "active" {
-                                await analyticsManager?.track(.init(.circleActivated, properties: [
+                                await analyticsManager?.track(.init(.groupActivated, properties: [
                                     .participantCountBucket: .string(ProductAnalyticsBucket.count(joined.memberCount))
                                 ]))
                             }
@@ -2404,14 +2413,14 @@ private struct CircleNotificationInvitationView: View {
                         }
                     }
                 }
-                Button(String(localized: "circle.invitation.decline", defaultValue: "Decline"), role: .destructive) { Task { if await circleStore.decline(invitation) { dismiss() } } }
+                Button(String(localized: "group.invitation.decline", defaultValue: "Decline"), role: .destructive) { Task { if await groupStore.decline(invitation) { dismiss() } } }
             } else {
-                Text(String(localized: "circle.invitation.handled", defaultValue: "This invitation is no longer available."))
+                Text(String(localized: "group.invitation.handled", defaultValue: "This invitation is no longer available."))
                     .foregroundStyle(.secondary)
             }
         }
         .navigationTitle(String(localized: "group.invitation.navigation", defaultValue: "Group invitation"))
-        .task { await circleStore.refreshInvitations() }
+        .task { await groupStore.refreshInvitations() }
     }
 }
 
@@ -2541,7 +2550,7 @@ private struct SocialNotificationDetailView: View {
 
     var body: some View {
         List {
-            Label(localizedCircleNotificationMessage(notification), systemImage: "bell")
+            Label(localizedGroupNotificationMessage(notification), systemImage: "bell")
             LabeledContent("Received", value: notification.createdAt.formatted(date: .abbreviated, time: .shortened))
         }
         .navigationTitle("Notification")
@@ -4160,18 +4169,18 @@ extension Text {
     }
 }
 
-private func localizedCircleNotificationMessage(_ notification: SocialNotificationDTO) -> String {
-    let actorName = notification.actor?.displayName ?? String(localized: "circle.notification.someone", defaultValue: "Someone")
+private func localizedGroupNotificationMessage(_ notification: SocialNotificationDTO) -> String {
+    let actorName = notification.actor?.displayName ?? String(localized: "group.notification.someone", defaultValue: "Someone")
     switch notification.type {
-    case "circleInvitation":
+    case "groupInvitation":
         return String(format: String(localized: "group.notification.invitation", defaultValue: "%@ invited you to a Group."), actorName)
-    case "circleInvitationAccepted":
+    case "groupInvitationAccepted":
         return String(format: String(localized: "group.notification.accepted", defaultValue: "%@ joined your Group."), actorName)
-    case "circleCheer":
-        return String(format: String(localized: "circle.notification.cheer", defaultValue: "%@ sent you a Cheer."), actorName)
-    case "circleWeeklyGoalCompleted":
+    case "groupCheer":
+        return String(format: String(localized: "group.notification.cheer", defaultValue: "%@ sent you a Cheer."), actorName)
+    case "groupWeeklyGoalCompleted":
         return String(localized: "group.notification.weekly_complete", defaultValue: "Your Group completed this week’s theme.")
-    case "circleOwnershipTransferred":
+    case "groupOwnershipTransferred":
         return String(format: String(localized: "group.notification.ownership", defaultValue: "%@ made you the Group owner."), actorName)
     default:
         return notification.message

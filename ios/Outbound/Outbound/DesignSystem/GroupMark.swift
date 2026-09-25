@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Plainstride's visual shorthand for an invitation-only inner circle.
+/// Plainstride's visual shorthand for a Group.
 /// The enclosing ring communicates privacy; the two figures leaning together
 /// communicate closeness without reusing a generic contacts symbol.
-struct CircleMark: View {
+struct GroupMark: View {
     var body: some View {
         Canvas { context, size in
             let designSize = CGSize(width: 19, height: 19)
@@ -52,9 +52,9 @@ struct CircleMark: View {
 
 #Preview {
     HStack(spacing: 20) {
-        CircleMark()
+        GroupMark()
             .frame(width: 18, height: 18)
-        CircleMark()
+        GroupMark()
             .frame(width: 32, height: 32)
     }
     .foregroundStyle(.indigo)

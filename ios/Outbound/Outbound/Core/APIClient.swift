@@ -435,93 +435,112 @@ final class APIClient {
         )
     }
 
-    func fetchCircles() async throws -> CircleListResponseDTO {
-        try await get("/groups")
+    func fetchGroups() async throws -> GroupListResponseDTO {
+        try await get("/social/groups", queryItems: [URLQueryItem(name: "scope", value: "mine")])
     }
 
-    func fetchCircle(id: String) async throws -> CircleDTO {
+    func fetchGroup(id: String) async throws -> GroupDTO {
         try await get("/social/groups/\(id)")
     }
 
-    func createCircle(_ request: CircleCreateRequestDTO) async throws -> CircleDTO {
+    func createGroup(_ request: GroupCreateRequestDTO) async throws -> GroupDTO {
         try await post("/social/groups", body: request)
     }
 
-    func inviteToCircle(id: String, request: CircleInviteRequestDTO) async throws -> CircleDTO {
-        let response: CircleInvitationMutationResponseDTO = try await post("/social/groups/\(id)/invitations", body: request)
-        return response.circle
+    func inviteToGroup(id: String, request: GroupInviteRequestDTO) async throws -> GroupDTO {
+        let response: GroupInvitationMutationResponseDTO = try await post("/social/groups/\(id)/invitations", body: request)
+        return response.group
     }
 
-    func fetchCircleInvitations() async throws -> CircleInvitationListResponseDTO {
+    func fetchGroupInvitations() async throws -> GroupInvitationListResponseDTO {
         try await get("/social/groups/invitations/inbox")
     }
 
-    func acceptCircleInvitation(id: String) async throws -> CircleDTO {
+    func acceptGroupInvitation(id: String) async throws -> GroupDTO {
         try await post("/social/groups/invitations/\(id)/accept", body: EmptyBody())
     }
 
-    func declineCircleInvitation(id: String) async throws -> CircleConnectionMutationDTO {
+    func declineGroupInvitation(id: String) async throws -> GroupConnectionMutationDTO {
         try await post("/social/groups/invitations/\(id)/decline", body: EmptyBody())
     }
 
-    func updateCircleName(id: String, name: String) async throws -> CircleDTO {
+    func updateGroupName(id: String, name: String) async throws -> GroupDTO {
         try await patch("/social/groups/\(id)", body: ["name": name])
     }
 
-    func updateCircleFocus(id: String, request: CircleFocusRequestDTO) async throws -> CircleDTO {
+    func createGroupNotice(id: String, request: GroupNoticeRequestDTO) async throws -> GroupDTO {
+        let response: GroupNoticeMutationResponseDTO = try await post("/social/groups/\(id)/notices", body: request)
+        return response.group
+    }
+
+    func markGroupNoticesRead(id: String) async throws -> GroupDTO {
+        let response: GroupNoticeReadResponseDTO = try await post("/social/groups/\(id)/notices/read", body: EmptyBody())
+        return response.group
+    }
+
+    func createGroupInviteLink(id: String) async throws -> GroupInviteLinkDTO {
+        try await post("/social/groups/\(id)/invite-links", body: EmptyBody())
+    }
+
+    func consumeGroupInvite(token: String) async throws -> GroupDTO {
+        let response: GroupInviteConsumeResponseDTO = try await post("/invite/group/\(token)/consume", body: EmptyBody())
+        return response.group
+    }
+
+    func updateGroupFocus(id: String, request: GroupFocusRequestDTO) async throws -> GroupDTO {
         try await post("/social/groups/\(id)/focus", body: request)
     }
 
-    func updateCircleCommitment(id: String, request: CircleCommitmentRequestDTO) async throws -> CircleDTO {
+    func updateGroupCommitment(id: String, request: GroupCommitmentRequestDTO) async throws -> GroupDTO {
         try await put("/social/groups/\(id)/commitment", body: request)
     }
 
-    func sendCircleCheer(id: String, request: CircleCheerRequestDTO) async throws -> CircleCheerResponseDTO {
+    func sendGroupCheer(id: String, request: GroupCheerRequestDTO) async throws -> GroupCheerResponseDTO {
         try await post("/social/groups/\(id)/cheers", body: request)
     }
 
-    func cancelCircleInvitation(circleID: String, invitationID: String) async throws -> CircleInvitationCancellationResponseDTO {
-        try await post("/social/groups/\(circleID)/invitations/\(invitationID)/cancel", body: EmptyBody())
+    func cancelGroupInvitation(groupID: String, invitationID: String) async throws -> GroupInvitationCancellationResponseDTO {
+        try await post("/social/groups/\(groupID)/invitations/\(invitationID)/cancel", body: EmptyBody())
     }
 
-    func updateCircleCalendar(id: String, request: CircleCalendarRequestDTO) async throws -> CircleDTO {
+    func updateGroupCalendar(id: String, request: GroupCalendarRequestDTO) async throws -> GroupDTO {
         try await put("/social/groups/\(id)/calendar", body: request)
     }
 
-    func removeCircleCheer(id: String, cheerID: String) async throws -> CircleCheerResponseDTO {
+    func removeGroupCheer(id: String, cheerID: String) async throws -> GroupCheerResponseDTO {
         try await delete("/social/groups/\(id)/cheers/\(cheerID)")
     }
 
-    func selectPrimaryCircle(id: String) async throws -> CirclePrimaryResponseDTO {
-        try await put("/social/groups/\(id)/primary", body: EmptyBody())
+    func setGroupNotifications(id: String, muted: Bool) async throws -> GroupDTO {
+        try await put("/social/groups/\(id)/notifications", body: GroupMuteRequestDTO(muted: muted))
     }
 
-    func setCircleNotifications(id: String, muted: Bool) async throws -> CircleDTO {
-        try await put("/social/groups/\(id)/notifications", body: CircleMuteRequestDTO(muted: muted))
-    }
-
-    func leaveCircle(id: String) async throws -> CircleMutationResponseDTO {
+    func leaveGroup(id: String) async throws -> GroupMutationResponseDTO {
         try await post("/social/groups/\(id)/leave", body: EmptyBody())
     }
 
-    func removeCircleMember(id: String, memberUserID: String) async throws -> CircleDTO {
+    func removeGroupMember(id: String, memberUserID: String) async throws -> GroupDTO {
         try await delete("/social/groups/\(id)/members/\(memberUserID)")
     }
 
-    func transferCircleOwnership(id: String, recipientUserID: String) async throws -> CircleDTO {
-        try await post("/social/groups/\(id)/transfer", body: CircleTransferRequestDTO(recipientUserId: recipientUserID))
+    func updateGroupMemberRole(id: String, memberUserID: String, role: String) async throws -> GroupDTO {
+        try await patch("/social/groups/\(id)/members/\(memberUserID)/role", body: ["role": role])
     }
 
-    func archiveCircle(id: String) async throws -> CircleDTO {
+    func transferGroupOwnership(id: String, recipientUserID: String) async throws -> GroupDTO {
+        try await post("/social/groups/\(id)/transfer", body: GroupTransferRequestDTO(recipientUserId: recipientUserID))
+    }
+
+    func archiveGroup(id: String) async throws -> GroupDTO {
         try await post("/social/groups/\(id)/archive", body: EmptyBody())
     }
 
-    func reactivateCircle(id: String) async throws -> CircleDTO {
+    func reactivateGroup(id: String) async throws -> GroupDTO {
         try await post("/social/groups/\(id)/reactivate", body: EmptyBody())
     }
 
-    func presentCircleWeek(circleID: String, weekID: String) async throws -> CirclePresentationResponseDTO {
-        try await post("/social/groups/\(circleID)/weeks/\(weekID)/presentation", body: EmptyBody())
+    func presentGroupWeek(groupID: String, weekID: String) async throws -> GroupPresentationResponseDTO {
+        try await post("/social/groups/\(groupID)/weeks/\(weekID)/presentation", body: EmptyBody())
     }
 
     func fetchTogether(feedCursor: String? = nil) async throws -> TogetherResponseDTO {
@@ -707,16 +726,21 @@ final class APIClient {
         try await delete("/notifications/devices/\(token.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? token)")
     }
 
-    func fetchSocialGroups() async throws -> SocialGroupsResponseDTO {
-        try await get("/social/groups")
+    func fetchSocialGroups(scope: String = "mine", query: String? = nil, city: String? = nil, cursor: String? = nil) async throws -> SocialGroupsResponseDTO {
+        try await get("/social/groups", queryItems: [
+            URLQueryItem(name: "scope", value: scope),
+            URLQueryItem(name: "query", value: query?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? query?.trimmingCharacters(in: .whitespacesAndNewlines) : nil),
+            URLQueryItem(name: "city", value: city?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? city?.trimmingCharacters(in: .whitespacesAndNewlines) : nil),
+            URLQueryItem(name: "cursor", value: cursor),
+        ])
     }
 
     func joinSocialGroup(id: String) async throws -> SocialConnectionMutationDTO {
-        try await post("/social/groups/\(id)/membership", body: EmptyBody())
+        try await post("/social/groups/\(id)/join-requests", body: EmptyBody())
     }
 
     func leaveSocialGroup(id: String) async throws -> SocialConnectionMutationDTO {
-        try await delete("/social/groups/\(id)/membership")
+        try await post("/social/groups/\(id)/leave", body: EmptyBody())
     }
 
     func fetchActivityEvent(id: String) async throws -> ActivityEventDetailDTO {
@@ -2278,7 +2302,7 @@ struct ActivityUploadResponse: Decodable {
     let status: String
     let uploadedAt: Date
     let serverUpdatedAt: Date
-    let circleContributions: [CircleContributionDTO]?
+    let groupContributions: [GroupContributionDTO]?
 }
 
 struct TerrainElevationCorrectionRequest: Encodable {

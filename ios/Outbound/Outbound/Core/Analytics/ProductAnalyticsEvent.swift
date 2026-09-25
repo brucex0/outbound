@@ -87,38 +87,36 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case profileQRCodeOpened = "profile_qr_code_opened"
     case connectionQRCodeRequestResult = "connection_qr_code_request_result"
     case socialOperationFailed = "social_operation_failed"
-    case circleSectionExposed = "circle_section_exposed"
     case groupSectionExposed = "group_section_exposed"
     case groupOpened = "group_opened"
     case groupMembershipChanged = "group_membership_changed"
-    case circleCreationStarted = "circle_creation_started"
-    case circleCreationCompleted = "circle_creation_completed"
-    case circleCreationFailed = "circle_creation_failed"
-    case circleInvitationSent = "circle_invitation_sent"
-    case circleInvitationAccepted = "circle_invitation_accepted"
-    case circleInvitationDeclined = "circle_invitation_declined"
-    case circleInvitationCancelled = "circle_invitation_cancelled"
-    case circleActivated = "circle_activated"
-    case circleFocusChanged = "circle_focus_changed"
-    case circleThemeChanged = "circle_theme_changed"
-    case circleTargetChanged = "circle_target_changed"
-    case circleProgressOpened = "circle_progress_opened"
-    case circleCheerSent = "circle_cheer_sent"
-    case circleCheerRemoved = "circle_cheer_removed"
-    case circlePlanActivityStarted = "circle_plan_activity_started"
-    case circlePlanActivityCompleted = "circle_plan_activity_completed"
-    case circleActivityContributionReconciled = "circle_activity_contribution_reconciled"
-    case circleWeeklyFocusCompleted = "circle_weekly_focus_completed"
-    case circlePrimaryChanged = "circle_primary_changed"
-    case circleNotificationsChanged = "circle_notifications_changed"
-    case circleNameChanged = "circle_name_changed"
-    case circleCalendarChanged = "circle_calendar_changed"
-    case circleOwnershipTransferred = "circle_ownership_transferred"
-    case circleMemberLeft = "circle_member_left"
-    case circleMemberRemoved = "circle_member_removed"
-    case circleArchived = "circle_archived"
-    case circleReactivated = "circle_reactivated"
-    case circleOperationFailed = "circle_operation_failed"
+    case groupCreationStarted = "group_creation_started"
+    case groupCreationCompleted = "group_creation_completed"
+    case groupCreationFailed = "group_creation_failed"
+    case groupInvitationSent = "group_invitation_sent"
+    case groupInvitationAccepted = "group_invitation_accepted"
+    case groupInvitationDeclined = "group_invitation_declined"
+    case groupInvitationCancelled = "group_invitation_cancelled"
+    case groupActivated = "group_activated"
+    case groupFocusChanged = "group_focus_changed"
+    case groupThemeChanged = "group_theme_changed"
+    case groupTargetChanged = "group_target_changed"
+    case groupProgressOpened = "group_progress_opened"
+    case groupCheerSent = "group_cheer_sent"
+    case groupCheerRemoved = "group_cheer_removed"
+    case groupPlanActivityStarted = "group_plan_activity_started"
+    case groupPlanActivityCompleted = "group_plan_activity_completed"
+    case groupActivityContributionReconciled = "group_activity_contribution_reconciled"
+    case groupWeeklyFocusCompleted = "group_weekly_focus_completed"
+    case groupNotificationsChanged = "group_notifications_changed"
+    case groupNameChanged = "group_name_changed"
+    case groupCalendarChanged = "group_calendar_changed"
+    case groupOwnershipTransferred = "group_ownership_transferred"
+    case groupMemberLeft = "group_member_left"
+    case groupMemberRemoved = "group_member_removed"
+    case groupArchived = "group_archived"
+    case groupReactivated = "group_reactivated"
+    case groupOperationFailed = "group_operation_failed"
     case activityEventDetailOpened = "activity_event_detail_opened"
     case activityEventLocationSelected = "activity_event_location_selected"
     case goalProgressReached = "goal_progress_reached"
@@ -399,38 +397,37 @@ enum ProductAnalyticsSchema {
         .subscriptionPaywallOpened: [.entrySource],
         .subscriptionCustomerCenterOpened: [.entrySource],
         .subscriptionReconciled: [.sourceType, .result],
-        .circleSectionExposed: [.entrySource, .participantCountBucket],
+        .groupSectionExposed: [.entrySource, .participantCountBucket],
         .groupSectionExposed: [.entrySource, .participantCountBucket],
         .groupOpened: [.entrySource, .selectionType, .participantCountBucket],
         .groupMembershipChanged: [.entrySource, .selectionType, .result, .participantCountBucket],
-        .circleCreationStarted: [.entrySource],
-        .circleCreationCompleted: [.entrySource, .participantCountBucket],
-        .circleCreationFailed: [.entrySource, .errorCategory],
-        .circleInvitationSent: [.entrySource, .participantCountBucket, .result],
-        .circleInvitationAccepted: [.entrySource, .participantCountBucket],
-        .circleInvitationDeclined: [.entrySource],
-        .circleInvitationCancelled: [.entrySource],
-        .circleActivated: [.participantCountBucket],
-        .circleFocusChanged: [.selectionType, .sourceType],
-        .circleThemeChanged: [.selectionType, .sourceType],
-        .circleTargetChanged: [.selectionType, .targetBucket, .sourceType],
-        .circleProgressOpened: [.entrySource, .selectionType, .participantCountBucket],
-        .circleCheerSent: [.selectionType],
-        .circleCheerRemoved: [.selectionType],
-        .circlePlanActivityStarted: [.entrySource, .participantCountBucket],
-        .circlePlanActivityCompleted: [.participantCountBucket, .result],
-        .circleActivityContributionReconciled: [.selectionType, .participantCountBucket, .result],
-        .circleWeeklyFocusCompleted: [.selectionType, .participantCountBucket],
-        .circlePrimaryChanged: [.entrySource],
-        .circleNotificationsChanged: [.selectionType],
-        .circleNameChanged: [],
-        .circleCalendarChanged: [.sourceType],
-        .circleOwnershipTransferred: [.participantCountBucket],
-        .circleMemberLeft: [.participantCountBucket],
-        .circleMemberRemoved: [.participantCountBucket],
-        .circleArchived: [.participantCountBucket],
-        .circleReactivated: [.participantCountBucket],
-        .circleOperationFailed: [.sourceType, .errorCategory],
+        .groupCreationStarted: [.entrySource],
+        .groupCreationCompleted: [.entrySource, .participantCountBucket],
+        .groupCreationFailed: [.entrySource, .errorCategory],
+        .groupInvitationSent: [.entrySource, .participantCountBucket, .result],
+        .groupInvitationAccepted: [.entrySource, .participantCountBucket],
+        .groupInvitationDeclined: [.entrySource],
+        .groupInvitationCancelled: [.entrySource],
+        .groupActivated: [.participantCountBucket],
+        .groupFocusChanged: [.selectionType, .sourceType],
+        .groupThemeChanged: [.selectionType, .sourceType],
+        .groupTargetChanged: [.selectionType, .targetBucket, .sourceType],
+        .groupProgressOpened: [.entrySource, .selectionType, .participantCountBucket],
+        .groupCheerSent: [.selectionType],
+        .groupCheerRemoved: [.selectionType],
+        .groupPlanActivityStarted: [.entrySource, .participantCountBucket],
+        .groupPlanActivityCompleted: [.participantCountBucket, .result],
+        .groupActivityContributionReconciled: [.selectionType, .participantCountBucket, .result],
+        .groupWeeklyFocusCompleted: [.selectionType, .participantCountBucket],
+        .groupNotificationsChanged: [.selectionType],
+        .groupNameChanged: [],
+        .groupCalendarChanged: [.sourceType],
+        .groupOwnershipTransferred: [.participantCountBucket],
+        .groupMemberLeft: [.participantCountBucket],
+        .groupMemberRemoved: [.participantCountBucket],
+        .groupArchived: [.participantCountBucket],
+        .groupReactivated: [.participantCountBucket],
+        .groupOperationFailed: [.sourceType, .errorCategory],
         .activityEventDetailOpened: [.entrySource],
         .activityEventLocationSelected: [.sourceType],
         .goalProgressReached: [.activityType, .goalType, .progressPercent],

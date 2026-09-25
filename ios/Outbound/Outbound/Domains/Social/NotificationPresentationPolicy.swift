@@ -38,8 +38,8 @@ enum NotificationCenterDestination: Sendable, Equatable {
     case post
     case runInvitation
     case activityEvent
-    case circleInvitation
-    case circle
+    case groupInvitation
+    case group
     case liveCheer
     case generic
 }
@@ -87,8 +87,10 @@ enum NotificationPresentationPolicy {
             actionable(.connections)
         case "runInvitation":
             actionable(.runInvitation)
-        case "circleInvitation":
-            actionable(.circleInvitation)
+        case "groupInvitation":
+            actionable(.groupInvitation)
+        case "groupJoinRequest":
+            actionable(.group)
         case "groupRunInvitation":
             actionable(.generic)
 
@@ -98,8 +100,8 @@ enum NotificationPresentationPolicy {
             update(.post)
         case "invitationAccepted", "activityEventJoined":
             update(.activityEvent)
-        case "circleInvitationAccepted", "circleOwnershipTransferred":
-            update(.circle)
+        case "groupInvitationAccepted", "groupOwnershipTransferred", "groupJoinRequestApproved", "groupJoinRequestDenied":
+            update(.group)
         case "activity", "groupRunStarted", "groupRunUpdated":
             update(.generic)
         case "liveShare", "liveShareStarted", "liveShareUpdated":
@@ -107,10 +109,10 @@ enum NotificationPresentationPolicy {
 
         case "cheer":
             support(.post, aggregationKey: nonempty(objectID).map { "cheer:\($0)" })
-        case "circleCheer":
-            support(.circle, aggregationKey: nonempty(objectID).map { "circleCheer:\($0)" })
-        case "circleWeeklyGoalCompleted":
-            support(.circle)
+        case "groupCheer":
+            support(.group, aggregationKey: nonempty(objectID).map { "groupCheer:\($0)" })
+        case "groupWeeklyGoalCompleted":
+            support(.group)
 
         default:
             update(.generic)

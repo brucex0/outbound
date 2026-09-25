@@ -3,7 +3,7 @@ import SwiftUI
 
 enum SocialFeedScope: String, CaseIterable, Identifiable {
     case squad = "Squad"
-    case clubs = "Clubs"
+    case groups = "Groups"
     case rivals = "Rivals"
 
     var id: String { rawValue }
@@ -80,7 +80,7 @@ enum SocialPostKind {
     }
 }
 
-struct SocialClub: Identifiable {
+struct SocialGroup: Identifiable {
     let id: String
     let name: String
     let subtitle: String

@@ -242,7 +242,7 @@ final class TogetherStore: ObservableObject {
             state = TogetherResponseDTO(
                 upcomingRuns: state.upcomingRuns,
                 pastEvents: state.pastEvents,
-                clubs: state.clubs,
+                groups: state.groups,
                 posts: state.posts + appendedPosts,
                 nextFeedCursor: page.nextFeedCursor
             )
@@ -832,7 +832,7 @@ final class TogetherStore: ObservableObject {
     }
 
     private static var emptyState: TogetherResponseDTO {
-        TogetherResponseDTO(upcomingRuns: [], clubs: [], posts: [])
+        TogetherResponseDTO(upcomingRuns: [], groups: [], posts: [])
     }
 
     private var isUITestSeedData: Bool {
@@ -844,9 +844,9 @@ final class TogetherStore: ObservableObject {
     }
 
     private static var uiTestFixture: TogetherResponseDTO {
-        let club = TogetherClubDTO(
-            id: "ui-test-club",
-            name: "Golden Gate Run Club",
+        let group = TogetherGroupDTO(
+            id: "ui-test-group",
+            name: "Golden Gate Community",
             description: "Friendly local miles for every pace.",
             city: "San Francisco",
             role: "member"
@@ -860,13 +860,13 @@ final class TogetherStore: ObservableObject {
                     startsAt: Date().addingTimeInterval(86_400),
                     locationName: "Crissy Field",
                     paceNote: "Conversational pace",
-                    club: club,
+                    group: group,
                     creator: maya,
                     groups: [TogetherRunGroupDTO(id: "ui-test-social", label: "Social", distanceMeters: 5_000, paceMinSeconds: 330, paceMaxSeconds: 390)],
                     compatibility: TogetherCompatibilityDTO(groupId: "ui-test-social", explanation: "This easy group matches your current training week.")
                 ),
             ],
-            clubs: [club],
+            groups: [group],
             posts: [
                 TogetherPostDTO(
                     id: "ui-test-post",
@@ -958,7 +958,7 @@ final class TogetherStore: ObservableObject {
     func reportPost(_ post: TogetherPostDTO, reason: String) async {
         do {
             _ = try await api.reportSocialContent(SocialReportRequestDTO(targetType: "post", targetId: post.id, reason: reason, details: nil))
-            state = TogetherResponseDTO(upcomingRuns: state.upcomingRuns, pastEvents: state.pastEvents, clubs: state.clubs, posts: state.posts.filter { $0.id != post.id }, nextFeedCursor: state.nextFeedCursor)
+            state = TogetherResponseDTO(upcomingRuns: state.upcomingRuns, pastEvents: state.pastEvents, groups: state.groups, posts: state.posts.filter { $0.id != post.id }, nextFeedCursor: state.nextFeedCursor)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -975,7 +975,7 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func refreshGroups() async {
+    func refreshGroups(query: String? = nil, city: String? = nil) async {
         guard isUITestSeedData || activeUserID != nil else { return }
         let generation = authGeneration
         if isUITestSeedData {
@@ -983,7 +983,13 @@ final class TogetherStore: ObservableObject {
             return
         }
         do {
-            let refreshedGroups = try await withTransientNetworkRetry { try await self.api.fetchSocialGroups() }.groups
+            async let mine = withTransientNetworkRetry { try await self.api.fetchSocialGroups(scope: "mine") }
+            async let discover = withTransientNetworkRetry { try await self.api.fetchSocialGroups(scope: "discover", query: query, city: city) }
+            let mineGroups = try await mine
+            let discoverGroups = try await discover
+            let refreshedGroups = (mineGroups.groups + discoverGroups.groups).reduce(into: [SocialGroupDTO]()) { result, group in
+                if !result.contains(where: { $0.id == group.id }) { result.append(group) }
+            }
             guard generation == authGeneration, activeUserID != nil else { return }
             discoverableGroups = refreshedGroups
             errorMessage = nil
@@ -1167,7 +1173,7 @@ final class TogetherStore: ObservableObject {
                 comments: current.comments
             )
         }
-        return TogetherResponseDTO(upcomingRuns: state.upcomingRuns, pastEvents: state.pastEvents, clubs: state.clubs, posts: posts, nextFeedCursor: state.nextFeedCursor)
+        return TogetherResponseDTO(upcomingRuns: state.upcomingRuns, pastEvents: state.pastEvents, groups: state.groups, posts: posts, nextFeedCursor: state.nextFeedCursor)
     }
 
     private func replacing(post: TogetherPostDTO, commentCountDelta: Int) -> TogetherResponseDTO {
@@ -1187,7 +1193,7 @@ final class TogetherStore: ObservableObject {
                 comments: current.comments
             )
         }
-        return TogetherResponseDTO(upcomingRuns: state.upcomingRuns, pastEvents: state.pastEvents, clubs: state.clubs, posts: posts, nextFeedCursor: state.nextFeedCursor)
+        return TogetherResponseDTO(upcomingRuns: state.upcomingRuns, pastEvents: state.pastEvents, groups: state.groups, posts: posts, nextFeedCursor: state.nextFeedCursor)
     }
 
     private func replaceConnection(_ connection: SocialConnectionDTO, status: String, direction: String) {
@@ -1222,7 +1228,7 @@ final class TogetherStore: ObservableObject {
     ]
 
     private static let uiTestGroups = [
-        SocialGroupDTO(id: "ui-test-club", name: "Golden Gate Run Club", description: "Friendly local miles for every pace.", city: "San Francisco", memberCount: 128, membershipRole: "member"),
+        SocialGroupDTO(id: "ui-test-group", name: "Golden Gate Community", description: "Friendly local miles for every pace.", city: "San Francisco", memberCount: 128, membershipRole: "member"),
         SocialGroupDTO(id: "ui-sunset-group", name: "Sunset Striders", description: "Easy evening runs by the ocean.", city: "San Francisco", memberCount: 42, membershipRole: nil),
     ]
 
@@ -1237,7 +1243,7 @@ final class TogetherStore: ObservableObject {
     ]
 
     private static func uiTestRunDetail(run: ActivityEventDTO, isGoing: Bool) -> ActivityEventDetailDTO {
-        ActivityEventDetailDTO(id: run.id, title: run.title, startsAt: run.startsAt, locationName: run.locationName, paceNote: run.paceNote, club: run.club, creator: run.creator, groups: run.groups, attendeeCount: isGoing ? 19 : 18, currentUserGoing: isGoing, compatibility: run.compatibility)
+        ActivityEventDetailDTO(id: run.id, title: run.title, startsAt: run.startsAt, locationName: run.locationName, paceNote: run.paceNote, group: run.group, creator: run.creator, groups: run.groups, attendeeCount: isGoing ? 19 : 18, currentUserGoing: isGoing, compatibility: run.compatibility)
     }
 
     private static func uiTestComment(body: String) -> TogetherCommentDTO {

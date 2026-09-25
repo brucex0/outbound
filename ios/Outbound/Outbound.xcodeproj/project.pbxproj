@@ -839,7 +839,7 @@
 				DEVELOPMENT_TEAM = WT54K7D7VH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = SupportFiles/PlainstrideWatch-Info.plist;
+				INFOPLIST_FILE = "SupportFiles/PlainstrideWatch-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -871,7 +871,7 @@
 				DEVELOPMENT_TEAM = WT54K7D7VH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = SupportFiles/PlainstrideWatch-Info.plist;
+				INFOPLIST_FILE = "SupportFiles/PlainstrideWatch-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

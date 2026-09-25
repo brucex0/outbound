@@ -27,12 +27,14 @@ enum PlainstrideLinks {
            components[1] == "group" {
             return components[2]
         }
-        if components.count == 3,
-           components[0] == "invite",
-           components[1] == "group" {
-            return components[2]
-        }
         return nil
+    }
+
+    static func groupInviteToken(from url: URL) -> String? {
+        guard url.scheme == "https", url.host == webOrigin.host else { return nil }
+        let components = url.pathComponents.filter { $0 != "/" }
+        guard components.count == 3, components[0] == "invite", components[1] == "group" else { return nil }
+        return components[2].isEmpty ? nil : components[2]
     }
 
     static func activityEventToken(from url: URL) -> String? {

@@ -222,7 +222,7 @@ private struct WelcomeOrbit: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Your AI running companion brings your training together with family, friends, and clubs.")
+        .accessibilityLabel("Your AI running companion brings your training together with family, friends, and Groups.")
     }
 
     private func orbitPerson(

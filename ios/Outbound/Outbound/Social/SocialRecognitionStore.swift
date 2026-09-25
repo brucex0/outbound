@@ -37,7 +37,7 @@ final class SocialRecognitionStore: ObservableObject {
     @Published private(set) var awards: [SocialRecognitionAward]
     @Published private var supportEvents: [SocialSupportEvent]
     @Published private(set) var sharedActivityIDs: Set<UUID>
-    @Published private(set) var joinedClubIDs: Set<String>
+    @Published private(set) var joinedGroupIDs: Set<String>
     @Published private(set) var claimedRivalEdge = false
 
     private let api: APIClient
@@ -46,7 +46,7 @@ final class SocialRecognitionStore: ObservableObject {
     private static let legacyAwardsKey = "social_recognition_store_awards_v1"
     private static let legacySupportEventsKey = "social_recognition_store_support_events_v1"
     private static let legacySharedActivitiesKey = "social_recognition_store_shared_activities_v1"
-    private static let legacyJoinedClubsKey = "social_recognition_store_joined_clubs_v1"
+    private static let legacyJoinedGroupsKey = "social_recognition_store_joined_groups_v1"
     private static let legacyRivalEdgeKey = "social_recognition_store_claimed_rival_edge_v1"
     private static let legacyMigrationKey = "social_recognition_store_account_migration_v2"
     private var currentUserID: String?
@@ -63,7 +63,7 @@ final class SocialRecognitionStore: ObservableObject {
         self.awards = []
         self.supportEvents = []
         self.sharedActivityIDs = []
-        self.joinedClubIDs = []
+        self.joinedGroupIDs = []
         self.claimedRivalEdge = false
     }
 
@@ -134,14 +134,14 @@ final class SocialRecognitionStore: ObservableObject {
         return [award]
     }
 
-    func toggleClubMembership(clubID: String, now: Date = Date()) -> [SocialRecognitionAward] {
-        let isJoining = !joinedClubIDs.contains(clubID)
+    func toggleGroupMembership(groupID: String, now: Date = Date()) -> [SocialRecognitionAward] {
+        let isJoining = !joinedGroupIDs.contains(groupID)
         if isJoining {
-            joinedClubIDs.insert(clubID)
+            joinedGroupIDs.insert(groupID)
         } else {
-            joinedClubIDs.remove(clubID)
+            joinedGroupIDs.remove(groupID)
         }
-        persistJoinedClubs()
+        persistJoinedGroups()
 
         guard isJoining else { return [] }
         guard let award = awardBadgeIfNeeded(.relayPlayer, sourceActivityID: nil, now: now) else { return [] }
@@ -176,8 +176,8 @@ final class SocialRecognitionStore: ObservableObject {
     }
 
     func registerGroupJoin(groupID: String, now: Date = Date()) -> [SocialRecognitionAward] {
-        joinedClubIDs.insert(groupID)
-        persistJoinedClubs()
+        joinedGroupIDs.insert(groupID)
+        persistJoinedGroups()
         guard let award = awardBadgeIfNeeded(.relayPlayer, sourceActivityID: nil, now: now) else { return [] }
         persistAwards()
         return [award]
@@ -256,15 +256,15 @@ final class SocialRecognitionStore: ObservableObject {
         defaults.set(data, forKey: sharedActivitiesKey)
     }
 
-    private func persistJoinedClubs() {
-        guard let data = try? JSONEncoder().encode(Array(joinedClubIDs)) else { return }
-        defaults.set(data, forKey: joinedClubsKey)
+    private func persistJoinedGroups() {
+        guard let data = try? JSONEncoder().encode(Array(joinedGroupIDs)) else { return }
+        defaults.set(data, forKey: joinedGroupsKey)
     }
 
     private var awardsKey: String { scopedKey(Self.legacyAwardsKey) }
     private var supportEventsKey: String { scopedKey(Self.legacySupportEventsKey) }
     private var sharedActivitiesKey: String { scopedKey(Self.legacySharedActivitiesKey) }
-    private var joinedClubsKey: String { scopedKey(Self.legacyJoinedClubsKey) }
+    private var joinedGroupsKey: String { scopedKey(Self.legacyJoinedGroupsKey) }
     private var rivalEdgeKey: String { scopedKey(Self.legacyRivalEdgeKey) }
 
     private func scopedKey(_ base: String) -> String {
@@ -277,7 +277,7 @@ final class SocialRecognitionStore: ObservableObject {
             Self.legacyAwardsKey,
             Self.legacySupportEventsKey,
             Self.legacySharedActivitiesKey,
-            Self.legacyJoinedClubsKey,
+            Self.legacyJoinedGroupsKey,
         ] where defaults.object(forKey: scopedKey(base)) == nil {
             defaults.set(defaults.object(forKey: base), forKey: scopedKey(base))
         }
@@ -291,7 +291,7 @@ final class SocialRecognitionStore: ObservableObject {
         awards = Self.decode([SocialRecognitionAward].self, from: defaults.data(forKey: awardsKey)) ?? []
         supportEvents = Self.decode([SocialSupportEvent].self, from: defaults.data(forKey: supportEventsKey)) ?? []
         sharedActivityIDs = Set(Self.decode([UUID].self, from: defaults.data(forKey: sharedActivitiesKey)) ?? [])
-        joinedClubIDs = Set(Self.decode([String].self, from: defaults.data(forKey: joinedClubsKey)) ?? [])
+        joinedGroupIDs = Set(Self.decode([String].self, from: defaults.data(forKey: joinedGroupsKey)) ?? [])
         claimedRivalEdge = defaults.bool(forKey: rivalEdgeKey)
         trimStaleSupportEvents()
         awards.sort { $0.earnedAt > $1.earnedAt }

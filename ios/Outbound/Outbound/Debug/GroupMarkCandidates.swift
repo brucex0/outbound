@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Alternative Circle marks, kept behind a debug launch argument so the shipped
-/// `CircleMark` can be compared against them in the real Social tab bar metrics.
+/// Alternative Group marks, kept behind a debug launch argument so the shipped
+/// `GroupMark` can be compared against them in the real Social tab bar metrics.
 ///
 /// Why these exist: the shipped mark puts two figures inside a ring. Rendered at tab
 /// size the ring stays readable but the figures collapse into one rounded mass, so the
@@ -10,7 +10,7 @@ import SwiftUI
 ///
 /// Design space is 24 x 19 pt, matching the tab bar slot and the neighbouring system
 /// symbols measured at 15 pt semibold (person.2 ink 20.8 x 14.0 pt, stroke 1.8 pt).
-enum CircleMarkCandidate: String, CaseIterable, Identifiable {
+enum GroupMarkCandidate: String, CaseIterable, Identifiable {
     case ringPair
     case mergedTrio
     case mergedPair
@@ -42,7 +42,7 @@ enum CircleMarkCandidate: String, CaseIterable, Identifiable {
 }
 
 /// Geometry for the alternative marks: 24 x 19 design space, y down.
-enum CircleMarkCandidateGeometry {
+enum GroupMarkCandidateGeometry {
     static let boxWidth: CGFloat = 24
     static let boxHeight: CGFloat = 19
     static let center = CGPoint(x: 12, y: 9.5)
@@ -162,7 +162,7 @@ enum CircleMarkCandidateGeometry {
         return path
     }
 
-    static func path(for candidate: CircleMarkCandidate) -> Path {
+    static func path(for candidate: GroupMarkCandidate) -> Path {
         switch candidate {
         case .ringPair: mergedTrio()
         case .mergedTrio: mergedTrio()
@@ -172,36 +172,36 @@ enum CircleMarkCandidateGeometry {
     }
 }
 
-struct CircleMarkCandidateIcon: View {
-    let candidate: CircleMarkCandidate
+struct GroupMarkCandidateIcon: View {
+    let candidate: GroupMarkCandidate
 
     var body: some View {
         Canvas { context, size in
             let scale = min(
-                size.width / CircleMarkCandidateGeometry.boxWidth,
-                size.height / CircleMarkCandidateGeometry.boxHeight
+                size.width / GroupMarkCandidateGeometry.boxWidth,
+                size.height / GroupMarkCandidateGeometry.boxHeight
             )
             let transform = CGAffineTransform(
-                translationX: (size.width - CircleMarkCandidateGeometry.boxWidth * scale) / 2,
-                y: (size.height - CircleMarkCandidateGeometry.boxHeight * scale) / 2
+                translationX: (size.width - GroupMarkCandidateGeometry.boxWidth * scale) / 2,
+                y: (size.height - GroupMarkCandidateGeometry.boxHeight * scale) / 2
             ).scaledBy(x: scale, y: scale)
             if candidate == .ringPair {
                 context.stroke(
-                    CircleMarkCandidateGeometry.ringPath().applying(transform),
+                    GroupMarkCandidateGeometry.ringPath().applying(transform),
                     with: .foreground,
                     style: StrokeStyle(
-                        lineWidth: CircleMarkCandidateGeometry.stroke * scale,
+                        lineWidth: GroupMarkCandidateGeometry.stroke * scale,
                         lineCap: .round,
                         lineJoin: .round
                     )
                 )
                 context.fill(
-                    CircleMarkCandidateGeometry.ringPairFigures().applying(transform),
+                    GroupMarkCandidateGeometry.ringPairFigures().applying(transform),
                     with: .foreground
                 )
             } else {
                 context.fill(
-                    CircleMarkCandidateGeometry.path(for: candidate).applying(transform),
+                    GroupMarkCandidateGeometry.path(for: candidate).applying(transform),
                     with: .foreground
                 )
             }
@@ -211,13 +211,13 @@ struct CircleMarkCandidateIcon: View {
 }
 
 #if DEBUG
-/// Review screen for the Circle mark. Launch the Outbound scheme with
-/// `-OutboundDebugCircleMark` to show it.
-struct DebugCircleMarkReviewHarness: View {
+/// Review screen for the Group mark. Launch the Outbound scheme with
+/// `-OutboundDebugGroupMark` to show it.
+struct DebugGroupMarkReviewHarness: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Circle mark review").font(.headline)
+                Text("Group mark review").font(.headline)
                 Spacer()
                 Text("24 x 19 pt slots · 15 pt semibold neighbours · 1.8 pt stroke")
                     .font(.caption2)
@@ -227,18 +227,18 @@ struct DebugCircleMarkReviewHarness: View {
             Text("Shipped mark, as wired (17 pt frame)")
                 .font(.caption.weight(.semibold))
             MockSocialTabBar {
-                CircleMark().frame(width: 17, height: 17)
+                GroupMark().frame(width: 17, height: 17)
             }
 
             Text("Shipped mark at neighbour optical size (19 pt frame)")
                 .font(.caption.weight(.semibold))
             MockSocialTabBar {
-                CircleMark().frame(width: 19, height: 19)
+                GroupMark().frame(width: 19, height: 19)
             }
 
             Divider()
 
-            ForEach(CircleMarkCandidate.allCases) { candidate in
+            ForEach(GroupMarkCandidate.allCases) { candidate in
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(candidate.title).font(.subheadline.weight(.semibold))
@@ -248,13 +248,13 @@ struct DebugCircleMarkReviewHarness: View {
                             .lineLimit(2)
                     }
                     MockSocialTabBar {
-                        CircleMarkCandidateIcon(candidate: candidate)
+                        GroupMarkCandidateIcon(candidate: candidate)
                             .frame(width: 24, height: 19)
                     }
                     HStack(alignment: .bottom, spacing: 12) {
-                        CircleMarkCandidateIcon(candidate: candidate).frame(width: 24, height: 19)
-                        CircleMarkCandidateIcon(candidate: candidate).frame(width: 48, height: 38)
-                        CircleMarkCandidateIcon(candidate: candidate).frame(width: 96, height: 76)
+                        GroupMarkCandidateIcon(candidate: candidate).frame(width: 24, height: 19)
+                        GroupMarkCandidateIcon(candidate: candidate).frame(width: 48, height: 38)
+                        GroupMarkCandidateIcon(candidate: candidate).frame(width: 96, height: 76)
                     }
                 }
                 .padding(.bottom, 2)
@@ -267,8 +267,8 @@ struct DebugCircleMarkReviewHarness: View {
 }
 
 /// Rebuilds the Social tab bar metrics so marks can be judged in context.
-private struct MockSocialTabBar<CircleSlot: View>: View {
-    @ViewBuilder let circleSlot: () -> CircleSlot
+private struct MockSocialTabBar<GroupSlot: View>: View {
+    @ViewBuilder let groupSlot: () -> GroupSlot
 
     var body: some View {
         HStack(spacing: 2) {
@@ -277,9 +277,9 @@ private struct MockSocialTabBar<CircleSlot: View>: View {
             VStack(spacing: 3) {
                 ZStack {
                     Color.clear.frame(width: 24, height: 19)
-                    circleSlot()
+                    groupSlot()
                 }
-                Text("Circle")
+                Text("Group")
                     .font(.caption2.weight(.bold))
                     .lineLimit(1)
             }

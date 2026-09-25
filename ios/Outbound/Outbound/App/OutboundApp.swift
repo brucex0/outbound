@@ -32,7 +32,7 @@ struct OutboundApp: App {
     @StateObject private var safetyContactStore = SafetyContactStore()
     @StateObject private var personalizationStore = PersonalizationStore()
     @StateObject private var togetherStore = TogetherStore()
-    @StateObject private var circleStore = CircleStore()
+    @StateObject private var groupStore = GroupStore()
     @StateObject private var cycleAwareStore = CycleAwareStore()
     @StateObject private var situationalWeatherStore = SituationalWeatherStore()
     @StateObject private var connectivityStore = ConnectivityStore()
@@ -79,7 +79,7 @@ struct OutboundApp: App {
                 .onChange(of: authStore.user?.id, initial: true) { _, userID in
                     togetherStore.activate(userID: userID)
                     safetyContactStore.activate(userID: userID)
-                    circleStore.activate(userID: authStore.isAuthenticated ? (userID ?? authStore.localSessionLabel) : nil)
+                    groupStore.activate(userID: authStore.isAuthenticated ? (userID ?? authStore.localSessionLabel) : nil)
                 }
                 .onChange(of: authStore.isAuthenticated, initial: true) { _, isAuthenticated in
                     togetherStore.activate(
@@ -93,7 +93,7 @@ struct OutboundApp: App {
                             : nil
                     )
                     if !isAuthenticated {
-                        circleStore.activate(userID: nil)
+                        groupStore.activate(userID: nil)
                     }
                 }
         }
@@ -117,8 +117,8 @@ struct OutboundApp: App {
             DebugLiveCheerFollowerHarness()
         } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugCommunityRoutes") {
             DebugCommunityRouteLibraryHarness()
-        } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugCircleMark") {
-            DebugCircleMarkReviewHarness()
+        } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugGroupMark") {
+            DebugGroupMarkReviewHarness()
         } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugPostRunSummary") {
             DebugPostRunSummaryHarness()
                 .environmentObject(measurementPreferences)
@@ -199,7 +199,7 @@ struct OutboundApp: App {
             .environmentObject(safetyContactStore)
             .environmentObject(personalizationStore)
             .environmentObject(togetherStore)
-            .environmentObject(circleStore)
+            .environmentObject(groupStore)
             .environmentObject(cycleAwareStore)
             .environmentObject(situationalWeatherStore)
             .environmentObject(connectivityStore)
@@ -235,13 +235,13 @@ struct OutboundApp: App {
                 await personalizationStore.refresh()
                 async let socialHomeRefresh: Void = togetherStore.refresh()
                 async let socialConnectionsRefresh: Void = togetherStore.refreshConnections()
-                async let circleRefresh: Void = circleStore.refresh()
-                async let circleInvitationsRefresh: Void = circleStore.refreshInvitations()
+                async let groupRefresh: Void = groupStore.refresh()
+                async let groupInvitationsRefresh: Void = groupStore.refreshInvitations()
                 _ = await (
                     socialHomeRefresh,
                     socialConnectionsRefresh,
-                    circleRefresh,
-                    circleInvitationsRefresh
+                    groupRefresh,
+                    groupInvitationsRefresh
                 )
                 await consumePendingInviteIfPossible()
                 await workoutNotificationScheduler.configure(
@@ -262,8 +262,8 @@ struct OutboundApp: App {
                     await activityStore.syncPendingActivitiesIfNeeded()
                     await recognitionStore.refresh()
                     await socialRecognitionStore.refresh()
-                    await circleStore.refresh()
-                    await circleStore.refreshInvitations()
+                    await groupStore.refresh()
+                    await groupStore.refreshInvitations()
                     await pushNotifications.activate()
                     await refreshTrainingProfile()
                     await workoutNotificationScheduler.reschedule(
@@ -430,7 +430,8 @@ struct OutboundApp: App {
 
     private func handleIncomingURL(_ url: URL) {
         if authStore.handleOpenURL(url) { return }
-        guard PlainstrideLinks.liveGroupToken(from: url) != nil
+        guard PlainstrideLinks.groupInviteToken(from: url) != nil
+                || PlainstrideLinks.liveGroupToken(from: url) != nil
                 || PlainstrideLinks.activityEventToken(from: url) != nil
                 || PlainstrideLinks.connectionCode(from: url) != nil
                 || PlainstrideLinks.referralCode(from: url) != nil else { return }
@@ -453,7 +454,9 @@ struct OutboundApp: App {
               let url = URL(string: rawURL) else { return }
         isConsumingPendingInvite = true
         defer { isConsumingPendingInvite = false }
-        if let token = PlainstrideLinks.liveGroupToken(from: url) {
+        if let token = PlainstrideLinks.groupInviteToken(from: url) {
+            guard await groupStore.consumeInvite(token: token) else { return }
+        } else if let token = PlainstrideLinks.liveGroupToken(from: url) {
             await liveGroupStore.joinGroup(invite: token)
             guard liveGroupStore.activeSession != nil else { return }
         } else if let token = PlainstrideLinks.activityEventToken(from: url) {
@@ -2446,7 +2449,7 @@ final class AssistantStore: ObservableObject {
             return """
             Here’s the fastest map:
             Me is where you check motivation, tune your companion, review activities, and open Settings.
-            Social is for squad, clubs, rivals, and lightweight community loops.
+            Social is for Groups, rivals, and lightweight community loops.
             The floating orange activity button starts or resumes a live session from either tab.
 
             If you tell me what you want to do, I can point to the exact screen.
@@ -2474,7 +2477,7 @@ final class AssistantStore: ObservableObject {
             Good ideas to explore:
             Give it guided prompts for finding features, choosing a guide vibe, and building a comeback plan.
             Let it turn vague intent like “I only have 20 minutes” into a suggested session.
-            Use it in Social to suggest clubs, challenges, or rivalry nudges based on recent activity.
+            Use it in Social to suggest Groups, challenges, or rivalry nudges based on recent activity.
             """
 #else
             return """
@@ -2634,7 +2637,7 @@ private final class AssistantFoundationModelSession {
 #if OUTBOUND_ENABLE_SOCIAL
         appMap = """
         - Me: motivation, companion settings, highlights, activity history, settings
-        - Social: squad, clubs, rivals
+        - Social: Groups, rivals
         - Floating orange button: start or resume a live session
         """
 #else

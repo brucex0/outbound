@@ -1099,7 +1099,7 @@
         }
       }
     },
-    "circle.activity.calories": {
+    "group.activity.calories": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1121,7 +1121,7 @@
         }
       }
     },
-    "circle.activity.duration.hours_minutes": {
+    "group.activity.duration.hours_minutes": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1143,7 +1143,7 @@
         }
       }
     },
-    "circle.activity.duration.minutes": {
+    "group.activity.duration.minutes": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1165,7 +1165,7 @@
         }
       }
     },
-    "circle.activity.heart_rate": {
+    "group.activity.heart_rate": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1187,7 +1187,7 @@
         }
       }
     },
-    "circle.activity.hike": {
+    "group.activity.hike": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1209,7 +1209,7 @@
         }
       }
     },
-    "circle.activity.ride": {
+    "group.activity.ride": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1231,7 +1231,7 @@
         }
       }
     },
-    "circle.activity.run": {
+    "group.activity.run": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1253,7 +1253,7 @@
         }
       }
     },
-    "circle.activity.swim": {
+    "group.activity.swim": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1275,7 +1275,7 @@
         }
       }
     },
-    "circle.activity.walk": {
+    "group.activity.walk": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1297,7 +1297,7 @@
         }
       }
     },
-    "circle.create.closeness": {
+    "group.create.closeness": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1319,7 +1319,7 @@
         }
       }
     },
-    "circle.create.inspiration_detail": {
+    "group.create.inspiration_detail": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1341,7 +1341,7 @@
         }
       }
     },
-    "circle.create.inspiration_title": {
+    "group.create.inspiration_title": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1363,7 +1363,7 @@
         }
       }
     },
-    "circle.create.people_help": {
+    "group.create.people_help": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1385,7 +1385,7 @@
         }
       }
     },
-    "circle.create.selected": {
+    "group.create.selected": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1407,29 +1407,29 @@
         }
       }
     },
-    "circle.create.start": {
+    "group.create.start": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Create your Circle"
+            "value": "Create your Group"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Crea tu círculo"
+            "value": "Crea tu grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "创建你的活力圈"
+            "value": "创建你的群组"
           }
         }
       }
     },
-    "circle.created.benefit_activity": {
+    "group.created.benefit_activity": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1451,7 +1451,7 @@
         }
       }
     },
-    "circle.created.benefit_cheer": {
+    "group.created.benefit_cheer": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1473,7 +1473,7 @@
         }
       }
     },
-    "circle.created.benefit_details": {
+    "group.created.benefit_details": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1495,7 +1495,7 @@
         }
       }
     },
-    "circle.created.choose_focus": {
+    "group.created.choose_focus": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1517,7 +1517,7 @@
         }
       }
     },
-    "circle.created.detail": {
+    "group.created.detail": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1539,7 +1539,7 @@
         }
       }
     },
-    "circle.created.focus_optional": {
+    "group.created.focus_optional": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1561,29 +1561,29 @@
         }
       }
     },
-    "circle.created.open": {
+    "group.created.open": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open Circle"
+            "value": "Open Group"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrir círculo"
+            "value": "Abrir grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "打开活力圈"
+            "value": "打开群组"
           }
         }
       }
     },
-    "circle.created.title": {
+    "group.created.title": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1605,7 +1605,7 @@
         }
       }
     },
-    "circle.detail.inspiration": {
+    "group.detail.inspiration": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1627,29 +1627,29 @@
         }
       }
     },
-    "circle.event.invite": {
+    "group.event.invite": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Invite your Circle"
+            "value": "Invite your Group"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Invita a tu círculo"
+            "value": "Invita a tu grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "邀请活力圈成员"
+            "value": "邀请群组成员"
           }
         }
       }
     },
-    "circle.event.name": {
+    "group.event.name": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1671,7 +1671,7 @@
         }
       }
     },
-    "circle.event.note": {
+    "group.event.note": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1693,7 +1693,7 @@
         }
       }
     },
-    "circle.event.note.placeholder": {
+    "group.event.note.placeholder": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1715,7 +1715,7 @@
         }
       }
     },
-    "circle.event.plan": {
+    "group.event.plan": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1737,7 +1737,7 @@
         }
       }
     },
-    "circle.event.title.placeholder": {
+    "group.event.title.placeholder": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1759,28 +1759,28 @@
         }
       }
     },
-    "circle.activity.going_count": {
+    "group.activity.going_count": {
       "localizations": {
         "en": {"stringUnit": {"state": "translated", "value": "%lld going"}},
         "es": {"stringUnit": {"state": "translated", "value": "%lld confirmados"}},
         "zh-Hans": {"stringUnit": {"state": "translated", "value": "%lld 人参加"}}
       }
     },
-    "circle.moment.activity_completed": {
+    "group.moment.activity_completed": {
       "localizations": {
         "en": {"stringUnit": {"state": "translated", "value": "Activity completed"}},
         "es": {"stringUnit": {"state": "translated", "value": "Actividad completada"}},
         "zh-Hans": {"stringUnit": {"state": "translated", "value": "活动已完成"}}
       }
     },
-    "circle.next_activity_format": {
+    "group.next_activity_format": {
       "localizations": {
         "en": {"stringUnit": {"state": "translated", "value": "Next: %@ · %@"}},
         "es": {"stringUnit": {"state": "translated", "value": "Próxima: %@ · %@"}},
         "zh-Hans": {"stringUnit": {"state": "translated", "value": "下一场：%@ · %@"}}
       }
     },
-    "circle.up_next": {
+    "group.up_next": {
       "localizations": {
         "en": {"stringUnit": {"state": "translated", "value": "UP NEXT"}},
         "es": {"stringUnit": {"state": "translated", "value": "PRÓXIMAMENTE"}},
@@ -1801,11 +1801,11 @@
         "zh-Hans": {"stringUnit": {"state": "translated", "value": "计划活动 · %@"}}
       }
     },
-    "social.event.start_with_circle": {
+    "social.event.start_with_group": {
       "localizations": {
-        "en": {"stringUnit": {"state": "translated", "value": "Start with Circle"}},
-        "es": {"stringUnit": {"state": "translated", "value": "Empezar con el círculo"}},
-        "zh-Hans": {"stringUnit": {"state": "translated", "value": "和活力圈一起开始"}}
+        "en": {"stringUnit": {"state": "translated", "value": "Start with Group"}},
+        "es": {"stringUnit": {"state": "translated", "value": "Empezar con el grupo"}},
+        "zh-Hans": {"stringUnit": {"state": "translated", "value": "和群组一起开始"}}
       }
     },
     "social.event.scheduled_activity": {
@@ -1822,21 +1822,21 @@
         "zh-Hans": {"stringUnit": {"state": "translated", "value": "开始活动"}}
       }
     },
-    "today.circle_activity": {
+    "today.group_activity": {
       "localizations": {
-        "en": {"stringUnit": {"state": "translated", "value": "TODAY WITH YOUR CIRCLE"}},
-        "es": {"stringUnit": {"state": "translated", "value": "HOY CON TU CÍRCULO"}},
-        "zh-Hans": {"stringUnit": {"state": "translated", "value": "今天和活力圈一起"}}
+        "en": {"stringUnit": {"state": "translated", "value": "TODAY WITH YOUR GROUP"}},
+        "es": {"stringUnit": {"state": "translated", "value": "HOY CON TU GRUPO"}},
+        "zh-Hans": {"stringUnit": {"state": "translated", "value": "今天和群组一起"}}
       }
     },
-    "today.circle_activity.paired_format": {
+    "today.group_activity.paired_format": {
       "localizations": {
         "en": {"stringUnit": {"state": "translated", "value": "Paired with %@ · %@"}},
         "es": {"stringUnit": {"state": "translated", "value": "Combinada con %@ · %@"}},
         "zh-Hans": {"stringUnit": {"state": "translated", "value": "已搭配 %@ · %@"}}
       }
     },
-    "circle.invitation.promise": {
+    "group.invitation.promise": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1858,7 +1858,7 @@
         }
       }
     },
-    "circle.moment.activity_planned": {
+    "group.moment.activity_planned": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1880,7 +1880,7 @@
         }
       }
     },
-    "circle.plan_activity": {
+    "group.plan_activity": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1902,7 +1902,7 @@
         }
       }
     },
-    "circle.today.plan_activity": {
+    "group.today.plan_activity": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1924,7 +1924,7 @@
         }
       }
     },
-    "circle.apply.next": {
+    "group.apply.next": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1946,7 +1946,7 @@
         }
       }
     },
-    "circle.apply.now": {
+    "group.apply.now": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1968,29 +1968,29 @@
         }
       }
     },
-    "circle.archive": {
+    "group.archive": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Archive Circle"
+            "value": "Archive Group"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Archivar círculo"
+            "value": "Archivar grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "归档活力圈"
+            "value": "归档群组"
           }
         }
       }
     },
-    "circle.celebration.continue": {
+    "group.celebration.continue": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2012,29 +2012,29 @@
         }
       }
     },
-    "circle.celebration.title": {
+    "group.celebration.title": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your Circle completed the week"
+            "value": "Your Group completed the week"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu círculo completó la semana"
+            "value": "Tu grupo completó la semana"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的活力圈完成了本周目标"
+            "value": "你的群组完成了本周目标"
           }
         }
       }
     },
-    "circle.cheer": {
+    "group.cheer": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2056,7 +2056,7 @@
         }
       }
     },
-    "circle.cheer.celebration": {
+    "group.cheer.celebration": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2078,7 +2078,7 @@
         }
       }
     },
-    "circle.cheer.encouragement": {
+    "group.cheer.encouragement": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2100,7 +2100,7 @@
         }
       }
     },
-    "circle.cheer.remove_format": {
+    "group.cheer.remove_format": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2122,7 +2122,7 @@
         }
       }
     },
-    "circle.cheer.support": {
+    "group.cheer.support": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2144,7 +2144,7 @@
         }
       }
     },
-    "circle.commitment.count": {
+    "group.commitment.count": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2166,7 +2166,7 @@
         }
       }
     },
-    "circle.commitment.mine": {
+    "group.commitment.mine": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2188,7 +2188,7 @@
         }
       }
     },
-    "circle.commitment.save": {
+    "group.commitment.save": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2210,7 +2210,7 @@
         }
       }
     },
-    "circle.commitment.skip": {
+    "group.commitment.skip": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2232,7 +2232,7 @@
         }
       }
     },
-    "circle.commitment.skipping": {
+    "group.commitment.skipping": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2254,7 +2254,7 @@
         }
       }
     },
-    "circle.completed": {
+    "group.completed": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2276,117 +2276,117 @@
         }
       }
     },
-    "circle.contribution.confirmed": {
+    "group.contribution.confirmed": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You moved your Circle forward."
+            "value": "You moved your Group forward."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Has hecho avanzar a tu círculo."
+            "value": "Has hecho avanzar a tu grupo."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你为活力圈增添了动力。"
+            "value": "你为群组增添了动力。"
           }
         }
       }
     },
-    "circle.contribution.confirmed_progress": {
+    "group.contribution.confirmed_progress": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You moved your Circle forward. %lld of %lld activities complete this week."
+            "value": "You moved your Group forward. %lld of %lld activities complete this week."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Has hecho avanzar a tu círculo. %lld de %lld actividades completadas esta semana."
+            "value": "Has hecho avanzar a tu grupo. %lld de %lld actividades completadas esta semana."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你为活力圈增添了动力。本周已完成 %lld/%lld 次运动。"
+            "value": "你为群组增添了动力。本周已完成 %lld/%lld 次运动。"
           }
         }
       }
     },
-    "circle.contribution.additional": {
+    "group.contribution.additional": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "It also counted for %lld other Circles."
+            "value": "It also counted for %lld other Groups."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "También contó para otros %lld círculos."
+            "value": "También contó para otros %lld grupos."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "同时也计入了另外 %lld 个活力圈。"
+            "value": "同时也计入了另外 %lld 个群组。"
           }
         }
       }
     },
-    "circle.create.action": {
+    "group.create.action": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Create your Circle"
+            "value": "Create your Group"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Crea tu círculo"
+            "value": "Crea tu grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "创建你的活力圈"
+            "value": "创建你的群组"
           }
         }
       }
     },
-    "circle.create.another": {
+    "group.create.another": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Create another Circle"
+            "value": "Create another Group"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Crear otro círculo"
+            "value": "Crear otro grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "再创建一个活力圈"
+            "value": "再创建一个群组"
           }
         }
       }
     },
-    "circle.create.detail": {
+    "group.create.detail": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2408,7 +2408,7 @@
         }
       }
     },
-    "circle.create.focus_later": {
+    "group.create.focus_later": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2430,29 +2430,29 @@
         }
       }
     },
-    "circle.create.name": {
+    "group.create.name": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Name your Circle · Optional"
+            "value": "Name your Group · Optional"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ponle nombre al círculo · Opcional"
+            "value": "Ponle nombre al grupo · Opcional"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "为活力圈命名 · 可选"
+            "value": "为群组命名 · 可选"
           }
         }
       }
     },
-    "circle.create.name_help": {
+    "group.create.name_help": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2474,7 +2474,7 @@
         }
       }
     },
-    "circle.create.name_placeholder": {
+    "group.create.name_placeholder": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2496,29 +2496,29 @@
         }
       }
     },
-    "circle.create.navigation": {
+    "group.create.navigation": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Create your Circle"
+            "value": "Create your Group"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Crea tu círculo"
+            "value": "Crea tu grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "创建你的活力圈"
+            "value": "创建你的群组"
           }
         }
       }
     },
-    "circle.create.people": {
+    "group.create.people": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2540,95 +2540,95 @@
         }
       }
     },
-    "circle.create.title": {
+    "group.create.title": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Create your Circle"
+            "value": "Create your Group"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Crea tu círculo"
+            "value": "Crea tu grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "创建你的活力圈"
+            "value": "创建你的群组"
           }
         }
       }
     },
-    "circle.error.invitations": {
+    "group.error.invitations": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Circle invitations could not be refreshed."
+            "value": "Group invitations could not be refreshed."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudieron actualizar las invitaciones del círculo."
+            "value": "No se pudieron actualizar las invitaciones del grupo."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法刷新活力圈邀请。"
+            "value": "无法刷新群组邀请。"
           }
         }
       }
     },
-    "circle.error.offline": {
+    "group.error.offline": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your Circle is temporarily unavailable. Showing saved information."
+            "value": "Your Group is temporarily unavailable. Showing saved information."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu círculo no está disponible temporalmente. Se muestra la información guardada."
+            "value": "Tu grupo no está disponible temporalmente. Se muestra la información guardada."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "活力圈暂时不可用，正在显示已保存的信息。"
+            "value": "群组暂时不可用，正在显示已保存的信息。"
           }
         }
       }
     },
-    "circle.error.operation": {
+    "group.error.operation": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "That Circle update didn’t go through. Try again."
+            "value": "That Group update didn’t go through. Try again."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo actualizar el círculo. Inténtalo de nuevo."
+            "value": "No se pudo actualizar el grupo. Inténtalo de nuevo."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "活力圈更新失败，请重试。"
+            "value": "群组更新失败，请重试。"
           }
         }
       }
     },
-    "circle.focus.apply": {
+    "group.focus.apply": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2650,7 +2650,7 @@
         }
       }
     },
-    "circle.focus.choose": {
+    "group.focus.choose": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2672,7 +2672,7 @@
         }
       }
     },
-    "circle.focus.choose_action": {
+    "group.focus.choose_action": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2694,7 +2694,7 @@
         }
       }
     },
-    "circle.focus.mode": {
+    "group.focus.mode": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2716,7 +2716,7 @@
         }
       }
     },
-    "circle.focus.none": {
+    "group.focus.none": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2738,7 +2738,7 @@
         }
       }
     },
-    "circle.focus.none.detail": {
+    "group.focus.none.detail": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2760,7 +2760,7 @@
         }
       }
     },
-    "circle.focus.personal": {
+    "group.focus.personal": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2782,7 +2782,7 @@
         }
       }
     },
-    "circle.focus.shared": {
+    "group.focus.shared": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2804,7 +2804,7 @@
         }
       }
     },
-    "circle.focus.shared_count": {
+    "group.focus.shared_count": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2826,7 +2826,7 @@
         }
       }
     },
-    "circle.focus.suggestions": {
+    "group.focus.suggestions": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2848,7 +2848,7 @@
         }
       }
     },
-    "circle.focus.preset_accessibility": {
+    "group.focus.preset_accessibility": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2870,18 +2870,18 @@
         }
       }
     },
-    "circle.focus.unconfigured": {
+    "group.focus.unconfigured": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose a flexible focus when the Circle is ready."
+            "value": "Choose a flexible focus when the Group is ready."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Elige un enfoque flexible cuando el círculo esté listo."
+            "value": "Elige un enfoque flexible cuando el grupo esté listo."
           }
         },
         "zh-Hans": {
@@ -2892,267 +2892,267 @@
         }
       }
     },
-    "circle.commitment.edit": {
+    "group.commitment.edit": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Edit my goal" } },
         "es": { "stringUnit": { "state": "translated", "value": "Editar mi objetivo" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "编辑我的目标" } }
       }
     },
-    "circle.commitment.enable": {
+    "group.commitment.enable": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Set a personal commitment" } },
         "es": { "stringUnit": { "state": "translated", "value": "Fijar un compromiso personal" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "设定个人运动承诺" } }
       }
     },
-    "circle.commitment.optional": {
+    "group.commitment.optional": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "This is optional and belongs only to you." } },
         "es": { "stringUnit": { "state": "translated", "value": "Es opcional y solo te pertenece a ti." } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "这完全自愿，只属于你。" } }
       }
     },
-    "circle.commitment.progress": {
+    "group.commitment.progress": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Your commitment: %1$lld of %2$lld" } },
         "es": { "stringUnit": { "state": "translated", "value": "Tu compromiso: %1$lld de %2$lld" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "你的运动承诺：已完成 %1$lld/%2$lld" } }
       }
     },
-    "circle.commitment.progress.extra": {
-      "comment": "Personal Circle commitment progress after the member exceeds the target. The first value is capped progress, the second is the target, and the third is the number of additional activities. [platform:ios]",
+    "group.commitment.progress.extra": {
+      "comment": "Personal Group commitment progress after the member exceeds the target. The first value is capped progress, the second is the target, and the third is the number of additional activities. [platform:ios]",
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Your commitment: %1$lld of %2$lld · %3$lld extra" } },
         "es": { "stringUnit": { "state": "translated", "value": "Tu compromiso: %1$lld de %2$lld · %3$lld extra" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "你的运动承诺：已完成 %1$lld/%2$lld · 额外 %3$lld 次" } }
       }
     },
-    "circle.commitment.set": {
+    "group.commitment.set": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Set my goal" } },
         "es": { "stringUnit": { "state": "translated", "value": "Fijar mi objetivo" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "设定我的目标" } }
       }
     },
-    "circle.theme.activity_count": {
+    "group.theme.activity_count": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "%lld activities together this week" } },
         "es": { "stringUnit": { "state": "translated", "value": "%lld actividades entre todos esta semana" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "本周大家共完成 %lld 次运动" } }
       }
     },
-    "circle.theme.browse": {
+    "group.theme.browse": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "More themes" } },
         "es": { "stringUnit": { "state": "translated", "value": "Más temas" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "更多主题" } }
       }
     },
-    "circle.theme.build_consistency.detail": {
+    "group.theme.build_consistency.detail": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Small efforts count. Keep showing up." } },
         "es": { "stringUnit": { "state": "translated", "value": "Cada pequeño esfuerzo cuenta. Sigue adelante." } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "点滴行动也算数，继续动起来。" } }
       }
     },
-    "circle.theme.build_consistency.title": {
+    "group.theme.build_consistency.title": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Build consistency" } },
         "es": { "stringUnit": { "state": "translated", "value": "Crear constancia" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "坚持成习惯" } }
       }
     },
-    "circle.theme.celebrate_every_effort.detail": {
+    "group.theme.celebrate_every_effort.detail": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Notice every activity, not just the biggest ones." } },
         "es": { "stringUnit": { "state": "translated", "value": "Valora cada actividad, no solo las más grandes." } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "看见每次运动，不只关注最耀眼的成绩。" } }
       }
     },
-    "circle.theme.celebrate_every_effort.title": {
+    "group.theme.celebrate_every_effort.title": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Celebrate every effort" } },
         "es": { "stringUnit": { "state": "translated", "value": "Celebrar cada esfuerzo" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "每一次努力都值得庆祝" } }
       }
     },
-    "circle.theme.choose": {
+    "group.theme.choose": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Choose a weekly theme" } },
         "es": { "stringUnit": { "state": "translated", "value": "Elige un tema semanal" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "选择本周主题" } }
       }
     },
-    "circle.theme.custom.action": {
+    "group.theme.custom.action": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Write your own" } },
         "es": { "stringUnit": { "state": "translated", "value": "Escribe el tuyo" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "自定义主题" } }
       }
     },
-    "circle.theme.custom.note": {
+    "group.theme.custom.note": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Supporting note · Optional" } },
         "es": { "stringUnit": { "state": "translated", "value": "Nota de apoyo · Opcional" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "补充说明 · 可选" } }
       }
     },
-    "circle.theme.custom.required": {
+    "group.theme.custom.required": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Add a short title before closing." } },
         "es": { "stringUnit": { "state": "translated", "value": "Añade un título breve antes de cerrar." } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "关闭前请填写一个简短标题。" } }
       }
     },
-    "circle.theme.custom.section": {
+    "group.theme.custom.section": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Custom theme" } },
         "es": { "stringUnit": { "state": "translated", "value": "Tema personalizado" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "自定义主题" } }
       }
     },
-    "circle.theme.custom.title": {
+    "group.theme.custom.title": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Theme title" } },
         "es": { "stringUnit": { "state": "translated", "value": "Título del tema" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "主题标题" } }
       }
     },
-    "circle.theme.do_something_together.detail": {
+    "group.theme.do_something_together.detail": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Make time to move and connect." } },
         "es": { "stringUnit": { "state": "translated", "value": "Reserven un momento para moverse y conectar." } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "留点时间，一起运动也一起相聚。" } }
       }
     },
-    "circle.theme.do_something_together.title": {
+    "group.theme.do_something_together.title": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Do something together" } },
         "es": { "stringUnit": { "state": "translated", "value": "Hagan algo juntos" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "一起动起来" } }
       }
     },
-    "circle.theme.explore_somewhere_new.detail": {
+    "group.theme.explore_somewhere_new.detail": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Let curiosity choose the route." } },
         "es": { "stringUnit": { "state": "translated", "value": "Deja que la curiosidad elija el camino." } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "让好奇心带你选择路线。" } }
       }
     },
-    "circle.theme.explore_somewhere_new.title": {
+    "group.theme.explore_somewhere_new.title": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Explore somewhere new" } },
         "es": { "stringUnit": { "state": "translated", "value": "Explora un lugar nuevo" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "探索新地方" } }
       }
     },
-    "circle.theme.keep_the_rhythm.detail": {
+    "group.theme.keep_the_rhythm.detail": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Carry the momentum into another week." } },
         "es": { "stringUnit": { "state": "translated", "value": "Lleva el impulso a una semana más." } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "把这份动力延续到新的一周。" } }
       }
     },
-    "circle.theme.keep_the_rhythm.title": {
+    "group.theme.keep_the_rhythm.title": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Keep the rhythm" } },
         "es": { "stringUnit": { "state": "translated", "value": "Mantén el ritmo" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "保持节奏" } }
       }
     },
-    "circle.theme.move_for_your_mood.detail": {
+    "group.theme.move_for_your_mood.detail": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Choose movement that helps you feel better." } },
         "es": { "stringUnit": { "state": "translated", "value": "Elige un movimiento que te ayude a sentirte mejor." } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "选择让自己感觉更好的运动。" } }
       }
     },
-    "circle.theme.move_for_your_mood.title": {
+    "group.theme.move_for_your_mood.title": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Move for your mood" } },
         "es": { "stringUnit": { "state": "translated", "value": "Muévete para sentirte mejor" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "为好心情而动" } }
       }
     },
-    "circle.theme.one_small_step.detail": {
+    "group.theme.one_small_step.detail": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Make moving feel possible again." } },
         "es": { "stringUnit": { "state": "translated", "value": "Haz que volver a moverte se sienta posible." } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "让重新动起来变得轻松可行。" } }
       }
     },
-    "circle.theme.one_small_step.title": {
+    "group.theme.one_small_step.title": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "One small step" } },
         "es": { "stringUnit": { "state": "translated", "value": "Un pequeño paso" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "从小小一步开始" } }
       }
     },
-    "circle.theme.recommended": {
+    "group.theme.recommended": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Recommended for your Circle" } },
-        "es": { "stringUnit": { "state": "translated", "value": "Recomendados para tu círculo" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "为你的活力圈推荐" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Recommended for your Group" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Recomendados para tu grupo" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "为你的群组推荐" } }
       }
     },
-    "circle.theme.recover_and_recharge.detail": {
+    "group.theme.recover_and_recharge.detail": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Keep it gentle and give your body room to recover." } },
         "es": { "stringUnit": { "state": "translated", "value": "Baja el ritmo y dale a tu cuerpo tiempo para recuperarse." } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "放慢一点，给身体足够的恢复空间。" } }
       }
     },
-    "circle.theme.recover_and_recharge.title": {
+    "group.theme.recover_and_recharge.title": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Recover and recharge" } },
         "es": { "stringUnit": { "state": "translated", "value": "Recupérate y recarga energías" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "好好恢复，充充电" } }
       }
     },
-    "circle.theme.try_something_different.detail": {
+    "group.theme.try_something_different.detail": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Change the routine and discover a new way to move." } },
         "es": { "stringUnit": { "state": "translated", "value": "Cambia la rutina y descubre una nueva forma de moverte." } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "跳出日常，发现运动的新方式。" } }
       }
     },
-    "circle.theme.try_something_different.title": {
+    "group.theme.try_something_different.title": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Try something different" } },
         "es": { "stringUnit": { "state": "translated", "value": "Prueba algo diferente" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "换种方式动一动" } }
       }
     },
-    "circle.theme.unconfigured.member": {
+    "group.theme.unconfigured.member": {
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "The Circle owner hasn’t chosen this week’s theme yet." } },
-        "es": { "stringUnit": { "state": "translated", "value": "La persona responsable del círculo aún no ha elegido el tema de esta semana." } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "圈主还没有选择本周主题。" } }
+        "en": { "stringUnit": { "state": "translated", "value": "The Group owner hasn’t chosen this week’s theme yet." } },
+        "es": { "stringUnit": { "state": "translated", "value": "La persona responsable del grupo aún no ha elegido el tema de esta semana." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "群组管理员还没有选择本周主题。" } }
       }
     },
-    "circle.theme.unconfigured.owner": {
+    "group.theme.unconfigured.owner": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Choose a shared intention for the week." } },
         "es": { "stringUnit": { "state": "translated", "value": "Elige una intención compartida para la semana." } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "为这一周选择一个共同方向。" } }
       }
     },
-    "circle.today.theme_progress": {
+    "group.today.theme_progress": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "%1$@ · You moved %2$lld times" } },
         "es": { "stringUnit": { "state": "translated", "value": "%1$@ · Te moviste %2$lld veces" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "%1$@ · 你已运动 %2$lld 次" } }
       }
     },
-    "circle.weekly_theme": {
+    "group.weekly_theme": {
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Weekly Theme" } },
         "es": { "stringUnit": { "state": "translated", "value": "Tema semanal" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "本周主题" } }
       }
     },
-    "circle.history": {
+    "group.history": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3174,7 +3174,7 @@
         }
       }
     },
-    "circle.invitation.accept": {
+    "group.invitation.accept": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3196,7 +3196,7 @@
         }
       }
     },
-    "circle.invitation.cancel": {
+    "group.invitation.cancel": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3218,7 +3218,7 @@
         }
       }
     },
-    "circle.invitation.decline": {
+    "group.invitation.decline": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3240,7 +3240,7 @@
         }
       }
     },
-    "circle.invitation.from": {
+    "group.invitation.from": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3262,7 +3262,7 @@
         }
       }
     },
-    "circle.invitation.handled": {
+    "group.invitation.handled": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3284,29 +3284,29 @@
         }
       }
     },
-    "circle.invitation.navigation": {
+    "group.invitation.navigation": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Circle invitation"
+            "value": "Group invitation"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Invitación al círculo"
+            "value": "Invitación al grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "活力圈邀请"
+            "value": "群组邀请"
           }
         }
       }
     },
-    "circle.invitation.pending_person": {
+    "group.invitation.pending_person": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3328,7 +3328,7 @@
         }
       }
     },
-    "circle.invitation.send": {
+    "group.invitation.send": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3350,29 +3350,29 @@
         }
       }
     },
-    "circle.invitation.title": {
+    "group.invitation.title": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You’re invited to a Circle"
+            "value": "You’re invited to a Group"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Te invitaron a un círculo"
+            "value": "Te invitaron a un grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你收到了一份活力圈邀请"
+            "value": "你收到了一份群组邀请"
           }
         }
       }
     },
-    "circle.invitations.pending": {
+    "group.invitations.pending": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3394,7 +3394,7 @@
         }
       }
     },
-    "circle.invite.more": {
+    "group.invite.more": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3416,51 +3416,51 @@
         }
       }
     },
-    "circle.leave": {
+    "group.leave": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Leave Circle"
+            "value": "Leave Group"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Salir del círculo"
+            "value": "Salir del grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "退出活力圈"
+            "value": "退出群组"
           }
         }
       }
     },
-    "circle.management": {
+    "group.management": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Circle settings"
+            "value": "Group settings"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ajustes del círculo"
+            "value": "Ajustes del grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "活力圈设置"
+            "value": "群组设置"
           }
         }
       }
     },
-    "circle.management.owner": {
+    "group.management.owner": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3477,12 +3477,12 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "圈主设置"
+            "value": "群组管理员设置"
           }
         }
       }
     },
-    "circle.member.contributed": {
+    "group.member.contributed": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3504,7 +3504,7 @@
         }
       }
     },
-    "circle.member.progress": {
+    "group.member.progress": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3526,15 +3526,15 @@
         }
       }
     },
-    "circle.member.progress.extra": {
-      "comment": "Circle member progress after the member exceeds the target. The first value is capped progress, the second is the target, and the third is the number of additional activities. [platform:ios]",
+    "group.member.progress.extra": {
+      "comment": "Group member progress after the member exceeds the target. The first value is capped progress, the second is the target, and the third is the number of additional activities. [platform:ios]",
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "%1$lld of %2$lld · %3$lld extra" } },
         "es": { "stringUnit": { "state": "translated", "value": "%1$lld de %2$lld · %3$lld extra" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "%1$lld/%2$lld · 额外 %3$lld 次" } }
       }
     },
-    "circle.members": {
+    "group.members": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3556,7 +3556,7 @@
         }
       }
     },
-    "circle.members.count": {
+    "group.members.count": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3578,7 +3578,7 @@
         }
       }
     },
-    "circle.members.manage": {
+    "group.members.manage": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3600,7 +3600,7 @@
         }
       }
     },
-    "circle.moment.cheer": {
+    "group.moment.cheer": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3622,7 +3622,7 @@
         }
       }
     },
-    "circle.moment.completed": {
+    "group.moment.completed": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3644,7 +3644,7 @@
         }
       }
     },
-    "circle.moment.run_planned": {
+    "group.moment.run_planned": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3666,7 +3666,7 @@
         }
       }
     },
-    "circle.moments": {
+    "group.moments": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3688,29 +3688,29 @@
         }
       }
     },
-    "circle.notification.accepted": {
+    "group.notification.accepted": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ joined your Circle."
+            "value": "%@ joined your Group."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ se unió a tu círculo."
+            "value": "%@ se unió a tu grupo."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ 加入了你的活力圈。"
+            "value": "%@ 加入了你的群组。"
           }
         }
       }
     },
-    "circle.notification.cheer": {
+    "group.notification.cheer": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3732,95 +3732,95 @@
         }
       }
     },
-    "circle.notification.invitation": {
+    "group.notification.invitation": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ invited you to a Circle."
+            "value": "%@ invited you to a Group."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ te invitó a un círculo."
+            "value": "%@ te invitó a un grupo."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ 邀请你加入活力圈。"
+            "value": "%@ 邀请你加入群组。"
           }
         }
       }
     },
-    "circle.notification.open": {
+    "group.notification.open": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Opens the Circle"
+            "value": "Opens the Group"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abre el círculo"
+            "value": "Abre el grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "打开活力圈"
+            "value": "打开群组"
           }
         }
       }
     },
-    "circle.notification.open_invitation": {
+    "group.notification.open_invitation": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Opens the Circle invitation"
+            "value": "Opens the Group invitation"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abre la invitación al círculo"
+            "value": "Abre la invitación al grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "打开活力圈邀请"
+            "value": "打开群组邀请"
           }
         }
       }
     },
-    "circle.notification.ownership": {
+    "group.notification.ownership": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ made you the Circle owner."
+            "value": "%@ made you the Group owner."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ te hizo propietario del círculo."
+            "value": "%@ te hizo propietario del grupo."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ 将你设为了圈主。"
+            "value": "%@ 将你设为了群组管理员。"
           }
         }
       }
     },
-    "circle.notification.someone": {
+    "group.notification.someone": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3842,29 +3842,29 @@
         }
       }
     },
-    "circle.notification.weekly_complete": {
+    "group.notification.weekly_complete": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your Circle completed this week’s focus."
+            "value": "Your Group completed this week’s focus."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu círculo completó el enfoque de esta semana."
+            "value": "Tu grupo completó el enfoque de esta semana."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的活力圈完成了本周目标。"
+            "value": "你的群组完成了本周目标。"
           }
         }
       }
     },
-    "circle.notifications.mute": {
+    "group.notifications.mute": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3886,7 +3886,7 @@
         }
       }
     },
-    "circle.plan_run": {
+    "group.plan_run": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3908,29 +3908,29 @@
         }
       }
     },
-    "circle.primary.current": {
+    "group.primary.current": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Primary Circle"
+            "value": "Primary Group"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Círculo principal"
+            "value": "Grupo principal"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "主要活力圈"
+            "value": "主要群组"
           }
         }
       }
     },
-    "circle.primary.make": {
+    "group.primary.make": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3947,34 +3947,34 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "设为主要活力圈"
+            "value": "设为主要群组"
           }
         }
       }
     },
-    "circle.private": {
+    "group.private": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Trusted Circle"
+            "value": "Trusted Group"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Círculo de confianza"
+            "value": "Grupo de confianza"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "亲友活力圈"
+            "value": "亲友群组"
           }
         }
       }
     },
-    "circle.progress.format": {
+    "group.progress.format": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -3996,29 +3996,29 @@
         }
       }
     },
-    "circle.reactivate": {
+    "group.reactivate": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reactivate Circle"
+            "value": "Reactivate Group"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reactivar círculo"
+            "value": "Reactivar grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "重新启用活力圈"
+            "value": "重新启用群组"
           }
         }
       }
     },
-    "circle.remove_member": {
+    "group.remove_member": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4040,7 +4040,7 @@
         }
       }
     },
-    "circle.rename": {
+    "group.rename": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4062,7 +4062,7 @@
         }
       }
     },
-    "circle.reset_day": {
+    "group.reset_day": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4084,29 +4084,29 @@
         }
       }
     },
-    "circle.section.title": {
+    "group.section.title": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your Circle"
+            "value": "Your Group"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu círculo"
+            "value": "Tu grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的活力圈"
+            "value": "你的群组"
           }
         }
       }
     },
-    "circle.status.archived": {
+    "group.status.archived": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4128,7 +4128,7 @@
         }
       }
     },
-    "circle.status.awaiting": {
+    "group.status.awaiting": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4150,7 +4150,7 @@
         }
       }
     },
-    "circle.timezone": {
+    "group.timezone": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4172,7 +4172,7 @@
         }
       }
     },
-    "circle.today.no_target": {
+    "group.today.no_target": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4194,7 +4194,7 @@
         }
       }
     },
-    "circle.today.personal_contribution": {
+    "group.today.personal_contribution": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4216,7 +4216,7 @@
         }
       }
     },
-    "circle.today.plan_run": {
+    "group.today.plan_run": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4238,7 +4238,7 @@
         }
       }
     },
-    "circle.today.progress": {
+    "group.today.progress": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4260,51 +4260,51 @@
         }
       }
     },
-    "circle.toast.archived": {
+    "group.toast.archived": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Circle archived."
+            "value": "Group archived."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Círculo archivado."
+            "value": "Grupo archivado."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "活力圈已归档。"
+            "value": "群组已归档。"
           }
         }
       }
     },
-    "circle.toast.calendar_saved": {
+    "group.toast.calendar_saved": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Circle week updated."
+            "value": "Group week updated."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Semana del círculo actualizada."
+            "value": "Semana del grupo actualizada."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "活力圈周期已更新。"
+            "value": "群组周期已更新。"
           }
         }
       }
     },
-    "circle.toast.cheer_removed": {
+    "group.toast.cheer_removed": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4326,7 +4326,7 @@
         }
       }
     },
-    "circle.toast.cheer_sent": {
+    "group.toast.cheer_sent": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4348,7 +4348,7 @@
         }
       }
     },
-    "circle.toast.commitment_saved": {
+    "group.toast.commitment_saved": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4370,29 +4370,29 @@
         }
       }
     },
-    "circle.toast.created": {
+    "group.toast.created": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Circle created. Invitations sent."
+            "value": "Group created. Invitations sent."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Círculo creado. Invitaciones enviadas."
+            "value": "Grupo creado. Invitaciones enviadas."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "活力圈已创建，邀请已发送。"
+            "value": "群组已创建，邀请已发送。"
           }
         }
       }
     },
-    "circle.toast.declined": {
+    "group.toast.declined": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4414,7 +4414,7 @@
         }
       }
     },
-    "circle.toast.focus_saved": {
+    "group.toast.focus_saved": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4436,7 +4436,7 @@
         }
       }
     },
-    "circle.toast.invitation_cancelled": {
+    "group.toast.invitation_cancelled": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4458,7 +4458,7 @@
         }
       }
     },
-    "circle.toast.invitations_sent": {
+    "group.toast.invitations_sent": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4480,51 +4480,51 @@
         }
       }
     },
-    "circle.toast.joined": {
+    "group.toast.joined": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You joined the Circle."
+            "value": "You joined the Group."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Te uniste al círculo."
+            "value": "Te uniste al grupo."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你已加入活力圈。"
+            "value": "你已加入群组。"
           }
         }
       }
     },
-    "circle.toast.left": {
+    "group.toast.left": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You left the Circle."
+            "value": "You left the Group."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Saliste del círculo."
+            "value": "Saliste del grupo."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你已退出活力圈。"
+            "value": "你已退出群组。"
           }
         }
       }
     },
-    "circle.toast.member_removed": {
+    "group.toast.member_removed": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4546,29 +4546,29 @@
         }
       }
     },
-    "circle.toast.muted": {
+    "group.toast.muted": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Circle notifications muted."
+            "value": "Group notifications muted."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Notificaciones del círculo silenciadas."
+            "value": "Notificaciones del grupo silenciadas."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "活力圈通知已关闭。"
+            "value": "群组通知已关闭。"
           }
         }
       }
     },
-    "circle.toast.owner_transferred": {
+    "group.toast.owner_transferred": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4585,100 +4585,100 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "圈主身份已转让。"
+            "value": "群组管理员身份已转让。"
           }
         }
       }
     },
-    "circle.toast.primary": {
+    "group.toast.primary": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Primary Circle updated."
+            "value": "Primary Group updated."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Círculo principal actualizado."
+            "value": "Grupo principal actualizado."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "主要活力圈已更新。"
+            "value": "主要群组已更新。"
           }
         }
       }
     },
-    "circle.toast.reactivated": {
+    "group.toast.reactivated": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Circle reactivated."
+            "value": "Group reactivated."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Círculo reactivado."
+            "value": "Grupo reactivado."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "活力圈已重新启用。"
+            "value": "群组已重新启用。"
           }
         }
       }
     },
-    "circle.toast.saved": {
+    "group.toast.saved": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Circle updated."
+            "value": "Group updated."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Círculo actualizado."
+            "value": "Grupo actualizado."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "活力圈已更新。"
+            "value": "群组已更新。"
           }
         }
       }
     },
-    "circle.toast.unmuted": {
+    "group.toast.unmuted": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Circle notifications turned on."
+            "value": "Group notifications turned on."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Notificaciones del círculo activadas."
+            "value": "Notificaciones del grupo activadas."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "活力圈通知已开启。"
+            "value": "群组通知已开启。"
           }
         }
       }
     },
-    "circle.transfer": {
+    "group.transfer": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4695,12 +4695,12 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "转让圈主身份"
+            "value": "转让群组管理员身份"
           }
         }
       }
     },
-    "circle.week.recorded": {
+    "group.week.recorded": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -4722,51 +4722,51 @@
         }
       }
     },
-    "circle.week.save": {
+    "group.week.save": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Save Circle week"
+            "value": "Save Group week"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guardar semana del círculo"
+            "value": "Guardar semana del grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存活力圈周期"
+            "value": "保存群组周期"
           }
         }
       }
     },
-    "circle.week.settings": {
+    "group.week.settings": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Circle week"
+            "value": "Group week"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Semana del círculo"
+            "value": "Semana del grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "活力圈周期"
+            "value": "群组周期"
           }
         }
       }
     },
-    "circle.weekly_focus": {
+    "group.weekly_focus": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -21755,13 +21755,13 @@
         }
       }
     },
-    "Invite family or friends, or join a club run that fits your plan.": {
+    "Invite family or friends, or join a group run that fits your plan.": {
       "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Invita a familiares o amigos, o únete a un club que se ajuste a tu plan."
+            "value": "Invita a familiares o amigos, o únete a un group que se ajuste a tu plan."
           }
         },
         "zh-Hans": {
@@ -31232,7 +31232,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这些选填信息可帮助平步青云更合理地调整训练量、恢复建议和相关估算。信息仅供你本人使用，不会显示在“跑圈”中。"
+            "value": "这些选填信息可帮助平步青云更合理地调整训练量、恢复建议和相关估算。信息仅供你本人使用，不会显示在“群组”中。"
           }
         }
       }
@@ -31334,7 +31334,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这是你在共同活动中的个人记录。参与者的汇总结果仍可在“跑圈”中查看。"
+            "value": "这是你在共同活动中的个人记录。参与者的汇总结果仍可在“群组”中查看。"
           }
         }
       }
@@ -31611,7 +31611,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "跑圈"
+            "value": "群组"
           }
         }
       }
@@ -33210,12 +33210,12 @@
         }
       }
     },
-    "Your AI running companion brings your training together with family, friends, and clubs.": {
+    "Your AI running companion brings your training together with family, friends, and groups.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu compañero de running con IA conecta tus entrenamientos con familiares, amigos y clubes."
+            "value": "Tu compañero de running con IA conecta tus entrenamientos con familiares, amigos y groupes."
           }
         },
         "zh-Hans": {
@@ -33242,13 +33242,13 @@
         }
       }
     },
-    "YOUR CLUBS": {
+    "YOUR GROUPS": {
       "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "TUS CLUBES"
+            "value": "TUS GRUPOS"
           }
         },
         "zh-Hans": {
@@ -33436,7 +33436,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的姓名和个人简介可能会向“跑圈”中与你建立联系的人显示。"
+            "value": "你的姓名和个人简介可能会向“群组”中与你建立联系的人显示。"
           }
         }
       }
@@ -36308,19 +36308,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your connections, Circles, and shared activities will live here."
+            "value": "Your connections, Groups, and shared activities will live here."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aquí encontrarás tus contactos, Círculos y actividades compartidas."
+            "value": "Aquí encontrarás tus contactos, Grupos y actividades compartidas."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你可以在这里查看好友、跑步圈和大家分享的活动。"
+            "value": "你可以在这里查看好友、跑步群组和大家分享的活动。"
           }
         }
       }
@@ -43820,19 +43820,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Allow notifications for invitations, Cheers, and important Circle updates. Your inbox still works if you decline."
+            "value": "Allow notifications for invitations, Cheers, and important Group updates. Your inbox still works if you decline."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permite notificaciones de invitaciones, ánimos y novedades importantes del Círculo. La bandeja seguirá disponible si no aceptas."
+            "value": "Permite notificaciones de invitaciones, ánimos y novedades importantes del Grupo. La bandeja seguirá disponible si no aceptas."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "允许接收邀请、鼓励和重要圈子动态。即使拒绝权限，站内通知仍然可用。"
+            "value": "允许接收邀请、鼓励和重要群组动态。即使拒绝权限，站内通知仍然可用。"
           }
         }
       }
@@ -45763,48 +45763,48 @@
         }
       }
     },
-    "social.circle": {
-      "comment": "Shared with Android social; generated Android name: social_circle. [android:social] Generated Android name: social_circle.",
+    "social.group": {
+      "comment": "Shared with Android social; generated Android name: social_group. [android:social] Generated Android name: social_group.",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your Circle"
+            "value": "Your Group"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu Círculo"
+            "value": "Tu Grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的圈子"
+            "value": "你的群组"
           }
         }
       }
     },
-    "social.circle.empty": {
-      "comment": "Shared with Android social; generated Android name: social_circle_empty. [android:social] Generated Android name: social_circle_empty.",
+    "social.group.empty": {
+      "comment": "Shared with Android social; generated Android name: social_group_empty. [android:social] Generated Android name: social_group_empty.",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Active. Positive. Together. Create a private Circle with people who help you keep moving."
+            "value": "Active. Positive. Together. Create a private Group with people who help you keep moving."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activos. Positivos. Juntos. Crea un Círculo privado con quienes te ayudan a seguir en movimiento."
+            "value": "Activos. Positivos. Juntos. Crea un Grupo privado con quienes te ayudan a seguir en movimiento."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保持活力，积极相伴。和支持你坚持运动的人创建一个私密圈子。"
+            "value": "保持活力，积极相伴。和支持你坚持运动的人创建一个私密群组。"
           }
         }
       }
@@ -46380,8 +46380,8 @@
         }
       }
     },
-    "social.circle.progress": {
-      "comment": "Shared with Android social; generated Android name: social_circle_progress. [android:social] Generated Android name: social_circle_progress.",
+    "social.group.progress": {
+      "comment": "Shared with Android social; generated Android name: social_group_progress. [android:social] Generated Android name: social_group_progress.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -46518,25 +46518,25 @@
         }
       }
     },
-    "social.circle.create": {
-      "comment": "Shared with Android social; generated Android name: social_circle_create. [android:social] Generated Android name: social_circle_create.",
+    "social.group.create": {
+      "comment": "Shared with Android social; generated Android name: social_group_create. [android:social] Generated Android name: social_group_create.",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Create Circle"
+            "value": "Create Group"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Crear Círculo"
+            "value": "Crear Grupo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "创建圈子"
+            "value": "创建群组"
           }
         }
       }
@@ -46564,8 +46564,8 @@
         }
       }
     },
-    "social.circle.reactivate": {
-      "comment": "Shared with Android social; generated Android name: social_circle_reactivate. [android:social] Generated Android name: social_circle_reactivate.",
+    "social.group.reactivate": {
+      "comment": "Shared with Android social; generated Android name: social_group_reactivate. [android:social] Generated Android name: social_group_reactivate.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -48808,7 +48808,7 @@
     "social.active_now.profile_hint": {"comment":"Profile action hint in Social. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Opens this person’s profile"}},"es":{"stringUnit":{"state":"translated","value":"Abre el perfil de esta persona"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"打开此用户的个人资料"}}}},
     "social.active_now.title": {"comment":"Compact Social rail title. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Active now"}},"es":{"stringUnit":{"state":"translated","value":"En actividad"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"正在运动"}}}},
     "social.activities.past": {"comment":"Past shared activity-event section. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Past activities"}},"es":{"stringUnit":{"state":"translated","value":"Actividades pasadas"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"过往活动"}}}},
-    "social.create.circle": {"comment":"Create menu action. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Create Circle"}},"es":{"stringUnit":{"state":"translated","value":"Crear un Círculo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"创建朋友圈"}}}},
+    "social.create.group": {"comment":"Create menu action. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Create Group"}},"es":{"stringUnit":{"state":"translated","value":"Crear un Grupo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"创建群组"}}}},
     "social.create.menu": {"comment":"Accessibility label for the fixed Social create menu. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Create or add"}},"es":{"stringUnit":{"state":"translated","value":"Crear o añadir"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"创建或添加"}}}},
     "social.create.person": {"comment":"Create menu action. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Add connection"}},"es":{"stringUnit":{"state":"translated","value":"Añadir contacto"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"添加跑友"}}}},
     "social.create.plan": {"comment":"Create menu action. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Plan an activity"}},"es":{"stringUnit":{"state":"translated","value":"Planear una actividad"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"计划活动"}}}},
@@ -48830,7 +48830,6 @@
     "social.tab.accessibility.action_count": {"comment":"Tab badge accessibility value; argument is an unresolved-action count. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Actions needing attention: %lld"}},"es":{"stringUnit":{"state":"translated","value":"Acciones pendientes: %lld"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"待处理操作：%lld"}}}},
     "social.tab.accessibility.new_content": {"comment":"Tab dot accessibility value. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"New content"}},"es":{"stringUnit":{"state":"translated","value":"Contenido nuevo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"有新内容"}}}},
     "social.tab.accessibility.selected": {"comment":"Selected tab accessibility value. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Selected"}},"es":{"stringUnit":{"state":"translated","value":"Seleccionada"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"已选择"}}}},
-    "social.tab.circle": {"comment":"Compact Social feature tab. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Circle"}},"es":{"stringUnit":{"state":"translated","value":"Círculo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"朋友圈"}}}},
     "social.tab.feed": {"comment":"Compact Social feature tab. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Feed"}},"es":{"stringUnit":{"state":"translated","value":"Actividad"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"动态"}}}},
     "social.tab.groups": {"comment":"Compact Social feature tab. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Groups"}},"es":{"stringUnit":{"state":"translated","value":"Grupos"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"群组"}}}},
     "social.tab.people": {"comment":"Compact Social feature tab. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"People"}},"es":{"stringUnit":{"state":"translated","value":"Personas"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"跑友"}}}},
@@ -48839,14 +48838,7 @@
     "social.upcoming.attendees": {"comment":"Compact activity-event attendee count. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"%lld going"}},"es":{"stringUnit":{"state":"translated","value":"Asistentes: %lld"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"参加：%lld 人"}}}},
     "social.upcoming.meetup": {"comment":"Compact hybrid activity-event participation status. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Meet up or join anywhere"}},"es":{"stringUnit":{"state":"translated","value":"Queda o únete desde donde quieras"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"见面或随地参与"}}}},
     "social.upcoming.plan": {"comment":"Compact Upcoming row action. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Plan"}},"es":{"stringUnit":{"state":"translated","value":"Planear"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"计划"}}}},
-    "social.upcoming.see_all": {"comment":"Compact Upcoming row action. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"See all"}},"es":{"stringUnit":{"state":"translated","value":"Ver todo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"查看全部"}}}},
-    "group.error.offline": {"comment":"Offline Group fallback message. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Your Group is temporarily unavailable. Showing saved information."}},"es":{"stringUnit":{"state":"translated","value":"Tu Grupo no está disponible temporalmente. Mostramos la información guardada."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你的群组暂时不可用。正在显示已保存的信息。"}}}},
-    "group.error.invitations": {"comment":"Group invitation refresh error. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Group invitations could not be refreshed."}},"es":{"stringUnit":{"state":"translated","value":"No se pudieron actualizar las invitaciones del Grupo."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"无法刷新群组邀请。"}}}},
-    "group.error.operation": {"comment":"Group operation error. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"That Group update didn’t go through. Try again."}},"es":{"stringUnit":{"state":"translated","value":"No se pudo actualizar ese Grupo. Inténtalo de nuevo."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"群组更新未完成，请重试。"}}}},
-    "group.toast.created": {"comment":"Group creation success toast. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Group created. Invitations sent."}},"es":{"stringUnit":{"state":"translated","value":"Grupo creado. Invitaciones enviadas."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"群组已创建，邀请已发送。"}}}},
-    "group.toast.joined": {"comment":"Group join success toast. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"You joined the Group."}},"es":{"stringUnit":{"state":"translated","value":"Te uniste al Grupo."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"你已加入群组。"}}}},
-    "group.toast.saved": {"comment":"Group update success toast. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Group updated."}},"es":{"stringUnit":{"state":"translated","value":"Grupo actualizado."}},"zh-Hans":{"stringUnit":{"state":"translated","value":"群组已更新。"}}}},
-    "group.event.invite": {"comment":"Activity event invitation label for a Group. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"Invite your Group"}},"es":{"stringUnit":{"state":"translated","value":"Invita a tu Grupo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"邀请你的群组"}}}}
+    "social.upcoming.see_all": {"comment":"Compact Upcoming row action. [platform:ios]","localizations":{"en":{"stringUnit":{"state":"translated","value":"See all"}},"es":{"stringUnit":{"state":"translated","value":"Ver todo"}},"zh-Hans":{"stringUnit":{"state":"translated","value":"查看全部"}}}}
   },
   "version": "1.1"
 }

@@ -75,7 +75,7 @@ struct ActivityFeedView: View {
             .sheet(isPresented: $showingRelayComposer) {
                 RelayComposerSheet { routeLabel, windowLabel, audienceLabel in
                     socialStore.createRelay(routeLabel: routeLabel, windowLabel: windowLabel, audienceLabel: audienceLabel)
-                    _ = socialRecognitionStore.toggleClubMembership(clubID: "relay-preview")
+                    _ = socialRecognitionStore.toggleGroupMembership(groupID: "relay-preview")
                 }
             }
             .sheet(item: $selectedCommentPost) { post in
@@ -149,8 +149,8 @@ struct ActivityFeedView: View {
         switch selectedScope {
         case .squad:
             squadFeedRows
-        case .clubs:
-            clubsAndChallengesRows
+        case .groups:
+            groupsAndChallengesRows
         case .rivals:
             rivalBoardRows
         }
@@ -189,13 +189,13 @@ struct ActivityFeedView: View {
     }
 
     @ViewBuilder
-    private var clubsAndChallengesRows: some View {
-        ForEach(SocialSeed.clubs) { club in
-            SocialClubCard(
-                club: club,
-                isJoined: socialRecognitionStore.joinedClubIDs.contains(club.id)
+    private var groupsAndChallengesRows: some View {
+        ForEach(SocialSeed.groups) { group in
+            SocialGroupCard(
+                group: group,
+                isJoined: socialRecognitionStore.joinedGroupIDs.contains(group.id)
             ) {
-                toggleClub(club)
+                toggleGroup(group)
             }
         }
 
@@ -226,8 +226,8 @@ struct ActivityFeedView: View {
         }
     }
 
-    private func toggleClub(_ club: SocialClub) {
-        _ = socialRecognitionStore.toggleClubMembership(clubID: club.id)
+    private func toggleGroup(_ group: SocialGroup) {
+        _ = socialRecognitionStore.toggleGroupMembership(groupID: group.id)
     }
 
     private func toggleShared(_ activity: SavedActivity) {
@@ -562,24 +562,24 @@ private struct RoutePreviewCard: View {
     }
 }
 
-private struct SocialClubCard: View {
-    let club: SocialClub
+private struct SocialGroupCard: View {
+    let group: SocialGroup
     let isJoined: Bool
     let onToggleJoin: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 10) {
-                Image(systemName: club.symbol)
+                Image(systemName: group.symbol)
                     .font(.title3)
-                    .foregroundStyle(club.tint)
+                    .foregroundStyle(group.tint)
                     .frame(width: 42, height: 42)
-                    .background(club.tint.opacity(0.14), in: Circle())
+                    .background(group.tint.opacity(0.14), in: Circle())
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(club.name)
+                    Text(group.name)
                         .font(.headline)
-                    Text(club.subtitle)
+                    Text(group.subtitle)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -596,14 +596,14 @@ private struct SocialClubCard: View {
             }
 
             HStack(spacing: 12) {
-                AvatarStack(initials: club.memberInitials, tint: club.tint)
-                Text("\(club.memberCount) runners")
+                AvatarStack(initials: group.memberInitials, tint: group.tint)
+                Text("\(group.memberCount) runners")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text(club.nextRun)
+                Text(group.nextRun)
                     .font(.caption.bold())
-                    .foregroundStyle(club.tint)
+                    .foregroundStyle(group.tint)
             }
         }
         .padding(14)
@@ -968,7 +968,7 @@ private struct RelayComposerSheet: View {
                 RelayOptionPicker(
                     symbol: "person.2.fill",
                     title: String(localized: "social.relay.audience", defaultValue: "Audience"),
-                    options: ["Squad Only", "Club Members", "Rivals"],
+                    options: ["Squad Only", "Group Members", "Rivals"],
                     selection: $selectedAudience
                 )
 

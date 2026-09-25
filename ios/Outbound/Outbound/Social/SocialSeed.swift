@@ -50,8 +50,8 @@ enum SocialSeed {
         )
     ]
 
-    static let clubs = [
-        SocialClub(
+    static let groups = [
+        SocialGroup(
             id: "sf-dawn",
             name: "SF Dawn Patrol",
             subtitle: "Early runs, quiet streets, coffee after.",
@@ -61,7 +61,7 @@ enum SocialSeed {
             memberCount: 128,
             nextRun: "Tue 6:30"
         ),
-        SocialClub(
+        SocialGroup(
             id: "founders",
             name: "Founders 5K",
             subtitle: "Fast lunch loops for builders and designers.",
