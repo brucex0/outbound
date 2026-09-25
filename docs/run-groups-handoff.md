@@ -1,6 +1,6 @@
-# Social Groups — Handover Brief
+# Social Groups — Implementation Record
 
-Read `docs/run-groups.md` for the canonical target product and technical contract. This brief records the decision and the work that remains; it is not a second source of product rules.
+Read `docs/run-groups.md` for the canonical product and technical contract. This record describes the completed destructive consolidation and is not a second source of product rules.
 
 ## Decision
 
@@ -20,30 +20,26 @@ Read `docs/run-groups.md` for the canonical target product and technical contrac
 - A UI-only merge would hide two authorization systems behind one screen and make the product harder to maintain.
 - A completely uniform access policy would be unsafe. The trust-policy boundary keeps private workout sharing out of community queries by construction.
 
-## Current Implementation
+## Implemented State
 
-- Circle is the mature private-motivation vertical: weekly themes, commitments, contributions, Cheers, invitations, ownership, post-activity acknowledgement, notifications, and account-scoped caching. Its Group container and primary-selection behavior on Today are not carried forward.
-- The public consolidation slice is implemented: one iOS Groups destination, no Circle container on Today, Group terminology and Weekly Theme copy, account-scoped Group cache reset, and localized Group copy on Android.
-- `GET /v1/social/groups` now projects private memberships and discoverable community Groups together, with owner/city context for duplicate names. Private Group mutations are also reachable under `/v1/social/groups`; the old `/v1/groups` mount is a migration seam.
-- Activity events accept the generic `activityType` set and `sourceGroupId`, and private or community membership can authorize the source. Responses expose one generic Group source while legacy storage fields remain internal.
-- Analytics includes Group exposure/open/membership events, and Android Social renders the unified projection instead of separate Circle and community collections.
-- The persistence layer is not yet cut over: Prisma still has Circle/Club tables and `ActivityEvent.sourceCircleId`/`clubId`; community creation, join requests, notices, share-link tokens, and full Group administration are still migration work.
+- One `SocialGroup` persistence model, typed membership/invitation/request/link/notice/motivation relations, and `ActivityEvent.groupId` are the only Group storage contract.
+- `/v1/social/groups` owns mine/discovery/detail, creation templates, membership, administration, notices, motivation capabilities, activity attribution, and opaque invite links. `/v1/groups`, `/clubs`, and legacy adapters are removed.
+- Trusted-private and community reads are separate projections. Community responses never select member workout fields.
+- iOS and Android use Group stores/repositories, Group notification destinations, account-scoped offline state, and localized Group terminology.
+- Rebuilds are intentionally destructive before release; legacy rows, caches, and seed identities are not migrated.
 
-## Implementation Order
+## Rebuild / Verification
 
-1. Build the unified `SocialGroup` schema and migrate private/community authorization projections.
-2. Add community creation, join requests, roles, notices, moderation, and revocable Group invite links.
-3. Replace legacy `ActivityEvent.sourceCircleId`/`clubId` with `groupId` and remove Circle-specific notification destinations.
-4. Destructively remove Circle/Club data and reseed system-managed community Groups.
-5. Rename internal Circle stores/contracts and finish analytics/localization cleanup after the schema cutover.
-6. Verify privacy, accessibility, notice attention, and deep-link behavior, then complete Android parity against the final contract.
+1. Run `cd backend && npm run db:rebuild` locally, or run the documented Cloud Run schema job against a disposable database.
+2. Run the seed command after the rebuild to create system-managed public Groups.
+3. Run backend, iOS, Android phone, and Wear build-only verification; do not run the test suite unless explicitly requested.
 
-Do not begin by sharing serializers or generalizing the current Circle contribution reconciler. Community queries must never load private workout fields, and community membership must never attach an unrelated personal activity.
+The implementation keeps private and community projections separate. Community queries do not select member workout fields, and community membership never attaches unrelated personal activity. This file is retained as an implementation record; `docs/run-groups.md` remains the only product contract.
 
 ## Key Pointers
 
 - `docs/run-groups.md` — canonical consolidated product, UX, privacy, data, API, client, analytics, rollout, and acceptance contract.
-- `docs/your-circle.md` — current Circle behavior and migration reference; not the future information architecture.
+- `docs/your-circle.md` — archived pre-consolidation behavior reference; not a runtime or product contract.
 - `docs/social.md` — current Social and activity-event behavior plus App Review obligations.
 - `docs/notifications.md` — durable notification and routing contract.
 - `docs/product-analytics.md` — typed provider-neutral analytics rules.

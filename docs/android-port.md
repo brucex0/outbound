@@ -89,7 +89,7 @@ The following table is the release checklist. A row may use an Android-native re
 | Progress and gear | `ProgressStatsEngine`, `ProgressView`, `GearStore` | Pure Kotlin engines and Room repositories | Shared fixtures produce equivalent weekly totals, records, predictions, momentum, and mileage |
 | Live coaching | Moment director, session planner, signed audio packs, planned cache, stream/fixed recorded-audio fallback | Pure Kotlin policy and scheduler, AudioTrack, verified recorded-audio packs, private planned-audio cache | Same semantic gates, target logic, priorities, locale/units, 1.5-second fallback, interruptions, and session access; do not substitute system TTS |
 | Assistant and voice | Companion API, local fallback, speech recognition, App Intents | Companion API, Android speech APIs, App Actions/shortcuts where supported | Text and tap-to-talk assistant, activity preparation, live-session voice commands, and privacy boundaries |
-| Social and Circles | Connections, feed, groups, invitations, events, Cheers | Compose surfaces against existing Social and Circle APIs | Cross-platform interaction, privacy visibility, pagination, reporting, blocking, and notification routing |
+| Social and Groups | Connections, feed, Groups, invitations, events, Cheers | Compose surfaces against the unified Social Group API | Cross-platform interaction, privacy visibility, pagination, reporting, blocking, and notification routing |
 | Recognition | Local presentation plus server reconciliation | Room cache plus the same recognition APIs | Idempotent awards and identical share-eligibility behavior |
 | Routes | Community routes, bookmarks, publication, deterministic route guidance | Google Maps rendering and a fixture-equivalent Kotlin guidance engine | Direction, acquisition, deviation/rejoin, wrong-way, arrival, privacy trimming, offline cache, and export |
 | Safety | Trusted contacts, private live links, location updates, group-map sharing | Android contacts/share UI and foreground-safe live updates | Arming, delivery/share fallback, throttling, stale/unavailable states, explicit stop, and cleanup |
@@ -158,7 +158,7 @@ The backend remains the contract authority. Avoid maintaining independent Swift 
 
 1. Add a versioned OpenAPI artifact derived from route validators or maintained beside them.
 2. Keep canonical request/response examples under `contracts/<domain>/<version>/`.
-3. Cover identity, preferences, activities, media, planning, personalization, companion, coaching, recognition, Social, Circles, routes, safety, notifications, feedback, and health-source metadata.
+3. Cover identity, preferences, activities, media, planning, personalization, companion, coaching, recognition, Social, Groups, routes, safety, notifications, feedback, and health-source metadata.
 4. Store semantic values, meters, seconds, UTC instants, and explicit nullable fields in contracts.
 5. Return stable machine error codes; clients own localized error presentation.
 6. Add fixture suites for deterministic algorithms that must agree across Swift and Kotlin:
@@ -274,7 +274,7 @@ Gate:
 
 Deliverables:
 
-- Feed, profiles, connections, groups, Circles, events, invitations, Cheers, recognition, community routes, bookmarks, publishing, route guidance, trusted contacts, private live sharing, group live maps, inbox, FCM, deep links, reporting, and blocking.
+- Feed, profiles, connections, Groups, events, invitations, Cheers, recognition, community routes, bookmarks, publishing, route guidance, trusted contacts, private live sharing, group live maps, inbox, FCM, deep links, reporting, and blocking.
 - Equivalent visibility, route privacy, health/plan exclusion, and analytics safeguards.
 
 Gate:

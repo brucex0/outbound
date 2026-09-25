@@ -2,7 +2,7 @@
 
 Open this when designing or building Group creation, private motivation Groups, community activity Groups, membership, weekly themes, notices, scheduled activities, discovery, or moderation.
 
-Status: approved target contract with the first public consolidation slice implemented on backend, iOS, and Android. The current persistence layer still uses legacy `Circle`/`Club` tables internally; the destructive `SocialGroup` schema cutover remains the final migration milestone.
+Status: implemented unified Group contract. The destructive pre-release cutover uses `SocialGroup` and the `Group*` relations below; rebuild local or deployed databases from the final Prisma schema before seeding.
 
 ## Product Decision
 
@@ -261,16 +261,16 @@ Authenticated, role-authorized, block-aware, idempotent where retried, and curso
 - weekly-theme, commitment, and Cheer routes
 - `POST /v1/social/activity-events` accepts `groupId`
 
-Remove `/v1/circles`, legacy `/clubs`, `sourceCircleId`, and Circle-specific notification destinations in the same destructive cutover. Do not maintain compatibility adapters unless explicitly requested.
+The destructive cutover removes `/v1/circles`, legacy `/clubs`, `sourceCircleId`, and Circle-specific notification destinations. No compatibility adapters are retained.
 
 ## Client Direction
 
 ### iOS
 
-- Replace `CircleStore`, Circle contracts, and the lightweight Group state in `TogetherStore` with one focused `GroupStore` and `GroupContracts` under `Domains/Social`.
+- The iOS implementation uses one focused `GroupStore` and `GroupContracts` under `Domains/Social`; the old Circle store and contracts are deleted.
 - Remove `.circle` from `SocialFeatureTab`; keep `.groups` as the only destination.
 - Render detail modules from the server's policy-specific payload, not client guesses based on member count or badges.
-- Port the existing Weekly Theme, commitment, contribution, Cheer, post-activity, and account-scoped cache behavior into Group naming; remove the Circle/Group container card and primary-Group state from Today.
+- Weekly Theme, commitment, contribution, Cheer, post-activity, and account-scoped cache behavior use Group naming; Today contains no Group container card or primary-Group state.
 - Split the current `SocialGroupsView` into Groups home, discovery, creation, detail, notices, members, and management screens.
 - Clear old Circle and Group caches when authenticated account or schema version changes.
 - Localize every visible string naturally in English, Simplified Chinese, and Spanish.
@@ -279,7 +279,7 @@ Remove `/v1/circles`, legacy `/clubs`, `sourceCircleId`, and Circle-specific not
 ### Android
 
 - Consume the same policy-specific API contracts and capability rules.
-- Do not recreate Circle as an Android-only destination during parity work.
+- Android has no separate private-motivation destination; both templates use the unified Group navigation and server policy.
 - Ship Group navigation, creation, privacy projections, analytics, and moderation behavior before calling Social parity complete.
 
 ## Analytics
@@ -319,17 +319,9 @@ Primary success measures are invitation/request conversion, second- and fourth-w
 
 The project policy permits a destructive data reset. Prefer a clean cutover over a permanent compatibility layer.
 
-The current release slice already covers user-facing Group terminology, one Groups destination, Today boundaries, generic activity-event source typing, and the unified private/community list projection. The steps below are the remaining migration work; do not claim the persistence cutover complete until they are finished.
+The destructive cutover is implemented. `backend/prisma/schema.prisma` is the replacement schema; `cd backend && npm run db:rebuild` resets and reseeds a disposable database, while `docs/backend-deploy.md` documents the equivalent Cloud Run schema job. The deployed clients use the unified Group contracts, clear account-scoped legacy caches by using the new Group cache namespaces, and expose no compatibility routers or adapters.
 
-1. Add the unified schema and authorization/projection services.
-2. Replace Circle and Club APIs with the unified Group API; wire `ActivityEvent.groupId`.
-3. Destructively remove Circle/Club data, run the documented schema rebuild, and reseed curated community Groups with `managementMode = system`.
-4. Ship the consolidated iOS Groups destination and clear incompatible local caches.
-5. Verify private motivation behavior, community privacy, notice attention, event authorization, analytics allowlists, localization, and accessibility.
-6. Complete Android parity against the unified contract.
-7. Add recurring activities, organization verification, and operator recovery only after the core model is stable.
-
-Document the local rebuild command and the Cloud Run schema job from `docs/backend-deploy.md` in the implementation change. Do not preserve old Circle/Club rows unless the user explicitly requests a migration.
+Verification is build-only for this release: backend TypeScript, iOS phone and Watch targets, Android phone variants, and Wear OS variants. Recurring activity series, organization verification operations, and owner recovery remain deferred below.
 
 ## Acceptance Criteria
 

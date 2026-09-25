@@ -1,6 +1,6 @@
 # Android Social Feature-Parity Implementation Prompt
 
-Status: current pre-consolidation parity reference. Do not implement Circle as a separate Android destination after the unified Group contract in `docs/run-groups.md` enters implementation; port the listed private-motivation behavior into Groups instead.
+Status: archived pre-consolidation parity reference. Do not implement any Circle destination or contract; `docs/run-groups.md` and `docs/android-port.md` describe the implemented Android Group behavior.
 
 Copy the prompt below into the Android implementation task. It is intentionally detailed: feature parity means equivalent behavior, state, privacy, accessibility, and cross-platform interoperability, not a literal SwiftUI translation.
 

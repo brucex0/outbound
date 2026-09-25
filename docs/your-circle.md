@@ -1,6 +1,6 @@
 # Your Circle
 
-Status: current implementation and migration reference. `docs/run-groups.md` is the canonical target contract for the consolidated Group product. Do not extend Circle as a separate destination or persistence model; its primary-Circle selection and Group container on Today are intentionally removed by the target design.
+Status: archived pre-consolidation reference. `docs/run-groups.md` is the only runtime and product contract for the consolidated Group product. Do not implement or extend the Circle destination, persistence model, primary selection, or Today container described here.
 
 Open this when inspecting the existing invitation-only Circle behavior that must survive the Group migration: weekly shared motivation, Circle management, Circle celebrations, and Circle analytics.
 

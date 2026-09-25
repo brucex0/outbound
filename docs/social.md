@@ -2,7 +2,7 @@
 
 ## Current Social implementation
 
-This section describes the shipped shape. `docs/run-groups.md` defines the recommended target that consolidates Circle and Groups into one Groups destination and one model.
+This section is an archived pre-consolidation reference. `docs/run-groups.md` defines the implemented Group destination, API, persistence model, and authorization contract; endpoint and terminology descriptions below must not be used for new work.
 
 Social is the production social surface. `GET /v1/social/home` returns only the signed-in runner's accepted connections, joined groups, compatible upcoming group runs, and connection-visible posts. The previous `/v1/social/together` path remains as a temporary backend alias. The client caches the last successful response for a useful offline state. Invitations, Cheers, comments, group joins, and activity sharing are authenticated mutations. Compatibility explanations are share-safe and never expose private plan inputs or health reasons. The database and some internal DTOs retain `Club` names while the product consistently says `Group`.
 
