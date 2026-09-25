@@ -76,35 +76,46 @@ import kotlinx.serialization.json.JsonElement
     val currentUserAttendanceMode: String? = null,
 )
 @Serializable data class SocialInvitation(val id: String, val kind: String, val title: String, val sender: SocialPerson, val objectId: String? = null)
-@Serializable data class CircleCommitment(val targetCount: Int? = null, val skipped: Boolean = false)
-@Serializable data class CircleMember(
+@Serializable data class GroupCommitment(val targetCount: Int? = null, val skipped: Boolean = false)
+@Serializable data class GroupMember(
     val id: String = "",
     @SerialName("user") val person: SocialPerson,
     val role: String = "member",
     val isCurrentUser: Boolean = false,
     @SerialName("contributedCount") val completed: Int = 0,
-    val commitment: CircleCommitment? = null,
-    val recentActivity: CircleRecentActivity? = null,
+    val commitment: GroupCommitment? = null,
+    val recentActivity: GroupRecentActivity? = null,
 ) {
     val target: Int? get() = commitment?.targetCount
     val skipped: Boolean get() = commitment?.skipped == true
 }
-@Serializable data class CircleRecentActivity(val type:String="running",val title:String?=null,val startedAt:String,val durationSecs:Int?=null,val distanceM:Double?=null,val elevationM:Double?=null,val avgPace:Double?=null,val avgHeartRate:Int?=null,val energyKilocalories:Int?=null)
-@Serializable data class CircleFocus(val mode: String = "none", val focusConfigured: Boolean = false, val sharedTarget: Int? = null)
-@Serializable data class CircleWeek(val focusMode: String = "none", val contributedCount: Int = 0, val targetCount: Int? = null)
-@Serializable data class CircleSummary(
+@Serializable data class GroupRecentActivity(val type:String="running",val title:String?=null,val startedAt:String,val durationSecs:Int?=null,val distanceM:Double?=null,val elevationM:Double?=null,val avgPace:Double?=null,val avgHeartRate:Int?=null,val energyKilocalories:Int?=null)
+@Serializable data class GroupFocus(val mode: String = "none", val focusConfigured: Boolean = false, val sharedTarget: Int? = null)
+@Serializable data class GroupWeek(val focusMode: String = "none", val contributedCount: Int = 0, val targetCount: Int? = null)
+@Serializable data class GroupNotice(val id:String,val title:String?=null,val body:String,val pinned:Boolean=false,val publishedAt:String?=null,val editedAt:String?=null)
+@Serializable data class GroupCapability(val weeklyTheme:Boolean=false,val workoutContributions:Boolean=false,val presetCheers:Boolean=false,val notices:Boolean=false,val scheduledActivities:Boolean=true)
+@Serializable data class GroupSummary(
     val id: String,
     val name: String,
     val lifecycle: String,
     val role: String? = null,
+    val trustPolicy: String? = null,
+    val visibility: String? = null,
+    val joinPolicy: String? = null,
+    val description: String? = null,
+    val city: String? = null,
     val memberLimit: Int = 6,
     val memberCount: Int = 0,
     val currentUserMuted: Boolean = false,
-    val primary: Boolean = false,
     val eligibleForToday: Boolean = false,
-    val upcomingFocus: CircleFocus = CircleFocus(),
-    val week: CircleWeek = CircleWeek(),
-    val members: List<CircleMember> = emptyList(),
+    val upcomingFocus: GroupFocus = GroupFocus(),
+    val week: GroupWeek = GroupWeek(),
+    val members: List<GroupMember> = emptyList(),
+    val capabilities: GroupCapability = GroupCapability(),
+    val notices: List<GroupNotice> = emptyList(),
+    val unreadNoticeCount: Int = 0,
+    val featured: Boolean = false,
+    val organizationVerificationState: String = "unverified",
 ) {
     val focusMode: String get() = week.focusMode
     val completed: Int get() = week.contributedCount
@@ -113,12 +124,10 @@ import kotlinx.serialization.json.JsonElement
 @Serializable data class SocialHome(
     val connections: List<SocialPerson> = emptyList(),
     val posts: List<SocialPost> = emptyList(),
-    @SerialName("clubs") val groups: List<SocialGroup> = emptyList(),
     val upcomingRuns: List<SocialEvent> = emptyList(),
     val pastEvents: List<SocialEvent> = emptyList(),
     val invitations: List<SocialInvitation> = emptyList(),
-    val circles: List<CircleSummary> = emptyList(),
-    val unifiedGroups: List<SocialGroup> = emptyList(),
+    val groups: List<GroupSummary> = emptyList(),
     val recognitions: List<RecognitionAward> = emptyList(),
     @SerialName("nextFeedCursor") val nextCursor: String? = null,
 )

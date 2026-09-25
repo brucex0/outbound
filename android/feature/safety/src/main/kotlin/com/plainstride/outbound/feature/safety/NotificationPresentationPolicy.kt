@@ -49,26 +49,31 @@ object NotificationPresentationPolicy {
                 NotificationCategory.ACTIONABLE,
                 NotificationDestination.Connections,
             )
-            "runInvitation", "circleInvitation" -> NotificationPresentation(
+            "runInvitation", "groupInvitation" -> NotificationPresentation(
                 NotificationCenterSection.NEEDS_YOU,
                 NotificationCategory.ACTIONABLE,
                 id?.let(NotificationDestination::Invitation) ?: NotificationDestination.Inbox,
             )
-            "groupRunInvitation" -> NotificationPresentation(
+            "groupJoinRequest" -> NotificationPresentation(
                 NotificationCenterSection.NEEDS_YOU,
                 NotificationCategory.ACTIONABLE,
                 id?.let(NotificationDestination::Group) ?: NotificationDestination.Inbox,
+            )
+            "groupRunInvitation" -> NotificationPresentation(
+                NotificationCenterSection.NEEDS_YOU,
+                NotificationCategory.ACTIONABLE,
+                id?.let(NotificationDestination::GroupRun) ?: NotificationDestination.Inbox,
             )
 
             "connectionAccepted" -> update(NotificationDestination.Connections)
             "comment" -> update(id?.let(NotificationDestination::Post) ?: NotificationDestination.Inbox)
             "invitationAccepted", "activityEventJoined" ->
                 update(id?.let(NotificationDestination::Event) ?: NotificationDestination.Inbox)
-            "circleInvitationAccepted", "circleOwnershipTransferred" ->
-                update(id?.let(NotificationDestination::Circle) ?: NotificationDestination.Inbox)
+            "groupInvitationAccepted", "groupOwnershipTransferred", "groupJoinRequestApproved", "groupJoinRequestDenied" ->
+                update(id?.let(NotificationDestination::Group) ?: NotificationDestination.Inbox)
             "activity" -> update(id?.let(NotificationDestination::Activity) ?: NotificationDestination.Inbox)
             "groupRunStarted", "groupRunUpdated" ->
-                update(id?.let(NotificationDestination::Group) ?: NotificationDestination.Inbox)
+                update(id?.let(NotificationDestination::GroupRun) ?: NotificationDestination.Inbox)
             "liveShare", "liveShareStarted", "liveShareUpdated" ->
                 update(id?.let(NotificationDestination::Live) ?: NotificationDestination.Inbox)
 
@@ -76,12 +81,12 @@ object NotificationPresentationPolicy {
                 id?.let(NotificationDestination::Post) ?: NotificationDestination.Inbox,
                 id?.let { "cheer:$it" },
             )
-            "circleCheer" -> support(
-                id?.let(NotificationDestination::Circle) ?: NotificationDestination.Inbox,
-                id?.let { "circleCheer:$it" },
+            "groupCheer" -> support(
+                id?.let(NotificationDestination::Group) ?: NotificationDestination.Inbox,
+                id?.let { "groupCheer:$it" },
             )
-            "circleWeeklyGoalCompleted" -> support(
-                id?.let(NotificationDestination::Circle) ?: NotificationDestination.Inbox,
+            "groupWeeklyGoalCompleted" -> support(
+                id?.let(NotificationDestination::Group) ?: NotificationDestination.Inbox,
             )
 
             // Includes any future backend category: visible, non-actionable, and generically routable.
@@ -116,8 +121,8 @@ object NotificationPresentationPolicy {
         is NotificationDestination.Post -> "post"
         is NotificationDestination.Event -> "event"
         is NotificationDestination.Invitation -> "invitation"
-        is NotificationDestination.Circle -> "circle"
         is NotificationDestination.Group -> "group"
+        is NotificationDestination.GroupRun -> "group_run"
         is NotificationDestination.Live -> "live"
         NotificationDestination.Inbox -> "inbox"
     }

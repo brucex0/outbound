@@ -12,11 +12,10 @@
     <string name="social_checking_qr_code">Comprobando el código QR…</string>
     <string name="social_cancel">Cancelar</string>
     <string name="social_cheer">Enviar un ánimo privado</string>
-    <string name="social_circle">Tus Grupos</string>
-    <string name="social_circle_create">Crear Grupo</string>
-    <string name="social_circle_empty">Activos. Positivos. Juntos. Crea un Grupo privado con quienes te ayudan a seguir en movimiento.</string>
-    <string name="social_circle_progress">%1$d de %2$d actividades esta semana</string>
-    <string name="social_circle_reactivate">Reactivar</string>
+
+
+
+
     <string name="social_close">Cerrar</string>
     <string name="social_community">Comunidad</string>
     <string name="social_conditions">Condiciones</string>
@@ -93,5 +92,5 @@
     <string name="social_upcoming">Próximas</string>
     <string name="social_upcoming_empty">Aún no hay actividades próximas.</string>
     <string name="social_profile">Perfil</string><string name="social_back">Atrás</string><string name="social_profile_actions">Acciones del perfil</string><string name="social_profile_milestones">LOGROS</string><string name="social_recent_activities">ACTIVIDADES RECIENTES</string><string name="social_no_shared_activities">Todavía no hay actividades compartidas.</string>
-    <string name="circle_create_title">Crea tu grupo</string><string name="circle_create_inspiration">Activos. Positivos. Juntos.</string><string name="circle_create_detail">Comparte actividades y avances con tus personas más cercanas y anímense mutuamente.</string><string name="circle_create_people">¿Quién te ayuda a seguir en movimiento?</string><string name="circle_create_selected">%1$d seleccionados</string><string name="circle_create_name">Ponle nombre · Opcional</string><string name="circle_create_name_help">Déjalo en blanco y Plainstride sugerirá un nombre.</string><string name="circle_create_action">Crea tu grupo</string><string name="circle_manage">Gestionar grupo</string><string name="circle_relationship">Un espacio privado para mantenerse activos juntos.</string><string name="circle_no_numeric_focus">Sin meta numérica · Muévanse juntos</string><string name="circle_skipping">Descansa esta semana</string><string name="circle_member_progress">%1$d de %2$d</string><string name="circle_contributed">Ha aportado %1$d</string><string name="circle_weekly_focus">Tema semanal</string><string name="circle_focus_personal">Metas personales</string><string name="circle_focus_shared">Meta compartida</string><string name="circle_focus_none">Sin meta</string><string name="circle_apply_next_week">Aplicar la próxima semana</string><string name="circle_skip_week">Descansar esta semana</string><string name="circle_rename">Actualizar nombre</string><string name="circle_mute">Silenciar notificaciones del grupo</string><string name="circle_remove_member">Eliminar a %1$s</string><string name="circle_leave">Salir del grupo</string>
+
 </resources>

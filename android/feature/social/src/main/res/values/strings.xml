@@ -12,11 +12,10 @@
     <string name="social_checking_qr_code">Checking QR code…</string>
     <string name="social_cancel">Cancel</string>
     <string name="social_cheer">Send a private Cheer</string>
-    <string name="social_circle">Your Groups</string>
-    <string name="social_circle_create">Create Group</string>
-    <string name="social_circle_empty">Active. Positive. Together. Create a private Group with people who help you keep moving.</string>
-    <string name="social_circle_progress">%1$d of %2$d activities this week</string>
-    <string name="social_circle_reactivate">Reactivate</string>
+
+
+
+
     <string name="social_close">Close</string>
     <string name="social_community">Social community</string>
     <string name="social_conditions">Conditions</string>
@@ -93,5 +92,5 @@
     <string name="social_upcoming">Upcoming</string>
     <string name="social_upcoming_empty">No upcoming activities yet.</string>
     <string name="social_profile">Profile</string><string name="social_back">Back</string><string name="social_profile_actions">Profile actions</string><string name="social_profile_milestones">MILESTONES</string><string name="social_recent_activities">RECENT ACTIVITIES</string><string name="social_no_shared_activities">No shared activities yet.</string>
-    <string name="circle_create_title">Create your Group</string><string name="circle_create_inspiration">Active. Positive. Together.</string><string name="circle_create_detail">Share activities and progress with the people closest to you—and cheer each other on.</string><string name="circle_create_people">Who helps you keep moving?</string><string name="circle_create_selected">%1$d selected</string><string name="circle_create_name">Name your Group · Optional</string><string name="circle_create_name_help">Leave it blank and Plainstride will suggest a name.</string><string name="circle_create_action">Create your Group</string><string name="circle_manage">Manage Group</string><string name="circle_relationship">A private place to keep moving together.</string><string name="circle_no_numeric_focus">No numeric goal · Move together</string><string name="circle_skipping">Skipping this week</string><string name="circle_member_progress">%1$d of %2$d</string><string name="circle_contributed">Contributed %1$d</string><string name="circle_weekly_focus">Weekly Theme</string><string name="circle_focus_personal">Personal targets</string><string name="circle_focus_shared">Shared target</string><string name="circle_focus_none">No target</string><string name="circle_apply_next_week">Apply next week</string><string name="circle_skip_week">Skip this week</string><string name="circle_rename">Update name</string><string name="circle_mute">Mute Group notifications</string><string name="circle_make_primary" translatable="false"></string><string name="circle_remove_member">Remove %1$s</string><string name="circle_leave">Leave Group</string>
+
 </resources>

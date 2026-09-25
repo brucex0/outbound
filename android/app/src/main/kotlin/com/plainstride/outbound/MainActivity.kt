@@ -23,6 +23,7 @@ class MainActivity : ComponentActivity() {
     private var transferCode by mutableStateOf<String?>(null)
     private var navigationUri by mutableStateOf<Uri?>(null)
     private var connectionCode by mutableStateOf<String?>(null)
+    private var groupInviteToken by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,6 +31,7 @@ class MainActivity : ComponentActivity() {
         if (intent.action == SpotifyOAuthClient.CALLBACK) SpotifyOAuthClient.complete(intent)
         navigationUri = intent.navigationUri()
         connectionCode = intent.connectionCode()
+        groupInviteToken = intent.groupInviteToken()
         enableEdgeToEdge()
         setContent {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
@@ -48,6 +50,8 @@ class MainActivity : ComponentActivity() {
                     onNavigationUriConsumed = { navigationUri = null },
                     connectionCode = connectionCode,
                     onConnectionCodeConsumed = { connectionCode = null },
+                    groupInviteToken = groupInviteToken,
+                    onGroupInviteConsumed = { groupInviteToken = null },
                 )
             }
         }
@@ -60,6 +64,7 @@ class MainActivity : ComponentActivity() {
         if (intent.action == SpotifyOAuthClient.CALLBACK) SpotifyOAuthClient.complete(intent)
         navigationUri = intent.navigationUri()
         connectionCode = intent.connectionCode()
+        groupInviteToken = intent.groupInviteToken()
     }
 
     private fun Intent.transferCode(): String? {
@@ -82,5 +87,12 @@ class MainActivity : ComponentActivity() {
             else -> return null
         }
         return code.lowercase().takeIf { it.matches(Regex("[a-z0-9]{8}")) }
+    }
+
+    private fun Intent.groupInviteToken(): String? {
+        val uri = data ?: return null
+        val segments = uri.pathSegments
+        if (uri.scheme != "https" || uri.host != "plainstride.ai" || segments.size != 3 || segments[0] != "invite" || segments[1] != "group") return null
+        return segments[2].takeIf { it.isNotBlank() }
     }
 }

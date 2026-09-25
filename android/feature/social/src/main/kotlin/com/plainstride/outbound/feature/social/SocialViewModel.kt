@@ -14,9 +14,9 @@ import com.plainstride.outbound.core.analytics.*
 data class SocialUiState(
     val home: SocialHome = SocialHome(), val loading: Boolean = true, val refreshing: Boolean = false,
     val offline: Boolean = false, val search: String = "", val searchResults: List<SocialPerson> = emptyList(),
-    val selectedProfile: SocialPerson? = null, val selectedCircle: CircleSummary? = null,
+    val selectedProfile: SocialPerson? = null, val selectedGroupDetail: GroupSummary? = null,
     val selectedPost:SocialPost?=null,val comments:List<SocialComment> = emptyList(),
-    val selectedEvent:SocialEvent?=null,val selectedGroup:SocialGroup?=null,val selectedInvitation:SocialInvitation?=null,
+    val selectedEvent:SocialEvent?=null,val selectedInvitation:SocialInvitation?=null,
     val feedCursor: String? = null, val feedLoading: Boolean = false,
     val connectionRequestLoading: Boolean = false,
     val connectionProfileLoading: Boolean = false, val connectionProfileCode: String? = null,
@@ -69,15 +69,16 @@ sealed interface ConnectionEffect {
     fun trackActivityDetailOpened() = analytics.record(AnalyticsEvent("activity_detail_opened", mapOf(AnalyticsProperty.Source to "social_feed")))
     fun openProfile(person: SocialPerson) { mutableState.update { it.copy(selectedProfile = person, connectionProfileCode = null, connectionProfileIsSelf = false) }; analytics.record(AnalyticsEvent("social_profile_opened", mapOf(AnalyticsProperty.Source to "social"))) }
     fun closeProfile() = mutableState.update { it.copy(selectedProfile = null, connectionProfileCode = null, connectionProfileIsSelf = false) }
-    fun openTarget(type:String,id:String){when(type){"activity","post"->viewModelScope.launch{var post=mutableState.value.home.posts.firstOrNull{it.id==id||it.activity?.id==id};var cursor=mutableState.value.home.nextCursor;repeat(5){if(post!=null||cursor==null)return@repeat;repository.loadFeed(cursor).onSuccess{page->post=page.items.firstOrNull{it.id==id||it.activity?.id==id};cursor=page.nextCursor}};post?.let(::openComments)};"event"->viewModelScope.launch{repository.event(id).onSuccess{event->mutableState.update{it.copy(selectedEvent=event)}}};"circle"->viewModelScope.launch{repository.circle(id).onSuccess{circle->mutableState.update{it.copy(selectedCircle=circle)}}};"group"->mutableState.update{state->state.copy(selectedGroup=state.home.groups.firstOrNull{it.id==id})};"invitation"->mutableState.update{state->state.copy(selectedInvitation=state.home.invitations.firstOrNull{it.id==id||it.objectId==id})}}}
-    fun closeTarget()=mutableState.update{it.copy(selectedEvent=null,selectedGroup=null,selectedInvitation=null)}
-    fun openCircle(circle: CircleSummary) = viewModelScope.launch { repository.circle(circle.id).onSuccess { value -> mutableState.update { it.copy(selectedCircle = value) } } }
-    fun closeCircle() = mutableState.update { it.copy(selectedCircle = null) }
-    fun joinGroup(group: SocialGroup) = mutate("social_group_membership_changed") { repository.setGroupMembership(group.id, !group.joined).getOrThrow(); refresh() }
+    fun openTarget(type:String,id:String){when(type){"activity","post"->viewModelScope.launch{var post=mutableState.value.home.posts.firstOrNull{it.id==id||it.activity?.id==id};var cursor=mutableState.value.home.nextCursor;repeat(5){if(post!=null||cursor==null)return@repeat;repository.loadFeed(cursor).onSuccess{page->post=page.items.firstOrNull{it.id==id||it.activity?.id==id};cursor=page.nextCursor}};post?.let(::openComments)};"event"->viewModelScope.launch{repository.event(id).onSuccess{event->mutableState.update{it.copy(selectedEvent=event)}}};"group"->viewModelScope.launch{repository.group(id).onSuccess{group->mutableState.update{it.copy(selectedGroupDetail=group)}}};"invitation"->mutableState.update{state->state.copy(selectedInvitation=state.home.invitations.firstOrNull{it.id==id||it.objectId==id})}}}
+    fun closeTarget()=mutableState.update{it.copy(selectedEvent=null,selectedGroupDetail=null,selectedInvitation=null)}
+    fun openGroup(group: GroupSummary) = viewModelScope.launch { repository.group(group.id).onSuccess { value -> mutableState.update { it.copy(selectedGroupDetail = value) } } }
+    fun consumeGroupInvite(token: String) = mutate("group_invite_link_consumed") { repository.consumeGroupInvite(token).getOrThrow().let { group -> mutableState.update { it.copy(selectedGroupDetail = group) } }; refresh() }
+    fun closeGroup() = mutableState.update { it.copy(selectedGroupDetail = null) }
+    fun joinGroup(group: GroupSummary) = mutate("social_group_membership_changed") { repository.setGroupMembership(group.id, group.role == null).getOrThrow(); refresh() }
     fun report(post: SocialPost, reason: String) = mutate("social_content_reported", SocialMessage.REPORTED) { repository.reportPost(post.id, ReportReason.entries.firstOrNull { it.wireValue == reason } ?: ReportReason.OTHER).getOrThrow() }
     fun deletePost(post: SocialPost) = mutate("social_post_deleted") { repository.deletePost(post.id).getOrThrow(); refresh() }
     fun block(post: SocialPost) = mutate("social_person_blocked", SocialMessage.BLOCKED) { repository.block(post.author.id).getOrThrow(); refresh() }
-    fun cheerCircle(circle: CircleSummary, recipientId: String, preset: String) = mutate("circle_cheer_sent") { repository.cheerCircle(circle.id, recipientId, preset).getOrThrow() }
+    fun cheerGroup(group: GroupSummary, recipientId: String, preset: String) = mutate("group_cheer_sent") { repository.cheerGroup(group.id, recipientId, preset).getOrThrow() }
     fun openComments(post:SocialPost)=viewModelScope.launch{repository.comments(post.id).onSuccess{comments->mutableState.update{it.copy(selectedPost=post,comments=comments)}};analytics.record(AnalyticsEvent("social_comments_opened"))}
     fun closeComments()=mutableState.update{it.copy(selectedPost=null,comments=emptyList())}
     fun addComment(body:String){
@@ -153,16 +154,20 @@ sealed interface ConnectionEffect {
             )
         }
     }
-    fun createCircle(name:String?,members:List<SocialPerson>,timeZone:String?)=mutate("circle_created"){repository.createCircle(name,members.map{it.id},timeZone).getOrThrow().let{created->mutableState.update{it.copy(selectedCircle=created)}};refresh()}
-    fun inviteToCircle(circle:CircleSummary,members:List<SocialPerson>,idempotencyKey:String)=mutate("circle_invitation_sent"){repository.inviteToCircle(circle.id,members.map{it.id},idempotencyKey).getOrThrow();openCircle(circle)}
-    fun setCircleFocus(circle:CircleSummary,mode:String,target:Int?,nextWeek:Boolean)=mutate("circle_focus_changed"){repository.setCircleFocus(circle.id,mode,target,nextWeek).getOrThrow();openCircle(circle)}
-    fun setCircleArchived(circle:CircleSummary,archived:Boolean)=mutate("circle_lifecycle_changed"){repository.setCircleArchived(circle.id,archived).getOrThrow();closeCircle();refresh()}
-    fun renameCircle(circle:CircleSummary,name:String)=mutate("circle_renamed"){repository.renameCircle(circle.id,name).getOrThrow().let{updated->mutableState.update{it.copy(selectedCircle=updated)}};refresh()}
-    fun setCircleCommitment(circle:CircleSummary,target:Int?,skipped:Boolean)=mutate("circle_personal_target_changed"){repository.setCircleCommitment(circle.id,target,skipped).getOrThrow().let{updated->mutableState.update{it.copy(selectedCircle=updated)}};refresh()}
-    fun setPrimaryCircle(circle:CircleSummary)=mutate("circle_primary_changed"){repository.setPrimaryCircle(circle.id).getOrThrow();refresh()}
-    fun muteCircle(circle:CircleSummary,muted:Boolean)=mutate("circle_notifications_changed"){repository.muteCircle(circle.id,muted).getOrThrow().let{updated->mutableState.update{it.copy(selectedCircle=updated)}}}
-    fun leaveCircle(circle:CircleSummary)=mutate("circle_member_left"){repository.leaveCircle(circle.id).getOrThrow();closeCircle();refresh()}
-    fun removeCircleMember(circle:CircleSummary,userId:String)=mutate("circle_member_removed"){repository.removeCircleMember(circle.id,userId).getOrThrow().let{updated->mutableState.update{it.copy(selectedCircle=updated)}};refresh()}
+    fun createGroup(template:String,name:String?,members:List<SocialPerson>,timeZone:String?)=mutate("group_created"){repository.createGroup(template,name,members.map{it.id},timeZone).getOrThrow().let{created->mutableState.update{it.copy(selectedGroupDetail=created)}};refresh()}
+    fun inviteToGroup(group:GroupSummary,members:List<SocialPerson>,idempotencyKey:String)=mutate("group_invitation_sent"){repository.inviteToGroup(group.id,members.map{it.id},idempotencyKey).getOrThrow();openGroup(group)}
+    fun setGroupFocus(group:GroupSummary,mode:String,target:Int?,nextWeek:Boolean)=mutate("group_focus_changed"){repository.setGroupFocus(group.id,mode,target,nextWeek).getOrThrow();openGroup(group)}
+    fun createGroupActivity(group: GroupSummary, title: String, location: String?) = mutate("group_activity_created") {
+        val startsAt = java.time.OffsetDateTime.now().plusDays(1).withHour(9).withMinute(0).withSecond(0).withNano(0).toString()
+        repository.createEvent(CreateEventBody(title = title.trim(), startsAt = startsAt, locationName = location?.trim()?.takeIf { it.isNotEmpty() }, groupId = group.id)).getOrThrow()
+        openGroup(group)
+    }
+    fun setGroupArchived(group:GroupSummary,archived:Boolean)=mutate("group_lifecycle_changed"){repository.setGroupArchived(group.id,archived).getOrThrow();closeGroup();refresh()}
+    fun renameGroup(group:GroupSummary,name:String)=mutate("group_renamed"){repository.renameGroup(group.id,name).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
+    fun setGroupCommitment(group:GroupSummary,target:Int?,skipped:Boolean)=mutate("group_personal_target_changed"){repository.setGroupCommitment(group.id,target,skipped).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
+    fun muteGroup(group:GroupSummary,muted:Boolean)=mutate("group_notifications_changed"){repository.muteGroup(group.id,muted).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}}}
+    fun leaveGroup(group:GroupSummary)=mutate("group_member_left"){repository.leaveGroup(group.id).getOrThrow();closeGroup();refresh()}
+    fun removeGroupMember(group:GroupSummary,userId:String)=mutate("group_member_removed"){repository.removeGroupMember(group.id,userId).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
     fun respondToInvitation(invitation:SocialInvitation,accept:Boolean)=mutate("social_invitation_responded"){repository.respondToInvitation(invitation,accept).getOrThrow();closeTarget();refresh()}
     private fun mutate(event: String, success: SocialMessage = SocialMessage.ACTION_COMPLETE, block: suspend () -> Unit) = viewModelScope.launch { runCatching { block() }.onSuccess { messages.emit(success); analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "success"))) }.onFailure { messages.emit(SocialMessage.ACTION_FAILED); analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "failure"))) } }
 

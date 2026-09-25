@@ -1,0 +1,26 @@
+<resources>
+    <string name="group_create_title">创建群组</string>
+    <string name="group_create_choose_title">是什么让你们走到一起？</string>
+    <string name="group_create_choose_detail">选择一个起点，之后可以调整安全设置。</string>
+    <string name="group_template_motivation_title">一起保持动力</string>
+    <string name="group_template_motivation_detail">与信任的人分享进展，彼此鼓励。</string>
+    <string name="group_template_activities_title">组织活动</string>
+    <string name="group_template_activities_detail">协调社区活动、发布动态并安排活动。</string>
+    <string name="group_create_name">群组名称 · 可选</string>
+    <string name="group_create_name_help">留空后，Plainstride 会推荐一个名称。</string>
+    <string name="group_create_community_name_help">社区群组必须填写名称。</string>
+    <string name="group_create_community_detail">群组默认不出现在目录中，需要申请加入。</string>
+    <string name="group_create_people">谁能陪你坚持运动？</string>
+    <string name="group_create_selected">已选择 %1$d 人</string>
+    <string name="group_create_action">创建群组</string>
+    <string name="group_about">简介</string>
+    <string name="group_community_detail">一起组织活动和发布动态，但不会公开成员的训练记录。</string>
+    <string name="group_request_to_join">申请加入</string>
+    <string name="group_open_join">任何人都可以加入</string>
+    <string name="group_notice_update">群组动态</string>
+    <string name="group_notice_pinned">已置顶动态</string>
+    <string name="group_plan_activity">安排活动</string>
+    <string name="group_activity_title">活动标题</string>
+    <string name="group_activity_location">集合地点（可选）</string>
+    <string name="group_activity_timing">活动将安排在明天上午，之后可以编辑详细信息。</string>
+</resources>

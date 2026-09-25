@@ -36,25 +36,25 @@ interface SocialRepository {
     suspend fun referralLink(): Result<ConnectionLink>
     suspend fun connectionLinkPreview(code: String): Result<ConnectionLinkPreview>
     suspend fun consumeConnectionLink(code: String): Result<ConnectionLinkResult>
-    suspend fun circles(): Result<List<CircleSummary>>
-    suspend fun circle(id: String): Result<CircleSummary>
-    suspend fun cheerCircle(id: String, recipientId: String, preset: String): Result<Unit>
-    suspend fun renameCircle(id:String,name:String):Result<CircleSummary>
-    suspend fun setCircleCommitment(id:String,target:Int?,skipped:Boolean):Result<CircleSummary>
-    suspend fun setPrimaryCircle(id:String):Result<CircleSummary>
-    suspend fun muteCircle(id:String,muted:Boolean):Result<CircleSummary>
-    suspend fun leaveCircle(id:String):Result<Unit>
-    suspend fun removeCircleMember(id:String,userId:String):Result<CircleSummary>
+    suspend fun groups(): Result<List<GroupSummary>>
+    suspend fun group(id: String): Result<GroupSummary>
+    suspend fun cheerGroup(id: String, recipientId: String, preset: String): Result<Unit>
+    suspend fun renameGroup(id:String,name:String):Result<GroupSummary>
+    suspend fun setGroupCommitment(id:String,target:Int?,skipped:Boolean):Result<GroupSummary>
+    suspend fun muteGroup(id:String,muted:Boolean):Result<GroupSummary>
+    suspend fun leaveGroup(id:String):Result<Unit>
+    suspend fun removeGroupMember(id:String,userId:String):Result<GroupSummary>
     suspend fun awards(): Result<List<RecognitionAward>>
     suspend fun comments(postId:String):Result<List<SocialComment>>
     suspend fun addComment(postId:String,body:String):Result<SocialComment>
     suspend fun deleteComment(commentId:String):Result<Unit>
     suspend fun setEventRsvp(eventId:String,going:Boolean,attendanceMode:String="in_person"):Result<Unit>
     suspend fun inviteToEvent(eventId:String,personId:String?):Result<EventInvitation>
-    suspend fun createCircle(name:String?,memberIds:List<String>,timeZone:String?=null):Result<CircleSummary>
-    suspend fun inviteToCircle(circleId:String,memberIds:List<String>,idempotencyKey:String):Result<CircleSummary>
-    suspend fun setCircleFocus(circleId:String,mode:String,target:Int?,applyNextWeek:Boolean):Result<CircleSummary>
-    suspend fun setCircleArchived(circleId:String,archived:Boolean):Result<CircleSummary>
+    suspend fun createGroup(template:String,name:String?,memberIds:List<String>,timeZone:String?=null):Result<GroupSummary>
+    suspend fun inviteToGroup(groupId:String,memberIds:List<String>,idempotencyKey:String):Result<GroupSummary>
+    suspend fun consumeGroupInvite(token: String): Result<GroupSummary>
+    suspend fun setGroupFocus(groupId:String,mode:String,target:Int?,applyNextWeek:Boolean):Result<GroupSummary>
+    suspend fun setGroupArchived(groupId:String,archived:Boolean):Result<GroupSummary>
     suspend fun event(id:String):Result<SocialEvent>
     suspend fun createEvent(body:CreateEventBody):Result<SocialEvent>
     suspend fun eventResults(id:String):Result<ActivityEventResult>
@@ -80,21 +80,18 @@ class OfflineFirstSocialRepository @Inject constructor(
         authenticated { auth -> coroutineScope {
             val home = async { apiCall { api.home(auth) } }
             val connections = async { apiCall { api.connections(auth, null) } }
-            val circles = async { apiCall { api.circles(auth) } }
-            val unifiedGroups = async { apiCall { api.groups(auth) } }
+            val groups = async { apiCall { api.groups(auth) } }
             val awards = async { apiCall { api.awards(auth) } }
-            val circleInvitations = async { apiCall { api.circleInvitations(auth) } }
+            val groupInvitations = async { apiCall { api.groupInvitations(auth) } }
             when (val core = home.await()) {
                 is ApiResult.Failure -> core
                 is ApiResult.Success -> {
-                    val circleResult = circles.await()
-                    val groupResult = unifiedGroups.await()
+                    val groupResult = groups.await()
                     ApiResult.Success(core.value.copy(
                     connections = (connections.await() as? ApiResult.Success)?.value?.connections.orEmpty().map { it.person.copy(relationshipDetails = SocialRelationship(it.id, it.status, it.direction), relationship = it.status, isActive = it.isInActiveWorkout, connectionId = it.id, connectionDirection=it.direction) },
-                    invitations = (core.value.invitations + (circleInvitations.await() as? ApiResult.Success)?.value?.invitations.orEmpty().map { SocialInvitation(it.id,"circle",it.circle.name,it.sender,it.circle.id) }).distinctBy(SocialInvitation::id),
+                    invitations = (core.value.invitations + (groupInvitations.await() as? ApiResult.Success)?.value?.invitations.orEmpty().map { SocialInvitation(it.id,"group",it.group.name,it.sender,it.group.id) }).distinctBy(SocialInvitation::id),
                     recognitions = (awards.await() as? ApiResult.Success)?.value?.awards.orEmpty(),
-                    circles = (circleResult as? ApiResult.Success)?.value?.let { response -> response.circles.map { circle -> circle.copy(primary = circle.id == response.primaryCircleId) }.sortedByDescending { it.primary } }.orEmpty(),
-                    unifiedGroups = (groupResult as? ApiResult.Success)?.value?.groups.orEmpty(),
+                    groups = (groupResult as? ApiResult.Success)?.value?.groups.orEmpty(),
                 )) }
             }
         } }.onSuccess { home ->
@@ -122,25 +119,25 @@ class OfflineFirstSocialRepository @Inject constructor(
         .map { preview -> preview.copy(person = preview.person.withRelationship()) }
     override suspend fun consumeConnectionLink(code: String) = authenticated { apiCall { api.consumeConnectionLink(it, code) } }
         .map { response -> response.copy(person = response.person.withRelationship(response.relationship)) }
-    override suspend fun circles() = authenticated { apiCall { api.circles(it) } }.map { it.circles }
-    override suspend fun circle(id: String) = authenticated { apiCall { api.circle(it, id) } }
-    override suspend fun cheerCircle(id: String, recipientId: String, preset: String) = authenticated { apiCall { api.circleCheer(it, id, CheerBody(recipientId, preset)) } }
-    override suspend fun renameCircle(id:String,name:String)=authenticated{apiCall{api.renameCircle(it,id,RenameCircleBody(name.trim()))}}
-    override suspend fun setCircleCommitment(id:String,target:Int?,skipped:Boolean)=authenticated{apiCall{api.circleCommitment(it,id,CircleCommitmentBody(target,skipped))}}
-    override suspend fun setPrimaryCircle(id:String)=authenticated{apiCall{api.primaryCircle(it,id)}}.map{it.circle}
-    override suspend fun muteCircle(id:String,muted:Boolean)=authenticated{apiCall{api.muteCircle(it,id,CircleMuteBody(muted))}}
-    override suspend fun leaveCircle(id:String)=authenticated{apiCall{api.leaveCircle(it,id)}}
-    override suspend fun removeCircleMember(id:String,userId:String)=authenticated{apiCall{api.removeCircleMember(it,id,userId)}}
+    override suspend fun groups() = authenticated { apiCall { api.groups(it) } }.map { it.groups }
+    override suspend fun group(id: String) = authenticated { apiCall { api.group(it, id) } }
+    override suspend fun cheerGroup(id: String, recipientId: String, preset: String) = authenticated { apiCall { api.groupCheer(it, id, CheerBody(recipientId, preset)) } }
+    override suspend fun renameGroup(id:String,name:String)=authenticated{apiCall{api.renameGroup(it,id,RenameGroupBody(name.trim()))}}
+    override suspend fun setGroupCommitment(id:String,target:Int?,skipped:Boolean)=authenticated{apiCall{api.groupCommitment(it,id,GroupCommitmentBody(target,skipped))}}
+    override suspend fun muteGroup(id:String,muted:Boolean)=authenticated{apiCall{api.muteGroup(it,id,GroupMuteBody(muted))}}
+    override suspend fun leaveGroup(id:String)=authenticated{apiCall{api.leaveGroup(it,id)}}
+    override suspend fun removeGroupMember(id:String,userId:String)=authenticated{apiCall{api.removeGroupMember(it,id,userId)}}
     override suspend fun awards() = authenticated { apiCall { api.awards(it) } }.map { it.awards }
     override suspend fun comments(postId:String)=authenticated{apiCall{api.comments(it,postId)}}.map{it.comments}
     override suspend fun addComment(postId:String,body:String):Result<SocialComment>{val clean=body.trim();if(clean.isEmpty()||clean.length>500)return Result.failure(SocialException(SocialError.INVALID_RESPONSE));return authenticated{apiCall{api.comment(it,postId,CommentBody(clean))}}}
     override suspend fun deleteComment(commentId:String)=authenticated{apiCall{api.deleteComment(it,commentId)}}
     override suspend fun setEventRsvp(eventId:String,going:Boolean,attendanceMode:String)=authenticated{auth->apiCall{if(going)api.rsvp(auth,eventId,AttendanceBody(attendanceMode))else api.leaveEvent(auth,eventId)}}
     override suspend fun inviteToEvent(eventId:String,personId:String?)=authenticated{apiCall{api.inviteEvent(it,eventId,EventInviteBody(personId))}}
-    override suspend fun createCircle(name:String?,memberIds:List<String>,timeZone:String?)=authenticated{apiCall{api.createCircle(it,CreateCircleBody(name?.trim()?.takeIf(String::isNotEmpty),memberIds.distinct(),timeZone))}}
-    override suspend fun inviteToCircle(circleId:String,memberIds:List<String>,idempotencyKey:String)=authenticated{apiCall{api.inviteCircle(it,circleId,CircleInviteBody(memberIds.distinct(),idempotencyKey))}}.map{it.circle}
-    override suspend fun setCircleFocus(circleId:String,mode:String,target:Int?,applyNextWeek:Boolean)=authenticated{apiCall{api.focusCircle(it,circleId,CircleFocusBody(mode,target,if(applyNextWeek)"next_week" else "now"))}}
-    override suspend fun setCircleArchived(circleId:String,archived:Boolean)=authenticated{auth->apiCall{if(archived)api.archiveCircle(auth,circleId)else api.reactivateCircle(auth,circleId)}}
+    override suspend fun createGroup(template:String,name:String?,memberIds:List<String>,timeZone:String?)=authenticated{apiCall{api.createGroup(it,CreateGroupBody(template=template,name=name?.trim()?.takeIf(String::isNotEmpty),memberUserIds=memberIds.distinct(),timeZone=timeZone))}}
+    override suspend fun inviteToGroup(groupId:String,memberIds:List<String>,idempotencyKey:String)=authenticated{apiCall{api.inviteGroup(it,groupId,GroupInviteBody(memberIds.distinct(),idempotencyKey))}}.map{it.group}
+    override suspend fun consumeGroupInvite(token: String)=authenticated{apiCall{api.consumeGroupInvite(it,token)}}
+    override suspend fun setGroupFocus(groupId:String,mode:String,target:Int?,applyNextWeek:Boolean)=authenticated{apiCall{api.focusGroup(it,groupId,GroupFocusBody(mode,target,if(applyNextWeek)"next_week" else "now"))}}
+    override suspend fun setGroupArchived(groupId:String,archived:Boolean)=authenticated{auth->apiCall{if(archived)api.archiveGroup(auth,groupId)else api.reactivateGroup(auth,groupId)}}
     override suspend fun event(id:String)=authenticated{apiCall{api.event(it,id)}}
     override suspend fun createEvent(body:CreateEventBody)=authenticated{apiCall{api.createEvent(it,body)}}
     override suspend fun eventResults(id:String)=authenticated{apiCall{api.eventResults(it,id)}}
@@ -148,8 +145,8 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun markEventWithoutRecording(eventId:String)=authenticated{apiCall{api.noRecording(it,eventId)}}
     override suspend fun setWorkoutPresence(clientSessionId:String,active:Boolean)=authenticated{auth->apiCall{if(active)api.setPresence(auth,PresenceBody(clientSessionId))else api.clearPresence(auth,clientSessionId)}}
     override suspend fun respondToInvitation(invitation:SocialInvitation,accept:Boolean)=authenticated{auth->when{
-        invitation.kind=="circle"&&accept->apiCall{api.acceptCircleInvitation(auth,invitation.id)}.map{Unit}
-        invitation.kind=="circle"->apiCall{api.declineCircleInvitation(auth,invitation.id)}
+        invitation.kind=="group"&&accept->apiCall{api.acceptGroupInvitation(auth,invitation.id)}.map{Unit}
+        invitation.kind=="group"->apiCall{api.declineGroupInvitation(auth,invitation.id)}
         accept->apiCall{api.acceptEventInvitation(auth,invitation.id)}
         else->apiCall{api.declineEventInvitation(auth,invitation.id)}
     }}

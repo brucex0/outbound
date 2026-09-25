@@ -1,0 +1,26 @@
+<resources>
+    <string name="group_create_title">Crea tu grupo</string>
+    <string name="group_create_choose_title">¿Qué les une?</string>
+    <string name="group_create_choose_detail">Elige un punto de partida. Después podrás ajustar la configuración segura.</string>
+    <string name="group_template_motivation_title">Mantener la motivación juntos</string>
+    <string name="group_template_motivation_detail">Comparte avances y anima a algunas personas de confianza.</string>
+    <string name="group_template_activities_title">Organizar actividades</string>
+    <string name="group_template_activities_detail">Coordina una comunidad, publica novedades y planifica actividades.</string>
+    <string name="group_create_name">Ponle nombre al grupo · Opcional</string>
+    <string name="group_create_name_help">Déjalo en blanco y Plainstride sugerirá un nombre.</string>
+    <string name="group_create_community_name_help">El nombre del grupo comunitario es obligatorio.</string>
+    <string name="group_create_community_detail">Comienza sin aparecer en el directorio y con solicitudes para unirse.</string>
+    <string name="group_create_people">¿Quién te ayuda a seguir en movimiento?</string>
+    <string name="group_create_selected">%1$d seleccionados</string>
+    <string name="group_create_action">Crear grupo</string>
+    <string name="group_about">Información</string>
+    <string name="group_community_detail">Coordina actividades y novedades sin mostrar los entrenamientos de los miembros.</string>
+    <string name="group_request_to_join">Solicitar unirse</string>
+    <string name="group_open_join">Cualquiera puede unirse</string>
+    <string name="group_notice_update">Novedad del grupo</string>
+    <string name="group_notice_pinned">Novedad fijada</string>
+    <string name="group_plan_activity">Planificar una actividad</string>
+    <string name="group_activity_title">Título de la actividad</string>
+    <string name="group_activity_location">Lugar de encuentro (opcional)</string>
+    <string name="group_activity_timing">La actividad se programará para mañana por la mañana. Después podrás editar los detalles.</string>
+</resources>
