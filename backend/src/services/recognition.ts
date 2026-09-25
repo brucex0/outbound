@@ -217,9 +217,9 @@ export async function backfillSocialRecognitions(
   if (!needsRelayPlayer && !needsPhotoFinish && !needsGoodTeammate) return;
 
   const [membership, participant, photoPost, reactions, comments] = await Promise.all([
-    needsRelayPlayer ? prisma.clubMembership.findFirst({
-      where: { userId },
-      select: { clubId: true, createdAt: true },
+    needsRelayPlayer ? prisma.groupMember.findFirst({
+      where: { userId, status: "active" },
+      select: { groupId: true, createdAt: true },
       orderBy: { createdAt: "asc" },
     }) : Promise.resolve(null),
     needsRelayPlayer ? prisma.activityEventParticipant.findFirst({
@@ -247,7 +247,7 @@ export async function backfillSocialRecognitions(
   ]);
 
   const participation = [
-    membership && { earnedAt: membership.createdAt, referenceId: `group:${membership.clubId}` },
+    membership && { earnedAt: membership.createdAt, referenceId: `group:${membership.groupId}` },
     participant && { earnedAt: participant.joinedAt, referenceId: `activityEvent:${participant.activityEventId}` },
   ]
     .filter((value): value is { earnedAt: Date; referenceId: string } => Boolean(value))

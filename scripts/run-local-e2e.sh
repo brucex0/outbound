@@ -114,7 +114,7 @@ if (!me.id) fail("missing backend user identity");
 
 if (persona === "new") {
   if (activities.length !== 0) fail(`expected 0 activities, got ${activities.length}`);
-  if ((social.clubs ?? []).length !== 0) fail("expected no group memberships");
+  if ((social.groups ?? []).length !== 0) fail("expected no group memberships");
 }
 if (persona === "active") {
   if (activities.length !== 3) fail(`expected 3 activities, got ${activities.length}`);
@@ -122,12 +122,12 @@ if (persona === "active") {
   if (!ids.includes("e2e-active-easy") || !ids.includes("e2e-active-long")) fail("seeded activity IDs are missing");
 }
 if (persona === "social") {
-  if (!(social.clubs ?? []).some(club => club.name === "Plainstride E2E Run Club")) fail("seeded joined group is missing");
+  if (!(social.groups ?? []).some(group => group.name === "Plainstride E2E Run Group")) fail("seeded joined group is missing");
   if (!(social.upcomingRuns ?? []).some(run => run.title === "Saturday social 5K")) fail("seeded group run is missing");
   if (!(social.posts ?? []).some(post => post.caption === "Easy miles and good energy today.")) fail("connected feed post is missing");
   if (!connections.some(connection => connection.status === "accepted" && connection.person?.displayName === "Avery Runner")) fail("accepted connection is missing");
   if (!connections.some(connection => connection.status === "pending" && connection.direction === "incoming" && connection.person?.displayName === "New Runner")) fail("incoming connection request is missing");
-  if (!groups.some(group => group.name === "Plainstride E2E Run Club" && group.membershipRole === "organizer")) fail("joined group discovery state is missing");
+  if (!groups.some(group => group.name === "Plainstride E2E Run Group" && group.membershipRole === "owner")) fail("joined group discovery state is missing");
   if (!groups.some(group => group.name === "Sunset E2E Striders" && group.membershipRole == null)) fail("discoverable unjoined group is missing");
   if (!notifications.some(notification => notification.type === "runInvitation")) fail("run invitation notification is missing");
   if (!notifications.some(notification => notification.type === "connectionRequest")) fail("connection request notification is missing");
@@ -165,10 +165,10 @@ const request = async (path, options = {}, expected = [200]) => {
   let groups = (await request("/social/groups")).groups;
   const discoverableGroup = groups.find(group => group.name === "Sunset E2E Striders");
   if (!discoverableGroup || discoverableGroup.membershipRole != null) fail("discoverable group precondition failed");
-  await request(`/social/groups/${discoverableGroup.id}/membership`, { method: "POST" }, [201]);
+  await request(`/social/groups/${discoverableGroup.id}/join-requests`, { method: "POST" }, [200, 201]);
   groups = (await request("/social/groups")).groups;
   if (!groups.some(group => group.id === discoverableGroup.id && group.membershipRole === "member")) fail("joining a group did not persist");
-  await request(`/social/groups/${discoverableGroup.id}/membership`, { method: "DELETE" });
+  await request(`/social/groups/${discoverableGroup.id}/leave`, { method: "POST" });
   groups = (await request("/social/groups")).groups;
   if (!groups.some(group => group.id === discoverableGroup.id && group.membershipRole == null)) fail("leaving a group did not persist");
 

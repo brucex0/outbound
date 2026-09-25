@@ -17,7 +17,7 @@ const ACTIONABLE_NOTIFICATION_TYPES = new Set([
   "liveCheerInvitation",
   "connectionRequest",
   "runInvitation",
-  "circleInvitation",
+  "groupInvitation",
   "groupRunInvitation",
 ]);
 

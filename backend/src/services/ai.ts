@@ -142,7 +142,7 @@ ${input.messages.slice(-10).map((message) => `${message.role}: ${message.text}`)
 
 App map:
 - Me: motivation, companion settings, activity history, settings
-- Social: squad, clubs, rivals
+- Social: Groups, rivals
 - Floating orange button: start or resume a live session
 - Assistant: planning, navigation, support, brainstorming
 

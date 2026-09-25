@@ -1,5 +1,9 @@
 import { Hono, type Context } from "hono";
+import { createHash } from "node:crypto";
 import { getPrismaClient } from "../services/prisma.js";
+import { requireDatabase } from "../services/database.js";
+import { getAuthenticatedAppUser } from "../services/currentUser.js";
+import { assertAcceptedConnection, assertNoBlockedGroupMember, groupPayload } from "../services/groups.js";
 import type { AppEnv } from "../types/hono.js";
 
 const router = new Hono<AppEnv>();
@@ -50,6 +54,8 @@ router.get("/.well-known/assetlinks.json", (c) => {
 });
 
 router.get("/invite", inviteLanding);
+router.get("/invite/group/:token", groupInvitePreview);
+router.post("/invite/group/:token/consume", groupInviteConsume);
 router.get("/invite/*", inviteLanding);
 router.get("/connect/:token", inviteLanding);
 router.get("/live/group/:token", inviteLanding);
@@ -144,6 +150,44 @@ async function inviteLanding(c: Context<AppEnv>) {
   </main>
 </body>
 </html>`);
+}
+
+async function groupInvitePreview(c: Context<AppEnv>) {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+  const digest = createHash("sha256").update(c.req.param("token") ?? "").digest("hex");
+  const link = await getPrismaClient().groupInviteLink.findUnique({ where: { tokenDigest: digest }, include: { group: { select: { id: true, name: true, description: true, city: true, trustPolicy: true, visibility: true, joinPolicy: true, lifecycle: true, featured: true, organizationVerificationState: true, _count: { select: { members: true } } } } } });
+  if (!link || link.revokedAt || (link.expiresAt && link.expiresAt <= new Date()) || (link.maxUses != null && link.useCount >= link.maxUses) || link.group.lifecycle === "archived") return c.json({ error: "This Group invitation is no longer available." }, 404);
+  return c.json({ group: { ...link.group, memberCount: link.group._count.members, _count: undefined }, expiresAt: link.expiresAt });
+}
+
+async function groupInviteConsume(c: Context<AppEnv>) {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c);
+  if (!user) return c.json({ error: "Authentication is required.", code: "authentication_required" }, 401);
+  const digest = createHash("sha256").update(c.req.param("token") ?? "").digest("hex");
+  const prisma = getPrismaClient();
+  const link = await prisma.groupInviteLink.findUnique({ where: { tokenDigest: digest }, include: { group: true } });
+  if (!link || link.revokedAt || (link.expiresAt && link.expiresAt <= new Date()) || (link.maxUses != null && link.useCount >= link.maxUses) || link.group.lifecycle === "archived") return c.json({ error: "This Group invitation is no longer available." }, 404);
+  try {
+    await assertNoBlockedGroupMember(link.groupId, user.id);
+    if (link.group.trustPolicy === "trusted_private") await assertAcceptedConnection(user.id, link.group.ownerId ?? "");
+    const current = await prisma.groupMember.findUnique({ where: { groupId_userId: { groupId: link.groupId, userId: user.id } } });
+    if (!current || current.status !== "active") {
+      const count = await prisma.groupMember.count({ where: { groupId: link.groupId, status: "active" } });
+      if (count >= link.group.memberLimit) return c.json({ error: "This Group is full." }, 409);
+      if (link.group.joinPolicy === "request") {
+        await prisma.groupJoinRequest.upsert({ where: { groupId_requesterId: { groupId: link.groupId, requesterId: user.id } }, create: { groupId: link.groupId, requesterId: user.id }, update: { status: "pending", reviewerId: null, decisionAt: null } });
+      } else {
+        await prisma.groupMember.upsert({ where: { groupId_userId: { groupId: link.groupId, userId: user.id } }, create: { groupId: link.groupId, userId: user.id, role: "member", status: "active", displayNameSnapshot: user.displayName, avatarUrlSnapshot: user.avatarUrl }, update: { status: "active", joinedAt: new Date(), displayNameSnapshot: user.displayName, avatarUrlSnapshot: user.avatarUrl } });
+      }
+    }
+    await prisma.groupInviteLink.update({ where: { id: link.id }, data: { useCount: { increment: 1 }, consumedAt: new Date() } });
+    return c.json({ status: link.group.joinPolicy === "request" && (!current || current.status !== "active") ? "request_created" : "joined", group: await groupPayload(link.groupId, user.id, true) });
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : "This Group invitation is unavailable." }, 403);
+  }
 }
 
 function referralCodeFromPath(pathname: string) {

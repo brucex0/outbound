@@ -20,7 +20,7 @@ import feedback from "./routes/feedback.js";
 import routes from "./routes/routes.js";
 import liveCoach from "./routes/liveCoach.js";
 import recognition from "./routes/recognition.js";
-import circles from "./routes/circles.js";
+import groups from "./routes/groups.js";
 import weather from "./routes/weather.js";
 import elevation from "./routes/elevation.js";
 import rewards from "./routes/rewards.js";
@@ -31,7 +31,7 @@ import type { AppEnv } from "./types/hono.js";
 import { localeMiddleware } from "./middleware/locale.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { assertLiveCoachConfiguration } from "./services/liveCoach/liveCoachFeatureConfig.js";
-import { configuredCircleMemberLimit } from "./services/circles.js";
+import { configuredGroupMemberLimit } from "./services/groups.js";
 import { assertGoogleAuthConfiguration } from "./services/googleAuth.js";
 import { assertRewardsAdminPortalConfiguration } from "./services/rewardsAdminPortal.js";
 
@@ -42,7 +42,7 @@ if (process.env.NODE_ENV === "production" && process.env.AUTH_ENABLE_DEBUG_PERSO
 }
 
 assertLiveCoachConfiguration();
-configuredCircleMemberLimit();
+configuredGroupMemberLimit();
 assertGoogleAuthConfiguration();
 assertRewardsAdminPortalConfiguration();
 
@@ -87,9 +87,7 @@ app.route("/v1/personalization", personalization);
 app.route("/v1/companion", companion);
 app.route("/v1/notifications", notifications);
 app.route("/v1/social", social);
-// Private Group management shares the public Social Groups resource. The
-// legacy /v1/groups mount remains only as a short-lived migration seam.
-app.route("/v1/social/groups", circles);
+app.route("/v1/social/groups", groups);
 app.route("/v1/media", media);
 app.route("/v1/safety", safety);
 app.route("/v1/live", live);
@@ -98,7 +96,6 @@ app.route("/v1/feedback", feedback);
 app.route("/v1/routes", routes);
 app.route("/v1/live-coach", liveCoach);
 app.route("/v1/recognition", recognition);
-app.route("/v1/groups", circles);
 app.route("/v1/weather", weather);
 app.route("/v1/elevation", elevation);
 app.route("/v1/rewards", rewards);

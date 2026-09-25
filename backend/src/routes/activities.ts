@@ -12,7 +12,7 @@ import type { AppEnv } from "../types/hono.js";
 import { Prisma } from "@prisma/client";
 import { deleteActivityPhotos } from "../services/activityPhotoStorage.js";
 import { backfillActivityRecognitions } from "../services/recognition.js";
-import { reconcileActivityToCircles } from "../services/circles.js";
+import { reconcileActivityToGroups } from "../services/groups.js";
 import { decodeStoredActivityRoute, encodeActivityRoute, legacyGeoJSONToRoute } from "../services/activityRouteCodec.js";
 
 const router = new Hono<AppEnv>();
@@ -500,8 +500,8 @@ router.post("/", zValidator("json", createSchema), async (c) => {
     body.recognitionContext?.timeZoneIdentifier,
     body.recognitionContext?.firstWeekday,
   );
-  const circleContributions = await reconcileActivityToCircles(resolvedUserId, activity.id).catch((error) => {
-    console.error("[circle] activity contribution failed", { activityId: activity.id, error });
+  const groupContributions = await reconcileActivityToGroups(resolvedUserId, activity.id).catch((error) => {
+    console.error("[group] activity contribution failed", { activityId: activity.id, error });
     return [];
   });
 
@@ -515,7 +515,7 @@ router.post("/", zValidator("json", createSchema), async (c) => {
       followedRouteId: activity.followedRouteId,
       routeCompletionRecorded,
       followedRouteUnavailable: body.followedRouteId != null && resolvedFollowedRouteId == null,
-      circleContributions,
+      groupContributions,
     },
     wasCreated ? 201 : 200
   );
@@ -585,8 +585,8 @@ router.delete("/:id", async (c) => {
       data: { deletedAt: new Date(), clientData: undefined },
     });
   });
-  await reconcileActivityToCircles(user.id, activity.id, true).catch((error) => {
-    console.error("[circle] activity deletion reconciliation failed", { activityId: activity.id, error });
+  await reconcileActivityToGroups(user.id, activity.id, true).catch((error) => {
+    console.error("[group] activity deletion reconciliation failed", { activityId: activity.id, error });
   });
   return c.json({ status: "deleted", id: deleted.id, deletedAt: deleted.deletedAt });
 });

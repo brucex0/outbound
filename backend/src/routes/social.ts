@@ -13,7 +13,7 @@ import {
   evaluateGoodTeammate,
   recognitionAwards,
 } from "../services/recognition.js";
-import { assertCircleMember } from "../services/circles.js";
+import { assertGroupMember } from "../services/groups.js";
 import { decodeStoredActivityRoute } from "../services/activityRouteCodec.js";
 import { compactPerson } from "../services/apiAssetURLs.js";
 import {
@@ -48,7 +48,7 @@ const createActivityEventSchema = z.object({
   latitude: z.number().finite().min(-90).max(90).nullable().optional(),
   longitude: z.number().finite().min(-180).max(180).nullable().optional(),
   note: z.string().trim().max(240).nullable().optional(),
-  sourceGroupId: z.string().min(1).nullable().optional(),
+  groupId: z.string().min(1).nullable().optional(),
   participationMode: z.enum(["hybrid", "in_person"]).default("hybrid"),
 }).superRefine((value, context) => {
   if ((value.latitude == null) !== (value.longitude == null)) {
@@ -141,7 +141,7 @@ async function socialHome(c: Context<AppEnv>) {
     { creatorId: { in: [user.id, ...connections] }, visibility: "connections" },
     { participants: { some: { userId: user.id, status: "going" } } },
     { invitations: { some: { recipientId: user.id, status: "pending" } } },
-    { club: { memberships: { some: { userId: user.id } } } },
+    { group: { members: { some: { userId: user.id, status: "active" } } } },
   ];
   const feedCursorValue = c.req.query("feedCursor");
   const feedCursor = feedCursorValue ? decodeFeedCursor(feedCursorValue) : null;
@@ -165,7 +165,7 @@ async function socialHome(c: Context<AppEnv>) {
       orderBy: { startsAt: "desc" },
       take: 10,
     }),
-    prisma.clubMembership.findMany({ where: { userId: user.id }, include: { club: true } }),
+    prisma.groupMember.findMany({ where: { userId: user.id, status: "active" }, include: { group: true } }),
     prisma.post.findMany({
       where: {
         userId: { in: [user.id, ...connections] },
@@ -212,7 +212,7 @@ async function socialHome(c: Context<AppEnv>) {
   return c.json({
     upcomingRuns: upcomingRuns.map((activity) => activityEventPayload(activity, user.id, connections)),
     pastEvents: pastEvents.map((activity) => activityEventPayload(activity, user.id, connections)),
-    clubs: memberships.map((membership) => ({ ...membership.club, role: membership.role })),
+    groups: memberships.map((membership) => ({ ...membership.group, role: membership.role })),
     posts: await Promise.all(feedPosts.map((post) => postPayload(post, user.id))),
     invitations: invitations.map((invitation) => ({ id: invitation.id, kind: "activityEvent", title: invitation.activityEvent?.title ?? "Activity invitation", sender: compactPerson(invitation.sender), objectId: invitation.activityEventId })),
     nextFeedCursor,
@@ -651,132 +651,28 @@ router.delete("/connections/:id", async (c) => {
   return c.json({ ok: true });
 });
 
-router.get("/clubs", async (c) => {
-  const user = await requireSocialUser(c);
-  if (user instanceof Response) return user;
-  const clubs = await getPrismaClient().club.findMany({ where: { isDiscoverable: true }, include: { _count: { select: { memberships: true } }, memberships: { where: { userId: user.id }, select: { role: true } } }, orderBy: { name: "asc" }, take: 50 });
-  return c.json({ clubs });
-});
-
-router.get("/groups", async (c) => {
-  const user = await requireSocialUser(c);
-  if (user instanceof Response) return user;
-  const prisma = getPrismaClient();
-  const [clubs, privateGroups] = await Promise.all([
-    prisma.club.findMany({
-      where: { isDiscoverable: true },
-      include: {
-        _count: { select: { memberships: true } },
-        memberships: { where: { userId: user.id }, select: { role: true } },
-      },
-      orderBy: { name: "asc" },
-      take: 50,
-    }),
-    prisma.circleMember.findMany({
-      where: { userId: user.id, status: "active" },
-      include: { circle: { include: { _count: { select: { members: true } }, owner: { select: { displayName: true } } } } },
-      orderBy: { updatedAt: "desc" },
-      take: 50,
-    }),
-  ]);
-  return c.json({
-    groups: [
-      ...privateGroups.map(({ circle, role }) => ({
-        id: circle.id,
-        name: circle.name,
-        description: null,
-        city: null,
-        contextLabel: circle.owner.displayName,
-        memberCount: circle._count.members,
-        membershipRole: role,
-        groupType: "private",
-        trustPolicy: "trusted_private",
-        canJoin: false,
-      })),
-      ...clubs.map((group) => ({
-      id: group.id,
-      name: group.name,
-      description: group.description,
-      city: group.city,
-      contextLabel: group.city,
-      memberCount: group._count.memberships,
-      membershipRole: group.memberships[0]?.role ?? null,
-      groupType: "community",
-      trustPolicy: "community",
-      canJoin: group.memberships.length === 0,
-      })),
-    ].sort((left, right) => left.name.localeCompare(right.name)),
-  });
-});
-
-router.post("/groups/:id/membership", async (c) => {
-  const user = await requireSocialUser(c);
-  if (user instanceof Response) return user;
-  const membership = await getPrismaClient().clubMembership.upsert({
-    where: { clubId_userId: { clubId: c.req.param("id"), userId: user.id } },
-    create: { clubId: c.req.param("id"), userId: user.id },
-    update: {},
-  });
-  await awardRecognition(user.id, "relayPlayer", {
-    sourceType: "social",
-    sourceReferenceId: `group:${membership.clubId}`,
-  });
-  return c.json(membership, 201);
-});
-
-router.delete("/groups/:id/membership", async (c) => {
-  const user = await requireSocialUser(c);
-  if (user instanceof Response) return user;
-  await getPrismaClient().clubMembership.deleteMany({ where: { clubId: c.req.param("id"), userId: user.id } });
-  return c.json({ ok: true });
-});
-
-router.post("/clubs/:id/join", async (c) => {
-  const user = await requireSocialUser(c);
-  if (user instanceof Response) return user;
-  const membership = await getPrismaClient().clubMembership.upsert({ where: { clubId_userId: { clubId: c.req.param("id"), userId: user.id } }, create: { clubId: c.req.param("id"), userId: user.id }, update: {} });
-  await awardRecognition(user.id, "relayPlayer", {
-    sourceType: "social",
-    sourceReferenceId: `group:${membership.clubId}`,
-  });
-  return c.json(membership, 201);
-});
-
-router.delete("/clubs/:id/membership", async (c) => {
-  const user = await requireSocialUser(c);
-  if (user instanceof Response) return user;
-  const result = await getPrismaClient().clubMembership.deleteMany({
-    where: { clubId: c.req.param("id"), userId: user.id },
-  });
-  if (!result.count) return c.json({ error: "Club membership not found." }, 404);
-  return c.json({ ok: true });
-});
-
 router.post("/activity-events", zValidator("json", createActivityEventSchema), async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
   const input = c.req.valid("json");
   const startsAt = new Date(input.startsAt);
   if (startsAt <= new Date()) return c.json({ error: "Choose a future date and time." }, 422);
-  let sourceCircleId: string | null = null;
-  let sourceClubId: string | null = null;
-  if (input.sourceGroupId) {
-    try {
-      const membership = await assertCircleMember(input.sourceGroupId, user.id);
-      if (membership?.circle.lifecycle !== "active") return c.json({ error: "The source Group is not active." }, 422);
-      sourceCircleId = input.sourceGroupId;
-    } catch {
-      const communityMembership = await getPrismaClient().clubMembership.findUnique({ where: { clubId_userId: { clubId: input.sourceGroupId, userId: user.id } }, include: { club: { select: { isDiscoverable: true } } } });
-      if (!communityMembership) return c.json({ error: "Group membership is required." }, 403);
-      sourceClubId = input.sourceGroupId;
-    }
+  let groupId: string | null = null;
+  let groupTrustPolicy: string | null = null;
+  if (input.groupId) {
+    const group = await getPrismaClient().socialGroup.findUnique({ where: { id: input.groupId } });
+    if (!group || group.lifecycle === "archived") return c.json({ error: "The Group is not active." }, 422);
+    const membership = await assertGroupMember(input.groupId, user.id);
+    const canCreate = membership?.role === "owner" || membership?.role === "admin" || (group.trustPolicy === "trusted_private" && group.memberActivityCreation);
+    if (!canCreate) return c.json({ error: "Group activity creation is not available to this member." }, 403);
+    groupId = input.groupId;
+    groupTrustPolicy = group.trustPolicy;
   }
   const activity = await getPrismaClient().$transaction(async (prisma) => {
     const created = await prisma.activityEvent.create({
       data: {
         creatorId: user.id,
-        sourceCircleId,
-        clubId: sourceClubId,
+        groupId,
         title: input.title,
         startsAt,
         endsAt: new Date(startsAt.getTime() + input.durationMinutes * 60 * 1000),
@@ -787,7 +683,7 @@ router.post("/activity-events", zValidator("json", createActivityEventSchema), a
         participationMode: input.participationMode,
         activityPolicy: "fixed",
         activityType: input.activityType,
-        visibility: "connections",
+        visibility: groupTrustPolicy === "community" ? "public" : "connections",
       },
     });
     await prisma.activityEventParticipant.create({
@@ -894,8 +790,8 @@ router.post("/activity-events/:id/invitations/batch", zValidator("json", invitat
   const activity = await getPrismaClient().activityEvent.findFirst({ where: { id: c.req.param("id"), creatorId: user.id, status: "scheduled" } });
   if (!activity) return c.json({ error: "Activity event not found." }, 404);
   const connectionIds = new Set(await acceptedConnectionIDs(user.id));
-  const circleMemberIds = activity.sourceCircleId
-    ? new Set((await getPrismaClient().circleMember.findMany({ where: { circleId: activity.sourceCircleId, status: "active" }, select: { userId: true } })).map((member) => member.userId))
+  const groupMemberIds = activity.groupId
+    ? new Set((await getPrismaClient().groupMember.findMany({ where: { groupId: activity.groupId, status: "active" }, select: { userId: true } })).map((member) => member.userId))
     : new Set<string>();
   const recipientIds: string[] = [];
   for (const recipientId of [...new Set(c.req.valid("json").recipientUserIds)]) {
@@ -903,12 +799,12 @@ router.post("/activity-events/:id/invitations/batch", zValidator("json", invitat
       recipientIds.push(recipientId);
       continue;
     }
-    if (activity.sourceCircleId && circleMemberIds.has(recipientId)) {
+    if (activity.groupId && groupMemberIds.has(recipientId)) {
       try {
-        await assertCircleMember(activity.sourceCircleId, recipientId);
+        await assertGroupMember(activity.groupId, recipientId);
         recipientIds.push(recipientId);
       } catch {
-        // A newly blocked or departed Circle member is not eligible for this event invitation.
+        // A newly blocked or departed Group member is not eligible for this event invitation.
       }
     }
   }
@@ -1042,6 +938,11 @@ router.get("/activity-events/:id/results", async (c) => {
   const activity = await visibleActivityEvent(user.id, connections, c.req.param("id"));
   if (!activity) return c.json({ error: "Activity event not found." }, 404);
   const status = await refreshActivityEventStatus(activity);
+  const currentParticipant = activity.participants.find((participant: any) => participant.userId === user.id && participant.status === "going");
+  const invited = activity.invitations.some((invitation: any) => invitation.recipientId === user.id && ["pending", "accepted"].includes(invitation.status));
+  if (activity.group?.trustPolicy === "community" && !currentParticipant && !invited && activity.creatorId !== user.id) {
+    return c.json({ activityEventId: activity.id, status, goingCount: activity.participants.filter((participant: any) => participant.status === "going").length, resolvedCount: activity.participants.filter((participant: any) => participant.outcome).length, participants: [] });
+  }
   return c.json(activityEventResultsPayload(activity, user.id, connections, status));
 });
 
@@ -1558,8 +1459,7 @@ async function visiblePost(postId: string, userId: string) {
 
 function activityEventInclude(_currentUserId: string) {
   return {
-    club: true,
-    sourceCircle: { select: { id: true, name: true } },
+    group: { select: { id: true, name: true, trustPolicy: true } },
     creator: { select: socialPersonSelect },
     options: { orderBy: { sortOrder: "asc" as const } },
     participants: {
@@ -1588,8 +1488,8 @@ async function visibleActivityEvent(userId: string, connectionIds: string[], id:
         { creatorId: { in: connectionIds }, visibility: "connections" },
         { participants: { some: { userId } } },
         { invitations: { some: { recipientId: userId, status: { in: ["pending", "accepted"] } } } },
-        { club: { memberships: { some: { userId } } } },
-        { sourceCircle: { members: { some: { userId, status: "active" } } } },
+        { group: { members: { some: { userId, status: "active" } } } },
+        { group: { trustPolicy: "community", visibility: "public", lifecycle: "active" } },
       ],
     },
     include: activityEventInclude(userId),
@@ -1600,14 +1500,16 @@ function activityEventPayload(activity: any, currentUserId: string, connectionId
   const going = activity.participants.filter((participant: any) => participant.status === "going");
   const currentParticipant = activity.participants.find((participant: any) => participant.userId === currentUserId);
   const directInvitation = activity.invitations.find((invitation: any) => invitation.recipientId === currentUserId && invitation.status === "pending");
+  const participantView = Boolean(currentParticipant?.status === "going" || directInvitation || activity.creatorId === currentUserId);
+  const communityPublicView = activity.group?.trustPolicy === "community" && !participantView;
   const source = activity.creatorId === currentUserId
     ? { kind: "createdByYou", label: "Created by you" }
     : currentParticipant?.status === "going"
       ? { kind: "joined", label: `Joined · From ${activity.creator.displayName}` }
       : directInvitation
         ? { kind: "directInvitation", label: `From ${directInvitation.sender.displayName} · Direct invitation` }
-        : activity.sourceCircle || activity.club
-          ? { kind: "group", label: `From ${(activity.sourceCircle ?? activity.club).name} · Your group` }
+        : activity.group
+          ? { kind: "group", label: `From ${activity.group.name} · Your group` }
           : connectionIds.includes(activity.creatorId)
             ? { kind: "connection", label: `From ${activity.creator.displayName} · Your connection` }
             : { kind: "invitation", label: `From ${activity.creator.displayName}` };
@@ -1617,8 +1519,8 @@ function activityEventPayload(activity: any, currentUserId: string, connectionId
     startsAt: activity.startsAt,
     endsAt: activity.endsAt,
     locationName: activity.locationName,
-    latitude: activity.latitude,
-    longitude: activity.longitude,
+    latitude: communityPublicView ? null : activity.latitude,
+    longitude: communityPublicView ? null : activity.longitude,
     paceNote: activity.note,
     note: activity.note,
     participationMode: activity.participationMode,
@@ -1626,18 +1528,13 @@ function activityEventPayload(activity: any, currentUserId: string, connectionId
     activityType: activity.activityType,
     visibility: activity.visibility,
     status: activity.status,
-    club: activity.club,
-    group: activity.sourceCircle
-      ? { id: activity.sourceCircle.id, name: activity.sourceCircle.name }
-      : activity.club
-        ? { id: activity.club.id, name: activity.club.name }
-        : null,
+    group: activity.group ? { id: activity.group.id, name: activity.group.name } : null,
     creator: compactPerson(activity.creator),
     groups: activity.options,
     options: activity.options,
     source,
     attendeeCount: going.length,
-    attendeePreview: going.slice(0, 3).map((participant: any) => compactPerson(participant.user)),
+    attendeePreview: communityPublicView ? [] : going.slice(0, 3).map((participant: any) => compactPerson(participant.user)),
     currentUserGoing: currentParticipant?.status === "going",
     currentUserOutcome: currentParticipant?.outcome ?? null,
     currentUserAttendanceMode: currentParticipant?.attendanceMode ?? null,
@@ -1646,7 +1543,7 @@ function activityEventPayload(activity: any, currentUserId: string, connectionId
   };
   if (includeParticipants) {
     const goingUserIds = new Set(going.map((participant: any) => participant.userId));
-    payload.participants = going.map((participant: any) => ({ person: compactPerson(participant.user), status: participant.status, outcome: participant.outcome, attendanceMode: participant.attendanceMode }));
+    if (!communityPublicView) payload.participants = going.map((participant: any) => ({ person: compactPerson(participant.user), status: participant.status, outcome: participant.outcome, attendanceMode: participant.attendanceMode }));
     if (activity.creatorId === currentUserId) {
       payload.invitedUserIds = activity.invitations
         .filter((invitation: any) => invitation.recipientId && ["pending", "accepted"].includes(invitation.status))

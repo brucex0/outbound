@@ -28,7 +28,7 @@ Environment overrides:
   CLOUD_RUN_CONCURRENCY   default: 100
   CLOUD_RUN_MIN_INSTANCES default: 1 for production; 0 otherwise
   CLOUD_RUN_MAX_INSTANCES default: 3 for production; 1 otherwise
-  CIRCLE_MEMBER_LIMIT     default: 6; snapshotted on newly created Circles (2-100)
+  GROUP_MEMBER_LIMIT      default: 6; snapshotted on newly created Groups (2-100)
   LIVE_COACH_SERVER_AUDIO_MODE default: dynamic for production; disabled otherwise
   LIVE_COACH_ACCESS_MODE       default: founding_trial for production; open_beta otherwise
   LIVE_COACH_CONFIG_VERSION    default: 2 for production; 1 otherwise
@@ -143,7 +143,7 @@ CLOUD_SQL_INSTANCE="${CLOUD_SQL_INSTANCE:-$PROJECT_ID:$REGION:outbound-db}"
 CLOUD_RUN_CONCURRENCY="${CLOUD_RUN_CONCURRENCY:-100}"
 CLOUD_RUN_MIN_INSTANCES="${CLOUD_RUN_MIN_INSTANCES:-$default_min_instances}"
 CLOUD_RUN_MAX_INSTANCES="${CLOUD_RUN_MAX_INSTANCES:-$default_max_instances}"
-CIRCLE_MEMBER_LIMIT="${CIRCLE_MEMBER_LIMIT:-6}"
+GROUP_MEMBER_LIMIT="${GROUP_MEMBER_LIMIT:-6}"
 LIVE_COACH_SERVER_AUDIO_MODE="${LIVE_COACH_SERVER_AUDIO_MODE:-$default_live_coach_mode}"
 LIVE_COACH_ACCESS_MODE="${LIVE_COACH_ACCESS_MODE:-$default_live_coach_access}"
 LIVE_COACH_CONFIG_VERSION="${LIVE_COACH_CONFIG_VERSION:-$default_live_coach_config_version}"
@@ -265,7 +265,7 @@ environment_bindings=(
   "REWARDS_ADMIN_GOOGLE_CLIENT_ID=$REWARDS_ADMIN_GOOGLE_CLIENT_ID"
   "AUTH_ACCEPT_LEGACY_FIREBASE=true"
   "IOS_APP_STORE_URL=$IOS_APP_STORE_URL"
-  "CIRCLE_MEMBER_LIMIT=$CIRCLE_MEMBER_LIMIT"
+  "GROUP_MEMBER_LIMIT=$GROUP_MEMBER_LIMIT"
   "LIVE_COACH_SERVER_AUDIO_MODE=$LIVE_COACH_SERVER_AUDIO_MODE"
   "LIVE_COACH_ACCESS_MODE=$LIVE_COACH_ACCESS_MODE"
   "LIVE_COACH_CONFIG_VERSION=$LIVE_COACH_CONFIG_VERSION"

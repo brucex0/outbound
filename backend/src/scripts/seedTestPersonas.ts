@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { resolveAuthenticatedAppUser } from "../services/currentUser.js";
 import { activityPhotoSHA256, activityPhotoStorageKey, deleteUserActivityPhotos, saveActivityPhoto } from "../services/activityPhotoStorage.js";
-import { ensureCurrentWeek } from "../services/circles.js";
+import { ensureCurrentWeek } from "../services/groups.js";
 import { encodeActivityRoute, legacyGeoJSONToRoute, decodeStoredActivityRoute } from "../services/activityRouteCodec.js";
 
 const prisma = new PrismaClient();
@@ -55,8 +55,8 @@ async function seedTestPersonas() {
   });
   await Promise.all(existingUsers.map((user) => deleteUserActivityPhotos(user.id)));
   await prisma.user.deleteMany({ where: { id: { in: existingUsers.map((user) => user.id) } } });
-  await prisma.club.deleteMany({ where: { name: "Plainstride E2E Run Club" } });
-  await prisma.club.deleteMany({ where: { name: "Sunset E2E Striders" } });
+  await prisma.socialGroup.deleteMany({ where: { name: "Plainstride E2E Run Group" } });
+  await prisma.socialGroup.deleteMany({ where: { name: "Sunset E2E Striders" } });
 
   const newRunner = await createAppUser(personas.newRunner);
   const activeRunner = await createAppUser(personas.activeRunner);
@@ -98,17 +98,24 @@ async function seedTestPersonas() {
   });
   await prisma.connection.create({ data: { requesterId: socialRunner.id, addresseeId: activeRunner.id, status: "accepted" } });
   await prisma.connection.create({ data: { requesterId: newRunner.id, addresseeId: socialRunner.id, status: "pending" } });
-  const club = await prisma.club.create({
+  const communityGroup = await prisma.socialGroup.create({
     data: {
-      name: "Plainstride E2E Run Club",
-      description: "Deterministic local club data for end-to-end testing.",
+      ownerId: socialRunner.id,
+      managementMode: "user",
+      name: "Plainstride E2E Run Group",
+      normalizedName: "plainstride e2e run group",
+      description: "Deterministic local group data for end-to-end testing.",
       city: "San Francisco",
-      memberships: { create: [{ userId: socialRunner.id, role: "organizer" }, { userId: activeRunner.id, role: "member" }] },
+      trustPolicy: "community",
+      visibility: "public",
+      joinPolicy: "open",
+      noticesEnabled: true,
+      members: { create: [{ userId: socialRunner.id, role: "owner", displayNameSnapshot: socialRunner.displayName }, { userId: activeRunner.id, role: "member", displayNameSnapshot: activeRunner.displayName }] },
     },
   });
   const activityEvent = await prisma.activityEvent.create({
     data: {
-      clubId: club.id,
+      groupId: communityGroup.id,
       creatorId: socialRunner.id,
       title: "Saturday social 5K",
       startsAt: daysFromNow(now, 3),
@@ -121,11 +128,16 @@ async function seedTestPersonas() {
       options: { create: [{ label: "5K social", distanceMeters: 5_000, paceMinSeconds: 330, paceMaxSeconds: 450, capacity: 20, sortOrder: 0 }] },
     },
   });
-  await prisma.club.create({
+  await prisma.socialGroup.create({
     data: {
+      managementMode: "system",
       name: "Sunset E2E Striders",
+      normalizedName: "sunset e2e striders",
       description: "A discoverable group the social persona has not joined.",
       city: "San Francisco",
+      trustPolicy: "community",
+      visibility: "public",
+      joinPolicy: "open",
     },
   });
   await prisma.activityEventParticipant.create({ data: { activityEventId: activityEvent.id, userId: socialRunner.id, status: "going" } });
@@ -185,10 +197,19 @@ async function seedTestPersonas() {
   await prisma.routeBookmark.create({
     data: { userId: socialRunner.id, routeId: redmondRoute.id },
   });
-  const circle = await prisma.circle.create({
+  const group = await prisma.socialGroup.create({
     data: {
       ownerId: socialRunner.id,
       name: "Weekend Crew",
+      normalizedName: "weekend crew",
+      trustPolicy: "trusted_private",
+      visibility: "private",
+      joinPolicy: "invite_only",
+      weeklyThemeEnabled: true,
+      workoutContributionsEnabled: true,
+      presetCheersEnabled: true,
+      scheduledActivitiesEnabled: true,
+      memberActivityCreation: true,
       lifecycle: "active",
       timeZone: "America/Los_Angeles",
       defaultFocusMode: "theme",
@@ -203,39 +224,37 @@ async function seedTestPersonas() {
     },
     include: { members: true },
   });
-  const circleWeek = await ensureCurrentWeek(prisma, circle.id, now);
-  await prisma.circleWeek.update({
-    where: { id: circleWeek.id },
+  const groupWeek = await ensureCurrentWeek(prisma, group.id, now);
+  await prisma.groupWeek.update({
+    where: { id: groupWeek.id },
     data: { focusMode: "theme", focusConfigured: true, themeKey: "build_consistency" },
   });
-  await prisma.circleCommitment.createMany({
-    data: circle.members.map((member) => ({
-      weekId: circleWeek.id,
+  await prisma.groupCommitment.createMany({
+    data: group.members.map((member) => ({
+      weekId: groupWeek.id,
       memberId: member.id,
       targetCount: member.userId === socialRunner.id ? 3 : 4,
     })),
   });
-  const socialMember = circle.members.find((member) => member.userId === socialRunner.id)!;
-  const activeMember = circle.members.find((member) => member.userId === activeRunner.id)!;
-  await prisma.circleContribution.createMany({
+  const socialMember = group.members.find((member) => member.userId === socialRunner.id)!;
+  const activeMember = group.members.find((member) => member.userId === activeRunner.id)!;
+  await prisma.groupContribution.createMany({
     data: [
-      { weekId: circleWeek.id, memberId: socialMember.id, activityId: socialActivity.id, contributedAt: socialActivity.startedAt },
-      { weekId: circleWeek.id, memberId: activeMember.id, activityId: activeActivities[0].id, contributedAt: activeActivities[0].startedAt },
-      { weekId: circleWeek.id, memberId: activeMember.id, activityId: activeActivities[1].id, contributedAt: activeActivities[1].startedAt },
+      { weekId: groupWeek.id, memberId: socialMember.id, activityId: socialActivity.id, contributedAt: socialActivity.startedAt },
+      { weekId: groupWeek.id, memberId: activeMember.id, activityId: activeActivities[0].id, contributedAt: activeActivities[0].startedAt },
+      { weekId: groupWeek.id, memberId: activeMember.id, activityId: activeActivities[1].id, contributedAt: activeActivities[1].startedAt },
     ],
   });
-  await prisma.circleCheer.create({
+  await prisma.groupCheer.create({
     data: {
-      circleId: circle.id,
-      weekId: circleWeek.id,
+      groupId: group.id,
+      weekId: groupWeek.id,
       senderId: socialRunner.id,
       recipientId: activeRunner.id,
       presetType: "encouragement",
     },
   });
-  await prisma.user.update({ where: { id: socialRunner.id }, data: { primaryCircleId: circle.id } });
-
-  return { users: values.length, activities: activeActivities.length + 1, clubs: 2, circles: 1, routes: 1 };
+  return { users: values.length, activities: activeActivities.length + 1, groups: 2, routes: 1 };
 }
 
 const redmondHarvestHalfMarathonCoordinates: number[][] = [
@@ -423,7 +442,7 @@ function assertLocalOnly() {
 
 try {
   const result = await seedTestPersonas();
-  console.log(`[seed:e2e] Seeded ${result.users} users, ${result.activities} activities, ${result.clubs} clubs, ${result.circles} Circle, and ${result.routes} route.`);
+  console.log(`[seed:e2e] Seeded ${result.users} users, ${result.activities} activities, ${result.groups} Groups, and ${result.routes} route.`);
 } finally {
   await prisma.$disconnect();
 }
