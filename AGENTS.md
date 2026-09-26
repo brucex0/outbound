@@ -2,6 +2,12 @@
 
 This is a personal project.
 
+## Worktree Discipline
+
+- When a task changes more than 10 lines of code, do all work in a Git worktree under `~/dev/outbound/worktrees`.
+- After verification succeeds, merge the worktree branch back into the branch that was checked out before the task, then remove the worktree and delete its branch.
+- Keep unrelated working-tree changes out of the merge and cleanup.
+
 Do not run the test suite unless the user explicitly asks. A build-only compile check is acceptable when needed to validate code changes.
 
 When user ask questions or brain storm, always answer in concise bullet points
