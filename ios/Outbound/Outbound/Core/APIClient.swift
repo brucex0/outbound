@@ -142,8 +142,9 @@ final class APIClient {
         return resolved
     }
 
-    func downloadActivityPhoto(id: String) async throws -> Data {
-        var req = URLRequest(url: url(for: "/media/activity-photos/\(id)/content"))
+    func downloadActivityPhoto(id: String, thumbnail: Bool = false) async throws -> Data {
+        let resource = thumbnail ? "thumbnail" : "content"
+        var req = URLRequest(url: url(for: "/media/activity-photos/\(id)/\(resource)"))
         configureLocale(on: &req)
         if let token = try await resolvedAuthToken() {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

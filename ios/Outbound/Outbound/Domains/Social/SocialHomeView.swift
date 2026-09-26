@@ -3695,7 +3695,7 @@ private extension TogetherActivityDTO {
         }
         let savedPhotos = (photos ?? []).compactMap { photo -> SavedPhoto? in
             guard let clientPhotoID = UUID(uuidString: photo.clientPhotoId),
-                  let url = photo.url.map({ APIClient.shared.mediaURL($0) }) else { return nil }
+                  let url = (photo.url ?? photo.thumbnailUrl).map({ APIClient.shared.mediaURL($0) }) else { return nil }
             let coordinate = photo.latitude.flatMap { latitude in
                 photo.longitude.map { longitude in
                     SavedCoordinate(latitude: latitude, longitude: longitude)

@@ -368,6 +368,9 @@ struct TogetherActivityDTO: Codable, Sendable {
     let energyKilocalories: Int?
     let route: TogetherActivityRouteDTO?
     let photos: [TogetherActivityPhotoDTO]?
+    var photoCount: Int? = nil
+
+    var totalPhotoCount: Int { photoCount ?? photos?.count ?? 0 }
 
     init(
         id: String,
@@ -381,7 +384,8 @@ struct TogetherActivityDTO: Codable, Sendable {
         avgPace: Double?,
         energyKilocalories: Int? = nil,
         route: TogetherActivityRouteDTO?,
-        photos: [TogetherActivityPhotoDTO]? = nil
+        photos: [TogetherActivityPhotoDTO]? = nil,
+        photoCount: Int? = nil
     ) {
         self.id = id
         self.type = type
@@ -395,6 +399,7 @@ struct TogetherActivityDTO: Codable, Sendable {
         self.energyKilocalories = energyKilocalories
         self.route = route
         self.photos = photos
+        self.photoCount = photoCount ?? photos?.count ?? 0
     }
 }
 
@@ -402,6 +407,7 @@ struct TogetherActivityPhotoDTO: Codable, Sendable {
     let id: String
     let clientPhotoId: String
     let url: URL?
+    let thumbnailUrl: URL?
     let takenAt: Date
     let paceAtShot: Double?
     let hrAtShot: Int?

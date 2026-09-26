@@ -94,7 +94,8 @@ final class ActivityPhotoCache {
         }
 
         if let remoteURL = photo.remoteRenderURL {
-            identitiesByURLString[remoteURL.absoluteString] = identity
+            let registeredIdentity = Self.isActivityPhotoThumbnailURL(remoteURL) ? identity + "-preview" : identity
+            identitiesByURLString[remoteURL.absoluteString] = registeredIdentity
             return remoteURL
         }
 
@@ -142,7 +143,8 @@ final class ActivityPhotoCache {
             // Social feed URLs are intentionally short and authenticated. Use
             // APIClient here so the bearer token is attached; a raw URLSession
             // request would otherwise turn the compact URL into a 401.
-            guard let downloaded = try? await APIClient.shared.downloadActivityPhoto(id: photoID) else { return nil }
+            let isThumbnail = url.pathComponents.last == "thumbnail"
+            guard let downloaded = try? await APIClient.shared.downloadActivityPhoto(id: photoID, thumbnail: isThumbnail) else { return nil }
             data = downloaded
         } else {
             var request = URLRequest(url: url)
@@ -222,7 +224,8 @@ final class ActivityPhotoCache {
     // MARK: - Cache key helpers
 
     private func cacheKey(for url: URL, maxPixelSize: CGFloat?) -> String {
-        let suffix = Self.thumbnailSuffix(maxPixelSize)
+        let representationSuffix = Self.isActivityPhotoThumbnailURL(url) ? "-preview" : ""
+        let suffix = representationSuffix + Self.thumbnailSuffix(maxPixelSize)
         if let identity = identitiesByURLString[url.standardizedFileURL.absoluteString]
             ?? identitiesByURLString[url.absoluteString] {
             return identity + suffix
@@ -310,8 +313,12 @@ final class ActivityPhotoCache {
         let components = url.pathComponents
         guard let marker = components.firstIndex(of: "activity-photos"),
               components.indices.contains(marker + 2),
-              components[marker + 2] == "content" else { return nil }
+              ["content", "thumbnail"].contains(components[marker + 2]) else { return nil }
         return components[marker + 1]
+    }
+
+    nonisolated private static func isActivityPhotoThumbnailURL(_ url: URL) -> Bool {
+        url.pathComponents.last == "thumbnail"
     }
 
     nonisolated private static func decodedImage(data: Data, maxPixelSize: CGFloat?) -> UIImage? {

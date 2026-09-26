@@ -2,9 +2,12 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { getStorage } from "firebase-admin/storage";
+import sharp from "sharp";
 import { getFirebaseApp } from "./firebaseAuth.js";
 
 export const maximumActivityPhotoBytes = 5 * 1024 * 1024;
+export const activityPhotoThumbnailSuffix = "-thumb.jpg";
+export const activityPhotoThumbnailMaxEdge = 480;
 
 function bucket() {
   const projectId =
@@ -33,6 +36,23 @@ export function activityPhotoSHA256(data: Buffer) {
   return createHash("sha256").update(data).digest("hex");
 }
 
+export function activityPhotoThumbnailStorageKey(storageKey: string) {
+  return `${storageKey.slice(0, -4)}${activityPhotoThumbnailSuffix}`;
+}
+
+export async function createActivityPhotoThumbnail(data: Buffer) {
+  return sharp(data, { failOn: "error", limitInputPixels: 100_000_000 })
+    .rotate()
+    .resize({
+      width: activityPhotoThumbnailMaxEdge,
+      height: activityPhotoThumbnailMaxEdge,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .jpeg({ quality: 72, mozjpeg: true })
+    .toBuffer();
+}
+
 export async function saveActivityPhoto(storageKey: string, data: Buffer) {
   if (data.length === 0 || data.length > maximumActivityPhotoBytes) {
     throw new Error("Activity photo must be between 1 byte and 5 MB.");
@@ -40,16 +60,29 @@ export async function saveActivityPhoto(storageKey: string, data: Buffer) {
   if (data[0] !== 0xff || data[1] !== 0xd8 || data[data.length - 2] !== 0xff || data[data.length - 1] !== 0xd9) {
     throw new Error("Activity photo must be a valid JPEG.");
   }
+  const thumbnail = await createActivityPhotoThumbnail(data);
+  const thumbnailStorageKey = activityPhotoThumbnailStorageKey(storageKey);
   const localPath = localMediaPath(storageKey);
   if (localPath) {
+    const localThumbnailPath = localMediaPath(thumbnailStorageKey);
+    if (!localThumbnailPath) throw new Error("Local photo thumbnail path could not be resolved.");
     await mkdir(path.dirname(localPath), { recursive: true });
-    await writeFile(localPath, data);
+    await Promise.all([
+      writeFile(localPath, data),
+      writeFile(localThumbnailPath, thumbnail),
+    ]);
     return;
   }
-  await bucket().file(storageKey).save(data, {
-    resumable: false,
-    metadata: { contentType: "image/jpeg", cacheControl: "private, max-age=3600" },
-  });
+  await Promise.all([
+    bucket().file(storageKey).save(data, {
+      resumable: false,
+      metadata: { contentType: "image/jpeg", cacheControl: "private, max-age=3600" },
+    }),
+    bucket().file(thumbnailStorageKey).save(thumbnail, {
+      resumable: false,
+      metadata: { contentType: "image/jpeg", cacheControl: "private, max-age=3600" },
+    }),
+  ]);
 }
 
 export async function readActivityPhoto(storageKey: string) {
@@ -69,6 +102,48 @@ export async function readActivityPhoto(storageKey: string) {
   return data;
 }
 
+export async function saveActivityPhotoThumbnail(storageKey: string, data: Buffer) {
+  const thumbnailKey = activityPhotoThumbnailStorageKey(storageKey);
+  const localPath = localMediaPath(thumbnailKey);
+  if (localPath) {
+    await mkdir(path.dirname(localPath), { recursive: true });
+    await writeFile(localPath, data);
+    return;
+  }
+  await bucket().file(thumbnailKey).save(data, {
+    resumable: false,
+    metadata: { contentType: "image/jpeg", cacheControl: "private, max-age=3600" },
+  });
+}
+
+export async function deleteActivityPhotoThumbnail(storageKey: string) {
+  const thumbnailKey = activityPhotoThumbnailStorageKey(storageKey);
+  const localPath = localMediaPath(thumbnailKey);
+  if (localPath) {
+    await rm(localPath, { force: true });
+    return;
+  }
+  await bucket().file(thumbnailKey).delete({ ignoreNotFound: true });
+}
+
+export async function ensureActivityPhotoThumbnail(storageKey: string) {
+  const cached = await readActivityPhotoThumbnail(storageKey);
+  if (cached) return cached;
+  const original = await readActivityPhoto(storageKey);
+  if (!original) return null;
+  const thumbnail = await createActivityPhotoThumbnail(original);
+  try {
+    await saveActivityPhotoThumbnail(storageKey, thumbnail);
+  } catch (error) {
+    // A concurrent thumbnail request may finish first; if it did, the stored
+    // derivative is still usable and the request need not fail.
+    const concurrentThumbnail = await readActivityPhotoThumbnail(storageKey);
+    if (!concurrentThumbnail) throw error;
+    return concurrentThumbnail;
+  }
+  return thumbnail;
+}
+
 export async function signedActivityPhotoURL(storageKey: string) {
   if (localMediaPath(storageKey)) return null;
   const file = bucket().file(storageKey);
@@ -82,13 +157,30 @@ export async function signedActivityPhotoURL(storageKey: string) {
   return url;
 }
 
+export async function readActivityPhotoThumbnail(storageKey: string) {
+  return readActivityPhoto(activityPhotoThumbnailStorageKey(storageKey));
+}
+
+export async function signedActivityPhotoThumbnailURL(storageKey: string) {
+  return signedActivityPhotoURL(activityPhotoThumbnailStorageKey(storageKey));
+}
+
 export async function deleteActivityPhoto(storageKey: string) {
+  const thumbnailStorageKey = activityPhotoThumbnailStorageKey(storageKey);
   const localPath = localMediaPath(storageKey);
   if (localPath) {
-    await rm(localPath, { force: true });
+    const localThumbnailPath = localMediaPath(thumbnailStorageKey);
+    if (!localThumbnailPath) throw new Error("Local photo thumbnail path could not be resolved.");
+    await Promise.all([
+      rm(localPath, { force: true }),
+      rm(localThumbnailPath, { force: true }),
+    ]);
     return;
   }
-  await bucket().file(storageKey).delete({ ignoreNotFound: true });
+  await Promise.all([
+    bucket().file(storageKey).delete({ ignoreNotFound: true }),
+    bucket().file(thumbnailStorageKey).delete({ ignoreNotFound: true }),
+  ]);
 }
 
 export async function deleteActivityPhotos(storageKeys: string[]) {

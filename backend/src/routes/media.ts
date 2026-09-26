@@ -9,8 +9,10 @@ import {
   activityPhotoSHA256,
   activityPhotoStorageKey,
   deleteActivityPhoto,
+  ensureActivityPhotoThumbnail,
   maximumActivityPhotoBytes,
   readActivityPhoto,
+  signedActivityPhotoThumbnailURL,
   signedActivityPhotoURL,
   saveActivityPhoto,
 } from "../services/activityPhotoStorage.js";
@@ -89,6 +91,33 @@ router.post("/activity-photos", zValidator("json", activityPhotoSchema), async (
   }
 });
 
+router.get("/activity-photos/:id/thumbnail", async (c) => {
+  const user = await requireUser(c);
+  if (user instanceof Response) return user;
+  const photo = await getPrismaClient().photo.findUnique({
+    where: { id: c.req.param("id") },
+    include: { activity: { select: { userId: true, deletedAt: true } } },
+  });
+  if (!photo || photo.activity.deletedAt) return c.json({ error: "Photo not found." }, 404);
+  if (!(await canReadActivityPhoto(user.id, photo.activityId, photo.activity.userId))) {
+    return c.json({ error: "Photo not found." }, 404);
+  }
+
+  if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+    const localData = await ensureActivityPhotoThumbnail(photo.storageKey);
+    if (!localData) return c.json({ error: "Photo thumbnail not found." }, 404);
+    return new Response(new Uint8Array(localData), { headers: { "Content-Type": "image/jpeg", "Cache-Control": "private, max-age=3600" } });
+  }
+  const existingURL = await signedActivityPhotoThumbnailURL(photo.storageKey);
+  if (existingURL) return c.redirect(existingURL, 302);
+  const generated = await ensureActivityPhotoThumbnail(photo.storageKey);
+  if (!generated) return c.json({ error: "Photo thumbnail not found." }, 404);
+  const generatedURL = await signedActivityPhotoThumbnailURL(photo.storageKey);
+  return generatedURL
+    ? c.redirect(generatedURL, 302)
+    : c.json({ error: "Photo thumbnail not found." }, 404);
+});
+
 router.get("/activity-photos/:id/content", async (c) => {
   const user = await requireUser(c);
   if (user instanceof Response) return user;
@@ -99,39 +128,9 @@ router.get("/activity-photos/:id/content", async (c) => {
   });
   if (!photo || photo.activity.deletedAt) return c.json({ error: "Photo not found." }, 404);
 
-  // Activity owners can always read their own media. Feed viewers may read it
-  // only while the activity is still represented by a visible social post and
-  // the post's connection-level visibility permits the requester.
-  let canRead = photo.activity.userId === user.id;
-  if (!canRead) {
-    const post = await prisma.post.findFirst({
-      where: {
-        activityId: photo.activityId,
-        deletedAt: null,
-        OR: [
-          { visibility: "public" },
-          { visibility: "connections" },
-        ],
-      },
-      select: { userId: true, visibility: true },
-    });
-    if (post?.visibility === "public") {
-      canRead = true;
-    } else if (post?.visibility === "connections") {
-      const connection = await prisma.connection.findFirst({
-        where: {
-          status: "accepted",
-          OR: [
-            { requesterId: post.userId, addresseeId: user.id },
-            { requesterId: user.id, addresseeId: post.userId },
-          ],
-        },
-        select: { id: true },
-      });
-      canRead = connection !== null;
-    }
+  if (!(await canReadActivityPhoto(user.id, photo.activityId, photo.activity.userId))) {
+    return c.json({ error: "Photo not found." }, 404);
   }
-  if (!canRead) return c.json({ error: "Photo not found." }, 404);
 
   const localData = await readActivityPhoto(photo.storageKey);
   if (localData) {
@@ -189,6 +188,31 @@ router.post("/moments/:id/share", zValidator("json", z.object({ visibility: z.en
   const moment = await getPrismaClient().moment.findUniqueOrThrow({ where: { id: c.req.param("id") } });
   return c.json(sharedMoment(moment));
 });
+
+async function canReadActivityPhoto(userId: string, activityId: string, ownerId: string) {
+  if (ownerId === userId) return true;
+  const post = await getPrismaClient().post.findFirst({
+    where: {
+      activityId,
+      deletedAt: null,
+      OR: [{ visibility: "public" }, { visibility: "connections" }],
+    },
+    select: { userId: true, visibility: true },
+  });
+  if (post?.visibility === "public") return true;
+  if (post?.visibility !== "connections") return false;
+  const connection = await getPrismaClient().connection.findFirst({
+    where: {
+      status: "accepted",
+      OR: [
+        { requesterId: post.userId, addresseeId: userId },
+        { requesterId: userId, addresseeId: post.userId },
+      ],
+    },
+    select: { id: true },
+  });
+  return connection !== null;
+}
 
 async function requireUser(c: Context<AppEnv>) {
   const unavailable = requireDatabase(c);

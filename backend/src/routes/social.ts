@@ -15,6 +15,7 @@ import {
 } from "../services/recognition.js";
 import { assertGroupMember } from "../services/groups.js";
 import { decodeStoredActivityRoute } from "../services/activityRouteCodec.js";
+import { socialFeedPhotoMetadata } from "../services/socialFeedPhotoMetadata.js";
 import { compactPerson } from "../services/apiAssetURLs.js";
 import {
   claimReferral,
@@ -1235,7 +1236,9 @@ const socialPostActivitySelect = {
       captureContext: true,
     },
     orderBy: { takenAt: "asc" as const },
+    take: 2,
   },
+  _count: { select: { photos: true } },
 } as const;
 
 function connectionPayload(
@@ -1279,21 +1282,11 @@ async function postPayload(post: any, currentUserId: string) {
         route: socialRoutePayload(post.activity.routeBlob, post.activity.routeMetadata),
         routeBlob: undefined,
         routeMetadata: undefined,
-        photos: await Promise.all(post.activity.photos.map(async (photo: any) => ({
-          id: photo.id,
-          clientPhotoId: photo.clientPhotoId,
-          // Keep the feed payload compact. The authenticated media endpoint owns
-          // authorization and redirects to a short-lived signed URL only when
-          // the image is actually requested.
-          url: `/media/activity-photos/${photo.id}/content`,
-          takenAt: photo.takenAt,
-          paceAtShot: photo.paceAtShot,
-          hrAtShot: photo.hrAtShot,
-          distAtShot: photo.distAtShot,
-          latitude: photo.lat,
-          longitude: photo.lng,
-          captureContext: photo.captureContext,
-        }))),
+        _count: undefined,
+        ...socialFeedPhotoMetadata(
+          post.activity.photos,
+          post.activity._count?.photos ?? post.activity.photos.length,
+        ),
       }
     : null;
   return {
