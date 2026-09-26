@@ -1032,6 +1032,38 @@ router.put("/posts/:id/cheer", async (c) => {
   return c.json(reaction);
 });
 
+router.get("/posts/:id/photos", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const visible = await visiblePost(c.req.param("id"), user.id);
+  if (!visible) return c.json({ error: "Post not found." }, 404);
+  const post = await getPrismaClient().post.findUnique({
+    where: { id: visible.id },
+    select: {
+      activity: {
+        select: {
+          photos: {
+            select: {
+              id: true,
+              clientPhotoId: true,
+              takenAt: true,
+              paceAtShot: true,
+              hrAtShot: true,
+              distAtShot: true,
+              lat: true,
+              lng: true,
+              captureContext: true,
+            },
+            orderBy: { takenAt: "asc" },
+          },
+        },
+      },
+    },
+  });
+  const photos = post?.activity?.photos ?? [];
+  return c.json({ photos: socialFeedPhotoMetadata(photos, photos.length).photos });
+});
+
 router.delete("/posts/:id/cheer", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
