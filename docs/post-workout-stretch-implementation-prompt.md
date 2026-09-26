@@ -29,13 +29,14 @@ Start by reading `AGENTS.md`, `docs/INDEX.md`, `docs/motivation-ux.md`, `docs/io
 - Show one movement at a time with:
   - movement title and instruction;
   - visible remaining time and overall progress;
-  - `Pause` / `Resume`, `Next`, and `End` controls;
+  - `Pause` / `Resume`, `Start now` during preparation/transition, `Next` during a movement, and `End` controls;
   - explicit left/right labeling when relevant;
   - a short persistent safety line such as `Move only into gentle tension. Stop if you feel pain.`
 - A bilateral movement should present each side as an explicit timed step so the user never has to infer when to switch.
-- Use a subtle haptic at step transitions when haptics are enabled. Do not add spoken coaching or reuse the live-coach audio pipeline in V1.
+- Start each movement with a visible three-second preparation countdown and place a five-second transition between movements. Both intervals sit outside the movement timer and can be skipped with `Start now`.
+- Use a subtle haptic at step transitions when haptics are enabled. Offer optional localized spoken narration, enabled by default, for each movement's title, side, and instruction. Announce the movement at the start of its preparation/transition interval, then say `Release` when its hold ends. Do not speak countdown seconds. Stop speech on pause, backgrounding, or dismissal. Use system speech synthesis directly and do not reuse the live-coach audio pipeline.
 - Keep the screen awake only while the timed routine is actively running, and restore normal system behavior on pause, completion, backgrounding, or dismissal.
-- On the final step, use `Finish` instead of `Next`, show a brief completion state, and then return through the normal saved-activity dismissal path.
+- Let the final timed movement complete automatically, show a brief completion state, and then return through the normal saved-activity dismissal path. Keep `Done` for declining before the routine or leaving after completion; use `End` to leave an active routine.
 - `End` exits immediately after one non-alarming confirmation only if a timer is active. Before the routine starts, `Done` exits without confirmation.
 
 ### Routine content boundaries

@@ -158,7 +158,7 @@ Unsupported recognition or synthesis must degrade visibly and safely; it must no
 
 ## Post-Activity Stretch Coverage
 
-The optional flow includes reviewed English, Spanish, and Simplified Chinese saved-state, control, movement, safety, disclaimer, and completion copy.
+The optional flow includes reviewed English, Spanish, and Simplified Chinese saved-state, control, movement, safety, disclaimer, completion, and spoken-instruction toggle copy. Its preparation and transition labels and spoken release cue are localized; movement narration uses the matching system speech locale.
 
 ## Verification
 
