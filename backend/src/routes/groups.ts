@@ -106,7 +106,7 @@ router.get("/", async (c) => {
   const where = scope === "discover"
     ? { trustPolicy: "community", visibility: "public", lifecycle: "active", ...(blockedUserIds.length ? { members: { none: { status: "active", userId: { in: blockedUserIds } } } } : {}), ...(city ? { city: { contains: city, mode: "insensitive" as const } } : {}), ...(query ? { normalizedName: { contains: normalizeSearchName(query) } } : {}) }
     : { lifecycle: "active", members: { some: { userId: user.id, status: "active" }, ...(blockedUserIds.length ? { none: { status: "active", userId: { in: blockedUserIds } } } : {}) } };
-  const rows = await prisma.socialGroup.findMany({ where, include: { owner: { select: { id: true, displayName: true, avatarUrl: true } }, members: { where: { status: "active" }, select: { userId: true, role: true } }, _count: { select: { members: true } } }, orderBy: [{ featured: "desc" }, { updatedAt: "desc" }, { id: "asc" }], ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}), take: take + 1 });
+  const rows = await prisma.socialGroup.findMany({ where, include: { owner: { select: { id: true, displayName: true, avatarUrl: true } }, members: { where: { status: "active" }, select: { userId: true, role: true } } }, orderBy: [{ featured: "desc" }, { updatedAt: "desc" }, { id: "asc" }], ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}), take: take + 1 });
   const page = rows.slice(0, take);
   const visibleGroups = page.map((socialGroup) => ({
     id: socialGroup.id,
@@ -122,7 +122,7 @@ router.get("/", async (c) => {
     lifecycle: socialGroup.lifecycle,
     featured: socialGroup.featured,
     organizationVerificationState: socialGroup.organizationVerificationState,
-    memberCount: socialGroup._count.members,
+    memberCount: socialGroup.members.length,
     membershipRole: socialGroup.members.find((member) => member.userId === user.id)?.role ?? null,
     owner: socialGroup.owner ? compactPerson(socialGroup.owner) : null,
     contextLabel: socialGroup.city ?? socialGroup.owner?.displayName ?? null,

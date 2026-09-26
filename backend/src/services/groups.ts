@@ -416,7 +416,7 @@ function normalizeGroupName(value: string) {
 async function communityGroupPayload(group: any, viewerId: string) {
   const prisma = getPrismaClient();
   const viewerMember = group.members.find((member: any) => member.userId === viewerId) ?? null;
-  const [notices, noticeRead, activities, pendingRequest] = await Promise.all([
+  const [notices, noticeRead, activities, pendingRequest, invitations] = await Promise.all([
     group.noticesEnabled
       ? prisma.groupNotice.findMany({ where: { groupId: group.id, deletedAt: null }, select: { id: true, title: true, body: true, activityEventId: true, pinned: true, publishedAt: true, editedAt: true }, orderBy: [{ pinned: "desc" }, { publishedAt: "desc" }], take: 30 })
       : Promise.resolve([]),
@@ -425,6 +425,9 @@ async function communityGroupPayload(group: any, viewerId: string) {
       ? prisma.activityEvent.findMany({ where: { groupId: group.id, status: { in: ["scheduled", "active", "reconciling", "completed"] }, OR: [{ participants: { some: { userId: viewerId, status: "going" } } }, { invitations: { some: { recipientId: viewerId, status: { in: ["pending", "accepted"] } } } }, { visibility: "public" }] }, select: { id: true, title: true, startsAt: true, endsAt: true, locationName: true, status: true, activityType: true, creatorId: true, participants: { where: { status: "going" }, select: { userId: true, attendanceMode: true } } }, orderBy: { startsAt: "asc" }, take: 20 })
       : Promise.resolve([]),
     !viewerMember && group.joinPolicy === "request" ? prisma.groupJoinRequest.findUnique({ where: { groupId_requesterId: { groupId: group.id, requesterId: viewerId } }, select: { id: true, status: true } }) : Promise.resolve(null),
+    viewerMember && ["owner", "admin"].includes(viewerMember.role)
+      ? prisma.groupInvitation.findMany({ where: { groupId: group.id, status: "pending", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, include: { sender: { select: shareSafeMemberSelect }, recipient: { select: shareSafeMemberSelect }, group: { select: { id: true, name: true } } }, orderBy: { createdAt: "desc" } })
+      : Promise.resolve([]),
   ]);
   const latestNotice = notices[0] as any;
   const unread = Boolean(viewerMember && latestNotice && latestNotice.id !== noticeRead?.lastSeenNoticeId);
@@ -452,6 +455,7 @@ async function communityGroupPayload(group: any, viewerId: string) {
     owner: group.owner ? compactPerson(group.owner) : null,
     memberCount: group.members.length,
     memberLimit: group.memberLimit,
+    invitations: invitations.map((invitation: any) => ({ id: invitation.id, groupId: invitation.groupId, group: invitation.group, sender: compactPerson(invitation.sender), recipient: compactPerson(invitation.recipient), status: invitation.status, createdAt: invitation.createdAt, expiresAt: invitation.expiresAt })),
     currentUserMuted: viewerMember?.notificationMuted ?? false,
     unreadNoticeCount: unread ? 1 : 0,
     pendingRequest,
