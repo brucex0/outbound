@@ -59,8 +59,28 @@ export type LiveCoachLiveState = {
   routeGuidanceActive: boolean;
 };
 
+export type LiveCoachRunnerBelief = {
+  kind: string;
+  label: string;
+  summary: string;
+  confidence: number;
+  status: "confirmed" | "hypothesis";
+  source: string;
+  consequenceLevel: string;
+  daysSinceRefresh: number;
+};
+
+export type LiveCoachRunnerInsight = {
+  kind: string;
+  label: string;
+  value: string;
+  confidence: string;
+  evidenceCount: number;
+  daysSinceUpdate: number;
+};
+
 export type LiveCoachCompiledContext = {
-  version: 3;
+  version: 4;
   measurementUnitSystem: "metric" | "imperial";
   runnerModelVersion: string;
   locale: SupportedAILocale;
@@ -144,6 +164,7 @@ export type LiveCoachCompiledContext = {
   } | null;
   readiness: {
     choice: string;
+    hoursSinceCheckIn: number;
     energy: number | null;
     soreness: number | null;
     sleepQuality: number | null;
@@ -153,8 +174,8 @@ export type LiveCoachCompiledContext = {
     notes: string | null;
   } | null;
   surveySummary: string[];
-  runnerInsights: string[];
-  runnerBeliefs: string[];
+  runnerInsights: LiveCoachRunnerInsight[];
+  runnerBeliefs: LiveCoachRunnerBelief[];
   recentTraining: {
     sevenDayActivities: unknown[];
     sevenDaySummary: unknown;
@@ -167,8 +188,8 @@ export type LiveCoachCompiledContext = {
     approximateLocation: unknown | null;
     weather: unknown | null;
   };
-  guidancePriorities: string[];
-  cuePreferences: string[];
+  guidancePriorities: LiveCoachRunnerBelief[];
+  cuePreferences: LiveCoachRunnerBelief[];
   safetyRequiresFixedOnly: boolean;
 };
 

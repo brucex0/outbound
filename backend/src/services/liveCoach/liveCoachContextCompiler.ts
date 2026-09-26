@@ -70,8 +70,12 @@ export async function compileLiveCoachContext(
     }),
     prisma.runnerInsight.findMany({ where: { userId }, orderBy: { updatedAt: "desc" }, take: 12 }),
     prisma.runnerBelief.findMany({
-      where: { userId, status: { in: ["confirmed", "hypothesis"] } },
-      orderBy: [{ consequenceLevel: "desc" }, { confidence: "desc" }],
+      where: {
+        userId,
+        status: { in: ["confirmed", "hypothesis"] },
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+      orderBy: [{ consequenceLevel: "desc" }, { confidence: "desc" }, { refreshedAt: "desc" }],
       take: 16,
     }),
     prisma.runnerModelVersion.findFirst({ where: { userId }, orderBy: { versionNumber: "desc" } }),
@@ -91,7 +95,7 @@ export async function compileLiveCoachContext(
   const sevenDayActivities = activities.filter((activity) => activity.startedAt >= sevenDaysAgo);
   const olderBaselineActivities = activities.filter((activity) => activity.startedAt < sevenDaysAgo);
   const context: LiveCoachCompiledContext = {
-    version: 3,
+    version: 4,
     measurementUnitSystem: input.measurementUnitSystem,
     runnerModelVersion: latestModel?.id ?? "runner-model-empty",
     locale: input.locale,
@@ -162,6 +166,7 @@ export async function compileLiveCoachContext(
     workoutExecution,
     readiness: readiness ? {
       choice: clip(readiness.choice, 24),
+      hoursSinceCheckIn: Math.max(0, Math.floor((now.getTime() - readiness.date.getTime()) / 3_600_000)),
       energy: finiteNumber(readiness.energy),
       soreness: finiteNumber(readiness.soreness),
       sleepQuality: finiteNumber(readiness.sleepQuality),
@@ -171,8 +176,15 @@ export async function compileLiveCoachContext(
       notes: nullableClip(readiness.notes, 600),
     } : null,
     surveySummary: surveySummary(runnerProfile),
-    runnerInsights: insights.map((insight) => `${clip(insight.label, 80)}: ${clip(insight.value, 180)} (${insight.confidence})`),
-    runnerBeliefs: beliefs.map((belief) => clip(belief.summary, 220)),
+    runnerInsights: insights.map((insight) => ({
+      kind: clip(insight.kind, 40),
+      label: clip(insight.label, 80),
+      value: clip(insight.value, 180),
+      confidence: clip(insight.confidence, 24),
+      evidenceCount: Math.max(0, insight.evidenceCount),
+      daysSinceUpdate: daysAgo(insight.updatedAt, now),
+    })),
+    runnerBeliefs: beliefs.map((belief) => serializeBelief(belief, now)),
     recentTraining: {
       sevenDayActivities: sevenDayActivities.map((activity) => activitySummary(activity, now)),
       sevenDaySummary: aggregateActivities(sevenDayActivities),
@@ -189,10 +201,13 @@ export async function compileLiveCoachContext(
     },
     environment: sanitizeEnvironment(input.environment, situationalSignals),
     guidancePriorities: beliefs.filter((belief) => ["effort", "recovery"].includes(belief.kind))
-      .slice(0, 6).map((belief) => clip(belief.summary, 180)),
+      .slice(0, 6).map((belief) => serializeBelief(belief, now)),
     cuePreferences: beliefs.filter((belief) => belief.kind === "preference")
-      .slice(0, 6).map((belief) => clip(belief.summary, 160)),
-    safetyRequiresFixedOnly: readiness?.illnessOrPain === true || input.environment?.weather?.impact === "unsafe",
+      .slice(0, 6).map((belief) => serializeBelief(belief, now)),
+    safetyRequiresFixedOnly:
+      (readiness?.illnessOrPain === true
+        && Math.max(0, (now.getTime() - readiness.date.getTime()) / 3_600_000) <= 36)
+      || isFreshUnsafeWeather(input.environment?.weather, now),
   };
 
   const serialized = stableStringify(context);
@@ -353,6 +368,28 @@ function activitySummary(activity: ActivitySummaryInput, now: Date) {
   };
 }
 
+function serializeBelief(belief: {
+  kind: string;
+  label: string;
+  summary: string;
+  confidence: number;
+  status: string;
+  source: string;
+  consequenceLevel: string;
+  refreshedAt: Date;
+}, now: Date) {
+  return {
+    kind: clip(belief.kind, 40),
+    label: clip(belief.label, 80),
+    summary: clip(belief.summary, 220),
+    confidence: rounded(belief.confidence, 2) ?? 0,
+    status: belief.status === "confirmed" ? "confirmed" as const : "hypothesis" as const,
+    source: clip(belief.source, 40),
+    consequenceLevel: clip(belief.consequenceLevel, 24),
+    daysSinceRefresh: daysAgo(belief.refreshedAt, now),
+  };
+}
+
 function aggregateActivities(activities: ActivitySummaryInput[]) {
   const totals = activities.reduce((result, activity) => ({
     durationSeconds: result.durationSeconds + (activity.durationSecs ?? 0),
@@ -410,6 +447,15 @@ function rounded(value: number | undefined | null, digits: number): number | nul
 }
 function roundedCoordinate(value: number | undefined): number | null {
   return rounded(value, 2);
+}
+function isFreshUnsafeWeather(
+  weather: LiveCoachEnvironmentInput["weather"],
+  now: Date
+): boolean {
+  if (!weather || weather.impact !== "unsafe") return false;
+  const observedAt = Date.parse(weather.observedAt);
+  const ageMilliseconds = now.getTime() - observedAt;
+  return Number.isFinite(observedAt) && ageMilliseconds >= 0 && ageMilliseconds <= 3 * 60 * 60 * 1_000;
 }
 function daysAgo(date: Date, now: Date): number {
   return Math.max(0, Math.floor((now.getTime() - date.getTime()) / millisecondsPerDay));

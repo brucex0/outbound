@@ -119,7 +119,7 @@ export class LiveCoachSessionService {
         routePolicyVersion: route?.routePolicyVersion,
         compiledContext: compiled.context as unknown as Prisma.InputJsonValue,
         contextHash: compiled.contextHash,
-        contextVersion: 3,
+        contextVersion: 4,
         guidancePlan: planned.plan as unknown as Prisma.InputJsonValue,
         guidancePlanHash: planned.planHash,
         plannerStatus: planned.status,

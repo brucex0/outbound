@@ -38,20 +38,20 @@ The client never sends an account/user ID. Plainstride derives identity from the
 
 ## Plainstride Context Compiler
 
-The backend adds only data for the authenticated runner and bounds every list/string before calling Gemini:
+The backend adds only data for the authenticated runner and bounds every list/string before calling Gemini (compiled context version 4):
 
 - bio/survey: biography, age, sex at birth, height, weight, goal/schedule summaries, comfortable duration, recent/target frequency, preferred long-run day, guidance-detail preference, and declared constraints;
 - coaching profile: fitness level, weekly volume, preferred pace, strengths, weaknesses, goals, records, and bounded recent memory summary;
 - authoritative planned workout, blocks, and steps when present;
 - for a selected standalone workout, the server-resolved execution projection: catalog ID/version, title, target, objective, preparation, distance/time segment triggers, effort range/feel, guide instruction/reference/adjustment cue, finish guidance, and stop conditions;
 - latest readiness, including energy, soreness, sleep, stress, motivation, illness/pain, and bounded notes;
-- derived survey summary, runner insights, confirmed/hypothesis beliefs, guidance priorities, and cue preferences;
+- derived survey summary, runner insights with confidence/evidence count/update age, runner beliefs with status/confidence/source/consequence and refresh age, guidance priorities, and cue preferences; expired beliefs are excluded;
 - up to 50 activities from the prior 28 days, a seven-day detail/aggregate, 28-day aggregate/baseline, and up to 12 recent workout-feedback records;
 - fresh situational signals and the client environment/weather described above.
 
 The compiler omits name, username, email, login-provider IDs, access tokens, device IDs, contacts, photos, raw route geometry, raw GPS track, user/session/cue IDs, the standalone catalog wrapper, source bibliography, editorial metadata, and unrelated workouts. Coordinates are rounded to two decimal places before serialization. Serialized context is capped at an estimated 20,000 tokens and stored with a SHA-256 hash.
 
-The one-time planner must make each generated cue useful for its specific coaching moment: give one grounded action or concrete execution focus, use the supplied workout phase and purpose when helpful, and avoid reusable encouragement. Repeating a phrase across moments or alternatives invalidates the generated plan and selects the deterministic fallback. Workout-step instructions must preserve the step's actual purpose, effort, and work/recovery sequence; exact metrics remain excluded from spoken phrases.
+The one-time planner creates a session-specific phrase library. The phone later selects a planned phrase from a detected semantic moment and workout phase; live cue delivery does not ask an LLM to reason over telemetry again. The planner prioritizes safety, typed targets and workout prescription, fresh readiness/environment, recent measured training and reported feedback, then confidence-ranked runner insights, beliefs, and preferences. It treats context text as data, distinguishes confirmed beliefs from hypotheses, weighs insight confidence/evidence count/update age, and ignores stale readiness/weather rather than speaking as if old information is current. Effort/recovery beliefs older than 28 days are historical unless current evidence confirms them; preferences may guide style until contradicted. Each generated cue must give one grounded action or execution focus, not generic encouragement. Repeating a phrase across moments or alternatives invalidates the plan and selects the deterministic fallback. Workout-step instructions preserve actual purpose, effort, and work/recovery sequence; exact metrics remain excluded from spoken phrases.
 
 ## Plainstride To Gemini
 
@@ -64,7 +64,7 @@ Gemini receives:
 
 The configured model is `gemini-3.1-pro-preview` with high thinking. Planning has a 20-second deadline and happens once per session. The response must contain a summary, progress cadence, one to three short phrases for every reactive moment, and exactly one localized phrase for every required selected-workout instruction ID. Phrases should be distinct and grounded in the moment and workout; duplicates or unknown instruction IDs invalidate the response. Invalid, timed-out, disabled, or unavailable planning produces a deterministic local plan; workout start is not failed solely because Gemini failed.
 
-Gemini must not repeat private bio, health, location, survey, or weather facts in spoken phrases. Those fields may influence safety, tone, focus, timing, and advice only.
+Gemini must not repeat private bio, health, location, survey, or weather facts in spoken phrases. Those fields may influence safety, tone, focus, timing, and advice only. Readiness is current for planner purposes for 36 hours; weather must have been observed within three hours. A fresh illness/pain or unsafe-weather flag can force fixed-only audio; stale flags do not block dynamic planning.
 
 Vertex AI uses the Cloud Run runtime identity. `GEMINI_API_KEY` is supported for controlled non-Vertex environments but must never enter the app or repository.
 

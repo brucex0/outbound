@@ -49,7 +49,7 @@ The deterministic planner owns:
 - workout construction;
 - database mutations.
 
-Gemini may rank a bounded near-term candidate (`maintain`, `recover`, `reduce`, or eligible `progress`) and write a concise evidence-based explanation. It receives aggregate athlete state, upcoming workouts, completion quality, and feedback. Its strict JSON output is validated before use.
+Gemini may rank a bounded near-term candidate (`maintain`, `recover`, `reduce`, or eligible `progress`) and write a concise evidence-based explanation. It receives aggregate athlete state, upcoming workouts, completion quality, and feedback. Its strict JSON output is validated before use. The evaluator treats current safety and deterministic plan-fit results as authoritative, prefers `maintain` when evidence is sparse or mixed, does not infer fatigue from one missed session, and requires repeated evidence for progression. Each evidence-summary item must cite a supplied fact; the evaluator cannot invent a measurement, diagnosis, or workout.
 
 The in-app companion model may explain an already validated proposal and handle conversational requests. It must not claim that a plan changed until the action executor confirms it.
 
@@ -102,7 +102,7 @@ The Gemini evaluator now receives:
 - upcoming workouts;
 - completion ratios, perceived effort, and feedback counts.
 
-Gemini can only select the validated near-term candidates and cannot directly mutate plans. Missing credentials, timeout, invalid JSON, or disabled capability falls back to the deterministic policy.
+Gemini can only select the validated near-term candidates and cannot directly mutate plans. The prompt/policy version is recorded with each proposal. Missing credentials, timeout, invalid JSON, or disabled capability falls back to the deterministic policy.
 
 ## Health and physical-state behavior
 
