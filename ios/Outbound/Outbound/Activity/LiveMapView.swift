@@ -465,8 +465,7 @@ struct LiveMapView: View {
         case .active:
             return recorder.currentPace?.paceString(for: measurementPreferences.unitSystem) ?? "--"
         case .paused:
-            guard recorder.distanceMeters > 0 else { return "--" }
-            return (Double(recorder.elapsedSeconds) / (recorder.distanceMeters / 1000)).paceString(for: measurementPreferences.unitSystem)
+            return recorder.averagePace?.paceString(for: measurementPreferences.unitSystem) ?? "--"
         }
     }
 

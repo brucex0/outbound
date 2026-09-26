@@ -9,7 +9,8 @@ Authoritative file: `ios/Outbound/Outbound/Activity/ActivityDetailView.swift`
 Android counterpart: `android/feature/activity/src/main/kotlin/com/plainstride/outbound/feature/activity/ActivityScreen.kt`, with its parity inventory in `android/feature/activity/IOS_PARITY.md`.
 
 My Activities and other local activity consumers receive activities ordered by `startedAt` descending, so the newest activity is always first, including after imports, sync restoration, and date edits.
-The history screen supports swipe-to-delete for one activity and selection mode for deleting multiple activities after a destructive confirmation.
+The history screen supports swipe-to-delete for one activity and selection mode for deleting multiple activities after a destructive confirmation. Stored activity detail also exposes a confirmed Delete action in the navigation bar.
+Live and saved average pace use the same sport-specific plausibility bounds: at least 4:00/km for walking and 3:20/km for hiking, with separate bounds for running and cycling. Out-of-range pace is hidden as unavailable while the recorded distance, duration, and route remain intact.
 
 The current view is a Strava-style layered detail page:
 

@@ -149,7 +149,10 @@ private nonisolated enum LocalActivityStore {
             endedAt: summary.endedAt,
             durationSecs: summary.durationSecs,
             distanceM: summary.distanceM,
-            avgPace: summary.avgPace,
+            avgPace: activityType.plausibleAveragePace(
+                durationSeconds: Double(summary.durationSecs),
+                distanceMeters: summary.distanceM
+            ),
             elevationGainM: summary.elevationGainM,
             walkingStepCount: summary.walkingStepCount,
             healthMetrics: summary.healthMetrics,
@@ -786,6 +789,28 @@ nonisolated enum ActivityType: String, Codable, CaseIterable, Hashable {
     case swimming
     case strengthTraining = "strength"
     case mobility
+
+    /// Plausible displayed pace bounds for this sport, in seconds per kilometer.
+    /// These bounds suppress vehicle-speed GPS artifacts without changing the
+    /// recorded route or distance data used for later inspection.
+    var plausiblePaceSecondsPerKilometer: ClosedRange<Double>? {
+        switch self {
+        case .cycling: 35...3_600
+        case .walking: 240...3_600
+        case .hiking: 200...3_600
+        case .running: 150...1_500
+        case .swimming, .strengthTraining, .mobility: 150...3_600
+        }
+    }
+
+    func plausibleAveragePace(durationSeconds: Double, distanceMeters: Double) -> Double? {
+        guard durationSeconds.isFinite, durationSeconds > 0,
+              distanceMeters.isFinite, distanceMeters > 0,
+              let bounds = plausiblePaceSecondsPerKilometer
+        else { return nil }
+        let pace = durationSeconds / (distanceMeters / 1_000)
+        return bounds.contains(pace) ? pace : nil
+    }
 }
 
 nonisolated struct ActivitySourceMetadata: Codable, Hashable {

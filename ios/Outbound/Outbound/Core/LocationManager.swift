@@ -475,14 +475,10 @@ final class LocationManager: NSObject, ObservableObject {
         else { return nil }
 
         let pace = duration / distance * 1_000
-        let bounds: ClosedRange<Double> = switch activityType {
-        case .cycling: 35...3_600
-        case .walking, .hiking: 150...3_600
-        case .running: 150...1_500
-        case .swimming: 150...3_600
-        case .strengthTraining, .mobility: 150...3_600
-        }
-        return bounds.contains(pace) ? pace : nil
+        guard let bounds = activityType.plausiblePaceSecondsPerKilometer,
+              bounds.contains(pace)
+        else { return nil }
+        return pace
     }
 
     func recordFinalReconciliation(

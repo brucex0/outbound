@@ -15,6 +15,7 @@ struct ActivityDetailView: View {
     private let explicitRoutePublicationActivityID: String?
     private let supplementalContent: AnyView?
     private let bottomContent: AnyView?
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
@@ -29,6 +30,8 @@ struct ActivityDetailView: View {
     @State private var showSplits = false
     @State private var showElevationProfile = false
     @State private var isEditPresented = false
+    @State private var confirmsDelete = false
+    @State private var deleteFailed = false
     @State private var sheetDetent: ActivityDetailSheetDetent = .split
     @State private var sheetDragHeight: CGFloat?
     @State private var showsCollapsedSheetContent = false
@@ -101,7 +104,10 @@ struct ActivityDetailView: View {
             DetailActivityStat(label: String(localized: "Distance"), value: primaryStat),
             DetailActivityStat(
                 label: String(localized: "activity.metric.avg_pace", defaultValue: "Avg Pace"),
-                value: currentActivity.avgPace?.paceString(for: unitSystem) ?? "—"
+                value: currentActivity.activityType.plausibleAveragePace(
+                    durationSeconds: Double(currentActivity.durationSecs),
+                    distanceMeters: currentActivity.distanceM
+                )?.paceString(for: unitSystem) ?? "—"
             ),
             DetailActivityStat(label: String(localized: "activity.metric.moving_time", defaultValue: "Moving Time"), value: currentActivity.durationSecs.formatted()),
         ]
@@ -224,7 +230,36 @@ struct ActivityDetailView: View {
                     }
                     .accessibilityLabel(String(localized: "activity.edit", defaultValue: "Edit activity"))
                 }
+
+                if usesStoredActivity && showsPrivateDetails {
+                    Button(role: .destructive) {
+                        confirmsDelete = true
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                    .accessibilityLabel(String(localized: "activity.delete", defaultValue: "Delete activity"))
+                }
             }
+        }
+        .confirmationDialog(
+            String(localized: "activity.delete.title", defaultValue: "Delete this activity?"),
+            isPresented: $confirmsDelete,
+            titleVisibility: .visible
+        ) {
+            Button(String(localized: "activity.delete", defaultValue: "Delete activity"), role: .destructive) {
+                deleteActivity()
+            }
+            Button(String(localized: "activity.cancel", defaultValue: "Cancel"), role: .cancel) {}
+        } message: {
+            Text(String(localized: "activity.delete.body", defaultValue: "It will be removed from this device and your synced history. This cannot be undone."))
+        }
+        .alert(
+            String(localized: "activity.history.delete.failed.title", defaultValue: "Unable to Delete Activity"),
+            isPresented: $deleteFailed
+        ) {
+            Button(String(localized: "common.ok", defaultValue: "OK"), role: .cancel) {}
+        } message: {
+            Text(String(localized: "activity.history.delete.failed.message", defaultValue: "This activity could not be deleted. Please try again."))
         }
         .sheet(isPresented: $isPublishRoutePresented) {
             PublishRouteSheet(activity: currentActivity) { name in
@@ -959,6 +994,21 @@ struct ActivityDetailView: View {
     private func track(_ event: ProductAnalyticsEvent) {
         guard let analyticsManager else { return }
         Task { await analyticsManager.track(event) }
+    }
+
+    private func deleteActivity() {
+        Task {
+            do {
+                try await activityStore.delete(currentActivity)
+                track(.init(.activityDeleted, properties: [
+                    .sourceType: .string("activity_detail"),
+                    .countBucket: .string(ProductAnalyticsBucket.count(1)),
+                ]))
+                dismiss()
+            } catch {
+                deleteFailed = true
+            }
+        }
     }
 
     private func openPublishRouteSheet() {

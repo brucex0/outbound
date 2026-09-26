@@ -1180,7 +1180,10 @@ final class VirtualGuide: NSObject, ObservableObject {
         let elapsedDelta = snapshot.elapsedSeconds - previous.elapsedSeconds
         if distanceDelta >= currentProgressDistanceIntervalMeters * 0.75,
            elapsedDelta > 0 {
-            latestDistanceCheckpointPace = Double(elapsedDelta) / (distanceDelta / 1_000)
+            latestDistanceCheckpointPace = snapshot.activityType.plausibleAveragePace(
+                durationSeconds: Double(elapsedDelta),
+                distanceMeters: distanceDelta
+            )
         } else {
             latestDistanceCheckpointPace = snapshot.currentPaceSecsPerKm
         }
@@ -1195,7 +1198,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         else {
             return nil
         }
-        return Double(snapshot.elapsedSeconds) / (snapshot.distanceMeters / 1_000)
+        return snapshot.averagePaceSecsPerKm
     }
 
     private func keyProgressSummary(for snapshot: ActiveSessionSnapshot) -> String {

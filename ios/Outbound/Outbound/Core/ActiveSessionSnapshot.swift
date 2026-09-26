@@ -7,6 +7,7 @@ struct ActiveSessionSnapshot: Equatable {
     let elapsedSeconds: Int
     let distanceMeters: Double
     let currentPaceSecsPerKm: Double?
+    let activityType: ActivityType
     let heartRate: Int?
     let location: SessionLocation?
     let isActive: Bool
@@ -18,6 +19,7 @@ struct ActiveSessionSnapshot: Equatable {
             elapsedSeconds: 0,
             distanceMeters: 0,
             currentPaceSecsPerKm: nil,
+            activityType: .running,
             heartRate: nil,
             location: nil,
             isActive: false
@@ -26,6 +28,13 @@ struct ActiveSessionSnapshot: Equatable {
 
     var distanceKilometers: Double {
         distanceMeters / 1000
+    }
+
+    var averagePaceSecsPerKm: Double? {
+        activityType.plausibleAveragePace(
+            durationSeconds: Double(elapsedSeconds),
+            distanceMeters: distanceMeters
+        )
     }
 }
 

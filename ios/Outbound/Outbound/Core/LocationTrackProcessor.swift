@@ -38,8 +38,11 @@ struct LocationFilterConfiguration {
         case .cycling:
             maximumSpeedMetersPerSecond = 25
             stationarySpeedMetersPerSecond = 1.0
-        case .walking, .hiking:
-            maximumSpeedMetersPerSecond = 7
+        case .walking:
+            maximumSpeedMetersPerSecond = 3.5
+            stationarySpeedMetersPerSecond = 0.45
+        case .hiking:
+            maximumSpeedMetersPerSecond = 4.2
             stationarySpeedMetersPerSecond = 0.45
         case .running:
             maximumSpeedMetersPerSecond = 10

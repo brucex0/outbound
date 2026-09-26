@@ -120,7 +120,10 @@ final class ActivityStore: ObservableObject {
                 endedAt: workout.endedAt,
                 durationSecs: duration,
                 distanceM: distance,
-                avgPace: distance > 0 ? Double(duration) / (distance / 1_000) : nil,
+                avgPace: workout.activityType.plausibleAveragePace(
+                    durationSeconds: Double(duration),
+                    distanceMeters: distance
+                ),
                 trackPoints: []
             )
             do {
@@ -201,12 +204,24 @@ final class ActivityStore: ObservableObject {
         let startedAt = identity.canonicalStartDate ?? Date().addingTimeInterval(-finalMetrics.elapsedTime)
         let endedAt = startedAt.addingTimeInterval(max(0, finalMetrics.elapsedTime))
         let distance = max(0, finalMetrics.distanceMeters ?? 0)
+        let activityType: ActivityType = switch identity.activity {
+        case .running: .running
+        case .walking: .walking
+        case .cycling: .cycling
+        case .hiking: .hiking
+        case .swimming: .swimming
+        case .strength: .strengthTraining
+        case .mobility: .mobility
+        }
         let summary = ActivitySummary(
             startedAt: startedAt,
             endedAt: endedAt,
             durationSecs: max(0, Int(finalMetrics.elapsedTime.rounded())),
             distanceM: distance,
-            avgPace: distance > 0 ? finalMetrics.elapsedTime / (distance / 1_000) : nil,
+            avgPace: activityType.plausibleAveragePace(
+                durationSeconds: finalMetrics.elapsedTime,
+                distanceMeters: distance
+            ),
             elevationGainM: 0,
             walkingStepCount: nil,
             healthMetrics: ActivityHealthMetrics(
@@ -234,15 +249,6 @@ final class ActivityStore: ObservableObject {
             return nil
         }
 
-        let activityType: ActivityType = switch identity.activity {
-        case .running: .running
-        case .walking: .walking
-        case .cycling: .cycling
-        case .hiking: .hiking
-        case .swimming: .swimming
-        case .strength: .strengthTraining
-        case .mobility: .mobility
-        }
         do {
             let saved = try await save(
                 summary: summary,
@@ -415,9 +421,10 @@ final class ActivityStore: ObservableObject {
         if durationSecs != activity.durationSecs { editedFields.append("duration") }
         if gear != activity.gear { editedFields.append("shoe") }
 
-        let avgPace = distanceM > 0 && durationSecs > 0
-            ? Double(durationSecs) / (distanceM / 1000)
-            : nil
+        let avgPace = activity.activityType.plausibleAveragePace(
+            durationSeconds: Double(durationSecs),
+            distanceMeters: distanceM
+        )
 
         let updated = SavedActivity(
             id: activity.id,

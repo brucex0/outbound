@@ -272,7 +272,10 @@ private struct ActivityRowCard: View {
                             ),
                             systemImage: "timer"
                         )
-                        if let pace = activity.avgPace {
+                        if let pace = activity.activityType.plausibleAveragePace(
+                            durationSeconds: Double(activity.durationSecs),
+                            distanceMeters: activity.distanceM
+                        ) {
                             Label(pace.paceString(for: measurementPreferences.unitSystem), systemImage: "speedometer")
                         }
                     }

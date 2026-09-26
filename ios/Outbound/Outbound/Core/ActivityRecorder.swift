@@ -73,6 +73,12 @@ final class ActivityRecorder: ObservableObject {
     private var lastJournalSaveAt: Date?
     private var lastJournaledTrackPointCount = 0
     private var activityType: ActivityType = .running
+    var averagePace: Double? {
+        activityType.plausibleAveragePace(
+            durationSeconds: Double(elapsedSeconds),
+            distanceMeters: distanceMeters
+        )
+    }
     var recordingSessionMetadata: ActivityRecordingSessionMetadata? { sessionMetadata }
     private var tracksLocation: Bool {
         activityType != .strengthTraining && activityType != .mobility
@@ -276,7 +282,10 @@ final class ActivityRecorder: ObservableObject {
             endedAt: Date(),
             durationSecs: elapsedSeconds,
             distanceM: finalDistanceMeters,
-            avgPace: finalDistanceMeters > 0 ? Double(elapsedSeconds) / (finalDistanceMeters / 1000) : nil,
+            avgPace: activityType.plausibleAveragePace(
+                durationSeconds: Double(elapsedSeconds),
+                distanceMeters: finalDistanceMeters
+            ),
             elevationGainM: finalElevationGainMeters,
             walkingStepCount: stoppedTrack.walkingStepCount,
             healthMetrics: healthMetricsSummary(),
@@ -817,6 +826,7 @@ final class ActivityRecorder: ObservableObject {
             elapsedSeconds: elapsedSeconds,
             distanceMeters: distanceMeters,
             currentPaceSecsPerKm: currentPace,
+            activityType: activityType,
             heartRate: heartRate,
             location: locationManager.location.map(SessionLocation.init),
             isActive: isActive ?? (state == .active)
@@ -882,9 +892,10 @@ final class ActivityRecorder: ObservableObject {
             endedAt: summary.endedAt,
             durationSecs: max(summary.durationSecs, Int(metrics.elapsedTime.rounded())),
             distanceM: reconciledDistance,
-            avgPace: reconciledDistance > 0
-                ? Double(max(summary.durationSecs, Int(metrics.elapsedTime.rounded()))) / (reconciledDistance / 1_000)
-                : summary.avgPace,
+            avgPace: activityType.plausibleAveragePace(
+                durationSeconds: Double(max(summary.durationSecs, Int(metrics.elapsedTime.rounded()))),
+                distanceMeters: reconciledDistance
+            ),
             elevationGainM: summary.elevationGainM,
             elevationMetadata: summary.elevationMetadata,
             walkingStepCount: summary.walkingStepCount,

@@ -142,11 +142,7 @@ final class SessionLiveActivityManager: ObservableObject {
     ) -> OutboundLiveActivityAttributes.ContentState {
         let paceText: String
         if state == .paused {
-            if snapshot.distanceMeters > 0 {
-                paceText = (Double(snapshot.elapsedSeconds) / (snapshot.distanceMeters / 1000)).paceString(for: unitSystem)
-            } else {
-                paceText = "--"
-            }
+            paceText = snapshot.averagePaceSecsPerKm?.paceString(for: unitSystem) ?? "--"
         } else {
             paceText = snapshot.currentPaceSecsPerKm?.paceString(for: unitSystem) ?? "--"
         }
