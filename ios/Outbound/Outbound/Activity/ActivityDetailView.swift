@@ -1,6 +1,7 @@
 import Charts
 import MapKit
 import Photos
+import PhotosUI
 import SwiftUI
 import UIKit
 
@@ -2205,6 +2206,7 @@ private struct SavedActivityPhotoManager: View {
     let activity: SavedActivity
     @State private var keptPhotos: [SavedPhoto]
     @State private var newPhotos: [PostRunPhoto] = []
+    @State private var importedPhotoItems: [PhotosPickerItem] = []
     @State private var isCameraPresented = false
     @State private var isSaving = false
     @State private var saveError: String?
@@ -2212,6 +2214,10 @@ private struct SavedActivityPhotoManager: View {
     init(activity: SavedActivity) {
         self.activity = activity
         _keptPhotos = State(initialValue: activity.photos)
+    }
+
+    private var placement: ActivityPhotoPlacementContext {
+        ActivityPhotoPlacementContext(activity: activity)
     }
 
     private var photoMetadata: PhotoMetadata {
@@ -2232,6 +2238,14 @@ private struct SavedActivityPhotoManager: View {
                     Button { isCameraPresented = true } label: {
                         Label(String(localized: "summary.photos.take", defaultValue: "Take Photo"), systemImage: "camera.fill")
                     }
+                    PhotosPicker(
+                        selection: $importedPhotoItems,
+                        matching: .images,
+                        photoLibrary: .shared()
+                    ) {
+                        Label(String(localized: "summary.photos.import", defaultValue: "Import Photo"), systemImage: "photo.on.rectangle.angled")
+                    }
+                    .accessibilityIdentifier("ImportActivityEditPhotoButton")
                 }
 
                 if !keptPhotos.isEmpty || !newPhotos.isEmpty {
@@ -2289,6 +2303,23 @@ private struct SavedActivityPhotoManager: View {
         )) {
             Button(String(localized: "common.ok", defaultValue: "OK"), role: .cancel) {}
         } message: { Text(saveError ?? "") }
+        .onChange(of: importedPhotoItems) { _, items in
+            guard !items.isEmpty else { return }
+            Task { await importPhotos(from: items) }
+        }
+    }
+
+    private func importPhotos(from items: [PhotosPickerItem]) async {
+        let placement = self.placement
+        for item in items {
+            guard let imported = await ActivityPhotoImporter.importItem(item) else { continue }
+            newPhotos.append(PostRunPhoto(
+                image: imported.image,
+                metadata: placement.metadata(for: imported),
+                isImported: true
+            ))
+        }
+        importedPhotoItems = []
     }
 
     private func save() async {

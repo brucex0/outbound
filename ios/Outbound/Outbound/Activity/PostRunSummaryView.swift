@@ -708,6 +708,18 @@ struct PostRunSummaryView: View {
     }
 
     private func finishPhotoCaption(_ photo: PostRunPhoto, index: Int) -> String {
+        if photo.isImported {
+            // Imported photos carry a real capture time, so their caption is
+            // driven by position in the activity rather than array position.
+            switch photo.metadata.captureContext {
+            case .preActivity:
+                return String(localized: "activity.photos.start", defaultValue: "Start")
+            case .paused:
+                return String(localized: "activity.photos.finish", defaultValue: "Finish")
+            case .active:
+                return measurementPreferences.unitSystem.distanceString(meters: photo.metadata.distAtShot, fractionDigits: 1)
+            }
+        }
         if photo.metadata.captureContext == .preActivity {
             return String(localized: "activity.photos.start", defaultValue: "Start")
         }
@@ -718,27 +730,26 @@ struct PostRunSummaryView: View {
     }
 
     private func importPhotos(from items: [PhotosPickerItem]) async {
+        guard !items.isEmpty else { return }
         await analyticsManager?.track(.init(.photoCaptureAttempted, properties: [
             .sourceType: .string("finish_photo_library"),
         ]))
 
+        let placement = ActivityPhotoPlacementContext(summary: summary)
+        var importedCount = 0
+        var locatedCount = 0
         for item in items {
-            guard let data = try? await item.loadTransferable(type: Data.self),
-                  let image = UIImage(data: data)
-            else { continue }
+            guard let imported = await ActivityPhotoImporter.importItem(item) else { continue }
+            let metadata = placement.metadata(for: imported)
+            draftPhotos.append(PostRunPhoto(image: imported.image, metadata: metadata, isImported: true))
+            importedCount += 1
+            if metadata.coordinate != nil { locatedCount += 1 }
+        }
 
-            let metadata = PhotoMetadata(
-                takenAt: Date(),
-                paceAtShot: summary.avgPace,
-                hrAtShot: summary.healthMetrics?.averageHeartRateBPM,
-                distAtShot: summary.distanceM,
-                coordinate: nil,
-                captureContext: .paused
-            )
-            draftPhotos.append(PostRunPhoto(image: image, metadata: metadata))
+        if importedCount > 0 {
             await analyticsManager?.track(.init(.photoCaptured, properties: [
                 .sourceType: .string("finish_photo_library"),
-                .locationAttached: .boolean(false),
+                .locationAttached: .boolean(locatedCount > 0),
             ]))
         }
 
@@ -808,11 +819,15 @@ struct PostRunPhoto: Identifiable {
     let id: UUID
     let image: UIImage
     let metadata: PhotoMetadata
+    /// True when the photo came from the user's library rather than the
+    /// in-app camera. Imported photos carry metadata recovered from EXIF.
+    let isImported: Bool
 
-    init(id: UUID = UUID(), image: UIImage, metadata: PhotoMetadata) {
+    init(id: UUID = UUID(), image: UIImage, metadata: PhotoMetadata, isImported: Bool = false) {
         self.id = id
         self.image = image
         self.metadata = metadata
+        self.isImported = isImported
     }
 
     init(_ photo: (UIImage, PhotoMetadata)) {
