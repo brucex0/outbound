@@ -13,7 +13,7 @@ import {
   type LiveCoachMoment,
 } from "./liveCoachTypes.js";
 
-export const LIVE_COACH_PLANNER_PROMPT_VERSION = "2026-09-26.1";
+export const LIVE_COACH_PLANNER_PROMPT_VERSION = "2026-09-26.2";
 
 const phases = ["any", "warmup", "easy", "work", "recovery", "walk", "cooldown", "open"] as const;
 const plannerCueSchema = z.object({
@@ -297,6 +297,7 @@ function plannerInstructions(locale: string, personaInstructions: string): strin
     "Do not use hollow encouragement, generic praise, filler, or advice that could fit any run. In particular, never use phrases like 'keep going', 'you've got this', or 'nice work' by themselves. Pair encouragement with a specific coaching action or observation.",
     "Do not merely repeat a metric, milestone, workout label, or what the device detected. Explain what the runner should do, notice, or preserve now. When the context does not support a specific adjustment, give a safe execution focus grounded in the workout instead of inventing facts.",
     "Make the advice specific to the coaching job: pace changes should explain how to adjust effort; recovery cues should protect recovery; terrain cues should coach the terrain; finish cues should match the remaining work. For informational moments, add a useful execution focus instead of repeating only the milestone.",
+    "For pace_instability, address a noticeable pace swing directly and ask the runner to settle into a sustainable rhythm before adjusting again. Do not assume the faster or slower pace is wrong unless a supplied target establishes that.",
     "For workoutInstructions, return exactly one item for every requiredWorkoutInstructionId, preserve each ID exactly, and turn that step's reference cue into a concrete instruction grounded in its actual purpose, effort, and work/recovery sequence. Use qualitative descriptions rather than speaking exact metrics. Never reduce a workout instruction to 'new segment' or generic encouragement. Return an empty array when there are no required IDs.",
     "Give two or three meaningfully different alternatives for moments that may recur. Do not repeat a phrase across different moments or alternatives.",
     "Each phrase must be one natural, immediately speakable sentence of at most 24 English/Spanish words or 48 Chinese characters.",

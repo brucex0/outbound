@@ -5,6 +5,10 @@ import type { LiveCoachMoment } from "./liveCoachTypes.js";
 
 const authoredVariants: Record<SupportedAILocale, Partial<Record<Exclude<LiveCoachMoment, "progress">, string[]>>> = {
   en: {
+    pace_instability: [
+      "Your pace shifted sharply; settle into a sustainable rhythm before adjusting again.",
+      "That was a big pace change. Hold a smooth effort you can sustain.",
+    ],
     pace_drift: [
       "Relax your shoulders, quicken the rhythm slightly, and rebuild smoothly.",
       "Reset your posture and bring the pace back one calm step at a time.",
@@ -31,6 +35,10 @@ const authoredVariants: Record<SupportedAILocale, Partial<Record<Exclude<LiveCoa
     ],
   },
   es: {
+    pace_instability: [
+      "El ritmo cambió bruscamente; estabilízalo antes de volver a ajustarlo.",
+      "El cambio de ritmo fue grande. Mantén un esfuerzo fluido y sostenible.",
+    ],
     pace_drift: [
       "Relaja los hombros, ajusta la cadencia y recupera el ritmo con calma.",
       "Corrige la postura y vuelve al ritmo poco a poco.",
@@ -57,6 +65,10 @@ const authoredVariants: Record<SupportedAILocale, Partial<Record<Exclude<LiveCoa
     ],
   },
   "zh-Hans": {
+    pace_instability: [
+      "配速变化很大，先稳住节奏，再考虑调整。",
+      "刚才配速变化明显，保持顺畅、可持续的强度。",
+    ],
     pace_drift: [
       "放松肩膀，稍微加快步频，平稳找回节奏。",
       "调整姿势，一点一点把配速带回来。",
