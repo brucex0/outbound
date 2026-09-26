@@ -313,6 +313,14 @@ final class LiveGuidanceDirector {
         let athleteReferencePace = athleteReferencePace(from: profile)
         let activeSegment = intent?.activeCoachingSegment(at: snapshot.elapsedSeconds)
         let gradePercent = rollingGradePercent(through: snapshot.elapsedSeconds)
+        if contract != .quiet, let raceDeviation = raceTargetDeviationMoment(
+            snapshot: snapshot,
+            intent: intent,
+            gradePercent: gradePercent
+        ) {
+            lastMomentElapsedSeconds = snapshot.elapsedSeconds
+            return LiveGuidanceDirectorUpdate(nextMoment: raceDeviation, evaluatedCues: evaluation.records)
+        }
         if contract != .quiet, let paceShift = paceInstabilityMoment(
             snapshot: snapshot,
             activeSegment: activeSegment,
@@ -329,6 +337,18 @@ final class LiveGuidanceDirector {
             return LiveGuidanceDirectorUpdate(nextMoment: nil, evaluatedCues: evaluation.records)
         }
 
+        let segmentDeviation: DetectedLiveGuidanceMoment?
+        if intent?.raceIntent?.hasValidatedPaceTarget == true {
+            segmentDeviation = nil
+        } else {
+            segmentDeviation = targetDeviationMoment(
+                snapshot: snapshot,
+                activeSegment: activeSegment,
+                athleteReferencePace: athleteReferencePace,
+                gradePercent: gradePercent
+            )
+        }
+
         let moment = terrainMoment(
             snapshot: snapshot,
             intent: intent,
@@ -341,12 +361,7 @@ final class LiveGuidanceDirector {
                 athleteReferencePace: athleteReferencePace,
                 gradePercent: gradePercent
             )
-            ?? targetDeviationMoment(
-                snapshot: snapshot,
-                activeSegment: activeSegment,
-                athleteReferencePace: athleteReferencePace,
-                gradePercent: gradePercent
-            )
+            ?? segmentDeviation
             ?? finishOpportunityMoment(snapshot: snapshot, intent: intent)
             ?? paceDriftMoment(
                 snapshot: snapshot,
@@ -398,6 +413,41 @@ final class LiveGuidanceDirector {
             return DetectedLiveGuidanceMoment(type: .raceLateStrength, detectedAtElapsedSeconds: snapshot.elapsedSeconds)
         }
         return nil
+    }
+
+    private func raceTargetDeviationMoment(
+        snapshot: ActiveSessionSnapshot,
+        intent: SessionIntent?,
+        gradePercent: Double?
+    ) -> DetectedLiveGuidanceMoment? {
+        guard let race = intent?.raceIntent,
+              race.hasValidatedPaceTarget,
+              let target = race.targetPaceSecondsPerKilometer,
+              snapshot.elapsedSeconds >= 30,
+              !isMeaningfulGrade(gradePercent),
+              let recent = averagePace(from: snapshot.elapsedSeconds - 30, through: snapshot.elapsedSeconds)
+        else { return nil }
+
+        let momentType: LiveGuidanceMomentType
+        if target - recent >= 20,
+           !emittedOneShotMoments.contains(.paceAboveTarget),
+           !suppressedMomentTypes.contains(.paceAboveTarget) {
+            momentType = .paceAboveTarget
+        } else if recent - target >= 30,
+                  !emittedOneShotMoments.contains(.paceBelowTarget),
+                  !suppressedMomentTypes.contains(.paceBelowTarget) {
+            momentType = .paceBelowTarget
+        } else {
+            return nil
+        }
+
+        emittedOneShotMoments.insert(momentType)
+        return DetectedLiveGuidanceMoment(
+            type: momentType,
+            detectedAtElapsedSeconds: snapshot.elapsedSeconds,
+            baselinePaceSecondsPerKilometer: recent,
+            targetPaceSecondsPerKilometer: target
+        )
     }
 
     private func raceBoundaryMoment(
