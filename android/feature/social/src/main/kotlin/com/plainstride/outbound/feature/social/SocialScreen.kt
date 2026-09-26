@@ -1,13 +1,17 @@
 package com.plainstride.outbound.feature.social
 
+import android.graphics.BitmapFactory
 import android.content.Intent
 import android.text.format.DateUtils
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -20,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -36,7 +42,7 @@ import kotlinx.coroutines.delay
 import com.plainstride.outbound.core.designsystem.*
 
 @Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,inboxCount:Int=0,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
-    var createGroup by rememberSaveable { mutableStateOf(false) };var inviteGroup by remember { mutableStateOf<GroupSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var groupActivity by remember { mutableStateOf<GroupSummary?>(null) };var connectionsOpen by rememberSaveable { mutableStateOf(false) };var selectedActivity by remember { mutableStateOf<FeedActivity?>(null) }
+    var createGroup by rememberSaveable { mutableStateOf(false) };var inviteGroup by remember { mutableStateOf<GroupSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var groupActivity by remember { mutableStateOf<GroupSummary?>(null) };var connectionsOpen by rememberSaveable { mutableStateOf(false) }
     var scannerOpen by rememberSaveable { mutableStateOf(false) }
     var scannerFeedback by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
@@ -76,13 +82,26 @@ import com.plainstride.outbound.core.designsystem.*
         else if(!state.loading&&targetType=="group_invite"&&targetId!=null){viewModel.consumeGroupInvite(targetId);onGroupInviteConsumed()}
         else if(!state.loading&&targetType!=null&&targetId!=null)viewModel.openTarget(targetType,targetId)
     }
-    if (selectedActivity == null) {
-        SocialScreen(state, inboxCount, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openGroup, viewModel::openComments, { activity -> selectedActivity = activity; viewModel.trackActivityDetailOpened() }, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, { group ->
+    val selectedActivityPost = state.selectedActivityPost?.let { selected -> state.home.posts.firstOrNull { it.id == selected.id } ?: selected }
+    if (selectedActivityPost == null) {
+        SocialScreen(state, inboxCount, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openGroup, viewModel::openComments, viewModel::openActivityDetail, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, { group ->
             if (group.trustPolicy == "trusted_private") viewModel.openGroup(group) else viewModel.joinGroup(group)
         }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, modifier)
     } else {
-        BackHandler { selectedActivity = null }
-        SocialActivityDetail(selectedActivity!!, { selectedActivity = null }, modifier)
+        BackHandler { viewModel.closeActivityDetail() }
+        SocialActivityDetail(
+            post = selectedActivityPost,
+            photos = state.activityDetailPhotos,
+            photosLoading = state.activityDetailPhotosLoading,
+            photoBytes = state.activityDetailPhotoBytes,
+            onBack = viewModel::closeActivityDetail,
+            openProfile = viewModel::openProfile,
+            cheer = { viewModel.toggleCheer(selectedActivityPost) },
+            comments = { viewModel.openComments(selectedActivityPost) },
+            loadPhotoContent = viewModel::loadActivityPhotoContent,
+            trackPhotoPreview = viewModel::trackActivityPhotoPreviewed,
+            modifier = modifier,
+        )
     }
     if (connectionsOpen) ConnectionsDialog(
         state = state,
@@ -119,10 +138,9 @@ import com.plainstride.outbound.core.designsystem.*
             remove = { person.connectionId?.let(viewModel::removeConnection) },
             isCurrentUser = state.connectionProfileIsSelf,
             isProcessing = state.connectionRequestLoading,
-            openActivity = { activity ->
+            openActivity = { post ->
                 viewModel.closeProfile()
-                selectedActivity = activity
-                viewModel.trackActivityDetailOpened()
+                viewModel.openActivityDetail(post)
             },
         )
     }
@@ -160,7 +178,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
     }
 }
 
-@Composable private fun SocialScreen(state: SocialUiState, inboxCount: Int, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(FeedActivity)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, modifier: Modifier) {
+@Composable private fun SocialScreen(state: SocialUiState, inboxCount: Int, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, modifier: Modifier) {
     var safetyPost by remember { mutableStateOf<SocialPost?>(null) }
     var blockConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
     var deletionConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
@@ -193,7 +211,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
         items(state.home.pastEvents, key = SocialEvent::id) { event -> EventCard(event) { openTarget("event",event.id) } }
         if (state.home.pastEvents.isEmpty()) item { EmptyCard(stringResource(R.string.social_past_empty), Icons.Outlined.History) }
         item { SectionHeader(stringResource(R.string.social_feed)) }
-        items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, { openProfile(post.author) }, { post.activity?.let(openActivity) }, { cheer(post) }, { comments(post) }, { if (post.isCurrentUser) { if (skipDeletionConfirmation) deletePost(post) else deletionConfirmationPost = post } else safetyPost = post }) }
+        items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, { openProfile(post.author) }, { if (post.activity != null) openActivity(post) }, { cheer(post) }, { comments(post) }, { if (post.isCurrentUser) { if (skipDeletionConfirmation) deletePost(post) else deletionConfirmationPost = post } else safetyPost = post }) }
         if (!state.loading && state.home.posts.isEmpty()) item { EmptyCard(stringResource(R.string.social_feed_empty), Icons.Outlined.DirectionsRun) }
         if (state.loading) item { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
         if (state.home.nextCursor != null) item { Button(loadMore, Modifier.fillMaxWidth(), enabled = !state.feedLoading) { Text(stringResource(R.string.social_load_more)) } }
@@ -407,11 +425,45 @@ private fun PostCard(post: SocialPost, profile: () -> Unit, openActivity:()->Uni
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SocialActivityDetail(activity: FeedActivity, onBack: () -> Unit, modifier: Modifier = Modifier) {
+private fun SocialActivityDetail(
+    post: SocialPost,
+    photos: List<ActivityPhoto>,
+    photosLoading: Boolean,
+    photoBytes: Map<String, ByteArray>,
+    onBack: () -> Unit,
+    openProfile: (SocialPerson) -> Unit,
+    cheer: () -> Unit,
+    comments: () -> Unit,
+    loadPhotoContent: (String) -> Unit,
+    trackPhotoPreview: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val activity = post.activity ?: return
     val route = remember(activity.route) { activity.route.routeCoordinates() }
+    var selectedPhotoIndex by rememberSaveable(post.id) { mutableIntStateOf(-1) }
     Scaffold(
         modifier = modifier,
         contentWindowInsets = WindowInsets.safeDrawing,
+        bottomBar = {
+            Surface(tonalElevation = 3.dp, color = MaterialTheme.colorScheme.surface) {
+                Row(
+                    Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    val cheerLabel = stringResource(if (post.viewerHasCheered) R.string.social_remove_cheer else R.string.social_add_cheer)
+                    val commentLabel = stringResource(R.string.social_comments)
+                    IconButton(cheer, Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = cheerLabel }) {
+                        Icon(if (post.viewerHasCheered) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder, null, tint = if (post.viewerHasCheered) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+                    }
+                    Text(post.cheerCount.toString(), style = MaterialTheme.typography.labelLarge)
+                    Spacer(Modifier.width(16.dp))
+                    IconButton(comments, Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = commentLabel }) {
+                        Icon(Icons.Outlined.ChatBubbleOutline, null)
+                    }
+                    Text(post.commentCount.toString(), style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        },
         topBar = {
             TopAppBar(
                 title = { Text(activity.title, maxLines = 1) },
@@ -425,12 +477,47 @@ private fun SocialActivityDetail(activity: FeedActivity, onBack: () -> Unit, mod
     ) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+            contentPadding = PaddingValues(bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
-                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    RelativeActivityTime(activity.endedAt ?: activity.startedAt.plusDuration(activity.durationSecs))
+                Box(Modifier.fillMaxWidth().height(320.dp)) {
+                    if (route.size > 1) {
+                        PlainstrideRouteMap(
+                            points = route,
+                            modifier = Modifier.fillMaxSize(),
+                            showEndpointMarkers = true,
+                        )
+                    } else {
+                        Box(
+                            Modifier.fillMaxSize().background(
+                                Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = .28f), MaterialTheme.colorScheme.background)),
+                            ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(Icons.Outlined.Route, stringResource(R.string.social_route), Modifier.size(54.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = .65f))
+                        }
+                    }
+                }
+            }
+            item {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f)).clickable { openProfile(post.author) }.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SocialAvatar(post.author, 42.dp)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(post.author.displayName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        post.activityTimestamp?.let { RelativeActivityTime(it) }
+                    }
+                    Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            item {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(activity.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    post.caption?.takeIf(String::isNotEmpty)?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         ActivityStat(formatDistance(activity.distanceM), stringResource(R.string.social_distance))
                         ActivityStat(formatDuration(activity.durationSecs), stringResource(R.string.social_time))
@@ -438,23 +525,100 @@ private fun SocialActivityDetail(activity: FeedActivity, onBack: () -> Unit, mod
                     }
                 }
             }
-            if (route.size > 1) {
+            if (photos.isNotEmpty() || photosLoading) {
                 item {
-                    Text(
-                        stringResource(R.string.social_route),
-                        Modifier.padding(horizontal = 20.dp),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    PlainstrideRouteMap(
-                        points = route,
-                        modifier = Modifier.fillMaxWidth().height(300.dp).padding(top = 10.dp),
-                        showEndpointMarkers = true,
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            stringResource(R.string.social_activity_photos),
+                            Modifier.padding(horizontal = 20.dp),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {
+                            itemsIndexed(photos, key = { _, photo -> photo.id }) { index, photo ->
+                                SocialActivityPhotoTile(
+                                    photo = photo,
+                                    index = index,
+                                    count = activity.totalPhotoCount,
+                                    bytes = photoBytes[photo.id],
+                                    onClick = { selectedPhotoIndex = index; trackPhotoPreview(); loadPhotoContent(photo.id) },
+                                )
+                            }
+                            if (photosLoading) {
+                                items((activity.totalPhotoCount - photos.size).coerceAtLeast(0)) { offset ->
+                                    PhotoLoadingTile(activity.totalPhotoCount, photos.size + offset)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
+    if (selectedPhotoIndex >= 0 && photos.isNotEmpty()) {
+        val pagerState = rememberPagerState(initialPage = selectedPhotoIndex.coerceIn(photos.indices)) { photos.size }
+        Dialog(onDismissRequest = { selectedPhotoIndex = -1 }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            LaunchedEffect(pagerState.currentPage) {
+                photos.getOrNull(pagerState.currentPage)?.let { loadPhotoContent(it.id) }
+            }
+            Surface(Modifier.fillMaxSize(), color = androidx.compose.ui.graphics.Color.Black) {
+                Column(Modifier.fillMaxSize()) {
+                    Row(Modifier.fillMaxWidth().statusBarsPadding(), verticalAlignment = Alignment.CenterVertically) {
+                        IconButton({ selectedPhotoIndex = -1 }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.social_done), tint = androidx.compose.ui.graphics.Color.White) }
+                        Text("${pagerState.currentPage + 1} / ${photos.size}", Modifier.weight(1f), color = androidx.compose.ui.graphics.Color.White, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        Spacer(Modifier.width(48.dp))
+                    }
+                    HorizontalPager(state = pagerState, modifier = Modifier.weight(1f)) { page ->
+                        val photo = photos[page]
+                        val imageBytes = photoBytes["content:${photo.id}"] ?: photoBytes[photo.id]
+                        val bitmap = remember(imageBytes) { imageBytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) } }
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            if (bitmap != null) Image(bitmap.asImageBitmap(), stringResource(R.string.social_activity_photo), Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                            else CircularProgressIndicator(color = androidx.compose.ui.graphics.Color.White)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SocialActivityPhotoTile(photo: ActivityPhoto, index: Int, count: Int, bytes: ByteArray?, onClick: () -> Unit) {
+    val bitmap = remember(bytes) { bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) } }
+    Box(
+        Modifier.size(width = 116.dp, height = 104.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (bitmap != null) Image(bitmap.asImageBitmap(), stringResource(R.string.social_activity_photo), Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        else Icon(Icons.Outlined.CameraAlt, stringResource(R.string.social_activity_photo), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Surface(Modifier.align(Alignment.BottomStart).fillMaxWidth(), color = androidx.compose.ui.graphics.Color.Black.copy(alpha = .55f)) {
+            Text(
+                photoTileLabel(index, count),
+                Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                color = androidx.compose.ui.graphics.Color.White,
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PhotoLoadingTile(count: Int, index: Int) {
+    Box(
+        Modifier.size(width = 116.dp, height = 104.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+        Text(photoTileLabel(index, count), Modifier.align(Alignment.BottomStart).padding(8.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun photoTileLabel(index: Int, count: Int): String = when (index) {
+    0 -> stringResource(R.string.social_photo_start)
+    count - 1 -> stringResource(R.string.social_photo_finish)
+    else -> stringResource(R.string.social_activity_photo)
 }
 
 @Composable private fun ActivityStat(value:String,label:String)=Column(Modifier.widthIn(min=72.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(value,fontWeight=FontWeight.Bold);Text(label,color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.labelSmall)}
@@ -536,7 +700,7 @@ private fun ProfileScreen(
     remove: () -> Unit,
     isCurrentUser: Boolean = false,
     isProcessing: Boolean = false,
-    openActivity: (FeedActivity) -> Unit,
+    openActivity: (SocialPost) -> Unit,
 ) {
     var confirmsRemoval by remember { mutableStateOf(false) }
     Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -601,7 +765,7 @@ private fun ProfileScreen(
                 } else {
                     items(posts, key = SocialPost::id) { post ->
                         post.activity?.let { activity ->
-                            SocialCard(onClick = { openActivity(activity) }) {
+                            SocialCard(onClick = { openActivity(post) }) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Column(Modifier.weight(1f)) {
                                         Text(activity.title, fontWeight = FontWeight.SemiBold)

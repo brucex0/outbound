@@ -73,6 +73,10 @@
     <string name="social_report">Report post</string>
     <string name="social_requests">Requests</string>
     <string name="social_review">Review</string>
+    <string name="social_activity_photos">Photos</string>
+    <string name="social_activity_photo">Activity photo</string>
+    <string name="social_photo_start">Start</string>
+    <string name="social_photo_finish">Finish</string>
     <string name="social_route">Activity route</string>
     <string name="social_safety_body">Reports are private. Blocking also removes the connection and hides each person’s content.</string>
     <string name="social_safety_title">Safety options</string>

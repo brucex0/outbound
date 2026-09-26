@@ -5,8 +5,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import com.plainstride.outbound.core.database.AccountCacheDao
 import com.plainstride.outbound.core.database.AccountCacheEntity
 import com.plainstride.outbound.core.network.*
@@ -24,6 +27,8 @@ interface SocialRepository {
     suspend fun searchPeople(query: String): Result<List<SocialPerson>>
     suspend fun profile(id: String): Result<SocialPerson>
     suspend fun setCheer(postId: String, cheered: Boolean): Result<Unit>
+    suspend fun loadPostPhotos(postId: String): Result<List<ActivityPhoto>>
+    suspend fun downloadPostPhoto(photoId: String, thumbnail: Boolean = true): Result<ByteArray>
     suspend fun connect(personId: String): Result<Unit>
     suspend fun accept(connectionId: String): Result<Unit>
     suspend fun removeConnection(connectionId: String): Result<Unit>
@@ -105,6 +110,19 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun searchPeople(query: String) = authenticated { apiCall { api.search(it, query.trim()) } }.map { it.people }
     override suspend fun profile(id: String) = authenticated { apiCall { api.profile(it, id) } }.map { it.person.copy(recognitions = it.recognitions) }
     override suspend fun setCheer(postId: String, cheered: Boolean) = authenticated { auth -> apiCall { if (cheered) api.cheer(auth, postId) else api.removeCheer(auth, postId) } }
+    override suspend fun loadPostPhotos(postId: String) = authenticated { apiCall { api.postPhotos(it, postId) } }.map { it.photos }
+    override suspend fun downloadPostPhoto(photoId: String, thumbnail: Boolean): Result<ByteArray> {
+        val body = authenticated { auth ->
+            apiCall { if (thumbnail) api.activityPhotoThumbnail(auth, photoId) else api.activityPhotoContent(auth, photoId) }
+        }.getOrElse { return Result.failure(it) }
+        return try {
+            Result.success(withContext(Dispatchers.IO) { body.use { it.bytes() } })
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Result.failure(error)
+        }
+    }
     override suspend fun connect(personId: String) = authenticated { apiCall { api.connect(it, IdBody(personId)) } }
     override suspend fun accept(connectionId: String) = authenticated { apiCall { api.accept(it, connectionId) } }
     override suspend fun removeConnection(connectionId: String) = authenticated { apiCall { api.removeConnection(it, connectionId) } }
