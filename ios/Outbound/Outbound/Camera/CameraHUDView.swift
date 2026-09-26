@@ -586,7 +586,113 @@ struct ShutterButton: View {
     }
 }
 
+private struct HoldToPauseControl: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    let isCompact: Bool
+    let size: CGFloat
+    let tint: Color
+    let onPause: () -> Void
+
+    @State private var holdProgress: CGFloat = 0
+
+    private let holdDuration: TimeInterval = 0.9
+
+    var body: some View {
+        Group {
+            if isCompact {
+                VStack(spacing: 1) {
+                    Image(systemName: "pause.fill")
+                        .font(.system(size: 15, weight: .bold))
+                    Text(String(localized: "session.action.pause.hold.compact", defaultValue: "HOLD"))
+                        .font(.system(size: 7, weight: .black, design: .rounded))
+                        .tracking(0.5)
+                }
+                .frame(width: size, height: size)
+                .background(tint, in: Circle())
+                .overlay { holdProgressRing }
+            } else {
+                HStack(spacing: 12) {
+                    Image(systemName: "pause.fill")
+                        .font(.headline.weight(.bold))
+
+                    Text(String(localized: "session.action.pause.hold", defaultValue: "Hold to pause"))
+                        .font(.headline.weight(.bold))
+                        .frame(maxWidth: .infinity)
+
+                    holdProgressIndicator
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: size)
+                .foregroundStyle(.white)
+                .background(tint, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            }
+        }
+        .foregroundStyle(.white)
+        .contentShape(isCompact ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: 18, style: .continuous)))
+        .onLongPressGesture(
+            minimumDuration: holdDuration,
+            maximumDistance: 24,
+            perform: onPause,
+            onPressingChanged: updatePressProgress
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "session.action.pause.accessibility", defaultValue: "Pause activity"))
+        .accessibilityHint(String(localized: "session.action.pause.hold.hint", defaultValue: "Touch and hold to pause."))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction(.default, onPause)
+        .accessibilityIdentifier("HoldToPause")
+    }
+
+    @ViewBuilder
+    private var holdProgressRing: some View {
+        Circle()
+            .stroke(.white.opacity(0.35), lineWidth: 2)
+            .overlay {
+                Circle()
+                    .trim(from: 0, to: holdProgress)
+                    .stroke(.white, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+            }
+            .padding(1)
+            .accessibilityHidden(true)
+    }
+
+    private var holdProgressIndicator: some View {
+        ZStack {
+            Circle()
+                .stroke(.white.opacity(0.35), lineWidth: 2)
+            Circle()
+                .trim(from: 0, to: holdProgress)
+                .stroke(.white, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Image(systemName: "hand.tap.fill")
+                .font(.caption2.weight(.bold))
+                .opacity(holdProgress == 0 ? 0.9 : 0)
+        }
+        .frame(width: 26, height: 26)
+        .accessibilityHidden(true)
+    }
+
+    private func updatePressProgress(_ isPressing: Bool) {
+        guard !reduceMotion else {
+            holdProgress = 0
+            return
+        }
+        if isPressing {
+            withAnimation(.linear(duration: holdDuration)) {
+                holdProgress = 1
+            }
+        } else {
+            withAnimation(.easeOut(duration: 0.12)) {
+                holdProgress = 0
+            }
+        }
+    }
+}
+
 struct SessionStatusCard: View {
+
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var connectivityStore: ConnectivityStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -899,16 +1005,21 @@ struct SessionStatusCard: View {
             }
 
             HStack(spacing: 12) {
-                Button(action: expandedPrimaryAction) {
-                    Label(expandedPrimaryTitle, systemImage: expandedPrimarySymbol)
-                        .font(.headline.weight(.bold))
+                if state == .active {
+                    HoldToPauseControl(isCompact: false, size: 62, tint: theme.actionColor, onPause: onPause)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 62)
-                        .foregroundStyle(.white)
-                        .background(theme.actionColor, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                } else {
+                    Button(action: expandedPrimaryAction) {
+                        Label(expandedPrimaryTitle, systemImage: expandedPrimarySymbol)
+                            .font(.headline.weight(.bold))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 62)
+                            .foregroundStyle(.white)
+                            .background(theme.actionColor, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(expandedPrimaryAccessibilityLabel)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(expandedPrimaryAccessibilityLabel)
 
                 if state == .paused {
                     Button(action: onFinish) {
@@ -1131,12 +1242,7 @@ struct SessionStatusCard: View {
             .buttonStyle(SessionIconButtonStyle(background: theme.actionColor, foreground: .white, size: size))
             .accessibilityLabel(String(localized: "session.action.start.accessibility", defaultValue: "Start activity"))
         case .active:
-            Button(action: onPause) {
-                Image(systemName: "pause.fill")
-                    .font(.title3.weight(.bold))
-            }
-            .buttonStyle(SessionIconButtonStyle(background: theme.actionColor, foreground: .white, size: size))
-            .accessibilityLabel(String(localized: "session.action.pause.accessibility", defaultValue: "Pause activity"))
+            HoldToPauseControl(isCompact: true, size: size, tint: theme.actionColor, onPause: onPause)
         case .paused:
             Button(action: onResume) {
                 Image(systemName: "play.fill")
