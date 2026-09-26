@@ -240,6 +240,7 @@ function activityPhotoResponse(photo: {
   return {
     id: photo.id,
     clientPhotoId: photo.clientPhotoId,
+    thumbnailUrl: `/media/activity-photos/${photo.id}/thumbnail`,
     takenAt: photo.takenAt,
     paceAtShot: photo.paceAtShot,
     hrAtShot: photo.hrAtShot,

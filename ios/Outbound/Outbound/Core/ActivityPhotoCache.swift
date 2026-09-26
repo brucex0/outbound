@@ -76,16 +76,32 @@ final class ActivityPhotoCache {
     /// local cache or saved file over a signed remote URL. Also registers the
     /// photo identity so later image loads reuse the same cache identity.
     func renderedURL(for photo: SavedPhoto, thumbnailPixelHeight: CGFloat? = nil) -> URL {
+        renderedURL(for: photo, thumbnailURL: nil, thumbnailPixelHeight: thumbnailPixelHeight)
+    }
+
+    func renderedURL(for photo: SavedPhoto, thumbnailURL: URL) -> URL {
+        renderedURL(for: photo, thumbnailURL: Optional(thumbnailURL), thumbnailPixelHeight: nil)
+    }
+
+    private func renderedURL(
+        for photo: SavedPhoto,
+        thumbnailURL: URL?,
+        thumbnailPixelHeight: CGFloat?
+    ) -> URL {
         let identity = Self.cacheIdentity(for: photo)
-        let identityKey = identity + Self.thumbnailSuffix(thumbnailPixelHeight)
+        let remoteIsThumbnail = photo.remoteRenderURL.map(Self.isActivityPhotoThumbnailURL) ?? false
+        let representation = thumbnailURL != nil || remoteIsThumbnail ? "-preview" : ""
+        let identityKey = identity + representation + Self.thumbnailSuffix(thumbnailPixelHeight)
         if let cachedURL = fileURLsByIdentityKey[identityKey],
            FileManager.default.fileExists(atPath: cachedURL.path) {
             return cachedURL
         }
 
+        // A photo already saved on this device renders from disk: decoding the
+        // local JPEG downsampled is always cheaper than another network fetch,
+        // even when a server-rendered thumbnail is available.
         let localURL = ActivityPersistence.imageURL(for: photo)
-        if thumbnailPixelHeight == nil,
-           FileManager.default.fileExists(atPath: localURL.path(percentEncoded: false)) {
+        if FileManager.default.fileExists(atPath: localURL.path(percentEncoded: false)) {
             if identity.hasPrefix(Self.remoteIdentityPrefix) {
                 remember(localURL, forIdentityKey: identity)
                 identitiesByURLString[localURL.standardizedFileURL.absoluteString] = identity
@@ -93,9 +109,9 @@ final class ActivityPhotoCache {
             return localURL
         }
 
-        if let remoteURL = photo.remoteRenderURL {
-            let registeredIdentity = Self.isActivityPhotoThumbnailURL(remoteURL) ? identity + "-preview" : identity
-            identitiesByURLString[remoteURL.absoluteString] = registeredIdentity
+        let fallbackURL = thumbnailURL ?? photo.remoteRenderURL
+        if let remoteURL = fallbackURL {
+            identitiesByURLString[remoteURL.absoluteString] = identity + representation
             return remoteURL
         }
 

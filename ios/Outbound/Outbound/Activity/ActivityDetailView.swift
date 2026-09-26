@@ -340,7 +340,7 @@ struct ActivityDetailView: View {
             ActivityPhotoLightbox(
                 photos: currentActivity.photos,
                 selectedIndex: $selectedPhotoPage,
-                imageURL: activityStore.imageURL(for:),
+                imageURL: { activityStore.imageURL(for: $0) },
                 onZoom: { control in
                     track(.init(.photoZoomed, properties: [
                         .sourceType: .string("activity_detail"),
@@ -732,7 +732,7 @@ struct ActivityDetailView: View {
                                 }
                             }
                         ) {
-                            if let url = activityStore.imageURL(for: photo) {
+                            if let url = activityStore.imageURL(for: photo, thumbnailPixelHeight: 232) {
                                 LocalImageView(url: url, maxPixelSize: 232) { Color(.secondarySystemBackground) }
                             }
                         }
@@ -2270,7 +2270,7 @@ private struct SavedActivityPhotoManager: View {
                     Section(String(localized: "summary.photos.reorder", defaultValue: "Photos — drag to reorder")) {
                         ForEach(keptPhotos) { photo in
                             HStack(spacing: 12) {
-                                if let url = activityStore.imageURL(for: photo) {
+                                if let url = activityStore.imageURL(for: photo, thumbnailPixelHeight: 112) {
                                     LocalImageView(url: url, maxPixelSize: 112) { Color(.systemGroupedBackground) }
                                         .frame(width: 72, height: 56)
                                         .clipShape(RoundedRectangle(cornerRadius: 8))

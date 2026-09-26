@@ -417,8 +417,12 @@ final class ActivityStore: ObservableObject {
     /// Render URL for a saved photo, routing through the photo cache so
     /// previously uploaded or downloaded photos render from a stable local
     /// cache file instead of a freshly signed remote URL.
-    func imageURL(for photo: SavedPhoto) -> URL? {
-        ActivityPhotoCache.shared.renderedURL(for: photo)
+    func imageURL(for photo: SavedPhoto, thumbnailPixelHeight: CGFloat? = nil) -> URL? {
+        if let thumbnailPixelHeight,
+           let thumbnailURL = photo.remoteThumbnailURL.flatMap(URL.init(string:)) {
+            return ActivityPhotoCache.shared.renderedURL(for: photo, thumbnailURL: thumbnailURL)
+        }
+        return ActivityPhotoCache.shared.renderedURL(for: photo, thumbnailPixelHeight: thumbnailPixelHeight)
     }
 
     func activity(id: UUID) -> SavedActivity? {
@@ -1029,15 +1033,16 @@ final class ActivityStore: ObservableObject {
         for remote in remotePhotos {
             if let index = photos.firstIndex(where: { $0.id.uuidString.caseInsensitiveCompare(remote.clientPhotoId) == .orderedSame }) {
                 let local = photos[index]
-                if local.remotePhotoId != remote.id {
-                    photos[index] = copy(local, remotePhotoId: remote.id, remoteUploadedAt: remote.updatedAt)
+                if local.remotePhotoId != remote.id || local.remoteThumbnailURL != remote.thumbnailUrl?.absoluteString {
+                    photos[index] = copy(local, remotePhotoId: remote.id, remoteUploadedAt: remote.updatedAt, remoteThumbnailURL: remote.thumbnailUrl?.absoluteString)
                     changed = true
                 }
                 continue
             }
             do {
                 let data = try await api.downloadActivityPhoto(id: remote.id)
-                photos.append(try await persistence.saveDownloadedPhoto(data, remote: remote, activityID: activityID))
+                let restored = try await persistence.saveDownloadedPhoto(data, remote: remote, activityID: activityID)
+                photos.append(copy(restored, remotePhotoId: remote.id, remoteUploadedAt: remote.updatedAt, remoteThumbnailURL: remote.thumbnailUrl?.absoluteString))
                 changed = true
             } catch {
                 ActivityDiagnosticLog.error(
@@ -1058,7 +1063,7 @@ final class ActivityStore: ObservableObject {
         guard let current = activity(id: activityID) else { return }
         let photos = current.photos.map { photo in
             photo.id == photoID
-                ? copy(photo, remotePhotoId: remote.id, remoteUploadedAt: remote.updatedAt)
+                ? copy(photo, remotePhotoId: remote.id, remoteUploadedAt: remote.updatedAt, remoteThumbnailURL: remote.thumbnailUrl?.absoluteString)
                 : photo
         }
         let updated = copy(current, photos: photos, sync: current.sync)
@@ -1071,7 +1076,12 @@ final class ActivityStore: ObservableObject {
         copy(activity, photos: [], sync: nil, stripImportedFollowedRoute: true)
     }
 
-    private func copy(_ photo: SavedPhoto, remotePhotoId: String?, remoteUploadedAt: Date?) -> SavedPhoto {
+    private func copy(
+        _ photo: SavedPhoto,
+        remotePhotoId: String?,
+        remoteUploadedAt: Date?,
+        remoteThumbnailURL: String? = nil
+    ) -> SavedPhoto {
         SavedPhoto(
             id: photo.id,
             takenAt: photo.takenAt,
@@ -1082,7 +1092,8 @@ final class ActivityStore: ObservableObject {
             captureContext: photo.captureContext,
             relativePath: photo.relativePath,
             remotePhotoId: remotePhotoId,
-            remoteUploadedAt: remoteUploadedAt
+            remoteUploadedAt: remoteUploadedAt,
+            remoteThumbnailURL: remoteThumbnailURL ?? photo.remoteThumbnailURL
         )
     }
 

@@ -685,6 +685,11 @@ struct SocialHomeView: View {
         }
     }
 
+    private func photoCountLabel(for count: Int) -> String {
+        let format = String(localized: "social.feed.photo_count", defaultValue: "%lld photos")
+        return String.localizedStringWithFormat(format, count)
+    }
+
     private func deletePendingPost(skipFutureConfirmations: Bool) {
         guard let post = postPendingDeletion else { return }
         if skipFutureConfirmations {
@@ -1000,6 +1005,17 @@ struct SocialHomeView: View {
                                 .overlay(alignment: .topLeading) {
                                     if let milestone = milestone(for: activity, isCurrentUser: post.isCurrentUser) {
                                         RecognitionPill(preview: milestone, compact: true).padding(12)
+                                    }
+                                }
+                                .overlay(alignment: .topTrailing) {
+                                    if activity.totalPhotoCount > 0 {
+                                        Text(photoCountLabel(for: activity.totalPhotoCount))
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.white)
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 7)
+                                            .background(.black.opacity(0.48), in: Capsule())
+                                            .padding(12)
                                     }
                                 }
                             }
@@ -3788,7 +3804,8 @@ private extension TogetherActivityDTO {
                 captureContext: photo.captureContext.flatMap(PhotoCaptureContext.init(rawValue:)) ?? .active,
                 relativePath: url.absoluteString,
                 remotePhotoId: photo.id,
-                remoteUploadedAt: photo.takenAt
+                remoteUploadedAt: photo.takenAt,
+                remoteThumbnailURL: photo.thumbnailUrl.map { APIClient.shared.mediaURL($0).absoluteString }
             )
         }
         return SavedActivity(
@@ -3950,10 +3967,18 @@ private struct SocialRoutePreviewImage: View {
 
     @State private var image: UIImage?
 
+    private var primaryPhotoURL: URL? {
+        activity.photos?.first?.thumbnailUrl.map(APIClient.shared.mediaURL(_:))
+    }
+
     var body: some View {
         GeometryReader { proxy in
             Group {
-                if let image {
+                if let primaryPhotoURL {
+                    LocalImageView(url: primaryPhotoURL, maxPixelSize: 720) {
+                        placeholder
+                    }
+                } else if let image {
                     Image(uiImage: image)
                         .resizable()
                         .scaledToFit()
@@ -3966,8 +3991,13 @@ private struct SocialRoutePreviewImage: View {
         .aspectRatio(1.5, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .allowsHitTesting(false)
-        .accessibilityLabel("Activity route preview")
+        .accessibilityLabel(
+            primaryPhotoURL == nil
+                ? String(localized: "Activity route preview")
+                : String(localized: "Activity photo preview")
+        )
         .task(id: SocialRoutePreviewCache.cacheKey(for: activity)) {
+            guard primaryPhotoURL == nil else { return }
             guard activity.route?.coordinates.count ?? 0 > 1 else { return }
             guard let data = await SocialRoutePreviewCache.shared.imageData(for: activity),
                   !Task.isCancelled else { return }

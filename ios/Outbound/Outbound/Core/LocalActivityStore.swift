@@ -348,7 +348,8 @@ private nonisolated enum LocalActivityStore {
             captureContext: remote.captureContext.flatMap(PhotoCaptureContext.init(rawValue:)) ?? .active,
             relativePath: "\(activityID.uuidString)/photos/\(fileName)",
             remotePhotoId: remote.id,
-            remoteUploadedAt: remote.updatedAt
+            remoteUploadedAt: remote.updatedAt,
+            remoteThumbnailURL: remote.thumbnailUrl?.absoluteString
         )
     }
 
@@ -1247,6 +1248,7 @@ nonisolated struct SavedPhoto: Codable, Identifiable {
     let relativePath: String
     let remotePhotoId: String?
     let remoteUploadedAt: Date?
+    let remoteThumbnailURL: String?
 
     nonisolated init(metadata: PhotoMetadata, relativePath: String) {
         id = UUID()
@@ -1259,12 +1261,13 @@ nonisolated struct SavedPhoto: Codable, Identifiable {
         self.relativePath = relativePath
         remotePhotoId = nil
         remoteUploadedAt = nil
+        remoteThumbnailURL = nil
     }
 
     nonisolated init(
         id: UUID, takenAt: Date, paceAtShot: Double?, hrAtShot: Int?, distAtShot: Double,
         coordinate: SavedCoordinate?, captureContext: PhotoCaptureContext, relativePath: String,
-        remotePhotoId: String?, remoteUploadedAt: Date?
+        remotePhotoId: String?, remoteUploadedAt: Date?, remoteThumbnailURL: String? = nil
     ) {
         self.id = id
         self.takenAt = takenAt
@@ -1276,6 +1279,7 @@ nonisolated struct SavedPhoto: Codable, Identifiable {
         self.relativePath = relativePath
         self.remotePhotoId = remotePhotoId
         self.remoteUploadedAt = remoteUploadedAt
+        self.remoteThumbnailURL = remoteThumbnailURL
     }
 
     init(from decoder: Decoder) throws {
@@ -1290,6 +1294,7 @@ nonisolated struct SavedPhoto: Codable, Identifiable {
         relativePath = try c.decode(String.self, forKey: .relativePath)
         remotePhotoId = try c.decodeIfPresent(String.self, forKey: .remotePhotoId)
         remoteUploadedAt = try c.decodeIfPresent(Date.self, forKey: .remoteUploadedAt)
+        remoteThumbnailURL = try c.decodeIfPresent(String.self, forKey: .remoteThumbnailURL)
     }
 }
 

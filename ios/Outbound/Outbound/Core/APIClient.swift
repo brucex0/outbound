@@ -2374,6 +2374,7 @@ struct ActivityPhotoUploadRequest: Encodable {
 struct RemoteActivityPhoto: Decodable {
     let id: String
     let clientPhotoId: String
+    let thumbnailUrl: URL?
     let takenAt: Date
     let paceAtShot: Double?
     let hrAtShot: Int?
