@@ -16,6 +16,7 @@ struct ActivityDetailView: View {
     private let explicitRoutePublicationActivityID: String?
     private let supplementalContent: AnyView?
     private let bottomContent: AnyView?
+    private let photoPlaceholderCount: Int
     @Environment(\.dismiss) private var dismiss
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject var activityStore: ActivityStore
@@ -52,7 +53,8 @@ struct ActivityDetailView: View {
         showsPrivateDetails: Bool = true,
         routePublicationActivityID: String? = nil,
         supplementalContent: AnyView? = nil,
-        bottomContent: AnyView? = nil
+        bottomContent: AnyView? = nil,
+        photoPlaceholderCount: Int = 0
     ) {
         self.activity = activity
         self.usesStoredActivity = usesStoredActivity
@@ -62,6 +64,7 @@ struct ActivityDetailView: View {
         explicitRoutePublicationActivityID = routePublicationActivityID
         self.supplementalContent = supplementalContent
         self.bottomContent = bottomContent
+        self.photoPlaceholderCount = max(0, photoPlaceholderCount)
     }
 
     private var currentActivity: SavedActivity {
@@ -672,7 +675,7 @@ struct ActivityDetailView: View {
                 }
             }
 
-            if !currentActivity.photos.isEmpty {
+            if !currentActivity.photos.isEmpty || photoPlaceholderCount > 0 {
                 activityPhotoStrip
             }
 
@@ -741,6 +744,16 @@ struct ActivityDetailView: View {
                         .accessibilityHint(photo.id == selectedPhotoID
                             ? String(localized: "activity.photos.open", defaultValue: "Open photo full screen")
                             : String(localized: "activity.photos.locate", defaultValue: "Show this photo on the map"))
+                    }
+                    ForEach(0..<photoPlaceholderCount, id: \.self) { _ in
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(Color(.tertiarySystemBackground))
+                            ProgressView()
+                                .tint(.secondary)
+                        }
+                        .frame(width: 116, height: 104)
+                        .accessibilityHidden(true)
                     }
                 }
                 .padding(.horizontal, 20)

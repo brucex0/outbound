@@ -438,6 +438,10 @@ struct TogetherActivityPhotoDTO: Codable, Sendable {
     let captureContext: String?
 }
 
+struct TogetherActivityPhotosResponseDTO: Codable, Sendable {
+    let photos: [TogetherActivityPhotoDTO]
+}
+
 struct TogetherActivityRouteDTO: Codable, Sendable {
     let format: String
     let encodedPolyline: String

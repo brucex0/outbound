@@ -3568,6 +3568,8 @@ private struct SocialActivityDetailView: View {
     @State private var showsComments = false
     @State private var showsCheers = false
     @State private var toastMessage: String?
+    @State private var fullPhotoMetadata: [TogetherActivityPhotoDTO]?
+    @State private var isLoadingPhotos = true
 
     private var currentPost: TogetherPostDTO {
         socialStore.state.posts.first(where: { $0.id == post.id }) ?? post
@@ -3577,14 +3579,20 @@ private struct SocialActivityDetailView: View {
     var body: some View {
         if let activity = currentPost.activity {
             ActivityDetailView(
-                activity: activity.savedActivity(postCreatedAt: currentPost.createdAt),
+                activity: activity.savedActivity(
+                    postCreatedAt: currentPost.createdAt,
+                    photosOverride: fullPhotoMetadata
+                ),
                 usesStoredActivity: false,
                 showsShareControl: currentPost.isCurrentUser,
                 showsEditControl: false,
                 showsPrivateDetails: false,
                 routePublicationActivityID: currentPost.isCurrentUser ? activity.id : nil,
                 supplementalContent: AnyView(socialCard),
-                bottomContent: AnyView(socialCompanionCard)
+                bottomContent: AnyView(socialCompanionCard),
+                photoPlaceholderCount: isLoadingPhotos
+                    ? max(0, activity.totalPhotoCount - (activity.photos?.count ?? 0))
+                    : 0
             )
             .environmentObject(recognitionStore)
             .environmentObject(socialRecognitionStore)
@@ -3609,6 +3617,9 @@ private struct SocialActivityDetailView: View {
                         .padding(.top, 8)
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
+            }
+            .task(id: currentPost.id) {
+                await loadAllPhotos(for: currentPost)
             }
         } else {
             ContentUnavailableView(
@@ -3766,10 +3777,28 @@ private struct SocialActivityDetailView: View {
         }
         if addsSupport { _ = socialRecognitionStore.registerSupport(for: currentPost.id) }
     }
+
+    private func loadAllPhotos(for post: TogetherPostDTO) async {
+        fullPhotoMetadata = nil
+        guard let activity = post.activity,
+              activity.totalPhotoCount > (activity.photos?.count ?? 0) else {
+            isLoadingPhotos = false
+            return
+        }
+        isLoadingPhotos = true
+        do {
+            let response = try await APIClient.shared.fetchSocialPostPhotos(postID: post.id)
+            guard !Task.isCancelled else { return }
+            fullPhotoMetadata = response.photos
+        } catch {
+            fullPhotoMetadata = activity.photos
+        }
+        isLoadingPhotos = false
+    }
 }
 
 private extension TogetherActivityDTO {
-    func savedActivity(postCreatedAt: Date) -> SavedActivity {
+    func savedActivity(postCreatedAt: Date, photosOverride: [TogetherActivityPhotoDTO]? = nil) -> SavedActivity {
         let duration = max(0, durationSecs ?? 0)
         let resolvedStartedAt = startedAt ?? postCreatedAt.addingTimeInterval(TimeInterval(-duration))
         let resolvedEndedAt = endedAt ?? resolvedStartedAt.addingTimeInterval(TimeInterval(duration))
@@ -3786,7 +3815,7 @@ private extension TogetherActivityDTO {
                 verticalAccuracy: nil
             )
         }
-        let savedPhotos = (photos ?? []).compactMap { photo -> SavedPhoto? in
+        let savedPhotos = (photosOverride ?? photos ?? []).compactMap { photo -> SavedPhoto? in
             guard let clientPhotoID = UUID(uuidString: photo.clientPhotoId),
                   let url = (photo.url ?? photo.thumbnailUrl).map({ APIClient.shared.mediaURL($0) }) else { return nil }
             let coordinate = photo.latitude.flatMap { latitude in

@@ -672,6 +672,10 @@ final class APIClient {
         try await delete("/social/posts/\(postID)/cheer")
     }
 
+    func fetchSocialPostPhotos(postID: String) async throws -> TogetherActivityPhotosResponseDTO {
+        try await get("/social/posts/\(postID)/photos")
+    }
+
     func fetchSocialComments(postID: String) async throws -> TogetherCommentsResponseDTO {
         try await get("/social/posts/\(postID)/comments")
     }
