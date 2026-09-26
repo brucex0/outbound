@@ -119,6 +119,7 @@ Social has four destinations after consolidation:
 - Defaults: `trusted_private`, private, invitation-only, weekly theme/contributions/Cheers enabled, scheduled activities enabled, notices disabled.
 - The tailored form asks for at least one accepted connection and an optional name. It may generate and store a localized name.
 - After creation, show invited people, explain that qualifying workouts are visible inside this private Group, and offer `Choose a weekly theme` or `Open Group`.
+- Display accepted members separately from pending invitees so the member count reflects active membership while the owner can still see who has been invited.
 
 ### Organize activities
 
@@ -140,6 +141,9 @@ Every detail screen shares:
 2. About text and the next scheduled activity when present.
 3. Enabled capability modules.
 4. Members and management/reporting entry points.
+
+Group settings and weekly themes use an explicit Save action. Keep editors open when saving fails or when unsaved changes remain; show a distinct next-week theme when it differs from the current week.
+Owners and admins can invite connections directly from Group detail; keep member management available in settings as well.
 
 Trusted-private detail leads with:
 

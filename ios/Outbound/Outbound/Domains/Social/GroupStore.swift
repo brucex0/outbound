@@ -28,6 +28,7 @@ final class GroupStore: ObservableObject {
     private var activeUserID: String?
     private var authGeneration = 0
     private var contributionObserver: AnyCancellable?
+    private var uiTestThemeKey = "build_consistency"
 
     init(api: APIClient? = nil, defaults: UserDefaults = .standard) {
         self.api = api ?? .shared
@@ -59,7 +60,8 @@ final class GroupStore: ObservableObject {
         toastMessage = nil
         lastConfirmedContribution = nil
         if isUITestSeedData, userID != nil {
-            let fixture = Self.uiTestGroup
+            uiTestThemeKey = "build_consistency"
+            let fixture = Self.uiTestGroup(themeKey: uiTestThemeKey)
             groups = [fixture]
             return
         }
@@ -71,7 +73,7 @@ final class GroupStore: ObservableObject {
 
     func refresh() async {
         if isUITestSeedData {
-            let fixture = Self.uiTestGroup
+            let fixture = Self.uiTestGroup(themeKey: uiTestThemeKey)
             groups = [fixture]
             errorMessage = nil
             return
@@ -84,7 +86,14 @@ final class GroupStore: ObservableObject {
             let response = try await api.fetchGroups()
             guard generation == authGeneration, activeUserID == userID else { return }
             memberLimit = response.policy.memberLimit
-            groups = ordered(response.groups)
+            // GET /social/groups returns directory summaries. Preserve loaded
+            // detail payloads instead of replacing members, theme, and activity
+            // data with GroupDTO's decode defaults.
+            let existingDetails = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0) })
+            groups = ordered(response.groups.map { summary in
+                guard let detail = existingDetails[summary.id], detail.isDetailedPayload else { return summary }
+                return detail
+            })
             persistCurrentState()
             errorMessage = nil
         } catch {
@@ -109,7 +118,7 @@ final class GroupStore: ObservableObject {
     }
 
     func refreshGroup(id: String) async {
-        if isUITestSeedData { upsert(Self.uiTestGroup); errorMessage = nil; return }
+        if isUITestSeedData { upsert(Self.uiTestGroup(themeKey: uiTestThemeKey)); errorMessage = nil; return }
         let generation = authGeneration
         guard activeUserID != nil else { return }
         do {
@@ -122,11 +131,11 @@ final class GroupStore: ObservableObject {
         }
     }
 
-    func create(template: String = "motivation", name: String?, description: String? = nil, city: String? = nil, activityInterests: [String] = [], memberUserIDs: [String]) async -> GroupDTO? {
+    func create(template: String = "motivation", name: String?, description: String? = nil, city: String? = nil, activityInterests: [String] = [], memberUserIDs: [String], idempotencyKey: String) async -> GroupDTO? {
         do {
             let appleWeekday = Calendar.current.firstWeekday
             let isoWeekday = ((appleWeekday + 5) % 7) + 1
-            let group = try await api.createGroup(.init(template: template, name: name?.nilIfBlank, description: description?.nilIfBlank, city: city?.nilIfBlank, activityInterests: activityInterests, memberUserIds: memberUserIDs, timeZone: TimeZone.current.identifier, resetWeekday: isoWeekday))
+            let group = try await api.createGroup(.init(template: template, name: name?.nilIfBlank, description: description?.nilIfBlank, city: city?.nilIfBlank, activityInterests: activityInterests, memberUserIds: memberUserIDs, timeZone: TimeZone.current.identifier, resetWeekday: isoWeekday, idempotencyKey: idempotencyKey))
             upsert(group)
             toastMessage = String(localized: "group.toast.created", defaultValue: "Group created. Invitations sent.")
             return group
@@ -157,7 +166,14 @@ final class GroupStore: ObservableObject {
     }
 
     func updateFocus(group: GroupDTO, themeKey: String, customTitle: String?, customNote: String?, apply: String = "now") async -> GroupDTO? {
-        await mutate(success: String(localized: "group.toast.focus_saved", defaultValue: "Weekly theme updated.")) {
+        if isUITestSeedData {
+            uiTestThemeKey = themeKey
+            let updated = Self.uiTestGroup(themeKey: themeKey)
+            upsert(updated)
+            toastMessage = String(localized: "group.toast.focus_saved", defaultValue: "Weekly theme updated.")
+            return updated
+        }
+        return await mutate(success: String(localized: "group.toast.focus_saved", defaultValue: "Weekly theme updated.")) {
             try await api.updateGroupFocus(
                 id: group.id,
                 request: .init(
@@ -189,8 +205,21 @@ final class GroupStore: ObservableObject {
         await mutate(success: String(localized: "group.toast.cheer_removed", defaultValue: "Cheer removed.")) { try await api.removeGroupCheer(id: group.id, cheerID: cheer.id).group }
     }
 
-    func invite(_ userIDs: [String], to group: GroupDTO) async -> GroupDTO? {
-        await mutate(success: String(localized: "group.toast.invitations_sent", defaultValue: "Invitations sent.")) { try await api.inviteToGroup(id: group.id, request: .init(recipientUserIds: userIDs, idempotencyKey: UUID().uuidString)) }
+    func invite(_ userIDs: [String], to group: GroupDTO) async -> GroupInviteOutcome? {
+        do {
+            let response = try await api.inviteToGroup(id: group.id, request: .init(recipientUserIds: userIDs, idempotencyKey: UUID().uuidString))
+            upsert(response.group)
+            let results = response.invitations ?? []
+            let sentCount = results.filter { $0.status == "sent" }.count
+            let rejectedCount = results.filter { !["sent", "already_member", "already_pending"].contains($0.status) }.count
+            toastMessage = rejectedCount == 0
+                ? String(localized: "group.toast.invitations_sent", defaultValue: "Invitations sent.")
+                : String(localized: "group.toast.invitation_partial", defaultValue: "Some invitations could not be sent. Review the Group and try again.")
+            return GroupInviteOutcome(group: response.group, sentCount: sentCount, rejectedCount: rejectedCount)
+        } catch {
+            _ = fail(error)
+            return nil
+        }
     }
 
     func cancel(_ invitation: GroupInvitationDTO, in group: GroupDTO) async -> GroupDTO? {
@@ -341,23 +370,25 @@ final class GroupStore: ObservableObject {
         ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData")
     }
 
-    private static var uiTestGroup: GroupDTO {
+    private static func uiTestGroup(themeKey: String) -> GroupDTO {
         let now = Date()
         let start = Calendar.current.date(byAdding: .day, value: -2, to: now) ?? now
-        let sage = GroupPersonDTO(id: "ui-test-sage", displayName: "Sage Runner", avatarUrl: nil)
-        let avery = GroupPersonDTO(id: "ui-test-avery", displayName: "Avery Runner", avatarUrl: nil)
+        let bruce = GroupPersonDTO(id: "ui-test-bruce", displayName: "Bruce Xia", avatarUrl: nil)
+        let daniel = GroupPersonDTO(id: "ui-test-daniel", displayName: "Daniel Runner", avatarUrl: nil)
+        let rina = GroupPersonDTO(id: "ui-test-rina", displayName: "Rina Runner", avatarUrl: nil)
         return GroupDTO(
-            id: "ui-test-weekend-crew", name: "Weekend Crew", lifecycle: "active", role: "owner",
-            owner: sage, resetWeekday: 1, timeZone: "America/Los_Angeles", memberLimit: 6,
-            memberCount: 2, eligibleForToday: true,
+            id: "ui-test-weekend-crew", name: "Bruce, Daniel, Rina's Group", lifecycle: "active", role: "owner",
+            owner: bruce, resetWeekday: 1, timeZone: "America/Los_Angeles", memberLimit: 6,
+            memberCount: 3, eligibleForToday: true,
             members: [
-                GroupMemberDTO(id: "ui-test-group-sage", user: sage, role: "owner", isCurrentUser: true, commitment: .init(targetCount: 3, skipped: false), contributedCount: 1, recentActivity: .init(type: "running", title: "Golden Gate recovery run", startedAt: now.addingTimeInterval(-86_400), durationSecs: 1_740, distanceM: 4_600, elevationM: 38, avgPace: 378, avgHeartRate: 138, energyKilocalories: 315)),
-                GroupMemberDTO(id: "ui-test-group-avery", user: avery, role: "member", isCurrentUser: false, commitment: .init(targetCount: 4, skipped: false), contributedCount: 2, recentActivity: .init(type: "running", title: "Easy neighborhood run", startedAt: now.addingTimeInterval(-172_800), durationSecs: 1_920, distanceM: 5_100, elevationM: 42, avgPace: 376, avgHeartRate: 144, energyKilocalories: 510)),
+                GroupMemberDTO(id: "ui-test-group-bruce", user: bruce, role: "owner", isCurrentUser: true, commitment: .init(targetCount: 3, skipped: false), contributedCount: 1, recentActivity: .init(type: "running", title: "Golden Gate recovery run", startedAt: now.addingTimeInterval(-86_400), durationSecs: 1_740, distanceM: 4_600, elevationM: 38, avgPace: 378, avgHeartRate: 138, energyKilocalories: 315)),
+                GroupMemberDTO(id: "ui-test-group-daniel", user: daniel, role: "member", isCurrentUser: false, commitment: .init(targetCount: 4, skipped: false), contributedCount: 2, recentActivity: .init(type: "running", title: "Easy neighborhood run", startedAt: now.addingTimeInterval(-172_800), durationSecs: 1_920, distanceM: 5_100, elevationM: 42, avgPace: 376, avgHeartRate: 144, energyKilocalories: 510)),
+                GroupMemberDTO(id: "ui-test-group-rina", user: rina, role: "member", isCurrentUser: false, commitment: .init(targetCount: 4, skipped: false), contributedCount: 0, recentActivity: nil),
             ],
-            upcomingFocus: .init(mode: "theme", focusConfigured: true, sharedTarget: nil, themeKey: "build_consistency", themeTitle: nil, themeNote: nil),
-            week: .init(id: "ui-test-group-week", startsAt: start, endsAt: start.addingTimeInterval(7 * 86_400), focusMode: "theme", focusConfigured: true, sharedTarget: nil, themeKey: "build_consistency", themeTitle: nil, themeNote: nil, state: "open", contributedCount: 3, targetCount: nil),
+            upcomingFocus: .init(mode: "theme", focusConfigured: true, sharedTarget: nil, themeKey: themeKey, themeTitle: nil, themeNote: nil),
+            week: .init(id: "ui-test-group-week", startsAt: start, endsAt: start.addingTimeInterval(7 * 86_400), focusMode: "theme", focusConfigured: true, sharedTarget: nil, themeKey: themeKey, themeTitle: nil, themeNote: nil, state: "open", contributedCount: 3, targetCount: nil),
             currentUserMuted: false, completionPresentationPending: false,
-            cheers: [.init(id: "ui-test-cheer", senderUserId: sage.id, recipientUserId: avery.id, presetType: "encouragement", createdAt: now.addingTimeInterval(-3_600))],
+            cheers: [.init(id: "ui-test-cheer", senderUserId: bruce.id, recipientUserId: daniel.id, presetType: "encouragement", createdAt: now.addingTimeInterval(-3_600))],
             invitations: [],
             upcomingActivities: [
                 .init(
@@ -368,7 +399,7 @@ final class GroupStore: ObservableObject {
                     locationName: "Golden Gate Park",
                     paceNote: "Easy and conversational",
                     status: "scheduled",
-                    creator: sage,
+                    creator: bruce,
                     attendeeCount: 2,
                     currentUserGoing: true,
                     currentUserRole: "owner"

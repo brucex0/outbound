@@ -145,6 +145,73 @@ final class OutboundUITests: XCTestCase {
     }
 
     @MainActor
+    func testGroupInvitePickerShowsSelectionState() throws {
+        let app = launchApp()
+
+        app.tabBars.buttons["Social"].tap()
+        XCTAssertTrue(app.buttons["Groups"].waitForExistence(timeout: 5))
+        app.buttons["Groups"].tap()
+        let groupName = "Bruce, Daniel, Rina's Group"
+        let groupRow = app.staticTexts[groupName]
+        XCTAssertTrue(groupRow.waitForExistence(timeout: 5))
+        groupRow.tap()
+        XCTAssertTrue(app.navigationBars[groupName].waitForExistence(timeout: 5))
+        app.buttons["group.invite.members"].tap()
+        XCTAssertTrue(app.navigationBars["Invite connections"].waitForExistence(timeout: 5))
+
+        let maya = app.buttons["group.invite.connection.ui-maya"]
+        XCTAssertTrue(maya.waitForExistence(timeout: 5))
+        XCTAssertEqual(maya.value as? String, "Not selected")
+        maya.tap()
+        XCTAssertEqual(maya.value as? String, "Selected")
+        maya.tap()
+        XCTAssertEqual(maya.value as? String, "Not selected")
+    }
+
+    @MainActor
+    func testGroupMembersAndWeeklyThemePersistAfterReopening() throws {
+        let app = launchApp()
+
+        app.tabBars.buttons["Social"].tap()
+        XCTAssertTrue(app.buttons["Groups"].waitForExistence(timeout: 5))
+        app.buttons["Groups"].tap()
+
+        let groupName = "Bruce, Daniel, Rina's Group"
+        let groupRow = app.staticTexts[groupName]
+        XCTAssertTrue(groupRow.waitForExistence(timeout: 5))
+        groupRow.tap()
+
+        XCTAssertTrue(app.navigationBars[groupName].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["3 members"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Daniel Runner"].exists)
+        XCTAssertTrue(app.staticTexts["Rina Runner"].exists)
+        XCTAssertTrue(app.staticTexts["Build consistency"].exists)
+
+        app.buttons["group.invite.members"].tap()
+        XCTAssertTrue(app.navigationBars["Invite connections"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["group.invite.connection.ui-maya"].exists)
+        app.buttons["Close"].tap()
+
+        app.buttons["group.theme.edit"].tap()
+        app.buttons["group.theme.option.one_small_step"].tap()
+        app.buttons["group.focus.save"].tap()
+        XCTAssertTrue(app.navigationBars["Weekly Theme"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["One small step"].waitForExistence(timeout: 5))
+
+        app.navigationBars[groupName].buttons.firstMatch.tap()
+        let groupsTab = app.buttons["Groups"]
+        XCTAssertTrue(groupsTab.waitForExistence(timeout: 5))
+        groupsTab.tap()
+        app.staticTexts[groupName].tap()
+
+        XCTAssertTrue(app.navigationBars[groupName].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["3 members"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Daniel Runner"].exists)
+        XCTAssertTrue(app.staticTexts["Rina Runner"].exists)
+        XCTAssertTrue(app.staticTexts["One small step"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testTodayFreestyleStartOpensRecordingFlowAndCanFinish() throws {
         addPermissionMonitor()
         let app = launchApp()

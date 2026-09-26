@@ -1,11 +1,18 @@
 import SwiftUI
 
+private func groupMemberCountLabel(_ count: Int) -> String {
+    if count == 1 {
+        return String(localized: "group.members.count.one", defaultValue: "1 member")
+    }
+    return String(localized: "group.members.count", defaultValue: "\(count) members")
+}
+
 struct GroupDirectoryDetailView: View {
     @EnvironmentObject private var groupStore: GroupStore
     let groupID: String
     var body: some View {
         Group {
-            if let group = groupStore.groups.first(where: { $0.id == groupID }) {
+            if let group = groupStore.groups.first(where: { $0.id == groupID && $0.isDetailedPayload }) {
                 GroupDetailView(group: group)
             } else {
                 ProgressView(String(localized: "group.loading", defaultValue: "Loading Group…"))
@@ -79,7 +86,7 @@ struct GroupCompactContent: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "\(displayName ?? group.name), \(String(localized: "group.members.count", defaultValue: "\(group.memberCount) members")), \(statusText)"
+            "\(displayName ?? group.name), \(groupMemberCountLabel(group.memberCount)), \(statusText)"
         )
     }
 
@@ -190,9 +197,10 @@ struct GroupCreateView: View {
     @State private var selectedTemplate: String?
     @State private var createdGroup: GroupDTO?
     @State private var isSubmitting = false
+    @State private var createIdempotencyKey = UUID().uuidString
 
     private var connections: [SocialConnectionDTO] { socialStore.connections.filter { $0.status == "accepted" } }
-    private var inviteLimit: Int { max(1, groupStore.memberLimit - 1) }
+    private var inviteLimit: Int { selectedTemplate == "activities" ? 99 : max(1, groupStore.memberLimit - 1) }
 
     var body: some View {
         Group {
@@ -232,13 +240,18 @@ struct GroupCreateView: View {
                                             SocialAvatar(name: connection.person.displayName, avatarURL: connection.person.avatarUrl)
                                             Text(connection.person.displayName).foregroundStyle(.primary)
                                             Spacer()
-                                            Image(systemName: selectedIDs.contains(connection.person.id) ? "checkmark.group.fill" : "group")
+                                            Image(systemName: selectedIDs.contains(connection.person.id) ? "checkmark.circle.fill" : "circle")
                                                 .font(.title3)
                                                 .foregroundStyle(selectedIDs.contains(connection.person.id) ? OutboundPalette.companion : .secondary)
+                                                .accessibilityHidden(true)
                                         }
                                         .frame(minHeight: 52)
                                         .contentShape(Rectangle())
                                     }
+                                    .accessibilityIdentifier("group.create.connection.\(connection.person.id)")
+                                    .accessibilityValue(selectedIDs.contains(connection.person.id)
+                                        ? String(localized: "group.connection.selected", defaultValue: "Selected")
+                                        : String(localized: "group.connection.unselected", defaultValue: "Not selected"))
                                     .buttonStyle(.plain)
                                     .disabled(!selectedIDs.contains(connection.person.id) && selectedIDs.count >= inviteLimit)
                                     if index < connections.count - 1 { Divider().padding(.leading, 52) }
@@ -339,6 +352,7 @@ struct GroupCreateView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("group.create.template.\(template)")
     }
 
     private var communityFields: some View {
@@ -407,10 +421,13 @@ struct GroupCreateView: View {
     private func create() async {
         isSubmitting = true
         defer { isSubmitting = false }
-        if let created = await groupStore.create(template: selectedTemplate ?? "motivation", name: name, description: description, city: city, activityInterests: Array(activityInterests), memberUserIDs: Array(selectedIDs)) {
+        if let created = await groupStore.create(template: selectedTemplate ?? "motivation", name: name, description: description, city: city, activityInterests: Array(activityInterests), memberUserIDs: Array(selectedIDs), idempotencyKey: createIdempotencyKey) {
             createdGroup = created
+            createIdempotencyKey = UUID().uuidString
             await analyticsManager?.track(.init(.groupCreationCompleted, properties: [.entrySource: .string("social"), .participantCountBucket: .string(ProductAnalyticsBucket.count(selectedIDs.count + 1))]))
-            await analyticsManager?.track(.init(.groupInvitationSent, properties: [.entrySource: .string("creation"), .participantCountBucket: .string(ProductAnalyticsBucket.count(selectedIDs.count)), .result: .string("success")]))
+            if !selectedIDs.isEmpty {
+                await analyticsManager?.track(.init(.groupInvitationSent, properties: [.entrySource: .string("creation"), .participantCountBucket: .string(ProductAnalyticsBucket.count(selectedIDs.count)), .result: .string("success")]))
+            }
         } else {
             await analyticsManager?.track(.init(.groupCreationFailed, properties: [.entrySource: .string("social"), .errorCategory: .string("api_unavailable")]))
         }
@@ -509,6 +526,7 @@ struct GroupDetailView: View {
     @State private var showsPlanActivity = false
     @State private var showsFocus = false
     @State private var showsNoticeComposer = false
+    @State private var showsInvite = false
 
     private var current: GroupDTO { groupStore.groups.first(where: { $0.id == group.id }) ?? group }
     private var invitees: [GroupPersonDTO] { current.members.filter { !$0.isCurrentUser }.map(\.user) }
@@ -523,6 +541,8 @@ struct GroupDetailView: View {
                     if !current.upcomingActivities.isEmpty { upcomingActivitiesSection }
                     focusCard
                     membersSection
+                    if !current.invitations.isEmpty { pendingInvitationsSection }
+                    if canInviteMembers { inviteMembersButton }
                     planActivityButton
                     if !current.recentMoments.isEmpty { momentsSection }
                     if let history = current.history, !history.isEmpty { historySection(history) }
@@ -610,6 +630,24 @@ struct GroupDetailView: View {
         .tint(OutboundPalette.companion)
     }
 
+    private var canInviteMembers: Bool {
+        (current.role == "owner" || current.role == "admin") && current.lifecycle != "archived"
+    }
+
+    private var inviteMembersButton: some View {
+        Button { showsInvite = true } label: {
+            Label(String(localized: "group.invite.more", defaultValue: "Invite connections"), systemImage: "person.badge.plus")
+                .font(.headline)
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(.bordered)
+        .accessibilityIdentifier("group.invite.members")
+        .disabled(current.memberCount + current.invitations.count >= current.memberLimit)
+        .sheet(isPresented: $showsInvite) {
+            GroupInviteView(group: current, entrySource: "group_detail")
+        }
+    }
+
     private var communityOverview: some View {
         VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
             if current.role == nil {
@@ -657,6 +695,7 @@ struct GroupDetailView: View {
                 Button { showsNoticeComposer = true } label: { Label(String(localized: "group.notice.publish", defaultValue: "Post an update"), systemImage: "megaphone") }
                     .buttonStyle(.bordered)
             }
+            if canInviteMembers { inviteMembersButton }
             planActivityButton
         }
     }
@@ -693,7 +732,7 @@ struct GroupDetailView: View {
                 Text(current.description ?? String(localized: "group.detail.inspiration", defaultValue: "Building a positive life, one activity at a time."))
                     .font(.headline)
                 HStack(spacing: -8) { ForEach(current.members.prefix(6)) { SocialAvatar(name: $0.user.displayName, avatarURL: $0.user.avatarUrl).overlay(Circle().stroke(OutboundPalette.background, lineWidth: 2)) } }
-                Text(String(localized: "group.members.count", defaultValue: "\(current.memberCount) members")).font(.subheadline).foregroundStyle(.secondary)
+                Text(groupMemberCountLabel(current.memberCount)).font(.subheadline).foregroundStyle(.secondary)
             }
         }
     }
@@ -710,6 +749,7 @@ struct GroupDetailView: View {
                             : String(localized: "common.edit", defaultValue: "Edit")) {
                             showsFocus = true
                         }
+                        .accessibilityIdentifier("group.theme.edit")
                     } else if current.week.focusConfigured && ["theme", "personal_targets"].contains(current.week.focusMode) {
                         Button(current.members.first(where: \.isCurrentUser)?.commitment?.targetCount == nil
                             ? String(localized: "group.commitment.set", defaultValue: "Set my goal")
@@ -745,6 +785,28 @@ struct GroupDetailView: View {
                 } else if let target = current.week.targetCount {
                     ProgressView(value: min(Double(current.week.contributedCount) / Double(max(target, 1)), 1)).tint(OutboundPalette.companion)
                     Text(String(localized: "group.progress.format", defaultValue: "\(current.week.contributedCount) of \(target) activities this week")).font(.subheadline).foregroundStyle(.secondary)
+                }
+                nextWeekThemePreview
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var nextWeekThemePreview: some View {
+        let focus = current.upcomingFocus
+        let differsFromCurrent = focus.themeKey != current.week.themeKey || focus.themeTitle != current.week.themeTitle || focus.themeNote != current.week.themeNote
+        if focus.focusConfigured, differsFromCurrent,
+           let title = GroupThemeCatalog.displayTitle(key: focus.themeKey, customTitle: focus.themeTitle) {
+            Divider()
+            VStack(alignment: .leading, spacing: 5) {
+                Text(String(localized: "group.theme.next_week", defaultValue: "Next week"))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Label(title, systemImage: GroupThemeCatalog.definition(for: focus.themeKey)?.systemImage ?? "sparkles")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(OutboundPalette.companion)
+                if let detail = GroupThemeCatalog.displayDetail(key: focus.themeKey, customNote: focus.themeNote), !detail.isEmpty {
+                    Text(detail).font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
@@ -800,6 +862,34 @@ struct GroupDetailView: View {
                                 .accessibilityLabel(String(localized: "group.cheer", defaultValue: "Send a Cheer"))
                         }
                     }
+                }
+            }
+        }
+    }
+
+    private var pendingInvitationsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(String(localized: "group.invitations.pending", defaultValue: "Pending invitations"))
+                .socialSectionLabel()
+            ForEach(current.invitations) { invitation in
+                OutboundCard {
+                    HStack(spacing: 12) {
+                        if let recipient = invitation.recipient {
+                            SocialAvatar(name: recipient.displayName, avatarURL: recipient.avatarUrl)
+                            Text(recipient.displayName).font(.headline)
+                        } else {
+                            Image(systemName: "person.crop.circle.badge.clock")
+                                .font(.title2)
+                                .foregroundStyle(.secondary)
+                            Text(String(localized: "group.invitation.pending_person", defaultValue: "Invited person"))
+                                .font(.headline)
+                        }
+                        Spacer()
+                        Text(String(localized: "group.invitation.status.pending", defaultValue: "Invited"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(minHeight: 44)
                 }
             }
         }
@@ -933,6 +1023,7 @@ struct GroupFocusEditor: View {
     @State private var personalTarget: Int
     @State private var apply = "now"
     @State private var hasCommitment: Bool
+    @State private var isSaving = false
 
     init(group: GroupDTO) {
         self.group = group
@@ -971,7 +1062,7 @@ struct GroupFocusEditor: View {
                                 .foregroundStyle(.primary)
                             Spacer()
                             if selectedThemeKey == "custom" {
-                                Image(systemName: "checkmark.group.fill")
+                                Image(systemName: "checkmark.circle.fill")
                                     .foregroundStyle(OutboundPalette.companion)
                             }
                         }
@@ -1010,8 +1101,16 @@ struct GroupFocusEditor: View {
         .navigationTitle(group.role == "owner"
             ? String(localized: "group.weekly_theme", defaultValue: "Weekly Theme")
             : String(localized: "group.commitment.mine", defaultValue: "My commitment"))
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button(String(localized: "common.close", defaultValue: "Close")) { dismiss() } } }
-        .onDisappear { saveDraftIfNeeded() }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button(String(localized: "group.focus.save", defaultValue: "Save")) {
+                    Task { if await saveDraftIfNeeded() { dismiss() } }
+                }
+                .disabled(isSaving)
+                .accessibilityIdentifier("group.focus.save")
+            }
+        }
+        .interactiveDismissDisabled(hasUnsavedChanges || isSaving)
     }
 
     private func themeButton(_ theme: GroupThemeDefinition) -> some View {
@@ -1032,12 +1131,13 @@ struct GroupFocusEditor: View {
                 }
                 Spacer(minLength: 8)
                 if selectedThemeKey == theme.id {
-                    Image(systemName: "checkmark.group.fill")
+                    Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(OutboundPalette.companion)
                 }
             }
             .frame(minHeight: 52)
         }
+        .accessibilityIdentifier("group.theme.option.\(theme.id)")
     }
 
     private func targetPresets(selection: Binding<Int>) -> some View {
@@ -1062,7 +1162,31 @@ struct GroupFocusEditor: View {
         return current.week.focusConfigured && ["theme", "personal_targets"].contains(current.week.focusMode)
     }
 
-    private func saveDraftIfNeeded() {
+    private var hasUnsavedChanges: Bool {
+        let originalCommitment = group.members.first(where: \.isCurrentUser)?.commitment
+        let originalHasCommitment = originalCommitment?.targetCount != nil && originalCommitment?.skipped != true
+        let normalizedTitle = selectedThemeKey == "custom" ? customTitle.trimmingCharacters(in: .whitespacesAndNewlines) : nil
+        let trimmedNote = customNote.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedNote = selectedThemeKey == "custom" && !trimmedNote.isEmpty ? trimmedNote : nil
+        let validTheme = !selectedThemeKey.isEmpty && (selectedThemeKey != "custom" || !(normalizedTitle ?? "").isEmpty)
+        let focusChanged = group.role == "owner" && validTheme && (
+            selectedThemeKey != group.week.themeKey ||
+            normalizedTitle != group.week.themeTitle ||
+            normalizedNote != group.week.themeNote ||
+            apply != "now"
+        )
+        let supportsCommitment = group.role == "owner" && apply == "now" && validTheme
+            ? true
+            : current.week.focusConfigured && ["theme", "personal_targets"].contains(current.week.focusMode)
+        let commitmentChanged = supportsCommitment && (
+            hasCommitment != originalHasCommitment ||
+            (hasCommitment && personalTarget != originalCommitment?.targetCount)
+        )
+        return focusChanged || commitmentChanged
+    }
+
+    @MainActor
+    private func saveDraftIfNeeded() async -> Bool {
         let draftThemeKey = selectedThemeKey
         let draftCustomTitle = customTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         let draftCustomNote = customNote.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1087,22 +1211,21 @@ struct GroupFocusEditor: View {
             draftHasCommitment != originalHasCommitment ||
             (draftHasCommitment && draftPersonalTarget != originalCommitment?.targetCount)
         )
-        guard focusChanged || commitmentChanged else { return }
+        guard focusChanged || commitmentChanged else { return true }
+        guard !isSaving else { return false }
+        if draftThemeKey == "custom", draftCustomTitle.isEmpty { return false }
 
         let groupSnapshot = current
-        Task {
-            var focusSaved = true
-            if focusChanged {
-                focusSaved = await groupStore.updateFocus(group: groupSnapshot, themeKey: draftThemeKey, customTitle: normalizedTitle, customNote: normalizedNote, apply: draftApply) != nil
-                if focusSaved {
-                    await analyticsManager?.track(.init(.groupThemeChanged, properties: [.selectionType: .string(draftThemeKey == "custom" ? "custom" : "curated"), .sourceType: .string(draftApply)]))
-                }
-            }
-            guard commitmentChanged, focusSaved else { return }
-            if await groupStore.updateCommitment(group: groupSnapshot, targetCount: draftHasCommitment ? draftPersonalTarget : nil, skipped: false, clear: !draftHasCommitment) != nil {
-                await analyticsManager?.track(.init(.groupTargetChanged, properties: [.selectionType: .string(draftHasCommitment ? "target" : "cleared"), .targetBucket: .string(ProductAnalyticsBucket.count(draftPersonalTarget)), .sourceType: .string("now")]))
-            }
+        isSaving = true
+        defer { isSaving = false }
+        if focusChanged {
+            guard await groupStore.updateFocus(group: groupSnapshot, themeKey: draftThemeKey, customTitle: normalizedTitle, customNote: normalizedNote, apply: draftApply) != nil else { return false }
+            await analyticsManager?.track(.init(.groupThemeChanged, properties: [.selectionType: .string(draftThemeKey == "custom" ? "custom" : "curated"), .sourceType: .string(draftApply)]))
         }
+        guard commitmentChanged else { return true }
+        guard await groupStore.updateCommitment(group: groupSnapshot, targetCount: draftHasCommitment ? draftPersonalTarget : nil, skipped: false, clear: !draftHasCommitment) != nil else { return false }
+        await analyticsManager?.track(.init(.groupTargetChanged, properties: [.selectionType: .string(draftHasCommitment ? "target" : "cleared"), .targetBucket: .string(ProductAnalyticsBucket.count(draftPersonalTarget)), .sourceType: .string("now")]))
+        return true
     }
 }
 
@@ -1162,6 +1285,7 @@ struct GroupManagementView: View {
     @State private var savedTimeZone: String
     @State private var savedCalendarApply = "next_week"
     @State private var savedNotificationMuted: Bool
+    @State private var isSaving = false
 
     init(group: GroupDTO) {
         self.group = group
@@ -1214,11 +1338,28 @@ struct GroupManagementView: View {
             }
         }
         .navigationTitle(String(localized: "group.management", defaultValue: "Group settings"))
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button(String(localized: "group.focus.save", defaultValue: "Save")) {
+                    Task { await saveDraftIfNeeded() }
+                }
+                .disabled(isSaving || !hasUnsavedChanges)
+            }
+        }
         .sheet(isPresented: $showsInvite) { GroupInviteView(group: current) }
-        .onDisappear { saveDraftIfNeeded() }
+        .interactiveDismissDisabled(hasUnsavedChanges || isSaving)
     }
 
-    private func saveDraftIfNeeded() {
+    private var hasUnsavedChanges: Bool {
+        name.trimmingCharacters(in: .whitespacesAndNewlines) != savedName ||
+            resetWeekday != savedResetWeekday ||
+            timeZone.trimmingCharacters(in: .whitespacesAndNewlines) != savedTimeZone ||
+            calendarApply != savedCalendarApply ||
+            notificationMuted != savedNotificationMuted
+    }
+
+    @MainActor
+    private func saveDraftIfNeeded() async {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedTimeZone = timeZone.trimmingCharacters(in: .whitespacesAndNewlines)
         let draftResetWeekday = resetWeekday
@@ -1227,24 +1368,24 @@ struct GroupManagementView: View {
         let nameChanged = trimmedName != savedName
         let calendarChanged = draftResetWeekday != savedResetWeekday || trimmedTimeZone != savedTimeZone || draftCalendarApply != savedCalendarApply
         let notificationsChanged = draftNotificationMuted != savedNotificationMuted
-        guard nameChanged || calendarChanged || notificationsChanged else { return }
+        guard nameChanged || calendarChanged || notificationsChanged, !isSaving else { return }
 
         let groupSnapshot = current
-        Task {
-            if nameChanged, await groupStore.updateName(group: groupSnapshot, name: trimmedName) != nil {
-                savedName = trimmedName
-                await analyticsManager?.track(.init(.groupNameChanged))
-            }
-            if calendarChanged, await groupStore.updateCalendar(group: groupSnapshot, resetWeekday: draftResetWeekday, timeZone: trimmedTimeZone, apply: draftCalendarApply) != nil {
-                savedResetWeekday = draftResetWeekday
-                savedTimeZone = trimmedTimeZone
-                savedCalendarApply = draftCalendarApply
-                await analyticsManager?.track(.init(.groupCalendarChanged, properties: [.sourceType: .string(draftCalendarApply)]))
-            }
-            if notificationsChanged, await groupStore.setMuted(groupSnapshot, muted: draftNotificationMuted) {
-                savedNotificationMuted = draftNotificationMuted
-                await analyticsManager?.track(.init(.groupNotificationsChanged, properties: [.selectionType: .string(draftNotificationMuted ? "muted" : "unmuted")]))
-            }
+        isSaving = true
+        defer { isSaving = false }
+        if nameChanged, await groupStore.updateName(group: groupSnapshot, name: trimmedName) != nil {
+            savedName = trimmedName
+            await analyticsManager?.track(.init(.groupNameChanged))
+        }
+        if calendarChanged, await groupStore.updateCalendar(group: groupSnapshot, resetWeekday: draftResetWeekday, timeZone: trimmedTimeZone, apply: draftCalendarApply) != nil {
+            savedResetWeekday = draftResetWeekday
+            savedTimeZone = trimmedTimeZone
+            savedCalendarApply = draftCalendarApply
+            await analyticsManager?.track(.init(.groupCalendarChanged, properties: [.sourceType: .string(draftCalendarApply)]))
+        }
+        if notificationsChanged, await groupStore.setMuted(groupSnapshot, muted: draftNotificationMuted) {
+            savedNotificationMuted = draftNotificationMuted
+            await analyticsManager?.track(.init(.groupNotificationsChanged, properties: [.selectionType: .string(draftNotificationMuted ? "muted" : "unmuted")]))
         }
     }
 
@@ -1260,9 +1401,73 @@ private struct GroupInviteView: View {
     @EnvironmentObject private var groupStore: GroupStore
     @EnvironmentObject private var socialStore: TogetherStore
     let group: GroupDTO
+    var entrySource = "group_settings"
     @State private var selected: Set<String> = []
-    private var eligible: [SocialConnectionDTO] { let existing = Set(group.members.map { $0.user.id }); return socialStore.connections.filter { $0.status == "accepted" && !existing.contains($0.person.id) } }
-    var body: some View { NavigationStack { List(eligible) { connection in Button { if selected.contains(connection.person.id) { selected.remove(connection.person.id) } else { selected.insert(connection.person.id) } } label: { HStack { SocialAvatar(name: connection.person.displayName, avatarURL: connection.person.avatarUrl); Text(connection.person.displayName).foregroundStyle(.primary); Spacer(); Image(systemName: selected.contains(connection.person.id) ? "checkmark.group.fill" : "group") } }.disabled(!selected.contains(connection.person.id) && selected.count >= max(0, group.memberLimit - group.memberCount - group.invitations.count)) }.navigationTitle(String(localized: "group.invite.more", defaultValue: "Invite connections")).toolbar { ToolbarItem(placement: .cancellationAction) { Button(String(localized: "common.close", defaultValue: "Close")) { dismiss() } }; ToolbarItem(placement: .confirmationAction) { Button(String(localized: "group.invitation.send", defaultValue: "Send")) { Task { let invitationCount = selected.count; if await groupStore.invite(Array(selected), to: group) != nil { await analyticsManager?.track(.init(.groupInvitationSent, properties: [.entrySource: .string("group_settings"), .participantCountBucket: .string(ProductAnalyticsBucket.count(invitationCount)), .result: .string("success")])); dismiss() } } }.disabled(selected.isEmpty) } }.task { await socialStore.loadRemainingConnections() } } }
+    @State private var isSending = false
+    private var eligible: [SocialConnectionDTO] {
+        let existing = Set(group.members.map { $0.user.id })
+        let pending = Set(group.invitations.compactMap { $0.recipient?.id })
+        return socialStore.connections.filter {
+            $0.status == "accepted" && !existing.contains($0.person.id) && !pending.contains($0.person.id)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List(eligible) { connection in
+                Button {
+                    if selected.contains(connection.person.id) {
+                        selected.remove(connection.person.id)
+                    } else {
+                        selected.insert(connection.person.id)
+                    }
+                } label: {
+                    HStack {
+                        SocialAvatar(name: connection.person.displayName, avatarURL: connection.person.avatarUrl)
+                        Text(connection.person.displayName).foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: selected.contains(connection.person.id) ? "checkmark.circle.fill" : "circle")
+                            .accessibilityHidden(true)
+                    }
+                }
+                .accessibilityIdentifier("group.invite.connection.\(connection.person.id)")
+                .accessibilityValue(selected.contains(connection.person.id)
+                    ? String(localized: "group.connection.selected", defaultValue: "Selected")
+                    : String(localized: "group.connection.unselected", defaultValue: "Not selected"))
+                .disabled(!selected.contains(connection.person.id) && selected.count >= max(0, group.memberLimit - group.memberCount - group.invitations.count))
+            }
+            .overlay {
+                if eligible.isEmpty {
+                    ContentUnavailableView(
+                        String(localized: "group.invite.empty.title", defaultValue: "No connections to invite"),
+                        systemImage: "person.2",
+                        description: Text(String(localized: "group.invite.empty.detail", defaultValue: "Connect with someone first, then invite them to this Group."))
+                    )
+                }
+            }
+            .navigationTitle(String(localized: "group.invite.more", defaultValue: "Invite connections"))
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "common.close", defaultValue: "Close")) { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(String(localized: "group.invitation.send", defaultValue: "Send")) {
+                        Task {
+                            isSending = true
+                            if let outcome = await groupStore.invite(Array(selected), to: group) {
+                                await analyticsManager?.track(.init(.groupInvitationSent, properties: [.entrySource: .string(entrySource), .participantCountBucket: .string(ProductAnalyticsBucket.count(outcome.sentCount)), .result: .string(outcome.rejectedCount == 0 ? "success" : "partial_failure")]))
+                                dismiss()
+                            }
+                            isSending = false
+                        }
+                    }
+                    .disabled(selected.isEmpty || isSending)
+                    .accessibilityIdentifier("group.invite.send")
+                }
+            }
+            .task { await socialStore.loadRemainingConnections() }
+        }
+    }
 }
 
 struct GroupCompletionCelebrationView: View {

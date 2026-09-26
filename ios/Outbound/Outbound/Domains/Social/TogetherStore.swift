@@ -1228,6 +1228,7 @@ final class TogetherStore: ObservableObject {
     ]
 
     private static let uiTestGroups = [
+        SocialGroupDTO(id: "ui-test-weekend-crew", name: "Bruce, Daniel, Rina's Group", description: nil, city: nil, memberCount: 3, membershipRole: "owner", groupType: "private", trustPolicy: "trusted_private"),
         SocialGroupDTO(id: "ui-test-group", name: "Golden Gate Community", description: "Friendly local miles for every pace.", city: "San Francisco", memberCount: 128, membershipRole: "member"),
         SocialGroupDTO(id: "ui-sunset-group", name: "Sunset Striders", description: "Easy evening runs by the ocean.", city: "San Francisco", memberCount: 42, membershipRole: nil),
     ]

@@ -448,9 +448,8 @@ final class APIClient {
         try await post("/social/groups", body: request)
     }
 
-    func inviteToGroup(id: String, request: GroupInviteRequestDTO) async throws -> GroupDTO {
-        let response: GroupInvitationMutationResponseDTO = try await post("/social/groups/\(id)/invitations", body: request)
-        return response.group
+    func inviteToGroup(id: String, request: GroupInviteRequestDTO) async throws -> GroupInvitationMutationResponseDTO {
+        try await post("/social/groups/\(id)/invitations", body: request)
     }
 
     func fetchGroupInvitations() async throws -> GroupInvitationListResponseDTO {

@@ -1483,7 +1483,8 @@ private struct SocialGroupsView: View {
 
     @ViewBuilder
     private func groupRow(_ group: SocialGroupDTO) -> some View {
-        if (group.groupType == "private" || group.trustPolicy == "trusted_private"), let groupDetail = groupStore.groups.first(where: { $0.id == group.id }) {
+        if (group.groupType == "private" || group.trustPolicy == "trusted_private"),
+           let groupDetail = groupStore.groups.first(where: { $0.id == group.id && $0.isDetailedPayload }) {
             NavigationLink {
                 GroupDetailView(group: groupDetail)
             } label: {
@@ -1495,6 +1496,11 @@ private struct SocialGroupsView: View {
             .simultaneousGesture(TapGesture().onEnded {
                 Task { await analyticsManager?.track(.init(.groupOpened, properties: [.entrySource: .string("groups"), .selectionType: .string("private"), .participantCountBucket: .string(ProductAnalyticsBucket.count(group.memberCount))])) }
             })
+        } else if group.groupType == "private" || group.trustPolicy == "trusted_private" {
+            NavigationLink { GroupDirectoryDetailView(groupID: group.id) } label: {
+                OutboundCard { groupSummary(group, trailing: "chevron.right") }
+            }
+            .buttonStyle(.plain)
         } else {
             NavigationLink { GroupDirectoryDetailView(groupID: group.id) } label: {
                 OutboundCard {
@@ -2382,8 +2388,10 @@ struct SocialNotificationsView: View {
             GroupNotificationInvitationView(notification: notification)
         case .group:
             if let groupID = notification.objectId,
-               let group = groupStore.groups.first(where: { $0.id == groupID }) {
+               let group = groupStore.groups.first(where: { $0.id == groupID && $0.isDetailedPayload }) {
                 GroupDetailView(group: group)
+            } else if let groupID = notification.objectId {
+                GroupDirectoryDetailView(groupID: groupID)
             } else {
                 SocialNotificationDetailView(notification: notification)
             }

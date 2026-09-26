@@ -1380,6 +1380,20 @@
         }
       }
     },
+    "group.connection.selected": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Selected" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Seleccionado" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "已选中" } }
+      }
+    },
+    "group.connection.unselected": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Not selected" } },
+        "es": { "stringUnit": { "state": "translated", "value": "No seleccionado" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "未选中" } }
+      }
+    },
     "group.create.inspiration_detail": {
       "localizations": {
         "en": {
@@ -2711,6 +2725,20 @@
         }
       }
     },
+    "group.focus.save": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Guardar" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "保存" } }
+      }
+    },
+    "group.toast.invitation_partial": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Some invitations could not be sent. Review the Group and try again." } },
+        "es": { "stringUnit": { "state": "translated", "value": "No se pudieron enviar algunas invitaciones. Revisa el grupo e inténtalo de nuevo." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "部分邀请未能发送。请检查群组后重试。" } }
+      }
+    },
     "group.focus.choose": {
       "localizations": {
         "en": {
@@ -3001,6 +3029,13 @@
         "en": { "stringUnit": { "state": "translated", "value": "%lld activities together this week" } },
         "es": { "stringUnit": { "state": "translated", "value": "%lld actividades entre todos esta semana" } },
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "本周大家共完成 %lld 次运动" } }
+      }
+    },
+    "group.theme.next_week": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Next week" } },
+        "es": { "stringUnit": { "state": "translated", "value": "La próxima semana" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "下周" } }
       }
     },
     "group.theme.browse": {
@@ -3455,6 +3490,20 @@
         }
       }
     },
+    "group.invite.empty.detail": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Connect with someone first, then invite them to this Group." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Conecta primero con alguien y luego invítalo a este grupo." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "先与其他人建立联系，再邀请他们加入此群组。" } }
+      }
+    },
+    "group.invite.empty.title": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "No connections to invite" } },
+        "es": { "stringUnit": { "state": "translated", "value": "No hay contactos para invitar" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "没有可邀请的联系人" } }
+      }
+    },
     "group.invite.more": {
       "localizations": {
         "en": {
@@ -3637,6 +3686,20 @@
             "value": "%lld 位成员"
           }
         }
+      }
+    },
+    "group.invitation.status.pending": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Invited" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Invitado" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "已邀请" } }
+      }
+    },
+    "group.members.count.one": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "1 member" } },
+        "es": { "stringUnit": { "state": "translated", "value": "1 miembro" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "1 位成员" } }
       }
     },
     "group.members.manage": {

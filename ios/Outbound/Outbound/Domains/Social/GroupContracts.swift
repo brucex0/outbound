@@ -47,6 +47,10 @@ struct GroupDTO: Codable, Identifiable, Sendable {
 }
 
 extension GroupDTO {
+    var isDetailedPayload: Bool {
+        !members.isEmpty || week.id != GroupWeekDTO.empty.id
+    }
+
     private enum CodingKeys: String, CodingKey {
         case id
         case name
@@ -352,7 +356,19 @@ struct GroupInvitationListResponseDTO: Codable, Sendable {
 }
 
 struct GroupInvitationMutationResponseDTO: Codable, Sendable {
+    let invitations: [GroupInvitationSendResultDTO]?
     let group: GroupDTO
+}
+
+struct GroupInvitationSendResultDTO: Codable, Sendable {
+    let recipientUserId: String
+    let status: String
+}
+
+struct GroupInviteOutcome: Sendable {
+    let group: GroupDTO
+    let sentCount: Int
+    let rejectedCount: Int
 }
 
 struct GroupCreateRequestDTO: Encodable, Sendable {
@@ -364,6 +380,7 @@ struct GroupCreateRequestDTO: Encodable, Sendable {
     let memberUserIds: [String]
     let timeZone: String?
     let resetWeekday: Int?
+    let idempotencyKey: String?
 }
 
 struct GroupInviteRequestDTO: Encodable, Sendable {
