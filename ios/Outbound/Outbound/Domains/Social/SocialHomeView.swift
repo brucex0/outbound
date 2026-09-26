@@ -1003,8 +1003,10 @@ struct SocialHomeView: View {
                                 .aspectRatio(1.5, contentMode: .fit)
                                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                                 .overlay(alignment: .topLeading) {
-                                    if let milestone = milestone(for: activity, isCurrentUser: post.isCurrentUser) {
-                                        RecognitionPill(preview: milestone, compact: true).padding(12)
+                                    let milestones = milestones(for: activity, isCurrentUser: post.isCurrentUser)
+                                    if !milestones.isEmpty {
+                                        ActivityMilestoneCompactBanner(previews: milestones)
+                                            .padding(12)
                                     }
                                 }
                                 .overlay(alignment: .topTrailing) {
@@ -1130,8 +1132,8 @@ struct SocialHomeView: View {
         ])
     }
 
-    private func milestone(for activity: TogetherActivityDTO, isCurrentUser: Bool) -> ActivityRecognitionDisplay? {
-        let sharedRecognition: ActivityRecognitionDisplay? = activity.recognitions?.first.flatMap { recognition in
+    private func milestones(for activity: TogetherActivityDTO, isCurrentUser: Bool) -> [ActivityRecognitionDisplay] {
+        let sharedRecognitions: [ActivityRecognitionDisplay] = (activity.recognitions ?? []).compactMap { recognition in
             guard let display = recognitionStore.display(for: recognition.badgeId)
                     ?? socialRecognitionStore.display(for: recognition.badgeId) else { return nil }
             return ActivityRecognitionDisplay(
@@ -1142,8 +1144,11 @@ struct SocialHomeView: View {
                 earnedAt: recognition.earnedAt
             )
         }
-        guard isCurrentUser, let activityID = UUID(uuidString: activity.id) else { return sharedRecognition }
-        return recognitionStore.activityDisplays(for: activityID).first ?? sharedRecognition
+        let locallyEarned = isCurrentUser
+            ? UUID(uuidString: activity.id).map { recognitionStore.activityDisplays(for: $0) } ?? []
+            : []
+        var seen = Set<String>()
+        return (sharedRecognitions + locallyEarned).filter { seen.insert($0.id).inserted }
     }
 
     private func toggleCheer(on post: TogetherPostDTO) async {
@@ -3682,22 +3687,23 @@ private struct SocialActivityDetailView: View {
                 .foregroundStyle(.secondary)
                 .textCase(.uppercase)
 
-                ForEach(previews) { preview in
-                    HStack(alignment: .top, spacing: 12) {
-                        ActivityRecognitionOrb(preview: preview, size: 38)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(preview.title)
-                                .font(.subheadline.weight(.semibold))
-                            Text((preview.earnedAt ?? currentPost.activityTimestamp).formatted(date: .abbreviated, time: .omitted))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text(preview.guideLine)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
+                ForEach(previews.prefix(3)) { preview in
+                    HStack(spacing: 8) {
+                        Image(systemName: preview.symbolName)
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.orange)
+                            .frame(width: 18)
+                        Text(preview.title)
+                            .font(.subheadline.weight(.medium))
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
                     }
                     .accessibilityElement(children: .combine)
+                }
+                if previews.count > 3 {
+                    Text("+\(previews.count - 3)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
                 }
             }
             .padding(14)
@@ -3802,6 +3808,38 @@ private struct SocialActivityDetailView: View {
             fullPhotoMetadata = activity.photos
         }
         isLoadingPhotos = false
+    }
+}
+
+private struct ActivityMilestoneCompactBanner: View {
+    let previews: [ActivityRecognitionDisplay]
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(previews.prefix(2)) { preview in
+                HStack(spacing: 5) {
+                    Image(systemName: preview.symbolName)
+                        .font(.caption2.weight(.bold))
+                    Text(preview.title)
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                }
+                .foregroundStyle(.orange)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 6)
+                .background(.regularMaterial, in: Capsule())
+            }
+            if previews.count > 2 {
+                Text("+\(previews.count - 2)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .background(.regularMaterial, in: Capsule())
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(previews.map(\.title).joined(separator: ", "))
     }
 }
 
