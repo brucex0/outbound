@@ -15,10 +15,11 @@ export interface SocialFeedPhotoRecord {
 export function socialFeedPhotoMetadata(
   photos: SocialFeedPhotoRecord[],
   totalPhotoCount: number,
+  maxPhotos = socialFeedPhotoMetadataLimit,
 ) {
   return {
     photoCount: totalPhotoCount,
-    photos: photos.slice(0, socialFeedPhotoMetadataLimit).map((photo) => ({
+    photos: photos.slice(0, maxPhotos).map((photo) => ({
       id: photo.id,
       clientPhotoId: photo.clientPhotoId,
       url: `/media/activity-photos/${photo.id}/content`,

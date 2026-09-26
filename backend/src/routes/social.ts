@@ -1061,7 +1061,9 @@ router.get("/posts/:id/photos", async (c) => {
     },
   });
   const photos = post?.activity?.photos ?? [];
-  return c.json({ photos: socialFeedPhotoMetadata(photos, photos.length).photos });
+  return c.json({
+    photos: socialFeedPhotoMetadata(photos, photos.length, photos.length).photos,
+  });
 });
 
 router.delete("/posts/:id/cheer", async (c) => {
