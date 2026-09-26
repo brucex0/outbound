@@ -108,6 +108,11 @@ struct RacePlannerView: View {
                         Text(String(localized: "race.planner.effort", defaultValue: "Finish by feel")).tag(RacePacingStrategy.effortBased)
                     }
                 }
+
+                Section(String(localized: "race.planner.execution", defaultValue: "Your race guide")) {
+                    Text(RacePlanGuidance.execution(for: resolvedIntent, unitSystem: unitSystem))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .navigationTitle(String(localized: "race.planner.title", defaultValue: "Plan this race"))
             .toolbar {
@@ -141,7 +146,9 @@ struct RacePlannerView: View {
             distanceMeters: distanceMeters,
             goalMode: seconds == nil ? .finish : .targetTime,
             goalTimeSeconds: seconds,
-            targetPaceSecondsPerKilometer: seconds.map { Double($0) / (distanceMeters / 1_000) },
+            targetPaceSecondsPerKilometer: strategy == .effortBased
+                ? nil
+                : seconds.map { Double($0) / (distanceMeters / 1_000) },
             pacingStrategy: strategy,
             recommendationSource: seconds == recommended.goalTimeSeconds ? recommended.recommendationSource : "manual"
         )
@@ -182,6 +189,33 @@ struct RacePlannerView: View {
         let minutes = (seconds % 3_600) / 60
         let remainder = seconds % 60
         return String(format: "%02d:%02d:%02d", hours, minutes, remainder)
+    }
+}
+
+enum RacePlanGuidance {
+    static func execution(for race: RaceExecutionIntent, unitSystem: MeasurementUnitSystem) -> String {
+        guard let targetPace = race.targetPaceSecondsPerKilometer, race.goalMode == .targetTime else {
+            return String(localized: "race.planner.execution.effort", defaultValue: "Start controlled for the first quarter, settle into a sustainable rhythm through halfway, then build gradually only if you still feel strong.")
+        }
+
+        let pace = targetPace.paceString(for: unitSystem)
+        switch race.pacingStrategy {
+        case .negativeSplit:
+            return String(
+                format: String(localized: "race.planner.execution.negative_split", defaultValue: "First quarter: aim near %@. Middle: settle near %@. Final quarter: build gradually only if your effort stays controlled."),
+                locale: .autoupdatingCurrent,
+                (targetPace + 10).paceString(for: unitSystem),
+                pace
+            )
+        case .even:
+            return String(
+                format: String(localized: "race.planner.execution.even", defaultValue: "Open the first kilometer controlled, then settle near %@. Hold an even effort through halfway; build in the final quarter only if you still feel strong."),
+                locale: .autoupdatingCurrent,
+                pace
+            )
+        case .effortBased:
+            return String(localized: "race.planner.execution.effort", defaultValue: "Start controlled for the first quarter, settle into a sustainable rhythm through halfway, then build gradually only if you still feel strong.")
+        }
     }
 }
 

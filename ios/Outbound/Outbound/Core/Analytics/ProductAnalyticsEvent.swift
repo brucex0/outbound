@@ -251,6 +251,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case routineID = "routine_id"
     case goalType = "goal_type"
     case targetBucket = "target_bucket"
+    case pacingStrategy = "pacing_strategy"
     case progressPercent = "progress_percent"
     case musicEnabled = "music_enabled"
     case routeSelected = "route_selected"
@@ -320,7 +321,7 @@ enum ProductAnalyticsSchema {
     nonisolated private static let eventKeys: [ProductEventName: Set<ProductPropertyKey>] = [
         .appStartupResolved: [.destination, .latencyBucket, .sourceType],
         .activitySetupViewed: [.entrySource],
-        .activityConfigurationChanged: [.changeType, .selectionType, .activityType, .goalType, .targetBucket, .sourceType],
+        .activityConfigurationChanged: [.changeType, .selectionType, .activityType, .goalType, .targetBucket, .sourceType, .pacingStrategy],
         .activityStarted: [.entrySource, .activityType, .goalType, .targetBucket, .musicEnabled, .routeSelected, .shoeSelected, .preRunPhotoAdded, .groupRunEnabled, .liveShareEnabled, .indoor, .voiceGuideEnabled, .dogCompanionEnabled, .participantCountBucket],
         .activityPaused: [.sourceType],
         .activityResumed: [.sourceType, .durationBucket],

@@ -371,6 +371,34 @@
         }
       }
     },
+    "race.planner.execution": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Your race guide" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Tu guía para la carrera" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "比赛指导" } }
+      }
+    },
+    "race.planner.execution.negative_split": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "First quarter: aim near %@. Middle: settle near %@. Final quarter: build gradually only if your effort stays controlled." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Primer cuarto: apunta a un ritmo cercano a %@. En la parte central, estabilízate cerca de %@. En el último cuarto, acelera poco a poco solo si el esfuerzo sigue bajo control." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "前四分之一：目标配速约为 %@。中段逐渐稳定在 %@ 左右。最后四分之一只有在强度可控时才逐步加速。" } }
+      }
+    },
+    "race.planner.execution.even": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Open the first kilometer controlled, then settle near %@. Hold an even effort through halfway; build in the final quarter only if you still feel strong." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Empieza el primer kilómetro con control y luego estabilízate cerca de %@. Mantén un esfuerzo uniforme hasta la mitad; acelera en el último cuarto solo si aún te sientes fuerte." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "前 1 公里稳住节奏，再逐渐稳定在 %@ 左右。上半程保持均匀强度；最后四分之一只有在状态良好时再加速。" } }
+      }
+    },
+    "race.planner.execution.effort": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Start controlled for the first quarter, settle into a sustainable rhythm through halfway, then build gradually only if you still feel strong." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Empieza con control durante el primer cuarto y mantén un ritmo sostenible hasta la mitad. Después, acelera poco a poco solo si aún te sientes fuerte." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "前四分之一控制好强度，上半程保持可持续的节奏。之后只有在状态良好时才逐步加速。" } }
+      }
+    },
     "race.planner.finish_summary": {
       "localizations": {
         "en": {

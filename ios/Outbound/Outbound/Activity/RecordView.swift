@@ -4708,7 +4708,7 @@ struct RecordView: View {
             sport: .run,
             title: String(localized: "race.planner.race_day", defaultValue: "Race day"),
             detail: racePlanSummary(race),
-            guideLine: String(localized: "race.planner.guide", defaultValue: "Start patiently, execute your plan, and build only when the effort remains controlled."),
+            guideLine: RacePlanGuidance.execution(for: race, unitSystem: measurementPreferences.unitSystem),
             startLabel: String(localized: "race.planner.start_race", defaultValue: "Start race"),
             targetDistanceMeters: race.distanceMeters,
             coachingTarget: race.targetPaceSecondsPerKilometer.map {
@@ -4738,6 +4738,7 @@ struct RecordView: View {
             .changeType: .string("race_plan"),
             .goalType: .string("race"),
             .sourceType: .string(race.recommendationSource),
+            .pacingStrategy: .string(race.pacingStrategy.rawValue),
             .targetBucket: .string(ProductAnalyticsBucket.distance(meters: race.distanceMeters)),
         ]))
     }
