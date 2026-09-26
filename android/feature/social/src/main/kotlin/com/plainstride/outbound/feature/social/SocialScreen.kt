@@ -1,6 +1,7 @@
 package com.plainstride.outbound.feature.social
 
 import android.content.Intent
+import android.text.format.DateUtils
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -31,6 +32,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.serialization.json.*
+import kotlinx.coroutines.delay
 import com.plainstride.outbound.core.designsystem.*
 
 @Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,inboxCount:Int=0,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
@@ -344,7 +346,7 @@ private fun PostCard(post: SocialPost, profile: () -> Unit, openActivity:()->Uni
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
                         Text(post.author.displayName, fontWeight = FontWeight.SemiBold)
-                        post.activity?.startedAt?.let { Text(formatSocialDate(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        post.activityTimestamp?.let { RelativeActivityTime(it) }
                     }
                 }
                 IconButton(safety) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.social_more)) }
@@ -428,7 +430,7 @@ private fun SocialActivityDetail(activity: FeedActivity, onBack: () -> Unit, mod
         ) {
             item {
                 Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Text(formatSocialDate(activity.startedAt), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    RelativeActivityTime(activity.endedAt ?: activity.startedAt.plusDuration(activity.durationSecs))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         ActivityStat(formatDistance(activity.distanceM), stringResource(R.string.social_distance))
                         ActivityStat(formatDuration(activity.durationSecs), stringResource(R.string.social_time))
@@ -460,6 +462,35 @@ private fun formatDistance(value:Double?)=value?.let{"%.2f km".format(it/1000)} 
 private fun formatDuration(value:Int?)=value?.let{"%d:%02d".format(it/60,it%60)} ?: "—"
 private fun formatPace(value:Double?)=value?.let{"%d:%02d /km".format(it.toInt()/60,it.toInt()%60)} ?: "—"
 private fun formatSocialDate(value:String)=runCatching{java.time.OffsetDateTime.parse(value).format(java.time.format.DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.MEDIUM,java.time.format.FormatStyle.SHORT))}.getOrDefault("")
+
+@Composable
+private fun RelativeActivityTime(value: String) {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(value) {
+        while (true) {
+            delay(60_000)
+            now = System.currentTimeMillis()
+        }
+    }
+    val timestamp = runCatching { java.time.OffsetDateTime.parse(value).toInstant().toEpochMilli() }.getOrNull()
+    val label = timestamp?.let {
+        DateUtils.getRelativeTimeSpanString(
+            it,
+            now,
+            DateUtils.MINUTE_IN_MILLIS,
+            DateUtils.FORMAT_ABBREV_RELATIVE,
+        ).toString()
+    }.orEmpty()
+    if (label.isNotEmpty()) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+private fun String.plusDuration(durationSecs: Int?): String = runCatching {
+    java.time.OffsetDateTime.parse(this)
+        .plusSeconds((durationSecs ?: 0).toLong())
+        .toString()
+}.getOrDefault(this)
 
 @Composable private fun CommentsDialog(post:SocialPost,comments:List<SocialComment>,add:(String)->Unit,delete:(SocialComment)->Unit,close:()->Unit){var body by rememberSaveable{mutableStateOf("")};AlertDialog(onDismissRequest=close,title={Text(stringResource(R.string.social_comments_for,post.author.displayName))},text={Column{LazyColumn(Modifier.heightIn(max=320.dp)){items(comments,key=SocialComment::id){comment->Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(comment.author.displayName,fontWeight=FontWeight.SemiBold);Text(comment.body)};if(comment.canDelete)IconButton({delete(comment)}){Icon(Icons.Outlined.Delete,stringResource(R.string.social_delete_comment))}}}};OutlinedTextField(body,{body=it.take(500)},Modifier.fillMaxWidth(),label={Text(stringResource(R.string.social_add_comment))})}},confirmButton={TextButton({if(body.isNotBlank()){add(body);body=""}}){Text(stringResource(R.string.social_post_comment))}},dismissButton={TextButton(close){Text(stringResource(R.string.social_done))}})}
 

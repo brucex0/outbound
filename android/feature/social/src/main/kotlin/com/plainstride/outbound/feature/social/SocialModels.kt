@@ -28,6 +28,7 @@ import kotlinx.serialization.json.JsonElement
     val title: String = "Activity",
     val type: String = "running",
     val startedAt: String,
+    val endedAt: String? = null,
     val distanceM: Double? = null,
     val durationSecs: Int? = null,
     @SerialName("avgPace") val averagePaceSecsPerKm: Double? = null,
@@ -48,7 +49,17 @@ import kotlinx.serialization.json.JsonElement
     val viewerHasCheered: Boolean = false,
     val isCurrentUser: Boolean = false,
     val createdAt: String? = null,
-)
+) {
+    val activityTimestamp: String?
+        get() {
+            val currentActivity = activity ?: return createdAt
+            return currentActivity.endedAt ?: runCatching {
+                java.time.OffsetDateTime.parse(currentActivity.startedAt)
+                    .plusSeconds((currentActivity.durationSecs ?: 0).toLong())
+                    .toString()
+            }.getOrDefault(currentActivity.startedAt)
+        }
+}
 @Serializable data class SocialGroup(
     val id: String,
     val name: String,
