@@ -5776,19 +5776,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "More milestones are ready when you save."
+            "value": "You also earned %d more milestones in this activity."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hay más hitos listos cuando guardes la actividad."
+            "value": "También conseguiste %d hitos más en esta actividad."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存活动后，还会解锁更多里程碑。"
+            "value": "你在本次活动中还解锁了 %d 个里程碑。"
           }
         }
       }

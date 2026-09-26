@@ -1040,10 +1040,21 @@ private struct PersonalRecordRow: View {
 
             Spacer()
 
-            Text(record.effort.durationSeconds?.formatted() ?? "--")
+            Text(Self.formattedDuration(record.effort.durationSeconds))
                 .font(.subheadline.weight(.bold).monospacedDigit())
         }
         .padding(.vertical, 9)
+    }
+
+    private static func formattedDuration(_ seconds: Int?) -> String {
+        guard let seconds, seconds >= 0 else { return "—" }
+        let hours = seconds / 3_600
+        let minutes = (seconds % 3_600) / 60
+        let remainder = seconds % 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", locale: .current, hours, minutes, remainder)
+        }
+        return String(format: "%d:%02d", locale: .current, seconds / 60, remainder)
     }
 }
 

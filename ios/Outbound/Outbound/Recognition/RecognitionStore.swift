@@ -301,8 +301,7 @@ final class RecognitionStore: ObservableObject {
     func recordSavedActivity(
         _ activity: SavedActivity,
         priorActivities: [SavedActivity],
-        goalProgress: GoalProgressSnapshot?,
-        now: Date = Date()
+        goalProgress: GoalProgressSnapshot?
     ) -> [RecognitionAward] {
         let candidate = ActivityCandidate(
             activityType: activity.activityType,
@@ -315,7 +314,7 @@ final class RecognitionStore: ObservableObject {
             priorActivities: priorActivities,
             goalProgress: goalProgress
         )
-        .compactMap { awardBadgeIfNeeded($0, sourceActivityID: activity.id, now: now) }
+        .compactMap { awardBadgeIfNeeded($0, sourceActivityID: activity.id, earnedAt: activity.startedAt) }
 
         if !newAwards.isEmpty {
             persistAwards()
@@ -338,14 +337,12 @@ final class RecognitionStore: ObservableObject {
         priorActivities: [SavedActivity],
         readiness: DailyReadiness?,
         intent: SessionIntent?,
-        goalProgress: GoalProgressSnapshot?,
-        now: Date = Date()
+        goalProgress: GoalProgressSnapshot?
     ) -> [RecognitionAward] {
         recordSavedActivity(
             activity,
             priorActivities: priorActivities,
-            goalProgress: goalProgress,
-            now: now
+            goalProgress: goalProgress
         )
     }
 
@@ -429,13 +426,13 @@ final class RecognitionStore: ObservableObject {
     private func awardBadgeIfNeeded(
         _ badgeID: RecognitionBadgeID,
         sourceActivityID: UUID?,
-        now: Date
+        earnedAt: Date
     ) -> RecognitionAward? {
         guard !hasAwarded(badgeID) else { return nil }
         let award = RecognitionAward(
             id: UUID(),
             badgeID: badgeID,
-            earnedAt: now,
+            earnedAt: earnedAt,
             sourceActivityID: sourceActivityID
         )
         awards.insert(award, at: 0)
@@ -952,9 +949,9 @@ struct RecognitionHeroBadge: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             if secondaryCount > 0 {
-                Text(String(
-                    localized: "recognition.hero.more",
-                    defaultValue: "More milestones are ready when you save."
+                Text(String.localizedStringWithFormat(
+                    String(localized: "recognition.hero.more", defaultValue: "You also earned %d more milestones in this activity."),
+                    secondaryCount
                 ))
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)

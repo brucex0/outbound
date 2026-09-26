@@ -911,7 +911,12 @@ enum ProgressStatsEngine {
             ("Half marathon", 21_097.5),
             ("Marathon", 42_195)
         ].compactMap { title, meters in
-            fastestEffort(kind: .fastestKilometer, targetMeters: meters, activities: activities).map {
+            fastestEffort(
+                kind: .fastestKilometer,
+                targetMeters: meters,
+                activities: activities,
+                wholeActivityDistanceToleranceMeters: max(5, min(100, meters * 0.01))
+            ).map {
                 ProgressPersonalRecord(title: title, targetMeters: meters, effort: $0)
             }
         }
@@ -968,7 +973,8 @@ enum ProgressStatsEngine {
     private static func fastestEffort(
         kind: ProgressBestEffort.Kind,
         targetMeters: Double,
-        activities: [ProgressActivity]
+        activities: [ProgressActivity],
+        wholeActivityDistanceToleranceMeters: Double? = nil
     ) -> ProgressBestEffort? {
         let routeWindow = activities.compactMap { activity in
             fastestRouteWindow(in: activity, targetMeters: targetMeters).map { duration in
@@ -989,16 +995,19 @@ enum ProgressStatsEngine {
         }
 
         return activities
-            .filter { $0.distanceMeters >= targetMeters && $0.durationSeconds > 0 }
+            .filter { activity in
+                guard activity.distanceMeters >= targetMeters, activity.durationSeconds > 0 else { return false }
+                guard let wholeActivityDistanceToleranceMeters else { return true }
+                return activity.distanceMeters - targetMeters <= wholeActivityDistanceToleranceMeters
+            }
             .map { activity in
-                let estimatedSeconds = Int((Double(activity.durationSeconds) * targetMeters / activity.distanceMeters).rounded())
                 return ProgressBestEffort(
                     kind: kind,
                     activityID: activity.id,
                     activityTitle: activity.title,
                     date: activity.startedAt,
-                    durationSeconds: estimatedSeconds,
-                    distanceMeters: targetMeters,
+                    durationSeconds: activity.durationSeconds,
+                    distanceMeters: activity.distanceMeters,
                     elevationMeters: nil,
                     source: .wholeActivityFallback
                 )
