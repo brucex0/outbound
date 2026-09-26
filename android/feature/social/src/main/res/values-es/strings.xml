@@ -73,6 +73,10 @@
     <string name="social_report">Reportar publicación</string>
     <string name="social_requests">Solicitudes</string>
     <string name="social_review">Revisar</string>
+    <string name="social_activity_photos">Fotos</string>
+    <string name="social_activity_photo">Foto de la actividad</string>
+    <string name="social_photo_start">Inicio</string>
+    <string name="social_photo_finish">Final</string>
     <string name="social_route">Ruta de la actividad</string>
     <string name="social_safety_body">Los reportes son privados. Al bloquear también se elimina la conexión y se oculta el contenido de ambas personas.</string>
     <string name="social_safety_title">Opciones de seguridad</string>

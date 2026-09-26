@@ -16,6 +16,10 @@ data class SocialUiState(
     val offline: Boolean = false, val search: String = "", val searchResults: List<SocialPerson> = emptyList(),
     val selectedProfile: SocialPerson? = null, val selectedGroupDetail: GroupSummary? = null,
     val selectedPost:SocialPost?=null,val comments:List<SocialComment> = emptyList(),
+    val selectedActivityPost: SocialPost? = null,
+    val activityDetailPhotos: List<ActivityPhoto> = emptyList(),
+    val activityDetailPhotosLoading: Boolean = false,
+    val activityDetailPhotoBytes: Map<String, ByteArray> = emptyMap(),
     val selectedEvent:SocialEvent?=null,val selectedInvitation:SocialInvitation?=null,
     val feedCursor: String? = null, val feedLoading: Boolean = false,
     val connectionRequestLoading: Boolean = false,
@@ -40,6 +44,7 @@ sealed interface ConnectionEffect {
     private var accountId: String? = null
     private var localeTag = "en"
     private var searchJob: Job? = null
+    private var activityPhotoJob: Job? = null
 
     fun start(accountId: String, localeTag: String) {
         if (this.accountId == accountId && this.localeTag == localeTag) return
@@ -67,6 +72,63 @@ sealed interface ConnectionEffect {
     }
     fun toggleCheer(post: SocialPost) = mutate("social_cheer_toggled") { repository.setCheer(post.id, !post.viewerHasCheered).getOrThrow(); refresh() }
     fun trackActivityDetailOpened() = analytics.record(AnalyticsEvent("activity_detail_opened", mapOf(AnalyticsProperty.Source to "social_feed")))
+    fun trackActivityPhotoPreviewed() = analytics.record(AnalyticsEvent(
+        "photo_previewed",
+        mapOf(AnalyticsProperty.SourceType to "activity_detail_carousel"),
+    ))
+    fun openActivityDetail(post: SocialPost) {
+        val activity = post.activity ?: return
+        activityPhotoJob?.cancel()
+        mutableState.update { it.copy(
+            selectedActivityPost = post,
+            activityDetailPhotos = activity.photos,
+            activityDetailPhotosLoading = activity.totalPhotoCount > activity.photos.size,
+            activityDetailPhotoBytes = emptyMap(),
+        ) }
+        trackActivityDetailOpened()
+        activityPhotoJob = viewModelScope.launch {
+            var photos = activity.photos
+            if (activity.totalPhotoCount > photos.size) {
+                repository.loadPostPhotos(post.id).onSuccess { photos = it }
+            }
+            if (mutableState.value.selectedActivityPost?.id != post.id) return@launch
+            mutableState.update { it.copy(activityDetailPhotos = photos, activityDetailPhotosLoading = false) }
+            photos.forEach { photo ->
+                launch {
+                    repository.downloadPostPhoto(photo.id).onSuccess { bytes ->
+                        mutableState.update { state ->
+                            if (state.selectedActivityPost?.id == post.id) {
+                                state.copy(activityDetailPhotoBytes = state.activityDetailPhotoBytes + (photo.id to bytes))
+                            } else state
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fun loadActivityPhotoContent(photoId: String) {
+        val postId = mutableState.value.selectedActivityPost?.id ?: return
+        if (mutableState.value.activityDetailPhotoBytes.containsKey("content:$photoId")) return
+        viewModelScope.launch {
+            repository.downloadPostPhoto(photoId, thumbnail = false).onSuccess { bytes ->
+                mutableState.update { state ->
+                    if (state.selectedActivityPost?.id == postId) {
+                        state.copy(activityDetailPhotoBytes = state.activityDetailPhotoBytes + ("content:$photoId" to bytes))
+                    } else state
+                }
+            }
+        }
+    }
+    fun closeActivityDetail() {
+        activityPhotoJob?.cancel()
+        activityPhotoJob = null
+        mutableState.update { it.copy(
+            selectedActivityPost = null,
+            activityDetailPhotos = emptyList(),
+            activityDetailPhotosLoading = false,
+            activityDetailPhotoBytes = emptyMap(),
+        ) }
+    }
     fun openProfile(person: SocialPerson) { mutableState.update { it.copy(selectedProfile = person, connectionProfileCode = null, connectionProfileIsSelf = false) }; analytics.record(AnalyticsEvent("social_profile_opened", mapOf(AnalyticsProperty.Source to "social"))) }
     fun closeProfile() = mutableState.update { it.copy(selectedProfile = null, connectionProfileCode = null, connectionProfileIsSelf = false) }
     fun openTarget(type:String,id:String){when(type){"activity","post"->viewModelScope.launch{var post=mutableState.value.home.posts.firstOrNull{it.id==id||it.activity?.id==id};var cursor=mutableState.value.home.nextCursor;repeat(5){if(post!=null||cursor==null)return@repeat;repository.loadFeed(cursor).onSuccess{page->post=page.items.firstOrNull{it.id==id||it.activity?.id==id};cursor=page.nextCursor}};post?.let(::openComments)};"event"->viewModelScope.launch{repository.event(id).onSuccess{event->mutableState.update{it.copy(selectedEvent=event)}}};"group"->viewModelScope.launch{repository.group(id).onSuccess{group->mutableState.update{it.copy(selectedGroupDetail=group)}}};"invitation"->mutableState.update{state->state.copy(selectedInvitation=state.home.invitations.firstOrNull{it.id==id||it.objectId==id})}}}

@@ -34,8 +34,24 @@ import kotlinx.serialization.json.JsonElement
     @SerialName("avgPace") val averagePaceSecsPerKm: Double? = null,
     val route: JsonElement? = null,
     val photos: List<ActivityPhoto> = emptyList(),
+    val photoCount: Int? = null,
+) {
+    val totalPhotoCount: Int get() = photoCount ?: photos.size
+}
+@Serializable data class ActivityPhoto(
+    val id: String,
+    val clientPhotoId: String = id,
+    val url: String? = null,
+    val thumbnailUrl: String? = null,
+    val takenAt: String = "",
+    val paceAtShot: Double? = null,
+    val hrAtShot: Int? = null,
+    val distAtShot: Double? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val captureContext: String? = null,
 )
-@Serializable data class ActivityPhoto(val id: String, val url: String? = null)
+@Serializable data class SocialPostPhotosResponse(val photos: List<ActivityPhoto> = emptyList())
 @Serializable data class SocialPost(
     val id: String,
     @SerialName("user")
