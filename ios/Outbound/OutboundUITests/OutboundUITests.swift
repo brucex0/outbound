@@ -230,7 +230,7 @@ final class OutboundUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Pause activity"].waitForExistence(timeout: 12))
         XCTAssertTrue(app.staticTexts["Pace"].exists)
 
-        app.buttons["Pause activity"].tap()
+        app.buttons["Pause activity"].press(forDuration: 1.1)
         XCTAssertTrue(app.buttons["Finish"].waitForExistence(timeout: 5))
         app.buttons["Finish"].tap()
         XCTAssertTrue(app.buttons["Save activity"].waitForExistence(timeout: 5))
@@ -259,10 +259,13 @@ final class OutboundUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Recenter Map"].exists)
 
         app.buttons["Pause activity"].tap()
+        XCTAssertTrue(app.buttons["Pause activity"].exists, "A brief touch must not pause the run")
+        XCTAssertFalse(app.buttons["Resume activity"].exists)
+        app.buttons["Pause activity"].press(forDuration: 1.1)
         XCTAssertTrue(app.buttons["Resume activity"].waitForExistence(timeout: 5))
         app.buttons["Resume activity"].tap()
         XCTAssertTrue(app.buttons["Pause activity"].waitForExistence(timeout: 5))
-        app.buttons["Pause activity"].tap()
+        app.buttons["Pause activity"].press(forDuration: 1.1)
         XCTAssertTrue(app.buttons["Finish"].waitForExistence(timeout: 5))
         app.buttons["Finish"].tap()
 
@@ -312,7 +315,7 @@ final class OutboundUITests: XCTestCase {
         advanceButton.tap()
         pacedPause(4)
 
-        pauseButton.tap()
+        pauseButton.press(forDuration: 1.1)
         let resumeButton = app.buttons["Resume activity"]
         XCTAssertTrue(resumeButton.waitForExistence(timeout: 5))
         pacedPause(2)
@@ -320,7 +323,7 @@ final class OutboundUITests: XCTestCase {
         XCTAssertTrue(pauseButton.waitForExistence(timeout: 5))
         pacedPause(3)
 
-        pauseButton.tap()
+        pauseButton.press(forDuration: 1.1)
         let finishButton = app.buttons["Finish activity"]
         XCTAssertTrue(finishButton.waitForExistence(timeout: 5))
         pacedPause(1)
