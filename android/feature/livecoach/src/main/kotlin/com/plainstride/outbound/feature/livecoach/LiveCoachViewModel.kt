@@ -32,6 +32,7 @@ import com.plainstride.outbound.feature.livecoach.network.LiveCoachMoment
 import com.plainstride.outbound.feature.livecoach.network.LiveCoachRepository
 import com.plainstride.outbound.feature.livecoach.network.LiveState
 import com.plainstride.outbound.feature.livecoach.network.Phrase
+import com.plainstride.outbound.feature.livecoach.network.RaceIntent
 import com.plainstride.outbound.feature.livecoach.network.SessionIntent
 import com.plainstride.outbound.feature.livecoach.network.WorkoutReference
 import com.plainstride.outbound.feature.livecoach.network.WorkoutRoute
@@ -242,7 +243,15 @@ class LiveCoachViewModel @Inject constructor(
             imperial = unitSystem == MeasurementUnitSystem.imperial,
         )
         scheduleUpdate.workoutCue?.let { enqueue(PendingCue(it.moment, it), priority = true, prefs.contract) }
-        policyUpdate.nextMoment?.let { enqueue(PendingCue(it), priority = false, prefs.contract) }
+        policyUpdate.nextMoment?.let {
+            val promptPaceCorrection = it.moment in setOf(
+                LiveCoachMoment.EarlyOverpace,
+                LiveCoachMoment.PaceAboveTarget,
+                LiveCoachMoment.PaceBelowTarget,
+                LiveCoachMoment.PaceInstability,
+            )
+            enqueue(PendingCue(it), priority = promptPaceCorrection, prefs.contract)
+        }
         scheduleUpdate.progressCue?.let { enqueue(PendingCue(it.moment, it), priority = false, prefs.contract) }
 
         val pending = pendingCues.removeFirstOrNull() ?: return
@@ -377,7 +386,17 @@ class LiveCoachViewModel @Inject constructor(
             measurementUnitSystem = unitSystem.name,
             sessionIntent = SessionIntent(
                 activityType = launch.activityKind.name.lowercase(Locale.ROOT),
-                goalType = launch.goalType(),
+                goalType = if (launch.raceIntent != null) "race" else launch.goalType(),
+                race = launch.raceIntent?.let { race ->
+                    RaceIntent(
+                        distanceMeters = race.distanceMeters,
+                        goalMode = race.goalMode,
+                        goalTimeSeconds = race.goalTimeSeconds,
+                        targetPaceSecondsPerKilometer = race.targetPaceSecondsPerKilometer.validPace(),
+                        pacingStrategy = race.pacingStrategy,
+                        recommendationSource = race.recommendationSource,
+                    )
+                },
             ),
             clientWorkout = launch.clientWorkout(),
             environment = Environment(
@@ -573,7 +592,15 @@ private fun RecordingSnapshot.toCoachSnapshot(launch: RecordingLaunchConfigurati
         elapsedSeconds = elapsedSeconds.toInt(),
         distanceMeters = distanceMeters,
         paceSecondsPerKilometer = currentPaceSecondsPerKilometer,
-        targetPaceSecondsPerKilometer = segment?.targetPace,
+        targetPaceSecondsPerKilometer = segment?.targetPace ?: launch.raceIntent
+            ?.takeIf { it.hasValidatedPaceTarget }
+            ?.targetPaceSecondsPerKilometer
+            .validPace(),
+        raceDistanceMeters = launch.raceIntent?.distanceMeters,
+        raceTargetPaceSecondsPerKilometer = launch.raceIntent
+            ?.takeIf { it.hasValidatedPaceTarget }
+            ?.targetPaceSecondsPerKilometer
+            .validPace(),
         fasterToleranceSeconds = segment?.fasterTolerance,
         slowerToleranceSeconds = segment?.slowerTolerance,
         recognizesTargetLock = segment?.recognizesTargetLock == true,

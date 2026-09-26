@@ -15,6 +15,8 @@ data class CoachSnapshot(
     val distanceMeters: Double,
     val paceSecondsPerKilometer: Double?,
     val targetPaceSecondsPerKilometer: Double? = null,
+    val raceDistanceMeters: Double? = null,
+    val raceTargetPaceSecondsPerKilometer: Double? = null,
     val fasterToleranceSeconds: Double? = null,
     val slowerToleranceSeconds: Double? = null,
     val recognizesTargetLock: Boolean = false,
@@ -95,11 +97,24 @@ class LiveCoachMomentPolicy {
     fun ingest(snapshot: CoachSnapshot, contract: CoachingContract): PolicyUpdate {
         val pace = snapshot.paceSecondsPerKilometer?.takeIf { it.isFinite() && it in 60.0..3_600.0 }
         history.addLast(snapshot.copy(paceSecondsPerKilometer = pace))
+        while (history.firstOrNull()?.elapsedSeconds?.let { it < snapshot.elapsedSeconds - HISTORY_SECONDS } == true) {
+            history.removeFirst()
+        }
         while (history.size > MAX_HISTORY) history.removeFirst()
         rollingGradePercent = terrainGrade(history.filter { it.elapsedSeconds >= snapshot.elapsedSeconds - 45 })
 
         val evaluation = evaluatePending(snapshot)
         evaluation.recovery?.let { return PolicyUpdate(it, evaluation.records) }
+
+        if (contract != CoachingContract.Quiet) {
+            val grade = rollingGradePercent
+            val priorityMoment = raceTargetDeviation(snapshot, grade)
+                ?: instability(snapshot, grade)
+            if (priorityMoment != null) {
+                lastMomentAt = snapshot.elapsedSeconds
+                return PolicyUpdate(priorityMoment, evaluation.records)
+            }
+        }
 
         val cooldown = when (contract) {
             CoachingContract.Quiet -> return PolicyUpdate(null, evaluation.records)
@@ -116,7 +131,6 @@ class LiveCoachMomentPolicy {
             ?: targetDeviation(snapshot, grade)
             ?: finish(snapshot)
             ?: drift(snapshot, contract, grade)
-            ?: instability(snapshot, grade)
             ?: targetLocked(snapshot, grade)
         if (moment != null) lastMomentAt = snapshot.elapsedSeconds
         return PolicyUpdate(moment, evaluation.records)
@@ -150,7 +164,7 @@ class LiveCoachMomentPolicy {
     }
 
     private fun targetDeviation(s: CoachSnapshot, grade: Double?): DetectedMoment? {
-        if ((s.segmentElapsedSeconds ?: 0) < 45 || meaningfulGrade(grade)) return null
+        if (hasRacePaceTarget(s) || (s.segmentElapsedSeconds ?: 0) < 45 || meaningfulGrade(grade)) return null
         val target = s.targetPaceSecondsPerKilometer ?: return null
         val recent = averagePace(s.elapsedSeconds - 30, s.elapsedSeconds) ?: return null
         val isRecovery = s.segmentPhase in setOf("recovery", "warmup", "cooldown")
@@ -169,6 +183,26 @@ class LiveCoachMomentPolicy {
         return null
     }
 
+    private fun raceTargetDeviation(s: CoachSnapshot, grade: Double?): DetectedMoment? {
+        if (s.raceDistanceMeters?.let { it.isFinite() && it >= 1_000.0 } != true) return null
+        val target = s.raceTargetPaceSecondsPerKilometer
+            ?.takeIf { it.isFinite() && it in 120.0..1_200.0 }
+            ?: return null
+        if (s.elapsedSeconds < 30 || meaningfulGrade(grade)) return null
+        val recent = averagePace(s.elapsedSeconds - 30, s.elapsedSeconds) ?: return null
+        val moment = when {
+            target - recent >= 20.0 && LiveCoachMoment.PaceAboveTarget !in oneShots -> LiveCoachMoment.PaceAboveTarget
+            recent - target >= 30.0 && LiveCoachMoment.PaceBelowTarget !in oneShots -> LiveCoachMoment.PaceBelowTarget
+            else -> return null
+        }
+        oneShots += moment
+        return DetectedMoment(moment, s.elapsedSeconds, recent, target)
+    }
+
+    private fun hasRacePaceTarget(s: CoachSnapshot) =
+        s.raceDistanceMeters?.let { it.isFinite() && it >= 1_000.0 } == true
+            && s.raceTargetPaceSecondsPerKilometer?.let { it.isFinite() && it in 120.0..1_200.0 } == true
+
     private fun drift(s: CoachSnapshot, contract: CoachingContract, grade: Double?): DetectedMoment? {
         if (s.elapsedSeconds < 300 || s.segmentPhase in setOf("work", "recovery") || meaningfulGrade(grade)) return null
         if (lastDriftAt?.let { s.elapsedSeconds - it < 600 } == true) return null
@@ -181,16 +215,21 @@ class LiveCoachMomentPolicy {
     }
 
     private fun instability(s: CoachSnapshot, grade: Double?): DetectedMoment? {
-        if ((s.segmentElapsedSeconds ?: 0) < 120 || meaningfulGrade(grade)) return null
-        if (lastInstabilityAt?.let { s.elapsedSeconds - it < 600 } == true) return null
-        val target = s.targetPaceSecondsPerKilometer ?: return null
+        if (hasRacePaceTarget(s)
+            || s.segmentPhase in setOf("work", "recovery")
+            || (s.segmentElapsedSeconds ?: s.elapsedSeconds) < 20
+            || meaningfulGrade(grade)
+        ) return null
+        if (lastInstabilityAt?.let { s.elapsedSeconds - it < 180 } == true) return null
         val values = paceValues(s.elapsedSeconds - 90, s.elapsedSeconds)
         if (values.size < 8) return null
         val sorted = values.sorted()
         val spread = percentile(.9, sorted) - percentile(.1, sorted)
-        if (spread < max(60.0, target * .15)) return null
+        val referencePace = s.targetPaceSecondsPerKilometer
+            ?.takeIf { it.isFinite() && it in 60.0..3_600.0 }
+        if (spread < max(60.0, (referencePace ?: 0.0) * .15)) return null
         lastInstabilityAt = s.elapsedSeconds
-        return DetectedMoment(LiveCoachMoment.PaceInstability, s.elapsedSeconds, values.average(), target)
+        return DetectedMoment(LiveCoachMoment.PaceInstability, s.elapsedSeconds, values.average(), referencePace)
     }
 
     private fun targetLocked(s: CoachSnapshot, grade: Double?): DetectedMoment? {
@@ -283,7 +322,10 @@ class LiveCoachMomentPolicy {
 
     private data class Evaluation(val records: List<EvaluatedCue>, val recovery: DetectedMoment?)
 
-    private companion object { const val MAX_HISTORY = 240 }
+    private companion object {
+        const val HISTORY_SECONDS = 240
+        const val MAX_HISTORY = 18_000
+    }
 }
 
 private fun terrainGrade(snapshots: List<CoachSnapshot>): Double? {

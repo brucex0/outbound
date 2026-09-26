@@ -18,7 +18,7 @@ The semantic moment says what happened. Audio wording may vary, but it must not 
 
 ## Current Phone-Sensor Definitions
 
-These values are implemented in `Guide/LiveGuidanceModels.swift`, `Guide/VirtualGuide.swift`, and the backend live-coach contract.
+These values are implemented in iOS `Guide/LiveGuidanceModels.swift` and `Guide/VirtualGuide.swift`, Android `android/feature/livecoach/.../policy/LiveCoachMomentPolicy.kt` and `LiveCoachViewModel.kt`, and the backend live-coach contract.
 
 | Moment | Current definition | Signal and context | Frequency |
 | --- | --- | --- | --- |
@@ -48,6 +48,8 @@ These values are implemented in `Guide/LiveGuidanceModels.swift`, `Guide/Virtual
 | `workout_instruction` | A selected standalone workout reached a catalog-authored execution boundary. | Exact instruction ID plus a distance or elapsed-time trigger carried in the cached workout; the server-issued phrase plan carries the matching ID and trigger. | Once per instruction ID; stale crossings are skipped. |
 
 Pace values are accepted only from 60 through 3,600 seconds per kilometer. Rolling pace needs at least four valid samples. The guide retains 240 active seconds of history so accelerated run simulations preserve the same detector windows as live sessions.
+
+Android now evaluates major pace instability before its ordinary coaching cooldown and carries an optional typed race intent from the recording launch into live-coach context. Android currently has no race-planner entry point, so that race-specific detector is active only when a launch supplies a validated race target; ordinary typed workout targets continue to use their segment-specific pace bands.
 
 ## Typed Workout Targets
 
