@@ -124,6 +124,7 @@ struct OutboundApp: App {
             DebugPostRunSummaryHarness()
                 .environmentObject(measurementPreferences)
                 .environmentObject(personalizationStore)
+                .environmentObject(onboardingStore)
                 .environmentObject(togetherStore)
         } else {
             startupRoot
