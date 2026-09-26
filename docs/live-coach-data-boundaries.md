@@ -51,6 +51,8 @@ The backend adds only data for the authenticated runner and bounds every list/st
 
 The compiler omits name, username, email, login-provider IDs, access tokens, device IDs, contacts, photos, raw route geometry, raw GPS track, user/session/cue IDs, the standalone catalog wrapper, source bibliography, editorial metadata, and unrelated workouts. Coordinates are rounded to two decimal places before serialization. Serialized context is capped at an estimated 20,000 tokens and stored with a SHA-256 hash.
 
+The one-time planner must make each generated cue useful for its specific coaching moment: give one grounded action or concrete execution focus, use the supplied workout phase and purpose when helpful, and avoid reusable encouragement. Repeating a phrase across moments or alternatives invalidates the generated plan and selects the deterministic fallback. Workout-step instructions must preserve the step's actual purpose, effort, and work/recovery sequence; exact metrics remain excluded from spoken phrases.
+
 ## Plainstride To Gemini
 
 Gemini receives:
@@ -60,7 +62,7 @@ Gemini receives:
 - selected coach-persona instructions in the system instruction;
 - a strict JSON response schema.
 
-The configured model is `gemini-3.1-pro-preview` with high thinking. Planning has a 20-second deadline and happens once per session. The response must contain a summary, progress cadence, one to three exact short phrases for every reactive moment, and exactly one localized phrase for every required selected-workout instruction ID. Missing, duplicate, or unknown instruction IDs invalidate the response. Invalid, timed-out, disabled, or unavailable planning produces a deterministic local plan; workout start is not failed solely because Gemini failed.
+The configured model is `gemini-3.1-pro-preview` with high thinking. Planning has a 20-second deadline and happens once per session. The response must contain a summary, progress cadence, one to three short phrases for every reactive moment, and exactly one localized phrase for every required selected-workout instruction ID. Phrases should be distinct and grounded in the moment and workout; duplicates or unknown instruction IDs invalidate the response. Invalid, timed-out, disabled, or unavailable planning produces a deterministic local plan; workout start is not failed solely because Gemini failed.
 
 Gemini must not repeat private bio, health, location, survey, or weather facts in spoken phrases. Those fields may influence safety, tone, focus, timing, and advice only.
 
@@ -75,7 +77,7 @@ Each request contains:
 - current, rolling, and target pace when available;
 - grade, workout segment index/phase, and route-guidance-active flag when available.
 
-The server resolves the phrase ID against the session's stored plan. Progress is formatted server-side from bounded live state. The device cannot ask the server to synthesize arbitrary text.
+The server resolves the phrase ID against the session's stored plan. Progress is formatted server-side from bounded live state. The device cannot ask the server to synthesize arbitrary text. Live telemetry chooses the moment, but the current architecture does not run another language-model reasoning call at each cue.
 
 ## Plainstride To Google Cloud TTS
 

@@ -13,7 +13,7 @@ import {
   type LiveCoachMoment,
 } from "./liveCoachTypes.js";
 
-export const LIVE_COACH_PLANNER_PROMPT_VERSION = "2026-08-31.1";
+export const LIVE_COACH_PLANNER_PROMPT_VERSION = "2026-09-26.1";
 
 const phases = ["any", "warmup", "easy", "work", "recovery", "walk", "cooldown", "open"] as const;
 const plannerCueSchema = z.object({
@@ -166,6 +166,7 @@ function normalizeGeneratedPlan(
   output: z.infer<typeof plannerOutputSchema>,
   context: LiveCoachCompiledContext
 ): LiveCoachGuidancePlan {
+  assertDistinctMomentPhrases(output.cues);
   const grouped = new Map<LiveCoachMoment, z.infer<typeof plannerCueSchema>[]>();
   for (const cue of output.cues) {
     const current = grouped.get(cue.moment) ?? [];
@@ -291,14 +292,33 @@ function plannerInstructions(locale: string, personaInstructions: string): strin
     "You are designing a live coaching plan, not replying to the runner.",
     `Write every spoken phrase in locale ${locale}.`,
     personaInstructions,
-    "Use every supported reactive moment at least once. Use phases to specialize wording where the workout structure benefits.",
-    "For workoutInstructions, return exactly one item for every requiredWorkoutInstructionId, preserve each ID exactly, and rewrite its reference cue as concise coaching in the requested locale. Return an empty array when there are no required IDs.",
+    "Use every supported reactive moment at least once. Use phases to specialize advice to the actual workout step, effort target, and activity type when those details are supplied.",
+    "Every phrase must earn the interruption: give one useful next action or one concrete thing to notice or preserve, grounded in this moment and the runner's workout. Do not use generic encouragement, filler, or a phrase that could fit a different moment.",
+    "Make the advice specific to the coaching job: pace changes should explain how to adjust effort; recovery cues should protect recovery; terrain cues should coach the terrain; finish cues should match the remaining work. For informational moments, add a useful execution focus instead of repeating only the milestone.",
+    "For workoutInstructions, return exactly one item for every requiredWorkoutInstructionId, preserve each ID exactly, and turn that step's reference cue into a concrete instruction grounded in its actual purpose, effort, and work/recovery sequence. Use qualitative descriptions rather than speaking exact metrics. Never reduce a workout instruction to 'new segment' or generic encouragement. Return an empty array when there are no required IDs.",
+    "Give two or three meaningfully different alternatives for moments that may recur. Do not repeat a phrase across different moments or alternatives.",
     "Each phrase must be one natural, immediately speakable sentence of at most 24 English/Spanish words or 48 Chinese characters.",
     "Do not include placeholders, metric values, markdown, medical diagnoses, commands to exceed the prescribed workout, or claims about facts not present in context.",
     "Never speak private bio, health, location, survey, or weather details explicitly. Use them only to choose safe tone, focus, timing, and advice.",
     "Progress phrases are fallback wording only; the device will produce exact live distance, time, and pace announcements.",
     "Return only JSON matching the response schema.",
   ].join("\n");
+}
+
+function assertDistinctMomentPhrases(
+  cues: Array<{ moment: LiveCoachMoment; phrases: string[] }>
+): void {
+  const seen = new Set<string>();
+  for (const cue of cues) {
+    for (const phrase of cue.phrases) {
+      const fingerprint = phrase.normalize("NFKC").toLocaleLowerCase()
+        .replace(/[\p{P}\p{S}\s]/gu, "");
+      if (seen.has(fingerprint)) {
+        throw new Error("Live-coach planner repeated a phrase across moments.");
+      }
+      seen.add(fingerprint);
+    }
+  }
 }
 
 function validatePhrase(value: string, locale: string): string {
