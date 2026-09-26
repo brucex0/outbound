@@ -44,6 +44,9 @@ final class ActivitySessionController: ObservableObject {
     }
 
     func prepare(intent: SessionIntent?) {
+        // Clearing the completed intent can notify RecordView after a save and
+        // must not replace the post-save screen with the setup surface.
+        if case .postSave = phase { return }
         preparedIntent = intent
         if !phase.isLive { phase = .setup }
     }
