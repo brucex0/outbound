@@ -28416,6 +28416,30 @@
         }
       }
     },
+    "session.action.pause.hold": {
+      "comment": "Text shown on the active workout pause control to explain that it must be held.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Hold to pause" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Mantén pulsado para pausar" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "长按以暂停" } }
+      }
+    },
+    "session.action.pause.hold.compact": {
+      "comment": "Short instruction shown inside the compact active workout pause control.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "HOLD" } },
+        "es": { "stringUnit": { "state": "translated", "value": "MANTÉN" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "长按" } }
+      }
+    },
+    "session.action.pause.hold.hint": {
+      "comment": "VoiceOver hint explaining how to activate the pause control.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Touch and hold to pause." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Mantén pulsado para pausar." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "触摸并按住以暂停。" } }
+      }
+    },
     "session.action.pause.accessibility": {
       "comment": "A label for a button that pauses a session.",
       "extractionState": "extracted_with_value",
