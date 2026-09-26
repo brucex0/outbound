@@ -265,9 +265,9 @@ The iOS stores keep an account-scoped `UserDefaults` cache so earned moments ren
 2. fetch the canonical server collection; and
 3. replace the account cache with that response.
 
-The activity save request includes milestone IDs earned from exact client context plus the user's time-zone and calendar-week convention. The backend restores `First Step`, `Back In Motion`, `Four-Week Rhythm`, and distance milestones from synchronized activity history. `Weekly Focus Complete` requires the saved client claim because historical activities alone do not contain the configured goal context.
+The activity save request includes milestone IDs earned from exact client context plus the user's time-zone and calendar-week convention. The backend restores `First Step`, `Back In Motion`, `Four-Week Rhythm`, and distance milestones from synchronized activity history. Running personal bests at 400 m, 1K, mile, 5K, 10K, 10 mile, half marathon, and marathon are independently derived from time-stamped GPS route windows; client claims and summary-average projections cannot earn these records. `Weekly Focus Complete` requires the saved client claim because historical activities alone do not contain the configured goal context.
 
-Social mutations evaluate server-owned rules for `Good Teammate`, `Relay Player`, and `Photo Finish`, while recognition refresh also derives those awards from historical server interactions, memberships, event participation, and photo shares. `Rival Edge` stays dormant until a backend-owned rivalry result exists. Another runner's profile exposes only awards marked shareable, and only to that runner or an accepted connection; the full award collection remains private.
+Social mutations evaluate server-owned rules for `Good Teammate`, `Relay Player`, and `Photo Finish`, while recognition refresh also derives those awards from historical server interactions, memberships, event participation, and photo shares. `Rival Edge` stays dormant until a backend-owned rivalry result exists. Another runner's profile exposes only awards marked shareable, and only to that runner or an accepted connection; the full award collection remains private. Social feed activity objects include only awards linked to that exact activity and marked shareable for connections; the owner can see all linked milestones on their own feed and detail surfaces. Matching uses both activity owner and client activity ID so reused client IDs cannot cross-link. No separate activity-award table or schema migration is required.
 
 Award deletion does not follow activity deletion. Recognition is a durable account event after it is earned, while the source reference is explanatory provenance rather than ownership.
 
@@ -278,6 +278,7 @@ Award deletion does not follow activity deletion. Recognition is a durable accou
 - `POST /v1/recognition/claims` migrates exact-context awards detected by the client.
 - `RecognitionStore` and `SocialRecognitionStore` provide the account-scoped offline cache and reconcile it with the server.
 - Post-run, Today, Me, History, and accepted-connection profiles render from those reconciled durable awards. Existing obsolete award rows are filtered from API responses.
+- Social feed cards and activity detail show a compact highest-priority shareable milestone; detail can list every activity-linked milestone. Friends only receive explicitly shareable awards; owners can see private linked milestones on their own activity surfaces. Route-derived personal-best awards use that same privacy-filtered activity presentation.
 
 Apply the schema before deploying the API:
 

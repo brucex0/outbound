@@ -210,6 +210,17 @@ final class SocialRecognitionStore: ObservableObject {
         )
     }
 
+    func display(for badgeID: String) -> ActivityRecognitionDisplay? {
+        guard let badgeID = SocialRecognitionBadgeID(rawValue: badgeID) else { return nil }
+        let preview = preview(for: badgeID)
+        return ActivityRecognitionDisplay(
+            id: badgeID.rawValue,
+            title: preview.title,
+            symbolName: preview.symbolName,
+            guideLine: preview.guideLine
+        )
+    }
+
     private func awardBadgeIfNeeded(
         _ badgeID: SocialRecognitionBadgeID,
         sourceActivityID: UUID?,

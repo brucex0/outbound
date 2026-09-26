@@ -144,6 +144,40 @@ async function seedTestPersonas() {
   const post = await prisma.post.create({
     data: { userId: activeRunner.id, activityId: activeActivities[0].id, caption: "Easy miles and good energy today.", visibility: "connections" },
   });
+  await prisma.recognitionAward.createMany({
+    data: [
+      {
+        userId: activeRunner.id,
+        badgeId: "first5K",
+        family: "momentum",
+        earnedAt: activeActivities[0].startedAt,
+        sourceType: "activity",
+        sourceActivityClientId: activeActivities[0].clientActivityId,
+        ruleVersion: 1,
+        shareEligible: true,
+      },
+      {
+        userId: activeRunner.id,
+        badgeId: "personalBest5K",
+        family: "momentum",
+        earnedAt: activeActivities[0].startedAt,
+        sourceType: "activity",
+        sourceActivityClientId: activeActivities[0].clientActivityId,
+        ruleVersion: 1,
+        shareEligible: true,
+      },
+      {
+        userId: activeRunner.id,
+        badgeId: "fourWeekRhythm",
+        family: "momentum",
+        earnedAt: activeActivities[0].startedAt,
+        sourceType: "activity",
+        sourceActivityClientId: activeActivities[0].clientActivityId,
+        ruleVersion: 1,
+        shareEligible: false,
+      },
+    ],
+  });
   await prisma.reaction.create({ data: { userId: socialRunner.id, postId: post.id, type: "clap" } });
   await prisma.comment.create({ data: { authorId: socialRunner.id, postId: post.id, body: "Nice work — see you Saturday!" } });
 

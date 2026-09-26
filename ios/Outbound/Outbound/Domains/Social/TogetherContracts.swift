@@ -30,6 +30,11 @@ struct SocialPersonDTO: Codable, Identifiable, Sendable {
 struct SocialProfileResponseDTO: Codable, Sendable {
     let person: SocialPersonDTO
     let recognitions: [RecognitionAwardDTO]
+
+    init(person: SocialPersonDTO, recognitions: [RecognitionAwardDTO]) {
+        self.person = person
+        self.recognitions = recognitions
+    }
 }
 
 struct SocialRelationshipDTO: Codable, Sendable {
@@ -355,6 +360,19 @@ struct ActivityEventResultParticipantDTO: Codable, Identifiable, Sendable {
 
 struct LinkActivityEventRequestDTO: Codable, Sendable { let activityId: String }
 
+struct TogetherActivityRecognitionDTO: Codable, Identifiable, Sendable {
+    var id: String { badgeId }
+    let badgeId: String
+    let family: String
+    let earnedAt: Date
+
+    init(badgeId: String, family: String, earnedAt: Date) {
+        self.badgeId = badgeId
+        self.family = family
+        self.earnedAt = earnedAt
+    }
+}
+
 struct TogetherActivityDTO: Codable, Sendable {
     let id: String
     let type: String?
@@ -369,6 +387,7 @@ struct TogetherActivityDTO: Codable, Sendable {
     let route: TogetherActivityRouteDTO?
     let photos: [TogetherActivityPhotoDTO]?
     var photoCount: Int? = nil
+    var recognitions: [TogetherActivityRecognitionDTO]? = nil
 
     var totalPhotoCount: Int { photoCount ?? photos?.count ?? 0 }
 
@@ -385,7 +404,8 @@ struct TogetherActivityDTO: Codable, Sendable {
         energyKilocalories: Int? = nil,
         route: TogetherActivityRouteDTO?,
         photos: [TogetherActivityPhotoDTO]? = nil,
-        photoCount: Int? = nil
+        photoCount: Int? = nil,
+        recognitions: [TogetherActivityRecognitionDTO]? = nil
     ) {
         self.id = id
         self.type = type
@@ -400,6 +420,7 @@ struct TogetherActivityDTO: Codable, Sendable {
         self.route = route
         self.photos = photos
         self.photoCount = photoCount ?? photos?.count ?? 0
+        self.recognitions = recognitions
     }
 }
 

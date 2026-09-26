@@ -25,6 +25,14 @@ enum RecognitionBadgeID: String, Codable, CaseIterable, Identifiable {
     case first10K
     case firstHalfMarathon
     case firstMarathon
+    case personalBest400m
+    case personalBest1K
+    case personalBestMile
+    case personalBest5K
+    case personalBest10K
+    case personalBest10Mile
+    case personalBestHalfMarathon
+    case personalBestMarathon
 
     var id: String { rawValue }
 }
@@ -79,7 +87,37 @@ struct RecognitionPreview: Identifiable, Equatable {
     let guideLine: String
 
     var id: RecognitionBadgeID { badgeID }
+
+    var activityDisplay: ActivityRecognitionDisplay {
+        ActivityRecognitionDisplay(
+            id: badgeID.rawValue,
+            title: title,
+            symbolName: symbolName,
+            guideLine: guideLine
+        )
+    }
 }
+
+struct ActivityRecognitionDisplay: Identifiable, Equatable {
+    let id: String
+    let title: String
+    let symbolName: String
+    let guideLine: String
+    var earnedAt: Date? = nil
+}
+
+extension RecognitionStore {
+    func display(for badgeID: String) -> ActivityRecognitionDisplay? {
+        guard let preview = preview(for: badgeID) else { return nil }
+        return ActivityRecognitionDisplay(
+            id: preview.id.rawValue,
+            title: preview.title,
+            symbolName: preview.symbolName,
+            guideLine: preview.guideLine
+        )
+    }
+}
+
 
 @MainActor
 final class RecognitionStore: ObservableObject {
@@ -200,6 +238,27 @@ final class RecognitionStore: ObservableObject {
 
     func topRecognition(for activityID: UUID) -> RecognitionPreview? {
         recognitions(for: activityID).first
+    }
+
+    func preview(for badgeID: String) -> RecognitionPreview? {
+        guard let badgeID = RecognitionBadgeID(rawValue: badgeID) else { return nil }
+        return preview(for: badgeID)
+    }
+
+    func activityDisplays(for activityID: UUID) -> [ActivityRecognitionDisplay] {
+        awards
+            .filter { $0.sourceActivityID == activityID }
+            .sorted { Self.definition(for: $0.badgeID).priority > Self.definition(for: $1.badgeID).priority }
+            .map { award in
+                let preview = preview(for: award.badgeID)
+                return ActivityRecognitionDisplay(
+                    id: preview.id.rawValue,
+                    title: preview.title,
+                    symbolName: preview.symbolName,
+                    guideLine: preview.guideLine,
+                    earnedAt: award.earnedAt
+                )
+            }
     }
 
     func previewPostRunRecognition(
@@ -517,7 +576,38 @@ final class RecognitionStore: ObservableObject {
                 shareEligible: true,
                 priority: 95
             )
+        case .personalBest400m:
+            return personalBestDefinition(badgeID, title: String(localized: "recognition.pb.400m", defaultValue: "400m Personal Best"), priority: 96)
+        case .personalBest1K:
+            return personalBestDefinition(badgeID, title: String(localized: "recognition.pb.1k", defaultValue: "1K Personal Best"), priority: 97)
+        case .personalBestMile:
+            return personalBestDefinition(badgeID, title: String(localized: "recognition.pb.mile", defaultValue: "Mile Personal Best"), priority: 98)
+        case .personalBest5K:
+            return personalBestDefinition(badgeID, title: String(localized: "recognition.pb.5k", defaultValue: "5K Personal Best"), priority: 100)
+        case .personalBest10K:
+            return personalBestDefinition(badgeID, title: String(localized: "recognition.pb.10k", defaultValue: "10K Personal Best"), priority: 102)
+        case .personalBest10Mile:
+            return personalBestDefinition(badgeID, title: String(localized: "recognition.pb.10_mile", defaultValue: "10 Mile Personal Best"), priority: 104)
+        case .personalBestHalfMarathon:
+            return personalBestDefinition(badgeID, title: String(localized: "recognition.pb.half_marathon", defaultValue: "Half Marathon Personal Best"), priority: 106)
+        case .personalBestMarathon:
+            return personalBestDefinition(badgeID, title: String(localized: "recognition.pb.marathon", defaultValue: "Marathon Personal Best"), priority: 108)
         }
+    }
+
+    private static func personalBestDefinition(
+        _ badgeID: RecognitionBadgeID,
+        title: String,
+        priority: Int
+    ) -> RecognitionDefinition {
+        RecognitionDefinition(
+            id: badgeID,
+            family: .momentum,
+            title: title,
+            symbolName: "rosette",
+            shareEligible: true,
+            priority: priority
+        )
     }
 
     static func guideLine(for badgeID: RecognitionBadgeID) -> String {
@@ -562,6 +652,9 @@ final class RecognitionStore: ObservableObject {
                 localized: "recognition.badge.first_marathon.detail",
                 defaultValue: "42.2 kilometers, start to finish. You earned a milestone that lasts."
             )
+        case .personalBest400m, .personalBest1K, .personalBestMile, .personalBest5K,
+             .personalBest10K, .personalBest10Mile, .personalBestHalfMarathon, .personalBestMarathon:
+            return String(localized: "recognition.pb.detail", defaultValue: "Your fastest GPS-derived effort at this distance so far.")
         }
     }
 }
@@ -573,8 +666,18 @@ private struct ActivityCandidate {
 }
 
 struct RecognitionPill: View {
-    let preview: RecognitionPreview
+    let preview: ActivityRecognitionDisplay
     var compact = false
+
+    init(preview: RecognitionPreview, compact: Bool = false) {
+        self.preview = preview.activityDisplay
+        self.compact = compact
+    }
+
+    init(preview: ActivityRecognitionDisplay, compact: Bool = false) {
+        self.preview = preview
+        self.compact = compact
+    }
 
     var body: some View {
         HStack(spacing: compact ? 6 : 8) {
@@ -765,6 +868,61 @@ struct RecognitionHistoryView: View {
                 return RecognitionStore.definition(for: left.badgeID).priority
                     < RecognitionStore.definition(for: right.badgeID).priority
             }
+    }
+}
+
+struct RecognitionActivitySection: View {
+    let previews: [ActivityRecognitionDisplay]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(String(
+                localized: "recognition.activity.section_title",
+                defaultValue: "Milestones earned"
+            ))
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .textCase(.uppercase)
+
+            ForEach(previews) { preview in
+                HStack(alignment: .top, spacing: 12) {
+                    ActivityRecognitionOrb(preview: preview, size: 38)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(preview.title)
+                            .font(.subheadline.weight(.semibold))
+                        Text(preview.guideLine)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .padding(14)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(.horizontal, 16)
+    }
+}
+
+struct ActivityRecognitionOrb: View {
+    let preview: ActivityRecognitionDisplay
+    var size: CGFloat = 28
+
+    var body: some View {
+        Circle()
+            .fill(LinearGradient(colors: [Color.orange, Color.yellow.opacity(0.9)], startPoint: .topLeading, endPoint: .bottomTrailing))
+            .frame(width: size, height: size)
+            .overlay {
+                Circle().strokeBorder(Color.white.opacity(0.95), lineWidth: 2)
+            }
+            .overlay {
+                Image(systemName: preview.symbolName)
+                    .font(.system(size: size * 0.42, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+            .shadow(color: .orange.opacity(0.28), radius: 8, y: 3)
     }
 }
 

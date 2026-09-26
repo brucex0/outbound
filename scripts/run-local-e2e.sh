@@ -157,6 +157,15 @@ const request = async (path, options = {}, expected = [200]) => {
   const post = home.posts.find(item => item.caption === "Easy miles and good energy today.");
   const run = home.upcomingRuns.find(item => item.title === "Saturday social 5K");
   if (!post || !run) fail("feed post or group run is missing");
+  if (!post.activity?.recognitions?.some(award => award.badgeId === "first5K")) {
+    fail("shareable activity milestone is missing from the feed payload");
+  }
+  if (!post.activity.recognitions.some(award => award.badgeId === "personalBest5K")) {
+    fail("shareable personal-best award is missing from the feed payload");
+  }
+  if (post.activity.recognitions.some(award => award.badgeId === "fourWeekRhythm")) {
+    fail("private activity milestone leaked into another runner's feed payload");
+  }
 
   const search = await request("/social/people/search?q=Avery");
   const activePerson = search.people.find(person => person.displayName === "Avery Runner");
@@ -253,6 +262,9 @@ const request = async (path, options = {}, expected = [200]) => {
   });
   const sharedPost = await shareResponse.json();
   if (!shareResponse.ok || sharedPost.activity?.id !== activity.id) fail(`activity sharing failed: ${JSON.stringify(sharedPost)}`);
+  if (!sharedPost.activity?.recognitions?.some(award => award.badgeId === "fourWeekRhythm")) {
+    fail("owner private activity milestone is missing from the owner's activity payload");
+  }
 
   console.log("[e2e] social: server mutations verified.");
 })().catch(error => { console.error(error); process.exit(1); });

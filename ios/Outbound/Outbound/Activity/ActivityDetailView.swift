@@ -22,6 +22,7 @@ struct ActivityDetailView: View {
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
     @EnvironmentObject var gearStore: GearStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
+    @EnvironmentObject private var recognitionStore: RecognitionStore
     @EnvironmentObject private var communityRouteStore: CommunityRouteStore
     @EnvironmentObject private var tooltipCoordinator: TooltipCoordinator
     @State private var shareURL: URL?
@@ -66,6 +67,10 @@ struct ActivityDetailView: View {
     private var currentActivity: SavedActivity {
         guard usesStoredActivity else { return activity }
         return activityStore.activity(id: activity.id) ?? activity
+    }
+
+    private var activityRecognitions: [ActivityRecognitionDisplay] {
+        recognitionStore.activityDisplays(for: currentActivity.id)
     }
 
     private var unitSystem: MeasurementUnitSystem { measurementPreferences.unitSystem }
@@ -354,6 +359,12 @@ struct ActivityDetailView: View {
         }
         .onAppear {
             selectFirstLocatedPhotoIfNeeded()
+            if !activityRecognitions.isEmpty {
+                track(.init(.activityRecognitionViewed, properties: [
+                    .sourceType: .string(routePublicationEntrySource),
+                    .countBucket: .string(ProductAnalyticsBucket.count(activityRecognitions.count)),
+                ]))
+            }
             if displayedKilocalories != nil, !hasTrackedCalorieExposure {
                 hasTrackedCalorieExposure = true
                 track(.init(.featureExposed, properties: [
@@ -405,7 +416,13 @@ struct ActivityDetailView: View {
 
                 ScrollView(showsIndicators: sheetDetent == .expanded) {
                     VStack(spacing: 0) {
-                        if let supplementalContent { supplementalContent }
+                        if let supplementalContent {
+                            supplementalContent
+                        }
+                        if usesStoredActivity, !activityRecognitions.isEmpty {
+                            RecognitionActivitySection(previews: activityRecognitions)
+                                .padding(.top, 14)
+                        }
                         statsHeroSection
                         if currentActivity.activityEventID != nil { sharedActivitySection }
                         if showsPrivateDetails, showsMetadataSection { metadataSection }

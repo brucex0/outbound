@@ -9,6 +9,9 @@ import { getPrismaClient } from "../services/prisma.js";
 import type { AppEnv } from "../types/hono.js";
 import { deliverPushNotification } from "../services/pushNotifications.js";
 import {
+  activityRecognitionKey,
+  activityRecognitionsForActivities,
+  type ActivityRecognitionPayload,
   awardRecognition,
   evaluateGoodTeammate,
   recognitionAwards,
@@ -209,12 +212,24 @@ async function socialHome(c: Context<AppEnv>) {
     && lastFeedTimestamp
     ? encodeFeedCursor(lastFeedTimestamp, lastFeedPost.id)
     : null;
+  const activityRecognitionSources = feedPosts.flatMap((post) => (
+    post.activity?.clientActivityId
+      ? [{ userId: post.userId, clientActivityId: post.activity.clientActivityId }]
+      : []
+  ));
+  const activityRecognitions = await activityRecognitionsForActivities(activityRecognitionSources, user.id);
 
   return c.json({
     upcomingRuns: upcomingRuns.map((activity) => activityEventPayload(activity, user.id, connections)),
     pastEvents: pastEvents.map((activity) => activityEventPayload(activity, user.id, connections)),
     groups: memberships.map((membership) => ({ ...membership.group, role: membership.role })),
-    posts: await Promise.all(feedPosts.map((post) => postPayload(post, user.id))),
+    posts: await Promise.all(feedPosts.map((post) => postPayload(
+      post,
+      user.id,
+      activityRecognitions.get(post.activity?.clientActivityId
+        ? activityRecognitionKey(post.userId, post.activity.clientActivityId)
+        : "") ?? [],
+    ))),
     invitations: invitations.map((invitation) => ({ id: invitation.id, kind: "activityEvent", title: invitation.activityEvent?.title ?? "Activity invitation", sender: compactPerson(invitation.sender), objectId: invitation.activityEventId })),
     nextFeedCursor,
   });
@@ -1215,6 +1230,7 @@ const socialActivitySelect = {
   elevationM: true,
   avgPace: true,
   energyKilocalories: true,
+  clientActivityId: true,
   companionType: true,
   routeBlob: true,
   routeMetadata: true,
@@ -1275,7 +1291,17 @@ const socialPostInclude = {
   _count: { select: { comments: true } },
 } as const;
 
-async function postPayload(post: any, currentUserId: string) {
+async function postPayload(
+  post: any,
+  currentUserId: string,
+  recognitions?: ActivityRecognitionPayload[],
+) {
+  const resolvedRecognitions = recognitions ?? (post.activity?.clientActivityId
+    ? (await activityRecognitionsForActivities([{
+        userId: post.userId,
+        clientActivityId: post.activity.clientActivityId,
+      }], currentUserId)).get(activityRecognitionKey(post.userId, post.activity.clientActivityId)) ?? []
+    : []);
   const activity = post.activity
     ? {
         ...post.activity,
@@ -1287,6 +1313,7 @@ async function postPayload(post: any, currentUserId: string) {
           post.activity.photos,
           post.activity._count?.photos ?? post.activity.photos.length,
         ),
+        recognitions: resolvedRecognitions,
       }
     : null;
   return {

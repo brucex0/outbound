@@ -1114,9 +1114,20 @@ struct SocialHomeView: View {
         ])
     }
 
-    private func milestone(for activity: TogetherActivityDTO, isCurrentUser: Bool) -> RecognitionPreview? {
-        guard isCurrentUser, let activityID = UUID(uuidString: activity.id) else { return nil }
-        return recognitionStore.topRecognition(for: activityID)
+    private func milestone(for activity: TogetherActivityDTO, isCurrentUser: Bool) -> ActivityRecognitionDisplay? {
+        let sharedRecognition: ActivityRecognitionDisplay? = activity.recognitions?.first.flatMap { recognition in
+            guard let display = recognitionStore.display(for: recognition.badgeId)
+                    ?? socialRecognitionStore.display(for: recognition.badgeId) else { return nil }
+            return ActivityRecognitionDisplay(
+                id: display.id,
+                title: display.title,
+                symbolName: display.symbolName,
+                guideLine: display.guideLine,
+                earnedAt: recognition.earnedAt
+            )
+        }
+        guard isCurrentUser, let activityID = UUID(uuidString: activity.id) else { return sharedRecognition }
+        return recognitionStore.activityDisplays(for: activityID).first ?? sharedRecognition
     }
 
     private func toggleCheer(on post: TogetherPostDTO) async {
@@ -3414,6 +3425,7 @@ private struct SocialPeopleSearchRow: View {
 struct SocialPersonProfileView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
+    @EnvironmentObject private var recognitionStore: RecognitionStore
     let person: TogetherPersonDTO
     var username: String? = nil
     @State private var sharedRecognitions: [RecognitionAwardDTO] = []
@@ -3474,6 +3486,11 @@ struct SocialPersonProfileView: View {
                             OutboundCard {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 4) {
+                                        if let recognition = post.activity?.recognitions?.first,
+                                           let milestone = recognitionStore.display(for: recognition.badgeId)
+                                                ?? socialRecognitionStore.display(for: recognition.badgeId) {
+                                            RecognitionPill(preview: milestone, compact: true)
+                                        }
                                         Text(post.activity?.title ?? String(localized: "Run")).font(.headline).foregroundStyle(.primary)
                                         Text(post.activityTimestamp.formatted(date: .abbreviated, time: .shortened))
                                             .font(.caption).foregroundStyle(.secondary)
@@ -3530,6 +3547,7 @@ private struct SocialActivityCardNavigation: ViewModifier {
 private struct SocialActivityDetailView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
+    @EnvironmentObject private var recognitionStore: RecognitionStore
     let post: TogetherPostDTO
     @State private var showsComments = false
     @State private var showsCheers = false
@@ -3552,6 +3570,8 @@ private struct SocialActivityDetailView: View {
                 supplementalContent: AnyView(socialCard),
                 bottomContent: AnyView(socialCompanionCard)
             )
+            .environmentObject(recognitionStore)
+            .environmentObject(socialRecognitionStore)
             .sheet(isPresented: $showsCheers) {
                 SocialCheersListView(post: currentPost)
                     .presentationDetents([.medium, .large])
@@ -3585,6 +3605,7 @@ private struct SocialActivityDetailView: View {
 
     private var socialCard: some View {
         VStack(alignment: .leading, spacing: 14) {
+            milestoneSection
             SocialProfileLink(person: currentPost.user, entrySource: "social_activity_detail") {
                 HStack(spacing: 12) {
                     SocialAvatar(name: currentPost.user.displayName, avatarURL: currentPost.user.avatarUrl)
@@ -3611,6 +3632,62 @@ private struct SocialActivityDetailView: View {
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 16)
+    }
+
+    @ViewBuilder
+    private var milestoneSection: some View {
+        let previews = activityMilestones
+        if !previews.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(String(
+                    localized: "recognition.activity.section_title",
+                    defaultValue: "Milestones earned"
+                ))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+
+                ForEach(previews) { preview in
+                    HStack(alignment: .top, spacing: 12) {
+                        ActivityRecognitionOrb(preview: preview, size: 38)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(preview.title)
+                                .font(.subheadline.weight(.semibold))
+                            Text((preview.earnedAt ?? currentPost.activityTimestamp).formatted(date: .abbreviated, time: .omitted))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(preview.guideLine)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .padding(14)
+            .background(Color(.secondarySystemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+    }
+
+    private var activityMilestones: [ActivityRecognitionDisplay] {
+        let sharedPreviews: [ActivityRecognitionDisplay] = (currentPost.activity?.recognitions ?? []).compactMap { recognition in
+            guard let display = recognitionStore.display(for: recognition.badgeId)
+                    ?? socialRecognitionStore.display(for: recognition.badgeId) else { return nil }
+            return ActivityRecognitionDisplay(
+                id: display.id,
+                title: display.title,
+                symbolName: display.symbolName,
+                guideLine: display.guideLine,
+                earnedAt: recognition.earnedAt
+            )
+        }
+        let locallyEarned = currentPost.isCurrentUser
+            ? currentPost.activity.flatMap { UUID(uuidString: $0.id) }.map { recognitionStore.activityDisplays(for: $0) } ?? []
+            : []
+        var seen = Set<String>()
+        return (sharedPreviews + locallyEarned).filter { seen.insert($0.id).inserted }
     }
 
     private var socialActionBar: some View {
