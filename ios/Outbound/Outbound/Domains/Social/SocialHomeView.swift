@@ -952,9 +952,7 @@ struct SocialHomeView: View {
                                     SocialAvatar(name: post.user.displayName, avatarURL: post.user.avatarUrl)
                                     VStack(alignment: .leading) {
                                         Text(post.user.displayName).font(.headline).foregroundStyle(.primary)
-                                        Text(post.activityTimestamp.formatted(.relative(presentation: .named)))
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
+                                        ActivityRecencyText(date: post.activityTimestamp)
                                     }
                                 }
                                 .contentShape(Rectangle())
@@ -2484,9 +2482,7 @@ private struct SocialNotificationActivityView: View {
                             SocialAvatar(name: post.user.displayName, avatarURL: post.user.avatarUrl)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(post.user.displayName).font(.headline)
-                                Text(post.activityTimestamp.formatted(.relative(presentation: .named)))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                ActivityRecencyText(date: post.activityTimestamp)
                             }
                         }
 
@@ -3521,7 +3517,7 @@ struct SocialPersonProfileView: View {
                                             RecognitionPill(preview: milestone, compact: true)
                                         }
                                         Text(post.activity?.title ?? String(localized: "Run")).font(.headline).foregroundStyle(.primary)
-                                        Text(post.activityTimestamp.formatted(date: .abbreviated, time: .shortened))
+                                        Text((post.activity?.startedAt ?? post.createdAt).formatted(date: .abbreviated, time: .shortened))
                                             .font(.caption).foregroundStyle(.secondary)
                                     }
                                     Spacer()
@@ -3651,8 +3647,7 @@ private struct SocialActivityDetailView: View {
                     SocialAvatar(name: currentPost.user.displayName, avatarURL: currentPost.user.avatarUrl)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(currentPost.user.displayName).font(.headline).foregroundStyle(.primary)
-                        Text(currentPost.activityTimestamp.formatted(date: .abbreviated, time: .shortened))
-                            .font(.caption).foregroundStyle(.secondary)
+                        ActivityRecencyText(date: currentPost.activityTimestamp)
                     }
                     Spacer()
                     Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)

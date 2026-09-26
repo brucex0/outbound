@@ -504,7 +504,14 @@ struct TogetherPostDTO: Codable, Identifiable, Sendable {
     let comments: [TogetherCommentDTO]
 
     var activityTimestamp: Date {
-        activity?.startedAt ?? createdAt
+        guard let activity else { return createdAt }
+        if let endedAt = activity.endedAt { return endedAt }
+        if let startedAt = activity.startedAt,
+           let durationSecs = activity.durationSecs,
+           durationSecs > 0 {
+            return startedAt.addingTimeInterval(TimeInterval(durationSecs))
+        }
+        return activity.startedAt ?? createdAt
     }
 }
 
