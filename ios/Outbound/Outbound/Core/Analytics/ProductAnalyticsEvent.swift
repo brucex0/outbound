@@ -402,7 +402,6 @@ enum ProductAnalyticsSchema {
         .subscriptionCustomerCenterOpened: [.entrySource],
         .subscriptionReconciled: [.sourceType, .result],
         .groupSectionExposed: [.entrySource, .participantCountBucket],
-        .groupSectionExposed: [.entrySource, .participantCountBucket],
         .groupOpened: [.entrySource, .selectionType, .participantCountBucket],
         .groupMembershipChanged: [.entrySource, .selectionType, .result, .participantCountBucket],
         .groupCreationStarted: [.entrySource],
