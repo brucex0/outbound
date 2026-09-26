@@ -101,7 +101,6 @@ final class VirtualGuide: NSObject, ObservableObject {
     private var processedWorkoutCueIDs: Set<String> = []
     private var lastWorkoutCueSnapshot: ActiveSessionSnapshot?
 
-    private let maxSnapshotHistory = 240
     private let maxRecentSpokenFingerprints = 4
     private let maxRecentSpokenMessages = 4
     private let maxRecentSpokenRoles = 4
@@ -242,9 +241,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         guard isActive, snapshot.isActive else { return }
 
         snapshotHistory.append(snapshot)
-        if snapshotHistory.count > maxSnapshotHistory {
-            snapshotHistory.removeFirst(snapshotHistory.count - maxSnapshotHistory)
-        }
+        retainRecentLiveGuidanceHistory(&snapshotHistory, through: snapshot.elapsedSeconds)
 
         queueWorkoutInstructions(for: snapshot)
         announceProgressIfNeeded(for: snapshot)

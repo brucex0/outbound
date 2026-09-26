@@ -26,7 +26,7 @@ These values are implemented in `Guide/LiveGuidanceModels.swift`, `Guide/Virtual
 | `early_overpace` | The first sustained running pace is faster than the active target or personal reference. | 30-second average, 75-240 active seconds, faster by the target's tolerance; suppressed on meaningful grade. | Once per session. |
 | `pace_above_target` | Pace is persistently faster than a pace-enabled non-recovery workout segment. | At least 45 seconds into the segment; 30-second average exceeds the faster edge of its personalized pace band; suppressed on meaningful grade. | Once per segment. |
 | `pace_below_target` | Pace is persistently slower than a segment that explicitly allows a lower-bound cue. | At least 45 seconds into the segment; 30-second average exceeds the slower edge; suppressed on meaningful grade. Warmup, recovery, and cooldown intentionally have no slower edge. | Once per segment. |
-| `pace_instability` | Recent pace varies enough that a smoother rhythm is more useful than a faster/slower command. | Pace-enabled segment, 120 seconds into the segment, at least 8 valid samples over 90 seconds, 90th-to-10th percentile spread at least 60 s/km or 15% of target; suppressed on meaningful grade. | At most every 10 minutes. |
+| `pace_instability` | Pace shifted sharply or varies enough that a sustainable rhythm is more useful than a faster/slower command. | Any session outside work/recovery workout steps after 20 active seconds; at least 8 valid pace samples over the last 90 active seconds; 90th-to-10th percentile spread at least 60 s/km or 15% of target/reference pace; suppressed on meaningful grade. | At most every 3 minutes. |
 | `target_locked` | The runner has held a target accurately and smoothly long enough to reinforce it. | Segment opts in; at least 90 seconds in; 60-second average within 12 s/km and 90th-to-10th percentile spread no more than 25 s/km; suppressed on meaningful grade. | Once per segment. |
 | `pace_drift` | Recent pace slowed materially versus the runner's own earlier pace. | After 5 active minutes; recent 30-second average is 18 s/km slower in Coach Me or 25 s/km slower in Responsive than the preceding comparison window; not used in work/recovery or on meaningful grade. | At most every 10 minutes. |
 | `rhythm_recovery` | A measured correction improved or stabilized pace relative to the cue target. | Evaluated 75 seconds after an eligible pace cue; current target error is at most 10 s/km, or improved by at least 8 s/km. | Once per helpful evaluated correction. |
@@ -47,7 +47,7 @@ These values are implemented in `Guide/LiveGuidanceModels.swift`, `Guide/Virtual
 | `challenge_complete` | The selected challenge duration elapsed after its cue was spoken. | Challenge start was spoken and the selected duration elapsed. | Once per selected challenge. |
 | `workout_instruction` | A selected standalone workout reached a catalog-authored execution boundary. | Exact instruction ID plus a distance or elapsed-time trigger carried in the cached workout; the server-issued phrase plan carries the matching ID and trigger. | Once per instruction ID; stale crossings are skipped. |
 
-Pace values are accepted only from 60 through 3,600 seconds per kilometer. Rolling pace needs at least four valid samples. The director retains up to 240 active snapshots.
+Pace values are accepted only from 60 through 3,600 seconds per kilometer. Rolling pace needs at least four valid samples. The guide retains 240 active seconds of history so accelerated run simulations preserve the same detector windows as live sessions.
 
 ## Typed Workout Targets
 
@@ -80,7 +80,7 @@ Route guidance has priority over ordinary coaching. A live route cue also forces
 ## Cooldowns, Outcomes, And Suppression
 
 - Quiet has no automatic coaching cooldown and therefore emits no ordinary detector moments. Explicit challenges, progress, selected-workout instructions, workout transitions, route/safety, and auto-pause status remain separate system behaviors.
-- Responsive permits a new ordinary coaching moment after 180 seconds.
+- Responsive permits a new ordinary coaching moment after 180 seconds. Large pace shifts are detected during this cooldown and queued for speech when the audio path is available.
 - Coach Me permits one after 90 seconds.
 - Spoken pace corrections are evaluated after their delay. Only measured improvement or stabilization can produce `rhythm_recovery`.
 - Responsive may locally suppress a moment type that repeatedly receives unhelpful outcome evidence.

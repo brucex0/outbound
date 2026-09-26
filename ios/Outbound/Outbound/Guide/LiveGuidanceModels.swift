@@ -227,6 +227,22 @@ struct LiveGuidanceDirectorUpdate {
     let evaluatedCues: [LiveGuidanceCueRecord]
 }
 
+func retainRecentLiveGuidanceHistory(
+    _ snapshots: inout [ActiveSessionSnapshot],
+    through elapsedSeconds: Int
+) {
+    let earliestElapsedSecond = elapsedSeconds - 240
+    let expiredCount = snapshots.prefix {
+        $0.elapsedSeconds < earliestElapsedSecond
+    }.count
+    if expiredCount > 0 {
+        snapshots.removeFirst(expiredCount)
+    }
+    if snapshots.count > 18_000 {
+        snapshots.removeFirst(snapshots.count - 18_000)
+    }
+}
+
 @MainActor
 final class LiveGuidanceDirector {
     private var contract: CoachingContract = .responsive
@@ -273,9 +289,7 @@ final class LiveGuidanceDirector {
         intent: SessionIntent?
     ) -> LiveGuidanceDirectorUpdate {
         history.append(snapshot)
-        if history.count > 240 {
-            history.removeFirst(history.count - 240)
-        }
+        retainRecentLiveGuidanceHistory(&history, through: snapshot.elapsedSeconds)
 
         let evaluation = evaluatePendingCues(at: snapshot)
         if let recovery = evaluation.recoveryMoment {
@@ -296,15 +310,25 @@ final class LiveGuidanceDirector {
             return LiveGuidanceDirectorUpdate(nextMoment: raceBoundary, evaluatedCues: evaluation.records)
         }
 
+        let athleteReferencePace = athleteReferencePace(from: profile)
+        let activeSegment = intent?.activeCoachingSegment(at: snapshot.elapsedSeconds)
+        let gradePercent = rollingGradePercent(through: snapshot.elapsedSeconds)
+        if contract != .quiet, let paceShift = paceInstabilityMoment(
+            snapshot: snapshot,
+            activeSegment: activeSegment,
+            athleteReferencePace: athleteReferencePace,
+            gradePercent: gradePercent
+        ) {
+            lastMomentElapsedSeconds = snapshot.elapsedSeconds
+            return LiveGuidanceDirectorUpdate(nextMoment: paceShift, evaluatedCues: evaluation.records)
+        }
+
         guard let cooldown = contract.coachingCooldownSeconds,
               lastMomentElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= cooldown }) ?? true
         else {
             return LiveGuidanceDirectorUpdate(nextMoment: nil, evaluatedCues: evaluation.records)
         }
 
-        let athleteReferencePace = athleteReferencePace(from: profile)
-        let activeSegment = intent?.activeCoachingSegment(at: snapshot.elapsedSeconds)
-        let gradePercent = rollingGradePercent(through: snapshot.elapsedSeconds)
         let moment = terrainMoment(
             snapshot: snapshot,
             intent: intent,
@@ -327,12 +351,6 @@ final class LiveGuidanceDirector {
             ?? paceDriftMoment(
                 snapshot: snapshot,
                 activeSegment: activeSegment,
-                gradePercent: gradePercent
-            )
-            ?? paceInstabilityMoment(
-                snapshot: snapshot,
-                activeSegment: activeSegment,
-                athleteReferencePace: athleteReferencePace,
                 gradePercent: gradePercent
             )
             ?? targetLockedMoment(
@@ -554,27 +572,28 @@ final class LiveGuidanceDirector {
         gradePercent: Double?
     ) -> DetectedLiveGuidanceMoment? {
         guard !suppressedMomentTypes.contains(.paceInstability),
-              let activeSegment,
-              activeSegment.elapsedSeconds >= 120,
+              activeSegment?.target.phase != .work,
+              activeSegment?.target.phase != .recovery,
+              (activeSegment?.elapsedSeconds ?? snapshot.elapsedSeconds) >= 20,
               !isMeaningfulGrade(gradePercent),
-              lastInstabilityElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= 600 }) ?? true,
-              let target = resolvedPaceTarget(
-                for: activeSegment,
-                athleteReferencePace: athleteReferencePace
-              )
+              lastInstabilityElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= 180 }) ?? true
         else { return nil }
 
         let values = paceValues(from: snapshot.elapsedSeconds - 90, through: snapshot.elapsedSeconds)
         guard values.count >= 8 else { return nil }
         let sorted = values.sorted()
         let spread = percentile(0.9, in: sorted) - percentile(0.1, in: sorted)
-        guard spread >= max(60, target * 0.15) else { return nil }
+        let referencePace = activeSegment.flatMap {
+            resolvedPaceTarget(for: $0, athleteReferencePace: athleteReferencePace)
+        } ?? athleteReferencePace
+        let spreadThreshold = referencePace.map { max(60, $0 * 0.15) } ?? 60
+        guard spread >= spreadThreshold else { return nil }
         lastInstabilityElapsedSeconds = snapshot.elapsedSeconds
         return DetectedLiveGuidanceMoment(
             type: .paceInstability,
             detectedAtElapsedSeconds: snapshot.elapsedSeconds,
             baselinePaceSecondsPerKilometer: values.reduce(0, +) / Double(values.count),
-            targetPaceSecondsPerKilometer: target
+            targetPaceSecondsPerKilometer: referencePace
         )
     }
 
