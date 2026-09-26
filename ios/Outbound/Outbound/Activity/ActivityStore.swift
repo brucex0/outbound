@@ -158,6 +158,132 @@ final class ActivityStore: ObservableObject {
         return importedIDs
     }
 
+    // MARK: - Strava export import
+
+    /// Saves runner-confirmed activities read from a Strava data export.
+    ///
+    /// Imported activities keep their vendor identifier in `source.externalID`, so re-importing the
+    /// same export never duplicates history. They are saved as ordinary local activities and then
+    /// synchronized like any other, but they are never treated as a just-recorded session.
+    func importStravaActivities(_ candidates: [StravaImportCandidate]) async -> StravaImportOutcome {
+        ActivityDiagnosticLog.notice(
+            .persistence,
+            "Strava import persistence started candidates=\(ActivityDiagnosticLog.countBucket(candidates.count))"
+        )
+        var importedIDs: Set<String> = []
+        var failedIDs: Set<String> = []
+        var knownExternalIDs = Set(activities.compactMap(\.source.externalID))
+
+        for candidate in candidates {
+            guard !knownExternalIDs.contains(candidate.externalID) else {
+                failedIDs.insert(candidate.externalID)
+                continue
+            }
+            knownExternalIDs.insert(candidate.externalID)
+
+            let activityType = candidate.sport.activityType
+            let duration = max(1, candidate.durationSeconds)
+            let distance = max(0, candidate.distanceMeters ?? 0)
+            let endedAt = candidate.startedAt.addingTimeInterval(TimeInterval(duration))
+            let locations = Self.importedLocations(for: candidate)
+            let summary = ActivitySummary(
+                startedAt: candidate.startedAt,
+                endedAt: endedAt,
+                durationSecs: duration,
+                distanceM: distance,
+                avgPace: activityType.plausibleAveragePace(
+                    durationSeconds: Double(duration),
+                    distanceMeters: distance
+                ),
+                elevationGainM: candidate.elevationGainMeters ?? 0,
+                healthMetrics: Self.importedHeartRateMetrics(for: candidate),
+                trackPoints: locations.points,
+                trackSegmentStartIndices: locations.segmentStarts
+            )
+
+            do {
+                _ = try await save(
+                    summary: summary,
+                    photos: [],
+                    activityType: activityType,
+                    reflection: nil,
+                    title: candidate.resolvedTitle(for: activityType),
+                    source: ActivitySourceMetadata(
+                        kind: .strava,
+                        displayName: Self.stravaSourceDisplayName,
+                        deviceName: nil,
+                        externalID: candidate.externalID,
+                        importedAt: Date()
+                    )
+                )
+                importedIDs.insert(candidate.externalID)
+            } catch {
+                failedIDs.insert(candidate.externalID)
+                ActivityDiagnosticLog.error(
+                    .persistence,
+                    "Strava import persistence failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+                )
+                continue
+            }
+        }
+
+        ActivityDiagnosticLog.notice(
+            .persistence,
+            "Strava import persistence completed imported=\(ActivityDiagnosticLog.countBucket(importedIDs.count)) failed=\(ActivityDiagnosticLog.countBucket(failedIDs.count))"
+        )
+        return StravaImportOutcome(importedIDs: importedIDs, failedIDs: failedIDs)
+    }
+
+    /// External identifiers already present locally, used to exclude known duplicates from review.
+    var importedStravaExternalIDs: Set<String> {
+        Set(activities.compactMap { $0.source.kind == .strava ? $0.source.externalID : nil })
+    }
+
+    private static let stravaSourceDisplayName = "Strava"
+
+    private static func importedHeartRateMetrics(for candidate: StravaImportCandidate) -> ActivityHealthMetrics? {
+        guard candidate.averageHeartRateBPM != nil || candidate.maxHeartRateBPM != nil else { return nil }
+        return ActivityHealthMetrics(
+            averageHeartRateBPM: candidate.averageHeartRateBPM,
+            maxHeartRateBPM: candidate.maxHeartRateBPM,
+            heartRateSampleCount: 0
+        )
+    }
+
+    /// Rebuilds `CLLocation` samples from parsed file points. Points without a timestamp are spread
+    /// evenly across the activity so the recorded route keeps a usable time axis.
+    private static func importedLocations(
+        for candidate: StravaImportCandidate
+    ) -> (points: [CLLocation], segmentStarts: Set<Int>) {
+        guard candidate.routePoints.count > 1 else { return ([], []) }
+        var points: [CLLocation] = []
+        points.reserveCapacity(candidate.routePoints.count)
+        var segmentStarts: Set<Int> = []
+        let total = candidate.routePoints.count
+        let duration = Double(max(1, candidate.durationSeconds))
+
+        for (index, point) in candidate.routePoints.enumerated() {
+            guard CLLocationCoordinate2DIsValid(
+                CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)
+            ) else { continue }
+            if point.startsNewSegment, !points.isEmpty { segmentStarts.insert(points.count) }
+            let timestamp = point.timestamp
+                ?? candidate.startedAt.addingTimeInterval(duration * Double(index) / Double(total))
+            points.append(
+                CLLocation(
+                    coordinate: CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude),
+                    altitude: point.altitude ?? 0,
+                    horizontalAccuracy: 10,
+                    verticalAccuracy: point.altitude == nil ? -1 : 10,
+                    course: -1,
+                    speed: -1,
+                    timestamp: timestamp
+                )
+            )
+        }
+        return (points, segmentStarts)
+    }
+
     var importedHealthExternalIDs: Set<String> {
         Set(activities.compactMap { activity in
             activity.source.kind == .appleHealth
@@ -1154,7 +1280,47 @@ private extension Array where Element == SavedActivity {
     }
 }
 
+struct StravaImportOutcome: Sendable {
+    let importedIDs: Set<String>
+    let failedIDs: Set<String>
+}
+
+private extension ImportedActivitySport {
+    var activityType: ActivityType {
+        switch self {
+        case .running: .running
+        case .cycling: .cycling
+        case .hiking: .hiking
+        case .walking: .walking
+        case .swimming: .swimming
+        case .strength: .strengthTraining
+        case .mobility: .mobility
+        // Unrecognized vendor sports stay generic rather than being dropped.
+        case .other: .running
+        }
+    }
+}
+
+private extension StravaImportCandidate {
+    func resolvedTitle(for activityType: ActivityType) -> String {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? activityType.stravaImportTitle : trimmed
+    }
+}
+
 private extension ActivityType {
+    var stravaImportTitle: String {
+        switch self {
+        case .running: String(localized: "strava.import.title.run", defaultValue: "Imported Run")
+        case .cycling: String(localized: "strava.import.title.ride", defaultValue: "Imported Ride")
+        case .hiking: String(localized: "strava.import.title.hike", defaultValue: "Imported Hike")
+        case .walking: String(localized: "strava.import.title.walk", defaultValue: "Imported Walk")
+        case .swimming: String(localized: "strava.import.title.swim", defaultValue: "Imported Swim")
+        case .strengthTraining: String(localized: "strava.import.title.strength", defaultValue: "Imported Strength Workout")
+        case .mobility: String(localized: "strava.import.title.mobility", defaultValue: "Imported Mobility Workout")
+        }
+    }
+
     var healthImportTitle: String {
         switch self {
         case .running: String(localized: "health.import.title.run", defaultValue: "Imported Run")

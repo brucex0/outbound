@@ -76,10 +76,10 @@ Why:
 
 Add when sync foundations are stable:
 
-- FIT/TCX import
+- FIT parsing (TCX and GPX import are implemented)
 - FIT/TCX export if needed by target users
-- Strava import/export
-- duplicate detection across HealthKit, Strava, and local recordings
+- Strava export import/export: import is implemented, see `docs/strava-import.md`
+- duplicate detection across HealthKit, Strava, and local recordings: implemented for Strava exports via `source.externalID`
 
 ## Data Model Direction
 
@@ -238,6 +238,6 @@ Implemented locally:
 
 Still future work:
 
-- richer route, heart-rate, cadence, and device-detail ingestion for Apple Health imports, plus Strava, FIT, TCX, and Garmin integrations
+- richer route, heart-rate, cadence, and device-detail ingestion for Apple Health imports, plus FIT parsing and Garmin integrations
 - true HR-zone distributions from samples rather than saved summaries/estimates
 - imported cadence ingestion and live cadence sensor support

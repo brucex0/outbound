@@ -13,6 +13,7 @@ struct MainTabView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var healthAuthorizationStore: HealthAuthorizationStore
     @EnvironmentObject private var healthImportStore: HealthImportStore
+    @EnvironmentObject private var stravaImportStore: StravaImportStore
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var connectivityStore: ConnectivityStore
     @EnvironmentObject private var workoutNotificationScheduler: WorkoutNotificationScheduler
@@ -69,6 +70,12 @@ struct MainTabView: View {
             HealthWorkoutImportView()
                 .environmentObject(activityStore)
                 .environmentObject(healthImportStore)
+                .environmentObject(measurementPreferences)
+        }
+        .sheet(isPresented: $stravaImportStore.isPresented) {
+            StravaImportView()
+                .environmentObject(activityStore)
+                .environmentObject(stravaImportStore)
                 .environmentObject(measurementPreferences)
         }
         .onAppear {

@@ -17,6 +17,7 @@ struct OutboundApp: App {
     @StateObject private var appNavigationStore = AppNavigationStore()
     @StateObject private var healthAuthorizationStore = HealthAuthorizationStore()
     @StateObject private var healthImportStore = HealthImportStore()
+    @StateObject private var stravaImportStore = StravaImportStore()
     @StateObject private var dailyCheckInStore = DailyCheckInStore()
     @StateObject private var musicStore = MusicStore()
     @StateObject private var recognitionStore: RecognitionStore
@@ -184,6 +185,7 @@ struct OutboundApp: App {
             .environmentObject(healthAuthorizationStore)
             .environmentObject(phoneWorkoutCoordinator)
             .environmentObject(healthImportStore)
+            .environmentObject(stravaImportStore)
             .environmentObject(dailyCheckInStore)
             .environmentObject(musicStore)
             .environmentObject(recognitionStore)

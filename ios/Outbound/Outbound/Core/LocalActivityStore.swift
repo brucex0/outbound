@@ -819,6 +819,7 @@ nonisolated struct ActivitySourceMetadata: Codable, Hashable {
         case appleHealth
         case garminViaHealth
         case manual
+        case strava
         case importedFile
     }
 

@@ -818,6 +818,7 @@ struct ActivityDetailView: View {
         case .appleHealth: return String(localized: "activity.source.apple_health", defaultValue: "Imported from Apple Health")
         case .garminViaHealth: return String(localized: "activity.source.garmin_via_health", defaultValue: "Garmin via Apple Health")
         case .manual: return String(localized: "activity.source.manual", defaultValue: "Manual entry")
+        case .strava: return String(localized: "activity.source.strava", defaultValue: "Imported from Strava")
         case .importedFile: return String(localized: "activity.source.imported_file", defaultValue: "Imported file")
         }
     }
@@ -828,7 +829,7 @@ struct ActivityDetailView: View {
         case .outbound: return "iphone"
         case .appleHealth, .garminViaHealth: return "heart.text.square.fill"
         case .manual: return "square.and.pencil"
-        case .importedFile: return "doc.badge.arrow.up"
+        case .strava, .importedFile: return "doc.badge.arrow.up"
         }
     }
 

@@ -50,7 +50,11 @@ let package = Package(
                 "Guide/GuideTemplate.swift",
                 "Guide/SessionAnalysisProvider.swift",
                 "Guide/AppleFoundationModelSessionAnalysisProvider.swift",
-                "Guide/VirtualGuide.swift"
+                "Guide/VirtualGuide.swift",
+                "Integrations/Import/ActivityFileParser.swift",
+                "Integrations/Import/ImportArchiveReader.swift",
+                "Integrations/Import/StravaExportImporter.swift",
+                "Integrations/Import/StravaImportModels.swift"
             ]
         ),
         .testTarget(

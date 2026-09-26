@@ -3536,6 +3536,7 @@ private struct SimplifiedSettingsView: View {
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var cycleAwareStore: CycleAwareStore
+    @EnvironmentObject private var stravaImportStore: StravaImportStore
     @Binding var trainingProfileSex: TrainingProfileSex?
     @State private var confirmsSignOut = false
     @State private var confirmsAccountDeletion = false
@@ -3657,6 +3658,19 @@ private struct SimplifiedSettingsView: View {
                     AppleHealthSettingsView()
                 } label: {
                     Label("Apple Health", systemImage: "heart.text.square")
+                }
+                Button {
+                    stravaImportStore.present()
+                } label: {
+                    LabeledContent {
+                        Text(String(localized: "strava.import.settings.action", defaultValue: "Import"))
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        Label(
+                            String(localized: "strava.import.settings.title", defaultValue: "Import activity history"),
+                            systemImage: "square.and.arrow.down"
+                        )
+                    }
                 }
             }
             Section {

@@ -1159,7 +1159,7 @@ private struct SourceBadge: View {
         case .outbound: return "iphone"
         case .appleHealth, .garminViaHealth: return "heart.text.square.fill"
         case .manual: return "square.and.pencil"
-        case .importedFile: return "doc.badge.arrow.up"
+        case .strava, .importedFile: return "doc.badge.arrow.up"
         }
     }
 }

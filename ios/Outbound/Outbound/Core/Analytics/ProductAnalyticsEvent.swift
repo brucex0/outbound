@@ -221,6 +221,8 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case healthConnectionCompleted = "health_connection_completed"
     case healthImportPromptViewed = "health_import_prompt_viewed"
     case healthImportCompleted = "health_import_completed"
+    case stravaImportPromptViewed = "strava_import_prompt_viewed"
+    case stravaImportCompleted = "strava_import_completed"
     case feedbackReporterOpened = "feedback_reporter_opened"
     case feedbackReportSubmitted = "feedback_report_submitted"
     case preferenceChanged = "preference_changed"
@@ -518,6 +520,8 @@ enum ProductAnalyticsSchema {
         .healthConnectionCompleted: [.result],
         .healthImportPromptViewed: [.sourceType],
         .healthImportCompleted: [.result, .sourceType, .selectionType, .control, .countBucket],
+        .stravaImportPromptViewed: [.sourceType],
+        .stravaImportCompleted: [.result, .sourceType, .selectionType, .control, .countBucket],
         .feedbackReporterOpened: [.entrySource, .result],
         .feedbackReportSubmitted: [.result, .selectionType],
         .preferenceChanged: [.changeType, .selectionType]

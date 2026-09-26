@@ -74,6 +74,7 @@ Primary flow:
 | Device, wearable, HealthKit, and third-party app integration planning | `docs/device-integration.md` | Feasible integration paths, vendor/app coverage, current signing constraints, and recommended rollout order |
 | Safety, trusted contacts, live location sharing, and route privacy | `docs/safety-live-tracking.md` | Product scope, privacy rules, backend shape, iOS modules, and rollout plan for live tracking |
 | Runner utilities, gear, PRs, race predictions, indoor/manual sessions, and source attribution | `docs/runner-utilities.md` | Practical runner feature sequencing, data model direction, UX surfaces, and metric rules |
+| Strava history import, accepted activity files, ZIP/gzip reading, and deduplication | `docs/strava-import.md` | User-driven export flow, supported formats, distance-unit inference, file map, and known gaps |
 | Progress comparisons, trend ranges, training load, insight eligibility, and grounded explanations | `docs/progress-insights.md` | V1-V4 Progress contract, thresholds, privacy boundaries, and extension rules |
 | Apple Music, Spotify, playback UX, and music-provider rollout planning | `docs/music-integration.md` | Concrete music integration plan, provider constraints, Swift module boundaries, plist/auth changes, and phased delivery |
 | Motivation UX, daily guide loops, comeback flows, and home-screen engagement | `docs/motivation-ux.md` | UX spec for daily spark, compact `Now` action, momentum states, and post-activity reflection |
