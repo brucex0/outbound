@@ -155,4 +155,26 @@
     <string name="onboarding_profile_required_title">Datos privados para tu plan</string>
     <string name="onboarding_profile_required_subtitle">La fecha de nacimiento, el sexo asignado al nacer y el peso son necesarios para personalizar el plan con seguridad y calcular las calorías. Puedes introducirlos o importar los datos disponibles de Health Connect. La altura es opcional.</string>
     <string name="onboarding_profile_required_error">Añade una fecha de nacimiento válida, el sexo asignado al nacer y el peso para continuar.</string>
+    <string name="plan_builder_goal_quick_replies">Elige una respuesta rápida o describe el objetivo con tus propias palabras.</string>
+    <string name="plan_builder_goal_acknowledgement">Entendido. Completemos los detalles.</string>
+    <string name="plan_builder_goal_change">Cambiar objetivo</string>
+    <string name="plan_builder_conversation_event_distance">¿Qué distancia tiene la carrera?</string>
+    <string name="plan_builder_conversation_event_date">¿Cuándo es la carrera?</string>
+    <string name="plan_builder_conversation_event_intent">¿Qué resultado te gustaría buscar?</string>
+    <string name="plan_builder_conversation_target_time">¿Qué tiempo quieres alcanzar?</string>
+    <string name="plan_builder_conversation_review_horizon">¿Cuándo quieres revisar tu progreso?</string>
+    <string name="plan_builder_smart_setup_title">Ya conozco tu ritmo de entrenamiento</string>
+    <string name="plan_builder_smart_setup_subtitle">Según tus actividades recientes. Confirma si tu rutina actual sigue siendo parecida.</string>
+    <string name="plan_builder_smart_setup_evidence">Según %1$d sesiones en %2$d semanas recientes</string>
+    <string name="plan_builder_smart_setup_activities">Actividades: %1$s</string>
+    <string name="plan_builder_smart_setup_rhythm">Ritmo semanal: %1$d sesiones · hasta %2$d min</string>
+    <string name="plan_builder_smart_setup_days">Días habituales: %1$s</string>
+    <string name="plan_builder_smart_setup_days_none">Sin días habituales</string>
+    <string name="plan_builder_smart_setup_use">Usar este ajuste</string>
+    <string name="plan_builder_smart_setup_adjust">Ajustarlo</string>
+    <string name="plan_builder_change_answer">Cambiar</string>
+    <string name="plan_builder_event_distance_answer">Distancia de la carrera: %1$s</string>
+    <string name="plan_builder_event_date_answer">Fecha de la carrera: %1$s</string>
+    <string name="plan_builder_event_intent_answer">Enfoque para la carrera: %1$s</string>
+    <string name="plan_builder_target_time_answer">Tiempo objetivo: %1$d min</string>
 </resources>

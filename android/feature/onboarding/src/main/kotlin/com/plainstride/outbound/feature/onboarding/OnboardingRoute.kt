@@ -25,6 +25,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
@@ -87,6 +88,12 @@ fun OnboardingRoute(
         exploreFirst = viewModel::exploreFirst,
         importHealth = viewModel::importHealth,
         interpretGoal = viewModel::interpretGoal,
+        chooseObjective = viewModel::chooseObjective,
+        reviseObjective = viewModel::reviseObjective,
+        acceptSuggestedSetup = viewModel::acceptSuggestedSetup,
+        adjustSuggestedSetup = viewModel::adjustSuggestedSetup,
+        trackAnswerEdited = viewModel::trackAnswerEdited,
+        confirmObservedBaseline = viewModel::confirmObservedBaseline,
     )
 }
 
@@ -100,6 +107,12 @@ private fun OnboardingScreen(
     exploreFirst: () -> Unit,
     importHealth: () -> Unit,
     interpretGoal: (String) -> Unit,
+    chooseObjective: (PlanObjective) -> Unit,
+    reviseObjective: () -> Unit,
+    acceptSuggestedSetup: () -> Unit,
+    adjustSuggestedSetup: () -> Unit,
+    trackAnswerEdited: (String) -> Unit,
+    confirmObservedBaseline: (Boolean) -> Unit,
 ) {
     val draft = state.draft
     if (state.loading || draft == null) {
@@ -154,9 +167,9 @@ private fun OnboardingScreen(
             when (draft.step) {
                 OnboardingStep.Identity -> IdentityStep(draft, state.account?.verifiedEmail.isNullOrBlank(), update)
                 OnboardingStep.Welcome -> WelcomeStep()
-                OnboardingStep.Objective -> ObjectiveStep(draft, state, update, interpretGoal)
-                OnboardingStep.Activities -> ActivitiesStep(draft, update)
-                OnboardingStep.Baseline -> BaselineStep(draft, state.intakeContext, update)
+                OnboardingStep.Objective -> ObjectiveStep(draft, state, update, interpretGoal, chooseObjective, reviseObjective, trackAnswerEdited)
+                OnboardingStep.Activities -> ActivitiesStep(draft, state.intakeContext?.suggestedSetup, update, acceptSuggestedSetup, adjustSuggestedSetup, trackAnswerEdited)
+                OnboardingStep.Baseline -> BaselineStep(draft, state.intakeContext, update, confirmObservedBaseline)
                 OnboardingStep.Week -> WeekStep(draft, update)
                 OnboardingStep.Profile -> ProfileStep(
                     draft, state.healthImporting, state.healthConnected, state.recentHealthActivityCount, update, importHealth,
@@ -167,7 +180,8 @@ private fun OnboardingScreen(
             }
         }
 
-        Column(Modifier.padding(horizontal = 24.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        val showSuggestedSetup = draft.step == OnboardingStep.Activities && state.intakeContext?.suggestedSetup?.confidence == "high" && draft.observedBaselineConfirmed != false
+        if (!showSuggestedSetup) Column(Modifier.padding(horizontal = 24.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Button(
                 onClick = next,
                 enabled = !state.saving && !state.healthImporting && draft.canContinue(state.account?.verifiedEmail.isNullOrBlank(), state.intakeContext),
@@ -221,54 +235,89 @@ private fun ObjectiveStep(
     state: OnboardingUiState,
     update: ((OnboardingDraft) -> OnboardingDraft) -> Unit,
     interpretGoal: (String) -> Unit,
+    chooseObjective: (PlanObjective) -> Unit,
+    reviseObjective: () -> Unit,
+    trackAnswerEdited: (String) -> Unit,
 ) {
     Heading(R.string.plan_builder_objective_title, R.string.plan_builder_objective_subtitle)
-    val goalMessage = remember { mutableStateOf("") }
-    Card {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(stringResource(R.string.plan_builder_coach_prompt_title), style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(
-                goalMessage.value,
-                { goalMessage.value = it },
-                Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.plan_builder_coach_prompt_placeholder)) },
-                minLines = 2,
-            )
-            Button(
-                onClick = { interpretGoal(goalMessage.value) },
-                enabled = goalMessage.value.isNotBlank() && !state.interpretingGoal && state.intakeContext != null,
-            ) {
-                if (state.interpretingGoal) CircularProgressIndicator(Modifier.height(20.dp), strokeWidth = 2.dp)
-                else Text(stringResource(R.string.plan_builder_coach_prompt_action))
-            }
-            state.interpretationReply?.let {
-                Text(
-                    if (it == "fallback") stringResource(R.string.plan_builder_coach_prompt_error) else it,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    val goalMessage = remember(draft.objectiveConfirmed, draft.goalInputText) { mutableStateOf(draft.goalInputText.orEmpty()) }
+    if (!draft.objectiveConfirmed) {
+        Text(stringResource(R.string.plan_builder_goal_quick_replies), style = MaterialTheme.typography.titleMedium)
+        ChoiceGrid(PlanObjective.entries, { stringResource(it.label) }, { false }, chooseObjective)
+        Card {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(R.string.plan_builder_coach_prompt_title), style = MaterialTheme.typography.titleMedium)
+                OutlinedTextField(
+                    goalMessage.value,
+                    { goalMessage.value = it },
+                    Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.plan_builder_coach_prompt_placeholder)) },
+                    minLines = 2,
                 )
+                Button(
+                    onClick = { interpretGoal(goalMessage.value) },
+                    enabled = goalMessage.value.isNotBlank() && !state.interpretingGoal && state.intakeContext != null,
+                ) {
+                    if (state.interpretingGoal) CircularProgressIndicator(Modifier.height(20.dp), strokeWidth = 2.dp)
+                    else Text(stringResource(R.string.plan_builder_coach_prompt_action))
+                }
+                state.interpretationReply?.let { reply ->
+                    Text(reply, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    } else {
+        Card {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(draft.goalInputText ?: stringResource(draft.objective.label), style = MaterialTheme.typography.titleMedium)
+                Text(state.interpretationReply ?: stringResource(R.string.plan_builder_goal_acknowledgement), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick = reviseObjective) { Text(stringResource(R.string.plan_builder_goal_change)) }
+            }
+        }
+        if (draft.objective == PlanObjective.EventPreparation) EventFields(draft, update, trackAnswerEdited)
+        else GenericGoalFields(draft, update, trackAnswerEdited)
+    }
+}
+
+@Composable
+private fun ActivitiesStep(
+    draft: OnboardingDraft,
+    setup: com.plainstride.outbound.core.network.PlanIntakeSuggestedSetup?,
+    update: ((OnboardingDraft) -> OnboardingDraft) -> Unit,
+    accept: () -> Unit,
+    adjust: () -> Unit,
+    trackAnswerEdited: (String) -> Unit,
+) {
+    val resources = LocalContext.current.resources
+    val suggested = setup?.takeIf { it.confidence == "high" && draft.observedBaselineConfirmed != false }
+    if (suggested != null) {
+        Heading(R.string.plan_builder_smart_setup_title, R.string.plan_builder_smart_setup_subtitle)
+        Card {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(R.string.plan_builder_smart_setup_evidence, suggested.evidence.sessionCount, suggested.evidence.activeWeekCount), style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.plan_builder_smart_setup_activities, draft.activities.joinToString(" · ") { resources.getString(it.label) }))
+                Text(stringResource(R.string.plan_builder_smart_setup_rhythm, draft.sessionsPerWeek, draft.availableMinutes))
+                Text(stringResource(R.string.plan_builder_smart_setup_days, draft.preferredDays.mapNotNull { code -> WEEKDAYS.firstOrNull { it.code == code }?.let { resources.getString(it.label) } }.joinToString(" · ").ifEmpty { resources.getString(R.string.plan_builder_smart_setup_days_none) }))
+                OutlinedTextField(draft.constraints, { value -> update { it.copy(constraints = value) } }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.plan_builder_week_constraints)) }, minLines = 2)
+                Button(onClick = accept, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.plan_builder_smart_setup_use)) }
+                OutlinedButton(onClick = adjust, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.plan_builder_smart_setup_adjust)) }
+            }
+        }
+    } else {
+        Heading(R.string.plan_builder_activities_title, R.string.plan_builder_activities_subtitle)
+        ChoiceGrid(PlanActivity.entries, { stringResource(it.label) }, { draft.activities.contains(it) }) { activity ->
+            if (draft.observedBaselineConfirmed == false) trackAnswerEdited("activities")
+            update { current ->
+                val selected = current.activities.toMutableList()
+                if (activity in selected && selected.size > 1) selected.remove(activity) else if (activity !in selected) selected.add(activity)
+                current.copy(activities = selected)
             }
         }
     }
-    ChoiceGrid(PlanObjective.entries, { stringResource(it.label) }, { draft.objective == it }) { selected ->
-        update { it.copy(objective = selected) }
-    }
-    if (draft.objective == PlanObjective.EventPreparation) EventFields(draft, update) else GenericGoalFields(draft, update)
 }
 
 @Composable
-private fun ActivitiesStep(draft: OnboardingDraft, update: ((OnboardingDraft) -> OnboardingDraft) -> Unit) {
-    Heading(R.string.plan_builder_activities_title, R.string.plan_builder_activities_subtitle)
-    ChoiceGrid(PlanActivity.entries, { stringResource(it.label) }, { draft.activities.contains(it) }) { activity ->
-        update { current ->
-            val selected = current.activities.toMutableList()
-            if (activity in selected && selected.size > 1) selected.remove(activity) else if (activity !in selected) selected.add(activity)
-            current.copy(activities = selected)
-        }
-    }
-}
-
-@Composable
-private fun BaselineStep(draft: OnboardingDraft, context: com.plainstride.outbound.core.network.PlanIntakeContext?, update: ((OnboardingDraft) -> OnboardingDraft) -> Unit) {
+private fun BaselineStep(draft: OnboardingDraft, context: com.plainstride.outbound.core.network.PlanIntakeContext?, update: ((OnboardingDraft) -> OnboardingDraft) -> Unit, confirmBaseline: (Boolean) -> Unit) {
     Heading(R.string.plan_builder_baseline_title, R.string.plan_builder_baseline_subtitle)
     val observed = context?.observedBaseline?.takeIf { it.confidence == "high" }
     if (observed != null) Card {
@@ -279,8 +328,8 @@ private fun BaselineStep(draft: OnboardingDraft, context: com.plainstride.outbou
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { update { it.copy(observedBaselineConfirmed = true) } }) { Text(stringResource(R.string.plan_builder_baseline_use)) }
-                OutlinedButton(onClick = { update { it.copy(observedBaselineConfirmed = false) } }) { Text(stringResource(R.string.plan_builder_baseline_update)) }
+                Button(onClick = { confirmBaseline(true) }) { Text(stringResource(R.string.plan_builder_baseline_use)) }
+                OutlinedButton(onClick = { confirmBaseline(false) }) { Text(stringResource(R.string.plan_builder_baseline_update)) }
             }
         }
     }
@@ -451,61 +500,78 @@ private fun WorkoutRow(workout: PlannedWorkout) {
 }
 
 @Composable
-private fun EventFields(draft: OnboardingDraft, update: ((OnboardingDraft) -> OnboardingDraft) -> Unit) {
-    Text(stringResource(R.string.plan_builder_event_distance), style = MaterialTheme.typography.titleSmall)
-    listOf(
-        5_000.0 to "5K",
-        10_000.0 to "10K",
-        21_097.5 to stringResource(R.string.plan_builder_event_half),
-        42_195.0 to stringResource(R.string.plan_builder_event_marathon),
-    ).forEach { (distance, label) ->
-        SelectionRow(label, draft.eventDistanceMeters == distance) { update { it.copy(eventDistanceMeters = distance) } }
+private fun EventFields(draft: OnboardingDraft, update: ((OnboardingDraft) -> OnboardingDraft) -> Unit, trackAnswerEdited: (String) -> Unit) {
+    if (draft.eventDistanceConfirmed) Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.plan_builder_event_distance_answer, draft.eventDistanceMeters?.let { if (it >= 20_000) "${(it / 1000).toInt()}K" else "${(it / 1000).toInt()}K" }.orEmpty()), Modifier.weight(1f))
+        TextButton(onClick = { trackAnswerEdited("event_distance"); update { it.copy(eventDistanceConfirmed = false, eventDateConfirmed = false, eventIntentConfirmed = false, targetTimeConfirmed = false) } }) { Text(stringResource(R.string.plan_builder_change_answer)) }
     }
-    EventDateField(draft.eventDate ?: defaultEventDate()) { value -> update { it.copy(eventDate = value) } }
-    Text(stringResource(R.string.plan_builder_event_intent), style = MaterialTheme.typography.titleSmall)
-    listOf(
-        "finish" to R.string.plan_builder_event_intent_finish,
-        "perform" to R.string.plan_builder_event_intent_perform,
-        "targetTime" to R.string.plan_builder_event_intent_time,
-    ).forEach { (value, label) ->
-        SelectionRow(stringResource(label), draft.eventIntent == value) { update { it.copy(eventIntent = value) } }
+    if (!draft.eventDistanceConfirmed) {
+        Text(stringResource(R.string.plan_builder_conversation_event_distance), style = MaterialTheme.typography.titleSmall)
+        listOf(5_000.0 to "5K", 10_000.0 to "10K", 21_097.5 to stringResource(R.string.plan_builder_event_half), 42_195.0 to stringResource(R.string.plan_builder_event_marathon)).forEach { (distance, label) ->
+            SelectionRow(label, false) { update { it.copy(eventDistanceMeters = distance, eventDistanceConfirmed = true) } }
+        }
     }
-    if (draft.eventIntent == "targetTime") NumberControl(
-        R.string.plan_builder_event_target_minutes,
-        (draft.targetTimeSeconds ?: 3_600) / 60,
-        15,
-        720,
-        5,
-    ) { value -> update { it.copy(targetTimeSeconds = value * 60) } }
+    if (draft.eventDateConfirmed) Row(verticalAlignment = Alignment.CenterVertically) {
+        val date = runCatching { LocalDate.parse(draft.eventDate ?: defaultEventDate()).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)) }.getOrDefault("")
+        Text(stringResource(R.string.plan_builder_event_date_answer, date), Modifier.weight(1f))
+        TextButton(onClick = { trackAnswerEdited("event_date"); update { it.copy(eventDateConfirmed = false, eventIntentConfirmed = false, targetTimeConfirmed = false) } }) { Text(stringResource(R.string.plan_builder_change_answer)) }
+    }
+    if (draft.eventDistanceConfirmed && !draft.eventDateConfirmed) {
+        Text(stringResource(R.string.plan_builder_conversation_event_date), style = MaterialTheme.typography.titleSmall)
+        EventDateField(draft.eventDate ?: defaultEventDate()) { value -> update { it.copy(eventDate = value, eventDateConfirmed = true) } }
+    }
+    if (draft.eventIntentConfirmed) Row(verticalAlignment = Alignment.CenterVertically) {
+        val intentLabel = when (draft.eventIntent) {
+            "perform" -> R.string.plan_builder_event_intent_perform
+            "targetTime" -> R.string.plan_builder_event_intent_time
+            else -> R.string.plan_builder_event_intent_finish
+        }
+        Text(stringResource(R.string.plan_builder_event_intent_answer, stringResource(intentLabel)), Modifier.weight(1f))
+        TextButton(onClick = { trackAnswerEdited("event_intent"); update { it.copy(eventIntentConfirmed = false, targetTimeConfirmed = false) } }) { Text(stringResource(R.string.plan_builder_change_answer)) }
+    }
+    if (draft.eventDateConfirmed && !draft.eventIntentConfirmed) {
+        Text(stringResource(R.string.plan_builder_conversation_event_intent), style = MaterialTheme.typography.titleSmall)
+        listOf("finish" to R.string.plan_builder_event_intent_finish, "perform" to R.string.plan_builder_event_intent_perform, "targetTime" to R.string.plan_builder_event_intent_time).forEach { (value, label) ->
+            SelectionRow(stringResource(label), false) { update { it.copy(eventIntent = value, eventIntentConfirmed = true) } }
+        }
+    }
+    if (draft.eventIntentConfirmed && draft.eventIntent == "targetTime" && !draft.targetTimeConfirmed) {
+        Text(stringResource(R.string.plan_builder_conversation_target_time), style = MaterialTheme.typography.titleSmall)
+        NumberControl(R.string.plan_builder_event_target_minutes, (draft.targetTimeSeconds ?: 3_600) / 60, 15, 720, 5) { value ->
+            update { it.copy(targetTimeSeconds = value * 60, targetTimeConfirmed = true) }
+        }
+    }
+    if (draft.targetTimeConfirmed) Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.plan_builder_target_time_answer, (draft.targetTimeSeconds ?: 3_600) / 60), Modifier.weight(1f))
+        TextButton(onClick = { trackAnswerEdited("target_time"); update { it.copy(targetTimeConfirmed = false) } }) { Text(stringResource(R.string.plan_builder_change_answer)) }
+    }
 }
 
 @Composable
-private fun GenericGoalFields(draft: OnboardingDraft, update: ((OnboardingDraft) -> OnboardingDraft) -> Unit) {
-    Text(stringResource(R.string.plan_builder_generic_review_horizon), style = MaterialTheme.typography.titleSmall)
+private fun GenericGoalFields(draft: OnboardingDraft, update: ((OnboardingDraft) -> OnboardingDraft) -> Unit, trackAnswerEdited: (String) -> Unit) {
+    Text(stringResource(R.string.plan_builder_conversation_review_horizon), style = MaterialTheme.typography.titleSmall)
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf(4 to R.string.plan_builder_generic_four_weeks, 8 to R.string.plan_builder_generic_eight_weeks, 12 to R.string.plan_builder_generic_twelve_weeks).forEach { (weeks, label) ->
-            FilterChip(
-                selected = draft.reviewHorizonWeeks == weeks,
-                onClick = { update { it.copy(reviewHorizonWeeks = weeks) } },
-                label = { Text(stringResource(label)) },
-                modifier = Modifier.weight(1f),
-            )
+            FilterChip(selected = draft.reviewHorizonConfirmed && draft.reviewHorizonWeeks == weeks, onClick = { if (draft.reviewHorizonConfirmed && draft.reviewHorizonWeeks != weeks) trackAnswerEdited("review_horizon"); update { it.copy(reviewHorizonWeeks = weeks, reviewHorizonConfirmed = true) } }, label = { Text(stringResource(label)) }, modifier = Modifier.weight(1f))
         }
     }
-    OutlinedTextField(
-        draft.successSignal,
-        { value -> update { it.copy(successSignal = value) } },
-        Modifier.fillMaxWidth(),
-        label = { Text(stringResource(R.string.plan_builder_generic_success)) },
-        minLines = 2,
-    )
+    OutlinedTextField(draft.successSignal, { value -> update { it.copy(successSignal = value) } }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.plan_builder_generic_success)) }, minLines = 2)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EventDateField(value: String, onChange: (String) -> Unit) {
     val selectedMillis = LocalDate.parse(value).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-    val picker = rememberDatePickerState(initialSelectedDateMillis = selectedMillis)
+    val today = remember { LocalDate.now() }
+    val picker = rememberDatePickerState(
+        initialSelectedDateMillis = selectedMillis,
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+                !Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate().isBefore(today)
+
+            override fun isSelectableYear(year: Int): Boolean = year >= today.year
+        },
+    )
     val showDialog = remember { mutableStateOf(false) }
     OutlinedButton(onClick = { showDialog.value = true }, modifier = Modifier.fillMaxWidth()) {
         val label = LocalDate.parse(value).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
@@ -625,8 +691,10 @@ private fun primaryActionLabel(step: OnboardingStep) = when (step) {
 private fun OnboardingDraft.canContinue(needsEmail: Boolean, context: com.plainstride.outbound.core.network.PlanIntakeContext?): Boolean = when (step) {
     OnboardingStep.Identity -> displayName.isNotBlank() && username.trim().matches(Regex("[A-Za-z0-9_-]{3,30}")) &&
         (!needsEmail || email.matches(Regex("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")))
-    OnboardingStep.Objective -> objective != PlanObjective.EventPreparation ||
-        eventDate != null && eventDistanceMeters != null && (eventIntent != "targetTime" || targetTimeSeconds != null)
+    OnboardingStep.Objective -> objectiveConfirmed && if (objective == PlanObjective.EventPreparation) {
+        eventDistanceConfirmed && eventDateConfirmed && eventIntentConfirmed &&
+            (eventIntent != "targetTime" || targetTimeConfirmed && targetTimeSeconds != null)
+    } else reviewHorizonConfirmed
     OnboardingStep.Activities -> activities.isNotEmpty()
     OnboardingStep.Baseline -> context?.observedBaseline?.confidence != "high" || observedBaselineConfirmed != null
     OnboardingStep.Profile -> measurementsValid() && requiredBodyProfileComplete()

@@ -84,4 +84,25 @@
     <string name="today_weather">Tiempo</string>
     <string name="today_why">¿Por qué?</string>
     <string name="today_workout">Entrenamiento de hoy</string>
+    <string name="today_cancel">Cancelar</string>
+    <string name="plan_picker_title">Más planes</string>
+    <string name="plan_picker_build">Crear mi plan</string>
+    <string name="plan_picker_details">Detalles</string>
+    <string name="plan_picker_more">Más planes</string>
+    <string name="plan_picker_use">Usar plan</string>
+    <string name="plan_picker_empty">No hay otros planes disponibles ahora.</string>
+    <string name="plan_picker_load_error">No se pudieron cargar los planes. Inténtalo de nuevo.</string>
+    <string name="plan_picker_activation_error">No se pudo cambiar el plan. El actual sigue sin cambios.</string>
+    <string name="plan_picker_stats">%1$d semanas · %2$d sesiones por semana · %3$d min semanales · sesión larga de %4$d min</string>
+    <string name="plan_picker_card_stats">%1$d semanas · %2$d sesiones por semana · %3$d min semanales</string>
+    <string name="plan_picker_replace_title">¿Reemplazar tu plan actual?</string>
+    <string name="plan_picker_replace_body">El plan actual finalizará y se activará el plan seleccionado.</string>
+    <string name="plan_picker_replace">Reemplazar plan</string>
+    <string name="plan_picker_focus_base">Crear una base para correr</string>
+    <string name="plan_picker_focus_comeback">Volver a correr</string>
+    <string name="plan_picker_focus_5k">Preparar un 5K</string>
+    <string name="plan_picker_focus_10k">Preparar un 10K</string>
+    <string name="plan_picker_focus_10mile">Preparar 10 millas</string>
+    <string name="plan_picker_focus_half">Preparar una media maratón</string>
+    <string name="plan_picker_focus_marathon">Preparar una maratón</string>
 </resources>

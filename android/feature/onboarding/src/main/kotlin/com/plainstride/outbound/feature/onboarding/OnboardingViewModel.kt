@@ -76,7 +76,12 @@ class OnboardingViewModel @Inject constructor(
             OnboardingStep.Identity -> saveIdentity(draft)
             OnboardingStep.Welcome -> moveTo(OnboardingStep.Objective)
             OnboardingStep.Objective -> moveTo(OnboardingStep.Activities)
-            OnboardingStep.Activities -> moveTo(OnboardingStep.Baseline)
+            OnboardingStep.Activities -> {
+                val setup = mutableState.value.intakeContext?.suggestedSetup
+                if (setup?.confidence == "high" && draft.observedBaselineConfirmed == true) {
+                    moveTo(if (mutableState.value.hasPlanningBodyProfile()) OnboardingStep.Review else OnboardingStep.Profile)
+                } else moveTo(OnboardingStep.Baseline)
+            }
             OnboardingStep.Baseline -> moveTo(OnboardingStep.Week)
             OnboardingStep.Week -> moveTo(if (mutableState.value.hasPlanningBodyProfile()) OnboardingStep.Review else OnboardingStep.Profile)
             OnboardingStep.Profile -> saveTrainingProfileAndContinue()
@@ -103,6 +108,64 @@ class OnboardingViewModel @Inject constructor(
 
     fun exploreFirst() = resolveSkip()
 
+    fun chooseObjective(objective: PlanObjective) {
+        update { draft ->
+            val activities = if (objective == PlanObjective.EventPreparation && PlanActivity.Run !in draft.activities) listOf(PlanActivity.Run) + draft.activities else draft.activities
+            draft.copy(
+                objective = objective,
+                objectiveConfirmed = true,
+                goalInputText = null,
+                eventDistanceConfirmed = false,
+                eventDateConfirmed = false,
+                eventIntentConfirmed = false,
+                targetTimeConfirmed = false,
+                reviewHorizonConfirmed = false,
+                activities = activities,
+            )
+        }
+        mutableState.value = mutableState.value.copy(interpretationReply = null)
+        analytics.record(AnalyticsEvent("plan_intake_goal_interpreted", mapOf(AnalyticsProperty.Result to "success", AnalyticsProperty.SourceType to "quick_reply")))
+    }
+
+    fun reviseObjective() {
+        update { it.copy(
+            objectiveConfirmed = false,
+            goalInputText = null,
+            eventDistanceConfirmed = false,
+            eventDateConfirmed = false,
+            eventIntentConfirmed = false,
+            targetTimeConfirmed = false,
+            reviewHorizonConfirmed = false,
+            successSignal = "",
+        ) }
+        mutableState.value = mutableState.value.copy(interpretationReply = null)
+        analytics.record(AnalyticsEvent("plan_intake_answer_edited", mapOf(AnalyticsProperty.SelectionType to "goal", AnalyticsProperty.SourceType to "conversation")))
+    }
+
+    fun acceptSuggestedSetup() {
+        update { it.copy(observedBaselineConfirmed = true) }
+        analytics.record(AnalyticsEvent("plan_intake_baseline_confirmed", mapOf(AnalyticsProperty.Result to "accepted", AnalyticsProperty.SourceType to "recent_activity_setup")))
+        next()
+    }
+
+    fun adjustSuggestedSetup() {
+        update { it.copy(observedBaselineConfirmed = false) }
+        analytics.record(AnalyticsEvent("plan_intake_baseline_confirmed", mapOf(AnalyticsProperty.Result to "corrected", AnalyticsProperty.SourceType to "recent_activity_setup")))
+    }
+
+    fun trackAnswerEdited(field: String) {
+        if (field !in setOf("goal", "event_distance", "event_date", "event_intent", "target_time", "review_horizon", "activities", "baseline", "schedule")) return
+        analytics.record(AnalyticsEvent("plan_intake_answer_edited", mapOf(AnalyticsProperty.SelectionType to field, AnalyticsProperty.SourceType to "conversation")))
+    }
+
+    fun confirmObservedBaseline(accepted: Boolean) {
+        update { it.copy(observedBaselineConfirmed = accepted) }
+        analytics.record(AnalyticsEvent("plan_intake_baseline_confirmed", mapOf(
+            AnalyticsProperty.Result to if (accepted) "accepted" else "corrected",
+            AnalyticsProperty.SourceType to "recent_activities",
+        )))
+    }
+
     fun interpretGoal(message: String) {
         val state = mutableState.value
         val draft = state.draft ?: return
@@ -114,36 +177,54 @@ class OnboardingViewModel @Inject constructor(
                 message.trim(),
                 context.contextVersion,
                 PlanIntakeDraftRequest(
-                    objective = draft.objective.apiValue,
-                    activities = draft.activities.map { it.modality.name },
-                    eventDate = draft.eventDate,
-                    eventDistanceMeters = draft.eventDistanceMeters,
-                    eventIntent = draft.eventIntent,
-                    targetTimeSeconds = draft.targetTimeSeconds,
-                    reviewHorizonWeeks = draft.reviewHorizonWeeks,
+                    objective = draft.objective.apiValue.takeIf { draft.objectiveConfirmed },
+                    activities = emptyList(),
+                    eventDate = draft.eventDate.takeIf { draft.eventDateConfirmed },
+                    eventDistanceMeters = draft.eventDistanceMeters.takeIf { draft.eventDistanceConfirmed },
+                    eventIntent = draft.eventIntent.takeIf { draft.eventIntentConfirmed },
+                    targetTimeSeconds = draft.targetTimeSeconds.takeIf { draft.targetTimeConfirmed },
+                    reviewHorizonWeeks = draft.reviewHorizonWeeks.takeIf { draft.reviewHorizonConfirmed },
                     sessionsPerWeek = draft.sessionsPerWeek,
                     maxSessionMinutes = draft.availableMinutes,
                 ),
             )
             repository.interpretPlanIntake(request).fold(
                 onSuccess = { result ->
-                    val updated = (mutableState.value.draft ?: draft).copy(
-                        objective = result.objective?.toPlanObjective() ?: draft.objective,
-                        activities = result.activities.mapNotNull(String::toPlanActivity).ifEmpty { draft.activities },
-                        eventDate = result.eventDate ?: draft.eventDate,
-                        eventDistanceMeters = result.eventDistanceMeters ?: draft.eventDistanceMeters,
-                        eventIntent = result.eventIntent ?: draft.eventIntent,
-                        targetTimeSeconds = result.targetTimeSeconds ?: draft.targetTimeSeconds,
-                        reviewHorizonWeeks = result.reviewHorizonWeeks ?: draft.reviewHorizonWeeks,
-                        goalDescription = result.goalDescription ?: draft.goalDescription,
+                    val objective = result.objective?.toPlanObjective()
+                    if (objective == null) {
+                        mutableState.value = mutableState.value.copy(interpretingGoal = false, interpretationReply = result.assistantReply)
+                        analytics.record(AnalyticsEvent("plan_intake_goal_interpreted", mapOf(
+                            AnalyticsProperty.Result to "failure",
+                            AnalyticsProperty.SourceType to "conversation_text",
+                            AnalyticsProperty.ErrorCategory to "unsupported_goal",
+                        )))
+                        return@fold
+                    }
+                    val recognized = result.recognizedFields.toSet()
+                    val current = mutableState.value.draft ?: draft
+                    val updated = current.copy(
+                        objective = objective,
+                        objectiveConfirmed = true,
+                        goalInputText = message.trim(),
+                        eventDistanceConfirmed = "eventDistanceMeters" in recognized && result.eventDistanceMeters != null,
+                        eventDateConfirmed = "eventDate" in recognized && result.eventDate != null,
+                        eventIntentConfirmed = ("eventIntent" in recognized && result.eventIntent != null) || ("targetTimeSeconds" in recognized && result.targetTimeSeconds != null),
+                        targetTimeConfirmed = "targetTimeSeconds" in recognized && result.targetTimeSeconds != null,
+                        reviewHorizonConfirmed = "reviewHorizonWeeks" in recognized && result.reviewHorizonWeeks != null,
+                        eventDate = if ("eventDate" in recognized) result.eventDate ?: current.eventDate else current.eventDate,
+                        eventDistanceMeters = if ("eventDistanceMeters" in recognized) result.eventDistanceMeters ?: current.eventDistanceMeters else current.eventDistanceMeters,
+                        eventIntent = if ("eventIntent" in recognized) result.eventIntent ?: current.eventIntent else if ("targetTimeSeconds" in recognized && result.targetTimeSeconds != null) "targetTime" else current.eventIntent,
+                        targetTimeSeconds = if ("targetTimeSeconds" in recognized) result.targetTimeSeconds ?: current.targetTimeSeconds else current.targetTimeSeconds,
+                        reviewHorizonWeeks = if ("reviewHorizonWeeks" in recognized) result.reviewHorizonWeeks ?: current.reviewHorizonWeeks else current.reviewHorizonWeeks,
+                        goalDescription = result.goalDescription ?: message.trim(),
                     ).normalized()
                     drafts.save(updated)
                     mutableState.value = mutableState.value.copy(draft = updated, interpretingGoal = false, interpretationReply = result.assistantReply)
-                    analytics.record(AnalyticsEvent("plan_intake_goal_interpreted", mapOf(AnalyticsProperty.Result to "success", AnalyticsProperty.SourceType to "conversation")))
+                    analytics.record(AnalyticsEvent("plan_intake_goal_interpreted", mapOf(AnalyticsProperty.Result to "success", AnalyticsProperty.SourceType to "conversation_text")))
                 },
                 onFailure = {
                     mutableState.value = mutableState.value.copy(interpretingGoal = false, interpretationReply = "fallback")
-                    analytics.record(AnalyticsEvent("plan_intake_goal_interpreted", mapOf(AnalyticsProperty.Result to "failure", AnalyticsProperty.SourceType to "conversation")))
+                    analytics.record(AnalyticsEvent("plan_intake_goal_interpreted", mapOf(AnalyticsProperty.Result to "failure", AnalyticsProperty.SourceType to "conversation_text", AnalyticsProperty.ErrorCategory to "unavailable")))
                 },
             )
         }
@@ -441,20 +522,29 @@ private fun OnboardingDraft.withIntakeContext(context: PlanIntakeContext): Onboa
     val metric = measurementSystem == MeasurementSystem.Metric
     val body = context.bodyProfile
     val baseline = context.observedBaseline
-    val inferredActivities = baseline?.activityMix.orEmpty().mapNotNull(String::toPlanActivity)
+    val inferredActivities = baseline?.activityMix.orEmpty().mapNotNull(String::toPlanActivity).takeIf { observedBaselineConfirmed != false }.orEmpty()
+    val suggested = context.suggestedSetup?.takeIf { it.confidence == "high" && observedBaselineConfirmed != false }
+    val suggestedActivities = suggested?.activities.orEmpty().mapNotNull(String::toPlanActivity)
     return copy(
         intakeContextVersion = context.contextVersion,
         birthDate = body.birthDate ?: birthDate,
         height = body.heightCentimeters?.let { if (metric) it else it / 2.54 }?.formatInputValue() ?: height,
         weight = body.weightKilograms?.let { if (metric) it else it / 0.45359237 }?.formatInputValue() ?: weight,
         sexAtBirth = body.sexAtBirth?.let { runCatching { SexAtBirth.valueOf(it.replaceFirstChar(Char::uppercase)) }.getOrNull() } ?: sexAtBirth,
-        recentSessionsPerWeek = if (baseline?.confidence == "high") baseline.sessionsPerWeek.coerceIn(0, 6) else recentSessionsPerWeek,
-        comfortableMinutes = if (baseline?.confidence == "high") baseline.comfortableMinutes?.coerceIn(10, 120) ?: comfortableMinutes else comfortableMinutes,
-        activities = inferredActivities.ifEmpty { activities },
-        sessionsPerWeek = context.previousSchedule?.sessionsPerWeek ?: sessionsPerWeek,
-        availableMinutes = context.previousSchedule?.maxSessionMinutes ?: availableMinutes,
-        preferredDays = context.previousSchedule?.preferredDays ?: preferredDays,
+        recentSessionsPerWeek = if (observedBaselineConfirmed != false && baseline?.confidence == "high") baseline.sessionsPerWeek.coerceIn(0, 6) else recentSessionsPerWeek,
+        comfortableMinutes = if (observedBaselineConfirmed != false && baseline?.confidence == "high") baseline.comfortableMinutes?.coerceIn(10, 120) ?: comfortableMinutes else comfortableMinutes,
+        activities = suggestedActivities.ifEmpty { inferredActivities.ifEmpty { activities } },
+        baselineContext = suggested?.baselineContext?.toPlanBaselineContext() ?: baselineContext,
+        sessionsPerWeek = suggested?.sessionsPerWeek?.coerceIn(1, 6) ?: context.previousSchedule?.sessionsPerWeek ?: sessionsPerWeek,
+        availableMinutes = suggested?.maxSessionMinutes?.coerceIn(10, 120) ?: context.previousSchedule?.maxSessionMinutes ?: availableMinutes,
+        preferredDays = suggested?.preferredDays ?: context.previousSchedule?.preferredDays ?: preferredDays,
     )
+}
+
+private fun String.toPlanBaselineContext() = when (this) {
+    "startingOut" -> PlanBaselineContext.StartingOut
+    "returningAfterBreak" -> PlanBaselineContext.ReturningAfterBreak
+    else -> PlanBaselineContext.CurrentlyActive
 }
 
 private val PlanObjective.apiValue: String get() = when (this) {

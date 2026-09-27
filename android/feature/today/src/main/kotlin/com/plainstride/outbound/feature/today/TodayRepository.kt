@@ -7,6 +7,8 @@ import com.plainstride.outbound.core.model.PlanningState
 import com.plainstride.outbound.core.model.StandaloneWorkoutCatalog
 import com.plainstride.outbound.core.model.TrainingProfile
 import com.plainstride.outbound.core.network.CreateTrainingGoalRequest
+import com.plainstride.outbound.core.network.PlanRecommendation
+import com.plainstride.outbound.core.network.PlanRecommendationsResponse
 import com.plainstride.outbound.core.network.PlannedWorkoutCompletionRequest
 import com.plainstride.outbound.core.network.PlanningReadinessRequest
 import com.plainstride.outbound.core.network.ReadinessCheckInRequest
@@ -39,6 +41,8 @@ interface TodayRepository {
     fun observeStandaloneWorkouts(accountId: String, localeTag: String): Flow<CachedResource<StandaloneWorkoutCatalog>>
     suspend fun refresh(accountId: String, localeTag: String): TodayDataError?
     suspend fun createGoal(accountId: String, localeTag: String, request: CreateTrainingGoalRequest): Result<PlanningState>
+    suspend fun planRecommendations(): Result<PlanRecommendationsResponse>
+    suspend fun activatePlanRecommendation(accountId: String, localeTag: String, recommendation: PlanRecommendation): Result<PlanningState>
     suspend fun submitPlanningReadiness(accountId: String, localeTag: String, request: PlanningReadinessRequest): Result<PlanningState>
     suspend fun skipWorkout(accountId: String, localeTag: String, workoutId: String): Result<PlanningState>
     suspend fun completeWorkout(accountId: String, localeTag: String, workoutId: String, request: PlannedWorkoutCompletionRequest): Result<PlanningState>

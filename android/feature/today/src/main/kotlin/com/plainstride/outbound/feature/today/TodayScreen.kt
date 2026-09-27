@@ -87,6 +87,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import androidx.compose.foundation.rememberScrollState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.text.DateFormat
 import java.util.Date
@@ -131,6 +135,7 @@ fun TodayRoute(
     onStartFreestyle: () -> Unit,
     onReturnToSession: () -> Unit,
     onSetUpPlan: () -> Unit,
+    onBuildPlan: () -> Unit = onSetUpPlan,
     onStartManual: (TodayManualLaunch) -> Unit,
     onOpenMusic: () -> Unit,
     onOpenLiveTrack: () -> Unit,
@@ -151,6 +156,7 @@ fun TodayRoute(
     LaunchedEffect(refreshRequest) { if (refreshRequest > 0) viewModel.refresh() }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val weather by viewModel.weather.collectAsStateWithLifecycle()
+    val planPicker by viewModel.planPicker.collectAsStateWithLifecycle()
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         viewModel.refreshWeather()
     }
@@ -172,6 +178,13 @@ fun TodayRoute(
         onStartFreestyle = onStartFreestyle,
         onReturnToSession = onReturnToSession,
         onSetUpPlan = onSetUpPlan,
+        onBuildPlan = onBuildPlan,
+        planPicker = planPicker,
+        onChangePlan = viewModel::openPlanPicker,
+        onDismissPlanPicker = viewModel::closePlanPicker,
+        onRetryPlanPicker = viewModel::openPlanPicker,
+        onSelectPlan = viewModel::selectPlanRecommendation,
+        onUsePlan = { recommendation, replacing -> viewModel.confirmPlanRecommendation(recommendation, replacing) },
         onStartManual = { setup -> viewModel.trackManualWorkoutStarted(setup.activity, setup.goal); onStartManual(setup) },
         onOpenMusic = onOpenMusic,
         onOpenLiveTrack = onOpenLiveTrack,
@@ -202,6 +215,13 @@ fun TodayScreen(
     onStartFreestyle: () -> Unit,
     onReturnToSession: () -> Unit,
     onSetUpPlan: () -> Unit,
+    onBuildPlan: () -> Unit,
+    planPicker: PlanPickerUiState = PlanPickerUiState(),
+    onChangePlan: () -> Unit = {},
+    onDismissPlanPicker: () -> Unit = {},
+    onRetryPlanPicker: () -> Unit = {},
+    onSelectPlan: (com.plainstride.outbound.core.network.PlanRecommendation?) -> Unit = {},
+    onUsePlan: (com.plainstride.outbound.core.network.PlanRecommendation, Boolean) -> Unit = { _, _ -> },
     onStartManual: (TodayManualLaunch) -> Unit = {},
     onOpenMusic: () -> Unit = {},
     onOpenLiveTrack: () -> Unit = {},
@@ -311,7 +331,7 @@ fun TodayScreen(
                             onCardDisplayChanged(cardMinimized)
                         },
                         onOpen = { showsDetail = true },
-                        onChange = { showsChange = true },
+                        onChange = onChangePlan,
                     )
                     state.hasNoCachedSuggestion -> NoSuggestionCard(
                         noPlan = (state.planning as? CachedResource.Available)?.value?.plan == null,
@@ -365,6 +385,18 @@ fun TodayScreen(
         }
     }
 
+    if (planPicker.open) {
+        PlanPickerDialog(
+            picker = planPicker,
+            hasActivePlan = (state.planning as? CachedResource.Available)?.value?.plan != null,
+            onDismiss = onDismissPlanPicker,
+            onRetry = onRetryPlanPicker,
+            onSelect = onSelectPlan,
+            onUse = onUsePlan,
+            onBuild = { onDismissPlanPicker(); onBuildPlan() },
+        )
+    }
+
     if (showsDetail && suggestion != null) WorkoutDetailSheet(
         suggestion,
         onDismiss = { showsDetail = false },
@@ -399,6 +431,104 @@ fun TodayScreen(
         { durationSeconds = it; editingGoal = false; onLaunchConfigurationChanged("goal_value", "preset") },
         { calories = it; editingGoal = false; onLaunchConfigurationChanged("goal_value", "preset") })
 }
+
+@Composable
+private fun PlanPickerDialog(
+    picker: PlanPickerUiState,
+    hasActivePlan: Boolean,
+    onDismiss: () -> Unit,
+    onRetry: () -> Unit,
+    onSelect: (com.plainstride.outbound.core.network.PlanRecommendation?) -> Unit,
+    onUse: (com.plainstride.outbound.core.network.PlanRecommendation, Boolean) -> Unit,
+    onBuild: () -> Unit,
+) {
+    var confirmingReplacement by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    LaunchedEffect(picker.error) {
+        if (picker.error) Toast.makeText(context, context.getString(if (picker.loadingError) R.string.plan_picker_load_error else R.string.plan_picker_activation_error), Toast.LENGTH_SHORT).show()
+    }
+    val selected = picker.selected
+    val recommendation = selected
+    if (recommendation != null) {
+        val template = recommendation.template
+        AlertDialog(
+            onDismissRequest = { if (!picker.replacing) onSelect(null) },
+            title = { Text(planRecommendationTitle(template["focus"]?.jsonPrimitive?.contentOrNull)) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(template["subtitle"]?.jsonPrimitive?.contentOrNull.orEmpty())
+                    Text(stringResource(R.string.plan_picker_stats, recommendation.durationWeeks, recommendation.sessionsPerWeek, recommendation.targetWeeklyMinutes, recommendation.longSessionMinutes))
+                    Text(recommendation.rationale)
+                    Text(recommendation.tradeoff, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    template["summary"]?.jsonPrimitive?.contentOrNull?.let { Text(it) }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { if (hasActivePlan) confirmingReplacement = true else onUse(recommendation, false) }, enabled = !picker.replacing) {
+                    Text(stringResource(R.string.plan_picker_use))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { onSelect(null) }, enabled = !picker.replacing) { Text(stringResource(R.string.plan_picker_more)) }
+            },
+        )
+    } else {
+        AlertDialog(
+            onDismissRequest = { if (!picker.replacing) onDismiss() },
+            title = { Text(stringResource(R.string.plan_picker_title)) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(onClick = onBuild, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.plan_picker_build))
+                    }
+                    if (picker.loading) CircularProgressIndicator()
+                    if (picker.error) Text(stringResource(R.string.plan_picker_load_error), color = MaterialTheme.colorScheme.error)
+                    if (picker.loadingError) TextButton(onClick = onRetry) { Text(stringResource(R.string.today_retry)) }
+                    picker.recommendations.forEach { item ->
+                        Card(Modifier.fillMaxWidth().clickable { onSelect(item) }) {
+                            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(planRecommendationTitle(item.template["focus"]?.jsonPrimitive?.contentOrNull), style = MaterialTheme.typography.titleMedium)
+                                Text(item.template["subtitle"]?.jsonPrimitive?.contentOrNull.orEmpty(), style = MaterialTheme.typography.bodySmall)
+                                Text(stringResource(R.string.plan_picker_card_stats, item.durationWeeks, item.sessionsPerWeek, item.targetWeeklyMinutes), style = MaterialTheme.typography.labelMedium)
+                                Text(item.rationale, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    TextButton(onClick = { onSelect(item) }) { Text(stringResource(R.string.plan_picker_details)) }
+                                    TextButton(onClick = { if (hasActivePlan) { onSelect(item); confirmingReplacement = true } else onUse(item, false) }) { Text(stringResource(R.string.plan_picker_use)) }
+                                }
+                            }
+                        }
+                    }
+                    if (!picker.loading && picker.recommendations.isEmpty() && !picker.error) {
+                        Text(stringResource(R.string.plan_picker_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.today_done)) } },
+        )
+    }
+    if (confirmingReplacement && recommendation != null) AlertDialog(
+        onDismissRequest = { confirmingReplacement = false },
+        title = { Text(stringResource(R.string.plan_picker_replace_title)) },
+        text = { Text(stringResource(R.string.plan_picker_replace_body)) },
+        confirmButton = {
+            TextButton(onClick = { confirmingReplacement = false; onUse(recommendation, true) }, enabled = !picker.replacing) {
+                Text(stringResource(R.string.plan_picker_replace))
+            }
+        },
+        dismissButton = { TextButton(onClick = { confirmingReplacement = false }) { Text(stringResource(R.string.today_cancel)) } },
+    )
+}
+
+@Composable
+private fun planRecommendationTitle(focus: String?): String = stringResource(when (focus) {
+    "comeback" -> R.string.plan_picker_focus_comeback
+    "fiveK" -> R.string.plan_picker_focus_5k
+    "tenK" -> R.string.plan_picker_focus_10k
+    "tenMile" -> R.string.plan_picker_focus_10mile
+    "halfMarathon" -> R.string.plan_picker_focus_half
+    "marathon" -> R.string.plan_picker_focus_marathon
+    else -> R.string.plan_picker_focus_base
+})
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
