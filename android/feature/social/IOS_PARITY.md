@@ -13,7 +13,7 @@
 
 - Social uses a persistent, text-only Feed, People, Groups, and Routes selector at the top of the page, matching iOS placement. The 44 dp row includes selected-state color, accessible labels, action badges, and parity tab analytics. A runner without accepted connections lands on People; otherwise Social opens Feed. An explicit tab choice remains selected while the task stays alive.
 - The Social root has no leading page title; global conditions, community, and notification actions remain trailing controls.
-- Feed owns recognition, Upcoming, Past activities, and the paginated activity feed. People owns inline search, incoming requests, and the accepted-connection list, with Connections opening the existing full search, QR, referral, blocked-account, and pagination destination. Groups owns invitations and joined Group cards with first-Group creation. Routes provides a direct entry into the existing community route library.
+- Feed owns recognition, Upcoming, Past activities, and the paginated activity feed. People owns inline search, incoming requests, and the accepted-connection list, with Connections opening the existing full search, QR, referral, blocked-account, and pagination destination. Groups owns invitations and joined Group cards with first-Group creation. Routes embeds the community route library directly beneath the top selector.
 - The Notification Center action uses the shared unread count in a high-contrast numeric badge rather than a low-visibility dot.
 - Connections, Your groups, Upcoming, Past activities, Groups, and Recent activity share the iOS section-label, rounded-card, spacing, and action hierarchy.
 - Connections preserve a footprint-matched initial placeholder, accepted-person previews, active-workout indicators, and a dedicated full-screen list/search surface.
@@ -52,12 +52,12 @@
 ## Status And Exceptions
 
 - The top-level four-destination Social navigation and destination ownership are implemented. Feed and Groups content are aligned to their iOS information hierarchy; People discovery retains the existing full Connections destination for QR, referral, blocks, and paginated search.
-- Android Routes opens the existing community route library as a full destination instead of embedding that library under the Social tab. This is an Android navigation limitation and is the remaining visible difference in the feature selector.
+- The Social Routes tab uses the iOS embedded discovery hierarchy: inline search and submit, nearby and import actions, imported-route and community sections, matching empty/loading copy, and route rows. Its reusable community library remains available to the separate route destination. Community route details and imported-route previews stay within Social while open.
 - Activity feed and detail behavior follow the iOS social surface, using the shared Android activity share-card renderer and localized copy.
 - Group creation offers two server-backed templates. Group detail renders policy-specific capabilities, notices, events, membership, and management operations from the unified Group contract.
 - Android uses a full-screen Compose dialog for Connections because the current feature module does not yet own a nested navigation graph; this preserves the iOS information hierarchy and back behavior without a platform-visible modal card.
 - Android uses full-screen Compose dialogs for the personal QR and scanner destinations for the same navigation-ownership reason. CameraX plus ZXing replaces VisionKit while preserving the accepted payload and submission contract.
-- Remaining Social differences and manual reference checks remain tracked by `docs/android-social-parity-prompt.md`; this manifest records the current tab navigation and its Routes navigation exception.
+- Remaining Social differences and manual reference checks remain tracked by `docs/android-social-parity-prompt.md`; the top-level selector remains text-only and all four tabs switch content in place.
 
 ## Group Reference Scenarios
 

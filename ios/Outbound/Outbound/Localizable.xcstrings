@@ -9483,6 +9483,7 @@
       }
     },
     "library.my_routes.remove": {
+      "comment": "[android:community] Generated Android name: library_my_routes_remove.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -9505,6 +9506,7 @@
       }
     },
     "library.my_routes.save": {
+      "comment": "[android:community] Generated Android name: library_my_routes_save.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -9629,6 +9631,7 @@
       }
     },
     "route.import.action.delete": {
+      "comment": "[android:community] Generated Android name: route_import_action_delete.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -9651,6 +9654,7 @@
       }
     },
     "route.import.action.use": {
+      "comment": "[android:community] Generated Android name: route_import_action_use.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -9673,6 +9677,7 @@
       }
     },
     "route.import.delete.confirmation_message": {
+      "comment": "[android:community] Generated Android name: route_import_delete_confirmation_message.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -9695,6 +9700,7 @@
       }
     },
     "route.import.delete.confirmation_title": {
+      "comment": "[android:community] Generated Android name: route_import_delete_confirmation_title.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -9783,6 +9789,7 @@
       }
     },
     "route.import.preview.privacy": {
+      "comment": "[android:community] Generated Android name: route_import_preview_privacy.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -9805,6 +9812,7 @@
       }
     },
     "route.import.preview.title": {
+      "comment": "[android:community] Generated Android name: route_import_preview_title.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -9849,6 +9857,7 @@
       }
     },
     "route.library.accessibility.saved": {
+      "comment": "[android:community] Generated Android name: route_library_accessibility_saved.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -9915,6 +9924,7 @@
       }
     },
     "route.library.action.delete": {
+      "comment": "[android:community] Generated Android name: route_library_action_delete.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -9937,6 +9947,7 @@
       }
     },
     "route.library.action.find_nearby": {
+      "comment": "[android:community] Generated Android name: route_library_action_find_nearby.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -9959,6 +9970,7 @@
       }
     },
     "route.library.action.import": {
+      "comment": "[android:community] Generated Android name: route_library_action_import.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -10003,6 +10015,7 @@
       }
     },
     "route.library.action.start": {
+      "comment": "[android:community] Generated Android name: route_library_action_start.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -10069,6 +10082,7 @@
       }
     },
     "route.library.remove_published.action": {
+      "comment": "[android:community] Generated Android name: route_library_remove_published_action.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -10091,6 +10105,7 @@
       }
     },
     "route.library.remove_published.confirm": {
+      "comment": "[android:community] Generated Android name: route_library_remove_published_confirm.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -10113,6 +10128,7 @@
       }
     },
     "route.library.remove_published.confirmation_message": {
+      "comment": "[android:community] Generated Android name: route_library_remove_published_confirmation_message.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -10135,6 +10151,7 @@
       }
     },
     "route.library.remove_published.confirmation_title": {
+      "comment": "[android:community] Generated Android name: route_library_remove_published_confirmation_title.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -10179,7 +10196,7 @@
       }
     },
     "route.library.detail.creator_format": {
-      "comment": "%@ is a user-provided route owner display name and must not be translated.",
+      "comment": "[android:community] %@ is a user-provided route owner display name and must not be translated.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -10224,6 +10241,7 @@
       }
     },
     "route.library.detail.retry": {
+      "comment": "[android:community] Generated Android name: route_library_detail_retry.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -10246,7 +10264,7 @@
       }
     },
     "route.library.detail.stats_format": {
-      "comment": "%1$lld is the number of saves; %2$lld is the number of completed activities associated with the route.",
+      "comment": "[android:community] %1$lld is the number of saves; %2$lld is the number of completed activities associated with the route.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -10291,6 +10309,7 @@
       }
     },
     "route.library.detail.unavailable.title": {
+      "comment": "[android:community] Generated Android name: route_library_detail_unavailable_title.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -10313,6 +10332,7 @@
       }
     },
     "route.library.empty.community.description": {
+      "comment": "[android:community] Generated Android name: route_library_empty_community_description.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -10335,6 +10355,7 @@
       }
     },
     "route.library.empty.community.title": {
+      "comment": "[android:community] Generated Android name: route_library_empty_community_title.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -10401,6 +10422,7 @@
       }
     },
     "route.library.imported.device_private": {
+      "comment": "[android:community] Generated Android name: route_library_imported_device_private.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -10423,6 +10445,7 @@
       }
     },
     "route.library.loading": {
+      "comment": "[android:community] Generated Android name: route_library_loading.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -10467,7 +10490,7 @@
       }
     },
     "route.library.row.summary_format": {
-      "comment": "%1$@ is a localized distance; %2$@ is a user-provided route owner display name and must not be translated.",
+      "comment": "[android:community] %1$@ is a localized distance; %2$@ is a user-provided route owner display name and must not be translated.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -10490,6 +10513,7 @@
       }
     },
     "route.library.search.prompt": {
+      "comment": "[android:community] Generated Android name: route_library_search_prompt.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -10512,6 +10536,7 @@
       }
     },
     "route.library.section.community": {
+      "comment": "[android:community] Generated Android name: route_library_section_community.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -10534,6 +10559,7 @@
       }
     },
     "route.library.section.imported": {
+      "comment": "[android:community] Generated Android name: route_library_section_imported.",
       "localizations": {
         "en": {
           "stringUnit": {

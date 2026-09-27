@@ -11,7 +11,17 @@
     { "keyPrefix": "weather", "androidPrefix": "weather_", "resourceRoot": "android/core/weather/src/main/res", "file": "strings.xml" },
     { "keyPrefix": "activity", "androidPrefix": "activity_", "resourceRoot": "android/feature/activity/src/main/res", "file": "strings.xml" },
     { "keyPrefix": "assistant", "androidPrefix": "", "resourceRoot": "android/feature/assistant/src/main/res", "file": "strings.xml" },
-    { "keyPrefix": "community", "androidPrefix": "", "resourceRoot": "android/feature/community/src/main/res", "file": "strings.xml" },
+    {
+      "keyPrefix": "community",
+      "androidPrefix": "",
+      "sources": [
+        { "keyPrefix": "community", "androidPrefix": "" },
+        { "keyPrefix": "route", "androidPrefix": "route_" },
+        { "keyPrefix": "library", "androidPrefix": "library_" }
+      ],
+      "resourceRoot": "android/feature/community/src/main/res",
+      "file": "strings.xml"
+    },
     { "keyPrefix": "health", "androidPrefix": "health_", "resourceRoot": "android/feature/health/src/main/res", "file": "strings.xml" },
     { "keyPrefix": "livecoach", "androidPrefix": "live_coach_", "resourceRoot": "android/feature/livecoach/src/main/res", "file": "strings.xml" },
     {
