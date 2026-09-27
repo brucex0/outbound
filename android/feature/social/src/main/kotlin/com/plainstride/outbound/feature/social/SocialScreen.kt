@@ -52,7 +52,7 @@ import com.plainstride.outbound.feature.activity.ActivityExport
 import com.plainstride.outbound.feature.activity.ActivityViewModel
 import com.plainstride.outbound.feature.activity.R as ActivityR
 
-@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,inboxCount:Int=0,unitSystem:MeasurementUnitSystem=MeasurementUnitSystem.metric,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
+@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,inboxCount:Int=0,unitSystem:MeasurementUnitSystem=MeasurementUnitSystem.metric,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={},onRoutesTabSelected:()->Unit={},communityRoutesContent: @Composable () -> Unit = {}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
     var selectedTab by rememberSaveable { mutableStateOf(SocialFeatureTab.FEED) }
     var hasSelectedSocialTab by rememberSaveable { mutableStateOf(false) }
     var createGroup by rememberSaveable { mutableStateOf(false) };var inviteGroup by remember { mutableStateOf<GroupSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var groupActivity by remember { mutableStateOf<GroupSummary?>(null) };var connectionsOpen by rememberSaveable { mutableStateOf(false) }
@@ -105,11 +105,12 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
     if (selectedActivityPost == null) {
         SocialScreen(state, selectedTab, { tab ->
             hasSelectedSocialTab = true
-            if (tab == SocialFeatureTab.ROUTES) onCommunity() else selectedTab = tab
+            selectedTab = tab
+            if (tab == SocialFeatureTab.ROUTES) onRoutesTabSelected()
             viewModel.trackSocialTabSelected(tab.analyticsValue)
         }, inboxCount, unitSystem, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openGroup, viewModel::openComments, viewModel::openActivityDetail, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, { group ->
             if (group.trustPolicy == "trusted_private") viewModel.openGroup(group) else viewModel.joinGroup(group)
-        }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, modifier)
+        }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, communityRoutesContent, modifier)
     } else {
         BackHandler { viewModel.closeActivityDetail() }
         SocialActivityDetail(
@@ -212,7 +213,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
     }
 }
 
-@Composable private fun SocialScreen(state: SocialUiState, selectedTab: SocialFeatureTab, selectTab: (SocialFeatureTab) -> Unit, inboxCount: Int, unitSystem: MeasurementUnitSystem, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, modifier: Modifier) {
+@Composable private fun SocialScreen(state: SocialUiState, selectedTab: SocialFeatureTab, selectTab: (SocialFeatureTab) -> Unit, inboxCount: Int, unitSystem: MeasurementUnitSystem, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, communityRoutesContent: @Composable () -> Unit, modifier: Modifier) {
     var safetyPost by remember { mutableStateOf<SocialPost?>(null) }
     var blockConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
     var deletionConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
@@ -292,9 +293,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                 items(state.home.groups, key = GroupSummary::id) { item -> GroupCard(item, groupDisplayName(item, state.home.groups)) { group(item) } }
                 if (state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             }
-            SocialFeatureTab.ROUTES -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp)) {
-                item { CompanionCard(onClick = community) { Text(stringResource(R.string.social_tab_routes), fontWeight = FontWeight.SemiBold); Spacer(Modifier.height(8.dp)); Text(stringResource(R.string.social_routes_open), style = MaterialTheme.typography.bodyMedium) } }
-            }
+            SocialFeatureTab.ROUTES -> Box(Modifier.weight(1f)) { communityRoutesContent() }
         }
     }
     safetyPost?.takeUnless(SocialPost::isCurrentUser)?.let { post -> var reason by remember { mutableStateOf(ReportReason.OTHER) }; AlertDialog(onDismissRequest = { safetyPost = null }, title = { Text(stringResource(R.string.social_safety_title)) }, text = { Column { Text(stringResource(R.string.social_safety_body)); ReportReason.entries.forEach { option -> Row(verticalAlignment=Alignment.CenterVertically){RadioButton(reason==option,{reason=option});Text(reportReasonLabel(option))} } } }, confirmButton = { TextButton({ report(post, reason.wireValue); safetyPost = null }) { Text(stringResource(R.string.social_report)) } }, dismissButton = { TextButton({ blockConfirmationPost = post; safetyPost = null }) { Text(stringResource(R.string.social_block)) } }) }

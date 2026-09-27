@@ -36,6 +36,7 @@ import com.plainstride.outbound.core.analytics.ProductAnalytics
 
 data class P0IntegrationState(
     val routes: RouteLibrary = RouteLibrary(), val routeScope: RouteScope = RouteScope.DISCOVERY,
+    val selectedCommunityRoute: CommunityRoute? = null, val communityRouteLoading: Boolean = false,
     val notifications: List<InboxNotification> = emptyList(),
     val progress: ProgressScreenState = ProgressScreenState(ProgressStatsEngine.snapshot(emptyList()), emptyList()),
     val completedToday: Boolean = false,
@@ -113,6 +114,9 @@ data class P0IntegrationState(
     }
     fun scope(value:RouteScope){mutable.update{it.copy(routeScope=value)};observeRoutes();refreshRoutes()}
     fun search(value:String){if(value.length==1||value.length%3==0)refreshRoutes(value)}
+    fun loadCommunityRoute(id:String){viewModelScope.launch(Dispatchers.IO){mutable.update{it.copy(selectedCommunityRoute=null,communityRouteLoading=true)};routes.detail(id).onSuccess{route->mutable.update{it.copy(selectedCommunityRoute=route,communityRouteLoading=false)}}.onFailure{mutable.update{it.copy(communityRouteLoading=false)}}}}
+    fun clearCommunityRoute(){mutable.update{it.copy(selectedCommunityRoute=null,communityRouteLoading=false)}}
+    fun removePublishedRoute(id:String)=viewModelScope.launch{routes.remove(id).onSuccess{clearCommunityRoute();refreshRoutes()}}
     fun refreshRoutes(query:String=""){val id=accountId?:return;viewModelScope.launch(Dispatchers.IO){
         val location=if(mutable.value.routeScope==RouteScope.NEARBY&&(
             context.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)==android.content.pm.PackageManager.PERMISSION_GRANTED ||
@@ -160,6 +164,9 @@ data class P0IntegrationState(
     fun trackRouteImport(success: Boolean) = analytics.record(AnalyticsEvent("route_imported", mapOf(
         AnalyticsProperty.Result to if (success) "success" else "failure",
         AnalyticsProperty.Source to "document_picker",
+    )))
+    fun trackImportedRouteDeleted() = analytics.record(AnalyticsEvent("route_import_deleted", mapOf(
+        AnalyticsProperty.Result to "deleted",
     )))
     private fun notificationCountBucket(count: Int): String = when {
         count <= 0 -> "0"
