@@ -19,7 +19,7 @@ struct SocialHomeView: View {
     @State private var selectedActivityPost: TogetherPostDTO?
     @State private var selectedCheersPost: TogetherPostDTO?
     @State private var selectedFeatureTab: SocialFeatureTab = .feed
-    @State private var feedScrollPosition = ScrollPosition(edge: .top)
+    @State private var feedScrollPosition = ScrollPosition(idType: String.self)
     @State private var hasInitializedFeatureTab = false
     @State private var hasInteractedWithFeatureTabs = false
     @State private var exposedBadgeSignatures: Set<String> = []
@@ -70,6 +70,16 @@ struct SocialHomeView: View {
 
     private var syncedActivityIDs: [String] {
         activityStore.activities.compactMap(\.sync?.serverActivityId).sorted()
+    }
+
+    private var feedScrollPositionBinding: Binding<ScrollPosition> {
+        Binding(
+            get: { feedScrollPosition },
+            set: { position in
+                guard selectedActivityPost == nil else { return }
+                feedScrollPosition = position
+            }
+        )
     }
 
     var body: some View {
@@ -337,8 +347,9 @@ struct SocialHomeView: View {
                 recentPosts
             }
             .padding(.vertical, 12)
+            .scrollTargetLayout()
         }
-        .scrollPosition($feedScrollPosition)
+        .scrollPosition(feedScrollPositionBinding)
         .refreshable { await refreshFeed(clearUnseenBadge: true) }
     }
 
@@ -1005,7 +1016,7 @@ struct SocialHomeView: View {
                                         }
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 10)
-                                        .background(.ultraThinMaterial.opacity(0.55))
+                                        .background(.ultraThinMaterial.opacity(0.5))
                                     }
                                     .overlay(alignment: .topLeading) {
                                         let milestones = milestones(for: activity, isCurrentUser: post.isCurrentUser)
@@ -2518,7 +2529,7 @@ private struct SocialNotificationActivityView: View {
                                     }
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 10)
-                                    .background(.ultraThinMaterial.opacity(0.55))
+                                    .background(.ultraThinMaterial.opacity(0.5))
                                 }
                             }
                             .frame(maxWidth: .infinity)
