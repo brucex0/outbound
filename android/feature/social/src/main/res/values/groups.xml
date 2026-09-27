@@ -23,10 +23,6 @@
     <string name="group_mute">Mute Group notifications</string>
     <string name="group_remove_member">Remove %1$s</string>
     <string name="group_leave">Leave Group</string>
-    <string name="social_group_progress">%1$d of %2$d activities this week</string>
-    <string name="social_group_empty">Active. Positive. Together. Create a private Group with people who help you keep moving.</string>
-    <string name="social_group_create">Create Group</string>
-    <string name="social_group_reactivate">Reactivate</string>
     <string name="social_group_archive">Archive Group</string>
     <string name="social_group_set_focus">Set Weekly Theme</string>
     <string name="group_create_choose_title">What brings people together?</string>

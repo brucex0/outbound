@@ -12,6 +12,7 @@
 - Profile identity renders the account avatar when available, with initials as an offline/error fallback. This-week totals fall back to the local activity repository while planning data is unavailable.
 - Profile editing, refresh, settings, and activity history remain reachable with cached content visible while refresh is in progress.
 - Settings groups account, reminders, safety, live guidance, appearance, units, health, gear/progress, integrations, photos, legal/help, debug replay, version, and deletion using Android-native destinations. Saving activity photos to the device's `Pictures/Plainstride` album is enabled by default and runs only after the activity is durably stored.
+- Appearance keeps the System/Light/Dark segmented control in Settings and opens a dedicated Appearance chooser from the Theme row. The chooser repeats the mode control and lists all eight themes with gradient previews and a selected marker, matching iOS `ThemeChooserView`; mode and theme changes apply and persist immediately.
 - Preference writes are local-first and report transient save or retry results through the app snackbar.
 - Sign-out and permanent account deletion require confirmation; deletion clears account-scoped local data after server success.
 

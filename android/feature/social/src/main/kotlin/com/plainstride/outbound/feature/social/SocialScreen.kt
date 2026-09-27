@@ -50,6 +50,8 @@ import com.plainstride.outbound.feature.activity.ActivityViewModel
 import com.plainstride.outbound.feature.activity.R as ActivityR
 
 @Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,inboxCount:Int=0,unitSystem:MeasurementUnitSystem=MeasurementUnitSystem.metric,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
+    var selectedTab by rememberSaveable { mutableStateOf(SocialFeatureTab.FEED) }
+    var hasSelectedSocialTab by rememberSaveable { mutableStateOf(false) }
     var createGroup by rememberSaveable { mutableStateOf(false) };var inviteGroup by remember { mutableStateOf<GroupSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var groupActivity by remember { mutableStateOf<GroupSummary?>(null) };var connectionsOpen by rememberSaveable { mutableStateOf(false) }
     var scannerOpen by rememberSaveable { mutableStateOf(false) }
     var scannerFeedback by remember { mutableStateOf<String?>(null) }
@@ -58,6 +60,11 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
     val activityViewModel: ActivityViewModel = hiltViewModel()
     LaunchedEffect(accountId, localeTag) { viewModel.start(accountId, localeTag) }
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(state.loading, state.home.connections.size) {
+        if (!state.loading && !hasSelectedSocialTab) {
+            selectedTab = if (state.home.connections.none { it.relationship in setOf("accepted", "connected") }) SocialFeatureTab.PEOPLE else SocialFeatureTab.FEED
+        }
+    }
     LaunchedEffect(viewModel) {
         viewModel.connectionEffects.collect { effect ->
             when (effect) {
@@ -93,7 +100,11 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
     }
     val selectedActivityPost = state.selectedActivityPost?.let { selected -> state.home.posts.firstOrNull { it.id == selected.id } ?: selected }
     if (selectedActivityPost == null) {
-        SocialScreen(state, inboxCount, unitSystem, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openGroup, viewModel::openComments, viewModel::openActivityDetail, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, { group ->
+        SocialScreen(state, selectedTab, { tab ->
+            hasSelectedSocialTab = true
+            if (tab == SocialFeatureTab.ROUTES) onCommunity() else selectedTab = tab
+            viewModel.trackSocialTabSelected(tab.analyticsValue)
+        }, inboxCount, unitSystem, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openGroup, viewModel::openComments, viewModel::openActivityDetail, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, { group ->
             if (group.trustPolicy == "trusted_private") viewModel.openGroup(group) else viewModel.joinGroup(group)
         }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, modifier)
     } else {
@@ -167,6 +178,13 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
     state.selectedPost?.let { CommentsDialog(it, state.comments, viewModel::addComment, viewModel::deleteComment, viewModel::closeComments) }
 }
 
+private enum class SocialFeatureTab(val analyticsValue: String, val icon: androidx.compose.ui.graphics.vector.ImageVector, val label: Int) {
+    FEED("feed", Icons.Outlined.ViewStream, R.string.social_tab_feed),
+    PEOPLE("people", Icons.Outlined.People, R.string.social_tab_people),
+    GROUPS("groups", Icons.Outlined.Flag, R.string.social_tab_groups),
+    ROUTES("routes", Icons.Outlined.Map, R.string.social_tab_routes),
+}
+
 private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value) {
     ConnectionFeedback.REQUESTED -> R.string.social_connection_request_sent
     ConnectionFeedback.ALREADY_PENDING -> R.string.social_connection_request_already_sent
@@ -191,7 +209,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
     }
 }
 
-@Composable private fun SocialScreen(state: SocialUiState, inboxCount: Int, unitSystem: MeasurementUnitSystem, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, modifier: Modifier) {
+@Composable private fun SocialScreen(state: SocialUiState, selectedTab: SocialFeatureTab, selectTab: (SocialFeatureTab) -> Unit, inboxCount: Int, unitSystem: MeasurementUnitSystem, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, modifier: Modifier) {
     var safetyPost by remember { mutableStateOf<SocialPost?>(null) }
     var blockConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
     var deletionConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
@@ -203,31 +221,61 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
     val incomingRequests = state.home.connections.filter { it.relationship == "pending" && it.connectionDirection == "incoming" }
     val groupInvitations = state.home.invitations.filter { it.kind == "group" }
     val groupAttention = groupInvitations.size + state.home.groups.sumOf { it.unreadNoticeCount }
-    LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) { SocialIconButton(conditions, stringResource(R.string.social_conditions)) { Icon(Icons.Outlined.WbSunny, null) }; SocialIconButton(community, stringResource(R.string.social_community)) { Icon(Icons.Outlined.People, null) }; SocialIconButton(notifications, stringResource(R.string.social_notifications)) { BadgedBox({ if (maxOf(inboxCount, groupAttention) > 0) Badge(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError) { Text(maxOf(inboxCount, groupAttention).coerceAtMost(99).toString()) } }) { Icon(Icons.Outlined.Notifications, null) } } } }
-        if (state.offline) item { AssistChip({}, { Text(stringResource(R.string.social_offline)) }, leadingIcon = { Icon(Icons.Outlined.CloudOff, null) }) }
-        items(incomingRequests, key = { "request-${it.id}" }) { person ->
-            RequesterCard(person, { openProfile(person) }, { acceptRequest(person) }, { declineRequest(person) })
+    Column(modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+            SocialIconButton(conditions, stringResource(R.string.social_conditions)) { Icon(Icons.Outlined.WbSunny, null) }
+            SocialIconButton(community, stringResource(R.string.social_community)) { Icon(Icons.Outlined.People, null) }
+            SocialIconButton(notifications, stringResource(R.string.social_notifications)) { BadgedBox({ if (maxOf(inboxCount, groupAttention) > 0) Badge(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError) { Text(maxOf(inboxCount, groupAttention).coerceAtMost(99).toString()) } }) { Icon(Icons.Outlined.Notifications, null) } }
         }
-        item { SectionHeader(stringResource(R.string.social_connections), action = stringResource(R.string.social_all), onAction = openConnections) }
-        item { SocialConnectionsPreview(acceptedConnections, state.loading, openConnections, openProfile) }
-        items(groupInvitations, key = SocialInvitation::id) { InvitationCard(it) { invitation -> openTarget("invitation", invitation.id) } }
-        if (state.home.groups.isNotEmpty()) items(state.home.groups, key = GroupSummary::id) { groupItem ->
-            GroupCard(groupItem, groupDisplayName(groupItem, state.home.groups)) { group(groupItem) }
+        if (state.offline) AssistChip({}, { Text(stringResource(R.string.social_offline)) }, Modifier.padding(horizontal = 16.dp), leadingIcon = { Icon(Icons.Outlined.CloudOff, null) })
+        when (selectedTab) {
+            SocialFeatureTab.FEED -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (state.home.recognitions.isNotEmpty()) item { SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column { Text(stringResource(R.string.social_guide_noticed), fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_recognition_earned), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } } } }
+                if (state.home.upcomingRuns.isNotEmpty()) {
+                    item { SectionHeader(stringResource(R.string.social_upcoming), action = stringResource(R.string.social_discover), onAction = community) }
+                    items(state.home.upcomingRuns.take(3), key = SocialEvent::id) { event -> EventCard(event) { openTarget("event",event.id) } }
+                }
+                if (state.home.pastEvents.isNotEmpty()) {
+                    item { SectionHeader(stringResource(R.string.social_past_activities)) }
+                    items(state.home.pastEvents.take(1), key = SocialEvent::id) { event -> EventCard(event) { openTarget("event",event.id) } }
+                }
+                item { SectionHeader(stringResource(R.string.social_feed)) }
+                items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, unitSystem, { openProfile(post.author) }, { if (post.activity != null) openActivity(post) }, { cheer(post) }, { comments(post) }, { if (post.isCurrentUser) { if (skipDeletionConfirmation) deletePost(post) else deletionConfirmationPost = post } else safetyPost = post }) }
+                if (!state.loading && state.home.posts.isEmpty()) item { EmptyCard(stringResource(R.string.social_feed_empty), Icons.Outlined.DirectionsRun) }
+                if (state.loading) item { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+                if (state.home.nextCursor != null) item { Button(loadMore, Modifier.fillMaxWidth(), enabled = !state.feedLoading) { Text(stringResource(R.string.social_load_more)) } }
+            }
+            SocialFeatureTab.PEOPLE -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                item { OutlinedTextField(state.search, search, Modifier.fillMaxWidth(), singleLine = true, label = { Text(stringResource(R.string.social_search_people)) }, leadingIcon = { Icon(Icons.Outlined.Search, null) }) }
+                if (state.searchResults.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_search_people)) }; items(state.searchResults, key = SocialPerson::id) { person -> PersonRow(person) { openProfile(person) } } }
+                if (incomingRequests.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_requests)) }; items(incomingRequests, key = SocialPerson::id) { person -> RequesterCard(person, { openProfile(person) }, { acceptRequest(person) }, { declineRequest(person) }) } }
+                item { SectionHeader(stringResource(R.string.social_connections), action = stringResource(R.string.social_all), onAction = openConnections) }
+                if (acceptedConnections.isEmpty()) item { EmptyCard(stringResource(R.string.social_connections_empty), Icons.Outlined.PersonAdd) }
+                items(acceptedConnections, key = SocialPerson::id) { person -> PersonRow(person) { openProfile(person) } }
+                item { OutlinedButton(openConnections, Modifier.fillMaxWidth()) { Text(stringResource(R.string.social_all)) } }
+            }
+            SocialFeatureTab.GROUPS -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (groupInvitations.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_invite)) }; items(groupInvitations, key = SocialInvitation::id) { InvitationCard(it) { invitation -> openTarget("invitation", invitation.id) } } }
+                item { SectionHeader(stringResource(R.string.social_groups), action = stringResource(R.string.social_group_create), onAction = createGroup) }
+                if (state.home.groups.isEmpty() && !state.loading) item { CompanionCard(onClick = createGroup) { Text(stringResource(R.string.social_group_empty), fontWeight = FontWeight.SemiBold); Spacer(Modifier.height(10.dp)); Text(stringResource(R.string.social_group_create), fontWeight = FontWeight.Bold) } }
+                items(state.home.groups, key = GroupSummary::id) { item -> GroupCard(item, groupDisplayName(item, state.home.groups)) { group(item) } }
+                if (state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+            }
+            SocialFeatureTab.ROUTES -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp)) {
+                item { CompanionCard(onClick = community) { Text(stringResource(R.string.social_tab_routes), fontWeight = FontWeight.SemiBold); Spacer(Modifier.height(8.dp)); Text(stringResource(R.string.social_routes_open), style = MaterialTheme.typography.bodyMedium) } }
+            }
         }
-        else if (!state.loading && acceptedConnections.isNotEmpty()) item { CompanionCard(onClick = createGroup) { Text(stringResource(R.string.social_group_empty), fontWeight = FontWeight.SemiBold); Spacer(Modifier.height(10.dp)); Text(stringResource(R.string.social_group_create), fontWeight = FontWeight.Bold) } }
-        if (state.home.recognitions.isNotEmpty()) item { SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column { Text(stringResource(R.string.social_guide_noticed), fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_recognition_earned), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } } } }
-        item { SectionHeader(stringResource(R.string.social_upcoming), action = stringResource(R.string.social_discover), onAction = community) }
-        items(state.home.upcomingRuns, key = SocialEvent::id) { event -> EventCard(event) { openTarget("event",event.id) } }
-        if (state.home.upcomingRuns.isEmpty()) item { EmptyCard(stringResource(R.string.social_upcoming_empty), Icons.Outlined.Event) }
-        item { SectionHeader(stringResource(R.string.social_past_activities)) }
-        items(state.home.pastEvents, key = SocialEvent::id) { event -> EventCard(event) { openTarget("event",event.id) } }
-        if (state.home.pastEvents.isEmpty()) item { EmptyCard(stringResource(R.string.social_past_empty), Icons.Outlined.History) }
-        item { SectionHeader(stringResource(R.string.social_feed)) }
-        items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, unitSystem, { openProfile(post.author) }, { if (post.activity != null) openActivity(post) }, { cheer(post) }, { comments(post) }, { if (post.isCurrentUser) { if (skipDeletionConfirmation) deletePost(post) else deletionConfirmationPost = post } else safetyPost = post }) }
-        if (!state.loading && state.home.posts.isEmpty()) item { EmptyCard(stringResource(R.string.social_feed_empty), Icons.Outlined.DirectionsRun) }
-        if (state.loading) item { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
-        if (state.home.nextCursor != null) item { Button(loadMore, Modifier.fillMaxWidth(), enabled = !state.feedLoading) { Text(stringResource(R.string.social_load_more)) } }
+        Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(horizontal = 6.dp, vertical = 3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            SocialFeatureTab.entries.forEach { tab ->
+                val count = when (tab) { SocialFeatureTab.PEOPLE -> incomingRequests.size; SocialFeatureTab.GROUPS -> groupAttention; else -> 0 }
+                TextButton(onClick = { selectTab(tab) }, modifier = Modifier.weight(1f).heightIn(min = 44.dp), contentPadding = PaddingValues(vertical = 2.dp)) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        BadgedBox({ if (count > 0) Badge { Text(if (count > 9) "9+" else count.toString()) } }) { Icon(tab.icon, stringResource(tab.label), tint = if (selectedTab == tab) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
+                        Text(stringResource(tab.label), style = MaterialTheme.typography.labelSmall, color = if (selectedTab == tab) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
     }
     safetyPost?.takeUnless(SocialPost::isCurrentUser)?.let { post -> var reason by remember { mutableStateOf(ReportReason.OTHER) }; AlertDialog(onDismissRequest = { safetyPost = null }, title = { Text(stringResource(R.string.social_safety_title)) }, text = { Column { Text(stringResource(R.string.social_safety_body)); ReportReason.entries.forEach { option -> Row(verticalAlignment=Alignment.CenterVertically){RadioButton(reason==option,{reason=option});Text(reportReasonLabel(option))} } } }, confirmButton = { TextButton({ report(post, reason.wireValue); safetyPost = null }) { Text(stringResource(R.string.social_report)) } }, dismissButton = { TextButton({ blockConfirmationPost = post; safetyPost = null }) { Text(stringResource(R.string.social_block)) } }) }
     blockConfirmationPost?.let { post -> AlertDialog(onDismissRequest = { blockConfirmationPost = null }, title = { Text(stringResource(R.string.social_block_confirmation_title)) }, text = { Text(stringResource(R.string.social_block_confirmation_message)) }, confirmButton = { TextButton({ block(post); blockConfirmationPost = null }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.social_block)) } }, dismissButton = { TextButton({ blockConfirmationPost = null }) { Text(stringResource(R.string.social_cancel)) } }) }

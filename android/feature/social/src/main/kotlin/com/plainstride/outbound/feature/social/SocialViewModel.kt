@@ -94,6 +94,10 @@ sealed interface ConnectionEffect {
         }
     }
     fun toggleCheer(post: SocialPost) = mutate("social_cheer_toggled") { repository.setCheer(post.id, !post.viewerHasCheered).getOrThrow(); refresh() }
+    fun trackSocialTabSelected(tab: String) = analytics.record(AnalyticsEvent("social_tab_selected", mapOf(
+        AnalyticsProperty.SelectionType to tab,
+        AnalyticsProperty.EntrySource to "tab_row",
+    )))
     fun trackActivityDetailOpened() = analytics.record(AnalyticsEvent("activity_detail_opened", mapOf(AnalyticsProperty.SourceType to "social_feed")))
     fun trackActivitySplitsViewed(count: Int) = analytics.record(AnalyticsEvent("activity_splits_viewed", mapOf(
         AnalyticsProperty.SourceType to "social_feed",
