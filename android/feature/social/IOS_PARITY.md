@@ -11,7 +11,7 @@
 
 ## Home Surface
 
-- Social uses the persistent Feed, People, Groups, and Routes selector with a 44 dp row, selected-state color, accessible labels, and parity tab analytics. A runner without accepted connections lands on People; otherwise Social opens Feed. An explicit tab choice remains selected while the task stays alive.
+- Social uses a persistent, text-only Feed, People, Groups, and Routes selector at the top of the page, matching iOS placement. The 44 dp row includes selected-state color, accessible labels, action badges, and parity tab analytics. A runner without accepted connections lands on People; otherwise Social opens Feed. An explicit tab choice remains selected while the task stays alive.
 - The Social root has no leading page title; global conditions, community, and notification actions remain trailing controls.
 - Feed owns recognition, Upcoming, Past activities, and the paginated activity feed. People owns inline search, incoming requests, and the accepted-connection list, with Connections opening the existing full search, QR, referral, blocked-account, and pagination destination. Groups owns invitations and joined Group cards with first-Group creation. Routes provides a direct entry into the existing community route library.
 - The Notification Center action uses the shared unread count in a high-contrast numeric badge rather than a low-visibility dot.
