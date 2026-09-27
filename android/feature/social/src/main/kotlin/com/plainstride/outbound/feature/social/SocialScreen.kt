@@ -294,9 +294,9 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                 onRefresh = refresh,
                 modifier = Modifier.weight(1f),
             ) {
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (activeConnections.isNotEmpty()) item {
-                    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                         SectionHeader(stringResource(R.string.social_active_now_title))
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
                             items(activeConnections, key = SocialPerson::id) { person ->
@@ -318,17 +318,17 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                     }
                 }
                 if (state.home.upcomingRuns.isNotEmpty()) {
-                    item { SectionHeader(stringResource(R.string.social_upcoming), action = stringResource(R.string.social_discover), onAction = community) }
+                    item { Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { SectionHeader(stringResource(R.string.social_upcoming), action = stringResource(R.string.social_discover), onAction = community) } }
                     item {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
+                        LazyRow(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
                             items(prioritizeUpcomingEvents(state.home.upcomingRuns).take(3), key = SocialEvent::id) { event -> UpcomingEventCard(event) { viewModel.trackUpcomingSelected("card"); openTarget("event", event.id) } }
                         }
                     }
                 }
-                item { SectionHeader(stringResource(R.string.social_activity_feed)) }
+                item { Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { SectionHeader(stringResource(R.string.social_activity_feed)) } }
                 items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, unitSystem, viewModel::loadFeedPhotoThumbnail, { openProfile(post.author) }, { if (post.activity != null) openActivity(post) }, { cheer(post) }, { comments(post) }, { openProfile(it) }, { if (post.isCurrentUser) { if (skipDeletionConfirmation) deletePost(post) else deletionConfirmationPost = post } else safetyPost = post }) }
                 if (!state.loading && state.home.posts.isEmpty()) item {
-                    SocialCard {
+                    Box(Modifier.padding(horizontal = 16.dp)) { SocialCard {
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.AutoMirrored.Outlined.DirectionsRun, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
                             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -336,12 +336,12 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                                 Text(stringResource(R.string.social_feed_empty), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
-                    }
+                    } }
                 }
                 if (state.loading) item { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
                 if (state.home.nextCursor != null) item(key = "feed-page-${state.home.nextCursor}") {
                     when {
-                        state.feedLoadFailed -> TextButton(loadMore, Modifier.fillMaxWidth()) { Text(stringResource(R.string.social_feed_load_more_failed)) }
+                        state.feedLoadFailed -> TextButton(loadMore, Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { Text(stringResource(R.string.social_feed_load_more_failed)) }
                         state.feedLoading -> Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp) }
                         else -> LaunchedEffect(state.home.nextCursor) { loadMore() }
                     }
@@ -543,14 +543,14 @@ private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, loadPh
                 role = androidx.compose.ui.semantics.Role.Button,
                 onClick = openActivity,
             ),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(0.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(2.dp),
+        elevation = CardDefaults.cardElevation(0.dp),
     ) {
         val cheerLabel = stringResource(if (post.viewerHasCheered) R.string.social_remove_cheer else R.string.social_add_cheer)
         val commentsLabel = stringResource(R.string.social_comments)
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(profile, Modifier.weight(1f), contentPadding = PaddingValues(0.dp)) {
                     SocialAvatar(post.author, 36.dp)
                     Spacer(Modifier.width(10.dp))
@@ -562,8 +562,8 @@ private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, loadPh
                 IconButton(safety) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.social_more)) }
             }
             post.activity?.let { activity ->
-                Text(activity.title, fontWeight = FontWeight.SemiBold)
-                Box(Modifier.fillMaxWidth().aspectRatio(1.5f).clip(RoundedCornerShape(16.dp))) {
+                Text(activity.title, Modifier.padding(horizontal = 16.dp), fontWeight = FontWeight.SemiBold)
+                Box(Modifier.fillMaxWidth().aspectRatio(1f)) {
                     SocialRoutePreview(
                         activity = activity,
                         loadPhotoThumbnail = loadPhotoThumbnail,
@@ -594,8 +594,8 @@ private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, loadPh
                     }
                 }
             }
-            post.caption?.takeIf { it.isNotEmpty() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            post.caption?.takeIf { it.isNotEmpty() }?.let { Text(it, Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodyMedium) }
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Surface(
                     Modifier.heightIn(min = 40.dp).clip(CircleShape).clickable(onClick = cheer)
                         .semantics { contentDescription = "$cheerLabel, ${post.cheerCount}" },
@@ -746,6 +746,7 @@ private fun SocialActivityDetail(
                     }
                 },
                 bottomContentPadding = sheetHeight,
+                fitRoutePadding = 64.dp,
             )
         } else {
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
