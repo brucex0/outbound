@@ -19,7 +19,7 @@ struct SocialHomeView: View {
     @State private var selectedActivityPost: TogetherPostDTO?
     @State private var selectedCheersPost: TogetherPostDTO?
     @State private var selectedFeatureTab: SocialFeatureTab = .feed
-    @State private var feedScrollPosition = ScrollPosition(edge: .top)
+    @State private var feedScrollTargetID: String?
     @State private var hasInitializedFeatureTab = false
     @State private var hasInteractedWithFeatureTabs = false
     @State private var exposedBadgeSignatures: Set<String> = []
@@ -337,8 +337,9 @@ struct SocialHomeView: View {
                 recentPosts
             }
             .padding(.vertical, 12)
+            .scrollTargetLayout()
         }
-        .scrollPosition($feedScrollPosition)
+        .scrollPosition(id: $feedScrollTargetID, anchor: .top)
         .refreshable { await refreshFeed(clearUnseenBadge: true) }
     }
 
@@ -1005,7 +1006,7 @@ struct SocialHomeView: View {
                                         }
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 10)
-                                        .background(.regularMaterial)
+                                        .background(.ultraThinMaterial)
                                     }
                                     .overlay(alignment: .topLeading) {
                                         let milestones = milestones(for: activity, isCurrentUser: post.isCurrentUser)
@@ -1085,6 +1086,7 @@ struct SocialHomeView: View {
                 .accessibilityAction(named: String(localized: "Open activity")) {
                     selectedActivityPost = post
                 }
+                .id(post.id)
                 .onAppear {
                     guard post.id == socialStore.state.posts.first?.id,
                           hasInitializedFeatureTab,
@@ -2518,7 +2520,7 @@ private struct SocialNotificationActivityView: View {
                                     }
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 10)
-                                    .background(.regularMaterial)
+                                    .background(.ultraThinMaterial)
                                 }
                             }
                             .frame(maxWidth: .infinity)
