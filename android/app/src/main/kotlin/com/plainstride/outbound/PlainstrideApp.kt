@@ -3,14 +3,18 @@ package com.plainstride.outbound
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -18,6 +22,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -46,6 +51,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
@@ -873,17 +882,58 @@ private fun SignInScreen(
 
 @Composable
 private fun WelcomeOrbit(modifier: Modifier = Modifier) {
-    Box(modifier.height(220.dp), contentAlignment = Alignment.Center) {
-        Surface(shape = RoundedCornerShape(120.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), modifier = Modifier.size(275.dp, 132.dp)) {}
-        OrbitPerson(R.string.auth_orbit_family, Icons.Default.Favorite, Modifier.align(Alignment.TopStart).padding(start = 26.dp, top = 22.dp))
-        OrbitPerson(R.string.auth_orbit_friends, Icons.Default.Group, Modifier.align(Alignment.TopEnd).padding(end = 26.dp, top = 34.dp))
-        OrbitPerson(R.string.auth_orbit_groups, Icons.Default.Groups2, Modifier.align(Alignment.BottomStart).padding(start = 36.dp, bottom = 20.dp))
-        Surface(shape = RoundedCornerShape(40.dp), color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(76.dp)) {
-            Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Person, stringResource(R.string.auth_orbit_you), Modifier.size(34.dp)) }
+    BoxWithConstraints(modifier.height(220.dp)) {
+        val centerX = maxWidth / 2
+        val orbitColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.16f)
+
+        Canvas(Modifier.fillMaxSize()) {
+            val orbitWidth = minOf(size.width - 34.dp.toPx(), 272.dp.toPx())
+            val orbitHeight = 132.dp.toPx()
+            rotate(-8f, pivot = Offset(size.width / 2, 104.dp.toPx())) {
+                drawOval(
+                    color = orbitColor,
+                    topLeft = Offset((size.width - orbitWidth) / 2, 104.dp.toPx() - orbitHeight / 2),
+                    size = Size(orbitWidth, orbitHeight),
+                    style = Stroke(width = 2.dp.toPx()),
+                )
+            }
         }
-        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.align(Alignment.BottomCenter)) {
+
+        OrbitPerson(R.string.auth_orbit_family, Icons.Default.Favorite, Modifier.offset(x = centerX - 140.dp, y = 19.dp))
+        OrbitPerson(R.string.auth_orbit_friends, Icons.Default.Group, Modifier.offset(x = centerX + 76.dp, y = 34.dp))
+        OrbitPerson(R.string.auth_orbit_groups, Icons.Default.Groups2, Modifier.offset(x = centerX - 131.dp, y = 110.dp))
+
+        Box(Modifier.offset(x = centerX - 38.dp, y = 67.dp).size(76.dp)) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier.fillMaxSize().border(4.dp, MaterialTheme.colorScheme.background, CircleShape),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Person, stringResource(R.string.auth_orbit_you), Modifier.size(34.dp))
+                }
+            }
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.align(Alignment.TopEnd).offset(x = 4.dp, y = (-4).dp)
+                    .size(27.dp).border(3.dp, MaterialTheme.colorScheme.background, CircleShape),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.AutoAwesome, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                }
+            }
+        }
+
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+            modifier = Modifier.align(Alignment.TopCenter).offset(y = 184.dp),
+        ) {
             Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.auth_better_together), style = MaterialTheme.typography.labelLarge)
+                Icon(Icons.Default.AutoAwesome, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.auth_better_together), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             }
         }
     }
@@ -891,9 +941,14 @@ private fun WelcomeOrbit(modifier: Modifier = Modifier) {
 
 @Composable
 private fun OrbitPerson(label: Int, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier) {
-    Surface(shape = RoundedCornerShape(34.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = modifier.size(66.dp)) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = modifier.size(64.dp).border(4.dp, MaterialTheme.colorScheme.background, CircleShape),
+    ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Icon(icon, null, Modifier.size(21.dp)); Text(stringResource(label), style = MaterialTheme.typography.labelSmall)
+            Icon(icon, null, Modifier.size(19.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f))
+            Text(stringResource(label), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f))
         }
     }
 }
