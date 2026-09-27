@@ -300,7 +300,8 @@ fun TodayScreen(
             preciseLocationGranted = locationGranted,
             focusOnUser = true,
         )
-        Column(Modifier.fillMaxSize()) {
+        // The route map can show through the toolbar while launch controls stay above its 64dp pill and 12dp margin.
+        Column(Modifier.fillMaxSize().padding(bottom = 76.dp)) {
             Box(Modifier.fillMaxWidth().weight(1f)) {
             Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 TodayTopControls(weather, useFahrenheit, inboxCount, { if (weather != null) showsWeather = true }, onOpenInbox)

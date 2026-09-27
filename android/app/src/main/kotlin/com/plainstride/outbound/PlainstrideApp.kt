@@ -411,7 +411,7 @@ private fun SignedInApp(
             start = contentPadding.calculateStartPadding(layoutDirection),
             top = contentPadding.calculateTopPadding(),
             end = contentPadding.calculateEndPadding(layoutDirection),
-            bottom = if (TopLevelDestination.entries.any { it.route == currentDestination?.route }) {
+            bottom = if (currentDestination?.route == TopLevelDestination.Today.route) {
                 WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()
             } else {
                 contentPadding.calculateBottomPadding()
