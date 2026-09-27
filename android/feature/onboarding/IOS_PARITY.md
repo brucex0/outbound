@@ -16,6 +16,7 @@
 - iOS account status and planning contracts: `ios/Outbound/Outbound/App/AuthStore.swift`, `ios/Outbound/Outbound/Core/AuthSession.swift`, and `ios/Outbound/Outbound/Core/APIClient.swift`
 - Android flow: `OnboardingRoute.kt`, `OnboardingViewModel.kt`, and `OnboardingModels.kt`
 - Android persistence and network boundary: `OnboardingDraftStore.kt`, `DefaultOnboardingRepository.kt`, `AccountApi.kt`, and `PlanningApi.kt`
+- Android Today plan-change entry: `feature/today/TodayScreen.kt`, `TodayViewModel.kt`, `TodayRepository.kt`, and `OfflineFirstTodayRepository.kt`
 
 ## States And Transitions
 
@@ -47,6 +48,8 @@
 
 ## Status
 
-- Implemented for first-use onboarding, Settings replay, and the Today no-plan entry.
+- First-use onboarding and Settings replay use the reusable plan builder. The Today no-plan entry opens it with `planned_button` analytics attribution.
+- The Today planned-workout card's Change plan action loads reviewed recommendations, supports plan details and build-my-plan routing, and asks before replacing an active plan. Recommendation loading, activation outcomes, and picker entry use bounded analytics.
+- Goal intake follows the iOS conversation pattern: quick replies and interpreted text confirm the same objective state, event and review details must be confirmed, confirmed answers can be edited, and established-runner setup can be accepted or adjusted.
 - The `all_plans` source is modeled and instrumented; wiring awaits the Android All Plans screen, which does not yet exist.
 - No owner-approved behavioral exceptions.

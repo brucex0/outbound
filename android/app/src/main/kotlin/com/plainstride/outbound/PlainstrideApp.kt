@@ -424,6 +424,7 @@ private fun SignedInApp(
                             },
                             onReturnToSession = { navController.navigate(RECORDING_ROUTE) { launchSingleTop = true } },
                             onSetUpPlan = { planBuilderSource = PlanBuilderSource.PlannedButton },
+                            onBuildPlan = { planBuilderSource = PlanBuilderSource.AllPlans },
                             onStartManual = { setup ->
                                 recordingLaunch = setup.toRecordingLaunch(integration.defaultGearId)
                                 navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }

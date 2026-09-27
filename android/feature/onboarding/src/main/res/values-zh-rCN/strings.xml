@@ -155,4 +155,26 @@
     <string name="onboarding_profile_required_title">私密计划信息</string>
     <string name="onboarding_profile_required_subtitle">为了安全地制定个性化计划并计算热量，需要填写出生日期、出生时指定的性别和体重。你可以手动输入，也可以从健康数据互联导入现有数据。身高为可选项。</string>
     <string name="onboarding_profile_required_error">请填写有效的出生日期、出生时指定的性别和体重后继续。</string>
+    <string name="plan_builder_goal_quick_replies">选择快捷回复，或用自己的话描述目标。</string>
+    <string name="plan_builder_goal_acknowledgement">明白了，我们来补充具体信息。</string>
+    <string name="plan_builder_goal_change">更改目标</string>
+    <string name="plan_builder_conversation_event_distance">比赛距离是多少？</string>
+    <string name="plan_builder_conversation_event_date">比赛日期是什么时候？</string>
+    <string name="plan_builder_conversation_event_intent">你希望如何完成比赛？</string>
+    <string name="plan_builder_conversation_target_time">你的目标完赛时间是多少？</string>
+    <string name="plan_builder_conversation_review_horizon">你希望何时回顾训练进展？</string>
+    <string name="plan_builder_smart_setup_title">我已经了解你的训练规律</string>
+    <string name="plan_builder_smart_setup_subtitle">根据你近期的活动记录。若当前习惯仍然如此，请确认使用。</string>
+    <string name="plan_builder_smart_setup_evidence">根据近期 %2$d 周内的 %1$d 次训练</string>
+    <string name="plan_builder_smart_setup_activities">训练类型：%1$s</string>
+    <string name="plan_builder_smart_setup_rhythm">每周安排：%1$d 次 · 每次最多 %2$d 分钟</string>
+    <string name="plan_builder_smart_setup_days">常训练日：%1$s</string>
+    <string name="plan_builder_smart_setup_days_none">暂无固定训练日</string>
+    <string name="plan_builder_smart_setup_use">使用此安排</string>
+    <string name="plan_builder_smart_setup_adjust">调整安排</string>
+    <string name="plan_builder_change_answer">更改</string>
+    <string name="plan_builder_event_distance_answer">比赛距离：%1$s</string>
+    <string name="plan_builder_event_date_answer">比赛日期：%1$s</string>
+    <string name="plan_builder_event_intent_answer">比赛目标：%1$s</string>
+    <string name="plan_builder_target_time_answer">目标完赛时间：%1$d 分钟</string>
 </resources>

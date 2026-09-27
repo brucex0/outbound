@@ -27,6 +27,7 @@ import com.plainstride.outbound.core.model.PlanningState
 import com.plainstride.outbound.core.model.StandaloneWorkoutCatalog
 import com.plainstride.outbound.core.model.TrainingStimulus
 import com.plainstride.outbound.core.network.ReadinessCheckInRequest
+import com.plainstride.outbound.core.network.PlanRecommendation
 import com.plainstride.outbound.core.data.ActivityRepository
 import com.plainstride.outbound.core.model.CalibrationStatus
 import com.plainstride.outbound.core.model.activity.ActivityFacts
@@ -79,6 +80,16 @@ data class TodayUiState(
             (suggestion is CachedResource.Available && suggestion.value.primary == null)
 }
 
+data class PlanPickerUiState(
+    val open: Boolean = false,
+    val loading: Boolean = false,
+    val recommendations: List<PlanRecommendation> = emptyList(),
+    val selected: PlanRecommendation? = null,
+    val replacing: Boolean = false,
+    val error: Boolean = false,
+    val loadingError: Boolean = false,
+)
+
 sealed interface TodayMessage {
     data object CouldNotRefresh : TodayMessage
     data object CouldNotAdjust : TodayMessage
@@ -103,6 +114,8 @@ class TodayViewModel @Inject constructor(
     val messages = MutableSharedFlow<TodayMessage>(extraBufferCapacity = 1)
     private val mutableWeather = MutableStateFlow<WeatherGuidance?>(null)
     val weather = mutableWeather
+    private val mutablePlanPicker = MutableStateFlow(PlanPickerUiState())
+    val planPicker = mutablePlanPicker
     val weatherPermissionRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     val state = combine(
@@ -135,6 +148,50 @@ class TodayViewModel @Inject constructor(
     fun updateSessionState(active: Boolean, completedToday: Boolean) {
         sessionState.value = active to completedToday
     }
+
+    fun openPlanPicker() {
+        mutablePlanPicker.value = PlanPickerUiState(open = true, loading = true)
+        analytics.record(AnalyticsEvent("planning_surface_opened", mapOf(
+            AnalyticsProperty.SourceType to "plan_picker",
+            AnalyticsProperty.EntrySource to "today_planned_card_change",
+        )))
+        viewModelScope.launch {
+            repository.planRecommendations().fold(
+                onSuccess = { response -> mutablePlanPicker.value = mutablePlanPicker.value.copy(loading = false, recommendations = response.recommendations) },
+                onFailure = { mutablePlanPicker.value = mutablePlanPicker.value.copy(loading = false, error = true, loadingError = true) },
+            )
+        }
+    }
+
+    fun selectPlanRecommendation(recommendation: PlanRecommendation?) {
+        mutablePlanPicker.value = mutablePlanPicker.value.copy(selected = recommendation)
+    }
+
+    fun confirmPlanRecommendation(recommendation: PlanRecommendation, replacing: Boolean) {
+        if (mutablePlanPicker.value.replacing) return
+        mutablePlanPicker.value = mutablePlanPicker.value.copy(replacing = true, error = false, loadingError = false)
+        viewModelScope.launch {
+            repository.activatePlanRecommendation(accountScope.value.first, accountScope.value.second, recommendation).fold(
+                onSuccess = {
+                    mutablePlanPicker.value = PlanPickerUiState()
+                    refresh()
+                    analytics.record(AnalyticsEvent("training_plan_recommendation_selected", mapOf(
+                        AnalyticsProperty.Result to "success",
+                        AnalyticsProperty.SelectionType to if (replacing) "replace" else "new",
+                    )))
+                },
+                onFailure = {
+                    mutablePlanPicker.value = mutablePlanPicker.value.copy(replacing = false, error = true)
+                    analytics.record(AnalyticsEvent("training_plan_recommendation_selected", mapOf(
+                        AnalyticsProperty.Result to "failure",
+                        AnalyticsProperty.SelectionType to if (replacing) "replace" else "new",
+                    )))
+                },
+            )
+        }
+    }
+
+    fun closePlanPicker() { mutablePlanPicker.value = PlanPickerUiState() }
 
     fun refresh() {
         if (refreshing.value) return

@@ -21,6 +21,8 @@ import com.plainstride.outbound.core.network.ApiErrorCode
 import com.plainstride.outbound.core.network.ApiFailure
 import com.plainstride.outbound.core.network.ApiResult
 import com.plainstride.outbound.core.network.CreateTrainingGoalRequest
+import com.plainstride.outbound.core.network.PlanRecommendation
+import com.plainstride.outbound.core.network.PlanRecommendationsResponse
 import com.plainstride.outbound.core.network.PersonalizationMutationResponse
 import com.plainstride.outbound.core.network.PlainstrideJson
 import com.plainstride.outbound.core.network.PlannedWorkoutCompletionRequest
@@ -31,6 +33,9 @@ import com.plainstride.outbound.core.network.RunnerProfileRequest
 import com.plainstride.outbound.core.network.TrainingProfileRequest
 import com.plainstride.outbound.core.network.WorkoutFeedbackRequest
 import com.plainstride.outbound.core.network.apiCall
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import java.time.LocalDate
 
 /** Account- and locale-scoped cache; workout IDs and launch prescriptions remain server-authored. */
 class OfflineFirstTodayRepository @Inject constructor(
@@ -62,6 +67,40 @@ class OfflineFirstTodayRepository @Inject constructor(
     }
 
     override suspend fun createGoal(accountId: String, localeTag: String, request: CreateTrainingGoalRequest) = planningMutation(accountId, localeTag) { apiCall { api.createGoal(it, request) } }
+    override suspend fun planRecommendations(): Result<PlanRecommendationsResponse> = authenticated { apiCall { api.recommendations(it) } }
+    override suspend fun activatePlanRecommendation(accountId: String, localeTag: String, recommendation: PlanRecommendation): Result<PlanningState> {
+        val template = recommendation.template
+        val focus = template["focus"]?.jsonPrimitive?.contentOrNull ?: return Result.failure(IllegalArgumentException("Missing plan focus"))
+        val sport = template["sport"]?.jsonPrimitive?.contentOrNull ?: return Result.failure(IllegalArgumentException("Missing plan activity"))
+        val activities = when (sport) {
+            "mixed" -> listOf(com.plainstride.outbound.core.model.Modality.run, com.plainstride.outbound.core.model.Modality.walk, com.plainstride.outbound.core.model.Modality.bike)
+            "walk" -> listOf(com.plainstride.outbound.core.model.Modality.walk)
+            "bike" -> listOf(com.plainstride.outbound.core.model.Modality.bike)
+            else -> listOf(com.plainstride.outbound.core.model.Modality.run)
+        }
+        val targetDistance = when (focus) {
+            "fiveK" -> 5_000.0
+            "tenK" -> 10_000.0
+            "tenMile" -> 16_093.4
+            "halfMarathon" -> 21_097.5
+            "marathon" -> 42_195.0
+            else -> null
+        }
+        val eventFocused = targetDistance != null
+        return createGoal(accountId, localeTag, CreateTrainingGoalRequest(
+            type = if (eventFocused) "eventPreparation" else "endurance",
+            activities = activities,
+            baselineContext = "currentlyActive",
+            targetDate = if (eventFocused) LocalDate.now().plusWeeks(recommendation.durationWeeks.toLong()).toString() else null,
+            targetDistanceMeters = targetDistance,
+            eventIntent = if (eventFocused) "finish" else null,
+            priority = if (focus == "comeback") "rebuild" else "fitness",
+            daysPerWeekTarget = recommendation.sessionsPerWeek,
+            maxSessionMinutes = recommendation.longSessionMinutes,
+            riskTolerance = "balanced",
+            constraints = mapOf("candidateID" to recommendation.id, "templateID" to (template["id"]?.jsonPrimitive?.contentOrNull ?: "")),
+        ))
+    }
     override suspend fun submitPlanningReadiness(accountId: String, localeTag: String, request: PlanningReadinessRequest) = planningMutation(accountId, localeTag) { apiCall { api.submitPlanningReadiness(it, request) } }
     override suspend fun skipWorkout(accountId: String, localeTag: String, workoutId: String) = planningMutation(accountId, localeTag) { apiCall { api.skipWorkout(it, workoutId) } }
     override suspend fun completeWorkout(accountId: String, localeTag: String, workoutId: String, request: PlannedWorkoutCompletionRequest) = planningMutation(accountId, localeTag) { apiCall { api.completeWorkout(it, workoutId, request) } }

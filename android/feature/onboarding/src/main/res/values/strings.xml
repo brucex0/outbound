@@ -155,4 +155,26 @@
     <string name="onboarding_profile_required_title">Private planning details</string>
     <string name="onboarding_profile_required_subtitle">Birth date, sex assigned at birth, and weight are required for safe plan personalization and calorie calculations. Enter them manually or import available values from Health Connect. Height is optional.</string>
     <string name="onboarding_profile_required_error">Add a valid birth date, sex assigned at birth, and weight to continue.</string>
+    <string name="plan_builder_goal_quick_replies">Choose a quick reply or describe the goal in your own words.</string>
+    <string name="plan_builder_goal_acknowledgement">I’ve got it. Let’s fill in the details.</string>
+    <string name="plan_builder_goal_change">Change goal</string>
+    <string name="plan_builder_conversation_event_distance">What distance is the event?</string>
+    <string name="plan_builder_conversation_event_date">When is the event?</string>
+    <string name="plan_builder_conversation_event_intent">How would you like to approach it?</string>
+    <string name="plan_builder_conversation_target_time">What finish time are you aiming for?</string>
+    <string name="plan_builder_conversation_review_horizon">When would you like to review your progress?</string>
+    <string name="plan_builder_smart_setup_title">I already know your training pattern</string>
+    <string name="plan_builder_smart_setup_subtitle">Based on your recent activities. Confirm it if your current routine still fits.</string>
+    <string name="plan_builder_smart_setup_evidence">Based on %1$d sessions across %2$d recent weeks</string>
+    <string name="plan_builder_smart_setup_activities">Activities: %1$s</string>
+    <string name="plan_builder_smart_setup_rhythm">Weekly rhythm: %1$d sessions · up to %2$d min</string>
+    <string name="plan_builder_smart_setup_days">Usual days: %1$s</string>
+    <string name="plan_builder_smart_setup_days_none">No usual days</string>
+    <string name="plan_builder_smart_setup_use">Use this setup</string>
+    <string name="plan_builder_smart_setup_adjust">Adjust it</string>
+    <string name="plan_builder_change_answer">Change</string>
+    <string name="plan_builder_event_distance_answer">Event distance: %1$s</string>
+    <string name="plan_builder_event_date_answer">Event date: %1$s</string>
+    <string name="plan_builder_event_intent_answer">Race approach: %1$s</string>
+    <string name="plan_builder_target_time_answer">Target finish time: %1$d min</string>
 </resources>
