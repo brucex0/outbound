@@ -15,6 +15,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -68,6 +72,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -316,6 +321,7 @@ private fun SignedInApp(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         contentWindowInsets = if (currentDestination?.route == ACTIVITY_HISTORY_ROUTE) WindowInsets(0) else WindowInsets.safeDrawing,
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
@@ -360,7 +366,7 @@ private fun SignedInApp(
                     val contextualStart = primaryDestination == TopLevelDestination.Today && !hasActiveSession
                     NavigationBar(
                         modifier = Modifier.weight(1f).height(64.dp).clip(RoundedCornerShape(32.dp)),
-                        containerColor = Color.Transparent,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f),
                         tonalElevation = 0.dp,
                     ) {
                         TopLevelDestination.entries.forEach { destination ->
@@ -400,10 +406,21 @@ private fun SignedInApp(
             }
         },
     ) { contentPadding ->
+        val layoutDirection = LocalLayoutDirection.current
+        val contentInsets = PaddingValues(
+            start = contentPadding.calculateStartPadding(layoutDirection),
+            top = contentPadding.calculateTopPadding(),
+            end = contentPadding.calculateEndPadding(layoutDirection),
+            bottom = if (TopLevelDestination.entries.any { it.route == currentDestination?.route }) {
+                WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()
+            } else {
+                contentPadding.calculateBottomPadding()
+            },
+        )
         NavHost(
             navController = navController,
             startDestination = TopLevelDestination.Today.route,
-            modifier = Modifier.padding(contentPadding),
+            modifier = Modifier.padding(contentInsets),
         ) {
             TopLevelDestination.entries.forEach { destination ->
                 composable(destination.route) {
