@@ -571,7 +571,7 @@ private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, loadPh
                     )
                     Surface(
                         Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = .88f),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = .5f),
                     ) {
                         Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                             ActivityStat(formatDistance(activity.distanceM, unitSystem), stringResource(R.string.social_distance))
