@@ -45,12 +45,22 @@ sealed interface ConnectionEffect {
     private var localeTag = "en"
     private var searchJob: Job? = null
     private var activityPhotoJob: Job? = null
+    private var activityFeedLoadTracked = false
+    private var feedPagesLoaded = 1
 
     fun start(accountId: String, localeTag: String) {
         if (this.accountId == accountId && this.localeTag == localeTag) return
         this.accountId = accountId; this.localeTag = localeTag
+        activityFeedLoadTracked = false
+        feedPagesLoaded = 1
         viewModelScope.launch { repository.observeHome(accountId, localeTag).collect { cached ->
-            when (cached) { CachedSocialHome.Empty -> Unit; is CachedSocialHome.Available -> mutableState.update { it.copy(home = cached.value, loading = false, offline = cached.stale) } }
+            when (cached) {
+                CachedSocialHome.Empty -> Unit
+                is CachedSocialHome.Available -> {
+                    mutableState.update { it.copy(home = cached.value, loading = false, offline = cached.stale) }
+                    if (!activityFeedLoadTracked) trackActivityFeedLoaded(cached.value.posts)
+                }
+            }
         } }
         refresh()
         analytics.record(AnalyticsEvent("social_opened", mapOf(AnalyticsProperty.Source to "tab")))
@@ -58,7 +68,8 @@ sealed interface ConnectionEffect {
 
     fun refresh() { val account = accountId ?: return; viewModelScope.launch {
         mutableState.update { it.copy(refreshing = true) }
-        repository.refresh(account, localeTag).onFailure { mutableState.update { s -> s.copy(offline = true) }; messages.emit(SocialMessage.ACTION_FAILED) }
+        repository.refresh(account, localeTag)
+            .onFailure { mutableState.update { s -> s.copy(offline = true) }; messages.emit(SocialMessage.ACTION_FAILED) }
         mutableState.update { it.copy(refreshing = false, loading = false) }
     } }
     fun search(query: String) {
@@ -68,10 +79,54 @@ sealed interface ConnectionEffect {
         searchJob = viewModelScope.launch { delay(300); repository.searchPeople(normalized).onSuccess { people -> mutableState.update { it.copy(searchResults = people) } } }
     }
     fun loadMore() { val cursor = mutableState.value.home.nextCursor ?: return; if (mutableState.value.feedLoading) return
-        viewModelScope.launch { mutableState.update { it.copy(feedLoading = true) }; repository.loadFeed(cursor).onSuccess { page -> mutableState.update { s -> s.copy(home = s.home.copy(posts = (s.home.posts + page.items).distinctBy(SocialPost::id), nextCursor = page.nextCursor)) }; analytics.record(AnalyticsEvent("paginated_list_page_loaded", mapOf(AnalyticsProperty.Source to "social_feed", AnalyticsProperty.PageDepthBucket to "page_2_plus"))) }; mutableState.update { it.copy(feedLoading = false) } }
+        viewModelScope.launch {
+            mutableState.update { it.copy(feedLoading = true) }
+            repository.loadFeed(cursor).onSuccess { page ->
+                mutableState.update { s -> s.copy(home = s.home.copy(posts = (s.home.posts + page.items).distinctBy(SocialPost::id), nextCursor = page.nextCursor)) }
+                feedPagesLoaded += 1
+                analytics.record(AnalyticsEvent("paginated_list_page_loaded", mapOf(
+                    AnalyticsProperty.Source to "activity_feed",
+                    AnalyticsProperty.CountBucket to countBucket(page.items.size),
+                    AnalyticsProperty.PageDepthBucket to when { feedPagesLoaded == 2 -> "page_2"; feedPagesLoaded <= 4 -> "pages_3_4"; else -> "page_5_plus" },
+                )))
+            }
+            mutableState.update { it.copy(feedLoading = false) }
+        }
     }
     fun toggleCheer(post: SocialPost) = mutate("social_cheer_toggled") { repository.setCheer(post.id, !post.viewerHasCheered).getOrThrow(); refresh() }
-    fun trackActivityDetailOpened() = analytics.record(AnalyticsEvent("activity_detail_opened", mapOf(AnalyticsProperty.Source to "social_feed")))
+    fun trackActivityDetailOpened() = analytics.record(AnalyticsEvent("activity_detail_opened", mapOf(AnalyticsProperty.SourceType to "social_feed")))
+    fun trackActivitySplitsViewed(count: Int) = analytics.record(AnalyticsEvent("activity_splits_viewed", mapOf(
+        AnalyticsProperty.SourceType to "social_feed",
+        AnalyticsProperty.CountBucket to countBucket(count),
+    )))
+    private fun trackActivityFeedLoaded(posts: List<SocialPost>) {
+        activityFeedLoadTracked = true
+        val source = when {
+            posts.isEmpty() -> "empty"
+            posts.any { !it.isCurrentUser } -> "connections"
+            else -> "self_only"
+        }
+        val exactTimestampCount = posts.count { it.activity?.startedAt?.isNotBlank() == true }
+        val timestampSource = when {
+            posts.isEmpty() -> "empty"
+            exactTimestampCount == posts.size -> "activity_start"
+            exactTimestampCount == 0 -> "post_created_fallback"
+            else -> "mixed"
+        }
+        analytics.record(AnalyticsEvent("activity_feed_loaded", mapOf(
+            AnalyticsProperty.CountBucket to countBucket(posts.size),
+            AnalyticsProperty.SourceType to source,
+            AnalyticsProperty.TimestampSource to timestampSource,
+        )))
+    }
+
+    private fun countBucket(count: Int) = when (count.coerceAtLeast(0)) {
+        0 -> "0"
+        1 -> "1"
+        in 2..3 -> "2_3"
+        in 4..7 -> "4_7"
+        else -> "8_plus"
+    }
     fun trackActivityPhotoPreviewed() = analytics.record(AnalyticsEvent(
         "photo_previewed",
         mapOf(AnalyticsProperty.SourceType to "activity_detail_carousel"),
@@ -86,6 +141,14 @@ sealed interface ConnectionEffect {
             activityDetailPhotoBytes = emptyMap(),
         ) }
         trackActivityDetailOpened()
+        if (activity.recognitions.isNotEmpty()) analytics.record(AnalyticsEvent("activity_recognition_viewed", mapOf(
+            AnalyticsProperty.SourceType to "social_feed",
+            AnalyticsProperty.CountBucket to countBucket(activity.recognitions.size),
+        )))
+        if (activity.energyKilocalories != null) analytics.record(AnalyticsEvent("feature_exposed", mapOf(
+            AnalyticsProperty.Feature to "completed_workout_calories",
+            AnalyticsProperty.SourceType to "social_feed",
+        )))
         activityPhotoJob = viewModelScope.launch {
             var photos = activity.photos
             if (activity.totalPhotoCount > photos.size) {

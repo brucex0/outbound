@@ -172,7 +172,7 @@ class ActivityViewModel @Inject constructor(
         ActivityExport(FileProvider.getUriForFile(context, "${context.packageName}.activityphotos", target), format.mimeType, target.name)
     }.getOrElse { messages.tryEmit(ActivityMessage.EXPORT_UNAVAILABLE); null }
 
-    fun shareCard(activity: SavedActivity, unitSystem: MeasurementUnitSystem): ActivityExport? = runCatching {
+    fun shareCard(activity: SavedActivity, unitSystem: MeasurementUnitSystem, sourceType: String = "activity_detail"): ActivityExport? = runCatching {
         val directory = File(context.cacheDir, "activity_exports").apply { mkdirs() }
         val target = File(directory, "plainstride-${activity.id.filter(Char::isLetterOrDigit).take(64)}.png")
         val bitmap = Bitmap.createBitmap(1080, 1920, Bitmap.Config.ARGB_8888)
@@ -205,13 +205,20 @@ class ActivityViewModel @Inject constructor(
         drawQr(canvas, "https://plainstride.ai/invite", 790, 1600, 220)
         target.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 95, it) }
         bitmap.recycle()
-        analytics.record(AnalyticsEvent("activity_share_previewed", mapOf(AnalyticsProperty.SourceType to "activity_detail")))
+        analytics.record(AnalyticsEvent("activity_share_previewed", mapOf(AnalyticsProperty.SourceType to sourceType)))
         ActivityExport(FileProvider.getUriForFile(context, "${context.packageName}.activityphotos", target), "image/png", target.name)
     }.getOrElse { messages.tryEmit(ActivityMessage.EXPORT_UNAVAILABLE); null }
 
     fun trackShareAction(result: String) {
         analytics.record(AnalyticsEvent("activity_share_action", mapOf(
             AnalyticsProperty.SourceType to "activity_detail",
+            AnalyticsProperty.Result to result,
+        )))
+    }
+
+    fun trackSocialShareAction(result: String) {
+        analytics.record(AnalyticsEvent("activity_share_action", mapOf(
+            AnalyticsProperty.SourceType to "social_feed",
             AnalyticsProperty.Result to result,
         )))
     }

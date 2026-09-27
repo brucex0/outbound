@@ -18,6 +18,9 @@
 - Incoming requests render as tappable requester profile cards on Social home and in Connections, with separate icon-only Accept and Decline actions; the requester profile retains both labeled actions.
 - Empty, invitation, Group creation, event, Group, recognition, and feed states use the same standard or companion card role as iOS.
 - Feed cards remain map-first with overlaid stats and Cheer, comment, profile, and safety actions. Tapping anywhere else on an activity card opens its detail page. Route previews use the shared Google map renderer as a non-interactive snapshot-like surface with gestures, map chrome, and endpoint markers disabled, matching the iOS `interactionModes: []` presentation.
+- Activity feed stats use the account's distance and pace preference, preserve the route aspect ratio, show milestone and photo-count badges, and load additional pages with the same bounded analytics dimensions as iOS.
+- Activity detail keeps the full route map visible behind a draggable, persistent stats sheet. It includes optional energy and elevation, expandable splits, photo strip and full-screen paging, coordinate photo pins, author/profile and milestone content, caption, Cheer/comments, and the companion prompt. Photo metadata and media continue to load independently, so photos without coordinates remain available without creating map pins.
+- The activity owner can open the existing share-card preview from detail and save or share it. Detail, split, photo, and share actions use the shared activity analytics contract with `social_feed` as the source.
 
 ## Personal QR Connection Flow
 
@@ -39,12 +42,14 @@
 ## Verification Scenarios
 
 - Initial loading, empty connections, accepted connections, active-workout presence, Group empty/list/invitation, upcoming/past empty/list, Groups, empty/populated feed, and avatar success/fallback.
+- Activity feed pagination and preference units; activity detail with and without photos, optional metrics, splits, missing photo coordinates, collapsed/expanded sheet, and owner share preview.
 - Light/dark themes, supported locales, font scaling, and TalkBack traversal remain manual device checks.
 - QR loading/success/failure, camera first use/denial/unavailable, invalid payload, self-scan, duplicate/existing relationship, success, and offline retry remain manual device checks.
 
 ## Status And Exceptions
 
 - Home presentation and avatar delivery are aligned with the current iOS implementation.
+- Activity feed and detail behavior follow the iOS social surface, using the shared Android activity share-card renderer and localized copy.
 - Group creation offers two server-backed templates. Group detail renders policy-specific capabilities, notices, events, membership, and management operations from the unified Group contract.
 - Android uses a full-screen Compose dialog for Connections because the current feature module does not yet own a nested navigation graph; this preserves the iOS information hierarchy and back behavior without a platform-visible modal card.
 - Android uses full-screen Compose dialogs for the personal QR and scanner destinations for the same navigation-ownership reason. CameraX plus ZXing replaces VisionKit while preserving the accepted payload and submission contract.
