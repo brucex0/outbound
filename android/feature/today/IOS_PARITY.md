@@ -7,6 +7,8 @@
 - Android Today surface: `TodayScreen.kt`
 - iOS weather store: `ios/Outbound/Outbound/Integrations/Weather/SituationalWeatherStore.swift`
 - Android weather adapter: `android/core/weather`
+- iOS embedded activity controls: `ios/Outbound/Outbound/Activity/RecordView.swift` (`launchDock`, `launchWorkoutButton`, `launchGoalPill`)
+- Android activity controls: `TodayScreen.kt` (`ActivityLaunchDock`, `ChoiceButton`, `GoalPill`)
 
 ## Current Contract
 
@@ -16,6 +18,7 @@
 - The weather pill shows a localized on-device city or region when Android geocoding can resolve one, followed by temperature. Weather remains usable when naming is unavailable.
 - Existing workout-start and assistant-launch analytics cover the contextual actions; no coordinates or place names enter analytics.
 - Manual calorie goals show estimated distance and duration when the training profile has enough data, using the shared calorie estimator and learned run pace.
+- Embedded Today sport choices are 52-point circular icon-only controls with accessible sport names; goal options remain text-only pills, matching iOS.
 
 ## States Covered
 
