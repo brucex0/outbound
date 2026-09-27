@@ -167,6 +167,7 @@ fun MeRoute(
     benefitsContent: @Composable () -> Unit = {},
     activityContent: @Composable () -> Unit = {},
     settingsContent: @Composable () -> Unit = {},
+    settingsRequest: Int = 0,
     onMessage: suspend (SettingsMessage) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -179,6 +180,7 @@ fun MeRoute(
     }
     var page by rememberSaveable { mutableStateOf(MePage.Overview) }
     LaunchedEffect(viewModel) { viewModel.messages.collect(onMessage) }
+    LaunchedEffect(settingsRequest) { if (settingsRequest > 0) page = MePage.Settings }
     when (page) {
         MePage.Overview -> MeOverview(
             state, onSettings = { page = MePage.Settings }, onRefresh = viewModel::refresh,

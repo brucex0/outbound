@@ -257,6 +257,7 @@ private fun SignedInApp(
     var todayRefreshRequest by remember { mutableStateOf(0) }
     var planBuilderSource by remember { mutableStateOf<PlanBuilderSource?>(null) }
     var assistantEntryDestination by remember { mutableStateOf("me") }
+    var settingsRequest by remember { mutableStateOf(0) }
     var trackedAssistantExposure by remember { mutableStateOf(false) }
     var trackedAssistantAnimation by remember { mutableStateOf(false) }
     val activeRecordingViewModel:ActiveRecordingViewModel=hiltViewModel()
@@ -445,6 +446,7 @@ private fun SignedInApp(
                     } else if (destination == TopLevelDestination.Me) {
                         MeRoute(
                             viewModel = settingsViewModel,
+                            settingsRequest = settingsRequest,
                             appVersion = BuildConfig.VERSION_NAME,
                             debugToolsEnabled = BuildConfig.DEBUG,
                             onLinkGoogle = { authViewModel.linkGoogle(context) },
@@ -559,8 +561,12 @@ private fun SignedInApp(
                     onNavigate = { route ->
                         when (route) {
                             "today", "social", "me" -> navController.navigate(route) { launchSingleTop = true }
-                            MUSIC_ROUTE, ACTIVITY_HISTORY_ROUTE, HEALTH_ROUTE, "settings" -> navController.navigate(route) { launchSingleTop = true }
-                            else -> navController.navigate("settings") { launchSingleTop = true }
+                            "settings" -> {
+                                settingsRequest += 1
+                                navController.navigate("me") { launchSingleTop = true }
+                            }
+                            MUSIC_ROUTE, ACTIVITY_HISTORY_ROUTE, HEALTH_ROUTE -> navController.navigate(route) { launchSingleTop = true }
+                            else -> navController.navigate("me") { launchSingleTop = true }
                         }
                     },
                     onPrepareActivity = { sport, distanceMeters, durationSeconds ->
