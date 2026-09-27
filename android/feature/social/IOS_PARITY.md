@@ -21,7 +21,7 @@
 - Empty, invitation, Group creation, event, Group, recognition, and feed states use the same standard or companion card role as iOS.
 - Feed cards remain map-first with overlaid stats and Cheer, comment, profile, and safety actions. Tapping anywhere else on an activity card opens its detail page. Route previews use the shared Google map renderer as a non-interactive snapshot-like surface with gestures, map chrome, and endpoint markers disabled, matching the iOS `interactionModes: []` presentation.
 - Activity feed stats use the account's distance and pace preference, preserve the route aspect ratio, show milestone and photo-count badges, and load additional pages with the same bounded analytics dimensions as iOS.
-- Activity detail keeps the full route map visible behind a draggable, persistent stats sheet. It includes optional energy and elevation, expandable splits, photo strip and full-screen paging, coordinate photo pins, author/profile and milestone content, caption, Cheer/comments, and the companion prompt. Photo metadata and media continue to load independently, so photos without coordinates remain available without creating map pins.
+- Activity detail keeps the full route map visible behind a draggable, persistent sheet with collapsed, split, and expanded positions. The map camera inset follows the sheet height while it moves. Content order mirrors iOS: milestones, author/profile, caption and Cheer/comments, then the title/photo/stat hero, expandable splits, and companion prompt. Cheers show the matching heart action, overlapping cheerer avatars/count, and a full cheerer list with profile links. Photo thumbnails use a bottom gradient caption and selected-photo outline; photo metadata and media continue to load independently, so photos without coordinates remain available without creating map pins.
 - The activity owner can open the existing share-card preview from detail and save or share it. Detail, split, photo, and share actions use the shared activity analytics contract with `social_feed` as the source.
 
 ## Personal QR Connection Flow
@@ -45,7 +45,7 @@
 ## Verification Scenarios
 
 - Initial loading, empty connections, accepted connections, active-workout presence, Group empty/list/invitation, upcoming/past empty/list, Groups, empty/populated feed, and avatar success/fallback.
-- Activity feed pagination and preference units; activity detail with and without photos, optional metrics, splits, missing photo coordinates, collapsed/expanded sheet, and owner share preview.
+- Activity feed pagination and preference units; activity detail with and without photos, optional metrics, splits, missing photo coordinates, collapsed/split/expanded sheet drag with map resizing, cheer and cheerer-list/profile navigation, photo captions and selection, and owner share preview.
 - Light/dark themes, supported locales, font scaling, and TalkBack traversal remain manual device checks.
 - QR loading/success/failure, camera first use/denial/unavailable, invalid payload, self-scan, duplicate/existing relationship, success, and offline retry remain manual device checks.
 

@@ -67,6 +67,7 @@ import kotlinx.serialization.json.JsonElement
     val commentCount: Int = 0,
     @SerialName("currentUserCheered")
     val viewerHasCheered: Boolean = false,
+    val cheers: List<SocialPerson> = emptyList(),
     val isCurrentUser: Boolean = false,
     val createdAt: String? = null,
 ) {
