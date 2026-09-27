@@ -3,6 +3,7 @@ package com.plainstride.outbound.feature.social
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.LruCache
+import java.io.File
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -19,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +48,7 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.plainstride.outbound.core.designsystem.MapCoordinate
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
@@ -122,6 +125,15 @@ internal fun SocialRoutePreview(
             val mapKey = "$routeKey|${mapWidthPx}x${mapHeightPx}"
             val cachedMap = remember(mapKey) { SocialPreviewBitmapCache.maps.get(mapKey) }
             var snapshot by remember(mapKey) { mutableStateOf(cachedMap) }
+            var diskCacheLoaded by remember(mapKey) { mutableStateOf(cachedMap != null) }
+            val scope = rememberCoroutineScope()
+            LaunchedEffect(mapKey, cachedMap) {
+                if (cachedMap == null) {
+                    snapshot = withContext(Dispatchers.IO) { readCachedRoutePreview(context.cacheDir, mapKey) }
+                    snapshot?.let { SocialPreviewBitmapCache.maps.put(mapKey, it) }
+                }
+                diskCacheLoaded = true
+            }
             if (snapshot != null) {
                 Image(
                     bitmap = snapshot!!.asImageBitmap(),
@@ -129,6 +141,8 @@ internal fun SocialRoutePreview(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit,
                 )
+            } else if (!diskCacheLoaded) {
+                RoutePreviewPlaceholder(Modifier.fillMaxSize())
             } else {
                 val camera = rememberCameraPositionState()
                 val latLngs = remember(route) { route.map { LatLng(it.latitude, it.longitude) } }
@@ -168,6 +182,9 @@ internal fun SocialRoutePreview(
                                     if (bitmap != null) {
                                         snapshot = bitmap
                                         SocialPreviewBitmapCache.maps.put(mapKey, bitmap)
+                                        scope.launch(Dispatchers.IO) {
+                                            writeCachedRoutePreview(context.cacheDir, mapKey, bitmap)
+                                        }
                                     }
                                 }
                             }
@@ -227,4 +244,21 @@ private fun routeCacheKey(points: List<MapCoordinate>): String {
         }
     }
     return MessageDigest.getInstance("SHA-256").digest(raw.toByteArray()).joinToString("") { "%02x".format(it) }
+}
+
+private fun routePreviewFile(cacheDir: File, key: String): File {
+    val digest = MessageDigest.getInstance("SHA-256").digest(key.toByteArray())
+        .joinToString("") { "%02x".format(it) }
+    return File(File(cacheDir, "SocialRoutePreviews"), "$digest.jpg")
+}
+
+private fun readCachedRoutePreview(cacheDir: File, key: String): Bitmap? =
+    runCatching { routePreviewFile(cacheDir, key).takeIf(File::isFile)?.let { BitmapFactory.decodeFile(it.path) } }.getOrNull()
+
+private fun writeCachedRoutePreview(cacheDir: File, key: String, bitmap: Bitmap) {
+    runCatching {
+        val file = routePreviewFile(cacheDir, key)
+        file.parentFile?.mkdirs()
+        file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 82, it) }
+    }
 }
