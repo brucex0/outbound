@@ -14988,6 +14988,30 @@
         }
       }
     },
+    "activity.share_image_saved": {
+      "comment": "Toast confirming that a generated activity share card was saved to the photo gallery. [android:activity] Generated Android name: activity_share_image_saved.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Share image saved." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Imagen para compartir guardada." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "分享图片已保存。" } }
+      }
+    },
+    "activity.social_companion.title": {
+      "comment": "Encouragement heading in the Social activity detail. [android:activity] Generated Android name: activity_social_companion_title.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Great hustle." } },
+        "es": { "stringUnit": { "state": "translated", "value": "¡Buen esfuerzo!" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "干得漂亮！" } }
+      }
+    },
+    "activity.social_companion.body": {
+      "comment": "Encouragement body in Social activity detail. The placeholder is the activity author's display name. [android:activity] Generated Android name: activity_social_companion_body.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%1$s put in a strong effort. Send a Cheer to keep the momentum going!" } },
+        "es": { "stringUnit": { "state": "translated", "value": "%1$s hizo un gran esfuerzo. Envíale un Cheer para que mantenga el impulso." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "%1$s完成了一次扎实的锻炼。送上鼓励，陪伴对方继续保持势头。" } }
+      }
+    },
     "activity.source.apple_health": {
       "comment": "Source of an activity imported from Apple Health.",
       "extractionState": "extracted_with_value",
