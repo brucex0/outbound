@@ -31,13 +31,17 @@ import kotlinx.serialization.json.JsonElement
     val endedAt: String? = null,
     val distanceM: Double? = null,
     val durationSecs: Int? = null,
+    val elevationM: Double? = null,
+    val energyKilocalories: Int? = null,
     @SerialName("avgPace") val averagePaceSecsPerKm: Double? = null,
     val route: JsonElement? = null,
     val photos: List<ActivityPhoto> = emptyList(),
     val photoCount: Int? = null,
+    val recognitions: List<ActivityRecognition> = emptyList(),
 ) {
     val totalPhotoCount: Int get() = photoCount ?: photos.size
 }
+@Serializable data class ActivityRecognition(val badgeId: String, val earnedAt: String? = null)
 @Serializable data class ActivityPhoto(
     val id: String,
     val clientPhotoId: String = id,

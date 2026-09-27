@@ -15,6 +15,7 @@ enum class AnalyticsProperty(val wireName: String) {
     DurationBucket("duration_bucket"),
     DistanceBucket("distance_bucket"),
     PageDepthBucket("page_depth_bucket"),
+    TimestampSource("timestamp_source"),
     Locale("locale"),
     UnitSystem("unit_system"),
     Enabled("enabled"),

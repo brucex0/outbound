@@ -48,6 +48,7 @@ fun PlainstrideRouteMap(
     showEndpointMarkers: Boolean = true,
     routeSegments: List<MapRouteSegment> = emptyList(),
     markers: List<MapRouteMarker> = emptyList(),
+    onMarkerClick: ((String) -> Unit)? = null,
     bottomContentPadding: Dp = 0.dp,
     fitRouteOnChange: Boolean = true,
 ) {
@@ -142,6 +143,7 @@ fun PlainstrideRouteMap(
                         if (marker.selected) BitmapDescriptorFactory.HUE_ORANGE else BitmapDescriptorFactory.HUE_AZURE,
                     ),
                     zIndex = if (marker.selected) 4f else 3f,
+                    onClick = { onMarkerClick?.invoke(marker.id); true },
                 )
             }
         }

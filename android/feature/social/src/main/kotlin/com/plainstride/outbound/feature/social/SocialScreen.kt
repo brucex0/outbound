@@ -39,14 +39,23 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.serialization.json.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.plainstride.outbound.core.designsystem.*
+import com.plainstride.outbound.core.model.activity.MeasurementUnitSystem
+import com.plainstride.outbound.core.model.activity.ActivityTrackPoint
+import com.plainstride.outbound.core.model.activity.ActivityType
+import com.plainstride.outbound.core.model.activity.SavedActivity
+import com.plainstride.outbound.feature.activity.ActivityExport
+import com.plainstride.outbound.feature.activity.ActivityViewModel
+import com.plainstride.outbound.feature.activity.R as ActivityR
 
-@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,inboxCount:Int=0,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
+@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,inboxCount:Int=0,unitSystem:MeasurementUnitSystem=MeasurementUnitSystem.metric,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
     var createGroup by rememberSaveable { mutableStateOf(false) };var inviteGroup by remember { mutableStateOf<GroupSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var groupActivity by remember { mutableStateOf<GroupSummary?>(null) };var connectionsOpen by rememberSaveable { mutableStateOf(false) }
     var scannerOpen by rememberSaveable { mutableStateOf(false) }
     var scannerFeedback by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val resources = LocalResources.current
+    val activityViewModel: ActivityViewModel = hiltViewModel()
     LaunchedEffect(accountId, localeTag) { viewModel.start(accountId, localeTag) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(viewModel) {
@@ -84,13 +93,14 @@ import com.plainstride.outbound.core.designsystem.*
     }
     val selectedActivityPost = state.selectedActivityPost?.let { selected -> state.home.posts.firstOrNull { it.id == selected.id } ?: selected }
     if (selectedActivityPost == null) {
-        SocialScreen(state, inboxCount, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openGroup, viewModel::openComments, viewModel::openActivityDetail, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, { group ->
+        SocialScreen(state, inboxCount, unitSystem, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openGroup, viewModel::openComments, viewModel::openActivityDetail, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, { group ->
             if (group.trustPolicy == "trusted_private") viewModel.openGroup(group) else viewModel.joinGroup(group)
         }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, modifier)
     } else {
         BackHandler { viewModel.closeActivityDetail() }
         SocialActivityDetail(
             post = selectedActivityPost,
+            unitSystem = unitSystem,
             photos = state.activityDetailPhotos,
             photosLoading = state.activityDetailPhotosLoading,
             photoBytes = state.activityDetailPhotoBytes,
@@ -98,6 +108,9 @@ import com.plainstride.outbound.core.designsystem.*
             openProfile = viewModel::openProfile,
             cheer = { viewModel.toggleCheer(selectedActivityPost) },
             comments = { viewModel.openComments(selectedActivityPost) },
+            trackSplitsViewed = viewModel::trackActivitySplitsViewed,
+            createShareCard = { post -> post.activity?.toSavedActivity(post)?.let { activityViewModel.shareCard(it, unitSystem, "social_feed") } },
+            trackShareAction = activityViewModel::trackSocialShareAction,
             loadPhotoContent = viewModel::loadActivityPhotoContent,
             trackPhotoPreview = viewModel::trackActivityPhotoPreviewed,
             modifier = modifier,
@@ -178,7 +191,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
     }
 }
 
-@Composable private fun SocialScreen(state: SocialUiState, inboxCount: Int, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, modifier: Modifier) {
+@Composable private fun SocialScreen(state: SocialUiState, inboxCount: Int, unitSystem: MeasurementUnitSystem, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, modifier: Modifier) {
     var safetyPost by remember { mutableStateOf<SocialPost?>(null) }
     var blockConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
     var deletionConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
@@ -211,7 +224,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
         items(state.home.pastEvents, key = SocialEvent::id) { event -> EventCard(event) { openTarget("event",event.id) } }
         if (state.home.pastEvents.isEmpty()) item { EmptyCard(stringResource(R.string.social_past_empty), Icons.Outlined.History) }
         item { SectionHeader(stringResource(R.string.social_feed)) }
-        items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, { openProfile(post.author) }, { if (post.activity != null) openActivity(post) }, { cheer(post) }, { comments(post) }, { if (post.isCurrentUser) { if (skipDeletionConfirmation) deletePost(post) else deletionConfirmationPost = post } else safetyPost = post }) }
+        items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, unitSystem, { openProfile(post.author) }, { if (post.activity != null) openActivity(post) }, { cheer(post) }, { comments(post) }, { if (post.isCurrentUser) { if (skipDeletionConfirmation) deletePost(post) else deletionConfirmationPost = post } else safetyPost = post }) }
         if (!state.loading && state.home.posts.isEmpty()) item { EmptyCard(stringResource(R.string.social_feed_empty), Icons.Outlined.DirectionsRun) }
         if (state.loading) item { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
         if (state.home.nextCursor != null) item { Button(loadMore, Modifier.fillMaxWidth(), enabled = !state.feedLoading) { Text(stringResource(R.string.social_load_more)) } }
@@ -343,7 +356,7 @@ private fun groupDisplayName(group: GroupSummary, all: List<GroupSummary>): Stri
 }
 @Composable private fun GroupCard(group: GroupSummary, displayName: String, membership: () -> Unit) = SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.Flag, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(displayName, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_members, group.memberCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; TextButton(membership) { Text(if (group.trustPolicy == "trusted_private") stringResource(R.string.social_open) else stringResource(if (group.role != null) R.string.social_leave else R.string.social_join)) } } }
 @Composable
-private fun PostCard(post: SocialPost, profile: () -> Unit, openActivity:()->Unit, cheer: () -> Unit, comments:()->Unit, safety: () -> Unit) =
+private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, profile: () -> Unit, openActivity:()->Unit, cheer: () -> Unit, comments:()->Unit, safety: () -> Unit) =
     Card(
         Modifier
             .fillMaxWidth()
@@ -371,7 +384,7 @@ private fun PostCard(post: SocialPost, profile: () -> Unit, openActivity:()->Uni
             }
             post.activity?.let { activity ->
                 Text(activity.title, fontWeight = FontWeight.SemiBold)
-                Box(Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(16.dp))) {
+                Box(Modifier.fillMaxWidth().aspectRatio(1.5f).clip(RoundedCornerShape(16.dp))) {
                     val route = activity.route.routeCoordinates()
                     if (route.size > 1) {
                         PlainstrideRouteMap(
@@ -405,9 +418,26 @@ private fun PostCard(post: SocialPost, profile: () -> Unit, openActivity:()->Uni
                         color = MaterialTheme.colorScheme.surface.copy(alpha = .88f),
                     ) {
                         Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                            ActivityStat(formatDistance(activity.distanceM), stringResource(R.string.social_distance))
+                            ActivityStat(formatDistance(activity.distanceM, unitSystem), stringResource(R.string.social_distance))
                             ActivityStat(formatDuration(activity.durationSecs), stringResource(R.string.social_time))
-                            ActivityStat(formatPace(activity.averagePaceSecsPerKm), stringResource(R.string.social_pace))
+                            ActivityStat(formatPace(activity.averagePaceSecsPerKm, unitSystem), stringResource(R.string.social_pace))
+                        }
+                    }
+                    if (activity.recognitions.isNotEmpty()) {
+                        Surface(Modifier.align(Alignment.TopStart).padding(10.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = .92f)) {
+                            Row(Modifier.padding(horizontal = 9.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Outlined.EmojiEvents, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                Text(badgeLabel(activity.recognitions.first().badgeId), style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                if (activity.recognitions.size > 1) Text("+${activity.recognitions.size - 1}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                    if (activity.totalPhotoCount > 0) {
+                        Surface(Modifier.align(Alignment.TopEnd).padding(10.dp), shape = CircleShape, color = MaterialTheme.colorScheme.scrim.copy(alpha = .60f)) {
+                            Row(Modifier.padding(horizontal = 9.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Outlined.PhotoLibrary, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(14.dp))
+                                Text(activity.totalPhotoCount.toString(), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelSmall)
+                            }
                         }
                     }
                 }
@@ -427,6 +457,7 @@ private fun PostCard(post: SocialPost, profile: () -> Unit, openActivity:()->Uni
 @Composable
 private fun SocialActivityDetail(
     post: SocialPost,
+    unitSystem: MeasurementUnitSystem,
     photos: List<ActivityPhoto>,
     photosLoading: Boolean,
     photoBytes: Map<String, ByteArray>,
@@ -434,144 +465,278 @@ private fun SocialActivityDetail(
     openProfile: (SocialPerson) -> Unit,
     cheer: () -> Unit,
     comments: () -> Unit,
+    trackSplitsViewed: (Int) -> Unit,
+    createShareCard: (SocialPost) -> ActivityExport?,
+    trackShareAction: (String) -> Unit,
     loadPhotoContent: (String) -> Unit,
     trackPhotoPreview: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val activity = post.activity ?: return
     val route = remember(activity.route) { activity.route.routeCoordinates() }
-    var selectedPhotoIndex by rememberSaveable(post.id) { mutableIntStateOf(-1) }
-    Scaffold(
+    val splits = remember(route, activity.durationSecs, unitSystem) { computeSocialSplits(route, activity.durationSecs, unitSystem) }
+    var showSplits by rememberSaveable(post.id) { mutableStateOf(false) }
+    var selectedPhotoIndex by rememberSaveable(post.id) {
+        mutableIntStateOf(photos.indexOfFirst { it.latitude != null && it.longitude != null })
+    }
+    var lightboxPhotoIndex by rememberSaveable(post.id) { mutableIntStateOf(-1) }
+    var shareExport by remember { mutableStateOf<ActivityExport?>(null) }
+    val context = LocalContext.current
+    val markers = remember(photos, selectedPhotoIndex) {
+        photos.mapIndexedNotNull { index, photo ->
+            val latitude = photo.latitude ?: return@mapIndexedNotNull null
+            val longitude = photo.longitude ?: return@mapIndexedNotNull null
+            MapRouteMarker(
+                id = photo.id,
+                coordinate = MapCoordinate(latitude, longitude),
+                title = activity.title,
+                selected = index == selectedPhotoIndex,
+            )
+        }
+    }
+    LaunchedEffect(photos) {
+        if (selectedPhotoIndex < 0) selectedPhotoIndex = photos.indexOfFirst { it.latitude != null && it.longitude != null }
+    }
+    val sheetState = rememberStandardBottomSheetState(initialValue = SheetValue.PartiallyExpanded, skipHiddenState = false)
+    val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = sheetState)
+    val scope = rememberCoroutineScope()
+    val cheerLabel = stringResource(if (post.viewerHasCheered) R.string.social_remove_cheer else R.string.social_add_cheer)
+    val commentLabel = stringResource(R.string.social_comments)
+    val sheetLabel = stringResource(if (sheetState.currentValue == SheetValue.Expanded) ActivityR.string.activity_sheet_collapse else ActivityR.string.activity_sheet_expand)
+    BottomSheetScaffold(
         modifier = modifier,
-        contentWindowInsets = WindowInsets.safeDrawing,
-        bottomBar = {
-            Surface(tonalElevation = 3.dp, color = MaterialTheme.colorScheme.surface) {
-                Row(
-                    Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    val cheerLabel = stringResource(if (post.viewerHasCheered) R.string.social_remove_cheer else R.string.social_add_cheer)
-                    val commentLabel = stringResource(R.string.social_comments)
-                    IconButton(cheer, Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = cheerLabel }) {
-                        Icon(if (post.viewerHasCheered) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder, null, tint = if (post.viewerHasCheered) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+        scaffoldState = scaffoldState,
+        sheetPeekHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp * .52f,
+        sheetDragHandle = {
+            BottomSheetDefaults.DragHandle(
+                Modifier
+                    .clickable {
+                        scope.launch {
+                            when (sheetState.currentValue) {
+                                SheetValue.Expanded -> sheetState.partialExpand()
+                                else -> sheetState.expand()
+                            }
+                        }
                     }
-                    Text(post.cheerCount.toString(), style = MaterialTheme.typography.labelLarge)
-                    Spacer(Modifier.width(16.dp))
-                    IconButton(comments, Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = commentLabel }) {
-                        Icon(Icons.Outlined.ChatBubbleOutline, null)
-                    }
-                    Text(post.commentCount.toString(), style = MaterialTheme.typography.labelLarge)
-                }
-            }
+                    .semantics { contentDescription = sheetLabel },
+            )
         },
+        sheetContainerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
                 title = { Text(activity.title, maxLines = 1) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.social_done))
+                navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.social_back)) } },
+                actions = {
+                    if (post.isCurrentUser) IconButton(onClick = {
+                        shareExport = createShareCard(post)
+                        if (shareExport == null) Toast.makeText(context, context.getString(ActivityR.string.activity_failed), Toast.LENGTH_SHORT).show()
+                    }) {
+                        Icon(Icons.Outlined.Share, stringResource(ActivityR.string.activity_share))
                     }
                 },
             )
         },
-    ) { padding ->
-        LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            item {
-                Box(Modifier.fillMaxWidth().height(320.dp)) {
-                    if (route.size > 1) {
-                        PlainstrideRouteMap(
-                            points = route,
-                            modifier = Modifier.fillMaxSize(),
-                            showEndpointMarkers = true,
-                        )
-                    } else {
-                        Box(
-                            Modifier.fillMaxSize().background(
-                                Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = .28f), MaterialTheme.colorScheme.background)),
-                            ),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(Icons.Outlined.Route, stringResource(R.string.social_route), Modifier.size(54.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = .65f))
+        sheetContent = {
+            LazyColumn(
+                Modifier.fillMaxWidth().fillMaxHeight(.88f),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                item {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(activity.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            post.activityTimestamp?.let { RelativeActivityTime(it) }
                         }
                     }
                 }
-            }
-            item {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f)).clickable { openProfile(post.author) }.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    SocialAvatar(post.author, 42.dp)
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(post.author.displayName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                        post.activityTimestamp?.let { RelativeActivityTime(it) }
-                    }
-                    Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            item {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(activity.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    post.caption?.takeIf(String::isNotEmpty)?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        ActivityStat(formatDistance(activity.distanceM), stringResource(R.string.social_distance))
-                        ActivityStat(formatDuration(activity.durationSecs), stringResource(R.string.social_time))
-                        ActivityStat(formatPace(activity.averagePaceSecsPerKm), stringResource(R.string.social_pace))
-                    }
-                }
-            }
-            if (photos.isNotEmpty() || photosLoading) {
                 item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        DetailMetric(formatDistance(activity.distanceM, unitSystem), stringResource(R.string.social_distance), Modifier.weight(1f))
+                        DetailMetric(formatPace(activity.averagePaceSecsPerKm, unitSystem), stringResource(R.string.social_pace), Modifier.weight(1f))
+                        DetailMetric(formatDuration(activity.durationSecs), stringResource(R.string.social_time), Modifier.weight(1f))
+                    }
+                }
+                if (activity.energyKilocalories != null || activity.elevationM != null) item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        activity.energyKilocalories?.let { DetailMetric("$it kcal", stringResource(ActivityR.string.activity_metric_calories), Modifier.weight(1f)) }
+                        activity.elevationM?.let { DetailMetric(formatElevation(it, unitSystem), stringResource(ActivityR.string.activity_metric_elevation_gain), Modifier.weight(1f)) }
+                    }
+                }
+                if (splits.isNotEmpty()) item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            stringResource(R.string.social_activity_photos),
-                            Modifier.padding(horizontal = 20.dp),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {
+                        TextButton(
+                            onClick = {
+                                showSplits = !showSplits
+                                if (showSplits) trackSplitsViewed(splits.size)
+                            },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            contentPadding = PaddingValues(0.dp),
+                        ) {
+                            Text(stringResource(ActivityR.string.activity_splits_title), Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Start, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Icon(if (showSplits) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
+                        }
+                        if (showSplits) {
+                            val fastestPace = splits.minOfOrNull(SocialSplit::paceSecondsPerKm) ?: 0.0
+                            val slowestPace = splits.maxOfOrNull(SocialSplit::paceSecondsPerKm) ?: fastestPace
+                            splits.forEachIndexed { index, split ->
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Text(stringResource(ActivityR.string.activity_split_number, index + 1), Modifier.width(54.dp), style = MaterialTheme.typography.labelMedium)
+                                    Text(formatPace(split.paceSecondsPerKm, unitSystem), Modifier.width(68.dp), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                                    Box(Modifier.weight(1f).height(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
+                                        val paceRange = (slowestPace - fastestPace).coerceAtLeast(1.0)
+                                        val fraction = (1.0 - (split.paceSecondsPerKm - fastestPace) / paceRange).toFloat().coerceIn(.12f, 1f)
+                                        Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(MaterialTheme.colorScheme.primary))
+                                    }
+                                    Text(formatDistance(split.distanceMeters, unitSystem), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                }
+                if (photos.isNotEmpty() || photosLoading) item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(stringResource(R.string.social_activity_photos), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             itemsIndexed(photos, key = { _, photo -> photo.id }) { index, photo ->
                                 SocialActivityPhotoTile(
                                     photo = photo,
                                     index = index,
                                     count = activity.totalPhotoCount,
                                     bytes = photoBytes[photo.id],
-                                    onClick = { selectedPhotoIndex = index; trackPhotoPreview(); loadPhotoContent(photo.id) },
+                                    onClick = {
+                                        if (selectedPhotoIndex == index) lightboxPhotoIndex = index else selectedPhotoIndex = index
+                                        trackPhotoPreview()
+                                        loadPhotoContent(photo.id)
+                                    },
                                 )
                             }
-                            if (photosLoading) {
-                                items((activity.totalPhotoCount - photos.size).coerceAtLeast(0)) { offset ->
-                                    PhotoLoadingTile(activity.totalPhotoCount, photos.size + offset)
-                                }
+                            if (photosLoading) items((activity.totalPhotoCount - photos.size).coerceAtLeast(0)) { offset ->
+                                PhotoLoadingTile(activity.totalPhotoCount, photos.size + offset)
                             }
                         }
+                    }
+                }
+                if (activity.recognitions.isNotEmpty()) item {
+                    SocialCard {
+                        Text(stringResource(R.string.social_profile_milestones), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        activity.recognitions.take(3).forEach { recognition ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Outlined.EmojiEvents, null, tint = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.width(8.dp))
+                                Text(badgeLabel(recognition.badgeId), style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                        if (activity.recognitions.size > 3) Text("+${activity.recognitions.size - 3}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                item {
+                    SocialCard(onClick = { openProfile(post.author) }) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            SocialAvatar(post.author)
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(post.author.displayName, fontWeight = FontWeight.SemiBold)
+                                post.activityTimestamp?.let { RelativeActivityTime(it) }
+                            }
+                            Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                post.caption?.takeIf(String::isNotEmpty)?.let { caption -> item { Text(caption, style = MaterialTheme.typography.bodyMedium) } }
+                item {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = cheer,
+                            modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = cheerLabel },
+                        ) {
+                            Icon(
+                                if (post.viewerHasCheered) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+                                null,
+                                tint = if (post.viewerHasCheered) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                        Text(post.cheerCount.toString(), style = MaterialTheme.typography.labelLarge)
+                        Spacer(Modifier.width(14.dp))
+                        TextButton(onClick = comments, modifier = Modifier.heightIn(min = 48.dp)) {
+                            Icon(Icons.Outlined.ChatBubbleOutline, commentLabel)
+                            Spacer(Modifier.width(6.dp))
+                            Text(post.commentCount.toString())
+                        }
+                    }
+                }
+                item {
+                    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = .55f)) {
+                        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text(stringResource(ActivityR.string.activity_social_companion_title), fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(ActivityR.string.activity_social_companion_body, post.author.displayName), style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        },
+    ) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            if (route.size > 1) {
+                PlainstrideRouteMap(
+                    points = route,
+                    modifier = Modifier.fillMaxSize(),
+                    showEndpointMarkers = true,
+                    markers = markers,
+                    onMarkerClick = { markerId ->
+                        val index = photos.indexOfFirst { it.id == markerId }
+                        if (index >= 0) {
+                            selectedPhotoIndex = index
+                            lightboxPhotoIndex = index
+                            trackPhotoPreview()
+                            loadPhotoContent(photos[index].id)
+                        }
+                    },
+                    bottomContentPadding = 220.dp,
+                )
+            } else {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Outlined.Route, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(ActivityR.string.activity_map_no_route), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            if (sheetState.currentValue == SheetValue.Hidden) {
+                Surface(
+                    Modifier.align(Alignment.BottomCenter).padding(16.dp).fillMaxWidth().clickable { scope.launch { sheetState.partialExpand() } },
+                    shape = RoundedCornerShape(18.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 8.dp,
+                ) {
+                    Row(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(activity.title, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                            Text(formatDistance(activity.distanceM, unitSystem), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Icon(Icons.Outlined.ExpandLess, stringResource(ActivityR.string.activity_sheet_expand))
                     }
                 }
             }
         }
     }
-    if (selectedPhotoIndex >= 0 && photos.isNotEmpty()) {
-        val pagerState = rememberPagerState(initialPage = selectedPhotoIndex.coerceIn(photos.indices)) { photos.size }
-        Dialog(onDismissRequest = { selectedPhotoIndex = -1 }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    if (lightboxPhotoIndex >= 0 && photos.isNotEmpty()) {
+        val pagerState = rememberPagerState(initialPage = lightboxPhotoIndex.coerceIn(photos.indices)) { photos.size }
+        Dialog(onDismissRequest = { lightboxPhotoIndex = -1 }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             LaunchedEffect(pagerState.currentPage) {
                 photos.getOrNull(pagerState.currentPage)?.let { loadPhotoContent(it.id) }
             }
             Surface(Modifier.fillMaxSize(), color = androidx.compose.ui.graphics.Color.Black) {
                 Column(Modifier.fillMaxSize()) {
                     Row(Modifier.fillMaxWidth().statusBarsPadding(), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton({ selectedPhotoIndex = -1 }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.social_done), tint = androidx.compose.ui.graphics.Color.White) }
+                        IconButton({ lightboxPhotoIndex = -1 }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.social_back), tint = androidx.compose.ui.graphics.Color.White) }
                         Text("${pagerState.currentPage + 1} / ${photos.size}", Modifier.weight(1f), color = androidx.compose.ui.graphics.Color.White, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                         Spacer(Modifier.width(48.dp))
                     }
                     HorizontalPager(state = pagerState, modifier = Modifier.weight(1f)) { page ->
                         val photo = photos[page]
-                        val imageBytes = photoBytes["content:${photo.id}"] ?: photoBytes[photo.id]
-                        val bitmap = remember(imageBytes) { imageBytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) } }
+                        val bytes = photoBytes["content:${photo.id}"] ?: photoBytes[photo.id]
+                        val bitmap = remember(bytes) { bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) } }
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             if (bitmap != null) Image(bitmap.asImageBitmap(), stringResource(R.string.social_activity_photo), Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                             else CircularProgressIndicator(color = androidx.compose.ui.graphics.Color.White)
@@ -581,7 +746,61 @@ private fun SocialActivityDetail(
             }
         }
     }
+    shareExport?.let { export ->
+        val bitmap = remember(export.uri) {
+            runCatching { context.contentResolver.openInputStream(export.uri)?.use(BitmapFactory::decodeStream) }.getOrNull()
+        }
+        Dialog(onDismissRequest = { shareExport = null; trackShareAction("cancelled") }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            Surface(Modifier.fillMaxWidth().padding(20.dp), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+                Column(Modifier.padding(16.dp).heightIn(max = 720.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(ActivityR.string.activity_share_preview), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    if (bitmap != null) Image(bitmap.asImageBitmap(), stringResource(ActivityR.string.activity_share_preview_description), Modifier.fillMaxWidth().weight(1f), contentScale = ContentScale.Fit)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedButton(onClick = {
+                            val saved = saveShareCardToGallery(context, export)
+                            trackShareAction(if (saved) "saved" else "failure")
+                            if (saved) Toast.makeText(context, context.getString(ActivityR.string.activity_share_image_saved), Toast.LENGTH_SHORT).show()
+                            shareExport = null
+                        }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text(stringResource(ActivityR.string.activity_save_image)) }
+                        Button(onClick = {
+                            val shared = runCatching {
+                                val send = Intent(Intent.ACTION_SEND).apply {
+                                    type = export.mimeType
+                                    putExtra(Intent.EXTRA_STREAM, export.uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(Intent.createChooser(send, null))
+                            }.isSuccess
+                            trackShareAction(if (shared) "shared" else "failure")
+                            if (shared) shareExport = null
+                        }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text(stringResource(ActivityR.string.activity_share)) }
+                    }
+                }
+            }
+        }
+    }
 }
+
+private fun saveShareCardToGallery(context: android.content.Context, export: ActivityExport): Boolean = runCatching {
+    val values = android.content.ContentValues().apply {
+        put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, export.fileName)
+        put(android.provider.MediaStore.Images.Media.MIME_TYPE, export.mimeType)
+        put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Plainstride")
+        put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
+    }
+    val resolver = context.contentResolver
+    val target = resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: error("Image destination unavailable")
+    try {
+        resolver.openOutputStream(target)?.use { output ->
+            resolver.openInputStream(export.uri)?.use { input -> input.copyTo(output) } ?: error("Image unavailable")
+        } ?: error("Image destination unavailable")
+        resolver.update(target, android.content.ContentValues().apply { put(android.provider.MediaStore.Images.Media.IS_PENDING, 0) }, null, null)
+    } catch (error: Throwable) {
+        resolver.delete(target, null, null)
+        throw error
+    }
+    true
+}.getOrDefault(false)
 
 @Composable
 private fun SocialActivityPhotoTile(photo: ActivityPhoto, index: Int, count: Int, bytes: ByteArray?, onClick: () -> Unit) {
@@ -621,11 +840,121 @@ private fun photoTileLabel(index: Int, count: Int): String = when (index) {
     else -> stringResource(R.string.social_activity_photo)
 }
 
+@Composable
+private fun DetailMetric(value: String, label: String, modifier: Modifier = Modifier) =
+    Column(
+        modifier.clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .48f)).padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Text(value, fontWeight = FontWeight.Bold, maxLines = 1, style = MaterialTheme.typography.titleSmall)
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+    }
+
 @Composable private fun ActivityStat(value:String,label:String)=Column(Modifier.widthIn(min=72.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(value,fontWeight=FontWeight.Bold);Text(label,color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.labelSmall)}
-private fun formatDistance(value:Double?)=value?.let{"%.2f km".format(it/1000)} ?: "—"
-private fun formatDuration(value:Int?)=value?.let{"%d:%02d".format(it/60,it%60)} ?: "—"
-private fun formatPace(value:Double?)=value?.let{"%d:%02d /km".format(it.toInt()/60,it.toInt()%60)} ?: "—"
-private fun formatSocialDate(value:String)=runCatching{java.time.OffsetDateTime.parse(value).format(java.time.format.DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.MEDIUM,java.time.format.FormatStyle.SHORT))}.getOrDefault("")
+
+private data class SocialSplit(val distanceMeters: Double, val durationSeconds: Double, val paceSecondsPerKm: Double)
+
+private fun computeSocialSplits(
+    route: List<MapCoordinate>,
+    durationSeconds: Int?,
+    unitSystem: MeasurementUnitSystem,
+): List<SocialSplit> {
+    if (route.size < 2 || (durationSeconds ?: 0) <= 0) return emptyList()
+    val splitLength = if (unitSystem == MeasurementUnitSystem.metric) 1_000.0 else 1_609.344
+    val edgeDuration = durationSeconds!!.toDouble() / (route.size - 1)
+    val result = mutableListOf<SocialSplit>()
+    var splitDistance = 0.0
+    var splitDuration = 0.0
+
+    fun finishSplit() {
+        if (splitDistance <= 0.0) return
+        result += SocialSplit(splitDistance, splitDuration, splitDuration / splitDistance * 1_000.0)
+        splitDistance = 0.0
+        splitDuration = 0.0
+    }
+
+    route.zipWithNext().forEach { (start, end) ->
+        val edgeDistance = distanceBetween(start, end)
+        if (edgeDistance <= 0.0) return@forEach
+        var edgeRemaining = edgeDistance
+        while (edgeRemaining > 0.0) {
+            val consumed = minOf(edgeRemaining, splitLength - splitDistance)
+            splitDistance += consumed
+            splitDuration += edgeDuration * consumed / edgeDistance
+            edgeRemaining -= consumed
+            if (splitDistance >= splitLength - .01) finishSplit()
+        }
+    }
+    finishSplit()
+    return result
+}
+
+private fun distanceBetween(start: MapCoordinate, end: MapCoordinate): Double {
+    val earthRadiusMeters = 6_371_000.0
+    val startLatitude = Math.toRadians(start.latitude)
+    val endLatitude = Math.toRadians(end.latitude)
+    val latitudeDelta = endLatitude - startLatitude
+    val longitudeDelta = Math.toRadians(end.longitude - start.longitude)
+    val a = kotlin.math.sin(latitudeDelta / 2).let { it * it } +
+        kotlin.math.cos(startLatitude) * kotlin.math.cos(endLatitude) * kotlin.math.sin(longitudeDelta / 2).let { it * it }
+    return 2 * earthRadiusMeters * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+}
+
+private fun FeedActivity.toSavedActivity(post: SocialPost): SavedActivity {
+    val duration = durationSecs?.coerceAtLeast(0) ?: 0
+    val started = runCatching { java.time.OffsetDateTime.parse(startedAt).toInstant() }.getOrDefault(java.time.Instant.EPOCH)
+    val ended = endedAt?.let { runCatching { java.time.OffsetDateTime.parse(it).toInstant() }.getOrNull() }
+        ?: started.plusSeconds(duration.toLong())
+    val activityType = when (this.type.lowercase()) {
+        "cycling", "bike", "biking" -> ActivityType.cycling
+        "hiking", "hike" -> ActivityType.hiking
+        "walking", "walk" -> ActivityType.walking
+        "swimming", "swim" -> ActivityType.swimming
+        else -> ActivityType.running
+    }
+    val routePoints = route.routeCoordinates()
+    val track = routePoints.mapIndexed { index, coordinate ->
+        val fraction = if (routePoints.size <= 1) 0.0 else index.toDouble() / (routePoints.size - 1)
+        ActivityTrackPoint(
+            timestamp = started.plusMillis((duration * 1_000.0 * fraction).toLong()).toString(),
+            latitude = coordinate.latitude,
+            longitude = coordinate.longitude,
+        )
+    }
+    return SavedActivity(
+        id = id,
+        accountId = post.author.id,
+        serverActivityId = id,
+        type = activityType,
+        title = title,
+        createdAt = post.createdAt ?: started.toString(),
+        startedAt = started.toString(),
+        endedAt = ended.toString(),
+        durationSecs = duration,
+        distanceM = distanceM ?: 0.0,
+        averagePaceSecsPerKm = averagePaceSecsPerKm,
+        elevationGainM = elevationM,
+        energyKilocalories = energyKilocalories,
+        track = track,
+        localUpdatedAt = post.createdAt ?: ended.toString(),
+    )
+}
+
+private fun formatDistance(value: Double?, unitSystem: MeasurementUnitSystem): String = value?.let {
+    val distance = if (unitSystem == MeasurementUnitSystem.metric) it / 1000.0 else it / 1609.344
+    val unit = if (unitSystem == MeasurementUnitSystem.metric) "km" else "mi"
+    String.format(java.util.Locale.getDefault(), "%.1f %s", distance, unit)
+} ?: "—"
+private fun formatDuration(value: Int?): String = value?.let {
+    if (it >= 3600) "%d:%02d:%02d".format(it / 3600, (it % 3600) / 60, it % 60) else "%d:%02d".format(it / 60, it % 60)
+} ?: "—"
+private fun formatPace(value: Double?, unitSystem: MeasurementUnitSystem): String = value?.let {
+    val seconds = if (unitSystem == MeasurementUnitSystem.metric) it else it * 1.609344
+    val unit = if (unitSystem == MeasurementUnitSystem.metric) "/km" else "/mi"
+    "%d:%02d %s".format((seconds / 60).toInt(), seconds.toInt() % 60, unit)
+} ?: "—"
+private fun formatElevation(value: Double, unitSystem: MeasurementUnitSystem): String = if (unitSystem == MeasurementUnitSystem.metric) "%dm".format(value.toInt()) else "%d ft".format((value * 3.28084).toInt())
+private fun formatSocialDate(value: String) = runCatching { java.time.OffsetDateTime.parse(value).format(java.time.format.DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.MEDIUM, java.time.format.FormatStyle.SHORT)) }.getOrDefault("")
 
 @Composable
 private fun RelativeActivityTime(value: String) {

@@ -5,9 +5,9 @@
     <string name="activity_avg_pace">平均配速</string>
     <string name="activity_back">返回</string>
     <string name="activity_cancel">取消</string>
-    <string name="activity_completed_duration_format">%1$d 分钟</string>
-    <string name="activity_completed_duration_calories_format">%1$d 分钟 · %2$d 千卡</string>
     <string name="activity_companion_dog_title">和狗狗一起</string>
+    <string name="activity_completed_duration_calories_format">%1$d 分钟 · %2$d 千卡</string>
+    <string name="activity_completed_duration_format">%1$d 分钟</string>
     <string name="activity_delete">删除活动</string>
     <string name="activity_delete_body">它将从本设备和同步历史中移除，且无法撤销。</string>
     <string name="activity_delete_title">删除这次活动？</string>
@@ -59,6 +59,7 @@
     <string name="activity_save_image">保存图片</string>
     <string name="activity_saved">活动已保存</string>
     <string name="activity_share">分享</string>
+    <string name="activity_share_image_saved">分享图片已保存。</string>
     <string name="activity_share_card">分享活动</string>
     <string name="activity_share_distance_value">%1$.2f 公里</string>
     <string name="activity_share_pace_value">%1$d:%2$02d /公里</string>
@@ -68,6 +69,11 @@
     <string name="activity_shared_title">共享活动</string>
     <string name="activity_sheet_collapse">收起活动详情</string>
     <string name="activity_sheet_expand">展开活动详情</string>
+    <string name="activity_social_companion_body">%1$s完成了一次扎实的锻炼。送上鼓励，陪伴对方继续保持势头。</string>
+    <string name="activity_social_companion_title">干得漂亮！</string>
+    <string name="activity_social_cheer_count">加油</string>
+    <string name="activity_social_cheer_count_hint">显示所有加油用户的完整列表</string>
+    <string name="activity_social_cheers_empty">还没有加油，来做第一个加油的人吧。</string>
     <string name="activity_split_number">第 %1$d 段</string>
     <string name="activity_splits">分段</string>
     <string name="activity_splits_elev">爬升</string>

@@ -5,9 +5,9 @@
     <string name="activity_avg_pace">Avg. pace</string>
     <string name="activity_back">Back</string>
     <string name="activity_cancel">Cancel</string>
-    <string name="activity_completed_duration_format">%1$d min</string>
-    <string name="activity_completed_duration_calories_format">%1$d min · %2$d cal</string>
     <string name="activity_companion_dog_title">With dog</string>
+    <string name="activity_completed_duration_calories_format">%1$d min · %2$d cal</string>
+    <string name="activity_completed_duration_format">%1$d min</string>
     <string name="activity_delete">Delete activity</string>
     <string name="activity_delete_body">It will be removed from this device and your synced history. This cannot be undone.</string>
     <string name="activity_delete_title">Delete this activity?</string>
@@ -59,6 +59,7 @@
     <string name="activity_save_image">Save image</string>
     <string name="activity_saved">Activity saved</string>
     <string name="activity_share">Share</string>
+    <string name="activity_share_image_saved">Share image saved.</string>
     <string name="activity_share_card">Share activity</string>
     <string name="activity_share_distance_value">%1$.2f km</string>
     <string name="activity_share_pace_value">%1$d:%2$02d /km</string>
@@ -68,6 +69,11 @@
     <string name="activity_shared_title">Shared activity</string>
     <string name="activity_sheet_collapse">Collapse activity details</string>
     <string name="activity_sheet_expand">Expand activity details</string>
+    <string name="activity_social_companion_body">%1$s put in a strong effort. Send a Cheer to keep the momentum going!</string>
+    <string name="activity_social_companion_title">Great hustle.</string>
+    <string name="activity_social_cheer_count">Cheers</string>
+    <string name="activity_social_cheer_count_hint">Shows the full list of people who cheered</string>
+    <string name="activity_social_cheers_empty">No cheers yet. Be the first to send one.</string>
     <string name="activity_split_number">Split %1$d</string>
     <string name="activity_splits">Splits</string>
     <string name="activity_splits_elev">Elev</string>

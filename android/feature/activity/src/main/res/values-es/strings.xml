@@ -5,9 +5,9 @@
     <string name="activity_avg_pace">Ritmo medio</string>
     <string name="activity_back">Atrás</string>
     <string name="activity_cancel">Cancelar</string>
-    <string name="activity_completed_duration_format">%1$d min</string>
-    <string name="activity_completed_duration_calories_format">%1$d min · %2$d cal</string>
     <string name="activity_companion_dog_title">Con perro</string>
+    <string name="activity_completed_duration_calories_format">%1$d min · %2$d cal</string>
+    <string name="activity_completed_duration_format">%1$d min</string>
     <string name="activity_delete">Eliminar actividad</string>
     <string name="activity_delete_body">Se eliminará de este dispositivo y del historial sincronizado. Esta acción no se puede deshacer.</string>
     <string name="activity_delete_title">¿Eliminar esta actividad?</string>
@@ -59,6 +59,7 @@
     <string name="activity_save_image">Guardar imagen</string>
     <string name="activity_saved">Actividad guardada</string>
     <string name="activity_share">Compartir</string>
+    <string name="activity_share_image_saved">Imagen para compartir guardada.</string>
     <string name="activity_share_card">Compartir actividad</string>
     <string name="activity_share_distance_value">%1$.2f km</string>
     <string name="activity_share_pace_value">%1$d:%2$02d /km</string>
@@ -68,6 +69,11 @@
     <string name="activity_shared_title">Actividad compartida</string>
     <string name="activity_sheet_collapse">Contraer los detalles de la actividad</string>
     <string name="activity_sheet_expand">Ampliar los detalles de la actividad</string>
+    <string name="activity_social_companion_body">%1$s hizo un gran esfuerzo. Envíale un Cheer para que mantenga el impulso.</string>
+    <string name="activity_social_companion_title">¡Buen esfuerzo!</string>
+    <string name="activity_social_cheer_count">Ánimos</string>
+    <string name="activity_social_cheer_count_hint">Muestra la lista completa de personas que animaron</string>
+    <string name="activity_social_cheers_empty">Aún no hay ánimos. Sé el primero en enviar uno.</string>
     <string name="activity_split_number">Parcial %1$d</string>
     <string name="activity_splits">Parciales</string>
     <string name="activity_splits_elev">Desn.</string>
