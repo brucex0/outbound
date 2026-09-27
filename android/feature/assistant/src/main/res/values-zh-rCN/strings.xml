@@ -65,6 +65,8 @@
     <string name="assistant_prompt_today_easier">请降低今天训练的强度</string>
     <string name="assistant_today_why">为什么安排这次训练？</string>
     <string name="assistant_prompt_today_why">为什么今天适合进行这次训练？</string>
+    <string name="assistant_today_history">打开活动历史</string>
+    <string name="assistant_prompt_today_history">打开我的活动历史</string>
     <string name="assistant_live_status">我现在状态如何？</string>
     <string name="assistant_prompt_live_status">我现在状态如何？请简短回答，并参考实时活动数据。</string>
     <string name="assistant_live_focus">我接下来应该关注什么？</string>

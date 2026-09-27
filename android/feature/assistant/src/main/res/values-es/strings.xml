@@ -65,6 +65,8 @@
     <string name="assistant_prompt_today_easier">Haz más suave el entrenamiento de hoy</string>
     <string name="assistant_today_why">¿Por qué este entrenamiento?</string>
     <string name="assistant_prompt_today_why">¿Por qué es este el entrenamiento adecuado para mí hoy?</string>
+    <string name="assistant_today_history">Abrir historial de actividades</string>
+    <string name="assistant_prompt_today_history">Abre mi historial de actividades</string>
     <string name="assistant_live_status">¿Cómo voy?</string>
     <string name="assistant_prompt_live_status">¿Cómo voy ahora? Sé breve y usa mis datos de actividad en directo.</string>
     <string name="assistant_live_focus">¿En qué debería centrarme?</string>

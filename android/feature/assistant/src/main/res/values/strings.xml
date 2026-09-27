@@ -65,6 +65,8 @@
     <string name="assistant_prompt_today_easier">Make today’s workout easier</string>
     <string name="assistant_today_why">Why this workout?</string>
     <string name="assistant_prompt_today_why">Why is this the right workout for me today?</string>
+    <string name="assistant_today_history">Open activity history</string>
+    <string name="assistant_prompt_today_history">Open my activity history</string>
     <string name="assistant_live_status">How am I doing?</string>
     <string name="assistant_prompt_live_status">How am I doing right now? Keep it brief and use my live activity stats.</string>
     <string name="assistant_live_focus">What should I focus on?</string>

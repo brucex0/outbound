@@ -52,7 +52,7 @@ fun AssistantRoute(
     ) else if (screen == "today") listOf(
         AssistantSuggestion("today-easier", AssistantCapability.Plan, stringResource(R.string.assistant_today_easier), stringResource(R.string.assistant_prompt_today_easier)),
         AssistantSuggestion("today-why", AssistantCapability.Discover, stringResource(R.string.assistant_today_why), stringResource(R.string.assistant_prompt_today_why)),
-        viewModel.suggestions.first { it.capability == AssistantCapability.Navigate },
+        AssistantSuggestion("today-history", AssistantCapability.Navigate, stringResource(R.string.assistant_today_history), stringResource(R.string.assistant_prompt_today_history)),
     ) else viewModel.suggestions
     LaunchedEffect(accountId) { viewModel.initialize(accountId) }
     LaunchedEffect(state.speech) {
