@@ -11,6 +11,7 @@
 ## States And Transitions
 
 - Today launches the prepared activity directly into a cancelable, spoken countdown when Voice Guide is enabled.
+- Outdoor activity start follows iOS preflight: explain location use before the system prompt, direct previously denied users to app settings, refresh authorization when returning from settings, and hold the start until a location fix is no older than 15 seconds and no less accurate than 80 meters. Indoor sessions bypass both gates. A lost permission or GPS fix during countdown blocks recording and returns to the matching permission or acquisition state.
 - Active recording is non-dismissible. Pause reveals separate Resume and Finish controls; Finish requires confirmation.
 - The map and camera share compact and expanded dashboard state. Tap or vertical drag changes state without dismissing the activity.
 - The compact dashboard mirrors iOS's glanceable time / primary action / optional Finish / distance row; the expanded dashboard owns the title and status, goal hero, progress, metric cards, current workout step, route name, and labeled controls.
@@ -31,6 +32,7 @@
 
 ## Reference Scenarios
 
+- Outdoor starts with location not yet requested, denied once, permanently denied, revoked in app settings, approximate, and precise; fresh, stale, inaccurate, and unavailable GPS fixes; permission loss during countdown; and indoor start without location.
 - Planned distance workout, manual free run, timed walk, calorie goal, structured workout, and followed route.
 - Active and paused map/camera surfaces, compact and expanded dashboard, pending photo write, finish confirmation, recovery, and post-run review.
 - English, Spanish, and Simplified Chinese; light/dark themes; compact phone and increased font scale.

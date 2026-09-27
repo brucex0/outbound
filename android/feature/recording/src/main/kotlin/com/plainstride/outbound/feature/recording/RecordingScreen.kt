@@ -1,16 +1,20 @@
 package com.plainstride.outbound.feature.recording
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
+import android.os.SystemClock
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityCompat
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -56,6 +60,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -70,9 +75,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -96,10 +103,20 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
+import com.google.android.gms.location.CurrentLocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import kotlin.math.roundToInt
 import com.plainstride.outbound.core.designsystem.LocalPlainstrideThemeColors
 import com.plainstride.outbound.core.designsystem.MapCoordinate
@@ -135,12 +152,22 @@ fun RecordingRoute(
     viewModel: RecordingViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     val ui by viewModel.state.collectAsStateWithLifecycle()
     val snapshot by viewModel.snapshot.collectAsStateWithLifecycle()
     val voiceListening by viewModel.voiceListening.collectAsStateWithLifecycle()
     sessionEffect(snapshot)
-    var askedForLocation by remember { mutableStateOf(false) }
+    val permissionPreferences = remember(context) {
+        context.getSharedPreferences("recording_permissions", Context.MODE_PRIVATE)
+    }
+    var askedForLocation by remember(context) {
+        mutableStateOf(permissionPreferences.getBoolean("location_requested", false))
+    }
+    var permissionRevision by remember { mutableIntStateOf(0) }
+    var locationWaitJob by remember { mutableStateOf<Job?>(null) }
+    var showGpsWait by remember { mutableStateOf(false) }
+    var pendingStartAfterSettings by remember { mutableStateOf(false) }
     var pendingResume by remember { mutableStateOf(false) }
     var showLocationEducation by remember { mutableStateOf(false) }
     var showCameraEducation by remember { mutableStateOf(false) }
@@ -150,6 +177,18 @@ fun RecordingRoute(
     var postSavePhotoAlbumExport by remember { mutableStateOf<ActivityPhotoAlbumExportResult?>(null) }
     val saveSnackbar = remember { SnackbarHostState() }
     val saveFailedMessage = stringResource(R.string.recording_save_failed)
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                askedForLocation = permissionPreferences.getBoolean("location_requested", false)
+                permissionRevision++
+                viewModel.updatePermission(recordingLocationPermission(context, permissionPreferences.getBoolean("location_requested", false)))
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val saveReview: (RecordedActivityReview, Boolean, ActivityPhotoAlbumExportResult?) -> Unit =
         { review, exportPhoto, overrideResult ->
@@ -180,22 +219,69 @@ fun RecordingRoute(
     }
 
     fun permissionState(): LocationPermissionState {
-        val precise = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        val approximate = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        return when {
-            precise -> LocationPermissionState.PRECISE
-            approximate -> LocationPermissionState.APPROXIMATE
-            askedForLocation -> LocationPermissionState.DENIED
-            else -> LocationPermissionState.NOT_REQUESTED
+        permissionRevision
+        return recordingLocationPermission(context, askedForLocation)
+    }
+
+    suspend fun waitForUsableLocation(): Boolean {
+        val client = LocationServices.getFusedLocationProviderClient(context)
+        fun isUsable(location: android.location.Location?): Boolean {
+            if (location == null || !location.hasAccuracy() || location.accuracy > 80f) return false
+            val ageNanos = SystemClock.elapsedRealtimeNanos() - location.elapsedRealtimeNanos
+            return ageNanos in 0..15_000_000_000L
         }
+
+        runCatching { client.lastLocation.await() }.getOrNull().takeIf(::isUsable)?.let { return true }
+        while (true) {
+            val permission = recordingLocationPermission(context, permissionPreferences.getBoolean("location_requested", false))
+            if (permission != LocationPermissionState.PRECISE && permission != LocationPermissionState.APPROXIMATE) return false
+            val current = withTimeoutOrNull(12_000L) {
+                runCatching {
+                    client.getCurrentLocation(
+                        CurrentLocationRequest.Builder()
+                            .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                            .setDurationMillis(10_000L)
+                            .build(),
+                        CancellationTokenSource().token,
+                    ).await()
+                }.getOrNull()
+            }
+            if (isUsable(current)) return true
+            delay(500L)
+        }
+    }
+
+    fun showLocationRequired() {
+        showGpsWait = false
+        showLocationEducation = true
     }
 
     fun beginCountdown() {
         pendingResume = false
         val permission = permissionState()
         if (permission == LocationPermissionState.PRECISE || permission == LocationPermissionState.APPROXIMATE) {
-            scope.launch { viewModel.beginCountdown() }
-        } else showLocationEducation = true
+            if (ui.launch.indoor) {
+                scope.launch { viewModel.beginCountdown() }
+            } else {
+                locationWaitJob?.cancel()
+                locationWaitJob = scope.launch {
+                    showGpsWait = true
+                    val ready = runCatching { waitForUsableLocation() }.getOrDefault(false)
+                    showGpsWait = false
+                    locationWaitJob = null
+                    if (ready && permissionState().let { it == LocationPermissionState.PRECISE || it == LocationPermissionState.APPROXIMATE }) {
+                        viewModel.beginCountdown()
+                    } else if (permissionState() == LocationPermissionState.DENIED) showLocationRequired()
+                }
+            }
+        } else showLocationRequired()
+    }
+
+    LaunchedEffect(permissionRevision) {
+        if (!pendingStartAfterSettings) return@LaunchedEffect
+        val permission = recordingLocationPermission(context, permissionPreferences.getBoolean("location_requested", false))
+        pendingStartAfterSettings = false
+        if (permission == LocationPermissionState.PRECISE || permission == LocationPermissionState.APPROXIMATE) beginCountdown()
     }
 
     LaunchedEffect(launch, unitSystem) {
@@ -209,10 +295,11 @@ fun RecordingRoute(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) {
         askedForLocation = true
+        permissionPreferences.edit().putBoolean("location_requested", true).apply()
         viewModel.updatePermission(permissionState())
         if (permissionState() == LocationPermissionState.DENIED) showLocationEducation = true
         else if (pendingResume) { pendingResume = false; viewModel.resume() }
-        else scope.launch { viewModel.beginCountdown() }
+        else beginCountdown()
     }
     val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         showCameraEducation = !granted
@@ -253,7 +340,23 @@ fun RecordingRoute(
         if (current > 1) viewModel.updateCountdown(current - 1)
         else {
             if (ui.countdownVoiceReady) viewModel.speakGo()
-            viewModel.start(accountId, permissionState())
+            val permission = permissionState()
+            if (!ui.launch.indoor && permission != LocationPermissionState.PRECISE && permission != LocationPermissionState.APPROXIMATE) {
+                viewModel.clearCountdown()
+                showLocationRequired()
+            } else {
+                if (!ui.launch.indoor) {
+                    showGpsWait = true
+                    val ready = runCatching { waitForUsableLocation() }.getOrDefault(false)
+                    showGpsWait = false
+                    if (!ready) {
+                        viewModel.clearCountdown()
+                        if (permissionState() == LocationPermissionState.DENIED) showLocationRequired()
+                        return@LaunchedEffect
+                    }
+                }
+                viewModel.start(accountId, permission)
+            }
         }
     }
 
@@ -348,14 +451,38 @@ fun RecordingRoute(
 
     Box(modifier.fillMaxSize()) { if(postSaveStretchKind!=null) PostWorkoutStretchRoute(requireNotNull(postSaveStretchKind),{val r=postSaveReview;val export=postSavePhotoAlbumExport;postSaveReview=null;postSavePhotoAlbumExport=null;postSaveStretchKind=null;if(r!=null)onSaved(r,export)},{n,result->viewModel.trackStretchEvent(n,requireNotNull(postSaveStretchKind),result)}) else {content();SnackbarHost(saveSnackbar,Modifier.align(Alignment.BottomCenter))} }
 
+    if (showGpsWait) AlertDialog(
+        onDismissRequest = {
+            locationWaitJob?.cancel()
+            locationWaitJob = null
+            showGpsWait = false
+            viewModel.cancelCountdown()
+        },
+        title = { Text(stringResource(R.string.recording_acquiring_location)) },
+        text = { CircularProgressIndicator() },
+        confirmButton = { TextButton(onClick = {
+            locationWaitJob?.cancel()
+            locationWaitJob = null
+            showGpsWait = false
+            viewModel.cancelCountdown()
+        }) { Text(stringResource(R.string.recording_cancel)) } },
+    )
+
     if (showLocationEducation) PermissionEducationDialog(
         title = stringResource(R.string.recording_location_permission_title),
         body = stringResource(if (askedForLocation) R.string.recording_location_permission_denied else R.string.recording_location_permission_body),
         confirm = stringResource(if (askedForLocation) R.string.recording_open_settings else R.string.recording_continue),
         onConfirm = {
             showLocationEducation = false
-            if (askedForLocation) context.openAppSettings()
-            else locationPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+            if (askedForLocation) {
+                pendingStartAfterSettings = true
+                context.openAppSettings()
+            }
+            else {
+                permissionPreferences.edit().putBoolean("location_requested", true).apply()
+                askedForLocation = true
+                locationPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+            }
         },
         onDismiss = { showLocationEducation = false },
     )
@@ -1089,3 +1216,23 @@ private fun formatElevation(meters: Double, unitSystem: MeasurementUnitSystem): 
     return "%.0f %s".format(elevation.value, unit)
 }
 private fun Context.openAppSettings() = startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+
+private fun recordingLocationPermission(context: Context, askedBefore: Boolean): LocationPermissionState = when {
+    context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED -> LocationPermissionState.PRECISE
+    context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED -> LocationPermissionState.APPROXIMATE
+    askedBefore || context.locationPermissionWasPreviouslySet() -> LocationPermissionState.DENIED
+    else -> LocationPermissionState.NOT_REQUESTED
+}
+
+private fun Context.locationPermissionWasPreviouslySet(): Boolean {
+    val locationPermissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+    return locationPermissions.any { permission ->
+        findActivity()?.let { ActivityCompat.shouldShowRequestPermissionRationale(it, permission) } == true
+    }
+}
+
+private fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
