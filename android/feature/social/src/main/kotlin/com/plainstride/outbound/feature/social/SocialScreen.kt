@@ -5,6 +5,9 @@ import android.content.Intent
 import android.text.format.DateUtils
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -567,8 +570,8 @@ private fun SocialActivityDetail(
         if (selectedPhotoIndex < 0) selectedPhotoIndex = photos.indexOfFirst { it.latitude != null && it.longitude != null }
     }
     var sheetLevel by rememberSaveable(post.id) { mutableStateOf(SocialActivitySheetLevel.Split) }
-    var dragOffsetPx by remember { mutableFloatStateOf(0f) }
     val density = androidx.compose.ui.platform.LocalDensity.current
+    val sheetScope = rememberCoroutineScope()
     val cheerLabel = stringResource(if (post.viewerHasCheered) R.string.social_remove_cheer else R.string.social_add_cheer)
     val commentLabel = stringResource(R.string.social_comments)
     val sheetLabel = stringResource(if (sheetLevel == SocialActivitySheetLevel.Expanded) ActivityR.string.activity_sheet_collapse else ActivityR.string.activity_sheet_expand)
@@ -581,14 +584,28 @@ private fun SocialActivityDetail(
             SocialActivitySheetLevel.Split -> splitHeight
             SocialActivitySheetLevel.Expanded -> expandedHeight
         }
-        val baseHeightPx = with(density) { targetHeight.toPx() }
         val collapsedHeightPx = with(density) { collapsedHeight.toPx() }
         val expandedHeightPx = with(density) { expandedHeight.toPx() }
         val splitHeightPx = with(density) { splitHeight.toPx() }
-        val animatedTargetHeight by androidx.compose.animation.core.animateDpAsState(targetHeight, label = "social-activity-sheet")
-        val sheetHeight = if (dragOffsetPx == 0f) animatedTargetHeight else with(density) {
-            (baseHeightPx + dragOffsetPx).toDp().coerceIn(collapsedHeight, expandedHeight)
+        val heightForLevelPx = { level: SocialActivitySheetLevel ->
+            when (level) {
+                SocialActivitySheetLevel.Collapsed -> collapsedHeightPx
+                SocialActivitySheetLevel.Split -> splitHeightPx
+                SocialActivitySheetLevel.Expanded -> expandedHeightPx
+            }
         }
+        val sheetHeightAnimation = remember(maxHeight, density, post.id) { Animatable(splitHeightPx) }
+        var dragHeightPx by remember(post.id) { mutableFloatStateOf(Float.NaN) }
+        LaunchedEffect(targetHeight, maxHeight) {
+            if (dragHeightPx.isNaN()) {
+                sheetHeightAnimation.animateTo(
+                    with(density) { targetHeight.toPx() },
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+                )
+            }
+        }
+        val currentSheetHeightPx = if (dragHeightPx.isNaN()) sheetHeightAnimation.value else dragHeightPx
+        val sheetHeight = with(density) { currentSheetHeightPx.toDp().coerceIn(collapsedHeight, expandedHeight) }
 
         if (route.size > 1) {
             PlainstrideRouteMap(
@@ -644,20 +661,30 @@ private fun SocialActivityDetail(
                     Box(
                         Modifier.fillMaxWidth().height(32.dp)
                             .background(MaterialTheme.colorScheme.surface)
-                            .pointerInput(sheetLevel, baseHeightPx) {
+                            .pointerInput(collapsedHeightPx, expandedHeightPx) {
                                 fun settle() {
-                                    val actual = baseHeightPx + dragOffsetPx
-                                    sheetLevel = listOf(
+                                    val actual = dragHeightPx.takeUnless(Float::isNaN) ?: sheetHeightAnimation.value
+                                    val targetLevel = listOf(
                                         SocialActivitySheetLevel.Collapsed to collapsedHeightPx,
                                         SocialActivitySheetLevel.Split to splitHeightPx,
                                         SocialActivitySheetLevel.Expanded to expandedHeightPx,
                                     ).minBy { kotlin.math.abs(it.second - actual) }.first
-                                    dragOffsetPx = 0f
+                                    sheetScope.launch {
+                                        sheetHeightAnimation.snapTo(actual)
+                                        dragHeightPx = Float.NaN
+                                        if (targetLevel != sheetLevel) sheetLevel = targetLevel
+                                        else sheetHeightAnimation.animateTo(
+                                            heightForLevelPx(targetLevel),
+                                            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+                                        )
+                                    }
                                 }
                                 detectVerticalDragGestures(
+                                    onDragStart = { dragHeightPx = sheetHeightAnimation.value },
                                     onVerticalDrag = { change, amount ->
                                         change.consume()
-                                        dragOffsetPx = (dragOffsetPx - amount).coerceIn(collapsedHeightPx - baseHeightPx, expandedHeightPx - baseHeightPx)
+                                        val current = dragHeightPx.takeUnless(Float::isNaN) ?: sheetHeightAnimation.value
+                                        dragHeightPx = (current - amount).coerceIn(collapsedHeightPx, expandedHeightPx)
                                     },
                                     onDragEnd = ::settle,
                                     onDragCancel = ::settle,
