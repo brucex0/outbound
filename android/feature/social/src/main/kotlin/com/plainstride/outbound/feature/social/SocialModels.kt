@@ -106,7 +106,9 @@ import kotlinx.serialization.json.JsonElement
     val attendeeCount: Int = 0,
     val currentUserRole: String = "viewer",
     val currentUserAttendanceMode: String? = null,
+    val source: SocialEventSource? = null,
 )
+@Serializable data class SocialEventSource(val kind: String)
 @Serializable data class SocialInvitation(val id: String, val kind: String, val title: String, val sender: SocialPerson, val objectId: String? = null)
 @Serializable data class GroupCommitment(val targetCount: Int? = null, val skipped: Boolean = false)
 @Serializable data class GroupMember(

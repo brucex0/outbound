@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
+    <string name="social_active_now_person">%1$s 正在运动</string>
+    <string name="social_active_now_title">正在运动</string>
+    <string name="social_activity_feed">活动动态</string>
     <string name="social_activity_photo">活动照片</string>
     <string name="social_activity_photos">照片</string>
     <string name="social_add_connection">添加跑友</string>
@@ -35,6 +38,9 @@
     <string name="social_dont_ask_again">不再询问</string>
     <string name="social_feed">近期动态</string>
     <string name="social_feed_empty">你和好友分享的活动会显示在这里。</string>
+    <string name="social_feed_empty_title">暂无动态</string>
+    <string name="social_feed_load_more_failed">无法加载更多活动，请重试。</string>
+    <string name="social_feed_photo_count">%1$d 张照片</string>
     <string name="social_group">你的群组</string>
     <string name="social_group_create">创建群组</string>
     <string name="social_group_empty">保持活力，积极相伴。和支持你坚持运动的人创建一个私密群组。</string>
@@ -106,5 +112,7 @@
     <string name="social_time">时间</string>
     <string name="social_title">动态</string>
     <string name="social_upcoming">即将开始</string>
+    <string name="social_upcoming_attendees">参加：%1$d 人</string>
     <string name="social_upcoming_empty">暂时没有即将开始的活动。</string>
+    <string name="social_upcoming_meetup">见面或随地参与</string>
 </resources>

@@ -22,6 +22,7 @@ data class SocialUiState(
     val activityDetailPhotoBytes: Map<String, ByteArray> = emptyMap(),
     val selectedEvent:SocialEvent?=null,val selectedInvitation:SocialInvitation?=null,
     val feedCursor: String? = null, val feedLoading: Boolean = false,
+    val feedLoadFailed: Boolean = false,
     val connectionRequestLoading: Boolean = false,
     val connectionProfileLoading: Boolean = false, val connectionProfileCode: String? = null,
     val connectionProfileIsSelf: Boolean = false,
@@ -80,7 +81,7 @@ sealed interface ConnectionEffect {
     }
     fun loadMore() { val cursor = mutableState.value.home.nextCursor ?: return; if (mutableState.value.feedLoading) return
         viewModelScope.launch {
-            mutableState.update { it.copy(feedLoading = true) }
+            mutableState.update { it.copy(feedLoading = true, feedLoadFailed = false) }
             repository.loadFeed(cursor).onSuccess { page ->
                 mutableState.update { s -> s.copy(home = s.home.copy(posts = (s.home.posts + page.items).distinctBy(SocialPost::id), nextCursor = page.nextCursor)) }
                 feedPagesLoaded += 1
@@ -89,7 +90,7 @@ sealed interface ConnectionEffect {
                     AnalyticsProperty.CountBucket to countBucket(page.items.size),
                     AnalyticsProperty.PageDepthBucket to when { feedPagesLoaded == 2 -> "page_2"; feedPagesLoaded <= 4 -> "pages_3_4"; else -> "page_5_plus" },
                 )))
-            }
+            }.onFailure { mutableState.update { it.copy(feedLoadFailed = true) } }
             mutableState.update { it.copy(feedLoading = false) }
         }
     }
@@ -99,6 +100,29 @@ sealed interface ConnectionEffect {
         AnalyticsProperty.EntrySource to "tab_row",
     )))
     fun trackActivityDetailOpened() = analytics.record(AnalyticsEvent("activity_detail_opened", mapOf(AnalyticsProperty.SourceType to "social_feed")))
+    fun trackFirstFeedCardVisible(post: SocialPost) = analytics.record(AnalyticsEvent(
+        "social_feed_first_card_visible",
+        mapOf(AnalyticsProperty.SourceType to if (post.isCurrentUser) "self" else "connection"),
+    ))
+    fun trackActiveNowExposed(count: Int) = analytics.record(AnalyticsEvent(
+        "social_active_now_exposed",
+        mapOf(AnalyticsProperty.CountBucket to countBucket(count)),
+    ))
+    fun trackActiveNowSelected(selection: String) = analytics.record(AnalyticsEvent(
+        "social_active_now_selected",
+        mapOf(AnalyticsProperty.SelectionType to selection, AnalyticsProperty.EntrySource to "active_now"),
+    ))
+    fun trackUpcomingExposed(events: List<SocialEvent>) = analytics.record(AnalyticsEvent(
+        "social_upcoming_exposed",
+        mapOf(
+            AnalyticsProperty.CountBucket to countBucket(events.size),
+            AnalyticsProperty.SourceType to if (events.any { it.source?.kind == "directInvitation" && !it.joined }) "action_required" else "relevant",
+        ),
+    ))
+    fun trackUpcomingSelected(selection: String) = analytics.record(AnalyticsEvent(
+        "social_upcoming_selected",
+        mapOf(AnalyticsProperty.SelectionType to selection, AnalyticsProperty.EntrySource to "feed"),
+    ))
     fun trackActivitySplitsViewed(count: Int) = analytics.record(AnalyticsEvent("activity_splits_viewed", mapOf(
         AnalyticsProperty.SourceType to "social_feed",
         AnalyticsProperty.CountBucket to countBucket(count),
