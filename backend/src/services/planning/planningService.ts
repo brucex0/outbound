@@ -10,6 +10,12 @@ import { getPlanIntakeContext } from "./planIntake.js";
 import { getPrismaClient } from "../prisma.js";
 import { loadTrainingPlanCatalog } from "../trainingPlanCatalog.js";
 import { buildTrainingPlanState } from "../trainingPlans.js";
+import {
+  catalogFocusDistanceMeters,
+  catalogFocusGoalType,
+  instantiateCatalogRecommendation,
+  readCatalogRecommendationSelection,
+} from "./catalogTemplate.js";
 import type {
   ActivityForPlanning,
   CompleteWorkoutInput,
@@ -30,6 +36,7 @@ export async function createGoal(
   input: CreateTrainingGoalInput
 ): Promise<PlanningState> {
   const prisma = getPrismaClient();
+  const selection = readCatalogRecommendationSelection(input.constraints);
   const [activities, plannedWorkouts, readiness, profile, calibration] = await Promise.all([
     recentActivities(userId),
     recentPlannedWorkouts(userId),
@@ -37,6 +44,34 @@ export async function createGoal(
     prisma.runnerProfile.findUnique({ where: { userId } }),
     prisma.calibrationProgram.findUnique({ where: { userId } }),
   ]);
+  let selectedRecommendation: Awaited<ReturnType<typeof resolveCatalogRecommendation>> | null = null;
+  if (selection) selectedRecommendation = await resolveCatalogRecommendation(userId, activities, selection);
+  const submittedFocus = catalogFocusForGoalType(input.type);
+  if (submittedFocus && !selection) {
+    throw new Error("A catalog focus can only be used with a selected recommendation.");
+  }
+  if (submittedFocus && selectedRecommendation?.template.focus !== submittedFocus) {
+    throw new Error("The selected goal focus does not match the chosen plan recommendation.");
+  }
+  const selectedDistance = selectedRecommendation
+    ? catalogFocusDistanceMeters(selectedRecommendation.template.focus)
+    : null;
+  const goalInput = {
+    ...(submittedFocus
+      ? {
+          ...input,
+          type: selectedRecommendation ? catalogFocusGoalType(selectedRecommendation.template.focus) : "endurance",
+          targetDistanceMeters: input.targetDistanceMeters ?? catalogFocusDistanceMeters(submittedFocus),
+        }
+      : input),
+    ...(selectedRecommendation
+      ? {
+          daysPerWeekTarget: selectedRecommendation.sessionsPerWeek,
+          maxSessionMinutes: selectedRecommendation.longSessionMinutes,
+          ...(selectedDistance ? { targetDistanceMeters: selectedDistance } : {}),
+        }
+      : {}),
+  };
   if (!profile?.sexAtBirth || !profile.birthDate || profile.weightKilograms == null) {
     throw new Error("Birth date, sex assigned at birth, and weight are required to create a personalized plan.");
   }
@@ -44,19 +79,19 @@ export async function createGoal(
   if (age < 13 || age > 100) {
     throw new Error("Enter a valid birth date before creating a personalized plan.");
   }
-  if (input.type === "eventPreparation" && (!input.targetDate || !input.targetDistanceMeters)) {
+  if (goalInput.type === "eventPreparation" && (!goalInput.targetDate || !goalInput.targetDistanceMeters) && !selectedRecommendation) {
     throw new Error("Event date and distance are required for an event-preparation plan.");
   }
-  if (input.intakeContextVersion) {
-    const currentContext = await getPlanIntakeContext(userId, input.type);
-    if (currentContext.contextVersion !== input.intakeContextVersion) {
+  if (goalInput.intakeContextVersion) {
+    const currentContext = await getPlanIntakeContext(userId, goalInput.type);
+    if (currentContext.contextVersion !== goalInput.intakeContextVersion) {
       throw new Error("Planning context changed. Review the updated assumptions before creating the plan.");
     }
   }
   const normalized = normalizeGoalInput({
-    ...input,
-    primaryMotivation: input.primaryMotivation ?? profile?.primaryMotivation as CreateTrainingGoalInput["primaryMotivation"],
-    preferredRunGoalType: input.preferredRunGoalType ?? profile?.preferredRunGoalType as CreateTrainingGoalInput["preferredRunGoalType"],
+    ...goalInput,
+    primaryMotivation: goalInput.primaryMotivation ?? profile?.primaryMotivation as CreateTrainingGoalInput["primaryMotivation"],
+    preferredRunGoalType: goalInput.preferredRunGoalType ?? profile?.preferredRunGoalType as CreateTrainingGoalInput["preferredRunGoalType"],
   });
   const athleteState = computeAthleteTrainingState({
     activities,
@@ -70,12 +105,20 @@ export async function createGoal(
   });
   const generation = {
     ...generated,
-    workouts: applyCalorieTargets({
-      workouts: generated.workouts,
-      preferredRunGoalType: normalized.preferredRunGoalType,
-      weightKilograms: profile?.weightKilograms,
-      pace: resolveLearnedRunPace(activities, calibration?.status === "completed"),
-    }),
+    summary: selectedRecommendation
+      ? `Started the selected ${selectedRecommendation.template.focus} catalog plan. ${selectedRecommendation.template.summary}`
+      : generated.summary,
+    engineDecision: selectedRecommendation
+      ? { ...generated.engineDecision, source: "trainingPlanCatalog", candidateID: selection?.candidateID, templateID: selectedRecommendation.template.id }
+      : generated.engineDecision,
+    workouts: selectedRecommendation
+      ? instantiateCatalogRecommendation(selectedRecommendation)
+      : applyCalorieTargets({
+          workouts: generated.workouts,
+          preferredRunGoalType: normalized.preferredRunGoalType,
+          weightKilograms: profile?.weightKilograms,
+          pace: resolveLearnedRunPace(activities, calibration?.status === "completed"),
+        }),
   };
 
   await prisma.$transaction(async (tx) => {
@@ -106,15 +149,15 @@ export async function createGoal(
         type: normalized.type,
         activities: normalized.activities,
         baselineContext: normalized.baselineContext,
-        targetDate: input.targetDate ? new Date(input.targetDate) : null,
-        targetDistanceMeters: input.targetDistanceMeters ?? null,
-        targetEventName: input.targetEventName ?? null,
-        eventIntent: input.type === "eventPreparation" ? input.eventIntent ?? "finish" : null,
-        targetTimeSeconds: input.type === "eventPreparation" ? input.targetTimeSeconds ?? null : null,
-        reviewHorizonWeeks: input.type === "eventPreparation" ? null : input.reviewHorizonWeeks ?? 8,
-        successSignal: input.successSignal ?? null,
-        goalDescription: input.goalDescription ?? null,
-        intakeContextVersion: input.intakeContextVersion ?? null,
+        targetDate: goalInput.targetDate ? new Date(goalInput.targetDate) : null,
+        targetDistanceMeters: normalized.targetDistanceMeters ?? null,
+        targetEventName: goalInput.targetEventName ?? null,
+        eventIntent: goalInput.type === "eventPreparation" ? goalInput.eventIntent ?? "finish" : null,
+        targetTimeSeconds: goalInput.type === "eventPreparation" ? goalInput.targetTimeSeconds ?? null : null,
+        reviewHorizonWeeks: goalInput.type === "eventPreparation" ? null : goalInput.reviewHorizonWeeks ?? 8,
+        successSignal: goalInput.successSignal ?? null,
+        goalDescription: goalInput.goalDescription ?? null,
+        intakeContextVersion: goalInput.intakeContextVersion ?? null,
         priority: normalized.priority,
         preferredDays: normalized.preferredDays,
         preferredLongSessionDay: normalized.preferredLongSessionDay,
@@ -131,7 +174,7 @@ export async function createGoal(
         userId,
         goalId: goal.id,
         currentPhase: generation.phase,
-        source: "generated",
+        source: selectedRecommendation ? "catalog" : "generated",
       },
     });
     const version = await createPlanVersionWithWorkouts(tx, {
@@ -587,6 +630,44 @@ async function trainingPlanRecommendationsForUser(userId: string) {
     activities,
     catalog,
   }).recommendations;
+}
+
+async function resolveCatalogRecommendation(
+  userId: string,
+  activities: ActivityForPlanning[],
+  selection: { candidateID: string; templateID: string }
+) {
+  const [catalog, activePlan] = await Promise.all([
+    loadTrainingPlanCatalog(),
+    activePlanForUser(userId),
+  ]);
+  const recommendations = buildTrainingPlanState({
+    activePlan: null,
+    activities,
+    catalog,
+  }).recommendations.filter((recommendation) => recommendation.template.id !== activeTemplateIdFor(activePlan));
+  const recommendation = recommendations.find((candidate) =>
+    candidate.id === selection.candidateID && candidate.template.id === selection.templateID
+  );
+  if (!recommendation) {
+    throw new Error("That plan recommendation is no longer current. Refresh recommendations and choose again.");
+  }
+  return recommendation;
+}
+
+function catalogFocusForGoalType(value: string) {
+  switch (value) {
+    case "consistency":
+    case "comeback":
+    case "fiveK":
+    case "tenK":
+    case "tenMile":
+    case "halfMarathon":
+    case "marathon":
+      return value;
+    default:
+      return null;
+  }
 }
 
 function athleteStateData(userId: string, state: ReturnType<typeof computeAthleteTrainingState>) {

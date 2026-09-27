@@ -1326,6 +1326,7 @@ Each mutating endpoint should write the domain record and enqueue a `PlanningEve
 MVP route behavior:
 
 - `POST /goals`: create goal, plan, version, planned workouts, and an initial adjustment event.
+- When a client submits a recommendation `candidateID`/`templateID` pair in goal constraints, validate it against that user's current recommendations and seed the first 14-day planning window from those catalog workouts. Reject stale or mismatched selections; later adaptive replans may adjust the catalog-based plan.
 - `POST /readiness`: create check-in, enqueue `readinessSubmitted`, process immediately, return updated today.
 - `POST /workouts/:id/skip`: mark skipped, enqueue `workoutSkipped`, process immediately, return updated state.
 - `POST /workouts/:id/complete`: link completion/activity, enqueue `activityCompleted`, process immediately or with short debounce.
