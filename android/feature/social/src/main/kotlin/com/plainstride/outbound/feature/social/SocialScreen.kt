@@ -326,7 +326,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                     }
                 }
                 item { SectionHeader(stringResource(R.string.social_activity_feed)) }
-                items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, unitSystem, { openProfile(post.author) }, { if (post.activity != null) openActivity(post) }, { cheer(post) }, { comments(post) }, { openProfile(it) }, { if (post.isCurrentUser) { if (skipDeletionConfirmation) deletePost(post) else deletionConfirmationPost = post } else safetyPost = post }) }
+                items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, unitSystem, viewModel::loadFeedPhotoThumbnail, { openProfile(post.author) }, { if (post.activity != null) openActivity(post) }, { cheer(post) }, { comments(post) }, { openProfile(it) }, { if (post.isCurrentUser) { if (skipDeletionConfirmation) deletePost(post) else deletionConfirmationPost = post } else safetyPost = post }) }
                 if (!state.loading && state.home.posts.isEmpty()) item {
                     SocialCard {
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -533,7 +533,7 @@ private fun groupDisplayName(group: GroupSummary, all: List<GroupSummary>): Stri
 @Composable private fun GroupCard(group: GroupSummary, displayName: String, membership: () -> Unit) = SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.Flag, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(displayName, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_members, group.memberCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; TextButton(membership) { Text(if (group.trustPolicy == "trusted_private") stringResource(R.string.social_open) else stringResource(if (group.role != null) R.string.social_leave else R.string.social_join)) } } }
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, profile: () -> Unit, openActivity:()->Unit, cheer: () -> Unit, comments:()->Unit, openProfile: (SocialPerson) -> Unit, safety: () -> Unit) {
+private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, loadPhotoThumbnail: suspend (String) -> ByteArray?, profile: () -> Unit, openActivity:()->Unit, cheer: () -> Unit, comments:()->Unit, openProfile: (SocialPerson) -> Unit, safety: () -> Unit) {
     var cheerersOpen by rememberSaveable(post.id) { mutableStateOf(false) }
     Card(
         Modifier
@@ -564,34 +564,10 @@ private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, profil
             post.activity?.let { activity ->
                 Text(activity.title, fontWeight = FontWeight.SemiBold)
                 Box(Modifier.fillMaxWidth().aspectRatio(1.5f).clip(RoundedCornerShape(16.dp))) {
-                    val route = activity.route.routeCoordinates()
-                    if (route.size > 1) {
-                        PlainstrideRouteMap(
-                            points = route,
-                            modifier = Modifier.fillMaxSize(),
-                            interactive = false,
-                            showEndpointMarkers = false,
-                        )
-                    } else {
-                        Box(
-                            Modifier.fillMaxSize().background(
-                                Brush.linearGradient(
-                                    listOf(
-                                        MaterialTheme.colorScheme.primary.copy(alpha = .28f),
-                                        MaterialTheme.colorScheme.background,
-                                    ),
-                                ),
-                            ),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                Icons.Outlined.Route,
-                                stringResource(R.string.social_route),
-                                Modifier.size(54.dp),
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = .65f),
-                            )
-                        }
-                    }
+                    SocialRoutePreview(
+                        activity = activity,
+                        loadPhotoThumbnail = loadPhotoThumbnail,
+                    )
                     Surface(
                         Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
                         color = MaterialTheme.colorScheme.surface.copy(alpha = .88f),
@@ -1340,7 +1316,7 @@ private fun String.plusDuration(durationSecs: Int?): String = runCatching {
 
 @Composable private fun CommentsDialog(post:SocialPost,comments:List<SocialComment>,add:(String)->Unit,delete:(SocialComment)->Unit,close:()->Unit){var body by rememberSaveable{mutableStateOf("")};AlertDialog(onDismissRequest=close,title={Text(stringResource(R.string.social_comments_for,post.author.displayName))},text={Column{LazyColumn(Modifier.heightIn(max=320.dp)){items(comments,key=SocialComment::id){comment->Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(comment.author.displayName,fontWeight=FontWeight.SemiBold);Text(comment.body)};if(comment.canDelete)IconButton({delete(comment)}){Icon(Icons.Outlined.Delete,stringResource(R.string.social_delete_comment))}}}};OutlinedTextField(body,{body=it.take(500)},Modifier.fillMaxWidth(),label={Text(stringResource(R.string.social_add_comment))})}},confirmButton={TextButton({if(body.isNotBlank()){add(body);body=""}}){Text(stringResource(R.string.social_post_comment))}},dismissButton={TextButton(close){Text(stringResource(R.string.social_done))}})}
 
-private fun JsonElement?.routeCoordinates(): List<MapCoordinate> {
+internal fun JsonElement?.routeCoordinates(): List<MapCoordinate> {
     val root = this as? JsonObject ?: return emptyList()
     if ((root["format"] as? JsonPrimitive)?.contentOrNull != "polyline5") return emptyList()
     val encoded = (root["encodedPolyline"] as? JsonPrimitive)?.contentOrNull ?: return emptyList()
