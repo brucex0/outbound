@@ -25,6 +25,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.maps.android.compose.*
+import kotlinx.coroutines.delay
 
 data class MapCoordinate(val latitude: Double, val longitude: Double)
 data class MapRouteSegment(val points: List<MapCoordinate>, val color: Color)
@@ -66,6 +67,8 @@ fun PlainstrideRouteMap(
     }
     val camera = rememberCameraPositionState()
     var didFocusOnUser by remember { mutableStateOf(false) }
+    var didFocusRoute by remember { mutableStateOf(false) }
+    var didFocusSelectedMarker by remember { mutableStateOf(false) }
     LaunchedEffect(focusOnUser, preciseLocationGranted) {
         if (focusOnUser && preciseLocationGranted && !didFocusOnUser) {
             val client = LocationServices.getFusedLocationProviderClient(context)
@@ -82,16 +85,25 @@ fun PlainstrideRouteMap(
                 }
         }
     }
-    LaunchedEffect(points, fitRouteOnChange) {
+    LaunchedEffect(points, fitRouteOnChange, bottomContentPadding) {
         if (fitRouteOnChange && points.isNotEmpty()) {
+            val isInitialRouteFocus = !didFocusRoute
+            if (!isInitialRouteFocus) delay(250)
             val bounds = LatLngBounds.builder().also { builder -> points.forEach { builder.include(LatLng(it.latitude, it.longitude)) } }.build()
-            runCatching { camera.animate(CameraUpdateFactory.newLatLngBounds(bounds, 64)) }
+            val update = CameraUpdateFactory.newLatLngBounds(bounds, 96)
+            runCatching {
+                if (isInitialRouteFocus) camera.move(update) else camera.animate(update)
+                didFocusRoute = true
+            }
         }
     }
     val selectedMarker = markers.firstOrNull(MapRouteMarker::selected)
     LaunchedEffect(selectedMarker?.id) {
         selectedMarker?.let { marker ->
-            camera.animate(CameraUpdateFactory.newLatLng(LatLng(marker.coordinate.latitude, marker.coordinate.longitude)))
+            if (didFocusSelectedMarker) {
+                camera.animate(CameraUpdateFactory.newLatLng(LatLng(marker.coordinate.latitude, marker.coordinate.longitude)))
+            }
+            didFocusSelectedMarker = true
         }
     }
     GoogleMap(
