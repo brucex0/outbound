@@ -464,6 +464,7 @@ private fun ActivityDetailScreen(
                 routeSegments = routeSegments,
                 markers = markers,
                 bottomContentPadding = sheetHeight,
+                fitRoutePadding = 64.dp,
             )
         } else {
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {

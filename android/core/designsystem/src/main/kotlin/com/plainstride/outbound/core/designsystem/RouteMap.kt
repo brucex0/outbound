@@ -51,6 +51,7 @@ fun PlainstrideRouteMap(
     markers: List<MapRouteMarker> = emptyList(),
     onMarkerClick: ((String) -> Unit)? = null,
     bottomContentPadding: Dp = 0.dp,
+    fitRoutePadding: Dp = 48.dp,
     fitRouteOnChange: Boolean = true,
 ) {
     val context = LocalContext.current
@@ -66,6 +67,7 @@ fun PlainstrideRouteMap(
         return
     }
     val camera = rememberCameraPositionState()
+    val fitRoutePaddingPx = with(androidx.compose.ui.platform.LocalDensity.current) { fitRoutePadding.toPx().toInt() }
     var didFocusOnUser by remember { mutableStateOf(false) }
     var didFocusRoute by remember { mutableStateOf(false) }
     var didFocusSelectedMarker by remember { mutableStateOf(false) }
@@ -85,12 +87,12 @@ fun PlainstrideRouteMap(
                 }
         }
     }
-    LaunchedEffect(points, fitRouteOnChange, bottomContentPadding) {
+    LaunchedEffect(points, fitRouteOnChange, bottomContentPadding, fitRoutePadding) {
         if (fitRouteOnChange && points.isNotEmpty()) {
             val isInitialRouteFocus = !didFocusRoute
             if (!isInitialRouteFocus) delay(250)
             val bounds = LatLngBounds.builder().also { builder -> points.forEach { builder.include(LatLng(it.latitude, it.longitude)) } }.build()
-            val update = CameraUpdateFactory.newLatLngBounds(bounds, 96)
+            val update = CameraUpdateFactory.newLatLngBounds(bounds, fitRoutePaddingPx)
             runCatching {
                 if (isInitialRouteFocus) camera.move(update) else camera.animate(update)
                 didFocusRoute = true

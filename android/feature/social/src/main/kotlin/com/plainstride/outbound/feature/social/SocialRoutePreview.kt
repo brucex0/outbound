@@ -121,6 +121,7 @@ internal fun SocialRoutePreview(
             val density = androidx.compose.ui.platform.LocalDensity.current
             val mapWidthPx = with(density) { maxWidth.toPx().toInt() }.coerceAtLeast(1)
             val mapHeightPx = with(density) { maxHeight.toPx().toInt() }.coerceAtLeast(1)
+            val routePaddingPx = with(density) { 48.dp.toPx().toInt() }
             val routeKey = remember(route) { routeCacheKey(route) }
             val mapKey = "$routeKey|${mapWidthPx}x${mapHeightPx}"
             val cachedMap = remember(mapKey) { SocialPreviewBitmapCache.maps.get(mapKey) }
@@ -149,7 +150,7 @@ internal fun SocialRoutePreview(
                 val captureStarted = remember(mapKey) { AtomicBoolean(false) }
                 LaunchedEffect(camera, latLngs, maxWidth, maxHeight) {
                     val bounds = LatLngBounds.builder().also { builder -> latLngs.forEach(builder::include) }.build()
-                    runCatching { camera.animate(CameraUpdateFactory.newLatLngBounds(bounds, 24)) }
+                    runCatching { camera.animate(CameraUpdateFactory.newLatLngBounds(bounds, routePaddingPx)) }
                 }
                 GoogleMap(
                     modifier = Modifier.fillMaxSize(),
