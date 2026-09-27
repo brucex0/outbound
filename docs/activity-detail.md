@@ -153,7 +153,7 @@ The layout uses a persistent full-screen route map with a bottom information she
 1. **Collapsed detent** — compact summary row, full-screen route map visible
 2. **Split detent** — default opening state, route fit above the sheet and key information visible
 3. **Expanded detent** — information sheet fills the available screen below the status bar and its content becomes scrollable
-4. **Map refit** — route is fit with dynamic bottom padding based on the current sheet height
+4. **Map refit** — route is fit with dynamic bottom padding based on the current sheet height and extra edge clearance, preserving a visible route viewport as the sheet moves
 5. **Sheet gesture** — drag predicts the end height and snaps to the nearest detent with `.snappy`
 6. **Content order** — stats, elevation, splits, activity metadata when relevant, guide card
 7. **Media layout** — the route map remains the full-screen background without a floating thumbnail; the sheet owns a horizontal photo strip, the active photo drives the selected map annotation, and a second tap opens the immersive lightbox

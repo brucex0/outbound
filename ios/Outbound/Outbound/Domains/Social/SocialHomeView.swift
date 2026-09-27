@@ -331,11 +331,10 @@ struct SocialHomeView: View {
     private var feedTab: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
-                activeNowRail
-                upcomingCarousel
+                activeNowRail.padding(.horizontal, OutboundSpacing.screen)
+                upcomingCarousel.padding(.horizontal, OutboundSpacing.screen)
                 recentPosts
             }
-            .padding(.horizontal, OutboundSpacing.screen)
             .padding(.vertical, 12)
         }
         .refreshable { await refreshFeed(clearUnseenBadge: true) }
@@ -926,7 +925,9 @@ struct SocialHomeView: View {
 
     @ViewBuilder
     private var recentPosts: some View {
-        Text("ACTIVITY FEED").socialSectionLabel()
+        Text("ACTIVITY FEED")
+            .socialSectionLabel()
+            .padding(.horizontal, OutboundSpacing.screen)
         if socialStore.state.posts.isEmpty {
             OutboundCard {
                 HStack(spacing: OutboundSpacing.compact) {
@@ -942,10 +943,10 @@ struct SocialHomeView: View {
                     }
                 }
             }
+            .padding(.horizontal, OutboundSpacing.screen)
         } else {
             ForEach(socialStore.state.posts) { post in
-                OutboundCard {
-                    VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                         HStack {
                             SocialProfileLink(person: post.user, entrySource: "activity_feed") {
                                 HStack {
@@ -984,8 +985,13 @@ struct SocialHomeView: View {
                             .buttonStyle(.plain)
                             .accessibilityLabel("Post actions")
                         }
+                        .padding(.horizontal, OutboundSpacing.screen)
+                        .padding(.top, 8)
                         VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                            Text(post.activity?.title ?? String(localized: "Run")).font(.headline).foregroundStyle(.primary)
+                            Text(post.activity?.title ?? String(localized: "Run"))
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                                .padding(.horizontal, OutboundSpacing.screen)
                             if let activity = post.activity {
                                 ZStack(alignment: .bottom) {
                                     SocialRoutePreviewImage(activity: activity)
@@ -998,8 +1004,7 @@ struct SocialHomeView: View {
                                     .padding(.vertical, 10)
                                     .background(.regularMaterial)
                                 }
-                                .aspectRatio(1.5, contentMode: .fit)
-                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .aspectRatio(1, contentMode: .fit)
                                 .overlay(alignment: .topLeading) {
                                     let milestones = milestones(for: activity, isCurrentUser: post.isCurrentUser)
                                     if !milestones.isEmpty {
@@ -1021,7 +1026,9 @@ struct SocialHomeView: View {
                             }
                         }
                         if let caption = post.caption, !caption.isEmpty {
-                            Text(caption).font(.subheadline)
+                            Text(caption)
+                                .font(.subheadline)
+                                .padding(.horizontal, OutboundSpacing.screen)
                         }
                         HStack(spacing: OutboundSpacing.compact) {
                             Button {
@@ -1051,7 +1058,15 @@ struct SocialHomeView: View {
 
                             Spacer()
                         }
-                    }
+                        .padding(.horizontal, OutboundSpacing.screen)
+                        .padding(.bottom, 12)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(OutboundPalette.surface)
+                .overlay(alignment: .bottom) {
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.07))
+                        .frame(height: 1)
                 }
                 .contentShape(Rectangle())
                 .onTapGesture {
@@ -2499,8 +2514,7 @@ private struct SocialNotificationActivityView: View {
                                 .padding(.vertical, 10)
                                 .background(.regularMaterial)
                             }
-                            .aspectRatio(1.5, contentMode: .fit)
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .aspectRatio(1, contentMode: .fit)
                         }
                         if let caption = post.caption, !caption.isEmpty { Text(caption).font(.subheadline) }
                         Button {
@@ -4058,7 +4072,7 @@ private struct SocialRoutePreviewImage: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
-        .aspectRatio(1.5, contentMode: .fit)
+        .aspectRatio(1, contentMode: .fit)
         .frame(maxWidth: .infinity)
         .allowsHitTesting(false)
         .accessibilityLabel(
@@ -4092,7 +4106,7 @@ private struct SocialRoutePreviewImage: View {
 private actor SocialRoutePreviewCache {
     static let shared = SocialRoutePreviewCache()
 
-    private static let imageSize = CGSize(width: 720, height: 480)
+    private static let imageSize = CGSize(width: 720, height: 720)
     private static let maxRoutePoints = 360
     private static let memoryLimit = 24
 
@@ -4111,7 +4125,7 @@ private actor SocialRoutePreviewCache {
         let routeSignature = sampledCoordinates.map { coordinate in
             coordinate.prefix(2).map { String(format: "%.6f", $0) }.joined(separator: ",")
         }.joined(separator: ";")
-        let raw = "v3|\(activity.id)|\(coordinates.count)|\(routeSignature)"
+        let raw = "v4|\(activity.id)|\(coordinates.count)|\(routeSignature)"
         let digest = SHA256.hash(data: Data(raw.utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }
