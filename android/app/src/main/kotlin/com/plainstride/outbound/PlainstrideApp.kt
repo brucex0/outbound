@@ -369,7 +369,7 @@ private fun SignedInApp(
                             activeSession = hasActiveSession,
                             completedToday = integration.completedToday,
                             onStartWorkout = { intent, options ->
-                                recordingLaunch = intent.toRecordingLaunch().copy(gearId = integration.defaultGearId,privateTrainingSignal=cycleState.currentSignal.takeIf{cycleState.enabled&&it!=CycleTrainingSignal.NO_ADJUSTMENT}?.wireValue,startImmediately=true,indoor=options.indoor,voiceGuideEnabled=options.voiceGuideEnabled)
+                                recordingLaunch = intent.toRecordingLaunch().copy(gearId = integration.defaultGearId,privateTrainingSignal=cycleState.currentSignal.takeIf{cycleState.enabled&&it!=CycleTrainingSignal.NO_ADJUSTMENT}?.wireValue,startImmediately=true,indoor=options.indoor,voiceGuideEnabled=options.voiceGuideEnabled,companionType=options.companionType)
                                 navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
                             },
                             onStartFreestyle = {

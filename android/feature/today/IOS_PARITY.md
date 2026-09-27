@@ -18,7 +18,8 @@
 - The weather pill shows a localized on-device city or region when Android geocoding can resolve one, followed by temperature. Weather remains usable when naming is unavailable.
 - Existing workout-start and assistant-launch analytics cover the contextual actions; no coordinates or place names enter analytics.
 - Manual calorie goals show estimated distance and duration when the training profile has enough data, using the shared calorie estimator and learned run pace.
-- Embedded Today sport choices are 52-point circular icon-only controls with accessible sport names; goal options remain text-only pills, matching iOS.
+- Embedded Today sport choices are 52-point circular icon-only controls with accessible sport names. Setup options (Music, Voice Guide, With dog, Cheer, Shoes, and Indoor/Outdoor) are text-only pills.
+- With dog is available for eligible manual sports and eligible planned run, walk, or bike workouts; its context is passed into recording for both launch paths.
 
 ## States Covered
 

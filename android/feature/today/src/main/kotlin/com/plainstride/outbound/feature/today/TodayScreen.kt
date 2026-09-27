@@ -48,13 +48,7 @@ import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Hiking
-import androidx.compose.material.icons.filled.LibraryMusic
-import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Speaker
-import androidx.compose.material.icons.filled.SpeakerNotesOff
-import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material.icons.filled.HomeWork
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Mail
@@ -99,6 +93,7 @@ import java.util.Date
 import kotlin.math.roundToInt
 import com.plainstride.outbound.core.model.ActivitySuggestion
 import com.plainstride.outbound.core.model.AdjustmentProposal
+import com.plainstride.outbound.core.model.Modality
 import com.plainstride.outbound.core.model.StandaloneWorkout
 import com.plainstride.outbound.core.designsystem.PlainstrideRouteMap
 import com.plainstride.outbound.core.designsystem.PlainstrideFloatingAction
@@ -119,7 +114,11 @@ data class TodayManualLaunch(
     val curatedWorkoutCatalogVersion: Int? = null,
     val companionType: com.plainstride.outbound.core.model.activity.ActivityCompanionType? = null,
 )
-data class TodayLaunchOptions(val indoor: Boolean, val voiceGuideEnabled: Boolean)
+data class TodayLaunchOptions(
+    val indoor: Boolean,
+    val voiceGuideEnabled: Boolean,
+    val companionType: com.plainstride.outbound.core.model.activity.ActivityCompanionType? = null,
+)
 
 @Composable
 fun TodayRoute(
@@ -256,7 +255,7 @@ fun TodayScreen(
     }
     val launchPreparedActivity = {
         if (activityChoice == TodayActivityChoice.PLANNED) {
-            suggestion?.let { onStart(it, "today_planned", TodayLaunchOptions(indoor, voiceGuideEnabled)) }
+            suggestion?.let { onStart(it, "today_planned", TodayLaunchOptions(indoor, voiceGuideEnabled, companionType)) }
                 ?: onStartFreestyle()
         } else {
             val catalogVersion = (state.catalog as? CachedResource.Available)?.value?.version
@@ -336,9 +335,7 @@ fun TodayScreen(
                 }
             }
             }
-            if (companionType != null &&
-                (activityChoice == TodayActivityChoice.PLANNED || !com.plainstride.outbound.core.model.activity.ActivityCompanionType.isEligibleFor(activityChoice.toActivityType()))
-            ) {
+            if (companionType != null && !activityChoice.isCompanionEligible(suggestion)) {
                 companionType = null
                 Toast.makeText(context, context.getString(R.string.today_companion_cleared_message), Toast.LENGTH_SHORT).show()
             }
@@ -371,7 +368,7 @@ fun TodayScreen(
     if (showsDetail && suggestion != null) WorkoutDetailSheet(
         suggestion,
         onDismiss = { showsDetail = false },
-        onStart = { showsDetail = false; onStart(suggestion, "today_detail", TodayLaunchOptions(indoor, voiceGuideEnabled)) },
+        onStart = { showsDetail = false; onStart(suggestion, "today_detail", TodayLaunchOptions(indoor, voiceGuideEnabled, companionType)) },
     )
     if (showsChange && suggestion != null) ChangeWorkoutSheet(
         original = suggestion,
@@ -598,18 +595,18 @@ private fun ActivityLaunchDock(
                 }
             }
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                UtilityButton(stringResource(R.string.today_music), Icons.Default.LibraryMusic, onOpenMusic)
-                UtilityButton(stringResource(R.string.today_voice_guide), if (voiceGuideEnabled) Icons.Default.Speaker else Icons.Default.SpeakerNotesOff, { onVoiceGuideChanged(!voiceGuideEnabled) }, voiceGuideEnabled)
-                if (activityChoice != TodayActivityChoice.PLANNED && com.plainstride.outbound.core.model.activity.ActivityCompanionType.isEligibleFor(activityChoice.toActivityType())) {
+                UtilityButton(stringResource(R.string.today_music), onClick = onOpenMusic)
+                UtilityButton(stringResource(R.string.today_voice_guide), onClick = { onVoiceGuideChanged(!voiceGuideEnabled) }, selected = voiceGuideEnabled)
+                if (activityChoice.isCompanionEligible(suggestion)) {
                     UtilityButton(
                         label = stringResource(R.string.today_companion_dog_title),
                         onClick = { onCompanionChanged(companionType == null) },
                         selected = companionType != null,
                     )
                 }
-                UtilityButton(stringResource(R.string.today_cheer), Icons.Default.NotificationsActive, onOpenLiveTrack)
-                UtilityButton(stringResource(R.string.today_shoes), Icons.Default.DirectionsRun, onOpenShoes)
-                UtilityButton(stringResource(if (indoor) R.string.today_indoor else R.string.today_outdoor), if (indoor) Icons.Default.HomeWork else Icons.Default.WbSunny, { onIndoorChanged(!indoor) }, true)
+                UtilityButton(stringResource(R.string.today_cheer), onClick = onOpenLiveTrack)
+                UtilityButton(stringResource(R.string.today_shoes), onClick = onOpenShoes)
+                UtilityButton(stringResource(if (indoor) R.string.today_indoor else R.string.today_outdoor), onClick = { onIndoorChanged(!indoor) }, selected = true)
             }
             when {
                 activeSession -> Unit
@@ -654,15 +651,25 @@ private fun GoalPill(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun UtilityButton(label: String, icon: ImageVector? = null, onClick: () -> Unit, selected: Boolean = false) {
-    Surface(onClick = onClick, shape = RoundedCornerShape(14.dp), color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant) {
-        Column(Modifier.width(82.dp).heightIn(min = 60.dp).padding(horizontal = 6.dp, vertical = 7.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            if (icon != null) {
-                Icon(icon, null, tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Text(label, textAlign = androidx.compose.ui.text.style.TextAlign.Center, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelMedium, maxLines = 1)
-        }
+private fun UtilityButton(label: String, onClick: () -> Unit, selected: Boolean = false) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Text(
+            label,
+            Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1,
+        )
     }
+}
+
+private fun TodayActivityChoice.isCompanionEligible(suggestion: ActivitySuggestion?): Boolean = when (this) {
+    TodayActivityChoice.PLANNED -> suggestion?.modality in setOf(Modality.run, Modality.walk, Modality.bike)
+    else -> com.plainstride.outbound.core.model.activity.ActivityCompanionType.isEligibleFor(toActivityType())
 }
 
 private fun TodayActivityChoice.icon(): ImageVector = when (this) {
