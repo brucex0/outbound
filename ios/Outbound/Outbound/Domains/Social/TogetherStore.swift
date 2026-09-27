@@ -62,6 +62,7 @@ final class TogetherStore: ObservableObject {
     private let viewedFeedPostKeyPrefix = "social_viewed_feed_post_v1_account_"
     private var activeUserID: String?
     private var authGeneration = 0
+    private var feedRevision = 0
     private var nextConnectionsCursor: String?
     private var latestPeopleSearchQuery = ""
 
@@ -113,7 +114,7 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func refresh() async {
+    func refresh(resetFeed: Bool = false) async {
         guard isUITestSeedData || activeUserID != nil else { return }
         let generation = authGeneration
         if isUITestSeedData {
@@ -122,15 +123,22 @@ final class TogetherStore: ObservableObject {
             homeRefreshRevision += 1
             return
         }
+        feedRevision += 1
+        let revision = feedRevision
+        let retainedPostCount = resetFeed ? 0 : state.posts.count
         isLoading = true
+        isLoadingMorePosts = false
         defer {
-            if generation == authGeneration {
+            if generation == authGeneration, revision == feedRevision {
                 isLoading = false
             }
         }
         do {
-            let refreshedState = try await withTransientNetworkRetry { try await self.refreshHomeOnce() }
-            guard generation == authGeneration, activeUserID != nil else { return }
+            let refreshedState = try await withTransientNetworkRetry {
+                try await self.refreshHomeOnce(retainingPostCount: retainedPostCount, revision: revision)
+            }
+            try Task.checkCancellation()
+            guard generation == authGeneration, revision == feedRevision, activeUserID != nil else { return }
             state = refreshedState
             persist()
             errorMessage = nil
@@ -142,7 +150,7 @@ final class TogetherStore: ObservableObject {
             // request never finished through no fault of its own; treating it
             // as a failure surfaced a bogus "couldn't refresh" toast even
             // though the server responded fine.
-            guard !Self.isCancellation(error), generation == authGeneration else { return }
+            guard !Self.isCancellation(error), generation == authGeneration, revision == feedRevision else { return }
             Self.logger.error("Social home refresh failed (\(Self.networkErrorCode(error), privacy: .public)): \(error.localizedDescription, privacy: .public)")
             errorMessage = state.upcomingRuns.isEmpty && state.posts.isEmpty
                 ? "Together is unavailable. Your private training remains available."
@@ -205,13 +213,38 @@ final class TogetherStore: ObservableObject {
     // later), and a pull-to-refresh that lands in that window should not
     // surface a failure toast. Give the request one bounded second attempt
     // before reporting failure.
-    private func refreshHomeOnce() async throws -> TogetherResponseDTO {
+    private func refreshHomeOnce(retainingPostCount: Int, revision: Int) async throws -> TogetherResponseDTO {
+        guard revision == feedRevision else { throw CancellationError() }
+        let firstPage: TogetherResponseDTO
         do {
-            return try await api.fetchTogether()
+            firstPage = try await api.fetchTogether()
         } catch let apiError as APIError where apiError.isAuthenticationRejected {
             try? await Task.sleep(for: .seconds(1.5))
-            return try await api.fetchTogether()
+            firstPage = try await api.fetchTogether()
         }
+        // Refresh the loaded range atomically. Publishing page one alone removes
+        // the row under the viewport; merging stale cached rows can retain posts
+        // that were deleted or made invisible by a block/connection change.
+        var posts = firstPage.posts
+        var seenIDs = Set(posts.map(\.id))
+        var cursor = firstPage.nextFeedCursor
+        var visitedCursors = Set<String>()
+        while posts.count < retainingPostCount,
+              let nextCursor = cursor,
+              visitedCursors.insert(nextCursor).inserted {
+            try Task.checkCancellation()
+            guard revision == feedRevision else { throw CancellationError() }
+            let page = try await api.fetchTogether(feedCursor: nextCursor)
+            posts.append(contentsOf: page.posts.filter { seenIDs.insert($0.id).inserted })
+            cursor = page.nextFeedCursor
+        }
+        return TogetherResponseDTO(
+            upcomingRuns: firstPage.upcomingRuns,
+            pastEvents: firstPage.pastEvents,
+            groups: firstPage.groups,
+            posts: posts,
+            nextFeedCursor: cursor
+        )
     }
 
     var hasUnseenFeedPosts: Bool {
@@ -228,15 +261,18 @@ final class TogetherStore: ObservableObject {
     func loadMorePosts() async -> Int? {
         guard activeUserID != nil, !isLoading, !isLoadingMorePosts, let cursor = state.nextFeedCursor else { return 0 }
         let generation = authGeneration
+        let revision = feedRevision
         isLoadingMorePosts = true
         defer {
-            if generation == authGeneration {
+            if generation == authGeneration, revision == feedRevision {
                 isLoadingMorePosts = false
             }
         }
         do {
             let page = try await api.fetchTogether(feedCursor: cursor)
-            guard generation == authGeneration, activeUserID != nil else { return nil }
+            try Task.checkCancellation()
+            guard generation == authGeneration, revision == feedRevision,
+                  state.nextFeedCursor == cursor, activeUserID != nil else { return 0 }
             let existingIDs = Set(state.posts.map(\.id))
             let appendedPosts = page.posts.filter { !existingIDs.contains($0.id) }
             state = TogetherResponseDTO(
@@ -250,6 +286,7 @@ final class TogetherStore: ObservableObject {
             errorMessage = nil
             return appendedPosts.count
         } catch {
+            guard !Self.isCancellation(error), revision == feedRevision, generation == authGeneration else { return 0 }
             return nil
         }
     }

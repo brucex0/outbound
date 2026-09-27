@@ -46,6 +46,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activityRecordingQuality = "activity_recording_quality"
     case activityElevationCorrectionCompleted = "activity_elevation_correction_completed"
     case activityFeedLoaded = "activity_feed_loaded"
+    case activityFeedReturned = "activity_feed_returned"
     case activityRecoveryPresentation = "activity_recovery_presentation"
     case activityPhotoRecovery = "activity_photo_recovery"
     case activitySimulationStarted = "activity_simulation_started"
@@ -348,6 +349,7 @@ enum ProductAnalyticsSchema {
         ],
         .activityElevationCorrectionCompleted: [.result, .sourceType, .latencyBucket, .errorCategory],
         .activityFeedLoaded: [.countBucket, .sourceType, .timestampSource],
+        .activityFeedReturned: [.sourceType, .countBucket, .pageDepthBucket],
         .activityRecoveryPresentation: [.result, .sourceType, .countBucket],
         .activityPhotoRecovery: [.countBucket, .preRunPhotoAdded],
         .activitySimulationStarted: [.sourceType, .distanceBucket, .selectionType],

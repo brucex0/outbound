@@ -227,6 +227,8 @@ Identity completion during onboarding emits `onboarding_identity_prompt_viewed` 
 
 `activity_feed_loaded` includes `timestamp_source` (`activity_start`, `post_created_fallback`, `mixed`, or `empty`) so rollout of exact activity-time display can be monitored without sending activity dates or other personal data.
 
+`activity_feed_returned` records an iOS return from activity detail with only `source_type = activity_detail`, the coarse loaded-post count bucket, and page-depth bucket. It measures return usage at different feed depths; it does not claim that restoration succeeded or include post IDs, titles, offsets, or activity data.
+
 `paginated_list_page_loaded` records successful additional-page loads for `activity_history`, `activity_feed`, and `connections`. It includes only the list source, a coarse count bucket for newly revealed rows, and a coarse page-depth bucket; activity facts, connection identities, cursors, and exact totals are excluded.
 
 `social_profile_opened` records only the source surface for profile navigation through the shared social-profile link. It excludes the runner's name, username, profile ID, and connection ID.

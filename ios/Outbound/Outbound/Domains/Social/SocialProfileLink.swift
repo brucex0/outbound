@@ -55,7 +55,7 @@ struct SocialProfileLink<Label: View>: View {
     }
 }
 
-private struct SocialProfileDestination: View {
+struct SocialProfileDestination: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.analyticsManager) private var analyticsManager

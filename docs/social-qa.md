@@ -1,5 +1,13 @@
 # Social QA
 
+## 2026-09-27 iOS feed review
+
+- Reviewed feed row structure, root tasks, hidden tabs, refresh/pagination races, preview preparation, and app foreground handling.
+- Replaced SwiftUI scroll restoration with a retained UIKit collection view whose unchanged model updates leave layout untouched.
+- Manually exercised a temporary 60-card fixture with alternating photos/routes and varying caption heights in an isolated iPhone 17 simulator: direct-touch detail returns at deep offsets, repeated returns on the same route card, screen lock/unlock, header profile links, author profile links, and native pull-to-refresh. The visible position matched before and after the direct-touch returns and lock/unlock.
+- Accessibility-driven clicks can scroll a partially visible target into view before tapping; direct touch coordinates were used for the position comparison.
+- Temporary fixture code was removed. Simulator compilation is the basic check; no test suite or physical-device frame-pacing trace was run.
+
 ## 2026-08-14 regression pass
 
 Tested the current Social implementation with the seeded iOS UI fixture and the local Firebase Auth, API, and PostgreSQL stack.

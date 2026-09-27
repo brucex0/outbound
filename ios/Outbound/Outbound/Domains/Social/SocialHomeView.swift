@@ -1,4 +1,5 @@
 import CryptoKit
+import ImageIO
 import MapKit
 import SwiftUI
 import UIKit
@@ -7,6 +8,7 @@ struct SocialHomeView: View {
     private static let feedPageSize = 12
 
     @Environment(\.analyticsManager) private var analyticsManager
+    @Environment(\.outboundTheme) private var feedTheme
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var groupStore: GroupStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
@@ -17,9 +19,12 @@ struct SocialHomeView: View {
     @EnvironmentObject private var healthImportStore: HealthImportStore
     @State private var selectedCommentPost: TogetherPostDTO?
     @State private var selectedActivityPost: TogetherPostDTO?
+    @State private var selectedFeedProfile: TogetherPersonDTO?
     @State private var selectedCheersPost: TogetherPostDTO?
     @State private var selectedFeatureTab: SocialFeatureTab = .feed
-    @State private var feedScrollPosition = ScrollPosition(idType: String.self)
+    @State private var visitedFeatureTabs: Set<SocialFeatureTab> = [.feed]
+    @State private var lastRefreshedActivityIDs: [String]?
+    @State private var hasLoadedHomeModules = false
     @State private var hasInitializedFeatureTab = false
     @State private var hasInteractedWithFeatureTabs = false
     @State private var exposedBadgeSignatures: Set<String> = []
@@ -137,18 +142,22 @@ struct SocialHomeView: View {
                 }
             }
             .task {
+                guard !hasLoadedHomeModules else { return }
                 async let liveCheers: Void = liveCheerStore.refreshSessions()
                 async let connectionsRefresh: Void = socialStore.refreshConnections()
                 async let notificationsRefresh: Void = socialStore.refreshNotifications()
                 async let groupRefresh: Void = groupStore.refresh()
                 async let groupInvitations: Void = groupStore.refreshInvitations()
                 _ = await (connectionsRefresh, notificationsRefresh, groupRefresh, groupInvitations, liveCheers)
+                guard !Task.isCancelled else { return }
+                hasLoadedHomeModules = true
             }
             .onChange(of: socialStore.hasLoadedConnections, initial: true) { _, loaded in
                 guard loaded else { return }
                 initializeFeatureTabIfNeeded()
             }
             .onChange(of: selectedFeatureTab) { _, tab in
+                visitedFeatureTabs.insert(tab)
                 guard tab == .feed else { return }
                 trackFeedModuleExposuresIfNeeded()
             }
@@ -179,7 +188,12 @@ struct SocialHomeView: View {
                 }
             }
             .task(id: syncedActivityIDs) {
+                let ids = syncedActivityIDs
+                guard lastRefreshedActivityIDs != ids else { return }
+                let revision = socialStore.homeRefreshRevision
                 await socialStore.refresh()
+                guard !Task.isCancelled, socialStore.homeRefreshRevision > revision else { return }
+                lastRefreshedActivityIDs = ids
             }
             .navigationDestination(isPresented: $showsNotifications) {
                 SocialNotificationsView()
@@ -194,6 +208,30 @@ struct SocialHomeView: View {
                 GroupCreateView()
             }
             .modifier(SocialActivityCardNavigation(post: $selectedActivityPost))
+            .navigationDestination(isPresented: Binding(
+                get: { selectedFeedProfile != nil },
+                set: { if !$0 { selectedFeedProfile = nil } }
+            )) {
+                if let person = selectedFeedProfile {
+                    SocialProfileDestination(
+                        person: person,
+                        username: nil,
+                        connection: nil,
+                        entrySource: "activity_feed"
+                    )
+                }
+            }
+            .onChange(of: selectedActivityPost?.id) { previous, current in
+                guard previous != nil, current == nil else { return }
+                let count = socialStore.state.posts.count
+                track(.activityFeedReturned, properties: [
+                    .sourceType: .string("activity_detail"),
+                    .countBucket: .string(ProductAnalyticsBucket.count(count)),
+                    .pageDepthBucket: .string(ProductAnalyticsBucket.pageDepth(
+                        Int(ceil(Double(count) / Double(Self.feedPageSize)))
+                    )),
+                ])
+            }
             .onChange(of: pushNotifications.pendingNotificationID, initial: true) { _, notificationID in
                 guard notificationID != nil else { return }
                 if pushNotifications.pendingNotificationType == "connectionRequest" {
@@ -319,28 +357,61 @@ struct SocialHomeView: View {
         }
     }
 
+    @ViewBuilder
     private func tabLayer<Content: View>(
         _ tab: SocialFeatureTab,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        content()
-            .opacity(selectedFeatureTab == tab ? 1 : 0)
-            .allowsHitTesting(selectedFeatureTab == tab)
-            .accessibilityHidden(selectedFeatureTab != tab)
+        // Retain visited tabs, including the native feed list and its viewport.
+        // Unvisited tabs should not start requests or lay out hidden lists/maps.
+        if selectedFeatureTab == tab || visitedFeatureTabs.contains(tab) {
+            content()
+                .opacity(selectedFeatureTab == tab ? 1 : 0)
+                .allowsHitTesting(selectedFeatureTab == tab)
+                .accessibilityHidden(selectedFeatureTab != tab)
+        }
     }
 
     private var feedTab: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 12) {
-                activeNowRail.padding(.horizontal, OutboundSpacing.screen)
-                upcomingCarousel.padding(.horizontal, OutboundSpacing.screen)
-                recentPosts
+        RetainedFeedList(
+            rows: feedRows,
+            renderVersion: feedRenderVersion,
+            refresh: { await refreshFeed(clearUnseenBadge: true, resetFeed: true) }
+        ) { row in
+            switch row {
+            case .header:
+                feedHeader
+            case .post(let post):
+                feedCard(post)
+            case .pagination:
+                feedPagination
             }
-            .padding(.vertical, 12)
-            .scrollTargetLayout()
         }
-        .scrollPosition($feedScrollPosition)
-        .refreshable { await refreshFeed(clearUnseenBadge: true) }
+        .ignoresSafeArea(.container, edges: .bottom)
+    }
+
+    private var feedRows: [SocialFeedRow] {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        var header = (try? encoder.encode(Array(prioritizedUpcomingRuns.prefix(3)))) ?? Data()
+        header.append((try? encoder.encode(activeConnections)) ?? Data())
+        header.append(Data(liveCheerStore.sessions.map { "\($0.id)|\($0.status)" }.joined(separator: ";").utf8))
+        header.append(socialStore.state.posts.isEmpty ? 1 : 0)
+        var rows: [SocialFeedRow] = [.header(header)]
+        rows.append(contentsOf: socialStore.state.posts.map(SocialFeedRow.post))
+        if let cursor = socialStore.state.nextFeedCursor {
+            rows.append(.pagination(cursor, socialStore.isLoading))
+        }
+        return rows
+    }
+
+    private var feedRenderVersion: String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        let recognitions = (try? encoder.encode(recognitionStore.awards)) ?? Data()
+        let socialRecognitions = (try? encoder.encode(socialRecognitionStore.awards)) ?? Data()
+        return "\(feedTheme.rawValue)|\(measurementPreferences.unitSystem.rawValue)|\(socialStore.isSocialMutationPending)|\(hasInitializedFeatureTab)|\(selectedFeatureTab.rawValue)|"
+            + recognitions.base64EncodedString() + socialRecognitions.base64EncodedString()
     }
 
     private var groupsTab: some View {
@@ -467,7 +538,6 @@ struct SocialHomeView: View {
                         trackUpcomingInteraction("see_all")
                     })
                 }
-
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 10) {
                         ForEach(upcoming.prefix(3)) { run in
@@ -582,9 +652,9 @@ struct SocialHomeView: View {
         }
     }
 
-    private func refreshFeed(clearUnseenBadge: Bool) async {
+    private func refreshFeed(clearUnseenBadge: Bool, resetFeed: Bool = false) async {
         let previousRevision = socialStore.homeRefreshRevision
-        async let home: Void = socialStore.refresh()
+        async let home: Void = socialStore.refresh(resetFeed: resetFeed)
         async let live: Void = liveCheerStore.refreshSessions()
         _ = await (home, live)
         guard clearUnseenBadge,
@@ -926,195 +996,205 @@ struct SocialHomeView: View {
         }
     }
 
-    @ViewBuilder
-    private var recentPosts: some View {
-        Text("ACTIVITY FEED")
-            .socialSectionLabel()
-            .padding(.horizontal, OutboundSpacing.screen)
-        if socialStore.state.posts.isEmpty {
-            OutboundCard {
-                HStack(spacing: OutboundSpacing.compact) {
-                    Image(systemName: "figure.run.circle")
-                        .font(.title2)
-                        .foregroundStyle(OutboundPalette.companion)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("No activity yet")
-                            .font(.headline)
-                        Text("New activities from you and your connections will appear here.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .padding(.horizontal, OutboundSpacing.screen)
-        } else {
-            ForEach(socialStore.state.posts) { post in
-                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                        HStack {
-                            SocialProfileLink(person: post.user, entrySource: "activity_feed") {
-                                HStack {
-                                    SocialAvatar(name: post.user.displayName, avatarURL: post.user.avatarUrl)
-                                    VStack(alignment: .leading) {
-                                        Text(post.user.displayName).font(.headline).foregroundStyle(.primary)
-                                        ActivityRecencyText(date: post.activityTimestamp)
-                                    }
-                                }
-                                .contentShape(Rectangle())
-                            }
-                            Spacer()
-                            Menu {
-                                if post.isCurrentUser {
-                                    Button("Delete post", role: .destructive) {
-                                        if skipsPostDeletionConfirmation {
-                                            Task { await socialStore.deletePost(post) }
-                                        } else {
-                                            postPendingDeletion = post
-                                        }
-                                    }
-                                } else {
-                                    Button("Report post", role: .destructive) {
-                                        postPendingReport = post
-                                    }
-                                    Button("Block \(post.user.displayName)", role: .destructive) {
-                                        postPendingBlock = post
-                                    }
-                                }
-                            } label: {
-                                Image(systemName: "ellipsis")
-                                    .font(.body.weight(.semibold))
-                                    .frame(width: 44, height: 44)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Post actions")
-                        }
-                        .padding(.horizontal, OutboundSpacing.screen)
-                        .padding(.top, 8)
-                        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                            Text(post.activity?.title ?? String(localized: "Run"))
+    private var feedHeader: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            activeNowRail.padding(.horizontal, OutboundSpacing.screen)
+            upcomingCarousel.padding(.horizontal, OutboundSpacing.screen)
+            Text("ACTIVITY FEED")
+                .socialSectionLabel()
+                .padding(.horizontal, OutboundSpacing.screen)
+            if socialStore.state.posts.isEmpty {
+                OutboundCard {
+                    HStack(spacing: OutboundSpacing.compact) {
+                        Image(systemName: "figure.run.circle")
+                            .font(.title2)
+                            .foregroundStyle(OutboundPalette.companion)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("No activity yet")
                                 .font(.headline)
-                                .foregroundStyle(.primary)
-                                .padding(.horizontal, OutboundSpacing.screen)
-                            if let activity = post.activity {
-                                SquarePreviewLayout {
-                                    ZStack(alignment: .bottom) {
-                                        SocialRoutePreviewImage(activity: activity)
-                                        HStack(spacing: 0) {
-                                            socialStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
-                                            socialStat(activity.durationSecs.map(socialDuration) ?? "—", "Time")
-                                            socialStat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
-                                        }
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 10)
-                                        .background(.ultraThinMaterial.opacity(0.5))
-                                    }
-                                    .overlay(alignment: .topLeading) {
-                                        let milestones = milestones(for: activity, isCurrentUser: post.isCurrentUser)
-                                        if !milestones.isEmpty {
-                                            ActivityMilestoneCompactBanner(previews: milestones)
-                                                .padding(12)
-                                        }
-                                    }
-                                    .overlay(alignment: .topTrailing) {
-                                        if activity.totalPhotoCount > 0 {
-                                            Text(photoCountLabel(for: activity.totalPhotoCount))
-                                                .font(.caption.weight(.semibold))
-                                                .foregroundStyle(.white)
-                                                .padding(.horizontal, 10)
-                                                .padding(.vertical, 7)
-                                                .background(.black.opacity(0.48), in: Capsule())
-                                                .padding(12)
-                                        }
-                                    }
-                                }
-                                .frame(maxWidth: .infinity)
-                                .clipped()
-                            }
-                        }
-                        if let caption = post.caption, !caption.isEmpty {
-                            Text(caption)
+                            Text("New activities from you and your connections will appear here.")
                                 .font(.subheadline)
-                                .padding(.horizontal, OutboundSpacing.screen)
+                                .foregroundStyle(.secondary)
                         }
-                        HStack(spacing: OutboundSpacing.compact) {
-                            Button {
-                                Task { await toggleCheer(on: post) }
-                            } label: {
-                                Image(systemName: post.currentUserCheered ? "heart.fill" : "heart")
-                            }
-                            .buttonStyle(SocialFeedActionButtonStyle(isActive: post.currentUserCheered))
-                            .disabled(socialStore.isSocialMutationPending)
-                            .accessibilityLabel(post.currentUserCheered ? "Remove cheer" : "Cheer")
-                            .accessibilityValue("\(post.reactionCount)")
-
-                            if post.reactionCount > 0 {
-                                SocialCheerAvatarsButton(post: post) {
-                                    selectedCheersPost = post
-                                }
-                            }
-
-                            Button {
-                                selectedCommentPost = post
-                            } label: {
-                                Label("\(post.commentCount)", systemImage: "bubble.left")
-                            }
-                            .buttonStyle(SocialFeedActionButtonStyle())
-                            .accessibilityLabel("Comments")
-                            .accessibilityValue("\(post.commentCount)")
-
-                            Spacer()
-                        }
-                        .padding(.horizontal, OutboundSpacing.screen)
-                        .padding(.bottom, 12)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(OutboundPalette.surface)
-                .overlay(alignment: .bottom) {
-                    Rectangle()
-                        .fill(Color.primary.opacity(0.07))
-                        .frame(height: 1)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    selectedActivityPost = post
-                    Task {
-                        await analyticsManager?.track(.init(.activityDetailOpened, properties: [
-                            .sourceType: .string("social_feed"),
-                        ]))
                     }
                 }
-                .accessibilityAction(named: String(localized: "Open activity")) {
-                    selectedActivityPost = post
-                }
-                .id(post.id)
-                .onAppear {
-                    guard post.id == socialStore.state.posts.first?.id,
-                          hasInitializedFeatureTab,
-                          selectedFeatureTab == .feed else { return }
-                    trackFirstFeedCardVisibilityIfNeeded()
-                }
-                if post.id == socialStore.state.posts.last?.id,
-                   socialStore.state.nextFeedCursor != nil {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, OutboundSpacing.compact)
-                        .task {
-                            guard let appendedCount = await socialStore.loadMorePosts() else {
-                                toastMessage = String(localized: "social.feed.load_more_failed")
-                                return
-                            }
-                            guard appendedCount > 0 else { return }
-                            let page = Int(ceil(
-                                Double(socialStore.state.posts.count) / Double(Self.feedPageSize)
-                            ))
-                            await analyticsManager?.track(.init(.paginatedListPageLoaded, properties: [
-                                .sourceType: .string("activity_feed"),
-                                .countBucket: .string(ProductAnalyticsBucket.count(appendedCount)),
-                                .pageDepthBucket: .string(ProductAnalyticsBucket.pageDepth(page))
-                            ]))
+                .padding(.horizontal, OutboundSpacing.screen)
+            }
+        }
+    }
+
+    private func feedCard(_ post: TogetherPostDTO) -> some View {
+        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+            HStack {
+                // Keep profile navigation separate from the native
+                // list row's selection and scroll-to-selection behavior.
+                Button {
+                    selectedFeedProfile = post.user
+                } label: {
+                    HStack {
+                        SocialAvatar(name: post.user.displayName, avatarURL: post.user.avatarUrl)
+                        VStack(alignment: .leading) {
+                            Text(post.user.displayName).font(.headline).foregroundStyle(.primary)
+                            ActivityRecencyText(date: post.activityTimestamp)
                         }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                Spacer()
+                Menu {
+                    if post.isCurrentUser {
+                        Button("Delete post", role: .destructive) {
+                            if skipsPostDeletionConfirmation {
+                                Task { await socialStore.deletePost(post) }
+                            } else {
+                                postPendingDeletion = post
+                            }
+                        }
+                    } else {
+                        Button("Report post", role: .destructive) {
+                            postPendingReport = post
+                        }
+                        Button("Block \(post.user.displayName)", role: .destructive) {
+                            postPendingBlock = post
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.body.weight(.semibold))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Post actions")
+            }
+            .padding(.horizontal, OutboundSpacing.screen)
+            .padding(.top, 8)
+            VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                Text(post.activity?.title ?? String(localized: "Run"))
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, OutboundSpacing.screen)
+                if let activity = post.activity {
+                    SquarePreviewLayout {
+                        ZStack(alignment: .bottom) {
+                            SocialRoutePreviewImage(activity: activity)
+                            HStack(spacing: 0) {
+                                socialStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
+                                socialStat(activity.durationSecs.map(socialDuration) ?? "—", "Time")
+                                socialStat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(.ultraThinMaterial.opacity(0.5))
+                        }
+                        .overlay(alignment: .topLeading) {
+                            let milestones = milestones(for: activity, isCurrentUser: post.isCurrentUser)
+                            if !milestones.isEmpty {
+                                ActivityMilestoneCompactBanner(previews: milestones)
+                                    .padding(12)
+                            }
+                        }
+                        .overlay(alignment: .topTrailing) {
+                            if activity.totalPhotoCount > 0 {
+                                Text(photoCountLabel(for: activity.totalPhotoCount))
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 7)
+                                    .background(.black.opacity(0.48), in: Capsule())
+                                    .padding(12)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .clipped()
                 }
             }
+            if let caption = post.caption, !caption.isEmpty {
+                Text(caption)
+                    .font(.subheadline)
+                    .padding(.horizontal, OutboundSpacing.screen)
+            }
+            HStack(spacing: OutboundSpacing.compact) {
+                Button {
+                    Task { await toggleCheer(on: post) }
+                } label: {
+                    Image(systemName: post.currentUserCheered ? "heart.fill" : "heart")
+                }
+                .buttonStyle(SocialFeedActionButtonStyle(isActive: post.currentUserCheered))
+                .disabled(socialStore.isSocialMutationPending)
+                .accessibilityLabel(post.currentUserCheered ? "Remove cheer" : "Cheer")
+                .accessibilityValue("\(post.reactionCount)")
+
+                if post.reactionCount > 0 {
+                    SocialCheerAvatarsButton(post: post) {
+                        selectedCheersPost = post
+                    }
+                }
+
+                Button {
+                    selectedCommentPost = post
+                } label: {
+                    Label("\(post.commentCount)", systemImage: "bubble.left")
+                }
+                .buttonStyle(SocialFeedActionButtonStyle())
+                .accessibilityLabel("Comments")
+                .accessibilityValue("\(post.commentCount)")
+
+                Spacer()
+            }
+            .padding(.horizontal, OutboundSpacing.screen)
+            .padding(.bottom, 12)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(OutboundPalette.surface)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.primary.opacity(0.07))
+                .frame(height: 1)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { openFeedActivity(post) }
+        .accessibilityAction(named: String(localized: "Open activity")) {
+            openFeedActivity(post)
+        }
+        .onAppear {
+            guard post.id == socialStore.state.posts.first?.id,
+                  hasInitializedFeatureTab,
+                  selectedFeatureTab == .feed else { return }
+            trackFirstFeedCardVisibilityIfNeeded()
+        }
+    }
+
+    private func openFeedActivity(_ post: TogetherPostDTO) {
+        selectedActivityPost = post
+        track(.activityDetailOpened, properties: [.sourceType: .string("social_feed")])
+    }
+
+    @ViewBuilder
+    private var feedPagination: some View {
+        // The loader has its own cell, separate from activity cards.
+        if let cursor = socialStore.state.nextFeedCursor {
+            ProgressView()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, OutboundSpacing.compact)
+                .task(id: socialStore.isLoading ? nil : cursor) {
+                    guard !socialStore.isLoading else { return }
+                    guard let appendedCount = await socialStore.loadMorePosts() else {
+                        toastMessage = String(localized: "social.feed.load_more_failed")
+                        return
+                    }
+                    guard appendedCount > 0 else { return }
+                    let page = Int(ceil(
+                        Double(socialStore.state.posts.count) / Double(Self.feedPageSize)
+                    ))
+                    await analyticsManager?.track(.init(.paginatedListPageLoaded, properties: [
+                        .sourceType: .string("activity_feed"),
+                        .countBucket: .string(ProductAnalyticsBucket.count(appendedCount)),
+                        .pageDepthBucket: .string(ProductAnalyticsBucket.pageDepth(page))
+                    ]))
+                }
         }
     }
 
@@ -4088,12 +4168,13 @@ private struct SocialRoutePreviewImage: View {
                 ? String(localized: "Activity route preview")
                 : String(localized: "Activity photo preview")
         )
-        .task(id: SocialRoutePreviewCache.cacheKey(for: activity)) {
+        // The compact server polyline is already a content identity. Hashing and
+        // decoding it belongs in the cache actor, not every main-thread layout.
+        .task(id: activity.id + "|" + (activity.route?.encodedPolyline ?? "")) {
             guard primaryPhotoURL == nil else { return }
-            guard activity.route?.coordinates.count ?? 0 > 1 else { return }
-            guard let data = await SocialRoutePreviewCache.shared.imageData(for: activity),
+            guard let preview = await SocialRoutePreviewCache.shared.image(for: activity),
                   !Task.isCancelled else { return }
-            image = UIImage(data: data)
+            image = preview
         }
     }
 
@@ -4139,10 +4220,10 @@ private actor SocialRoutePreviewCache {
 
     private static let imageSize = CGSize(width: 720, height: 720)
     private static let maxRoutePoints = 360
-    private static let memoryLimit = 24
+    private static let memoryLimit = 12
 
-    private var memory: [String: Data] = [:]
-    private var inFlight: [String: Task<Data?, Never>] = [:]
+    private var memory: [String: UIImage] = [:]
+    private var inFlight: [String: Task<UIImage?, Never>] = [:]
     private var generationTail: Task<Void, Never> = Task {}
 
     static func cacheKey(for activity: TogetherActivityDTO) -> String {
@@ -4156,34 +4237,42 @@ private actor SocialRoutePreviewCache {
         let routeSignature = sampledCoordinates.map { coordinate in
             coordinate.prefix(2).map { String(format: "%.6f", $0) }.joined(separator: ",")
         }.joined(separator: ";")
-        let raw = "v4|\(activity.id)|\(coordinates.count)|\(routeSignature)"
+        let raw = "v5|\(activity.id)|\(coordinates.count)|\(routeSignature)"
         let digest = SHA256.hash(data: Data(raw.utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 
-    func imageData(for activity: TogetherActivityDTO) async -> Data? {
+    func image(for activity: TogetherActivityDTO) async -> UIImage? {
         let key = Self.cacheKey(for: activity)
-        if let data = memory[key] { return data }
-        if let data = Self.readCachedData(for: key) {
-            remember(data, for: key)
-            return data
+        if let image = memory[key] { return image }
+        if let data = Self.readCachedData(for: key),
+           let source = CGImageSourceCreateWithData(data as CFData, nil),
+           let decoded = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+               kCGImageSourceCreateThumbnailFromImageAlways: true,
+               kCGImageSourceCreateThumbnailWithTransform: true,
+               kCGImageSourceShouldCacheImmediately: true,
+               kCGImageSourceThumbnailMaxPixelSize: Int(Self.imageSize.width),
+           ] as CFDictionary) {
+            let image = UIImage(cgImage: decoded)
+            remember(image, for: key)
+            return image
         }
         if let task = inFlight[key] { return await task.value }
 
         let previous = generationTail
-        let task = Task<Data?, Never> { [weak self] in
+        let task = Task<UIImage?, Never> { [weak self] in
             _ = await previous.value
             guard let self else { return nil }
             return await self.generate(activity: activity, key: key)
         }
         inFlight[key] = task
         generationTail = Task { _ = await task.value }
-        let data = await task.value
+        let image = await task.value
         inFlight[key] = nil
-        return data
+        return image
     }
 
-    private func generate(activity: TogetherActivityDTO, key: String) async -> Data? {
+    private func generate(activity: TogetherActivityDTO, key: String) async -> UIImage? {
         let coordinates = (activity.route?.coordinates ?? []).compactMap { value -> CLLocationCoordinate2D? in
             guard value.count >= 2,
                   value[0].isFinite,
@@ -4203,7 +4292,7 @@ private actor SocialRoutePreviewCache {
 
         let options = MKMapSnapshotter.Options()
         options.size = Self.imageSize
-        options.scale = 2
+        options.scale = 1
         options.mapType = .standard
         options.pointOfInterestFilter = .excludingAll
         options.showsBuildings = false
@@ -4237,7 +4326,11 @@ private actor SocialRoutePreviewCache {
             CGPoint(x: point.x * fitScale + fitOffset.x, y: point.y * fitScale + fitOffset.y)
         }
 
-        let renderer = UIGraphicsImageRenderer(size: Self.imageSize)
+        // imageSize is a pixel budget, not a device-scaled point budget.
+        // Twelve decoded 720px previews cost roughly 24MB, even on a 3x device.
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let renderer = UIGraphicsImageRenderer(size: Self.imageSize, format: format)
         let image = renderer.image { context in
             snapshot.image.draw(in: CGRect(origin: .zero, size: Self.imageSize))
             let path = CGMutablePath()
@@ -4257,9 +4350,9 @@ private actor SocialRoutePreviewCache {
             context.cgContext.strokePath()
         }
         guard let data = image.jpegData(compressionQuality: 0.82) else { return nil }
-        remember(data, for: key)
+        remember(image, for: key)
         Self.writeCachedData(data, for: key)
-        return data
+        return image
     }
 
     private static func mapRect(for coordinates: [CLLocationCoordinate2D], size: CGSize) -> MKMapRect {
@@ -4288,8 +4381,8 @@ private actor SocialRoutePreviewCache {
         return rect.insetBy(dx: -max(padding, 1_500), dy: -max(padding, 1_500))
     }
 
-    private func remember(_ data: Data, for key: String) {
-        memory[key] = data
+    private func remember(_ image: UIImage, for key: String) {
+        memory[key] = image
         if memory.count > Self.memoryLimit, let oldest = memory.keys.first {
             memory.removeValue(forKey: oldest)
         }
@@ -4406,5 +4499,19 @@ private func localizedGroupNotificationMessage(_ notification: SocialNotificatio
         return String(format: String(localized: "group.notification.ownership", defaultValue: "%@ made you the Group owner."), actorName)
     default:
         return notification.message
+    }
+}
+
+private enum SocialFeedRow: Identifiable, Equatable {
+    case header(Data)
+    case post(TogetherPostDTO)
+    case pagination(String, Bool)
+
+    var id: String {
+        switch self {
+        case .header: "feed_header"
+        case .post(let post): "post_" + post.id
+        case .pagination: "feed_pagination"
+        }
     }
 }

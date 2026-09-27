@@ -14,13 +14,13 @@ struct TogetherResponseDTO: Codable, Sendable {
     var nextFeedCursor: String? = nil
 }
 
-struct TogetherPersonDTO: Codable, Identifiable, Sendable {
+struct TogetherPersonDTO: Codable, Identifiable, Sendable, Equatable {
     let id: String
     let displayName: String
     let avatarUrl: String?
 }
 
-struct SocialPersonDTO: Codable, Identifiable, Sendable {
+struct SocialPersonDTO: Codable, Identifiable, Sendable, Equatable {
     let id: String
     let username: String
     let displayName: String
@@ -360,7 +360,7 @@ struct ActivityEventResultParticipantDTO: Codable, Identifiable, Sendable {
 
 struct LinkActivityEventRequestDTO: Codable, Sendable { let activityId: String }
 
-struct TogetherActivityRecognitionDTO: Codable, Identifiable, Sendable {
+struct TogetherActivityRecognitionDTO: Codable, Identifiable, Sendable, Equatable {
     var id: String { badgeId }
     let badgeId: String
     let family: String
@@ -373,7 +373,7 @@ struct TogetherActivityRecognitionDTO: Codable, Identifiable, Sendable {
     }
 }
 
-struct TogetherActivityDTO: Codable, Sendable {
+struct TogetherActivityDTO: Codable, Sendable, Equatable {
     let id: String
     let type: String?
     let title: String?
@@ -424,7 +424,7 @@ struct TogetherActivityDTO: Codable, Sendable {
     }
 }
 
-struct TogetherActivityPhotoDTO: Codable, Sendable {
+struct TogetherActivityPhotoDTO: Codable, Sendable, Equatable {
     let id: String
     let clientPhotoId: String
     let url: URL?
@@ -442,7 +442,7 @@ struct TogetherActivityPhotosResponseDTO: Codable, Sendable {
     let photos: [TogetherActivityPhotoDTO]
 }
 
-struct TogetherActivityRouteDTO: Codable, Sendable {
+struct TogetherActivityRouteDTO: Codable, Sendable, Equatable {
     let format: String
     let encodedPolyline: String
     let pointCount: Int
@@ -483,14 +483,14 @@ struct TogetherActivityRouteDTO: Codable, Sendable {
     }
 }
 
-struct TogetherActivityRouteBoundsDTO: Codable, Sendable {
+struct TogetherActivityRouteBoundsDTO: Codable, Sendable, Equatable {
     let south: Double
     let west: Double
     let north: Double
     let east: Double
 }
 
-struct TogetherPostDTO: Codable, Identifiable, Sendable {
+struct TogetherPostDTO: Codable, Identifiable, Sendable, Equatable {
     let id: String
     let caption: String?
     let createdAt: Date
@@ -583,7 +583,7 @@ struct TogetherReactionDTO: Codable, Identifiable, Sendable {
     let type: String
 }
 
-struct TogetherCommentDTO: Codable, Identifiable, Sendable {
+struct TogetherCommentDTO: Codable, Identifiable, Sendable, Equatable {
     let id: String
     let body: String
     let createdAt: Date
