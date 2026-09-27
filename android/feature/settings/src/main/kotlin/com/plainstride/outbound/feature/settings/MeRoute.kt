@@ -1,5 +1,6 @@
 package com.plainstride.outbound.feature.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.MilitaryTech
@@ -49,7 +51,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -73,11 +74,13 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -495,7 +498,18 @@ private fun SettingsScreen(
 ) {
     var editProfile by rememberSaveable { mutableStateOf(false) }
     var confirmSignOut by rememberSaveable { mutableStateOf(false) }
+    var showAppearanceChooser by rememberSaveable { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
+    if (showAppearanceChooser) {
+        AppearanceChooserScreen(
+            appearance = state.preferences.appearance,
+            selectedTheme = state.preferences.theme,
+            onAppearance = onAppearance,
+            onTheme = onTheme,
+            onBack = { showAppearanceChooser = false },
+        )
+        return
+    }
     Scaffold(modifier, topBar = { TopAppBar(
         title = { Text(stringResource(R.string.settings_title)) },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) } },
@@ -531,13 +545,7 @@ private fun SettingsScreen(
             item { HorizontalDivider() }
             item { SectionTitle(stringResource(R.string.appearance)) }
             item { ChoiceRow(stringResource(R.string.mode), AppearanceMode.entries, state.preferences.appearance, { stringResource(when (it) { AppearanceMode.System -> R.string.system_mode; AppearanceMode.Light -> R.string.light_mode; AppearanceMode.Dark -> R.string.dark_mode }) }, onAppearance) }
-            item { Text(stringResource(R.string.theme), Modifier.padding(horizontal = 20.dp, vertical = 10.dp), style = MaterialTheme.typography.titleSmall) }
-            items(PlainstrideThemeId.entries.chunked(2)) { row ->
-                Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    row.forEach { theme -> ThemeChoice(theme, theme == state.preferences.theme, { onTheme(theme) }, Modifier.weight(1f)) }
-                    if (row.size == 1) Box(Modifier.weight(1f))
-                }
-            }
+            item { ThemeSettingsRow(state.preferences.theme) { showAppearanceChooser = true } }
             item { HorizontalDivider() }
             item { settingsContent() }
             item { HorizontalDivider() }
@@ -589,13 +597,57 @@ private fun SettingsScreen(
     }
 }
 
-@Composable private fun ThemeChoice(theme: PlainstrideThemeId, selected: Boolean, onClick: () -> Unit, modifier: Modifier) {
-    val colors = plainstrideThemeColors(theme, false)
-    OutlinedButton(onClick = onClick, modifier.heightIn(min = 58.dp)) {
-        Box(Modifier.size(22.dp).background(colors.accent, RoundedCornerShape(6.dp)))
-        Text(stringResource(themeName(theme)), Modifier.padding(start = 8.dp), maxLines = 1)
-        if (selected) Text(" ✓")
+@Composable private fun ThemeSettingsRow(theme: PlainstrideThemeId, onClick: () -> Unit) {
+    val colors = plainstrideThemeColors(theme, MaterialTheme.colorScheme.background.luminance() < 0.5f)
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.theme)) },
+        supportingContent = { Text(stringResource(themeName(theme)), color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        leadingContent = {
+            Box(Modifier.size(width = 40.dp, height = 28.dp).background(Brush.horizontalGradient(colors.heroGradient), RoundedCornerShape(8.dp)))
+        },
+        trailingContent = { Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+        modifier = Modifier.clickable(role = Role.Button, onClick = onClick).heightIn(min = 64.dp),
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable private fun AppearanceChooserScreen(
+    appearance: AppearanceMode,
+    selectedTheme: PlainstrideThemeId,
+    onAppearance: (AppearanceMode) -> Unit,
+    onTheme: (PlainstrideThemeId) -> Unit,
+    onBack: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    Scaffold(topBar = {
+        TopAppBar(
+            title = { Text(stringResource(R.string.appearance)) },
+            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) } },
+        )
+    }) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding)) {
+            item { ChoiceRow(stringResource(R.string.mode), AppearanceMode.entries, appearance, { stringResource(when (it) { AppearanceMode.System -> R.string.system_mode; AppearanceMode.Light -> R.string.light_mode; AppearanceMode.Dark -> R.string.dark_mode }) }, onAppearance) }
+            item { SectionTitle(stringResource(R.string.theme)) }
+            items(PlainstrideThemeId.entries) { theme ->
+                ThemeChoice(theme, theme == selectedTheme, onClick = { onTheme(theme) })
+            }
+        }
     }
+}
+
+@Composable private fun ThemeChoice(theme: PlainstrideThemeId, selected: Boolean, onClick: () -> Unit) {
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val colors = plainstrideThemeColors(theme, dark)
+    ListItem(
+        headlineContent = { Text(stringResource(themeName(theme))) },
+        leadingContent = {
+            Box(Modifier.size(width = 52.dp, height = 34.dp).shadow(6.dp, RoundedCornerShape(10.dp)).background(Brush.horizontalGradient(colors.heroGradient), RoundedCornerShape(10.dp)))
+        },
+        trailingContent = { if (selected) Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary) },
+        modifier = Modifier
+            .clickable(role = Role.RadioButton, onClick = onClick)
+            .semantics { this.selected = selected },
+    )
 }
 
 @Composable private fun ProfileDialog(account: com.plainstride.outbound.core.network.AccountDto?, dismiss: () -> Unit, save: (String, String?, String?) -> Unit) {

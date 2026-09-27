@@ -12,6 +12,7 @@ Open this when adding, changing, or applying an app theme or editing theme disco
 
 - Theme is an app appearance preference, not a companion identity or avatar.
 - The permanent entry point is `Settings > Appearance > Theme`. It opens the same appearance chooser used by the Today discovery tip, with mode controls and rich theme previews; do not maintain a second picker presentation.
+- In Settings, keep the System/Light/Dark control visible in the Appearance section and open the chooser from a Theme row showing the current theme. The chooser presents the mode control and a single-column list of gradient theme previews with a selected marker; Android uses its standard back navigation to close the screen.
 - Assistant requests such as “change app theme” open that shared appearance chooser directly.
 - Today may show the single-line discovery tip “Tap to change appearance” up to three times. It has no action button; tapping outside dismisses it, while tapping the palette control opens the appearance chooser directly.
 - Keep the list intentionally finite. The current eight themes cover restrained, natural, warm, celebratory, and high-energy personalities without categories or pagination.
