@@ -178,11 +178,11 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
     state.selectedPost?.let { CommentsDialog(it, state.comments, viewModel::addComment, viewModel::deleteComment, viewModel::closeComments) }
 }
 
-private enum class SocialFeatureTab(val analyticsValue: String, val icon: androidx.compose.ui.graphics.vector.ImageVector, val label: Int) {
-    FEED("feed", Icons.Outlined.ViewStream, R.string.social_tab_feed),
-    PEOPLE("people", Icons.Outlined.People, R.string.social_tab_people),
-    GROUPS("groups", Icons.Outlined.Flag, R.string.social_tab_groups),
-    ROUTES("routes", Icons.Outlined.Map, R.string.social_tab_routes),
+private enum class SocialFeatureTab(val analyticsValue: String, val label: Int) {
+    FEED("feed", R.string.social_tab_feed),
+    PEOPLE("people", R.string.social_tab_people),
+    GROUPS("groups", R.string.social_tab_groups),
+    ROUTES("routes", R.string.social_tab_routes),
 }
 
 private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value) {
@@ -227,6 +227,34 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
             SocialIconButton(community, stringResource(R.string.social_community)) { Icon(Icons.Outlined.People, null) }
             SocialIconButton(notifications, stringResource(R.string.social_notifications)) { BadgedBox({ if (maxOf(inboxCount, groupAttention) > 0) Badge(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError) { Text(maxOf(inboxCount, groupAttention).coerceAtMost(99).toString()) } }) { Icon(Icons.Outlined.Notifications, null) } }
         }
+        Row(
+            Modifier.fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 6.dp, vertical = 3.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            SocialFeatureTab.entries.forEach { tab ->
+                val count = when (tab) {
+                    SocialFeatureTab.PEOPLE -> incomingRequests.size
+                    SocialFeatureTab.GROUPS -> groupAttention
+                    else -> 0
+                }
+                TextButton(
+                    onClick = { selectTab(tab) },
+                    modifier = Modifier.weight(1f).heightIn(min = 44.dp),
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                ) {
+                    BadgedBox({ if (count > 0) Badge { Text(if (count > 9) "9+" else count.toString()) } }) {
+                        Text(
+                            stringResource(tab.label),
+                            style = if (selectedTab == tab) MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold) else MaterialTheme.typography.labelLarge,
+                            color = if (selectedTab == tab) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+        }
         if (state.offline) AssistChip({}, { Text(stringResource(R.string.social_offline)) }, Modifier.padding(horizontal = 16.dp), leadingIcon = { Icon(Icons.Outlined.CloudOff, null) })
         when (selectedTab) {
             SocialFeatureTab.FEED -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -263,17 +291,6 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
             }
             SocialFeatureTab.ROUTES -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp)) {
                 item { CompanionCard(onClick = community) { Text(stringResource(R.string.social_tab_routes), fontWeight = FontWeight.SemiBold); Spacer(Modifier.height(8.dp)); Text(stringResource(R.string.social_routes_open), style = MaterialTheme.typography.bodyMedium) } }
-            }
-        }
-        Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(horizontal = 6.dp, vertical = 3.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            SocialFeatureTab.entries.forEach { tab ->
-                val count = when (tab) { SocialFeatureTab.PEOPLE -> incomingRequests.size; SocialFeatureTab.GROUPS -> groupAttention; else -> 0 }
-                TextButton(onClick = { selectTab(tab) }, modifier = Modifier.weight(1f).heightIn(min = 44.dp), contentPadding = PaddingValues(vertical = 2.dp)) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        BadgedBox({ if (count > 0) Badge { Text(if (count > 9) "9+" else count.toString()) } }) { Icon(tab.icon, stringResource(tab.label), tint = if (selectedTab == tab) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
-                        Text(stringResource(tab.label), style = MaterialTheme.typography.labelSmall, color = if (selectedTab == tab) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
             }
         }
     }
