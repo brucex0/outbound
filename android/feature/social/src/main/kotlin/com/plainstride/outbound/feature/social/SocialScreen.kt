@@ -21,8 +21,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -112,7 +114,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             viewModel.trackSocialTabSelected(tab.analyticsValue)
         }, inboxCount, unitSystem, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openGroup, viewModel::openComments, viewModel::openActivityDetail, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, { group ->
             if (group.trustPolicy == "trusted_private") viewModel.openGroup(group) else viewModel.joinGroup(group)
-        }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, modifier)
+        }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, modifier, viewModel = viewModel)
     } else {
         BackHandler { viewModel.closeActivityDetail() }
         SocialActivityDetail(
@@ -215,7 +217,8 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
     }
 }
 
-@Composable private fun SocialScreen(state: SocialUiState, selectedTab: SocialFeatureTab, selectTab: (SocialFeatureTab) -> Unit, inboxCount: Int, unitSystem: MeasurementUnitSystem, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, modifier: Modifier) {
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable private fun SocialScreen(state: SocialUiState, selectedTab: SocialFeatureTab, selectTab: (SocialFeatureTab) -> Unit, inboxCount: Int, unitSystem: MeasurementUnitSystem, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, modifier: Modifier, viewModel: SocialViewModel) {
     var safetyPost by remember { mutableStateOf<SocialPost?>(null) }
     var blockConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
     var deletionConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
@@ -223,10 +226,32 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
     val deletionPreferences = remember { context.getSharedPreferences("social_preferences", android.content.Context.MODE_PRIVATE) }
     var skipDeletionConfirmation by rememberSaveable { mutableStateOf(deletionPreferences.getBoolean("skip_post_deletion_confirmation", false)) }
     var skipFutureDeletionConfirmations by rememberSaveable { mutableStateOf(false) }
+    var trackedActiveNowExposure by rememberSaveable { mutableStateOf(false) }
+    var trackedUpcomingExposure by rememberSaveable { mutableStateOf(false) }
+    var trackedFirstFeedCard by rememberSaveable { mutableStateOf(false) }
     val acceptedConnections = state.home.connections.filter { it.relationship in setOf("accepted", "connected") }.sortedWith(compareByDescending<SocialPerson> { it.isActive }.thenBy { it.displayName.substringBefore(' ').lowercase() })
+    val activeConnections = acceptedConnections.filter(SocialPerson::isActive)
     val incomingRequests = state.home.connections.filter { it.relationship == "pending" && it.connectionDirection == "incoming" }
     val groupInvitations = state.home.invitations.filter { it.kind == "group" }
     val groupAttention = groupInvitations.size + state.home.groups.sumOf { it.unreadNoticeCount }
+    LaunchedEffect(selectedTab, activeConnections.size) {
+        if (selectedTab == SocialFeatureTab.FEED && activeConnections.isNotEmpty() && !trackedActiveNowExposure) {
+            trackedActiveNowExposure = true
+            viewModel.trackActiveNowExposed(activeConnections.size)
+        }
+    }
+    LaunchedEffect(selectedTab, state.home.upcomingRuns.size) {
+        if (selectedTab == SocialFeatureTab.FEED && state.home.upcomingRuns.isNotEmpty() && !trackedUpcomingExposure) {
+            trackedUpcomingExposure = true
+            viewModel.trackUpcomingExposed(state.home.upcomingRuns)
+        }
+    }
+    LaunchedEffect(selectedTab, state.home.posts.firstOrNull()?.id) {
+        if (selectedTab == SocialFeatureTab.FEED && state.home.posts.isNotEmpty() && !trackedFirstFeedCard) {
+            trackedFirstFeedCard = true
+            viewModel.trackFirstFeedCardVisible(state.home.posts.first())
+        }
+    }
     Column(modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             SocialIconButton(conditions, stringResource(R.string.social_conditions)) { Icon(Icons.Outlined.WbSunny, null) }
@@ -263,21 +288,64 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
         }
         if (state.offline) AssistChip({}, { Text(stringResource(R.string.social_offline)) }, Modifier.padding(horizontal = 16.dp), leadingIcon = { Icon(Icons.Outlined.CloudOff, null) })
         when (selectedTab) {
-            SocialFeatureTab.FEED -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (state.home.recognitions.isNotEmpty()) item { SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column { Text(stringResource(R.string.social_guide_noticed), fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_recognition_earned), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } } } }
+            SocialFeatureTab.FEED -> PullToRefreshBox(
+                isRefreshing = state.refreshing,
+                onRefresh = refresh,
+                modifier = Modifier.weight(1f),
+            ) {
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (activeConnections.isNotEmpty()) item {
+                    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        SectionHeader(stringResource(R.string.social_active_now_title))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
+                            items(activeConnections, key = SocialPerson::id) { person ->
+                                val activePersonLabel = stringResource(R.string.social_active_now_person, person.displayName)
+                                Column(
+                                    Modifier.width(58.dp).clickable { viewModel.trackActiveNowSelected("profile"); openProfile(person) }
+                                        .semantics { contentDescription = activePersonLabel },
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                                ) {
+                                    Box {
+                                        SocialAvatar(person, 40.dp)
+                                        Icon(Icons.Outlined.RadioButtonChecked, null, Modifier.align(Alignment.BottomEnd).size(15.dp), tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                    Text(person.displayName.substringBefore(' '), maxLines = 1, style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
+                    }
+                }
                 if (state.home.upcomingRuns.isNotEmpty()) {
                     item { SectionHeader(stringResource(R.string.social_upcoming), action = stringResource(R.string.social_discover), onAction = community) }
-                    items(state.home.upcomingRuns.take(3), key = SocialEvent::id) { event -> EventCard(event) { openTarget("event",event.id) } }
+                    item {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
+                            items(prioritizeUpcomingEvents(state.home.upcomingRuns).take(3), key = SocialEvent::id) { event -> UpcomingEventCard(event) { viewModel.trackUpcomingSelected("card"); openTarget("event", event.id) } }
+                        }
+                    }
                 }
-                if (state.home.pastEvents.isNotEmpty()) {
-                    item { SectionHeader(stringResource(R.string.social_past_activities)) }
-                    items(state.home.pastEvents.take(1), key = SocialEvent::id) { event -> EventCard(event) { openTarget("event",event.id) } }
+                item { SectionHeader(stringResource(R.string.social_activity_feed)) }
+                items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, unitSystem, { openProfile(post.author) }, { if (post.activity != null) openActivity(post) }, { cheer(post) }, { comments(post) }, { openProfile(it) }, { if (post.isCurrentUser) { if (skipDeletionConfirmation) deletePost(post) else deletionConfirmationPost = post } else safetyPost = post }) }
+                if (!state.loading && state.home.posts.isEmpty()) item {
+                    SocialCard {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.AutoMirrored.Outlined.DirectionsRun, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
+                            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text(stringResource(R.string.social_feed_empty_title), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.social_feed_empty), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
                 }
-                item { SectionHeader(stringResource(R.string.social_feed)) }
-                items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, unitSystem, { openProfile(post.author) }, { if (post.activity != null) openActivity(post) }, { cheer(post) }, { comments(post) }, { if (post.isCurrentUser) { if (skipDeletionConfirmation) deletePost(post) else deletionConfirmationPost = post } else safetyPost = post }) }
-                if (!state.loading && state.home.posts.isEmpty()) item { EmptyCard(stringResource(R.string.social_feed_empty), Icons.Outlined.DirectionsRun) }
                 if (state.loading) item { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
-                if (state.home.nextCursor != null) item { Button(loadMore, Modifier.fillMaxWidth(), enabled = !state.feedLoading) { Text(stringResource(R.string.social_load_more)) } }
+                if (state.home.nextCursor != null) item(key = "feed-page-${state.home.nextCursor}") {
+                    when {
+                        state.feedLoadFailed -> TextButton(loadMore, Modifier.fillMaxWidth()) { Text(stringResource(R.string.social_feed_load_more_failed)) }
+                        state.feedLoading -> Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp) }
+                        else -> LaunchedEffect(state.home.nextCursor) { loadMore() }
+                    }
+                }
+            }
             }
             SocialFeatureTab.PEOPLE -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 item { OutlinedTextField(state.search, search, Modifier.fillMaxWidth(), singleLine = true, label = { Text(stringResource(R.string.social_search_people)) }, leadingIcon = { Icon(Icons.Outlined.Search, null) }) }
@@ -419,7 +487,45 @@ private fun ConnectionsDialog(
     }
 }
 @Composable private fun InvitationCard(invitation: SocialInvitation, review:(SocialInvitation)->Unit) = SocialCard { Text(invitation.title, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_invited_by, invitation.sender.displayName), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Button({review(invitation)}, Modifier.padding(top = 8.dp)) { Text(stringResource(R.string.social_review)) } }
-@Composable private fun EventCard(event: SocialEvent, open:()->Unit) = SocialCard(onClick = open) { Text(event.name, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_hybrid), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall); event.locationName?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+private fun prioritizeUpcomingEvents(events: List<SocialEvent>): List<SocialEvent> = events.sortedWith(
+    compareBy<SocialEvent> {
+        when {
+            it.source?.kind == "directInvitation" && !it.joined -> 0
+            runCatching { java.time.OffsetDateTime.parse(it.startsAt).toInstant() }.getOrNull()
+                ?.isBefore(java.time.Instant.now().plusSeconds(72 * 60 * 60)) == true -> 1
+            else -> 2
+        }
+    }.thenBy { it.startsAt },
+)
+
+@Composable
+private fun UpcomingEventCard(event: SocialEvent, open: () -> Unit) {
+    val startsAt = runCatching { java.time.OffsetDateTime.parse(event.startsAt).toInstant().toEpochMilli() }.getOrNull()
+    Card(
+        onClick = open,
+        modifier = Modifier.width(226.dp).heightIn(min = 112.dp),
+        shape = RoundedCornerShape(15.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(
+                startsAt?.let { DateUtils.formatDateTime(LocalContext.current, it, DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_ABBREV_MONTH or DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_SHOW_TIME) }.orEmpty(),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+            )
+            Text(event.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(
+                event.locationName?.takeIf(String::isNotBlank) ?: stringResource(R.string.social_upcoming_meetup),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+            Text(stringResource(R.string.social_upcoming_attendees, event.attendeeCount), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
 private fun groupDisplayName(group: GroupSummary, all: List<GroupSummary>): String {
     val normalized = group.name.trim().lowercase()
     val duplicates = all.count { it.name.trim().lowercase() == normalized }
@@ -427,7 +533,9 @@ private fun groupDisplayName(group: GroupSummary, all: List<GroupSummary>): Stri
 }
 @Composable private fun GroupCard(group: GroupSummary, displayName: String, membership: () -> Unit) = SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.Flag, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(displayName, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_members, group.memberCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; TextButton(membership) { Text(if (group.trustPolicy == "trusted_private") stringResource(R.string.social_open) else stringResource(if (group.role != null) R.string.social_leave else R.string.social_join)) } } }
 @Composable
-private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, profile: () -> Unit, openActivity:()->Unit, cheer: () -> Unit, comments:()->Unit, safety: () -> Unit) =
+@OptIn(ExperimentalMaterial3Api::class)
+private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, profile: () -> Unit, openActivity:()->Unit, cheer: () -> Unit, comments:()->Unit, openProfile: (SocialPerson) -> Unit, safety: () -> Unit) {
+    var cheerersOpen by rememberSaveable(post.id) { mutableStateOf(false) }
     Card(
         Modifier
             .fillMaxWidth()
@@ -441,6 +549,7 @@ private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, profil
         elevation = CardDefaults.cardElevation(2.dp),
     ) {
         val cheerLabel = stringResource(if (post.viewerHasCheered) R.string.social_remove_cheer else R.string.social_add_cheer)
+        val commentsLabel = stringResource(R.string.social_comments)
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(profile, Modifier.weight(1f), contentPadding = PaddingValues(0.dp)) {
@@ -505,23 +614,62 @@ private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, profil
                     }
                     if (activity.totalPhotoCount > 0) {
                         Surface(Modifier.align(Alignment.TopEnd).padding(10.dp), shape = CircleShape, color = MaterialTheme.colorScheme.scrim.copy(alpha = .60f)) {
-                            Row(Modifier.padding(horizontal = 9.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Outlined.PhotoLibrary, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(14.dp))
-                                Text(activity.totalPhotoCount.toString(), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelSmall)
-                            }
+                            Text(stringResource(R.string.social_feed_photo_count, activity.totalPhotoCount), Modifier.padding(horizontal = 10.dp, vertical = 7.dp), color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
             }
             post.caption?.takeIf { it.isNotEmpty() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(cheer, Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = cheerLabel }) { Icon(if (post.viewerHasCheered) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder, null) }
-                Text(post.cheerCount.toString())
-                Spacer(Modifier.width(18.dp))
-                IconButton(comments, Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)) { Icon(Icons.Outlined.ChatBubbleOutline, stringResource(R.string.social_comments)) }
-                Text(post.commentCount.toString())
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Surface(
+                    Modifier.heightIn(min = 40.dp).clip(CircleShape).clickable(onClick = cheer)
+                        .semantics { contentDescription = "$cheerLabel, ${post.cheerCount}" },
+                    shape = CircleShape,
+                    color = (if (post.viewerHasCheered) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary).copy(alpha = .08f),
+                ) {
+                    Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(if (post.viewerHasCheered) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder, null, tint = if (post.viewerHasCheered) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary)
+                    }
+                }
+                if (post.cheerCount > 0) SocialCheerAvatarsButton(post) { cheerersOpen = true }
+                Surface(
+                    Modifier.heightIn(min = 40.dp).clip(CircleShape).clickable(onClick = comments)
+                        .semantics { contentDescription = "$commentsLabel, ${post.commentCount}" },
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.tertiary.copy(alpha = .08f),
+                ) {
+                    Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.ChatBubbleOutline, null, tint = MaterialTheme.colorScheme.tertiary)
+                        Spacer(Modifier.width(6.dp))
+                        Text(post.commentCount.toString(), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.tertiary)
+                    }
+                }
             }
         }
+    }
+    if (cheerersOpen) {
+        ModalBottomSheet(onDismissRequest = { cheerersOpen = false }) {
+            Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 16.dp)) {
+                Text(stringResource(ActivityR.string.activity_social_cheer_count), Modifier.padding(horizontal = 24.dp, vertical = 8.dp), style = MaterialTheme.typography.titleLarge)
+                if (post.cheers.isEmpty()) {
+                    Text(stringResource(ActivityR.string.activity_social_cheers_empty), Modifier.fillMaxWidth().padding(24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    LazyColumn(Modifier.heightIn(max = 520.dp)) {
+                        items(post.cheers, key = SocialPerson::id) { person ->
+                            Row(Modifier.fillMaxWidth().clickable { cheerersOpen = false; openProfile(person) }.heightIn(min = 56.dp).padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                SocialAvatar(person)
+                                Column(Modifier.weight(1f)) {
+                                    Text(person.displayName, fontWeight = FontWeight.SemiBold)
+                                    person.username?.takeIf(String::isNotBlank)?.let { Text("@$it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                }
+                                Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
     }
 
 @OptIn(ExperimentalMaterial3Api::class)
