@@ -30,12 +30,12 @@ function appleFormat(value) {
 }
 
 function androidFormat(value) {
-  let position = 0;
-  return encodeXML(value.replace(/%(?:lld|ld|d|@|(?:[.0-9]*)f)/g, match => {
-    position += 1;
-    if (match === "%@") return `%${position}$s`;
-    if (match === "%lld" || match === "%ld" || match === "%d") return `%${position}$d`;
-    return `%${position}$${match.slice(1)}`;
+  let nextImplicitPosition = 0;
+  return encodeXML(value.replace(/%(?:(\d+)\$)?(?:(lld|ld|d|@)|([.0-9]*f))/g, (match, explicitPosition, conversion, floatingPoint) => {
+    const position = explicitPosition ? Number(explicitPosition) : ++nextImplicitPosition;
+    if (conversion === "@") return `%${position}$s`;
+    if (conversion === "lld" || conversion === "ld" || conversion === "d") return `%${position}$d`;
+    return `%${position}$${floatingPoint}`;
   }));
 }
 

@@ -34,7 +34,7 @@
     <string name="route_library_action_start">开始路线引导</string>
     <string name="route_library_detail_creator_format">由 %1$s 创建</string>
     <string name="route_library_detail_retry">重试</string>
-    <string name="route_library_detail_stats_format">收藏：%1$lld · 完成：%2$lld</string>
+    <string name="route_library_detail_stats_format">收藏：%1$d · 完成：%2$d</string>
     <string name="route_library_detail_unavailable_title">路线不可用</string>
     <string name="route_library_empty_community_description">尝试其他搜索，或导入一条路线来跟随。</string>
     <string name="route_library_empty_community_title">未找到路线</string>
@@ -44,7 +44,7 @@
     <string name="route_library_remove_published_confirm">移除已发布路线</string>
     <string name="route_library_remove_published_confirmation_message">这条路线将从“我的路线”和社区中消失。你的原始活动不会被删除。</string>
     <string name="route_library_remove_published_confirmation_title">要移除已发布路线吗？</string>
-    <string name="route_library_row_summary_format">%1$@ · 由 %2$@ 创建</string>
+    <string name="route_library_row_summary_format">%1$s · 由 %2$s 创建</string>
     <string name="route_library_search_prompt">路线或地点</string>
     <string name="route_library_section_community">社区路线</string>
     <string name="route_library_section_imported">导入的路线</string>

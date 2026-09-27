@@ -34,7 +34,7 @@
     <string name="route_library_action_start">Iniciar guía de ruta</string>
     <string name="route_library_detail_creator_format">Creada por %1$s</string>
     <string name="route_library_detail_retry">Intentar de nuevo</string>
-    <string name="route_library_detail_stats_format">Veces guardada: %1$lld · Veces completada: %2$lld</string>
+    <string name="route_library_detail_stats_format">Veces guardada: %1$d · Veces completada: %2$d</string>
     <string name="route_library_detail_unavailable_title">Ruta no disponible</string>
     <string name="route_library_empty_community_description">Prueba con otra búsqueda o importa una ruta para seguirla.</string>
     <string name="route_library_empty_community_title">No se encontraron rutas</string>
@@ -44,7 +44,7 @@
     <string name="route_library_remove_published_confirm">Eliminar ruta publicada</string>
     <string name="route_library_remove_published_confirmation_message">Esta ruta desaparecerá de Mis rutas y de la comunidad. Tu actividad original no se eliminará.</string>
     <string name="route_library_remove_published_confirmation_title">¿Eliminar la ruta publicada?</string>
-    <string name="route_library_row_summary_format">%1$@ · por %2$@</string>
+    <string name="route_library_row_summary_format">%1$s · por %2$s</string>
     <string name="route_library_search_prompt">Ruta o ubicación</string>
     <string name="route_library_section_community">Rutas de la comunidad</string>
     <string name="route_library_section_imported">Rutas importadas</string>

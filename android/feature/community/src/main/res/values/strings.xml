@@ -34,7 +34,7 @@
     <string name="route_library_action_start">Start Route Guidance</string>
     <string name="route_library_detail_creator_format">Created by %1$s</string>
     <string name="route_library_detail_retry">Try Again</string>
-    <string name="route_library_detail_stats_format">Saves: %1$lld · Completions: %2$lld</string>
+    <string name="route_library_detail_stats_format">Saves: %1$d · Completions: %2$d</string>
     <string name="route_library_detail_unavailable_title">Route unavailable</string>
     <string name="route_library_empty_community_description">Try another search or import a route to follow.</string>
     <string name="route_library_empty_community_title">No routes found</string>
@@ -44,7 +44,7 @@
     <string name="route_library_remove_published_confirm">Remove Published Route</string>
     <string name="route_library_remove_published_confirmation_message">This route will disappear from My Routes and the community. Your original activity will not be deleted.</string>
     <string name="route_library_remove_published_confirmation_title">Remove published route?</string>
-    <string name="route_library_row_summary_format">%1$@ · by %2$@</string>
+    <string name="route_library_row_summary_format">%1$s · by %2$s</string>
     <string name="route_library_search_prompt">Route or location</string>
     <string name="route_library_section_community">Community routes</string>
     <string name="route_library_section_imported">Imported routes</string>
