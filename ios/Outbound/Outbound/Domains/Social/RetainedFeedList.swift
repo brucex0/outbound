@@ -36,17 +36,13 @@ struct RetainedFeedList<Row: Identifiable & Equatable, Content: View>: UIViewCon
         private var refreshTask: Task<Void, Never>?
 
         override func loadView() {
-            let item = NSCollectionLayoutItem(layoutSize: NSCollectionLayoutSize(
-                widthDimension: .fractionalWidth(1), heightDimension: .estimated(600)
-            ))
-            let group = NSCollectionLayoutGroup.vertical(
-                layoutSize: item.layoutSize, subitems: [item]
-            )
-            let section = NSCollectionLayoutSection(group: group)
-            section.interGroupSpacing = 12
-            section.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 0, bottom: 12, trailing: 0)
+            let layout = UICollectionViewFlowLayout()
+            layout.scrollDirection = .vertical
+            layout.minimumLineSpacing = 12
+            layout.sectionInset = UIEdgeInsets(top: 12, left: 0, bottom: 12, right: 0)
+            layout.estimatedItemSize = UICollectionViewFlowLayout.automaticSize
             collectionView = UICollectionView(
-                frame: .zero, collectionViewLayout: UICollectionViewCompositionalLayout(section: section)
+                frame: .zero, collectionViewLayout: layout
             )
             collectionView.backgroundColor = .clear
             collectionView.alwaysBounceVertical = true
@@ -54,7 +50,7 @@ struct RetainedFeedList<Row: Identifiable & Equatable, Content: View>: UIViewCon
             // The SwiftUI parent already positions this view below the sticky
             // feature bar. Avoid a second navigation-bar inset adjustment.
             collectionView.contentInsetAdjustmentBehavior = .never
-            collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "feed")
+            collectionView.register(RetainedFeedHostingCell.self, forCellWithReuseIdentifier: "feed")
             collectionView.refreshControl = refreshControl
             refreshControl.addTarget(self, action: #selector(refreshRequested), for: .valueChanged)
             view = collectionView
@@ -122,5 +118,28 @@ struct RetainedFeedList<Row: Identifiable & Equatable, Content: View>: UIViewCon
                 self?.refreshTask = nil
             }
         }
+    }
+}
+
+/// UIHostingConfiguration supplies the content's height. Pin the width before
+/// measuring so every feed row uses the collection view's full available width.
+private final class RetainedFeedHostingCell: UICollectionViewCell {
+    override func preferredLayoutAttributesFitting(
+        _ layoutAttributes: UICollectionViewLayoutAttributes
+    ) -> UICollectionViewLayoutAttributes {
+        guard let collectionView = superview as? UICollectionView,
+              collectionView.bounds.width > 0 else {
+            return super.preferredLayoutAttributesFitting(layoutAttributes)
+        }
+
+        let attributes = layoutAttributes.copy() as! UICollectionViewLayoutAttributes
+        let width = collectionView.bounds.width
+        let fittedSize = contentView.systemLayoutSizeFitting(
+            CGSize(width: width, height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        )
+        attributes.size = CGSize(width: width, height: fittedSize.height)
+        return attributes
     }
 }

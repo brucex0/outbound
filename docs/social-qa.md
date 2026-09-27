@@ -1,5 +1,11 @@
 # Social QA
 
+## 2026-09-27 iOS feed crash review
+
+- Retrieved two matching `Outbound` crash reports from Bruce main (4:05 PM and 4:07 PM): both were main-thread `SIGTRAP` crashes in repeated `UICollectionView` visible-cell/layout updates, not jetsam terminations.
+- Replaced the feed's compositional layout with a full-width self-sizing flow layout and an explicit width-constrained cell measurement path.
+- The changed Swift file type-checks and the full iOS Simulator app build succeeds. Simulator services stopped responding during this pass, so scrolling could not be re-exercised in Simulator; device verification remains outstanding.
+
 ## 2026-09-27 iOS feed review
 
 - Reviewed feed row structure, root tasks, hidden tabs, refresh/pagination races, preview preparation, and app foreground handling.
