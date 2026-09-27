@@ -72,16 +72,6 @@ struct SocialHomeView: View {
         activityStore.activities.compactMap(\.sync?.serverActivityId).sorted()
     }
 
-    private var feedScrollPositionBinding: Binding<ScrollPosition> {
-        Binding(
-            get: { feedScrollPosition },
-            set: { position in
-                guard selectedActivityPost == nil else { return }
-                feedScrollPosition = position
-            }
-        )
-    }
-
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -349,7 +339,7 @@ struct SocialHomeView: View {
             .padding(.vertical, 12)
             .scrollTargetLayout()
         }
-        .scrollPosition(feedScrollPositionBinding)
+        .scrollPosition($feedScrollPosition)
         .refreshable { await refreshFeed(clearUnseenBadge: true) }
     }
 
