@@ -11,7 +11,9 @@
 
 ## Home Surface
 
+- Social uses the persistent Feed, People, Groups, and Routes selector with a 44 dp row, selected-state color, accessible labels, and parity tab analytics. A runner without accepted connections lands on People; otherwise Social opens Feed. An explicit tab choice remains selected while the task stays alive.
 - The Social root has no leading page title; global conditions, community, and notification actions remain trailing controls.
+- Feed owns recognition, Upcoming, Past activities, and the paginated activity feed. People owns inline search, incoming requests, and the accepted-connection list, with Connections opening the existing full search, QR, referral, blocked-account, and pagination destination. Groups owns invitations and joined Group cards with first-Group creation. Routes provides a direct entry into the existing community route library.
 - The Notification Center action uses the shared unread count in a high-contrast numeric badge rather than a low-visibility dot.
 - Connections, Your groups, Upcoming, Past activities, Groups, and Recent activity share the iOS section-label, rounded-card, spacing, and action hierarchy.
 - Connections preserve a footprint-matched initial placeholder, accepted-person previews, active-workout indicators, and a dedicated full-screen list/search surface.
@@ -38,6 +40,7 @@
 - Copy is generated from `ios/Outbound/Outbound/Localizable.xcstrings` for English, Spanish, and Simplified Chinese.
 - Icon actions provide semantic labels and at least 48 dp touch targets.
 - Avatars use the application-wide `OkHttpClient`, follow the backend redirect, cache decoded images, coalesce in-flight URL requests, and retain an initials fallback.
+- Social feature-tab labels and the Routes entry description are sourced from the shared localization catalog for English, Spanish, and Simplified Chinese. Tab selections use the shared `social_tab_selected` analytics event with a bounded tab value and `tab_row` entry source.
 
 ## Verification Scenarios
 
@@ -48,12 +51,13 @@
 
 ## Status And Exceptions
 
-- Home presentation and avatar delivery are aligned with the current iOS implementation.
+- The top-level four-destination Social navigation and destination ownership are implemented. Feed and Groups content are aligned to their iOS information hierarchy; People discovery retains the existing full Connections destination for QR, referral, blocks, and paginated search.
+- Android Routes opens the existing community route library as a full destination instead of embedding that library under the Social tab. This is an Android navigation limitation and is the remaining visible difference in the feature selector.
 - Activity feed and detail behavior follow the iOS social surface, using the shared Android activity share-card renderer and localized copy.
 - Group creation offers two server-backed templates. Group detail renders policy-specific capabilities, notices, events, membership, and management operations from the unified Group contract.
 - Android uses a full-screen Compose dialog for Connections because the current feature module does not yet own a nested navigation graph; this preserves the iOS information hierarchy and back behavior without a platform-visible modal card.
 - Android uses full-screen Compose dialogs for the personal QR and scanner destinations for the same navigation-ownership reason. CameraX plus ZXing replaces VisionKit while preserving the accepted payload and submission contract.
-- Broader Social journey items outside this focused home-polish change remain tracked by `docs/android-social-parity-prompt.md` and must not be considered complete based on this manifest.
+- Remaining Social differences and manual reference checks remain tracked by `docs/android-social-parity-prompt.md`; this manifest records the current tab navigation and its Routes navigation exception.
 
 ## Group Reference Scenarios
 

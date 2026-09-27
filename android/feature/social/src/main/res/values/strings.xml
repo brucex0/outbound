@@ -1,21 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
+    <string name="social_activity_photo">Activity photo</string>
+    <string name="social_activity_photos">Photos</string>
     <string name="social_add_connection">Add connection</string>
     <string name="social_all">All</string>
     <string name="social_already_connected">You’re already connected</string>
+    <string name="social_back">Back</string>
     <string name="social_block">Block person</string>
     <string name="social_block_confirmation_message">Blocking removes the connection and hides each person’s content.</string>
     <string name="social_block_confirmation_title">Block this person?</string>
     <string name="social_camera_access_description">Allow camera access in Settings to scan a Plainstride connection code.</string>
     <string name="social_camera_access_needed">Camera access needed</string>
-    <string name="social_checking_qr_code">Checking QR code…</string>
     <string name="social_cancel">Cancel</string>
+    <string name="social_checking_qr_code">Checking QR code…</string>
     <string name="social_cheer">Send a private Cheer</string>
-
-
-
-
     <string name="social_close">Close</string>
     <string name="social_community">Social community</string>
     <string name="social_conditions">Conditions</string>
@@ -36,6 +35,11 @@
     <string name="social_dont_ask_again">Don’t ask again</string>
     <string name="social_feed">Recent activity</string>
     <string name="social_feed_empty">Activities shared by you and your connections will appear here.</string>
+    <string name="social_group">Your Group</string>
+    <string name="social_group_create">Create Group</string>
+    <string name="social_group_empty">Active. Positive. Together. Create a private Group with people who help you keep moving.</string>
+    <string name="social_group_progress">%1$d of %2$d activities this week</string>
+    <string name="social_group_reactivate">Reactivate</string>
     <string name="social_groups">Groups</string>
     <string name="social_guide_noticed">Guide noticed this</string>
     <string name="social_hybrid">Meet up or join from anywhere</string>
@@ -54,16 +58,23 @@
     <string name="social_more">More actions</string>
     <string name="social_my_plainstride_qr_code">My Plainstride QR code</string>
     <string name="social_my_qr_code">My QR Code</string>
+    <string name="social_no_shared_activities">No shared activities yet.</string>
     <string name="social_not_connection_code">Not a Plainstride connection code</string>
     <string name="social_notifications">Notification Center</string>
     <string name="social_offline">Showing saved Social activity</string>
-    <string name="social_open_settings">Open Settings</string>
     <string name="social_open">Open</string>
+    <string name="social_open_settings">Open Settings</string>
     <string name="social_pace">Pace</string>
     <string name="social_past_activities">Past activities</string>
     <string name="social_past_empty">No shared activity results yet.</string>
+    <string name="social_photo_finish">Finish</string>
+    <string name="social_photo_start">Start</string>
+    <string name="social_profile">Profile</string>
+    <string name="social_profile_actions">Profile actions</string>
+    <string name="social_profile_milestones">MILESTONES</string>
     <string name="social_qr_code_unavailable">QR code unavailable</string>
     <string name="social_qr_load_failure">Could not load your connection code. Try again.</string>
+    <string name="social_recent_activities">RECENT ACTIVITIES</string>
     <string name="social_recognition_earned">You earned a new Social milestone.</string>
     <string name="social_refresh">Refresh Social</string>
     <string name="social_relationship">Relationship: %1$s</string>
@@ -73,11 +84,8 @@
     <string name="social_report">Report post</string>
     <string name="social_requests">Requests</string>
     <string name="social_review">Review</string>
-    <string name="social_activity_photos">Photos</string>
-    <string name="social_activity_photo">Activity photo</string>
-    <string name="social_photo_start">Start</string>
-    <string name="social_photo_finish">Finish</string>
     <string name="social_route">Activity route</string>
+    <string name="social_routes_open">Explore saved, shared, and community routes.</string>
     <string name="social_safety_body">Reports are private. Blocking also removes the connection and hides each person’s content.</string>
     <string name="social_safety_title">Safety options</string>
     <string name="social_scan_friend_qr_code">Scan a friend’s Plainstride QR code.</string>
@@ -91,10 +99,12 @@
     <string name="social_share_award">Share award</string>
     <string name="social_share_award_text">%1$s earned an award on Plainstride</string>
     <string name="social_show_my_qr_code">Show my QR code</string>
+    <string name="social_tab_feed">Feed</string>
+    <string name="social_tab_groups">Groups</string>
+    <string name="social_tab_people">People</string>
+    <string name="social_tab_routes">Routes</string>
     <string name="social_time">Time</string>
     <string name="social_title">Social</string>
     <string name="social_upcoming">Upcoming</string>
     <string name="social_upcoming_empty">No upcoming activities yet.</string>
-    <string name="social_profile">Profile</string><string name="social_back">Back</string><string name="social_profile_actions">Profile actions</string><string name="social_profile_milestones">MILESTONES</string><string name="social_recent_activities">RECENT ACTIVITIES</string><string name="social_no_shared_activities">No shared activities yet.</string>
-
 </resources>

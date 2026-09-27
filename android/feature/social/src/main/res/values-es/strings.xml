@@ -1,21 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
+    <string name="social_activity_photo">Foto de la actividad</string>
+    <string name="social_activity_photos">Fotos</string>
     <string name="social_add_connection">Añadir contacto</string>
     <string name="social_all">Ver todo</string>
     <string name="social_already_connected">Ya están conectados</string>
+    <string name="social_back">Atrás</string>
     <string name="social_block">Bloquear persona</string>
     <string name="social_block_confirmation_message">Al bloquear se elimina la conexión y se oculta el contenido de ambas personas.</string>
     <string name="social_block_confirmation_title">¿Bloquear a esta persona?</string>
     <string name="social_camera_access_description">Permite el acceso a la cámara en Ajustes para escanear un código de contacto de Plainstride.</string>
     <string name="social_camera_access_needed">Se necesita acceso a la cámara</string>
-    <string name="social_checking_qr_code">Comprobando el código QR…</string>
     <string name="social_cancel">Cancelar</string>
+    <string name="social_checking_qr_code">Comprobando el código QR…</string>
     <string name="social_cheer">Enviar un ánimo privado</string>
-
-
-
-
     <string name="social_close">Cerrar</string>
     <string name="social_community">Comunidad</string>
     <string name="social_conditions">Condiciones</string>
@@ -36,6 +35,11 @@
     <string name="social_dont_ask_again">No volver a preguntar</string>
     <string name="social_feed">Actividad reciente</string>
     <string name="social_feed_empty">Aquí aparecerán las actividades que compartan tú y tus conexiones.</string>
+    <string name="social_group">Tu Grupo</string>
+    <string name="social_group_create">Crear Grupo</string>
+    <string name="social_group_empty">Activos. Positivos. Juntos. Crea un Grupo privado con quienes te ayudan a seguir en movimiento.</string>
+    <string name="social_group_progress">%1$d de %2$d actividades esta semana</string>
+    <string name="social_group_reactivate">Reactivar</string>
     <string name="social_groups">Grupos</string>
     <string name="social_guide_noticed">Tu guía se fijó en esto</string>
     <string name="social_hybrid">Reúnete o participa desde donde estés</string>
@@ -54,16 +58,23 @@
     <string name="social_more">Más acciones</string>
     <string name="social_my_plainstride_qr_code">Mi código QR de Plainstride</string>
     <string name="social_my_qr_code">Mi código QR</string>
+    <string name="social_no_shared_activities">Todavía no hay actividades compartidas.</string>
     <string name="social_not_connection_code">No es un código de contacto de Plainstride</string>
     <string name="social_notifications">Centro de notificaciones</string>
     <string name="social_offline">Mostrando la actividad social guardada</string>
-    <string name="social_open_settings">Abrir Ajustes</string>
     <string name="social_open">Abrir</string>
+    <string name="social_open_settings">Abrir Ajustes</string>
     <string name="social_pace">Ritmo</string>
     <string name="social_past_activities">Actividades anteriores</string>
     <string name="social_past_empty">Aún no hay resultados de actividades compartidas.</string>
+    <string name="social_photo_finish">Final</string>
+    <string name="social_photo_start">Inicio</string>
+    <string name="social_profile">Perfil</string>
+    <string name="social_profile_actions">Acciones del perfil</string>
+    <string name="social_profile_milestones">HITOS</string>
     <string name="social_qr_code_unavailable">Código QR no disponible</string>
     <string name="social_qr_load_failure">No se pudo cargar tu código de contacto. Inténtalo de nuevo.</string>
+    <string name="social_recent_activities">ACTIVIDADES RECIENTES</string>
     <string name="social_recognition_earned">Has conseguido un nuevo logro social.</string>
     <string name="social_refresh">Actualizar Social</string>
     <string name="social_relationship">Relación: %1$s</string>
@@ -73,11 +84,8 @@
     <string name="social_report">Reportar publicación</string>
     <string name="social_requests">Solicitudes</string>
     <string name="social_review">Revisar</string>
-    <string name="social_activity_photos">Fotos</string>
-    <string name="social_activity_photo">Foto de la actividad</string>
-    <string name="social_photo_start">Inicio</string>
-    <string name="social_photo_finish">Final</string>
     <string name="social_route">Ruta de la actividad</string>
+    <string name="social_routes_open">Explora rutas guardadas, compartidas y de la comunidad.</string>
     <string name="social_safety_body">Los reportes son privados. Al bloquear también se elimina la conexión y se oculta el contenido de ambas personas.</string>
     <string name="social_safety_title">Opciones de seguridad</string>
     <string name="social_scan_friend_qr_code">Escanea el código QR de Plainstride de un amigo.</string>
@@ -91,10 +99,12 @@
     <string name="social_share_award">Compartir logro</string>
     <string name="social_share_award_text">%1$s consiguió un logro en Plainstride</string>
     <string name="social_show_my_qr_code">Mostrar mi código QR</string>
+    <string name="social_tab_feed">Actividad</string>
+    <string name="social_tab_groups">Grupos</string>
+    <string name="social_tab_people">Personas</string>
+    <string name="social_tab_routes">Rutas</string>
     <string name="social_time">Tiempo</string>
     <string name="social_title">Social</string>
     <string name="social_upcoming">Próximas</string>
     <string name="social_upcoming_empty">Aún no hay actividades próximas.</string>
-    <string name="social_profile">Perfil</string><string name="social_back">Atrás</string><string name="social_profile_actions">Acciones del perfil</string><string name="social_profile_milestones">LOGROS</string><string name="social_recent_activities">ACTIVIDADES RECIENTES</string><string name="social_no_shared_activities">Todavía no hay actividades compartidas.</string>
-
 </resources>
