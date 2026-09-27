@@ -1756,9 +1756,11 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
             }
 
             let mapHeight = max(mapView.bounds.height, 1)
-            let clampedBottom = min(bottomInset + 28, mapHeight * (isRouteProminent ? 0.72 : 0.42))
-            let topInset = isRouteProminent ? CGFloat(84) : CGFloat(52)
-            let padding = UIEdgeInsets(top: topInset, left: 28, bottom: clampedBottom, right: 28)
+            let topInset = isRouteProminent ? CGFloat(104) : CGFloat(72)
+            let minimumRouteViewportHeight = max(160, mapHeight * 0.20)
+            let maximumBottomInset = max(0, mapHeight - topInset - minimumRouteViewportHeight)
+            let clampedBottom = min(bottomInset + 40, maximumBottomInset)
+            let padding = UIEdgeInsets(top: topInset, left: 40, bottom: clampedBottom, right: 40)
             mapView.setVisibleMapRect(mapRect, edgePadding: padding, animated: animated)
         }
     }
