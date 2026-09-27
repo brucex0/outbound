@@ -72,10 +72,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalUriHandler
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -261,6 +263,8 @@ fun TodayScreen(
     var editingGoal by rememberSaveable { mutableStateOf(false) }
     var overflowExpanded by rememberSaveable { mutableStateOf(false) }
     var handledStartRequest by rememberSaveable { mutableStateOf(startRequest) }
+    var mapOverlayBottomPadding by remember { mutableStateOf(0.dp) }
+    val density = LocalDensity.current
     var setupPhoto by remember { mutableStateOf<Bitmap?>(null) }
     val photoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { photo ->
         if (photo != null) setupPhoto = photo
@@ -292,17 +296,17 @@ fun TodayScreen(
         if (initialWorkoutId != null && (suggestion?.id == initialWorkoutId || suggestion?.plannedWorkoutId == initialWorkoutId)) showsDetail = true
     }
 
-    Box(modifier.fillMaxSize()) {
-        PlainstrideRouteMap(
-            points = emptyList(),
-            modifier = Modifier.fillMaxSize(),
-            showUserLocation = locationGranted,
-            preciseLocationGranted = locationGranted,
-            focusOnUser = true,
-        )
-        // The route map can show through the toolbar while launch controls stay above its 64dp pill and 12dp margin.
-        Column(Modifier.fillMaxSize().padding(bottom = 76.dp)) {
-            Box(Modifier.fillMaxWidth().weight(1f)) {
+    // Keep the map in the upper region, matching iOS Today; the dock owns the separate lower region.
+    Column(modifier.fillMaxSize().padding(bottom = 76.dp)) {
+        Box(Modifier.fillMaxWidth().weight(1f)) {
+            PlainstrideRouteMap(
+                points = emptyList(),
+                modifier = Modifier.fillMaxSize(),
+                showUserLocation = locationGranted,
+                preciseLocationGranted = locationGranted,
+                focusOnUser = true,
+                bottomContentPadding = mapOverlayBottomPadding,
+            )
             Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 TodayTopControls(weather, useFahrenheit, inboxCount, { if (weather != null) showsWeather = true }, onOpenInbox)
                 Box {
@@ -316,7 +320,7 @@ fun TodayScreen(
                     }
                 }
             }
-            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).onSizeChanged { mapOverlayBottomPadding = with(density) { it.height.toDp() } }, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 when {
                     state.suggestion is CachedResource.Loading && state.refreshError == null -> TodaySkeleton()
                     suggestion != null && activityChoice == TodayActivityChoice.PLANNED -> WorkoutRecommendationCard(
@@ -383,7 +387,6 @@ fun TodayScreen(
                 onOpenLiveTrack = onOpenLiveTrack,
                 onOpenShoes = onOpenShoes,
             )
-        }
     }
 
     if (planPicker.open) {
