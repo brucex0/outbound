@@ -210,6 +210,16 @@ sealed interface ConnectionEffect {
             }
         }
     }
+    suspend fun loadFeedPhotoThumbnail(url: String): ByteArray? {
+        val path = android.net.Uri.parse(url).pathSegments
+        val marker = path.indexOf("activity-photos")
+        val photoId = path.getOrNull(marker + 1)
+        val representation = path.getOrNull(marker + 2)
+        if (marker >= 0 && photoId != null && representation == "thumbnail") {
+            return repository.downloadPostPhoto(photoId, thumbnail = true).getOrNull()
+        }
+        return null
+    }
     fun closeActivityDetail() {
         activityPhotoJob?.cancel()
         activityPhotoJob = null
