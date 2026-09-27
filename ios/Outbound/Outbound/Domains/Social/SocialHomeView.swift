@@ -1096,6 +1096,7 @@ struct SocialHomeView: View {
                 .accessibilityAction(named: String(localized: "Open activity")) {
                     selectedActivityPost = post
                 }
+                .id(post.id)
                 .onAppear {
                     guard post.id == socialStore.state.posts.first?.id,
                           hasInitializedFeatureTab,
