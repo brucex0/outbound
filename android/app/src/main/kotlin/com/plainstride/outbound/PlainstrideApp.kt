@@ -25,6 +25,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Icon
@@ -126,6 +131,7 @@ import com.plainstride.outbound.feature.livecoach.LiveCoachRecordingEffect
 import com.plainstride.outbound.feature.livecoach.LiveCoachSettingsSection
 import com.plainstride.outbound.feature.assistant.AssistantRoute
 import com.plainstride.outbound.feature.assistant.MusicRoute
+import com.plainstride.outbound.core.assistant.VoiceSport
 import com.plainstride.outbound.feature.social.SocialRoute
 import com.plainstride.outbound.feature.today.WorkoutLaunchIntent
 import com.plainstride.outbound.feature.today.TodayManualLaunch
@@ -144,6 +150,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import android.content.Intent
 import android.provider.Settings
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import com.plainstride.outbound.reminders.ReminderViewModel
 
 private enum class TopLevelDestination(
@@ -249,6 +256,9 @@ private fun SignedInApp(
     var todayStartRequest by remember { mutableStateOf(0) }
     var todayRefreshRequest by remember { mutableStateOf(0) }
     var planBuilderSource by remember { mutableStateOf<PlanBuilderSource?>(null) }
+    var assistantEntryDestination by remember { mutableStateOf("me") }
+    var trackedAssistantExposure by remember { mutableStateOf(false) }
+    var trackedAssistantAnimation by remember { mutableStateOf(false) }
     val activeRecordingViewModel:ActiveRecordingViewModel=hiltViewModel()
     val hasActiveSession by activeRecordingViewModel.active.collectAsStateWithLifecycle()
     var suppressRecordingRecovery by remember { mutableStateOf(false) }
@@ -280,7 +290,7 @@ private fun SignedInApp(
         val destination = navigationUri?.pathSegments?.firstOrNull() ?: return@LaunchedEffect
         when (destination) {
             "today" -> { reminderWorkoutId=navigationUri.getQueryParameter("workout");navController.navigate(TopLevelDestination.Today.route) }
-            "assistant" -> navController.navigate(ASSISTANT_ROUTE)
+            "assistant" -> { assistantEntryDestination = TopLevelDestination.entries.firstOrNull { it.route == currentDestination?.route }?.route ?: "me"; navController.navigate(ASSISTANT_ROUTE) }
             "inbox" -> navController.navigate(NOTIFICATIONS_ROUTE)
             "activity" -> { activityTarget=navigationUri.getQueryParameter("id");navController.navigate(ACTIVITY_HISTORY_ROUTE) }
             "connections", "event", "group", "post", "invitation" -> { socialTarget=destination to navigationUri.getQueryParameter("id").orEmpty();navController.navigate(TopLevelDestination.Social.route) }
@@ -309,15 +319,40 @@ private fun SignedInApp(
         bottomBar = {
             val primaryDestination = TopLevelDestination.entries.firstOrNull { it.route == currentDestination?.route }
             if (primaryDestination != null) {
+                LaunchedEffect(primaryDestination) {
+                    if (!trackedAssistantExposure) {
+                        integrationViewModel.trackAssistantLauncherEligibleExposure(primaryDestination.route)
+                        trackedAssistantExposure = true
+                    }
+                    if (!trackedAssistantAnimation) {
+                        delay(500)
+                        integrationViewModel.trackAssistantLauncherAnimationShown(primaryDestination.route)
+                        trackedAssistantAnimation = true
+                    }
+                }
+                val launcherMotion = rememberInfiniteTransition(label = "assistantLauncher")
+                val launcherScale by launcherMotion.animateFloat(
+                    initialValue = 1f,
+                    targetValue = 1.16f,
+                    animationSpec = infiniteRepeatable(animation = keyframes {
+                        durationMillis = 4_000
+                        1f at 0
+                        1.16f at 320
+                        1f at 640
+                        1f at 4_000
+                    }),
+                    label = "assistantLauncherScale",
+                )
                 Row(
                     Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     PlainstrideFloatingAction(style = PlainstrideFloatingActionStyle.Accent, onClick = {
+                        assistantEntryDestination = primaryDestination.route
                         integrationViewModel.trackAssistantOpened(primaryDestination.route)
                         navController.navigate(ASSISTANT_ROUTE) { launchSingleTop = true }
                     }) {
-                        Icon(Icons.Default.AutoAwesome, stringResource(R.string.tab_assistant), Modifier.size(22.dp))
+                        Icon(Icons.Default.AutoAwesome, stringResource(R.string.tab_assistant), Modifier.size(22.dp).graphicsLayer { scaleX = launcherScale; scaleY = launcherScale })
                     }
                     Spacer(Modifier.width(10.dp))
                     val contextualStart = primaryDestination == TopLevelDestination.Today && !hasActiveSession
@@ -519,7 +554,31 @@ private fun SignedInApp(
             composable(ASSISTANT_ROUTE) {
                 AssistantRoute(
                     requireNotNull(accountId),
+                    screen = assistantEntryDestination,
                     onClose = { navController.popBackStack() },
+                    onNavigate = { route ->
+                        when (route) {
+                            "today", "social", "me" -> navController.navigate(route) { launchSingleTop = true }
+                            MUSIC_ROUTE, ACTIVITY_HISTORY_ROUTE, HEALTH_ROUTE, "settings" -> navController.navigate(route) { launchSingleTop = true }
+                            else -> navController.navigate("settings") { launchSingleTop = true }
+                        }
+                    },
+                    onPrepareActivity = { sport, distanceMeters, durationSeconds ->
+                        val isBike = sport == VoiceSport.Bike
+                        val goal = when {
+                            distanceMeters != null -> RecordingGoal(RecordingGoalType.DISTANCE, targetDistanceMeters = distanceMeters)
+                            durationSeconds != null -> RecordingGoal(RecordingGoalType.TIME, targetDurationSeconds = durationSeconds.toLong())
+                            else -> RecordingGoal()
+                        }
+                        recordingLaunch = RecordingLaunchConfiguration(
+                            activityKind = if (isBike) ActivityKind.CYCLING else ActivityKind.RUNNING,
+                            goal = goal,
+                            entrySource = "assistant",
+                            gearId = integration.defaultGearId,
+                        )
+                        navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
+                    },
+                    onActionApplied = { todayRefreshRequest += 1 },
                 )
             }
             composable(MY_QR_ROUTE) {
@@ -535,6 +594,11 @@ private fun SignedInApp(
                     unitSystem = measurementUnitSystem,
                     weightKilograms = integration.weightKilograms,
                     onSavedSideEffects = { review -> suppressRecordingRecovery = true; healthViewModel.export(review); integrationViewModel.completePlannedWorkout(recordingLaunch, review) },
+                    onOpenAssistant = {
+                        assistantEntryDestination = "recording"
+                        integrationViewModel.trackAssistantOpened("today", "live_session")
+                        navController.navigate(ASSISTANT_ROUTE) { launchSingleTop = true }
+                    },
                     onSaved = { review: RecordedActivityReview, photoAlbumExport: ActivityPhotoAlbumExportResult? ->
                         val photoMessage = when (photoAlbumExport) {
                             ActivityPhotoAlbumExportResult.SAVED -> R.string.photo_album_saved

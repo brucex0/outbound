@@ -1,8 +1,8 @@
 package com.plainstride.outbound.core.assistant
 
 import java.time.Instant
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -35,11 +35,13 @@ fun createCompanionApi(baseUrl: String, client: OkHttpClient): CompanionApi = Re
     .build().create(CompanionApi::class.java)
 
 interface CompanionRepository {
-    val state: Flow<CompanionConversationState>
+    val state: StateFlow<CompanionConversationState>
     suspend fun restore(accountId: String, conversationKey: String = "android-assistant")
     suspend fun send(accountId: String, request: CompanionTurnRequest): ApiResult<CompanionTurnResponse>
     suspend fun decide(accountId: String, actionId: String, accept: Boolean): ApiResult<CompanionDecisionResponse>
     suspend fun reset(accountId: String, conversationKey: String = "android-assistant")
+    suspend fun appendAssistantMessage(accountId: String, text: String, capability: AssistantCapability? = null)
+    suspend fun recordLocalTurn(accountId: String, userText: String, assistantText: String, capability: AssistantCapability, navigationTarget: String? = null)
 }
 
 class OfflineFirstCompanionRepository(
@@ -69,8 +71,17 @@ class OfflineFirstCompanionRepository(
             mutableState.value = mutableState.value.copy(sending = false, lastFailure = "authentication_required")
             return@withLock ApiResult.Failure(com.plainstride.outbound.core.network.ApiFailure(com.plainstride.outbound.core.network.ApiErrorCode.Unauthenticated, false))
         }
-        val result = apiCall { api.turn("Bearer $token", request.copy(prompt = prompt, recentMessages = history.dropLast(1).takeLast(12))) }
+        val result = apiCall {
+            api.turn(
+                "Bearer $token",
+                request.copy(prompt = prompt, recentMessages = history.dropLast(1).takeLast(12).map { CompanionMessage(it.role, it.text) }),
+            )
+        }
         if (result is ApiResult.Success) {
+            if (result.value.message.isGenericFailureReply()) {
+                mutableState.value = mutableState.value.copy(sending = false, lastFailure = "unusable_response")
+                return@withLock ApiResult.Failure(com.plainstride.outbound.core.network.ApiFailure(com.plainstride.outbound.core.network.ApiErrorCode.InvalidResponse, false))
+            }
             val updated = (history + CompanionMessage("assistant", result.value.message, Instant.now().toString())).takeLast(MAX_MESSAGES)
             mutableState.value = CompanionConversationState(updated, confirmation = result.value.confirmationRequest, suggestedReplies = result.value.suggestedReplies)
             persist(accountId, request.conversationKey, updated)
@@ -90,8 +101,31 @@ class OfflineFirstCompanionRepository(
         mutableState.value = CompanionConversationState()
     }
 
+    override suspend fun appendAssistantMessage(accountId: String, text: String, capability: AssistantCapability?) = mutex.withLock {
+        val key = "android-assistant"
+        val messages = (mutableState.value.messages + CompanionMessage("assistant", text, Instant.now().toString(), capability)).takeLast(MAX_MESSAGES)
+        mutableState.value = mutableState.value.copy(messages = messages, sending = false, lastFailure = null)
+        persist(accountId, key, messages)
+    }
+
+    override suspend fun recordLocalTurn(accountId: String, userText: String, assistantText: String, capability: AssistantCapability, navigationTarget: String?) = mutex.withLock {
+        val key = "android-assistant"
+        val messages = (mutableState.value.messages + listOf(
+            CompanionMessage("user", userText, Instant.now().toString(), capability),
+            CompanionMessage("assistant", assistantText, Instant.now().toString(), capability, navigationTarget),
+        )).takeLast(MAX_MESSAGES)
+        mutableState.value = mutableState.value.copy(messages = messages, sending = false, lastFailure = null)
+        persist(accountId, key, messages)
+    }
+
     private suspend fun persist(accountId: String, key: String, messages: List<CompanionMessage>) = cache.upsert(
         AccountCacheEntity(accountId, NAMESPACE, key, LOCALE, PlainstrideJson.encodeToString(PersistedConversation(messages)), null, System.currentTimeMillis(), null),
+    )
+
+    private fun String.isGenericFailureReply(): Boolean = trim().lowercase() in setOf(
+        "sorry, something went wrong. please try again.",
+        "something went wrong. please try again.",
+        "sorry, something went wrong.",
     )
 
     private companion object { const val NAMESPACE = "companion"; const val LOCALE = "all"; const val MAX_MESSAGES = 40; const val MAX_PROMPT = 8_000 }

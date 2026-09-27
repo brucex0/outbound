@@ -29,9 +29,9 @@ object ActivityVoiceCommandParser {
     }
 
     fun hints(locale: Locale): List<String> = when (locale.language) {
-        "es" -> listOf("inicia una carrera", "prepara una carrera de 5 kilómetros", "correr 30 minutos", "inicia un paseo en bicicleta")
-        "zh" -> listOf("开始跑步", "准备五公里跑步", "跑三十分钟", "开始骑行")
-        else -> listOf("start a run", "start a 5K run", "start a 10K run", "run for 30 minutes", "bike for 45 minutes")
+        "es" -> listOf("inicia una carrera", "prepara una carrera de 5 kilómetros", "correr 30 minutos", "inicia un paseo en bicicleta", "kilómetros", "millas", "minutos")
+        "zh" -> listOf("开始跑步", "准备五公里跑步", "跑三十分钟", "开始骑行", "公里", "英里", "分钟")
+        else -> listOf("start a run", "start a bike", "start a 3K run", "start a 5K run", "start a 10K run", "start a 20 minute run", "start a 30 minute run", "start a 45 minute run", "bike for 30 minutes", "bike for 45 minutes", "ride for 30 minutes", "go for a run", "go for a bike ride", "kilometers", "miles", "minutes")
     }
 
     private fun distance(text: String, locale: Locale): Double? {
@@ -54,9 +54,14 @@ object ActivityVoiceCommandParser {
         val replacements = mapOf(
             "half an hour" to "30 minutes", "half hour" to "30 minutes", "an hour" to "1 hour", "one hour" to "1 hour",
             "media hora" to "30 minutos", "una hora" to "1 hora", "forty five" to "45", "thirty" to "30", "twenty" to "20",
-            "ten" to "10", "five" to "5", "three" to "3", "cuarenta y cinco" to "45", "treinta" to "30", "veinte" to "20",
-            "diez" to "10", "cinco" to "5", "tres" to "3", "三十" to "30", "二十" to "20", "五" to "5", "三" to "3",
-            " kay" to " k", " kays" to " k",
+            "fourty five" to "45", "thirty five" to "35", "twenty five" to "25", "forty" to "40", "fourty" to "40",
+            "fifty" to "50", "sixty" to "60", "fifteen" to "15", "eleven" to "11", "twelve" to "12", "thirteen" to "13",
+            "fourteen" to "14", "sixteen" to "16", "seventeen" to "17", "eighteen" to "18", "nineteen" to "19",
+            "ten" to "10", "one" to "1", "two" to "2", "five" to "5", "three" to "3", "four" to "4", "six" to "6",
+            "seven" to "7", "eight" to "8", "nine" to "9", "cuarenta y cinco" to "45", "treinta" to "30", "veinte" to "20",
+            "diez" to "10", "cinco" to "5", "tres" to "3", "一" to "1", "三十" to "30", "二十" to "20", "十" to "10", "五" to "5", "三" to "3",
+            " kay" to " k", " okay" to " k", " kays" to " k", " case" to " k",
+            "can run" to "k run", "came run" to "k run", "come run" to "k run",
         )
         replacements.forEach { (from, to) -> text = text.replace(from, to) }
         return text.replace(Regex("\\s+"), " ").trim()

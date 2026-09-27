@@ -89,6 +89,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
   - a lightweight conversation timeline
   - a bottom composer with a microphone shortcut for short activity-start commands, including an animated listening wave and live transcript text in the composer
 - The Today workout card no longer carries a separate sparkle button or `Ask companion` menu action. Its assistant work uses the global `AssistantStore` transcript and Today-focused context.
+- Android parity source: `android/feature/assistant/IOS_PARITY.md` lists the Compose screens, repository, activity command handoff, translated copy, analytics, and scenario checklist. Android shares the companion API and deterministic local responses, and uses platform speech recognition in place of Apple Speech/Foundation Models.
 - The Reset button clears the stored conversation and restores the seeded intro message.
 
 ## Response Strategy

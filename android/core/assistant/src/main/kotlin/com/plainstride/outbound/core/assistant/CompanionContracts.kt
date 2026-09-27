@@ -22,7 +22,24 @@ import kotlinx.serialization.Serializable
     @SerialName("memory") Memory,
 }
 
-@Serializable data class CompanionMessage(val role: String, val text: String, val createdAt: String? = null)
+@Serializable data class CompanionMessage(
+    val role: String,
+    val text: String,
+    val createdAt: String? = null,
+    val capability: AssistantCapability? = null,
+    val navigationTarget: String? = null,
+)
+
+@Serializable enum class AssistantCapability { Discover, Navigate, Support, Brainstorm, Plan }
+
+@Serializable data class AssistantSuggestion(
+    val id: String,
+    val capability: AssistantCapability,
+    val title: String,
+    val prompt: String,
+)
+
+data class PreparedActivityCommand(val sport: VoiceSport, val distanceMeters: Double? = null, val durationSeconds: Int? = null)
 @Serializable data class CompanionTurnRequest(
     val task: CompanionTask = CompanionTask.AnswerTrainingQuestion,
     val surface: CompanionSurface = CompanionSurface.Assistant,
@@ -41,7 +58,13 @@ import kotlinx.serialization.Serializable
 @Serializable data class CompanionContextReceipt(val manifestId: String, val task: CompanionTask, val tokenBudget: Int, val estimatedTokens: Int, val includedReferenceCount: Int)
 @Serializable data class CompanionTurnResponse(val message: String, val locale: String? = null, val action: CompanionAction? = null, val confirmationRequest: CompanionConfirmation? = null, val suggestedReplies: List<String> = emptyList(), val runnerModelVersion: String, val contextReceipt: CompanionContextReceipt)
 @Serializable data class CompanionDecisionRequest(val decision: String)
-@Serializable data class CompanionDecidedAction(val id: String, val status: String, val explanation: String)
+@Serializable data class CompanionDecidedAction(val id: String, val status: String, val explanation: String, val afterState: CompanionActionAfterState? = null)
+@Serializable data class CompanionActionAfterState(
+    val workoutId: String? = null,
+    val durationSeconds: Int? = null,
+    val title: String? = null,
+    val summary: String? = null,
+)
 @Serializable data class CompanionDecisionResponse(val action: CompanionDecidedAction)
 
 data class CompanionConversationState(

@@ -45,6 +45,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.ExpandLess
@@ -143,6 +144,7 @@ fun RecordingRoute(
     onSaved: (RecordedActivityReview, ActivityPhotoAlbumExportResult?) -> Unit,
     onSavedSideEffects: (RecordedActivityReview) -> Unit = {},
     onExit: () -> Unit,
+    onOpenAssistant: () -> Unit = {},
     saveActivityPhotosToAlbum: Boolean = true,
     onPhotoAlbumPermissionDenied: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -438,6 +440,7 @@ fun RecordingRoute(
                 onFinish = viewModel::requestFinish,
                 finishEnabled=!ui.pendingMedia,
                 onListen = ::listenForCommand,
+                onOpenAssistant = onOpenAssistant,
                 voiceListening = voiceListening,
                 onDashboardChanged = viewModel::trackDashboardChanged,
             )
@@ -584,6 +587,7 @@ private fun LiveRecordingScreen(
     onFinish: () -> Unit,
     finishEnabled:Boolean,
     onListen: () -> Unit,
+    onOpenAssistant: () -> Unit,
     voiceListening: Boolean,
     onDashboardChanged: (Boolean) -> Unit,
 ) {
@@ -615,6 +619,11 @@ private fun LiveRecordingScreen(
             ) {
                 IconButton(onClick = onListen) {
                     Icon(Icons.Default.Mic, contentDescription = stringResource(R.string.recording_voice_command))
+                }
+            }
+            Surface(shape = CircleShape, color = controlColor, contentColor = controlContentColor, tonalElevation = 6.dp) {
+                IconButton(onClick = onOpenAssistant) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = stringResource(R.string.recording_open_assistant))
                 }
             }
             Surface(shape = CircleShape, color = controlColor, contentColor = controlContentColor, tonalElevation = 6.dp) {
