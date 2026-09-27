@@ -19,6 +19,7 @@ struct SocialHomeView: View {
     @State private var selectedActivityPost: TogetherPostDTO?
     @State private var selectedCheersPost: TogetherPostDTO?
     @State private var selectedFeatureTab: SocialFeatureTab = .feed
+    @State private var feedScrollPosition = ScrollPosition(edge: .top)
     @State private var hasInitializedFeatureTab = false
     @State private var hasInteractedWithFeatureTabs = false
     @State private var exposedBadgeSignatures: Set<String> = []
@@ -337,6 +338,7 @@ struct SocialHomeView: View {
             }
             .padding(.vertical, 12)
         }
+        .scrollPosition($feedScrollPosition)
         .refreshable { await refreshFeed(clearUnseenBadge: true) }
     }
 
@@ -993,36 +995,39 @@ struct SocialHomeView: View {
                                 .foregroundStyle(.primary)
                                 .padding(.horizontal, OutboundSpacing.screen)
                             if let activity = post.activity {
-                                ZStack(alignment: .bottom) {
-                                    SocialRoutePreviewImage(activity: activity)
-                                    HStack(spacing: 0) {
-                                        socialStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
-                                        socialStat(activity.durationSecs.map(socialDuration) ?? "—", "Time")
-                                        socialStat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
+                                SquarePreviewLayout {
+                                    ZStack(alignment: .bottom) {
+                                        SocialRoutePreviewImage(activity: activity)
+                                        HStack(spacing: 0) {
+                                            socialStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
+                                            socialStat(activity.durationSecs.map(socialDuration) ?? "—", "Time")
+                                            socialStat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 10)
+                                        .background(.regularMaterial)
                                     }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 10)
-                                    .background(.regularMaterial)
-                                }
-                                .aspectRatio(1, contentMode: .fit)
-                                .overlay(alignment: .topLeading) {
-                                    let milestones = milestones(for: activity, isCurrentUser: post.isCurrentUser)
-                                    if !milestones.isEmpty {
-                                        ActivityMilestoneCompactBanner(previews: milestones)
-                                            .padding(12)
+                                    .overlay(alignment: .topLeading) {
+                                        let milestones = milestones(for: activity, isCurrentUser: post.isCurrentUser)
+                                        if !milestones.isEmpty {
+                                            ActivityMilestoneCompactBanner(previews: milestones)
+                                                .padding(12)
+                                        }
+                                    }
+                                    .overlay(alignment: .topTrailing) {
+                                        if activity.totalPhotoCount > 0 {
+                                            Text(photoCountLabel(for: activity.totalPhotoCount))
+                                                .font(.caption.weight(.semibold))
+                                                .foregroundStyle(.white)
+                                                .padding(.horizontal, 10)
+                                                .padding(.vertical, 7)
+                                                .background(.black.opacity(0.48), in: Capsule())
+                                                .padding(12)
+                                        }
                                     }
                                 }
-                                .overlay(alignment: .topTrailing) {
-                                    if activity.totalPhotoCount > 0 {
-                                        Text(photoCountLabel(for: activity.totalPhotoCount))
-                                            .font(.caption.weight(.semibold))
-                                            .foregroundStyle(.white)
-                                            .padding(.horizontal, 10)
-                                            .padding(.vertical, 7)
-                                            .background(.black.opacity(0.48), in: Capsule())
-                                            .padding(12)
-                                    }
-                                }
+                                .frame(maxWidth: .infinity)
+                                .clipped()
                             }
                         }
                         if let caption = post.caption, !caption.isEmpty {
@@ -2503,18 +2508,21 @@ private struct SocialNotificationActivityView: View {
 
                         Text(post.activity?.title ?? String(localized: "Run")).font(.headline)
                         if let activity = post.activity {
-                            ZStack(alignment: .bottom) {
-                                SocialRoutePreviewImage(activity: activity)
-                                HStack(spacing: 0) {
-                                    stat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", String(localized: "Distance"))
-                                    stat(activity.durationSecs.map(duration) ?? "—", String(localized: "Time"))
-                                    stat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
+                            SquarePreviewLayout {
+                                ZStack(alignment: .bottom) {
+                                    SocialRoutePreviewImage(activity: activity)
+                                    HStack(spacing: 0) {
+                                        stat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", String(localized: "Distance"))
+                                        stat(activity.durationSecs.map(duration) ?? "—", String(localized: "Time"))
+                                        stat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 10)
+                                    .background(.regularMaterial)
                                 }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 10)
-                                .background(.regularMaterial)
                             }
-                            .aspectRatio(1, contentMode: .fit)
+                            .frame(maxWidth: .infinity)
+                            .clipped()
                         }
                         if let caption = post.caption, !caption.isEmpty { Text(caption).font(.subheadline) }
                         Button {
@@ -4072,8 +4080,6 @@ private struct SocialRoutePreviewImage: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
-        .aspectRatio(1, contentMode: .fit)
-        .frame(maxWidth: .infinity)
         .allowsHitTesting(false)
         .accessibilityLabel(
             primaryPhotoURL == nil
@@ -4099,6 +4105,29 @@ private struct SocialRoutePreviewImage: View {
             Image(systemName: "point.topleft.down.to.point.bottomright.curvepath")
                 .font(.system(size: 54, weight: .light))
                 .foregroundStyle(OutboundPalette.companion.opacity(0.65))
+        }
+    }
+}
+
+private struct SquarePreviewLayout: Layout {
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) -> CGSize {
+        let side = proposal.width ?? proposal.height ?? 0
+        return CGSize(width: side, height: side)
+    }
+
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) {
+        let squareProposal = ProposedViewSize(width: bounds.width, height: bounds.height)
+        for subview in subviews {
+            subview.place(at: bounds.origin, proposal: squareProposal)
         }
     }
 }
