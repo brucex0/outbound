@@ -33,9 +33,11 @@ router.get("/standalone-workouts", async (c) => {
 });
 
 const objectiveSchema = z.enum(["eventPreparation", "endurance", "speed", "strength", "weightLoss", "healthEnergy"]);
+const catalogFocusSchema = z.enum(["consistency", "comeback", "fiveK", "tenK", "tenMile", "halfMarathon", "marathon"]);
+const goalTypeSchema = z.union([objectiveSchema, catalogFocusSchema]);
 const activitySchema = z.enum(["run", "walk", "bike"]);
 const goalSchema = z.object({
-  type: objectiveSchema,
+  type: goalTypeSchema,
   activities: z.array(activitySchema).min(1).max(3),
   baselineContext: z.enum(["startingOut", "currentlyActive", "returningAfterBreak"]).optional(),
   targetDate: z.string().optional().nullable(),
