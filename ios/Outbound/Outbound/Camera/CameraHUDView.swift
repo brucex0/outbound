@@ -119,17 +119,10 @@ struct CameraHUDView: View {
                 }
 
                 if !isWorkoutPanelExpanded {
-                    VStack {
-                        Spacer()
-
-                        HStack {
-                            Spacer()
-
-                            rightControlRail
-                        }
+                    rightControlRail
                         .padding(.trailing, 16)
                         .padding(.bottom, railBottomPadding)
-                    }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 }
 
                 if let flyingCapturedPhoto {
