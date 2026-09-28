@@ -333,7 +333,6 @@ private fun MeOverview(
             }
             item { MilestonesOverviewCard(milestones, onMilestones) }
             item { activityContent() }
-            item { Button(onClick = onSettings, Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Icon(Icons.Outlined.Settings, null); Text(stringResource(R.string.open_settings), Modifier.padding(start = 8.dp)) } }
             if (state.loading) item { Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
         }
     }

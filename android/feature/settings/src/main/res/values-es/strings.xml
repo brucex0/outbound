@@ -31,7 +31,6 @@
     <string name="mode">Modo</string>
     <string name="no_active_plan">Sin plan activo</string>
     <string name="no_active_plan_body">Configura un plan desde Hoy cuando quieras.</string>
-    <string name="open_settings">Abrir ajustes</string>
     <string name="photos_save_activity">Guardar fotos de las actividades</string>
     <string name="photos_save_activity_detail">Añade las fotos automáticamente al álbum Plainstride</string>
     <string name="photos_section">Fotos</string>
