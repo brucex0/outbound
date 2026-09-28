@@ -8,6 +8,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
+import android.util.Log
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -353,6 +354,7 @@ fun RecordingRoute(
 
     LaunchedEffect(ui.countdown) {
         val current = ui.countdown ?: return@LaunchedEffect
+        if (BuildConfig.DEBUG) Log.d("RecordingStart", "countdown_step=$current voiceReady=${ui.countdownVoiceReady}")
         if (ui.countdownVoiceReady) {
             if (current == 0) viewModel.speakGo() else viewModel.speakCountdown(current)
         }

@@ -32,6 +32,7 @@
 
 - Visible strings use generated shared localization resources in `src/main/res`.
 - Setup is tracked only when its screen is shown. Start, pause, resume, finish, save eligibility, discard, surface, media, dashboard-state, and Auto Pause configuration events use the canonical sanitized iOS event names and Android platform property.
+- Debug builds log direct-launch Voice Guide precedence, TTS engine initialization and locale selection, countdown cue enqueue results, and TTS playback callbacks under `RecordingStart` and `RecordingVoice`; logs never include spoken text.
 - The debug simulator uses `activity_configuration_changed`, `activity_simulation_started`, and `activity_simulation_control_used` with the iOS allowlisted property names and coarse speed/distance values.
 - Controls expose semantic labels, retain 48dp-or-larger primary targets, and do not rely on color alone.
 

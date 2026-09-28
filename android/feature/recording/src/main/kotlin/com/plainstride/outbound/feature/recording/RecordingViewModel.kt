@@ -1,6 +1,7 @@
 package com.plainstride.outbound.feature.recording
 
 import android.content.Context
+import android.util.Log
 import java.io.File
 import java.security.MessageDigest
 import java.time.Instant
@@ -97,6 +98,7 @@ class RecordingViewModel @Inject constructor(
             startImmediately = configuration.startImmediately,
         )
         mutableState.value = mutableState.value.copy(launch = effective)
+        debugLog("configure source=${effective.entrySource} direct=${configuration.startImmediately} restoredApplied=${!configuration.startImmediately && restored?.activityKind == configuration.activityKind} requestedVoice=${configuration.voiceGuideEnabled} restoredVoice=${restored?.voiceGuideEnabled} effectiveVoice=${effective.voiceGuideEnabled}")
         if (!effective.startImmediately) analytics.record(AnalyticsEvent("activity_setup_viewed", mapOf(
                 AnalyticsProperty.Source to effective.entrySource,
                 AnalyticsProperty.ActivityType to effective.activityKind.name.lowercase(),
@@ -106,11 +108,20 @@ class RecordingViewModel @Inject constructor(
     }
 
     suspend fun beginCountdown() {
-        if (preparingCountdown || mutableState.value.countdown != null || mutableState.value.startRequested || snapshot.value.status != RecordingStatus.IDLE) return
+        if (preparingCountdown || mutableState.value.countdown != null || mutableState.value.startRequested || snapshot.value.status != RecordingStatus.IDLE) {
+            debugLog("countdown_begin_skipped preparing=$preparingCountdown countdown=${mutableState.value.countdown != null} startRequested=${mutableState.value.startRequested} status=${snapshot.value.status}")
+            return
+        }
         preparingCountdown = true
         val voiceGuideEnabled = mutableState.value.launch.voiceGuideEnabled
+        debugLog("countdown_begin voiceEnabled=$voiceGuideEnabled indoor=${mutableState.value.launch.indoor} source=${mutableState.value.launch.entrySource}")
         try {
-            val voiceReady = voiceGuideEnabled && voice.prepare()
+            val voiceReady = if (voiceGuideEnabled) {
+                runCatching { voice.prepare() }.onFailure {
+                    logError("countdown_voice_prepare_exception type=${it.javaClass.simpleName}")
+                }.getOrDefault(false)
+            } else false
+            debugLog("countdown_voice_ready enabled=$voiceGuideEnabled ready=$voiceReady")
             if (mutableState.value.startRequested || snapshot.value.status != RecordingStatus.IDLE) return
             mutableState.value = mutableState.value.copy(countdown = 3, countdownVoiceReady = voiceReady)
             if (voiceGuideEnabled) analytics.record(AnalyticsEvent(
@@ -439,10 +450,19 @@ class RecordingViewModel @Inject constructor(
         super.onCleared()
     }
     private companion object {
+        const val TAG = "RecordingStart"
         val AUTO_PAUSE_ACTIVITY_KINDS = setOf(ActivityKind.RUNNING, ActivityKind.CYCLING, ActivityKind.WALKING, ActivityKind.HIKING)
         fun autoPauseKey(activityKind: ActivityKind) = "auto_pause_enabled_${activityKind.name.lowercase()}"
         const val LAUNCH_PREFERENCES = "recording_launch"
         const val LAUNCH_KEY = "active"
+    }
+
+    private fun debugLog(message: String) {
+        if (BuildConfig.DEBUG) Log.d(TAG, message)
+    }
+
+    private fun logError(message: String) {
+        if (BuildConfig.DEBUG) Log.e(TAG, message)
     }
 }
 

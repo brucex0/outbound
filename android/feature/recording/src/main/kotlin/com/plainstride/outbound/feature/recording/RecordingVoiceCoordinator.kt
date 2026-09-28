@@ -1,10 +1,13 @@
 package com.plainstride.outbound.feature.recording
 
 import android.content.Context
+import android.media.AudioManager
 import android.media.AudioAttributes
 import android.os.Handler
 import android.os.Looper
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Locale
 import javax.inject.Inject
@@ -38,7 +41,7 @@ class RecordingVoiceCoordinator @Inject constructor(
     private var textToSpeech: TextToSpeech? = null
     private var textToSpeechReady = false
     private var textToSpeechInitialization: CompletableDeferred<Boolean>? = null
-    private val pendingSpeech = ArrayDeque<Pair<String, Int>>()
+    private val pendingSpeech = ArrayDeque<QueuedSpeech>()
     private val mainHandler = Handler(Looper.getMainLooper())
 
     fun observe(
@@ -60,7 +63,7 @@ class RecordingVoiceCoordinator @Inject constructor(
                     formatDistance(current.distanceMeters),
                     formatPace(current.currentPaceSecondsPerKilometer),
                 )
-                speak(message, TextToSpeech.QUEUE_FLUSH)
+                speak(message, TextToSpeech.QUEUE_FLUSH, "live_stats")
             }
             override suspend fun pauseMusic() { music.pause() }
             override suspend fun resumeMusic() { music.resume() }
@@ -88,28 +91,35 @@ class RecordingVoiceCoordinator @Inject constructor(
     fun listen(permissionGranted: Boolean) = recognizer.start(permissionGranted)
 
     suspend fun prepare(): Boolean {
-        if (textToSpeechReady) return true
+        if (textToSpeechReady) {
+            logDebug("tts_prepare_result=already_ready")
+            return true
+        }
         val initialization = ensureTextToSpeech()
-        return withTimeoutOrNull(TEXT_TO_SPEECH_PREPARE_TIMEOUT_MS) { initialization.await() } == true
+        val initialized = withTimeoutOrNull(TEXT_TO_SPEECH_PREPARE_TIMEOUT_MS) { initialization.await() }
+        val result = initialized == true
+        logDebug("tts_prepare_result=${when { result -> "ready"; initialized == null -> "timeout"; else -> "unavailable" }}")
+        return result
     }
 
-    fun speakCountdown(value: Int) = speak(value.toString(), TextToSpeech.QUEUE_ADD)
+    fun speakCountdown(value: Int) = speak(value.toString(), TextToSpeech.QUEUE_ADD, "countdown_$value")
 
-    fun speakGo() = speak(context.getString(R.string.recording_go), TextToSpeech.QUEUE_ADD)
+    fun speakGo() = speak(context.getString(R.string.recording_go), TextToSpeech.QUEUE_ADD, "countdown_go")
 
     fun stopSpeech() {
         pendingSpeech.clear()
         textToSpeech?.stop()
     }
 
-    private fun speak(message: String, queueMode: Int) {
+    private fun speak(message: String, queueMode: Int, cue: String) {
         val existing = textToSpeech
         if (existing != null && textToSpeechReady) {
-            speakNow(existing, message, queueMode)
+            speakNow(existing, message, queueMode, cue)
             return
         }
         if (queueMode == TextToSpeech.QUEUE_FLUSH) pendingSpeech.clear()
-        pendingSpeech.addLast(message to queueMode)
+        pendingSpeech.addLast(QueuedSpeech(message, queueMode, cue))
+        logDebug("tts_queue cue=$cue engineReady=$textToSpeechReady pending=${pendingSpeech.size}")
         ensureTextToSpeech()
     }
 
@@ -118,6 +128,7 @@ class RecordingVoiceCoordinator @Inject constructor(
         textToSpeechInitialization?.let { return it }
         val initialization = CompletableDeferred<Boolean>()
         textToSpeechInitialization = initialization
+        logDebug("tts_init_start")
         textToSpeech = TextToSpeech(context.applicationContext) { status ->
             // Always post so the constructor assignment above completes before the callback reads it.
             mainHandler.post { completeTextToSpeechInitialization(status, initialization) }
@@ -130,11 +141,19 @@ class RecordingVoiceCoordinator @Inject constructor(
         val readyEngine = engine?.takeIf(::selectSpeechLanguage)
         val ready = readyEngine != null
         textToSpeechReady = ready
+        logDebug("tts_init_result status=$status ready=$ready queued=${pendingSpeech.size}")
         if (readyEngine != null) {
             readyEngine.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+            readyEngine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) = logDebug("tts_playback_start utterance=$utteranceId")
+                override fun onDone(utteranceId: String?) = logDebug("tts_playback_done utterance=$utteranceId")
+                override fun onError(utteranceId: String?) = logError("tts_playback_error utterance=$utteranceId")
+                override fun onError(utteranceId: String?, errorCode: Int) =
+                    logError("tts_playback_error utterance=$utteranceId code=$errorCode")
+            })
             while (pendingSpeech.isNotEmpty()) {
-                val (pendingMessage, pendingQueueMode) = pendingSpeech.removeFirst()
-                speakNow(readyEngine, pendingMessage, pendingQueueMode)
+                val pending = pendingSpeech.removeFirst()
+                speakNow(readyEngine, pending.message, pending.queueMode, pending.cue)
             }
         } else {
             pendingSpeech.clear()
@@ -147,18 +166,36 @@ class RecordingVoiceCoordinator @Inject constructor(
         val candidates = listOf(preferred, Locale.forLanguageTag(preferred.language), Locale.US).distinct()
         for (locale in candidates) {
             val availability = engine.isLanguageAvailable(locale)
-            if (availability >= TextToSpeech.LANG_AVAILABLE && engine.setLanguage(locale) >= TextToSpeech.LANG_AVAILABLE) {
+            val selected = if (availability >= TextToSpeech.LANG_AVAILABLE) engine.setLanguage(locale) else TextToSpeech.LANG_NOT_SUPPORTED
+            logDebug("tts_locale candidate=${locale.toLanguageTag()} available=$availability selected=$selected")
+            if (selected >= TextToSpeech.LANG_AVAILABLE) {
                 return true
             }
         }
+        logError("tts_locale_unavailable")
         return false
     }
 
     private fun preferredSpeechLocale(): Locale =
         context.resources.configuration.locales[0] ?: Locale.getDefault()
 
-    private fun speakNow(engine: TextToSpeech, message: String, queueMode: Int) =
-        engine.speak(message, queueMode, null, "recording-speech-${System.nanoTime()}")
+    private fun speakNow(engine: TextToSpeech, message: String, queueMode: Int, cue: String) {
+        val utteranceId = "recording-speech-${System.nanoTime()}-$cue"
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val outputTypes = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).map { it.type }.distinct()
+        logDebug("tts_audio_route cue=$cue mediaVolume=${audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)}/${audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)} muted=${audioManager.isStreamMute(AudioManager.STREAM_MUSIC)} outputTypes=$outputTypes")
+        val result = engine.speak(message, queueMode, null, utteranceId)
+        if (result == TextToSpeech.SUCCESS) logDebug("tts_enqueue cue=$cue result=$result")
+        else logError("tts_enqueue_failed cue=$cue result=$result")
+    }
+
+    private fun logDebug(message: String) {
+        if (BuildConfig.DEBUG) Log.d(TAG, message)
+    }
+
+    private fun logError(message: String) {
+        if (BuildConfig.DEBUG) Log.e(TAG, message)
+    }
 
     override fun close() {
         recognizer.close()
@@ -172,8 +209,11 @@ class RecordingVoiceCoordinator @Inject constructor(
     }
 
     private companion object {
+        const val TAG = "RecordingVoice"
         const val TEXT_TO_SPEECH_PREPARE_TIMEOUT_MS = 5_000L
     }
+
+    private data class QueuedSpeech(val message: String, val queueMode: Int, val cue: String)
 }
 
 private val LiveVoiceCommand.analyticsName: String
