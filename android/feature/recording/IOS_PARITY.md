@@ -10,7 +10,7 @@
 
 ## States And Transitions
 
-- Today launches the prepared activity directly into location readiness and then a cancelable, spoken 3–2–1–Go countdown when Voice Guide is enabled; the recording setup screen is not shown during this direct-start flow. The countdown uses a high-contrast circular progress treatment and a 420 ms Go beat to match iOS.
+- Today launches the prepared activity directly into location readiness and then a cancelable, spoken 3–2–1–Go countdown when Voice Guide is enabled; the recording setup screen is not shown during this direct-start flow. Today's activity, goal, and Voice Guide selection take precedence over a saved setup during direct launches. The countdown uses a high-contrast circular progress treatment and a 420 ms Go beat to match iOS.
 - Outdoor activity start follows iOS preflight: explain location use before the system prompt, direct previously denied users to app settings, refresh authorization when returning from settings, and hold the start until a location fix is no older than 15 seconds and no less accurate than 80 meters. Indoor sessions bypass both gates. A lost permission or GPS fix during countdown blocks recording and returns to the matching permission or acquisition state.
 - Outdoor activity setup also shows the iOS “Enable location” chip while access is unavailable. It opens the same explanation and first-request versus app-settings path as Today and weather; indoor setup hides the chip.
 - Active recording is non-dismissible. Pause reveals separate Resume and Finish controls; Finish requires confirmation.

@@ -84,7 +84,11 @@ class RecordingViewModel @Inject constructor(
         if (mutableState.value.startRequested) return
         presentationUnitSystem = unitSystem
         val restored=context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).getString(LAUNCH_KEY,null)?.let{runCatching{launchJson.decodeFromString<RecordingLaunchConfiguration>(it)}.getOrNull()}
-        val base = restored?.takeIf { it.activityKind == configuration.activityKind } ?: configuration
+        // A direct launch carries an explicit activity, goal, and Voice Guide choice from Today.
+        // Reusing the last setup here can silently replace those choices (including disabling
+        // countdown speech) when the previous session used the same sport.
+        val base = if (configuration.startImmediately) configuration
+        else restored?.takeIf { it.activityKind == configuration.activityKind } ?: configuration
         val autoPauseEnabled = context.getSharedPreferences(LAUNCH_PREFERENCES, Context.MODE_PRIVATE)
             .getBoolean(autoPauseKey(base.activityKind), AutoPauseDefaults.enabled(base.activityKind))
         val effective = base.copy(
