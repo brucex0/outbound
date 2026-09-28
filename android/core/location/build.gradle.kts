@@ -8,3 +8,7 @@ android {
     compileSdkMinor = 1
     defaultConfig { minSdk = 26 }
 }
+
+dependencies {
+    implementation(libs.androidx.core.ktx)
+}

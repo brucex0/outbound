@@ -16,6 +16,7 @@
 - On Today, the center item becomes the icon-only Start action and launches the activity currently prepared in the Today dock; the dock renders neither a second start button nor a full-width Return to Run button. During an active session it remains Today.
 - Weather, inbox, overflow, and assistant controls use opaque elevated surfaces so the map cannot reduce icon contrast.
 - The weather pill shows a localized on-device city or region when Android geocoding can resolve one, followed by temperature. Weather remains usable when naming is unavailable.
+- Outdoor Today shows the same localized “Enable location” chip as iOS when location is unavailable. Tapping it or the weather pill opens the shared location explanation; Enable requests location the first time and opens app settings after a prior denial. Returning from settings refreshes weather when access was granted. Indoor activity hides the location chip.
 - Existing workout-start and assistant-launch analytics cover the contextual actions; no coordinates or place names enter analytics.
 - Manual calorie goals show estimated distance and duration when the training profile has enough data, using the shared calorie estimator and learned run pace.
 - Embedded Today sport choices are 52-point circular icon-only controls with accessible sport names. Setup options (Music, Voice Guide, With dog, Cheer, Shoes, and Indoor/Outdoor) are text-only pills.

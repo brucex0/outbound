@@ -66,8 +66,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import android.Manifest
+import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
+import android.net.Uri
+import android.provider.Settings
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -94,6 +97,10 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import androidx.compose.foundation.rememberScrollState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.runtime.DisposableEffect
 import java.text.DateFormat
 import java.util.Date
 import kotlin.math.roundToInt
@@ -103,6 +110,9 @@ import com.plainstride.outbound.core.model.Modality
 import com.plainstride.outbound.core.model.StandaloneWorkout
 import com.plainstride.outbound.core.designsystem.PlainstrideRouteMap
 import com.plainstride.outbound.core.designsystem.PlainstrideFloatingAction
+import com.plainstride.outbound.core.designsystem.LocationEnableChip
+import com.plainstride.outbound.core.designsystem.LocationPermissionEducationDialog
+import com.plainstride.outbound.core.location.LocationPermissionAccess
 import com.plainstride.outbound.core.model.activity.PlannedCalorieEstimate
 
 enum class TodayActivityChoice { PLANNED, RUN, WALK, HIKE, BIKE }
@@ -154,20 +164,34 @@ fun TodayRoute(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(accountId, localeTag) { viewModel.configure(accountId, localeTag) }
     LaunchedEffect(refreshRequest) { if (refreshRequest > 0) viewModel.refresh() }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val weather by viewModel.weather.collectAsStateWithLifecycle()
     val planPicker by viewModel.planPicker.collectAsStateWithLifecycle()
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-        viewModel.refreshWeather()
+    var locationGranted by remember(context) { mutableStateOf(LocationPermissionAccess.hasPermission(context)) }
+    var showsLocationPermission by remember { mutableStateOf(false) }
+    var pendingWeatherRefresh by remember { mutableStateOf(false) }
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        locationGranted = LocationPermissionAccess.hasPermission(context)
+        pendingWeatherRefresh = false
+        if (locationGranted) viewModel.refreshWeather()
+    }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                locationGranted = LocationPermissionAccess.hasPermission(context)
+                if (locationGranted && pendingWeatherRefresh) {
+                    pendingWeatherRefresh = false
+                    viewModel.refreshWeather()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     LaunchedEffect(activeSession, completedToday) { viewModel.updateSessionState(activeSession, completedToday) }
-    LaunchedEffect(viewModel) {
-        viewModel.weatherPermissionRequests.collect {
-            permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-        }
-    }
     LaunchedEffect(viewModel) { viewModel.messages.collect(onMessage) }
     TodayScreen(
         state = state,
@@ -203,8 +227,25 @@ fun TodayRoute(
         guidanceContent = guidanceContent,
         startRequest = startRequest,
         initialWorkoutId = initialWorkoutId,
-        locationGranted = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED,
+        locationGranted = locationGranted,
+        onRequestLocationAccess = {
+            if (locationGranted) viewModel.refreshWeather()
+            else showsLocationPermission = true
+        },
         modifier = modifier,
+    )
+    if (showsLocationPermission) LocationPermissionEducationDialog(
+        onEnable = {
+            showsLocationPermission = false
+            pendingWeatherRefresh = true
+            if (LocationPermissionAccess.wasRequestedBefore(context)) {
+                context.openAppLocationSettings()
+            } else {
+                LocationPermissionAccess.markRequested(context)
+                permissionLauncher.launch(LocationPermissionAccess.requestPermissions)
+            }
+        },
+        onClose = { showsLocationPermission = false },
     )
 }
 
@@ -241,6 +282,7 @@ fun TodayScreen(
     startRequest: Int = 0,
     initialWorkoutId: String? = null,
     locationGranted: Boolean = false,
+    onRequestLocationAccess: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var showsDetail by rememberSaveable { mutableStateOf(false) }
@@ -308,7 +350,9 @@ fun TodayScreen(
                 bottomContentPadding = mapOverlayBottomPadding,
             )
             Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                TodayTopControls(weather, useFahrenheit, inboxCount, { if (weather != null) showsWeather = true }, onOpenInbox)
+                TodayTopControls(weather, useFahrenheit, inboxCount, {
+                    if (locationGranted && weather != null) showsWeather = true else onRequestLocationAccess()
+                }, onOpenInbox)
                 Box {
                     PlainstrideFloatingAction(onClick = { overflowExpanded = true }) {
                         setupPhoto?.let { Image(it.asImageBitmap(), stringResource(R.string.today_more), Modifier.size(48.dp).clip(CircleShape)) }
@@ -359,6 +403,11 @@ fun TodayScreen(
                     }
                 }
             }
+            }
+            if (!locationGranted && !indoor && !state.activeSession) {
+                Box(Modifier.fillMaxWidth().padding(bottom = 8.dp), contentAlignment = Alignment.Center) {
+                    LocationEnableChip(onClick = onRequestLocationAccess)
+                }
             }
             if (companionType != null && !activityChoice.isCompanionEligible(suggestion)) {
                 companionType = null
@@ -571,6 +620,13 @@ private fun WeatherGuidance.compactLabel(useFahrenheit: Boolean): String {
     val temperature = if (useFahrenheit) temperatureCelsius * 9 / 5 + 32 else temperatureCelsius
     val unit = if (useFahrenheit) "°F" else "°C"
     return listOfNotNull(placeName?.takeIf(String::isNotBlank), "${temperature.roundToInt()}$unit").joinToString(" ")
+}
+
+private fun Context.openAppLocationSettings() {
+    startActivity(
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+    )
 }
 
 @Composable
