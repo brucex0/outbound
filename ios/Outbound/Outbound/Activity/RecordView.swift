@@ -785,53 +785,63 @@ struct RecordView: View {
 
     private var liveRecordingSurface: some View {
         ZStack {
-            TabView(selection: $activePage) {
-                CameraHUDView(
-                    recorder: recorder,
-                    guide: guide,
-                    musicStore: musicStore,
-                    intent: activeIntent ?? plannedIntent,
-                    capturedPhotoCount: capturedPhotos.count,
-                    lastCapturedPhoto: capturedPhotos.last?.0,
-                    activePage: $activePage,
-                    isWorkoutPanelExpanded: liveWorkoutPanelBinding(source: .camera),
-                    onStart: { ensureLocationReadyThenStart() },
-                    onPause: pauseRecording,
-                    onResume: resumeRecording,
-                    onFinish: finishRecording,
-                    onCaptureStateChange: { isCapturingSessionPhoto = $0 }
-                ) { image, meta in
-                    let photo = (image, meta)
-                    capturedPhotos.append(photo)
-                    ActiveSessionPhotoJournal.append(photo)
-                    track(.init(.photoCaptured, properties: [
-                        .sourceType: .string("in_activity"),
-                        .locationAttached: .boolean(meta.coordinate != nil)
-                    ]))
-                }
-                .tag(SessionPage.camera)
-                .ignoresSafeArea()
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    CameraHUDView(
+                        recorder: recorder,
+                        guide: guide,
+                        musicStore: musicStore,
+                        intent: activeIntent ?? plannedIntent,
+                        capturedPhotoCount: capturedPhotos.count,
+                        lastCapturedPhoto: capturedPhotos.last?.0,
+                        activePage: $activePage,
+                        isWorkoutPanelExpanded: liveWorkoutPanelBinding(source: .camera),
+                        onStart: { ensureLocationReadyThenStart() },
+                        onPause: pauseRecording,
+                        onResume: resumeRecording,
+                        onFinish: finishRecording,
+                        onCaptureStateChange: { isCapturingSessionPhoto = $0 }
+                    ) { image, meta in
+                        let photo = (image, meta)
+                        capturedPhotos.append(photo)
+                        ActiveSessionPhotoJournal.append(photo)
+                        track(.init(.photoCaptured, properties: [
+                            .sourceType: .string("in_activity"),
+                            .locationAttached: .boolean(meta.coordinate != nil)
+                        ]))
+                    }
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .offset(x: activePage == .camera ? 0 : -geometry.size.width)
+                    .allowsHitTesting(activePage == .camera)
+                    .accessibilityHidden(activePage != .camera)
 
-                LiveMapView(
-                    recorder: recorder,
-                    locationManager: recorder.locationManager,
-                    guide: guide,
-                    musicStore: musicStore,
-                    intent: activeIntent ?? plannedIntent,
-                    capturedPhotoCount: capturedPhotos.count,
-                    lastCapturedPhoto: capturedPhotos.last?.0,
-                    activePage: $activePage,
-                    isWorkoutPanelExpanded: liveWorkoutPanelBinding(source: .map),
-                    onStart: { ensureLocationReadyThenStart() },
-                    onPause: pauseRecording,
-                    onResume: resumeRecording,
-                    onFinish: finishRecording,
-                    isFinishEnabled: !isCapturingSessionPhoto
-                )
-                .tag(SessionPage.map)
-                .ignoresSafeArea()
+                    LiveMapView(
+                        recorder: recorder,
+                        locationManager: recorder.locationManager,
+                        guide: guide,
+                        musicStore: musicStore,
+                        intent: activeIntent ?? plannedIntent,
+                        capturedPhotoCount: capturedPhotos.count,
+                        lastCapturedPhoto: capturedPhotos.last?.0,
+                        activePage: $activePage,
+                        isWorkoutPanelExpanded: liveWorkoutPanelBinding(source: .map),
+                        onStart: { ensureLocationReadyThenStart() },
+                        onPause: pauseRecording,
+                        onResume: resumeRecording,
+                        onFinish: finishRecording,
+                        isFinishEnabled: !isCapturingSessionPhoto
+                    )
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .offset(x: activePage == .map ? 0 : geometry.size.width)
+                    .allowsHitTesting(activePage == .map)
+                    .accessibilityHidden(activePage != .map)
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .clipped()
+                .contentShape(Rectangle())
+                .simultaneousGesture(sessionPageSwipeGesture)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.24), value: activePage)
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
             .ignoresSafeArea()
 
             if let countdownStep {
@@ -891,6 +901,21 @@ struct RecordView: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+    }
+
+    private var sessionPageSwipeGesture: some Gesture {
+        DragGesture(minimumDistance: 30, coordinateSpace: .local)
+            .onEnded { value in
+                let horizontal = value.translation.width
+                let vertical = value.translation.height
+                guard abs(horizontal) >= 70, abs(horizontal) > abs(vertical) * 1.2 else { return }
+
+                switch (activePage, horizontal) {
+                case (.map, 0...): activePage = .camera
+                case (.camera, ..<0): activePage = .map
+                default: break
+                }
+            }
     }
 
     private var embeddedCountdownCancelButton: some View {

@@ -151,7 +151,18 @@ struct CameraHUDView: View {
                 statusCardHeight = height
             }
         }
-        .onAppear { camera.start() }
+        .onAppear {
+            if activePage == .camera {
+                camera.start()
+            }
+        }
+        .onChange(of: activePage) { _, page in
+            if page == .camera {
+                camera.start()
+            } else {
+                camera.stop()
+            }
+        }
         .onDisappear { camera.stop() }
     }
 
