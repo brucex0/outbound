@@ -82,6 +82,8 @@ struct GroupCompactContent: View {
 
             Spacer(minLength: 16)
 
+            unreadNoticeBadge
+
             if !group.upcomingActivities.isEmpty {
                 Image(systemName: "calendar.badge.clock")
                     .font(.caption.weight(.semibold))
@@ -94,7 +96,7 @@ struct GroupCompactContent: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "\(displayName ?? group.name), \(groupMemberCountLabel(group.memberCount)), \(statusText)"
+            "\(displayName ?? group.name), \(groupMemberCountLabel(group.memberCount)), \(statusText)\(group.unreadNoticeCount > 0 ? ", \(String(localized: "group.notices.unread", defaultValue: "Unread"))" : "")"
         )
     }
 
@@ -115,11 +117,25 @@ struct GroupCompactContent: View {
                     .lineLimit(2)
             }
             Spacer(minLength: 8)
+            unreadNoticeBadge
             if showsNavigationIndicator {
                 Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var unreadNoticeBadge: some View {
+        if group.unreadNoticeCount > 0 {
+            Text(String(localized: "group.notices.unread", defaultValue: "Unread"))
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(OutboundPalette.companion)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(OutboundPalette.companion.opacity(0.12), in: Capsule())
+                .accessibilityLabel(String(localized: "group.notices.unread", defaultValue: "Unread"))
+        }
     }
 
     @ViewBuilder
@@ -605,6 +621,9 @@ struct GroupDetailView: View {
         .sheet(isPresented: $showsMembers) { fullMembersSheet }
         .task {
             await groupStore.refreshGroup(id: current.id)
+            if current.trustPolicy == "community", current.unreadNoticeCount > 0 {
+                _ = await groupStore.markNoticesRead(in: current)
+            }
             track(.groupProgressOpened, [.entrySource: .string("group_detail"), .selectionType: .string(current.week.focusMode), .participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))])
         }
     }

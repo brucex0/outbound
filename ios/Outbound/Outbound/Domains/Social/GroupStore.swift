@@ -233,9 +233,14 @@ final class GroupStore: ObservableObject {
     }
 
     func publishNotice(group: GroupDTO, title: String?, body: String, pinned: Bool) async -> GroupDTO? {
-        await mutate(success: String(localized: "group.toast.notice_published", defaultValue: "Notice published.")) {
+        let published = await mutate(success: String(localized: "group.toast.notice_published", defaultValue: "Notice published.")) {
             try await api.createGroupNotice(id: group.id, request: .init(title: title?.nilIfBlank, body: body, activityEventId: nil, pinned: pinned))
         }
+        guard let published else { return nil }
+
+        // The author has already seen the update they just published. Advance
+        // their watermark so it does not appear as unread in the Groups tab.
+        return await markNoticesRead(in: published) ?? published
     }
 
     func markNoticesRead(in group: GroupDTO) async -> GroupDTO? {

@@ -189,6 +189,8 @@ A notice is an owner/admin broadcast for schedule changes, meetup information, c
 
 - Notices have bounded optional title and body, one optional structured activity-event reference, pin state, publish/edit/delete timestamps, and no replies or attachments in the MVP.
 - One `GroupNoticeRead(groupId, userId, lastSeenNoticeId)` watermark per active member drives unread state.
+- Opening a community Group advances the viewer's watermark after the latest notices load; `Mark notices read` remains available as an explicit retry/action. Publishing a notice also advances the publisher's own watermark so their update is not marked unread for them.
+- The Groups card shows an unread badge for each Group with unread notices, while the Groups tab badge aggregates unread Groups with other pending attention.
 - Do not create one `SocialNotification` row per member for informational notices.
 - Optional notice push delivery queries eligible, unmuted device tokens directly and routes to Group detail; it does not create a durable inbox record.
 - Join requests, invitation acceptance, ownership transfer, and targeted activity invitations remain per-recipient durable notifications because they require personal action or confirm a personal state change.

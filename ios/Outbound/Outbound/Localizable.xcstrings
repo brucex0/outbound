@@ -1427,6 +1427,13 @@
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "未选中" } }
       }
     },
+    "group.notices.unread": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Unread" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Sin leer" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "未读" } }
+      }
+    },
     "group.create.inspiration_detail": {
       "localizations": {
         "en": {
