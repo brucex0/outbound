@@ -39,10 +39,8 @@ struct LiveMapView: View {
             ZStack {
                 mapSurface
                 bottomControls(expandedHeight: geometry.size.height)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                 if !isWorkoutPanelExpanded {
                     rightControls
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 }
             }
             .onReceive(locationManager.$location) { loc in
