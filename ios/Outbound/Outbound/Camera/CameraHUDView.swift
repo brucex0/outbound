@@ -603,9 +603,9 @@ private struct HoldToPauseControl: View {
             if isCompact {
                 VStack(spacing: 1) {
                     Image(systemName: "pause.fill")
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.system(size: 17, weight: .bold))
                     Text(String(localized: "session.action.pause.hold.compact", defaultValue: "HOLD"))
-                        .font(.system(size: 7, weight: .black, design: .rounded))
+                        .font(.system(size: 8.5, weight: .black, design: .rounded))
                         .tracking(0.5)
                 }
                 .frame(width: size, height: size)
@@ -729,7 +729,7 @@ struct SessionStatusCard: View {
     let isFinishEnabled: Bool
     @State private var panelDragHeight: CGFloat?
 
-    private let collapsedHeight: CGFloat = 92
+    private let collapsedHeight: CGFloat = 100
 
     var body: some View {
         let panelHeight = resolvedPanelHeight
@@ -1139,7 +1139,7 @@ struct SessionStatusCard: View {
             SessionMetricColumn(value: displayedElapsedText, label: nil)
                 .frame(maxWidth: .infinity)
 
-            primaryControl(size: 46)
+            primaryControl(size: 54)
                 .fixedSize()
 
             if state == .paused {
@@ -1150,7 +1150,7 @@ struct SessionStatusCard: View {
             SessionMetricColumn(value: displayedDistanceText, label: nil)
                 .frame(maxWidth: .infinity)
         }
-        .frame(height: 50)
+        .frame(height: 58)
     }
 
     private var compactFinishControl: some View {
