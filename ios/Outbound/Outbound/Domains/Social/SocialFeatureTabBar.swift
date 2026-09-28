@@ -17,14 +17,6 @@ enum SocialFeatureTab: String, CaseIterable, Identifiable {
         }
     }
 
-    var systemImage: String {
-        switch self {
-        case .feed: "rectangle.stack"
-        case .people: "person.2"
-        case .groups: "flag"
-        case .routes: "map"
-        }
-    }
 }
 
 enum SocialTabBadge: Equatable {
@@ -50,20 +42,14 @@ struct SocialFeatureTabBar: View {
                 Button {
                     onSelect(tab)
                 } label: {
-                    VStack(spacing: 3) {
-                        ZStack(alignment: .topTrailing) {
-                            tabIcon(tab)
-                                .font(.system(size: 15, weight: .semibold))
-                                .frame(width: 24, height: 19)
-                            if let badge = badges[tab] {
-                                SocialFeatureTabBadgeView(badge: badge)
-                                    .offset(x: 9, y: -5)
-                            }
-                        }
+                    HStack(spacing: 4) {
                         Text(tab.title)
-                            .font(.caption2.weight(selection == tab ? .bold : .medium))
+                            .font(.caption.weight(selection == tab ? .bold : .medium))
                             .lineLimit(1)
                             .minimumScaleFactor(0.72)
+                        if let badge = badges[tab] {
+                            SocialFeatureTabBadgeView(badge: badge)
+                        }
                     }
                     .foregroundStyle(selection == tab ? OutboundPalette.companion : .secondary)
                     .frame(maxWidth: .infinity, minHeight: 44)
@@ -79,11 +65,6 @@ struct SocialFeatureTabBar: View {
         .padding(.vertical, 3)
         .background(.bar)
         .overlay(alignment: .bottom) { Divider() }
-    }
-
-    @ViewBuilder
-    private func tabIcon(_ tab: SocialFeatureTab) -> some View {
-        Image(systemName: tab.systemImage)
     }
 
     private func accessibilityValue(for tab: SocialFeatureTab) -> String {

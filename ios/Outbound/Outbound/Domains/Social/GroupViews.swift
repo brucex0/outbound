@@ -119,6 +119,9 @@ struct GroupCompactContent: View {
         if group.lifecycle == "archived" {
             Image(systemName: "archivebox")
                 .font(.title2)
+        } else if group.trustPolicy == "community" {
+            CommunityGroupMark()
+                .frame(width: 22, height: 22)
         } else {
             GroupMark()
                 .frame(width: 22, height: 22)
@@ -339,7 +342,7 @@ struct GroupCreateView: View {
         Button { selectTemplate(template) } label: {
             OutboundCard(style: .companion) {
                 HStack(spacing: 14) {
-                    GroupMark().foregroundStyle(OutboundPalette.companion).frame(width: 24, height: 24).frame(width: 44, height: 44).background(OutboundPalette.companion.opacity(0.12), in: Circle())
+                    groupTypeMark(template: template).foregroundStyle(OutboundPalette.companion).frame(width: 24, height: 24).frame(width: 44, height: 44).background(OutboundPalette.companion.opacity(0.12), in: Circle())
                     VStack(alignment: .leading, spacing: 4) {
                         Text(title).font(.headline).foregroundStyle(.primary)
                         Text(detail).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.leading)
@@ -396,7 +399,7 @@ struct GroupCreateView: View {
     private var creationHero: some View {
         OutboundCard(style: .companion) {
             VStack(alignment: .leading, spacing: 14) {
-                GroupMark().foregroundStyle(OutboundPalette.companion).frame(width: 28, height: 28).frame(width: 52, height: 52).background(OutboundPalette.companion.opacity(0.12), in: Circle())
+                groupTypeMark(template: selectedTemplate ?? "motivation").foregroundStyle(OutboundPalette.companion).frame(width: 28, height: 28).frame(width: 52, height: 52).background(OutboundPalette.companion.opacity(0.12), in: Circle())
                 Text(selectedTemplate == "activities"
                     ? String(localized: "social.groups.create.community.hero_title", defaultValue: "Bring your community together.")
                     : String(localized: "social.groups.create.private.hero_title", defaultValue: "Active. Positive. Together."))
@@ -407,6 +410,15 @@ struct GroupCreateView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func groupTypeMark(template: String) -> some View {
+        if template == "activities" {
+            CommunityGroupMark()
+        } else {
+            GroupMark()
         }
     }
 

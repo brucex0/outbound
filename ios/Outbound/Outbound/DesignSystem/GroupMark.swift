@@ -50,11 +50,21 @@ struct GroupMark: View {
     }
 }
 
+/// Open community mark: a group of people without the privacy ring used by `GroupMark`.
+struct CommunityGroupMark: View {
+    var body: some View {
+        Image(systemName: "person.3.fill")
+            .resizable()
+            .scaledToFit()
+            .accessibilityHidden(true)
+    }
+}
+
 #Preview {
     HStack(spacing: 20) {
         GroupMark()
             .frame(width: 18, height: 18)
-        GroupMark()
+        CommunityGroupMark()
             .frame(width: 32, height: 32)
     }
     .foregroundStyle(.indigo)
