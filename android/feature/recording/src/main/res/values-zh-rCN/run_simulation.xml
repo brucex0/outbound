@@ -4,6 +4,9 @@
     <string name="recording_simulation_advance_one_minute">+1 分</string>
     <string name="recording_simulation_clock_pause">暂停模拟时间</string>
     <string name="recording_simulation_clock_play">推进模拟时间</string>
+    <string name="recording_simulation_start_button">开始</string>
+    <string name="recording_simulation_pause_button">暂停</string>
+    <string name="recording_simulation_location">模拟跑者</string>
     <string name="recording_simulation_route_name">雷德蒙德 Harvest 半程马拉松</string>
     <string name="recording_simulation_setup_detail">使用雷德蒙德路线，可调节速度和时间，无需实际移动或使用 GPS。</string>
     <string name="recording_simulation_setup_title">Harvest 模拟跑</string>

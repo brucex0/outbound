@@ -53,6 +53,7 @@ fun PlainstrideRouteMap(
     bottomContentPadding: Dp = 0.dp,
     fitRoutePadding: Dp = 48.dp,
     fitRouteOnChange: Boolean = true,
+    followCoordinate: MapCoordinate? = null,
 ) {
     val context = LocalContext.current
     val description = stringResource(R.string.route_map_description)
@@ -97,6 +98,11 @@ fun PlainstrideRouteMap(
                 if (isInitialRouteFocus) camera.move(update) else camera.animate(update)
                 didFocusRoute = true
             }
+        }
+    }
+    LaunchedEffect(followCoordinate) {
+        followCoordinate?.let { coordinate ->
+            camera.animate(CameraUpdateFactory.newLatLngZoom(LatLng(coordinate.latitude, coordinate.longitude), 16f))
         }
     }
     val selectedMarker = markers.firstOrNull(MapRouteMarker::selected)

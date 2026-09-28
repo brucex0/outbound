@@ -41,6 +41,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
@@ -60,6 +62,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -703,7 +707,7 @@ private fun LiveRecordingScreen(
             if (amount > 18 && mode == RecordingSurfaceMode.MAP) onMode(RecordingSurfaceMode.CAMERA)
         }
     }) {
-        if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot, configuration, locationPermission, Modifier.fillMaxSize())
+        if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot, configuration, locationPermission, runSimulation, Modifier.fillMaxSize())
         else CameraSurface(photoPath, onPhotoCaptured, onTakePhoto,onPhotoPending, Modifier.fillMaxSize())
 
         if (!dashboardExpanded) Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -764,6 +768,7 @@ private fun RunSimulationControls(
     val timeRateLabel = stringResource(R.string.recording_simulation_time_rate)
     val decreaseSpeedLabel = stringResource(R.string.recording_simulation_speed_decrease)
     val increaseSpeedLabel = stringResource(R.string.recording_simulation_speed_increase)
+    var showRateMenu by remember { mutableStateOf(false) }
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(18.dp),
@@ -772,24 +777,36 @@ private fun RunSimulationControls(
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF9800).copy(alpha = 0.6f)),
     ) {
         Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 Icon(Icons.AutoMirrored.Filled.DirectionsRun, contentDescription = null, tint = Color(0xFFEF6C00))
                 Text(stringResource(R.string.recording_simulation_title), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
                 Text(formatDuration(state.elapsedSeconds.toLong()), style = MaterialTheme.typography.labelMedium, fontFamily = FontFamily.Monospace)
-                listOf(1, 10, 60).forEach { rate ->
-                    TextButton(
-                        onClick = { onRate(rate) },
-                        modifier = Modifier.semantics { contentDescription = "$timeRateLabel $rate×" },
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 5.dp, vertical = 0.dp),
-                    ) {
-                        Text(if (rate == state.timeRate) "✓${rate}×" else "${rate}×", style = MaterialTheme.typography.labelSmall)
+                Button(onClick = onClock, enabled = isActive && !state.isComplete) {
+                    Icon(if (state.isClockRunning) Icons.Default.Pause else Icons.Default.PlayArrow, contentDescription = null)
+                    Text(stringResource(if (state.isClockRunning) R.string.recording_simulation_pause_button else R.string.recording_simulation_start_button))
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(timeRateLabel, style = MaterialTheme.typography.labelMedium)
+                Box {
+                    OutlinedButton(onClick = { showRateMenu = true }, enabled = !state.isComplete,
+                        modifier = Modifier.semantics { contentDescription = "$timeRateLabel ${state.timeRate}×" },
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) {
+                        Text("${state.timeRate}×")
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                    }
+                    DropdownMenu(expanded = showRateMenu, onDismissRequest = { showRateMenu = false }) {
+                        listOf(1, 10, 60).forEach { rate ->
+                            DropdownMenuItem(
+                                text = { Text("${rate}×") },
+                                leadingIcon = { if (rate == state.timeRate) Icon(Icons.Default.Check, contentDescription = null) },
+                                onClick = { onRate(rate); showRateMenu = false },
+                            )
+                        }
                     }
                 }
-                FilledIconButton(onClick = onClock, enabled = isActive && !state.isComplete) {
-                    Icon(if (state.isClockRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = stringResource(if (state.isClockRunning) R.string.recording_simulation_clock_pause else R.string.recording_simulation_clock_play))
-                }
+                Spacer(Modifier.weight(1f))
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 TextButton(
@@ -820,6 +837,7 @@ private fun TrackMap(
     snapshot: RecordingSnapshot,
     configuration: RecordingLaunchConfiguration,
     locationPermission: LocationPermissionState,
+    runSimulation: RunSimulationState?,
     modifier: Modifier = Modifier,
 ) {
     val recorded = snapshot.track.map { MapCoordinate(it.latitude, it.longitude) }
@@ -839,13 +857,24 @@ private fun TrackMap(
     PlainstrideRouteMap(
         points = framingPoints,
         modifier = modifier,
-        showUserLocation = true,
+        showUserLocation = runSimulation == null,
         preciseLocationGranted = locationPermission == LocationPermissionState.PRECISE || locationPermission == LocationPermissionState.APPROXIMATE,
-        focusOnUser = true,
+        focusOnUser = runSimulation == null,
         showEndpointMarkers = planned.size > 1,
         routeSegments = routeSegments,
+        markers = listOfNotNull(snapshot.latestLocation?.takeIf { runSimulation != null }?.let { location ->
+            com.plainstride.outbound.core.designsystem.MapRouteMarker(
+                id = "simulated-location",
+                coordinate = MapCoordinate(location.latitude, location.longitude),
+                title = stringResource(R.string.recording_simulation_location),
+                selected = true,
+            )
+        }),
         bottomContentPadding = 128.dp,
-        fitRouteOnChange = false,
+        fitRouteOnChange = true,
+        followCoordinate = snapshot.latestLocation?.takeIf { (runSimulation?.elapsedSeconds ?: 0) > 0 }?.let {
+            MapCoordinate(it.latitude, it.longitude)
+        },
     )
     Box(modifier, contentAlignment = Alignment.Center) {
         if (snapshot.latestLocation == null) Column(horizontalAlignment = Alignment.CenterHorizontally) {

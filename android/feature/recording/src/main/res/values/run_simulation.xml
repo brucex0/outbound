@@ -4,6 +4,9 @@
     <string name="recording_simulation_advance_one_minute">+1m</string>
     <string name="recording_simulation_clock_pause">Pause simulated time</string>
     <string name="recording_simulation_clock_play">Advance simulated time</string>
+    <string name="recording_simulation_start_button">Start</string>
+    <string name="recording_simulation_pause_button">Pause</string>
+    <string name="recording_simulation_location">Simulated runner</string>
     <string name="recording_simulation_route_name">Redmond Harvest Half Marathon</string>
     <string name="recording_simulation_setup_detail">Use the Redmond route with adjustable speed and time. No GPS movement is required.</string>
     <string name="recording_simulation_setup_title">Simulated Harvest Run</string>
