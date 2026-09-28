@@ -150,8 +150,6 @@ fun TodayRoute(
     onSetUpPlan: () -> Unit,
     onBuildPlan: () -> Unit = onSetUpPlan,
     onStartManual: (TodayManualLaunch) -> Unit,
-    onOpenMusic: () -> Unit,
-    musicConfigured: Boolean = false,
     shoesConfigured: Boolean = false,
     onOpenLiveTrack: () -> Unit,
     onOpenShoes: () -> Unit,
@@ -215,8 +213,6 @@ fun TodayRoute(
         onSelectPlan = viewModel::selectPlanRecommendation,
         onUsePlan = { recommendation, replacing -> viewModel.confirmPlanRecommendation(recommendation, replacing) },
         onStartManual = { setup -> viewModel.trackManualWorkoutStarted(setup.activity, setup.goal); onStartManual(setup) },
-        onOpenMusic = onOpenMusic,
-        musicConfigured = musicConfigured,
         shoesConfigured = shoesConfigured,
         onOpenLiveTrack = onOpenLiveTrack,
         onOpenShoes = onOpenShoes,
@@ -271,8 +267,6 @@ fun TodayScreen(
     onSelectPlan: (com.plainstride.outbound.core.network.PlanRecommendation?) -> Unit = {},
     onUsePlan: (com.plainstride.outbound.core.network.PlanRecommendation, Boolean) -> Unit = { _, _ -> },
     onStartManual: (TodayManualLaunch) -> Unit = {},
-    onOpenMusic: () -> Unit = {},
-    musicConfigured: Boolean = false,
     shoesConfigured: Boolean = false,
     onOpenLiveTrack: () -> Unit = {},
     onOpenShoes: () -> Unit = {},
@@ -439,8 +433,6 @@ fun TodayScreen(
                 },
                 onReturnToSession = onReturnToSession,
                 onOpenDetails = { showsDetail = true },
-                onOpenMusic = onOpenMusic,
-                musicConfigured = musicConfigured,
                 shoesConfigured = shoesConfigured,
                 onOpenLiveTrack = onOpenLiveTrack,
                 onOpenShoes = onOpenShoes,
@@ -773,8 +765,6 @@ private fun ActivityLaunchDock(
     onCompanionChanged: (Boolean) -> Unit,
     onReturnToSession: () -> Unit,
     onOpenDetails: () -> Unit,
-    onOpenMusic: () -> Unit,
-    musicConfigured: Boolean,
     shoesConfigured: Boolean,
     onOpenLiveTrack: () -> Unit,
     onOpenShoes: () -> Unit,
@@ -796,7 +786,6 @@ private fun ActivityLaunchDock(
                 }
             }
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                UtilityButton(stringResource(R.string.today_music), onClick = onOpenMusic, selected = musicConfigured)
                 UtilityButton(stringResource(R.string.today_voice_guide), onClick = { onVoiceGuideChanged(!voiceGuideEnabled) }, selected = voiceGuideEnabled)
                 if (activityChoice.isCompanionEligible(suggestion)) {
                     UtilityButton(

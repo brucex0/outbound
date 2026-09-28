@@ -150,7 +150,6 @@ import com.plainstride.outbound.feature.livecoach.LiveCoachRecordingEffect
 import com.plainstride.outbound.feature.livecoach.LiveCoachSettingsSection
 import com.plainstride.outbound.feature.assistant.AssistantRoute
 import com.plainstride.outbound.feature.assistant.MusicRoute
-import com.plainstride.outbound.feature.assistant.MusicViewModel
 import com.plainstride.outbound.core.assistant.VoiceSport
 import com.plainstride.outbound.feature.social.SocialRoute
 import com.plainstride.outbound.feature.today.WorkoutLaunchIntent
@@ -299,8 +298,6 @@ private fun SignedInApp(
     val rewardsViewModel: RewardsViewModel = hiltViewModel()
     val rewardsState by rewardsViewModel.state.collectAsStateWithLifecycle()
     val reminderViewModel: ReminderViewModel = hiltViewModel()
-    val musicViewModel: MusicViewModel = hiltViewModel()
-    val musicState by musicViewModel.music.collectAsStateWithLifecycle()
     val integration by integrationViewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(accountId) { accountId?.let { integrationViewModel.start(it, resources.configuration.locales[0].toLanguageTag());cycleViewModel.start(it);healthViewModel.start(it) } }
     LaunchedEffect(accountId) { accountId?.let(connectivityViewModel::start) }
@@ -550,8 +547,6 @@ private fun SignedInApp(
                                 recordingLaunch = setup.toRecordingLaunch(integration.defaultGearId)
                                 navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
                             },
-                            onOpenMusic = { navController.navigate(MUSIC_ROUTE) },
-                            musicConfigured = musicState.queue.items.isNotEmpty() || musicState.playback.isPlaying,
                             shoesConfigured = integration.defaultGearId != null,
                             onOpenLiveTrack = { navController.navigate(SAFETY_ROUTE) },
                             onOpenShoes = { navController.navigate(PROGRESS_ROUTE) },
