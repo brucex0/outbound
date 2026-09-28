@@ -108,6 +108,25 @@ router.get("/", async (c) => {
     : { lifecycle: "active", members: { some: { userId: user.id, status: "active" }, ...(blockedUserIds.length ? { none: { status: "active", userId: { in: blockedUserIds } } } : {}) } };
   const rows = await prisma.socialGroup.findMany({ where, include: { owner: { select: { id: true, displayName: true, avatarUrl: true } }, members: { where: { status: "active" }, select: { userId: true, role: true } } }, orderBy: [{ featured: "desc" }, { updatedAt: "desc" }, { id: "asc" }], ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}), take: take + 1 });
   const page = rows.slice(0, take);
+  const groupIds = page.map((socialGroup) => socialGroup.id);
+  let latestNotices: { id: string; groupId: string }[] = [];
+  let noticeReads: { groupId: string; lastSeenNoticeId: string | null }[] = [];
+  if (scope !== "discover" && groupIds.length > 0) {
+    [latestNotices, noticeReads] = await Promise.all([
+        prisma.groupNotice.findMany({
+          where: { groupId: { in: groupIds }, deletedAt: null },
+          orderBy: { publishedAt: "desc" },
+          distinct: ["groupId"],
+          select: { id: true, groupId: true },
+        }),
+        prisma.groupNoticeRead.findMany({
+          where: { groupId: { in: groupIds }, userId: user.id },
+          select: { groupId: true, lastSeenNoticeId: true },
+        }),
+      ]);
+  }
+  const latestNoticeByGroup = new Map(latestNotices.map((notice) => [notice.groupId, notice.id]));
+  const lastSeenNoticeByGroup = new Map(noticeReads.map((read) => [read.groupId, read.lastSeenNoticeId]));
   const visibleGroups = page.map((socialGroup) => ({
     id: socialGroup.id,
     name: socialGroup.name,
@@ -123,6 +142,10 @@ router.get("/", async (c) => {
     featured: socialGroup.featured,
     organizationVerificationState: socialGroup.organizationVerificationState,
     memberCount: socialGroup.members.length,
+    unreadNoticeCount: latestNoticeByGroup.has(socialGroup.id)
+      && latestNoticeByGroup.get(socialGroup.id) !== lastSeenNoticeByGroup.get(socialGroup.id)
+      ? 1
+      : 0,
     membershipRole: socialGroup.members.find((member) => member.userId === user.id)?.role ?? null,
     owner: socialGroup.owner ? compactPerson(socialGroup.owner) : null,
     contextLabel: socialGroup.city ?? socialGroup.owner?.displayName ?? null,
