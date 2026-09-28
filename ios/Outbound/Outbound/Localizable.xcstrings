@@ -43824,6 +43824,420 @@
         }
       }
     },
+    "recording.capacity.much_longer": {
+      "comment": "Continuation capacity choice in post-activity feedback. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Much longer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mucho más"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还能很久"
+          }
+        }
+      }
+    },
+    "recording.capacity.none": {
+      "comment": "Continuation capacity choice in post-activity feedback. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不能"
+          }
+        }
+      }
+    },
+    "recording.capacity.prompt": {
+      "comment": "Follow-up shown only after the runner says the activity felt easy. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could you comfortably have continued?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Podrías haber continuado cómodamente?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你还能轻松地继续吗？"
+          }
+        }
+      }
+    },
+    "recording.capacity.ten_minutes": {
+      "comment": "Continuation capacity choice in post-activity feedback. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10 min"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10 min"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10 分钟"
+          }
+        }
+      }
+    },
+    "recording.discard.review.message": {
+      "comment": "Explains that closing an eligible unsaved post-activity review permanently discards it. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This activity hasn’t been saved. If you close now, it will be permanently discarded."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta actividad no se ha guardado. Si la cierras ahora, se descartará de forma permanente."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此活动尚未保存。现在关闭会永久丢弃此活动。"
+          }
+        }
+      }
+    },
+    "recording.discard.review.title": {
+      "comment": "Confirmation title when closing an eligible unsaved post-activity review. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard unsaved activity?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Descartar la actividad sin guardar?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "丢弃未保存的活动？"
+          }
+        }
+      }
+    },
+    "recording.photo.delete_selected": {
+      "comment": "Button to remove selected finish-review photos. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete selected"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar seleccionadas"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "删除所选照片"
+          }
+        }
+      }
+    },
+    "recording.photo.empty": {
+      "comment": "Empty state in the post-activity photo manager. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No photo added"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se añadió ninguna foto"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未添加照片"
+          }
+        }
+      }
+    },
+    "recording.photo.finish": {
+      "comment": "Caption for a photo captured at the end of an activity. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finish"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Final"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "结束"
+          }
+        }
+      }
+    },
+    "recording.photo.import": {
+      "comment": "Button to import photos into the post-activity photo manager. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import photo"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importar foto"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入照片"
+          }
+        }
+      }
+    },
+    "recording.photo.number": {
+      "comment": "Fallback caption for a photo in the finish-review strip. %1$d is its 1-based position. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photo %1$d"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foto %1$d"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "照片 %1$d"
+          }
+        }
+      }
+    },
+    "recording.photo.section_title": {
+      "comment": "Header for the post-activity photo manager. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photos"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fotos"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "照片"
+          }
+        }
+      }
+    },
+    "recording.photo.start": {
+      "comment": "Caption for a photo captured before an activity. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicio"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始"
+          }
+        }
+      }
+    },
+    "recording.photo.take": {
+      "comment": "Button to capture a photo in the post-activity photo manager. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take photo"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hacer foto"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拍照"
+          }
+        }
+      }
+    },
+    "recording.reflection.about_right": {
+      "comment": "Perceived effort choice in the post-activity review. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About right"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adecuado"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正合适"
+          }
+        }
+      }
+    },
+    "recording.reflection.easy": {
+      "comment": "Perceived effort choice in the post-activity review. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Easy"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fácil"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松"
+          }
+        }
+      }
+    },
+    "recording.reflection.too_hard": {
+      "comment": "Perceived effort choice in the post-activity review. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too hard"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demasiado duro"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "太吃力"
+          }
+        }
+      }
+    },
+    "recording.stats.calories": {
+      "comment": "Calories label in the post-activity stats. Shared with Android recording. [android:recording_finish]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calories"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calorías"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "热量"
+          }
+        }
+      }
+    },
     "recording.reflection.prompt": {
       "comment": "Shared with Android recording; generated Android name: recording_reflection_prompt. [android:recording] Generated Android name: recording_reflection_prompt.",
       "localizations": {
