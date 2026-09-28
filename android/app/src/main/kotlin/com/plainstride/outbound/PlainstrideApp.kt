@@ -451,7 +451,7 @@ private fun SignedInApp(
                     Spacer(Modifier.width(10.dp))
                     val contextualStart = primaryDestination == TopLevelDestination.Today && !hasActiveSession
                     NavigationBar(
-                        modifier = Modifier.width(260.dp).height(56.dp).clip(RoundedCornerShape(28.dp)),
+                        modifier = Modifier.width(220.dp).height(56.dp).clip(RoundedCornerShape(28.dp)),
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f),
                         tonalElevation = 0.dp,
                     ) {
@@ -488,7 +488,7 @@ private fun SignedInApp(
                                             if (isContextualStart) TodayR.string.today_start else destination.label,
                                         ),
                                         tint = iconTint,
-                                        modifier = Modifier.size(28.dp),
+                                        modifier = Modifier.size(if (isContextualStart) 36.dp else 28.dp),
                                     )
                                 },
                                 label = null,
