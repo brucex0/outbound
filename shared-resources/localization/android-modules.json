@@ -57,6 +57,19 @@
       "resourceRoot": "android/feature/recording/src/main/res",
       "file": "strings.xml"
     },
+    {
+      "keyPrefix": "recording_finish",
+      "androidPrefix": "",
+      "sources": [
+        { "keyPrefix": "recording.reflection", "androidPrefix": "recording_reflection_" },
+        { "keyPrefix": "recording.capacity", "androidPrefix": "recording_capacity_" },
+        { "keyPrefix": "recording.photo", "androidPrefix": "recording_review_photo_" },
+        { "keyPrefix": "recording.stats", "androidPrefix": "recording_review_" },
+        { "keyPrefix": "recording.discard.review", "androidPrefix": "recording_discard_review_" }
+      ],
+      "resourceRoot": "android/feature/recording/src/main/res",
+      "file": "finish_review.xml"
+    },
     { "keyPrefix": "record.setup", "androidPrefix": "", "resourceRoot": "android/feature/recording/src/main/res", "file": "auto_pause.xml" },
     { "keyPrefix": "safety", "androidPrefix": "", "resourceRoot": "android/feature/safety/src/main/res", "file": "strings.xml" },
     { "keyPrefix": "settings", "androidPrefix": "", "resourceRoot": "android/feature/settings/src/main/res", "file": "strings.xml" },

@@ -16,6 +16,7 @@ enum class AnalyticsProperty(val wireName: String) {
     ParticipantCountBucket("participant_count_bucket"),
     DurationBucket("duration_bucket"),
     DistanceBucket("distance_bucket"),
+    PhotoCountBucket("photo_count_bucket"),
     PageDepthBucket("page_depth_bucket"),
     TimestampSource("timestamp_source"),
     Locale("locale"),
@@ -34,6 +35,10 @@ enum class AnalyticsProperty(val wireName: String) {
     AudioMode("audio_mode"),
     AccessReason("access_reason"),
     LatencyBucket("latency_bucket"),
+    LocationAttached("location_attached"),
+    RouteSelected("route_selected"),
+    ShoeSelected("shoe_selected"),
+    Indoor("indoor"),
 }
 
 data class AnalyticsEvent(

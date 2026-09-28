@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
+<resources>
+    <string name="recording_capacity_much_longer">还能很久</string>
+    <string name="recording_capacity_none">不能</string>
+    <string name="recording_capacity_prompt">你还能轻松地继续吗？</string>
+    <string name="recording_capacity_ten_minutes">10 分钟</string>
+    <string name="recording_discard_review_message">此活动尚未保存。现在关闭会永久丢弃此活动。</string>
+    <string name="recording_discard_review_title">丢弃未保存的活动？</string>
+    <string name="recording_review_photo_delete_selected">删除所选照片</string>
+    <string name="recording_review_photo_empty">尚未添加照片</string>
+    <string name="recording_review_photo_finish">结束</string>
+    <string name="recording_review_photo_import">导入照片</string>
+    <string name="recording_review_photo_number">照片 %1$d</string>
+    <string name="recording_review_photo_section_title">照片</string>
+    <string name="recording_review_photo_start">开始</string>
+    <string name="recording_review_photo_take">拍照</string>
+    <string name="recording_reflection_about_right">正合适</string>
+    <string name="recording_reflection_easy">轻松</string>
+    <string name="recording_reflection_too_hard">太吃力</string>
+    <string name="recording_review_calories">热量</string>
+</resources>

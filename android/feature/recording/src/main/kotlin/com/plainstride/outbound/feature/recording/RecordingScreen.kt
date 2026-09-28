@@ -5,6 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
+import android.graphics.Bitmap
+import android.graphics.Matrix
+import android.media.ExifInterface
 import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
@@ -17,6 +20,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -99,6 +106,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -114,6 +122,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import java.io.File
+import java.io.FileOutputStream
 import java.util.UUID
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
@@ -141,9 +150,11 @@ import com.plainstride.outbound.core.model.activity.WorkoutCalorieEstimator
 
 data class RecordedActivityReview(
     val snapshot: RecordingSnapshot,
-    val reflection: ReflectionChoice,
+    val reflection: ReflectionChoice?,
+    val continuationCapacity: ContinuationCapacity?,
     /** App-private path; callers must not expose it without an explicit share action. */
-    val photoPath: String?,
+    val photoPaths: List<String>,
+    val importedPhotoPaths: Set<String>,
 )
 
 @Composable
@@ -202,7 +213,7 @@ fun RecordingRoute(
     val saveReview: (RecordedActivityReview, Boolean, ActivityPhotoAlbumExportResult?) -> Unit =
         { review, exportPhoto, overrideResult ->
             scope.launch {
-                val result = viewModel.saveFinished(review, exportPhoto)
+                val result = viewModel.saveFinished(review, exportPhoto, weightKilograms)
                 if (result.saved) {
                     viewModel.markSaved(); onSavedSideEffects(review); val kind=review.snapshot.activityKind; if(PostWorkoutStretchCatalog.routine(kind)!=null){postSaveReview=review;postSavePhotoAlbumExport=overrideResult?:result.photoAlbumExport;postSaveStretchKind=kind}else onSaved(review,overrideResult?:result.photoAlbumExport)
                 } else {
@@ -334,12 +345,23 @@ fun RecordingRoute(
     var pendingPhoto by remember { mutableStateOf<File?>(null) }
     val photoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
         val file = pendingPhoto
-        if (saved && file != null) viewModel.setPhotoPath(file.absolutePath) else file?.delete()
+        if (saved && file != null) viewModel.addFinishPhoto(file.absolutePath) else file?.delete()
         pendingPhoto = null
         viewModel.setPendingMedia(false)
     }
-    fun capturePhoto() {
-        viewModel.trackPhotoAttempt()
+    val importPhotoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+        if (uris.isNotEmpty()) scope.launch {
+            val directory = File(context.filesDir, "activity_photos").apply { mkdirs() }
+            val imported = uris.mapNotNull { uri ->
+                importFinishPhoto(context, uri, directory)?.absolutePath
+            }
+            if (imported.isNotEmpty()) {
+                viewModel.addImportedFinishPhotos(imported)
+            }
+        }
+    }
+    fun capturePhoto(sourceType: String = "recording") {
+        viewModel.trackPhotoAttempt(sourceType)
         if (context.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             return
@@ -350,6 +372,16 @@ fun RecordingRoute(
         viewModel.setPendingMedia(true)
         val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.activityphotos", file)
         photoLauncher.launch(uri)
+    }
+    fun closeReview() {
+        if (snapshot.saveEligibility == ActivitySaveEligibility.ELIGIBLE) {
+            viewModel.requestDiscard()
+        } else {
+            scope.launch {
+                ui.photoPaths.forEach { File(it).delete() }
+                if (viewModel.discard()) onExit()
+            }
+        }
     }
 
     LaunchedEffect(ui.countdown) {
@@ -390,7 +422,7 @@ fun RecordingRoute(
     BackHandler(enabled = !ui.showFinishConfirmation && !ui.showDiscardConfirmation) {
         when (snapshot.status) {
             RecordingStatus.ACTIVE, RecordingStatus.PAUSED -> viewModel.requestFinish()
-            RecordingStatus.AWAITING_SAVE -> viewModel.requestDiscard()
+            RecordingStatus.AWAITING_SAVE -> closeReview()
             RecordingStatus.IDLE -> {
                 if (!ui.startRequested) {
                     viewModel.cancelCountdown()
@@ -411,16 +443,24 @@ fun RecordingRoute(
             snapshot.status == RecordingStatus.AWAITING_SAVE -> ReflectionScreen(
                 snapshot = snapshot,
                 launch = ui.launch,
+                unitSystem = unitSystem,
+                weightKilograms = weightKilograms,
                 selected = ui.reflection,
-                photoPath = ui.photoPath,
+                photoPaths = ui.photoPaths,
+                importedPhotoPaths = ui.importedPhotoPaths,
+                continuationCapacity = ui.continuationCapacity,
                 onSelect = viewModel::setReflection,
-                onTakePhoto = ::capturePhoto,
-                onRemovePhoto = { ui.photoPath?.let(::File)?.delete(); viewModel.setPhotoPath(null) },
+                onCapacitySelect = viewModel::setContinuationCapacity,
+                onTakePhoto = { capturePhoto("finish_review") },
+                onImportPhotos = { viewModel.trackPhotoAttempt("finish_photo_library"); importPhotoLauncher.launch("image/*") },
+                onPhotoPreviewed = viewModel::trackPhotoPreviewed,
+                onRemovePhotos = { paths -> paths.forEach { File(it).delete() }; viewModel.setPhotoPaths(ui.photoPaths - paths.toSet()); viewModel.trackPhotoRemoved() },
+                onReorderPhotos = { paths -> viewModel.setPhotoPaths(paths); viewModel.trackPhotoReordered() },
                 onSave = {
-                    val reflection = ui.reflection ?: ReflectionChoice.STEADY
-                    val review = RecordedActivityReview(snapshot, reflection, ui.photoPath)
+                    val reflection = ui.reflection
+                    val review = RecordedActivityReview(snapshot, reflection, ui.continuationCapacity, ui.photoPaths, ui.importedPhotoPaths)
                     val needsLegacyStoragePermission = saveActivityPhotosToAlbum &&
-                        ui.photoPath != null &&
+                        ui.photoPaths.isNotEmpty() &&
                         Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
                         context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
                             PackageManager.PERMISSION_GRANTED
@@ -432,7 +472,7 @@ fun RecordingRoute(
                     }
                 },
                 saving = ui.saving,
-                onClose = viewModel::requestDiscard,
+                onClose = ::closeReview,
             )
             snapshot.status == RecordingStatus.ACTIVE || snapshot.status == RecordingStatus.PAUSED -> LiveRecordingScreen(
                 snapshot = snapshot,
@@ -441,14 +481,14 @@ fun RecordingRoute(
                 unitSystem = unitSystem,
                 weightKilograms = weightKilograms,
                 mode = ui.mode,
-                photoPath = ui.photoPath,
+                photoPath = ui.photoPaths.lastOrNull(),
                 onMode = { mode ->
                     if (mode == RecordingSurfaceMode.CAMERA && context.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                         cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                     } else viewModel.setMode(mode)
                 },
-                onTakePhoto = ::capturePhoto,
-                onPhotoCaptured = viewModel::setPhotoPath,
+                onTakePhoto = { capturePhoto("recording") },
+                onPhotoCaptured = { path -> viewModel.addFinishPhoto(path, "recording") },
                 onPhotoPending = viewModel::setPendingMedia,
                 onPause = viewModel::pause,
                 onResume = {
@@ -576,14 +616,14 @@ fun RecordingRoute(
     )
     if (ui.showDiscardConfirmation) AlertDialog(
         onDismissRequest = viewModel::cancelDiscard,
-        title = { Text(stringResource(R.string.recording_discard_title)) },
-        text = { Text(stringResource(R.string.recording_discard_body)) },
+        title = { Text(stringResource(R.string.recording_discard_review_title)) },
+        text = { Text(stringResource(R.string.recording_discard_review_message)) },
         confirmButton = { TextButton(
             enabled = !ui.discarding,
             onClick = {
                 scope.launch {
                     if (viewModel.discard()) {
-                        ui.photoPath?.let(::File)?.delete()
+                        ui.photoPaths.forEach { File(it).delete() }
                         onExit()
                     }
                 }
@@ -1351,29 +1391,66 @@ private fun ActivityKind.toActivityType(): ActivityType = when (this) {
     Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ReflectionScreen(
     snapshot: RecordingSnapshot,
     launch: RecordingLaunchConfiguration,
+    unitSystem: MeasurementUnitSystem,
+    weightKilograms: Double?,
     selected: ReflectionChoice?,
-    photoPath: String?,
+    photoPaths: List<String>,
+    importedPhotoPaths: Set<String>,
+    continuationCapacity: ContinuationCapacity?,
     onSelect: (ReflectionChoice) -> Unit,
+    onCapacitySelect: (ContinuationCapacity) -> Unit,
     onTakePhoto: () -> Unit,
-    onRemovePhoto: () -> Unit,
+    onImportPhotos: () -> Unit,
+    onPhotoPreviewed: () -> Unit,
+    onRemovePhotos: (List<String>) -> Unit,
+    onReorderPhotos: (List<String>) -> Unit,
     onSave: () -> Unit,
     saving: Boolean,
     onClose: () -> Unit,
 ) {
+    var selectedPhotos by remember(photoPaths) { mutableStateOf(emptySet<String>()) }
+    var previewPhoto by remember { mutableStateOf<String?>(null) }
+    val paceSecondsPerKm = snapshot.distanceMeters.takeIf { it > 0 }
+        ?.let { snapshot.elapsedSeconds / (it / 1_000.0) }
+    val calories = WorkoutCalorieEstimator.estimate(
+        activityType = snapshot.activityKind.toActivityType(),
+        distanceMeters = snapshot.distanceMeters,
+        durationSeconds = snapshot.elapsedSeconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+        elevationGainMeters = snapshot.elevationGainMeters,
+        weightKilograms = weightKilograms,
+    )
+    val heroPageCount = (if (snapshot.track.size > 1) 1 else 0) + photoPaths.size
+    val pagerState = rememberPagerState(pageCount = { maxOf(1, heroPageCount) })
     Scaffold(contentWindowInsets = WindowInsets.safeDrawing) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
                 Box(Modifier.fillMaxWidth().height(280.dp).background(MaterialTheme.colorScheme.primaryContainer)) {
-                    if (snapshot.track.size > 1) PlainstrideRouteMap(
-                        points = snapshot.track.map { MapCoordinate(it.latitude, it.longitude) },
-                        modifier = Modifier.fillMaxWidth().height(280.dp),
-                        interactive = false,
-                    )
-                    else Icon(Icons.AutoMirrored.Filled.DirectionsRun, null, Modifier.size(72.dp).align(Alignment.Center), tint = MaterialTheme.colorScheme.primary)
+                    HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                        if (snapshot.track.size > 1 && page == 0) {
+                            PlainstrideRouteMap(
+                                points = snapshot.track.map { MapCoordinate(it.latitude, it.longitude) },
+                                modifier = Modifier.fillMaxSize(),
+                                interactive = false,
+                            )
+                        } else if (photoPaths.isNotEmpty()) {
+                            val photoIndex = page - if (snapshot.track.size > 1) 1 else 0
+                            val path = photoPaths.getOrNull(photoIndex)
+                            val bitmap = remember(path) { path?.let { BitmapFactory.decodeFile(it) } }
+                            bitmap?.let { Image(it.asImageBitmap(), stringResource(R.string.recording_activity_photo), Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+                        } else {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Icon(Icons.AutoMirrored.Filled.DirectionsRun, null, Modifier.size(72.dp), tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                    if (pagerState.pageCount > 1) {
+                        Text("${pagerState.currentPage + 1} / ${pagerState.pageCount}", Modifier.align(Alignment.BottomCenter).padding(12.dp), color = Color.White, style = MaterialTheme.typography.labelMedium)
+                    }
                     Surface(shape = CircleShape, tonalElevation = 6.dp, modifier = Modifier.align(Alignment.TopStart).padding(16.dp)) {
                         IconButton(onClick = onClose, enabled = !saving) { Icon(Icons.Default.Close, stringResource(R.string.recording_discard)) }
                     }
@@ -1382,7 +1459,7 @@ private fun ReflectionScreen(
                         enabled = snapshot.saveEligibility == ActivitySaveEligibility.ELIGIBLE && !saving,
                         modifier = Modifier.align(Alignment.TopEnd).padding(16.dp).heightIn(min = 48.dp),
                     ) {
-                        Text(stringResource(if (saving) R.string.recording_saving_activity else R.string.recording_save_activity))
+                        Text(stringResource(if (saving) R.string.recording_saving_activity else if (snapshot.saveEligibility == ActivitySaveEligibility.ELIGIBLE) R.string.recording_save_activity else R.string.recording_too_short_to_save))
                     }
                 }
             }
@@ -1401,43 +1478,100 @@ private fun ReflectionScreen(
                 }
             }
             item {
-                Card(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) { Column(Modifier.padding(16.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Metric(stringResource(R.string.recording_distance), formatDistance(snapshot.distanceMeters))
-                    Metric(stringResource(R.string.recording_time), formatDuration(snapshot.elapsedSeconds))
-                    Metric(stringResource(R.string.recording_avg_pace), formatPace(snapshot.distanceMeters.takeIf { it > 0 }?.let { snapshot.elapsedSeconds / (it / 1000.0) }))
+                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(R.string.recording_reflection_prompt), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ReflectionChoice.entries.forEach { choice ->
+                            val label = stringResource(when (choice) {
+                                ReflectionChoice.EASY -> R.string.recording_reflection_easy
+                                ReflectionChoice.ABOUT_RIGHT -> R.string.recording_reflection_about_right
+                                ReflectionChoice.TOO_HARD -> R.string.recording_reflection_too_hard
+                            })
+                            if (selected == choice) Button(onClick = { onSelect(choice) }, modifier = Modifier.weight(1f)) { Text(label) }
+                            else OutlinedButton(onClick = { onSelect(choice) }, modifier = Modifier.weight(1f)) { Text(label) }
+                        }
+                    }
+                    if (selected == ReflectionChoice.EASY) {
+                        Text(stringResource(R.string.recording_capacity_prompt), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ContinuationCapacity.entries.forEach { capacity ->
+                                val label = stringResource(when (capacity) {
+                                    ContinuationCapacity.NONE -> R.string.recording_capacity_none
+                                    ContinuationCapacity.TEN_MINUTES -> R.string.recording_capacity_ten_minutes
+                                    ContinuationCapacity.MUCH_LONGER -> R.string.recording_capacity_much_longer
+                                })
+                                if (continuationCapacity == capacity) Button(onClick = { onCapacitySelect(capacity) }, modifier = Modifier.weight(1f)) { Text(label) }
+                                else OutlinedButton(onClick = { onCapacitySelect(capacity) }, modifier = Modifier.weight(1f)) { Text(label) }
+                            }
+                        }
+                    }
+                    Text(stringResource(R.string.recording_reflection_optional), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Spacer(Modifier.height(12.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    Metric(stringResource(R.string.recording_elevation), "${snapshot.elevationGainMeters.toInt()} m")
-                }
-                } }
             }
             item {
-                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(stringResource(R.string.recording_reflection_prompt), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ReflectionChoice.entries.forEach { choice ->
-                        val label = stringResource(when (choice) {
-                            ReflectionChoice.STRONG -> R.string.recording_reflection_strong
-                            ReflectionChoice.STEADY -> R.string.recording_reflection_steady
-                            ReflectionChoice.TOUGH -> R.string.recording_reflection_tough
-                        })
-                        if (selected == choice) Button(onClick = { onSelect(choice) }, modifier = Modifier.weight(1f)) { Text(label) }
-                        else OutlinedButton(onClick = { onSelect(choice) }, modifier = Modifier.weight(1f)) { Text(label) }
+                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.recording_review_photo_section_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.weight(1f))
+                        if (selectedPhotos.isNotEmpty()) {
+                            TextButton(onClick = { onRemovePhotos(selectedPhotos.toList()); selectedPhotos = emptySet() }) { Text(stringResource(R.string.recording_review_photo_delete_selected)) }
+                            TextButton(onClick = { selectedPhotos = emptySet() }) { Text(stringResource(R.string.recording_cancel)) }
+                        } else {
+                            TextButton(onClick = onTakePhoto) { Text(stringResource(R.string.recording_review_photo_take)) }
+                            TextButton(onClick = onImportPhotos) { Text(stringResource(R.string.recording_review_photo_import)) }
+                        }
+                    }
+                    if (photoPaths.isEmpty()) {
+                        Text(stringResource(R.string.recording_review_photo_empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            itemsIndexed(photoPaths, key = { _, path -> path }) { index, path ->
+                                val bitmap = remember(path) { BitmapFactory.decodeFile(path) }
+                                Box(
+                                    Modifier.size(width = 116.dp, height = 104.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .combinedClickable(
+                                            onClick = {
+                                                if (selectedPhotos.isEmpty()) { previewPhoto = path; onPhotoPreviewed() }
+                                                else selectedPhotos = if (path in selectedPhotos) selectedPhotos - path else selectedPhotos + path
+                                            },
+                                            onLongClick = { selectedPhotos = selectedPhotos + path },
+                                        )
+                                        .border(if (path in selectedPhotos) 3.dp else 0.dp, if (path in selectedPhotos) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(12.dp))
+                                ) {
+                                    bitmap?.let { Image(it.asImageBitmap(), stringResource(R.string.recording_activity_photo), Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+                                    Text(
+                                        finishPhotoCaption(path, index, photoPaths.lastIndex, path in importedPhotoPaths, snapshot, unitSystem),
+                                        Modifier.align(Alignment.BottomStart).fillMaxWidth().background(Color.Black.copy(alpha = .65f)).padding(8.dp),
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.labelSmall,
+                                    )
+                                }
+                                if (path in selectedPhotos) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        TextButton(enabled = index > 0, onClick = { val updated = photoPaths.toMutableList(); updated.removeAt(index); updated.add(index - 1, path); onReorderPhotos(updated) }) { Text("↑") }
+                                        TextButton(enabled = index < photoPaths.lastIndex, onClick = { val updated = photoPaths.toMutableList(); updated.removeAt(index); updated.add(index + 1, path); onReorderPhotos(updated) }) { Text("↓") }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-                Text(stringResource(R.string.recording_reflection_optional), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
             }
             item {
-                if (photoPath == null) OutlinedButton(onClick = onTakePhoto, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-                    Icon(Icons.Default.CameraAlt, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.recording_add_photo))
-                } else Card(Modifier.fillMaxWidth().padding(horizontal = 20.dp).clickable(onClick = onTakePhoto)) {
-                    val bitmap = remember(photoPath) { BitmapFactory.decodeFile(photoPath) }
-                    bitmap?.let { Image(it.asImageBitmap(), stringResource(R.string.recording_activity_photo), Modifier.fillMaxWidth().aspectRatio(16f / 9f)) }
-                    TextButton(onClick = onRemovePhoto) { Text(stringResource(R.string.recording_remove_photo)) }
-                }
+                Card(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        val distance = SessionFormatting.distance(snapshot.distanceMeters, unitSystem)
+                        Metric(stringResource(R.string.recording_distance), "%.2f %s".format(distance.value, distance.unit.shortLabel))
+                        Metric(stringResource(R.string.recording_time), formatDuration(snapshot.elapsedSeconds))
+                        Metric(stringResource(R.string.recording_avg_pace), formatPace(paceSecondsPerKm, unitSystem))
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        val elevation = SessionFormatting.elevation(snapshot.elevationGainMeters, unitSystem)
+                        Metric(stringResource(R.string.recording_elevation), "${elevation.value.toInt()} ${if (unitSystem == MeasurementUnitSystem.metric) "m" else "ft"}")
+                        Metric(stringResource(R.string.recording_review_calories), calories.kilocalories?.toString() ?: "—")
+                    }
+                } }
             }
             item {
                 if (snapshot.saveEligibility == ActivitySaveEligibility.TOO_SHORT) {
@@ -1446,6 +1580,131 @@ private fun ReflectionScreen(
             }
         }
     }
+    previewPhoto?.let {
+        Dialog(onDismissRequest = { previewPhoto = null }) {
+            Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+                val selectedIndex = photoPaths.indexOf(it).coerceAtLeast(0)
+                val previewPager = rememberPagerState(initialPage = selectedIndex, pageCount = { photoPaths.size })
+                HorizontalPager(state = previewPager, modifier = Modifier.fillMaxSize()) { page ->
+                    val path = photoPaths.getOrNull(page)
+                    val bitmap = remember(path) { path?.let { BitmapFactory.decodeFile(it) } }
+                    bitmap?.let { Image(it.asImageBitmap(), stringResource(R.string.recording_activity_photo), Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
+                }
+                IconButton(onClick = { previewPhoto = null }, modifier = Modifier.align(Alignment.TopEnd)) { Icon(Icons.Default.Close, stringResource(R.string.recording_close), tint = Color.White) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun finishPhotoCaption(
+    path: String,
+    index: Int,
+    lastIndex: Int,
+    isImported: Boolean,
+    snapshot: RecordingSnapshot,
+    unitSystem: MeasurementUnitSystem,
+): String {
+    val takenAt = remember(path) {
+        val raw = runCatching { ExifInterface(path).getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL) }.getOrNull()
+            ?: runCatching { ExifInterface(path).getAttribute(ExifInterface.TAG_DATETIME) }.getOrNull()
+        raw?.let { runCatching { java.text.SimpleDateFormat("yyyy:MM:dd HH:mm:ss", java.util.Locale.US).parse(it)?.time }.getOrNull() }
+    }
+    if (takenAt != null) {
+        val startedAt = snapshot.startedAtEpochMilliseconds ?: takenAt
+        if (takenAt < startedAt) return stringResource(R.string.recording_review_photo_start)
+        val captureContext = when {
+            takenAt < (snapshot.startedAtEpochMilliseconds ?: takenAt) -> "pre_activity"
+            takenAt >= snapshot.recordedAtEpochMilliseconds -> "paused"
+            else -> "active"
+        }
+        if (isImported) {
+            if (captureContext == "pre_activity") return stringResource(R.string.recording_review_photo_start)
+            if (captureContext == "paused") return stringResource(R.string.recording_review_photo_finish)
+        } else {
+            if (captureContext == "pre_activity") return stringResource(R.string.recording_review_photo_start)
+            if (captureContext == "paused" || index == lastIndex) return stringResource(R.string.recording_review_photo_finish)
+        }
+        val points = snapshot.track
+        var cumulative = 0.0
+        val distances = mutableListOf<Double>()
+        points.forEachIndexed { pointIndex, point ->
+            if (pointIndex > 0 && pointIndex !in snapshot.trackSegmentStartIndices) {
+                val previous = points[pointIndex - 1]
+                cumulative += routeDistanceMeters(previous.latitude, previous.longitude, point.latitude, point.longitude)
+            }
+            distances += cumulative
+        }
+        val shotDistance = when {
+            points.isEmpty() -> snapshot.distanceMeters
+            takenAt <= points.first().capturedAtEpochMilliseconds -> distances.first()
+            takenAt >= points.last().capturedAtEpochMilliseconds -> distances.last()
+            else -> {
+                val upper = points.indexOfFirst { it.capturedAtEpochMilliseconds >= takenAt }.coerceAtLeast(1)
+                val before = points[upper - 1]
+                val after = points[upper]
+                val duration = (after.capturedAtEpochMilliseconds - before.capturedAtEpochMilliseconds).coerceAtLeast(1)
+                val progress = (takenAt - before.capturedAtEpochMilliseconds).toDouble() / duration
+                distances[upper - 1] + (distances[upper] - distances[upper - 1]) * progress
+            }
+        }
+        val distance = SessionFormatting.distance(shotDistance, unitSystem)
+        return "%.1f %s".format(distance.value, distance.unit.shortLabel)
+    }
+    return stringResource(R.string.recording_review_photo_finish)
+}
+
+private fun routeDistanceMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+    val p1 = Math.toRadians(lat1)
+    val p2 = Math.toRadians(lat2)
+    val deltaLat = p2 - p1
+    val deltaLon = Math.toRadians(lon2 - lon1)
+    val a = kotlin.math.sin(deltaLat / 2).let { it * it } + kotlin.math.cos(p1) * kotlin.math.cos(p2) * kotlin.math.sin(deltaLon / 2).let { it * it }
+    return 6_371_000.0 * 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+}
+
+private fun importFinishPhoto(context: Context, uri: Uri, directory: File): File? {
+    val source = File(directory, "${UUID.randomUUID()}.source")
+    val destination = File(directory, "${UUID.randomUUID()}.jpg")
+    return runCatching {
+        context.contentResolver.openInputStream(uri)?.use { input -> source.outputStream().use(input::copyTo) }
+            ?: return null
+        val originalExif = ExifInterface(source)
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(source.absolutePath, bounds)
+        var sample = 1
+        while (maxOf(bounds.outWidth / sample, bounds.outHeight / sample) > 2048 * 2) sample *= 2
+        val decoded = BitmapFactory.decodeFile(source.absolutePath, BitmapFactory.Options().apply { inSampleSize = sample })
+            ?: return null
+        val scale = minOf(1.0, 2048.0 / maxOf(decoded.width, decoded.height))
+        val scaled = if (scale < 1.0) Bitmap.createScaledBitmap(decoded, (decoded.width * scale).toInt().coerceAtLeast(1), (decoded.height * scale).toInt().coerceAtLeast(1), true) else decoded
+        val transform = Matrix()
+        when (originalExif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> transform.postRotate(90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> transform.postRotate(180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> transform.postRotate(270f)
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> transform.preScale(-1f, 1f)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> transform.preScale(1f, -1f)
+            ExifInterface.ORIENTATION_TRANSPOSE -> { transform.preScale(-1f, 1f); transform.postRotate(270f) }
+            ExifInterface.ORIENTATION_TRANSVERSE -> { transform.preScale(-1f, 1f); transform.postRotate(90f) }
+        }
+        val oriented = if (!transform.isIdentity) Bitmap.createBitmap(scaled, 0, 0, scaled.width, scaled.height, transform, true) else scaled
+        FileOutputStream(destination).use { output -> oriented.compress(Bitmap.CompressFormat.JPEG, 90, output) }
+        val normalizedExif = ExifInterface(destination)
+        listOf(
+            ExifInterface.TAG_DATETIME_ORIGINAL, ExifInterface.TAG_DATETIME_DIGITIZED, ExifInterface.TAG_DATETIME,
+            ExifInterface.TAG_OFFSET_TIME_ORIGINAL, ExifInterface.TAG_OFFSET_TIME_DIGITIZED, ExifInterface.TAG_OFFSET_TIME,
+            ExifInterface.TAG_GPS_LATITUDE, ExifInterface.TAG_GPS_LATITUDE_REF, ExifInterface.TAG_GPS_LONGITUDE,
+            ExifInterface.TAG_GPS_LONGITUDE_REF, ExifInterface.TAG_GPS_ALTITUDE, ExifInterface.TAG_GPS_ALTITUDE_REF,
+            ExifInterface.TAG_GPS_TIMESTAMP, ExifInterface.TAG_GPS_DATESTAMP,
+        ).forEach { tag -> originalExif.getAttribute(tag)?.let { normalizedExif.setAttribute(tag, it) } }
+        normalizedExif.setAttribute(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL.toString())
+        normalizedExif.saveAttributes()
+        if (decoded !== scaled) decoded.recycle()
+        if (scaled !== oriented && scaled !== decoded) scaled.recycle()
+        if (oriented !== scaled) oriented.recycle()
+        destination
+    }.getOrElse { destination.delete(); null }.also { source.delete() }
 }
 
 @Composable private fun WorkoutStepRow(index: Int, step: StructuredWorkoutStep) = Card(Modifier.fillMaxWidth()) {
