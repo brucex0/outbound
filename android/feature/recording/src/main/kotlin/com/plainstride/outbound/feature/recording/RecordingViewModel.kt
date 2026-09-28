@@ -84,7 +84,10 @@ class RecordingViewModel @Inject constructor(
         if (mutableState.value.startRequested) return
         presentationUnitSystem = unitSystem
         val restored=context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).getString(LAUNCH_KEY,null)?.let{runCatching{launchJson.decodeFromString<RecordingLaunchConfiguration>(it)}.getOrNull()}
-        val effective=restored?:configuration
+        val base = restored?.takeIf { it.activityKind == configuration.activityKind } ?: configuration
+        val autoPauseEnabled = context.getSharedPreferences(LAUNCH_PREFERENCES, Context.MODE_PRIVATE)
+            .getBoolean(autoPauseKey(base.activityKind), AutoPauseDefaults.enabled(base.activityKind))
+        val effective = base.copy(autoPauseEnabled = autoPauseEnabled)
         mutableState.value = mutableState.value.copy(launch = effective)
         analytics.record(AnalyticsEvent("activity_setup_viewed", mapOf(
             AnalyticsProperty.Source to effective.entrySource,
@@ -131,7 +134,8 @@ class RecordingViewModel @Inject constructor(
             launch.activityKind,
             permission,
             newCommandId(),
-            launch.companionType,
+            autoPauseEnabled = launch.autoPauseEnabled ?: AutoPauseDefaults.enabled(launch.activityKind),
+            companionType = launch.companionType,
             simulatedRun = BuildConfig.DEBUG && launch.simulatedRunEnabled,
             simulatedRoute = launch.followedRoute,
         )
@@ -141,6 +145,7 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.GoalType to launch.goal.type.name.lowercase(),
             AnalyticsProperty.Permission to permission.name.lowercase(),
             AnalyticsProperty.VoiceGuideEnabled to launch.voiceGuideEnabled,
+            AnalyticsProperty.AutoPauseEnabled to (launch.autoPauseEnabled ?: AutoPauseDefaults.enabled(launch.activityKind)),
             AnalyticsProperty.DogCompanionEnabled to (launch.companionType != null),
             AnalyticsProperty.UnitSystem to presentationUnitSystem.name,
         )))
@@ -152,6 +157,18 @@ class RecordingViewModel @Inject constructor(
         client.recover(accountId, permission, newCommandId())
     }
     fun updatePermission(permission: LocationPermissionState) = client.updatePermission(permission)
+    fun setAutoPauseEnabled(enabled: Boolean) {
+        val current = mutableState.value.launch
+        if (current.activityKind !in AUTO_PAUSE_ACTIVITY_KINDS) return
+        context.getSharedPreferences(LAUNCH_PREFERENCES, Context.MODE_PRIVATE)
+            .edit().putBoolean(autoPauseKey(current.activityKind), enabled).apply()
+        mutableState.value = mutableState.value.copy(launch = current.copy(autoPauseEnabled = enabled))
+        analytics.record(AnalyticsEvent("activity_configuration_changed", mapOf(
+            AnalyticsProperty.ChangeType to "auto_pause",
+            AnalyticsProperty.SelectionType to if (enabled) "enabled" else "disabled",
+            AnalyticsProperty.ActivityType to current.activityKind.name.lowercase(),
+        )))
+    }
     fun pause() = client.pause(newCommandId())
     fun resume() = client.resume(newCommandId())
     fun requestFinish() { mutableState.value = mutableState.value.copy(showFinishConfirmation = true) }
@@ -337,7 +354,7 @@ class RecordingViewModel @Inject constructor(
                             longitude = point.longitude,
                             altitude = point.altitudeMeters,
                             verticalAccuracy = point.verticalAccuracyMeters,
-                            startsNewSegment = index == 0,
+                        startsNewSegment = index == 0 || index in snapshot.trackSegmentStartIndices,
                         )
                     },
                     companionType = mutableState.value.launch.companionType,
@@ -413,7 +430,12 @@ class RecordingViewModel @Inject constructor(
         client.close()
         super.onCleared()
     }
-    private companion object{const val LAUNCH_PREFERENCES="recording_launch";const val LAUNCH_KEY="active"}
+    private companion object {
+        val AUTO_PAUSE_ACTIVITY_KINDS = setOf(ActivityKind.RUNNING, ActivityKind.CYCLING, ActivityKind.WALKING, ActivityKind.HIKING)
+        fun autoPauseKey(activityKind: ActivityKind) = "auto_pause_enabled_${activityKind.name.lowercase()}"
+        const val LAUNCH_PREFERENCES = "recording_launch"
+        const val LAUNCH_KEY = "active"
+    }
 }
 
 private fun durationBucket(seconds: Long) = when {

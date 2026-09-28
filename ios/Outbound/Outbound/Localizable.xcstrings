@@ -11976,7 +11976,14 @@
       }
     },
     "record.setup.auto_pause": {
+      "comment": "[android:record.setup] Generated Android name: auto_pause.",
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto Pause"
+          }
+        },
         "es": {
           "stringUnit": {
             "state": "translated",
@@ -11987,6 +11994,29 @@
           "stringUnit": {
             "state": "translated",
             "value": "自动暂停"
+          }
+        }
+      }
+    },
+    "record.setup.auto_pause.detail": {
+      "comment": "[android:record.setup] Generated Android name: auto_pause_detail.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause automatically when you stop and resume when you move."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se pausa automáticamente al detenerte y se reanuda al detectar movimiento."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "停止时自动暂停，检测到移动后自动恢复。"
           }
         }
       }

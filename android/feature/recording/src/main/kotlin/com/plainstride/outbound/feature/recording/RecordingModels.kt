@@ -39,6 +39,8 @@ data class RecordingSnapshot(
     val accountId: String? = null,
     val activityKind: ActivityKind = ActivityKind.RUNNING,
     val status: RecordingStatus = RecordingStatus.IDLE,
+    val autoPauseEnabled: Boolean? = null,
+    val autoPaused: Boolean = false,
     val revision: Long = 0,
     val startedAtEpochMilliseconds: Long? = null,
     val recordedAtEpochMilliseconds: Long = 0,
@@ -48,12 +50,20 @@ data class RecordingSnapshot(
     val currentPaceSecondsPerKilometer: Double? = null,
     val latestLocation: RecordedLocationSample? = null,
     val track: List<RecordedLocationSample> = emptyList(),
+    val trackSegmentStartIndices: Set<Int> = emptySet(),
     val recovered: Boolean = false,
     val companionType: ActivityCompanionType? = null,
     val runSimulation: RunSimulationState? = null,
 ) {
     val saveEligibility: ActivitySaveEligibility
         get() = ActivitySaveEligibility.evaluate(elapsedSeconds, distanceMeters)
+}
+
+internal object AutoPauseDefaults {
+    fun enabled(activityKind: ActivityKind): Boolean = when (activityKind) {
+        ActivityKind.RUNNING, ActivityKind.CYCLING, ActivityKind.SWIMMING -> true
+        ActivityKind.WALKING, ActivityKind.HIKING -> false
+    }
 }
 
 enum class ActivitySaveEligibility {

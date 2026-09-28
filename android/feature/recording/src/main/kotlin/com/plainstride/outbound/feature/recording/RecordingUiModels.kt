@@ -62,6 +62,7 @@ enum class RecordingGoalType { FREESTYLE, DISTANCE, TIME, CALORIES, WORKOUT }
     val simulatedRunEnabled:Boolean=false,
     val indoor: Boolean = false,
     val voiceGuideEnabled: Boolean = true,
+    val autoPauseEnabled: Boolean? = null,
     val startImmediately: Boolean = false,
     val companionType: ActivityCompanionType? = null,
 )

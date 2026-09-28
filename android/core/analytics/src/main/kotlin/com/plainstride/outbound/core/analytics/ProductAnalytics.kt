@@ -27,6 +27,7 @@ enum class AnalyticsProperty(val wireName: String) {
     Section("section"),
     Category("category"),
     VoiceGuideEnabled("voice_guide_enabled"),
+    AutoPauseEnabled("auto_pause_enabled"),
     DogCompanionEnabled("dog_companion_enabled"),
     MomentType("moment_type"),
     CoachingContract("coaching_contract"),

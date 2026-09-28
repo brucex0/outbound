@@ -467,6 +467,7 @@ fun RecordingRoute(
                 onRequestLocationAccess = { showLocationEducation = true },
                 onExit = onExit,
                 onSimulationChanged = viewModel::configureSimulatedRun,
+                onAutoPauseChanged = viewModel::setAutoPauseEnabled,
             )
         }
     }
@@ -575,6 +576,7 @@ private fun ActivitySetupScreen(
     onRequestLocationAccess: () -> Unit,
     onExit: () -> Unit,
     onSimulationChanged: (Boolean) -> Unit,
+    onAutoPauseChanged: (Boolean) -> Unit,
 ) {
     Scaffold(contentWindowInsets = WindowInsets.safeDrawing) { padding ->
         LazyColumn(
@@ -589,6 +591,28 @@ private fun ActivitySetupScreen(
             if (configuration.workoutSteps.isNotEmpty()) {
                 item { Text(stringResource(R.string.recording_workout_plan), style = MaterialTheme.typography.titleMedium) }
                 itemsIndexed(configuration.workoutSteps) { index, step -> WorkoutStepRow(index, step) }
+            }
+            if (configuration.activityKind in setOf(ActivityKind.RUNNING, ActivityKind.CYCLING, ActivityKind.WALKING, ActivityKind.HIKING)) {
+                item {
+                    val autoPauseLabel = stringResource(R.string.auto_pause)
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(stringResource(R.string.auto_pause), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.auto_pause_detail), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(
+                                checked = configuration.autoPauseEnabled ?: AutoPauseDefaults.enabled(configuration.activityKind),
+                                onCheckedChange = onAutoPauseChanged,
+                                modifier = Modifier.semantics { contentDescription = autoPauseLabel },
+                            )
+                        }
+                    }
+                }
             }
             if (BuildConfig.DEBUG) {
                 item {
@@ -801,9 +825,16 @@ private fun TrackMap(
     val recorded = snapshot.track.map { MapCoordinate(it.latitude, it.longitude) }
     val planned = configuration.followedRoute?.points.orEmpty().map { MapCoordinate(it.latitude, it.longitude) }
     val framingPoints = planned.takeIf { it.size > 1 } ?: recorded
+    val recordedSegments = buildList {
+        val starts = (snapshot.trackSegmentStartIndices + 0).filter { it in recorded.indices }.sorted()
+        starts.forEachIndexed { index, start ->
+            val end = starts.getOrNull(index + 1) ?: recorded.size
+            if (end - start > 1) add(MapRouteSegment(recorded.subList(start, end), MaterialTheme.colorScheme.primary))
+        }
+    }
     val routeSegments = buildList {
         if (planned.size > 1) add(MapRouteSegment(planned, Color(0xFFFF5200)))
-        if (recorded.size > 1) add(MapRouteSegment(recorded, MaterialTheme.colorScheme.primary))
+        addAll(recordedSegments)
     }
     PlainstrideRouteMap(
         points = framingPoints,

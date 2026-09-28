@@ -18,6 +18,7 @@
 - The compact dashboard mirrors iOS's glanceable time / primary action / optional Finish / distance row; the expanded dashboard owns the title and status, goal hero, progress, metric cards, current workout step, route name, and labeled controls.
 - The primary live metric follows the selected distance, time, calorie, structured-workout, or freestyle goal.
 - Live distance, pace, elevation, target progress, and calorie estimates honor the runner's persisted measurement and weight preferences, matching the iOS formatter and estimator contracts.
+- Auto Pause is configurable from setup for run, bike, walk, and hike; each sport keeps its own choice. Run and bike default on, while walk and hike default off. Automatic pauses freeze the activity clock but keep a brief location probe active for confirmed movement and resume; average pace follows the same active-time clock as activity duration.
 - Capturing a photo keeps the live camera preview running and moves the result into a private thumbnail instead of replacing the workout surface.
 - The live map opens on the runner, keeps native pan/zoom controls, renders the selected route and recorded trail separately, and does not continuously zoom out as new samples arrive.
 - Recovery returns to the live surface paused; completion stays in the same route for reflection, local save, or confirmed discard. Confirmed discard waits for the recording service to reach idle before navigating away, preventing recovery from reopening the discarded activity.
@@ -30,7 +31,7 @@
 ## Resources, Analytics, And Accessibility
 
 - Visible strings use generated shared localization resources in `src/main/res`.
-- Setup, start, pause, resume, finish, save eligibility, discard, surface, media, and dashboard-state events use the canonical sanitized iOS event names and Android platform property.
+- Setup, start, pause, resume, finish, save eligibility, discard, surface, media, dashboard-state, and Auto Pause configuration events use the canonical sanitized iOS event names and Android platform property.
 - The debug simulator uses `activity_configuration_changed`, `activity_simulation_started`, and `activity_simulation_control_used` with the iOS allowlisted property names and coarse speed/distance values.
 - Controls expose semantic labels, retain 48dp-or-larger primary targets, and do not rely on color alone.
 

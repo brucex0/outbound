@@ -56,10 +56,11 @@ class RecordingSessionClient(context: Context) : AutoCloseable {
         activityKind: ActivityKind,
         permission: LocationPermissionState,
         commandId: String,
+        autoPauseEnabled: Boolean,
         companionType: ActivityCompanionType? = null,
         simulatedRun: Boolean = false,
         simulatedRoute: FollowedRouteConfiguration? = null,
-    ) = RecordingService.start(appContext, accountId, activityKind, permission, commandId, companionType = companionType, simulatedRun = simulatedRun, simulatedRoute = simulatedRoute)
+    ) = RecordingService.start(appContext, accountId, activityKind, permission, commandId, autoPauseEnabled = autoPauseEnabled, companionType = companionType, simulatedRun = simulatedRun, simulatedRoute = simulatedRoute)
 
     fun recover(
         accountId: String,

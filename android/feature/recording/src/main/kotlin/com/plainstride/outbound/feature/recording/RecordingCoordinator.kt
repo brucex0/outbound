@@ -57,6 +57,14 @@ class RecordingCoordinator internal constructor(
     private var simulationStartElapsedRealtimeNanos: Long? = null
     private var activeSegmentStartedElapsedNanos: Long? = null
     private var accumulatedElapsedNanos = 0L
+    private var autoPauseCandidateStartedAtNanos: Long? = null
+    private var autoResumeCandidateStartedAtNanos: Long? = null
+    private var latestReliableSpeedMetersPerSecond: Double? = null
+    private var latestSpeedObservedAtNanos: Long? = null
+    private var autoPauseProbeFilter: LocationTrackFilter? = null
+    private val autoPauseProbeSamples = mutableListOf<RecordedLocationSample>()
+    private var autoPauseProbeDistanceMeters = 0.0
+    private var autoPauseProbePaceSecondsPerKilometer: Double? = null
     private var filter = LocationTrackFilter(ActivityKind.RUNNING)
     private var elevation = ElevationGainAccumulator()
     private var lastJournalUtcMillis = 0L
@@ -76,6 +84,7 @@ class RecordingCoordinator internal constructor(
         rebuildProcessors(recovered)
         _snapshot.value = recovered.copy(
             status = if (recovered.status == RecordingStatus.AWAITING_SAVE) RecordingStatus.AWAITING_SAVE else RecordingStatus.PAUSED,
+            autoPaused = false,
             revision = entity.revision,
             recordedAtEpochMilliseconds = clock.utcMillis(),
             recovered = true,
@@ -91,6 +100,7 @@ class RecordingCoordinator internal constructor(
         commandId: String,
         accountId: String,
         activityKind: ActivityKind,
+        autoPauseEnabled: Boolean = AutoPauseDefaults.enabled(activityKind),
         sessionId: String = UUID.randomUUID().toString(),
         companionType: ActivityCompanionType? = null,
         simulatedRun: Boolean = false,
@@ -110,6 +120,7 @@ class RecordingCoordinator internal constructor(
                 rebuildProcessors(recovered)
                 _snapshot.value = recovered.copy(
                     status = if (recovered.status == RecordingStatus.AWAITING_SAVE) RecordingStatus.AWAITING_SAVE else RecordingStatus.PAUSED,
+                    autoPaused = false,
                     revision = existing.revision,
                     recordedAtEpochMilliseconds = clock.utcMillis(),
                     recovered = true,
@@ -132,11 +143,17 @@ class RecordingCoordinator internal constructor(
         elevation = ElevationGainAccumulator()
         accumulatedElapsedNanos = 0
         activeSegmentStartedElapsedNanos = clock.elapsedRealtimeNanos()
+        autoPauseCandidateStartedAtNanos = null
+        autoResumeCandidateStartedAtNanos = null
+        resetAutoPauseProbe()
+        latestReliableSpeedMetersPerSecond = null
+        latestSpeedObservedAtNanos = null
         _snapshot.value = RecordingSnapshot(
             sessionId = sessionId,
             accountId = accountId,
             activityKind = activityKind,
             status = RecordingStatus.ACTIVE,
+            autoPauseEnabled = autoPauseEnabled,
             revision = 1,
             startedAtEpochMilliseconds = nowUtc,
             recordedAtEpochMilliseconds = nowUtc,
@@ -162,6 +179,7 @@ class RecordingCoordinator internal constructor(
                 name = "activity_recording_started",
                 properties = mapOf(
                     AnalyticsProperty.ActivityType to activityKind.name.lowercase(),
+                    AnalyticsProperty.AutoPauseEnabled to autoPauseEnabled,
                     AnalyticsProperty.Permission to permissionState.value.name.lowercase(),
                 ),
             ),
@@ -184,14 +202,7 @@ class RecordingCoordinator internal constructor(
             ignored(commandId, "session_not_active")
             return@serialized
         }
-        freezeElapsed()
-        stopSimulationClock()
-        activeSegmentStartedElapsedNanos = null
-        _snapshot.value = nextSnapshot(status = RecordingStatus.PAUSED)
-        stopCollection()
-        persist(force = true)
-        analytics.record(AnalyticsEvent("activity_recording_paused", mapOf(AnalyticsProperty.Trigger to "manual")))
-        _events.emit(RecordingEvent.CommandApplied(commandId, RecordingStatus.PAUSED))
+        applyPause(autoTriggered = false, commandId = commandId)
     }
 
     suspend fun resume(commandId: String) = serialized(commandId) {
@@ -200,7 +211,15 @@ class RecordingCoordinator internal constructor(
             return@serialized
         }
         activeSegmentStartedElapsedNanos = clock.elapsedRealtimeNanos()
-        _snapshot.value = nextSnapshot(status = RecordingStatus.ACTIVE)
+        autoPauseCandidateStartedAtNanos = null
+        autoResumeCandidateStartedAtNanos = null
+        resetAutoPauseProbe()
+        filter = LocationTrackFilter(_snapshot.value.activityKind)
+        _snapshot.value = nextSnapshot(
+            status = RecordingStatus.ACTIVE,
+            autoPaused = false,
+            trackSegmentStartIndices = _snapshot.value.trackSegmentStartIndices + _snapshot.value.track.size,
+        )
         beginCollection()
         persist(force = true)
         analytics.record(AnalyticsEvent("activity_recording_resumed", mapOf(AnalyticsProperty.Trigger to "manual")))
@@ -217,7 +236,7 @@ class RecordingCoordinator internal constructor(
         stopSimulationClock()
         activeSegmentStartedElapsedNanos = null
         stopCollection()
-        val finished = nextSnapshot(status = RecordingStatus.AWAITING_SAVE, runSimulation = null)
+        val finished = nextSnapshot(status = RecordingStatus.AWAITING_SAVE, autoPaused = false, runSimulation = null)
         simulationSampler = null
         simulationStartElapsedRealtimeNanos = null
         _snapshot.value = finished
@@ -248,6 +267,11 @@ class RecordingCoordinator internal constructor(
         _snapshot.value = RecordingSnapshot(recordedAtEpochMilliseconds = clock.utcMillis())
         accumulatedElapsedNanos = 0
         activeSegmentStartedElapsedNanos = null
+        autoPauseCandidateStartedAtNanos = null
+        autoResumeCandidateStartedAtNanos = null
+        latestReliableSpeedMetersPerSecond = null
+        latestSpeedObservedAtNanos = null
+        resetAutoPauseProbe()
         analytics.record(AnalyticsEvent("activity_recording_discarded"))
         _events.emit(RecordingEvent.SessionDiscarded(commandId, current.sessionId))
     }
@@ -266,6 +290,10 @@ class RecordingCoordinator internal constructor(
         _snapshot.value = RecordingSnapshot(recordedAtEpochMilliseconds = clock.utcMillis())
         accumulatedElapsedNanos = 0
         activeSegmentStartedElapsedNanos = null
+        autoPauseCandidateStartedAtNanos = null
+        autoResumeCandidateStartedAtNanos = null
+        latestReliableSpeedMetersPerSecond = null
+        latestSpeedObservedAtNanos = null
         analytics.record(AnalyticsEvent("activity_recording_saved"))
         _events.emit(RecordingEvent.CommandApplied(commandId, RecordingStatus.IDLE))
     }
@@ -295,9 +323,17 @@ class RecordingCoordinator internal constructor(
                 while (true) {
                     delay(1_000)
                     mutex.withLock {
-                        if (_snapshot.value.status == RecordingStatus.ACTIVE) {
-                            _snapshot.value = nextSnapshot()
-                            persist(force = false)
+                        val now = clock.elapsedRealtimeNanos()
+                        when {
+                            _snapshot.value.status == RecordingStatus.ACTIVE -> {
+                                evaluateAutoPause(now)
+                                if (_snapshot.value.status == RecordingStatus.ACTIVE) {
+                                    _snapshot.value = nextSnapshot()
+                                    persist(force = false)
+                                }
+                            }
+                            _snapshot.value.status == RecordingStatus.PAUSED && _snapshot.value.autoPaused ->
+                                evaluateAutoResume(now)
                         }
                     }
                 }
@@ -317,6 +353,18 @@ class RecordingCoordinator internal constructor(
     }
 
     private suspend fun ingest(raw: RecordedLocationSample) {
+        val speedAccuracy = raw.speedAccuracyMetersPerSecond
+        latestReliableSpeedMetersPerSecond = raw.speedMetersPerSecond?.takeIf {
+            it.isFinite() && it >= 0.0 && speedAccuracy != null && speedAccuracy.isFinite() && speedAccuracy in 0.0..3.0
+        }
+        latestSpeedObservedAtNanos = raw.capturedAtElapsedRealtimeNanos
+        when {
+            _snapshot.value.status == RecordingStatus.ACTIVE -> evaluateAutoPause(raw.capturedAtElapsedRealtimeNanos)
+            _snapshot.value.status == RecordingStatus.PAUSED && _snapshot.value.autoPaused -> {
+                captureAutoPauseProbe(raw)
+                evaluateAutoResume(raw.capturedAtElapsedRealtimeNanos)
+            }
+        }
         if (_snapshot.value.status != RecordingStatus.ACTIVE) return
         val output = filter.ingest(raw)
         val accepted = output.sample ?: return
@@ -334,6 +382,149 @@ class RecordingCoordinator internal constructor(
             track = _snapshot.value.track + accepted,
         )
         persist(force = false)
+    }
+
+    private suspend fun evaluateAutoPause(nowNanos: Long) {
+        val snapshot = _snapshot.value
+        if (!(snapshot.autoPauseEnabled ?: AutoPauseDefaults.enabled(snapshot.activityKind)) || snapshot.runSimulation != null ||
+            elapsedSeconds() < AUTO_PAUSE_WARMUP_NANOS / NANOS_PER_SECOND
+        ) {
+            autoPauseCandidateStartedAtNanos = null
+            return
+        }
+        val speed = currentReliableSpeed(nowNanos)
+        if (speed == null) {
+            autoPauseCandidateStartedAtNanos = null
+            return
+        }
+        if (speed < autoPauseThreshold(snapshot.activityKind)) {
+            val startedAt = autoPauseCandidateStartedAtNanos
+            if (startedAt == null) autoPauseCandidateStartedAtNanos = nowNanos
+            else if (nowNanos - startedAt >= AUTO_PAUSE_DURATION_NANOS) applyPause(autoTriggered = true)
+        } else {
+            autoPauseCandidateStartedAtNanos = null
+        }
+    }
+
+    private suspend fun evaluateAutoResume(nowNanos: Long) {
+        val snapshot = _snapshot.value
+        if (!(snapshot.autoPauseEnabled ?: AutoPauseDefaults.enabled(snapshot.activityKind))) {
+            autoResumeCandidateStartedAtNanos = null
+            return
+        }
+        val speed = currentReliableSpeed(nowNanos)
+        if (speed == null) {
+            autoResumeCandidateStartedAtNanos = null
+            return
+        }
+        if (speed >= autoResumeThreshold(snapshot.activityKind)) {
+            val startedAt = autoResumeCandidateStartedAtNanos
+            if (startedAt == null) autoResumeCandidateStartedAtNanos = nowNanos
+            else if (nowNanos - startedAt >= AUTO_RESUME_DURATION_NANOS) resumeAutomatically(nowNanos)
+        } else {
+            autoResumeCandidateStartedAtNanos = null
+        }
+    }
+
+    private fun currentReliableSpeed(nowNanos: Long): Double? {
+        val observedAt = latestSpeedObservedAtNanos ?: return null
+        if (nowNanos - observedAt !in 0..MAX_SPEED_SAMPLE_AGE_NANOS) return null
+        return latestReliableSpeedMetersPerSecond
+    }
+
+    private suspend fun applyPause(autoTriggered: Boolean, commandId: String? = null) {
+        freezeElapsed()
+        stopSimulationClock()
+        activeSegmentStartedElapsedNanos = null
+        autoPauseCandidateStartedAtNanos = null
+        autoResumeCandidateStartedAtNanos = null
+        _snapshot.value = nextSnapshot(status = RecordingStatus.PAUSED, autoPaused = autoTriggered)
+        resetAutoPauseProbe()
+        if (autoTriggered) autoPauseProbeFilter = LocationTrackFilter(_snapshot.value.activityKind)
+        if (!autoTriggered) stopCollection()
+        persist(force = true)
+        analytics.record(AnalyticsEvent("activity_recording_paused", mapOf(
+            AnalyticsProperty.Trigger to if (autoTriggered) "automatic" else "manual",
+        )))
+        if (commandId != null) _events.emit(RecordingEvent.CommandApplied(commandId, RecordingStatus.PAUSED))
+    }
+
+    private suspend fun resumeAutomatically(nowNanos: Long) {
+        val promoted = promoteAutoPauseProbe()
+        accumulatedElapsedNanos += promoted.durationNanos
+        activeSegmentStartedElapsedNanos = nowNanos
+        autoPauseCandidateStartedAtNanos = null
+        autoResumeCandidateStartedAtNanos = null
+        _snapshot.value = nextSnapshot(status = RecordingStatus.ACTIVE, autoPaused = false)
+        persist(force = true)
+        analytics.record(AnalyticsEvent("activity_recording_resumed", mapOf(AnalyticsProperty.Trigger to "automatic")))
+    }
+
+    private fun captureAutoPauseProbe(raw: RecordedLocationSample) {
+        val probeFilter = autoPauseProbeFilter ?: LocationTrackFilter(_snapshot.value.activityKind).also {
+            autoPauseProbeFilter = it
+        }
+        val output = probeFilter.ingest(raw)
+        val accepted = output.sample ?: return
+        autoPauseProbeSamples += accepted
+        autoPauseProbeDistanceMeters += output.distanceIncrementMeters
+        autoPauseProbePaceSecondsPerKilometer = output.estimatedSpeedMetersPerSecond
+            ?.takeIf { it > 0.1 }
+            ?.let { 1_000.0 / it }
+    }
+
+    private fun promoteAutoPauseProbe(): PromotedAutoPauseProbe {
+        val samples = autoPauseProbeSamples.toList()
+        var promotedDurationNanos = 0L
+        for ((previous, current) in samples.zipWithNext()) {
+            val intervalNanos = current.capturedAtElapsedRealtimeNanos - previous.capturedAtElapsedRealtimeNanos
+            if (intervalNanos <= 0 || intervalNanos > MAX_PROBE_INTERVAL_NANOS) continue
+            val speed = distanceMeters(previous, current) / (intervalNanos / NANOS_PER_SECOND.toDouble())
+            if (speed >= autoPauseThreshold(_snapshot.value.activityKind)) promotedDurationNanos += intervalNanos
+        }
+        val snapshot = _snapshot.value
+        val startIndex = snapshot.track.size
+        if (samples.isNotEmpty()) {
+            val track = snapshot.track + samples
+            val distance = snapshot.distanceMeters + autoPauseProbeDistanceMeters
+            for (sample in samples) {
+                elevation.ingest(sample)
+            }
+            _snapshot.value = nextSnapshot(
+                distanceMeters = distance,
+                elevationGainMeters = elevation.gainMeters,
+                currentPaceSecondsPerKilometer = autoPauseProbePaceSecondsPerKilometer ?: snapshot.currentPaceSecondsPerKilometer,
+                latestLocation = samples.last(),
+                track = track,
+                trackSegmentStartIndices = snapshot.trackSegmentStartIndices + startIndex,
+            )
+        } else {
+            _snapshot.value = nextSnapshot(trackSegmentStartIndices = snapshot.trackSegmentStartIndices + startIndex)
+        }
+        filter = LocationTrackFilter(snapshot.activityKind)
+        resetAutoPauseProbe()
+        return PromotedAutoPauseProbe(promotedDurationNanos)
+    }
+
+    private fun resetAutoPauseProbe() {
+        autoPauseProbeFilter = null
+        autoPauseProbeSamples.clear()
+        autoPauseProbeDistanceMeters = 0.0
+        autoPauseProbePaceSecondsPerKilometer = null
+    }
+
+    private fun autoPauseThreshold(activityKind: ActivityKind): Double = when (activityKind) {
+        ActivityKind.CYCLING -> 1.5
+        ActivityKind.WALKING, ActivityKind.HIKING -> 0.35
+        ActivityKind.RUNNING -> 1.0
+        ActivityKind.SWIMMING -> 0.2
+    }
+
+    private fun autoResumeThreshold(activityKind: ActivityKind): Double = when (activityKind) {
+        ActivityKind.CYCLING -> 2.5
+        ActivityKind.WALKING, ActivityKind.HIKING -> 0.75
+        ActivityKind.RUNNING -> 1.5
+        ActivityKind.SWIMMING -> 0.5
     }
 
     private fun rebuildProcessors(snapshot: RecordingSnapshot) {
@@ -363,6 +554,8 @@ class RecordingCoordinator internal constructor(
         currentPaceSecondsPerKilometer: Double? = _snapshot.value.currentPaceSecondsPerKilometer,
         latestLocation: RecordedLocationSample? = _snapshot.value.latestLocation,
         track: List<RecordedLocationSample> = _snapshot.value.track,
+        trackSegmentStartIndices: Set<Int> = _snapshot.value.trackSegmentStartIndices,
+        autoPaused: Boolean = _snapshot.value.autoPaused,
         runSimulation: RunSimulationState? = _snapshot.value.runSimulation,
     ) = _snapshot.value.copy(
         status = status,
@@ -374,6 +567,8 @@ class RecordingCoordinator internal constructor(
         currentPaceSecondsPerKilometer = currentPaceSecondsPerKilometer,
         latestLocation = latestLocation,
         track = track,
+        trackSegmentStartIndices = trackSegmentStartIndices,
+        autoPaused = autoPaused,
         runSimulation = runSimulation,
     )
 
@@ -483,9 +678,16 @@ class RecordingCoordinator internal constructor(
 
     private companion object {
         const val NANOS_PER_SECOND = 1_000_000_000L
+        const val AUTO_PAUSE_WARMUP_NANOS = 10L * NANOS_PER_SECOND
+        const val AUTO_PAUSE_DURATION_NANOS = 12L * NANOS_PER_SECOND
+        const val AUTO_RESUME_DURATION_NANOS = 6L * NANOS_PER_SECOND
+        const val MAX_PROBE_INTERVAL_NANOS = 30L * NANOS_PER_SECOND
+        const val MAX_SPEED_SAMPLE_AGE_NANOS = 10L * NANOS_PER_SECOND
         const val JOURNAL_INTERVAL_MILLIS = 10_000L
         const val MAX_COMMAND_HISTORY = 128
     }
+
+    private data class PromotedAutoPauseProbe(val durationNanos: Long)
 }
 
 private fun durationBucket(seconds: Long): String = when {

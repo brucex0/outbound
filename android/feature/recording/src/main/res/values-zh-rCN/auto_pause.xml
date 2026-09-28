@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
+<resources>
+    <string name="auto_pause">自动暂停</string>
+    <string name="auto_pause_detail">停止时自动暂停，检测到移动后自动恢复。</string>
+</resources>
