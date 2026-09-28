@@ -47,6 +47,17 @@
     <string name="social_group_progress">%1$d of %2$d activities this week</string>
     <string name="social_group_reactivate">Reactivate</string>
     <string name="social_groups">Groups</string>
+    <string name="social_groups_create_choose_detail">Choose who can join. You can adjust other settings later.</string>
+    <string name="social_groups_create_choose_title">What kind of group are you creating?</string>
+    <string name="social_groups_create_community_access">Anyone can find and join this community. Members’ workouts stay private.</string>
+    <string name="social_groups_create_community_hero_detail">Create a welcoming place to share updates and plan activities.</string>
+    <string name="social_groups_create_community_hero_title">Bring your community together.</string>
+    <string name="social_groups_create_private_hero_detail">Share goals and progress with the people closest to you—and cheer each other on.</string>
+    <string name="social_groups_create_private_hero_title">Active. Positive. Together.</string>
+    <string name="social_groups_template_community_detail">Bring people together to share updates and organize activities.</string>
+    <string name="social_groups_template_community_title">Open community · Anyone can join</string>
+    <string name="social_groups_template_private_detail">Share progress and encourage people you trust.</string>
+    <string name="social_groups_template_private_title">Private circle · Invite only</string>
     <string name="social_guide_noticed">Guide noticed this</string>
     <string name="social_hybrid">Meet up or join from anywhere</string>
     <string name="social_incoming_requests">%1$d connection requests</string>

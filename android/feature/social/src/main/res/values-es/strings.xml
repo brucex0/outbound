@@ -47,6 +47,17 @@
     <string name="social_group_progress">%1$d de %2$d actividades esta semana</string>
     <string name="social_group_reactivate">Reactivar</string>
     <string name="social_groups">Grupos</string>
+    <string name="social_groups_create_choose_detail">Elige quién puede unirse. Después podrás ajustar otras opciones.</string>
+    <string name="social_groups_create_choose_title">¿Qué tipo de grupo vas a crear?</string>
+    <string name="social_groups_create_community_access">Cualquiera puede encontrar y unirse a esta comunidad. Los entrenamientos de sus miembros son privados.</string>
+    <string name="social_groups_create_community_hero_detail">Crea un espacio acogedor para compartir novedades y planificar actividades.</string>
+    <string name="social_groups_create_community_hero_title">Reúne a tu comunidad.</string>
+    <string name="social_groups_create_private_hero_detail">Comparte metas y avances con quienes más quieres. Anímense mutuamente.</string>
+    <string name="social_groups_create_private_hero_title">Activos. Positivos. Juntos.</string>
+    <string name="social_groups_template_community_detail">Reúne a personas para compartir novedades y organizar actividades.</string>
+    <string name="social_groups_template_community_title">Comunidad abierta · Cualquiera puede unirse</string>
+    <string name="social_groups_template_private_detail">Comparte avances y anima a las personas en quienes confías.</string>
+    <string name="social_groups_template_private_title">Círculo privado · Solo por invitación</string>
     <string name="social_guide_noticed">Tu guía se fijó en esto</string>
     <string name="social_hybrid">Reúnete o participa desde donde estés</string>
     <string name="social_incoming_requests">%1$d solicitudes de conexión</string>

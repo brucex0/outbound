@@ -1,15 +1,8 @@
 <resources>
     <string name="group_create_title">Crea tu grupo</string>
-    <string name="group_create_choose_title">¿Qué les une?</string>
-    <string name="group_create_choose_detail">Elige un punto de partida. Después podrás ajustar la configuración segura.</string>
-    <string name="group_template_motivation_title">Mantener la motivación juntos</string>
-    <string name="group_template_motivation_detail">Comparte avances y anima a algunas personas de confianza.</string>
-    <string name="group_template_activities_title">Organizar actividades</string>
-    <string name="group_template_activities_detail">Coordina una comunidad, publica novedades y planifica actividades.</string>
     <string name="group_create_name">Ponle nombre al grupo · Opcional</string>
     <string name="group_create_name_help">Déjalo en blanco y Plainstride sugerirá un nombre.</string>
     <string name="group_create_community_name_help">El nombre del grupo comunitario es obligatorio.</string>
-    <string name="group_create_community_detail">Comienza sin aparecer en el directorio y con solicitudes para unirse.</string>
     <string name="group_create_people">¿Quién te ayuda a seguir en movimiento?</string>
     <string name="group_create_selected">%1$d seleccionados</string>
     <string name="group_create_action">Crear grupo</string>

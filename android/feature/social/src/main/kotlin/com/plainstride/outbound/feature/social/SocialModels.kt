@@ -133,6 +133,7 @@ import kotlinx.serialization.json.JsonElement
     val name: String,
     val lifecycle: String,
     val role: String? = null,
+    val membershipRole: String? = null,
     val trustPolicy: String? = null,
     val visibility: String? = null,
     val joinPolicy: String? = null,
@@ -151,6 +152,7 @@ import kotlinx.serialization.json.JsonElement
     val featured: Boolean = false,
     val organizationVerificationState: String = "unverified",
 ) {
+    val currentUserRole: String? get() = role ?: membershipRole
     val focusMode: String get() = week.focusMode
     val completed: Int get() = week.contributedCount
     val target: Int? get() = week.targetCount

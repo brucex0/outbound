@@ -25,14 +25,7 @@
     <string name="group_leave">Leave Group</string>
     <string name="social_group_archive">Archive Group</string>
     <string name="social_group_set_focus">Set Weekly Theme</string>
-    <string name="group_create_choose_title">What brings people together?</string>
-    <string name="group_create_choose_detail">Choose a starting point. You can adjust safe settings later.</string>
-    <string name="group_template_motivation_title">Stay motivated together</string>
-    <string name="group_template_motivation_detail">Share progress and encourage a few people you trust.</string>
-    <string name="group_template_activities_title">Organize activities</string>
-    <string name="group_template_activities_detail">Coordinate a community, publish updates, and plan activities.</string>
     <string name="group_create_community_name_help">A required name for your community Group.</string>
-    <string name="group_create_community_detail">This starts unlisted with request-to-join. Add details later.</string>
     <string name="group_about">About</string>
     <string name="group_community_detail">Coordinate activities and updates without exposing member workouts.</string>
     <string name="group_request_to_join">Request to join</string>
