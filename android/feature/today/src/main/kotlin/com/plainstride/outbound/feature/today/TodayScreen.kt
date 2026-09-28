@@ -151,6 +151,8 @@ fun TodayRoute(
     onBuildPlan: () -> Unit = onSetUpPlan,
     onStartManual: (TodayManualLaunch) -> Unit,
     onOpenMusic: () -> Unit,
+    musicConfigured: Boolean = false,
+    shoesConfigured: Boolean = false,
     onOpenLiveTrack: () -> Unit,
     onOpenShoes: () -> Unit,
     onOpenInbox: () -> Unit,
@@ -214,6 +216,8 @@ fun TodayRoute(
         onUsePlan = { recommendation, replacing -> viewModel.confirmPlanRecommendation(recommendation, replacing) },
         onStartManual = { setup -> viewModel.trackManualWorkoutStarted(setup.activity, setup.goal); onStartManual(setup) },
         onOpenMusic = onOpenMusic,
+        musicConfigured = musicConfigured,
+        shoesConfigured = shoesConfigured,
         onOpenLiveTrack = onOpenLiveTrack,
         onOpenShoes = onOpenShoes,
         onOpenInbox = onOpenInbox,
@@ -268,6 +272,8 @@ fun TodayScreen(
     onUsePlan: (com.plainstride.outbound.core.network.PlanRecommendation, Boolean) -> Unit = { _, _ -> },
     onStartManual: (TodayManualLaunch) -> Unit = {},
     onOpenMusic: () -> Unit = {},
+    musicConfigured: Boolean = false,
+    shoesConfigured: Boolean = false,
     onOpenLiveTrack: () -> Unit = {},
     onOpenShoes: () -> Unit = {},
     onOpenInbox: () -> Unit = {},
@@ -434,6 +440,8 @@ fun TodayScreen(
                 onReturnToSession = onReturnToSession,
                 onOpenDetails = { showsDetail = true },
                 onOpenMusic = onOpenMusic,
+                musicConfigured = musicConfigured,
+                shoesConfigured = shoesConfigured,
                 onOpenLiveTrack = onOpenLiveTrack,
                 onOpenShoes = onOpenShoes,
             )
@@ -601,7 +609,7 @@ private fun CuratedWorkoutSheet(workouts: List<StandaloneWorkout>, onDismiss: ()
 private fun TodayTopControls(weather: WeatherGuidance?, useFahrenheit: Boolean, inboxCount: Int, onWeather: () -> Unit, onInbox: () -> Unit) {
     val inboxDescription = if (inboxCount > 0) stringResource(R.string.today_inbox_count, inboxCount) else stringResource(R.string.today_inbox)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Surface(onClick = onWeather, shape = CircleShape, color = MaterialTheme.colorScheme.surface, tonalElevation = 8.dp, shadowElevation = 6.dp) {
+        Surface(onClick = onWeather, shape = CircleShape, color = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.primary, tonalElevation = 8.dp, shadowElevation = 6.dp) {
             Row(Modifier.heightIn(min = 48.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Cloud, null, Modifier.size(18.dp)); Spacer(Modifier.width(5.dp))
                 Text(weather?.compactLabel(useFahrenheit) ?: stringResource(R.string.today_weather), style = MaterialTheme.typography.labelLarge, maxLines = 1)
@@ -766,6 +774,8 @@ private fun ActivityLaunchDock(
     onReturnToSession: () -> Unit,
     onOpenDetails: () -> Unit,
     onOpenMusic: () -> Unit,
+    musicConfigured: Boolean,
+    shoesConfigured: Boolean,
     onOpenLiveTrack: () -> Unit,
     onOpenShoes: () -> Unit,
     modifier: Modifier = Modifier,
@@ -786,7 +796,7 @@ private fun ActivityLaunchDock(
                 }
             }
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                UtilityButton(stringResource(R.string.today_music), onClick = onOpenMusic)
+                UtilityButton(stringResource(R.string.today_music), onClick = onOpenMusic, selected = musicConfigured)
                 UtilityButton(stringResource(R.string.today_voice_guide), onClick = { onVoiceGuideChanged(!voiceGuideEnabled) }, selected = voiceGuideEnabled)
                 if (activityChoice.isCompanionEligible(suggestion)) {
                     UtilityButton(
@@ -796,7 +806,7 @@ private fun ActivityLaunchDock(
                     )
                 }
                 UtilityButton(stringResource(R.string.today_cheer), onClick = onOpenLiveTrack)
-                UtilityButton(stringResource(R.string.today_shoes), onClick = onOpenShoes)
+                UtilityButton(stringResource(R.string.today_shoes), onClick = onOpenShoes, selected = shoesConfigured)
                 UtilityButton(stringResource(if (indoor) R.string.today_indoor else R.string.today_outdoor), onClick = { onIndoorChanged(!indoor) }, selected = true)
             }
             when {
@@ -846,12 +856,12 @@ private fun UtilityButton(label: String, onClick: () -> Unit, selected: Boolean 
     Surface(
         onClick = onClick,
         shape = CircleShape,
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
     ) {
         Text(
             label,
             Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            color = MaterialTheme.colorScheme.onSurface,
+            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.labelLarge,
             maxLines = 1,
         )
