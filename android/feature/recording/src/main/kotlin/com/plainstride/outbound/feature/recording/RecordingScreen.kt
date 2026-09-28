@@ -294,6 +294,7 @@ fun RecordingRoute(
         val permission = recordingLocationPermission(context, LocationPermissionAccess.wasRequestedBefore(context))
         pendingStartAfterSettings = false
         if (permission == LocationPermissionState.PRECISE || permission == LocationPermissionState.APPROXIMATE) beginCountdown()
+        else if (launch.startImmediately || ui.launch.startImmediately) showLocationRequired()
     }
 
     LaunchedEffect(launch, unitSystem) {
@@ -313,6 +314,7 @@ fun RecordingRoute(
             pendingResume = false
             if (permissionState() == LocationPermissionState.PRECISE || permissionState() == LocationPermissionState.APPROXIMATE) viewModel.resume()
         } else if (permissionState() == LocationPermissionState.PRECISE || permissionState() == LocationPermissionState.APPROXIMATE) beginCountdown()
+        else if (launch.startImmediately || ui.launch.startImmediately) showLocationRequired()
     }
     val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         showCameraEducation = !granted
@@ -464,6 +466,7 @@ fun RecordingRoute(
                 viewModel.cancelCountdown()
                 onExit()
             })
+            launch.startImmediately || ui.launch.startImmediately -> StartingActivityScreen()
             else -> ActivitySetupScreen(
                 configuration = ui.launch,
                 permission = permissionState(),
@@ -513,6 +516,7 @@ fun RecordingRoute(
             locationWaitJob = null
             showGpsWait = false
             viewModel.cancelCountdown()
+            if (launch.startImmediately || ui.launch.startImmediately) onExit()
         },
         title = { Text(stringResource(R.string.recording_acquiring_location)) },
         text = { CircularProgressIndicator() },
@@ -521,6 +525,7 @@ fun RecordingRoute(
             locationWaitJob = null
             showGpsWait = false
             viewModel.cancelCountdown()
+            if (launch.startImmediately || ui.launch.startImmediately) onExit()
         }) { Text(stringResource(R.string.recording_cancel)) } },
     )
 
@@ -537,7 +542,10 @@ fun RecordingRoute(
                 locationPermissionLauncher.launch(LocationPermissionAccess.requestPermissions)
             }
         },
-        onClose = { showLocationEducation = false },
+        onClose = {
+            showLocationEducation = false
+            if (launch.startImmediately || ui.launch.startImmediately) onExit()
+        },
     )
     if (showCameraEducation) PermissionEducationDialog(
         title = stringResource(R.string.recording_camera_permission_title),
@@ -663,6 +671,16 @@ private fun CountdownScreen(value: Int, onCancel: () -> Unit) {
         TextButton(onClick = onCancel, modifier = Modifier.align(Alignment.BottomCenter).padding(32.dp)) {
             Text(stringResource(R.string.recording_cancel), color = MaterialTheme.colorScheme.onPrimary)
         }
+    }
+}
+
+@Composable
+private fun StartingActivityScreen() {
+    Box(
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
     }
 }
 

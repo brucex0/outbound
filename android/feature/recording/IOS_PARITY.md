@@ -10,7 +10,7 @@
 
 ## States And Transitions
 
-- Today launches the prepared activity directly into a cancelable, spoken countdown when Voice Guide is enabled.
+- Today launches the prepared activity directly into location readiness and then a cancelable, spoken countdown when Voice Guide is enabled; the recording setup screen is not shown during this direct-start flow.
 - Outdoor activity start follows iOS preflight: explain location use before the system prompt, direct previously denied users to app settings, refresh authorization when returning from settings, and hold the start until a location fix is no older than 15 seconds and no less accurate than 80 meters. Indoor sessions bypass both gates. A lost permission or GPS fix during countdown blocks recording and returns to the matching permission or acquisition state.
 - Outdoor activity setup also shows the iOS “Enable location” chip while access is unavailable. It opens the same explanation and first-request versus app-settings path as Today and weather; indoor setup hides the chip.
 - Active recording is non-dismissible. Pause reveals separate Resume and Finish controls; Finish requires confirmation.
@@ -31,7 +31,7 @@
 ## Resources, Analytics, And Accessibility
 
 - Visible strings use generated shared localization resources in `src/main/res`.
-- Setup, start, pause, resume, finish, save eligibility, discard, surface, media, dashboard-state, and Auto Pause configuration events use the canonical sanitized iOS event names and Android platform property.
+- Setup is tracked only when its screen is shown. Start, pause, resume, finish, save eligibility, discard, surface, media, dashboard-state, and Auto Pause configuration events use the canonical sanitized iOS event names and Android platform property.
 - The debug simulator uses `activity_configuration_changed`, `activity_simulation_started`, and `activity_simulation_control_used` with the iOS allowlisted property names and coarse speed/distance values.
 - Controls expose semantic labels, retain 48dp-or-larger primary targets, and do not rely on color alone.
 

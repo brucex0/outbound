@@ -87,14 +87,18 @@ class RecordingViewModel @Inject constructor(
         val base = restored?.takeIf { it.activityKind == configuration.activityKind } ?: configuration
         val autoPauseEnabled = context.getSharedPreferences(LAUNCH_PREFERENCES, Context.MODE_PRIVATE)
             .getBoolean(autoPauseKey(base.activityKind), AutoPauseDefaults.enabled(base.activityKind))
-        val effective = base.copy(autoPauseEnabled = autoPauseEnabled)
+        val effective = base.copy(
+            autoPauseEnabled = autoPauseEnabled,
+            // This is a navigation-time decision from Today, not a persisted setup preference.
+            startImmediately = configuration.startImmediately,
+        )
         mutableState.value = mutableState.value.copy(launch = effective)
-        analytics.record(AnalyticsEvent("activity_setup_viewed", mapOf(
-            AnalyticsProperty.Source to effective.entrySource,
-            AnalyticsProperty.ActivityType to effective.activityKind.name.lowercase(),
-            AnalyticsProperty.GoalType to effective.goal.type.name.lowercase(),
-            AnalyticsProperty.UnitSystem to unitSystem.name,
-        )))
+        if (!effective.startImmediately) analytics.record(AnalyticsEvent("activity_setup_viewed", mapOf(
+                AnalyticsProperty.Source to effective.entrySource,
+                AnalyticsProperty.ActivityType to effective.activityKind.name.lowercase(),
+                AnalyticsProperty.GoalType to effective.goal.type.name.lowercase(),
+                AnalyticsProperty.UnitSystem to unitSystem.name,
+            )))
     }
 
     suspend fun beginCountdown() {
