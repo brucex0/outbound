@@ -74,6 +74,7 @@ class RecordingViewModel @Inject constructor(
     )
     private var recoveryAccountId: String? = null
     private var preparingCountdown = false
+    private var routeBeforeSimulation: FollowedRouteConfiguration? = null
     private var presentationUnitSystem = MeasurementUnitSystem.metric
     val voiceListening: StateFlow<Boolean> = voice.listening
     init { voice.observe(viewModelScope, snapshot = { snapshot.value }, ::pause, ::resume, ::requestFinish) }
@@ -125,7 +126,15 @@ class RecordingViewModel @Inject constructor(
         val launch = mutableState.value.launch
         mutableState.value = mutableState.value.copy(startRequested = true, countdown = null, countdownVoiceReady = false)
         context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).edit().putString(LAUNCH_KEY,launchJson.encodeToString(launch)).apply()
-        client.start(accountId, launch.activityKind, permission, newCommandId(), launch.companionType)
+        client.start(
+            accountId,
+            launch.activityKind,
+            permission,
+            newCommandId(),
+            launch.companionType,
+            simulatedRun = BuildConfig.DEBUG && launch.simulatedRunEnabled,
+            simulatedRoute = launch.followedRoute,
+        )
         analytics.record(AnalyticsEvent("activity_started", mapOf(
             AnalyticsProperty.Source to launch.entrySource,
             AnalyticsProperty.ActivityType to launch.activityKind.name.lowercase(),
@@ -149,6 +158,7 @@ class RecordingViewModel @Inject constructor(
     fun cancelFinish() { mutableState.value = mutableState.value.copy(showFinishConfirmation = false) }
     fun finish() {
         mutableState.value = mutableState.value.copy(showFinishConfirmation = false)
+        mutableState.value = mutableState.value.copy(launch = mutableState.value.launch.copy(simulatedRunEnabled = false))
         client.finish(newCommandId())
         val current = snapshot.value
         analytics.record(AnalyticsEvent("activity_finished", mapOf(
@@ -219,6 +229,67 @@ class RecordingViewModel @Inject constructor(
     ))
     fun newCommandId(): String = UUID.randomUUID().toString()
     fun markSaved(){client.markSaved(newCommandId());clearLaunch()}
+    fun configureSimulatedRun(enabled: Boolean) {
+        if (!BuildConfig.DEBUG || snapshot.value.status != RecordingStatus.IDLE) return
+        val current = mutableState.value.launch
+        if (enabled) routeBeforeSimulation = current.followedRoute
+        val route = if (enabled) HarvestRunSimulation.route else if (current.followedRoute?.id == HarvestRunSimulation.ROUTE_ID) routeBeforeSimulation else current.followedRoute
+        mutableState.value = mutableState.value.copy(
+            launch = current.copy(
+                activityKind = ActivityKind.RUNNING,
+                title = null,
+                goal = RecordingGoal(),
+                workoutSteps = emptyList(),
+                suggestionId = null,
+                plannedWorkoutId = null,
+                standaloneWorkoutId = null,
+                standaloneWorkoutCatalogVersion = null,
+                workoutDetail = null,
+                workoutGuideline = null,
+                privateTrainingSignal = null,
+                workoutPhase = null,
+                workoutTargetPaceSecondsPerKilometer = null,
+                workoutFasterToleranceSeconds = null,
+                workoutSlowerToleranceSeconds = null,
+                workoutRecognizesTargetLock = false,
+                raceIntent = null,
+                simulatedRunEnabled = enabled,
+                followedRoute = route,
+                indoor = false,
+            ),
+        )
+        analytics.record(AnalyticsEvent("activity_configuration_changed", mapOf(
+            AnalyticsProperty.ChangeType to "run_simulation",
+            AnalyticsProperty.SelectionType to if (enabled) "enabled" else "disabled",
+        )))
+        if (!enabled) routeBeforeSimulation = null
+    }
+    fun setRunSimulationTimeRate(rate: Int) {
+        if (!BuildConfig.DEBUG) return
+        client.setRunSimulationTimeRate(rate)
+        trackSimulationControl("time_rate", "rate_${rate}x")
+    }
+    fun adjustRunSimulationSpeed(deltaKilometersPerHour: Double) {
+        if (!BuildConfig.DEBUG) return
+        client.adjustRunSimulationSpeed(deltaKilometersPerHour)
+        val speed = snapshot.value.runSimulation?.speedKilometersPerHour ?: 10.0
+        trackSimulationControl("speed", HarvestRunSimulation.speedBucket((speed + deltaKilometersPerHour).coerceIn(4.0, 24.0)))
+    }
+    fun toggleRunSimulationClock() {
+        if (!BuildConfig.DEBUG) return
+        val wasRunning = snapshot.value.runSimulation?.isClockRunning == true
+        client.toggleRunSimulationClock()
+        trackSimulationControl("clock", if (wasRunning) "paused" else "playing")
+    }
+    fun advanceRunSimulation(seconds: Int) {
+        if (!BuildConfig.DEBUG) return
+        client.advanceRunSimulation(seconds)
+        trackSimulationControl("time_advance", if (seconds == 60) "1m" else "5m")
+    }
+    private fun trackSimulationControl(control: String, selection: String) = analytics.record(AnalyticsEvent(
+        "activity_simulation_control_used",
+        mapOf(AnalyticsProperty.Control to control, AnalyticsProperty.SelectionType to selection),
+    ))
     private fun clearLaunch(){context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).edit().remove(LAUNCH_KEY).apply()}
 
     private fun companionTitleRes(kind: ActivityKind): Int = when (kind) {

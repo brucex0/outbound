@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import com.plainstride.outbound.core.model.activity.ActivityCompanionType
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 /** Lifecycle-neutral UI gateway; a ViewModel can connect/disconnect without owning recording. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -55,7 +57,9 @@ class RecordingSessionClient(context: Context) : AutoCloseable {
         permission: LocationPermissionState,
         commandId: String,
         companionType: ActivityCompanionType? = null,
-    ) = RecordingService.start(appContext, accountId, activityKind, permission, commandId, companionType = companionType)
+        simulatedRun: Boolean = false,
+        simulatedRoute: FollowedRouteConfiguration? = null,
+    ) = RecordingService.start(appContext, accountId, activityKind, permission, commandId, companionType = companionType, simulatedRun = simulatedRun, simulatedRoute = simulatedRoute)
 
     fun recover(
         accountId: String,
@@ -72,6 +76,10 @@ class RecordingSessionClient(context: Context) : AutoCloseable {
     fun discard(commandId: String) = RecordingService.discard(appContext, commandId)
 
     fun markSaved(commandId: String) = RecordingService.markSaved(appContext, commandId)
+    fun setRunSimulationTimeRate(rate: Int) = lastBinder?.setRunSimulationTimeRate(rate)
+    fun adjustRunSimulationSpeed(deltaKilometersPerHour: Double) = lastBinder?.adjustRunSimulationSpeed(deltaKilometersPerHour)
+    fun toggleRunSimulationClock() = lastBinder?.toggleRunSimulationClock()
+    fun advanceRunSimulation(seconds: Int) = lastBinder?.advanceRunSimulation(seconds)
 
     override fun close() {
         if (bound) appContext.unbindService(connection)

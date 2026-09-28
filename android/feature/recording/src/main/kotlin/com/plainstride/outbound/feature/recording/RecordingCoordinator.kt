@@ -52,6 +52,9 @@ class RecordingCoordinator internal constructor(
 
     private var tickJob: Job? = null
     private var locationJob: Job? = null
+    private var simulationClockJob: Job? = null
+    private var simulationSampler: RunSimulationRouteSampler? = null
+    private var simulationStartElapsedRealtimeNanos: Long? = null
     private var activeSegmentStartedElapsedNanos: Long? = null
     private var accumulatedElapsedNanos = 0L
     private var filter = LocationTrackFilter(ActivityKind.RUNNING)
@@ -77,6 +80,10 @@ class RecordingCoordinator internal constructor(
             recordedAtEpochMilliseconds = clock.utcMillis(),
             recovered = true,
         )
+        simulationSampler = restoredSimulationSampler(_snapshot.value)
+        simulationStartElapsedRealtimeNanos = simulationSampler?.let {
+            clock.elapsedRealtimeNanos() - _snapshot.value.runSimulation!!.elapsedSeconds * NANOS_PER_SECOND
+        }
         _events.emit(RecordingEvent.CommandApplied(commandId, _snapshot.value.status))
     }
 
@@ -86,6 +93,8 @@ class RecordingCoordinator internal constructor(
         activityKind: ActivityKind,
         sessionId: String = UUID.randomUUID().toString(),
         companionType: ActivityCompanionType? = null,
+        simulatedRun: Boolean = false,
+        simulatedRoute: FollowedRouteConfiguration? = null,
     ) = serialized(commandId) {
         if (_snapshot.value.status != RecordingStatus.IDLE) {
             ignored(commandId, "session_already_exists")
@@ -105,11 +114,20 @@ class RecordingCoordinator internal constructor(
                     recordedAtEpochMilliseconds = clock.utcMillis(),
                     recovered = true,
                 )
+                simulationSampler = restoredSimulationSampler(_snapshot.value)
+                simulationStartElapsedRealtimeNanos = simulationSampler?.let {
+                    clock.elapsedRealtimeNanos() - _snapshot.value.runSimulation!!.elapsedSeconds * NANOS_PER_SECOND
+                }
                 ignored(commandId, if (existing.sessionId == sessionId) "duplicate_start" else "recoverable_session_exists")
                 return@serialized
             }
         }
         val nowUtc = clock.utcMillis()
+        val sampler = if (BuildConfig.DEBUG && simulatedRun) {
+            RunSimulationRouteSampler((simulatedRoute ?: HarvestRunSimulation.route).points)
+        } else null
+        simulationSampler = sampler
+        simulationStartElapsedRealtimeNanos = sampler?.let { clock.elapsedRealtimeNanos() }
         filter = LocationTrackFilter(activityKind)
         elevation = ElevationGainAccumulator()
         accumulatedElapsedNanos = 0
@@ -123,8 +141,21 @@ class RecordingCoordinator internal constructor(
             startedAtEpochMilliseconds = nowUtc,
             recordedAtEpochMilliseconds = nowUtc,
             companionType = companionType,
+            runSimulation = sampler?.let {
+                RunSimulationState(routeDistanceMeters = it.totalDistanceMeters)
+            },
         )
         beginCollection()
+        if (sampler != null) {
+            val initial = sampler.sample(
+                0.0,
+                _snapshot.value.runSimulation?.speedMetersPerSecond ?: 0.0,
+                0,
+                nowUtc,
+                simulationStartElapsedRealtimeNanos ?: clock.elapsedRealtimeNanos(),
+            )
+            ingest(initial)
+        }
         persist(force = true)
         analytics.record(
             AnalyticsEvent(
@@ -132,6 +163,16 @@ class RecordingCoordinator internal constructor(
                 properties = mapOf(
                     AnalyticsProperty.ActivityType to activityKind.name.lowercase(),
                     AnalyticsProperty.Permission to permissionState.value.name.lowercase(),
+                ),
+            ),
+        )
+        if (sampler != null) analytics.record(
+            AnalyticsEvent(
+                name = "activity_simulation_started",
+                properties = mapOf(
+                    AnalyticsProperty.SourceType to "harvest_half",
+                    AnalyticsProperty.DistanceBucket to distanceBucket(sampler.totalDistanceMeters),
+                    AnalyticsProperty.SelectionType to HarvestRunSimulation.speedBucket(10.0),
                 ),
             ),
         )
@@ -144,6 +185,7 @@ class RecordingCoordinator internal constructor(
             return@serialized
         }
         freezeElapsed()
+        stopSimulationClock()
         activeSegmentStartedElapsedNanos = null
         _snapshot.value = nextSnapshot(status = RecordingStatus.PAUSED)
         stopCollection()
@@ -172,9 +214,12 @@ class RecordingCoordinator internal constructor(
             return@serialized
         }
         freezeElapsed()
+        stopSimulationClock()
         activeSegmentStartedElapsedNanos = null
         stopCollection()
-        val finished = nextSnapshot(status = RecordingStatus.AWAITING_SAVE)
+        val finished = nextSnapshot(status = RecordingStatus.AWAITING_SAVE, runSimulation = null)
+        simulationSampler = null
+        simulationStartElapsedRealtimeNanos = null
         _snapshot.value = finished
         persist(force = true)
         analytics.record(
@@ -196,6 +241,9 @@ class RecordingCoordinator internal constructor(
             return@serialized
         }
         stopCollection()
+        stopSimulationClock()
+        simulationSampler = null
+        simulationStartElapsedRealtimeNanos = null
         current.accountId?.let { account -> current.sessionId?.let { journal.delete(account, it) } }
         _snapshot.value = RecordingSnapshot(recordedAtEpochMilliseconds = clock.utcMillis())
         accumulatedElapsedNanos = 0
@@ -212,6 +260,9 @@ class RecordingCoordinator internal constructor(
             return@serialized
         }
         current.accountId?.let { account -> current.sessionId?.let { journal.delete(account, it) } }
+        stopSimulationClock()
+        simulationSampler = null
+        simulationStartElapsedRealtimeNanos = null
         _snapshot.value = RecordingSnapshot(recordedAtEpochMilliseconds = clock.utcMillis())
         accumulatedElapsedNanos = 0
         activeSegmentStartedElapsedNanos = null
@@ -229,26 +280,32 @@ class RecordingCoordinator internal constructor(
     }
 
     private fun beginCollection() {
-        locationSource.start()
         locationJob?.cancel()
-        locationJob = scope.launch {
-            locationSource.samples.collect { raw -> mutex.withLock { ingest(raw) } }
+        if (_snapshot.value.runSimulation == null) {
+            locationSource.start()
+            locationJob = scope.launch {
+                locationSource.samples.collect { raw -> mutex.withLock { ingest(raw) } }
+            }
+        } else {
+            locationSource.stop()
         }
         tickJob?.cancel()
-        tickJob = scope.launch {
-            while (true) {
-                delay(1_000)
-                mutex.withLock {
-                    if (_snapshot.value.status == RecordingStatus.ACTIVE) {
-                        _snapshot.value = nextSnapshot()
-                        persist(force = false)
+        if (_snapshot.value.runSimulation == null) {
+            tickJob = scope.launch {
+                while (true) {
+                    delay(1_000)
+                    mutex.withLock {
+                        if (_snapshot.value.status == RecordingStatus.ACTIVE) {
+                            _snapshot.value = nextSnapshot()
+                            persist(force = false)
+                        }
                     }
                 }
             }
         }
-        if (permissionState.value == LocationPermissionState.DENIED ||
+        if (_snapshot.value.runSimulation == null && (permissionState.value == LocationPermissionState.DENIED ||
             permissionState.value == LocationPermissionState.NOT_REQUESTED
-        ) _events.tryEmit(RecordingEvent.LocationUnavailable(permissionState.value))
+        )) _events.tryEmit(RecordingEvent.LocationUnavailable(permissionState.value))
     }
 
     private fun stopCollection() {
@@ -291,6 +348,7 @@ class RecordingCoordinator internal constructor(
     }
 
     private fun elapsedSeconds(): Long {
+        _snapshot.value.runSimulation?.let { return it.elapsedSeconds.toLong() }
         val active = activeSegmentStartedElapsedNanos?.let {
             (clock.elapsedRealtimeNanos() - it).coerceAtLeast(0)
         } ?: 0
@@ -305,6 +363,7 @@ class RecordingCoordinator internal constructor(
         currentPaceSecondsPerKilometer: Double? = _snapshot.value.currentPaceSecondsPerKilometer,
         latestLocation: RecordedLocationSample? = _snapshot.value.latestLocation,
         track: List<RecordedLocationSample> = _snapshot.value.track,
+        runSimulation: RunSimulationState? = _snapshot.value.runSimulation,
     ) = _snapshot.value.copy(
         status = status,
         revision = _snapshot.value.revision + 1,
@@ -315,7 +374,83 @@ class RecordingCoordinator internal constructor(
         currentPaceSecondsPerKilometer = currentPaceSecondsPerKilometer,
         latestLocation = latestLocation,
         track = track,
+        runSimulation = runSimulation,
     )
+
+    suspend fun setRunSimulationTimeRate(rate: Int) = serialized("simulation_rate_${UUID.randomUUID()}") {
+        if (!BuildConfig.DEBUG || rate !in listOf(1, 10, 60)) return@serialized
+        val simulation = _snapshot.value.runSimulation ?: return@serialized
+        _snapshot.value = nextSnapshot(runSimulation = simulation.copy(timeRate = rate))
+        persist(force = true)
+        if (simulation.isClockRunning) startSimulationClock(rate)
+    }
+
+    suspend fun adjustRunSimulationSpeed(deltaKilometersPerHour: Double) = serialized("simulation_speed_${UUID.randomUUID()}") {
+        if (!BuildConfig.DEBUG) return@serialized
+        val simulation = _snapshot.value.runSimulation ?: return@serialized
+        val updated = simulation.copy(speedKilometersPerHour = (simulation.speedKilometersPerHour + deltaKilometersPerHour).coerceIn(4.0, 24.0))
+        _snapshot.value = nextSnapshot(runSimulation = updated)
+        persist(force = true)
+    }
+
+    suspend fun toggleRunSimulationClock() = serialized("simulation_clock_${UUID.randomUUID()}") {
+        if (!BuildConfig.DEBUG || _snapshot.value.status != RecordingStatus.ACTIVE) return@serialized
+        val simulation = _snapshot.value.runSimulation ?: return@serialized
+        if (simulation.isComplete) return@serialized
+        if (simulation.isClockRunning) stopSimulationClock() else startSimulationClock(simulation.timeRate)
+        _snapshot.value = nextSnapshot(runSimulation = simulation.copy(isClockRunning = !simulation.isClockRunning))
+        persist(force = true)
+    }
+
+    suspend fun advanceRunSimulation(seconds: Int) = serialized("simulation_advance_${UUID.randomUUID()}") {
+        if (!BuildConfig.DEBUG || seconds <= 0 || _snapshot.value.status != RecordingStatus.ACTIVE) return@serialized
+        val sampler = simulationSampler ?: return@serialized
+        var simulation = _snapshot.value.runSimulation ?: return@serialized
+        repeat(seconds.coerceAtMost(300)) {
+            if (simulation.isComplete) return@repeat
+            simulation = simulation.copy(
+                elapsedSeconds = simulation.elapsedSeconds + 1,
+                distanceMeters = (simulation.distanceMeters + simulation.speedMetersPerSecond).coerceAtMost(simulation.routeDistanceMeters),
+            )
+            _snapshot.value = nextSnapshot(runSimulation = simulation)
+            ingest(sampler.sample(
+                simulation.distanceMeters,
+                simulation.speedMetersPerSecond,
+                simulation.elapsedSeconds,
+                _snapshot.value.startedAtEpochMilliseconds ?: clock.utcMillis(),
+                simulationStartElapsedRealtimeNanos ?: clock.elapsedRealtimeNanos(),
+            ))
+        }
+        if (simulation.isComplete) {
+            stopSimulationClock()
+            _snapshot.value = nextSnapshot(runSimulation = simulation.copy(isClockRunning = false))
+        }
+        persist(force = true)
+    }
+
+    private fun startSimulationClock(rate: Int) {
+        simulationClockJob?.cancel()
+        simulationClockJob = scope.launch {
+            while (true) {
+                delay(1_000L / rate)
+                advanceRunSimulation(1)
+                if (_snapshot.value.runSimulation?.isComplete != false || _snapshot.value.status != RecordingStatus.ACTIVE) break
+            }
+        }
+    }
+
+    private fun stopSimulationClock() {
+        simulationClockJob?.cancel()
+        simulationClockJob = null
+        _snapshot.value.runSimulation?.let { simulation ->
+            if (simulation.isClockRunning) _snapshot.value = nextSnapshot(runSimulation = simulation.copy(isClockRunning = false))
+        }
+    }
+
+    private fun restoredSimulationSampler(snapshot: RecordingSnapshot): RunSimulationRouteSampler? {
+        if (!BuildConfig.DEBUG || snapshot.runSimulation == null) return null
+        return runCatching { RunSimulationRouteSampler(HarvestRunSimulation.route.points) }.getOrNull()
+    }
 
     private suspend fun persist(force: Boolean) {
         val value = _snapshot.value

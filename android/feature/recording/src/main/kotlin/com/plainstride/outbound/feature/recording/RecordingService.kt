@@ -21,6 +21,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import com.plainstride.outbound.core.analytics.ProductAnalytics
 import com.plainstride.outbound.core.database.PlainstrideDatabase
 import com.plainstride.outbound.core.model.activity.ActivityCompanionType
@@ -76,6 +78,11 @@ class RecordingService : Service() {
                     companionType = intent.getStringExtra(EXTRA_COMPANION_TYPE)?.let { raw ->
                         runCatching { ActivityCompanionType.valueOf(raw) }.getOrNull()
                     },
+                    simulatedRun = BuildConfig.DEBUG && intent.getBooleanExtra(EXTRA_SIMULATED_RUN, false),
+                    simulatedRoute = if (BuildConfig.DEBUG && intent.getBooleanExtra(EXTRA_SIMULATED_RUN, false)) {
+                        intent.getStringExtra(EXTRA_SIMULATED_ROUTE)?.let { runCatching { Json.decodeFromString<FollowedRouteConfiguration>(it) }.getOrNull() }
+                            ?: HarvestRunSimulation.route
+                    } else null,
                 )
                 ACTION_RECOVER -> coordinator.recover(intent.requireStringExtra(EXTRA_ACCOUNT_ID), commandId)
                 ACTION_PAUSE -> coordinator.pause(commandId)
@@ -171,6 +178,10 @@ class RecordingService : Service() {
         fun recover(accountId: String, commandId: String) {
             serviceScope.launch { coordinator.recover(accountId, commandId) }
         }
+        fun setRunSimulationTimeRate(rate: Int) { serviceScope.launch { coordinator.setRunSimulationTimeRate(rate) } }
+        fun adjustRunSimulationSpeed(delta: Double) { serviceScope.launch { coordinator.adjustRunSimulationSpeed(delta) } }
+        fun toggleRunSimulationClock() { serviceScope.launch { coordinator.toggleRunSimulationClock() } }
+        fun advanceRunSimulation(seconds: Int) { serviceScope.launch { coordinator.advanceRunSimulation(seconds) } }
     }
 
     companion object {
@@ -182,6 +193,8 @@ class RecordingService : Service() {
         private const val EXTRA_ACTIVITY_KIND = "recording.activity_kind"
         private const val EXTRA_PERMISSION = "recording.permission"
         private const val EXTRA_COMPANION_TYPE = "recording.companion_type"
+        private const val EXTRA_SIMULATED_RUN = "recording.simulated_run"
+        private const val EXTRA_SIMULATED_ROUTE = "recording.simulated_route"
         private const val ACTION_START = "com.plainstride.outbound.recording.START"
         private const val ACTION_RECOVER = "com.plainstride.outbound.recording.RECOVER"
         private const val ACTION_PAUSE = "com.plainstride.outbound.recording.PAUSE"
@@ -198,8 +211,10 @@ class RecordingService : Service() {
             commandId: String = UUID.randomUUID().toString(),
             sessionId: String = UUID.randomUUID().toString(),
             companionType: ActivityCompanionType? = null,
+            simulatedRun: Boolean = false,
+            simulatedRoute: FollowedRouteConfiguration? = null,
         ) = dispatch(context, ACTION_START, commandId) {
-            require(permission == LocationPermissionState.PRECISE || permission == LocationPermissionState.APPROXIMATE) {
+            require((simulatedRun && BuildConfig.DEBUG) || permission == LocationPermissionState.PRECISE || permission == LocationPermissionState.APPROXIMATE) {
                 "Location permission must be granted before starting an outdoor recording."
             }
             putExtra(EXTRA_ACCOUNT_ID, accountId)
@@ -207,6 +222,10 @@ class RecordingService : Service() {
             putExtra(EXTRA_PERMISSION, permission.name)
             putExtra(EXTRA_SESSION_ID, sessionId)
             companionType?.let { putExtra(EXTRA_COMPANION_TYPE, it.name) }
+            if (simulatedRun && BuildConfig.DEBUG) {
+                putExtra(EXTRA_SIMULATED_RUN, true)
+                putExtra(EXTRA_SIMULATED_ROUTE, Json.encodeToString(simulatedRoute ?: HarvestRunSimulation.route))
+            }
         }
 
         fun recover(

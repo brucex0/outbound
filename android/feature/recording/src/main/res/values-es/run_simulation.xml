@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="recording_simulation_advance_five_minutes">+5 min</string>
+    <string name="recording_simulation_advance_one_minute">+1 min</string>
+    <string name="recording_simulation_clock_pause">Pausar el tiempo simulado</string>
+    <string name="recording_simulation_clock_play">Avanzar el tiempo simulado</string>
+    <string name="recording_simulation_route_name">Media Maratón Harvest de Redmond</string>
+    <string name="recording_simulation_setup_detail">Usa la ruta de Redmond con velocidad y tiempo ajustables. No hace falta moverse con el GPS.</string>
+    <string name="recording_simulation_setup_title">Carrera Harvest simulada</string>
+    <string name="recording_simulation_speed_decrease">Reducir la velocidad simulada</string>
+    <string name="recording_simulation_speed_format">%.0f km/h</string>
+    <string name="recording_simulation_speed_increase">Aumentar la velocidad simulada</string>
+    <string name="recording_simulation_testing_section">Pruebas</string>
+    <string name="recording_simulation_time_rate">Velocidad del tiempo simulado</string>
+    <string name="recording_simulation_title">Simulación de carrera</string>
+</resources>

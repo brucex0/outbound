@@ -74,6 +74,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -262,6 +263,13 @@ fun RecordingRoute(
 
     fun beginCountdown() {
         pendingResume = false
+        if (BuildConfig.DEBUG && ui.launch.simulatedRunEnabled) {
+            val permission = permissionState()
+            if (permission == LocationPermissionState.PRECISE || permission == LocationPermissionState.APPROXIMATE) {
+                scope.launch { viewModel.beginCountdown() }
+            } else showLocationRequired()
+            return
+        }
         val permission = permissionState()
         if (permission == LocationPermissionState.PRECISE || permission == LocationPermissionState.APPROXIMATE) {
             if (ui.launch.indoor) {
@@ -345,11 +353,11 @@ fun RecordingRoute(
         else {
             if (ui.countdownVoiceReady) viewModel.speakGo()
             val permission = permissionState()
-            if (!ui.launch.indoor && permission != LocationPermissionState.PRECISE && permission != LocationPermissionState.APPROXIMATE) {
+            if (!ui.launch.indoor && !(BuildConfig.DEBUG && ui.launch.simulatedRunEnabled) && permission != LocationPermissionState.PRECISE && permission != LocationPermissionState.APPROXIMATE) {
                 viewModel.clearCountdown()
                 showLocationRequired()
             } else {
-                if (!ui.launch.indoor) {
+                if (!ui.launch.indoor && !(BuildConfig.DEBUG && ui.launch.simulatedRunEnabled)) {
                     showGpsWait = true
                     val ready = runCatching { waitForUsableLocation() }.getOrDefault(false)
                     showGpsWait = false
@@ -445,12 +453,23 @@ fun RecordingRoute(
                 onOpenAssistant = onOpenAssistant,
                 voiceListening = voiceListening,
                 onDashboardChanged = viewModel::trackDashboardChanged,
+                runSimulation = snapshot.runSimulation,
+                onSimulationRate = viewModel::setRunSimulationTimeRate,
+                onSimulationSpeed = viewModel::adjustRunSimulationSpeed,
+                onSimulationClock = viewModel::toggleRunSimulationClock,
+                onSimulationAdvance = viewModel::advanceRunSimulation,
             )
             ui.countdown != null -> CountdownScreen(ui.countdown!!, onCancel = {
                 viewModel.cancelCountdown()
                 onExit()
             })
-            else -> ActivitySetupScreen(ui.launch, permissionState(), onStart = ::beginCountdown, onExit = onExit)
+            else -> ActivitySetupScreen(
+                configuration = ui.launch,
+                permission = permissionState(),
+                onStart = ::beginCountdown,
+                onExit = onExit,
+                onSimulationChanged = viewModel::configureSimulatedRun,
+            )
         }
     }
 
@@ -559,6 +578,7 @@ private fun ActivitySetupScreen(
     permission: LocationPermissionState,
     onStart: () -> Unit,
     onExit: () -> Unit,
+    onSimulationChanged: (Boolean) -> Unit,
 ) {
     Scaffold(contentWindowInsets = WindowInsets.safeDrawing) { padding ->
         LazyColumn(
@@ -573,6 +593,25 @@ private fun ActivitySetupScreen(
             if (configuration.workoutSteps.isNotEmpty()) {
                 item { Text(stringResource(R.string.recording_workout_plan), style = MaterialTheme.typography.titleMedium) }
                 itemsIndexed(configuration.workoutSteps) { index, step -> WorkoutStepRow(index, step) }
+            }
+            if (BuildConfig.DEBUG) {
+                item {
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+                        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(stringResource(R.string.recording_simulation_testing_section), style = MaterialTheme.typography.labelLarge)
+                                    Text(stringResource(R.string.recording_simulation_setup_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                }
+                                Switch(configuration.simulatedRunEnabled, onCheckedChange = onSimulationChanged)
+                            }
+                            Text(stringResource(R.string.recording_simulation_setup_detail), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (configuration.simulatedRunEnabled) {
+                                Text(stringResource(R.string.recording_simulation_route_name), style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+                }
             }
             item {
                 if (permission == LocationPermissionState.APPROXIMATE) {
@@ -621,6 +660,11 @@ private fun LiveRecordingScreen(
     onOpenAssistant: () -> Unit,
     voiceListening: Boolean,
     onDashboardChanged: (Boolean) -> Unit,
+    runSimulation: RunSimulationState?,
+    onSimulationRate: (Int) -> Unit,
+    onSimulationSpeed: (Double) -> Unit,
+    onSimulationClock: () -> Unit,
+    onSimulationAdvance: (Int) -> Unit,
 ) {
     var dashboardExpanded by remember { mutableStateOf(false) }
     val energyKilocalories = WorkoutCalorieEstimator.liveEnergyKilocalories(
@@ -664,12 +708,87 @@ private fun LiveRecordingScreen(
                 }
             }
         }
+        if (BuildConfig.DEBUG && runSimulation != null) {
+            RunSimulationControls(
+                state = runSimulation,
+                isActive = snapshot.status == RecordingStatus.ACTIVE,
+                onRate = onSimulationRate,
+                onSpeed = onSimulationSpeed,
+                onClock = onSimulationClock,
+                onAdvance = onSimulationAdvance,
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 58.dp, start = 12.dp, end = 12.dp),
+            )
+        }
         SessionDashboard(snapshot, configuration, unitSystem, energyKilocalories, dashboardExpanded, {
             if (dashboardExpanded != it) {
                 dashboardExpanded = it
                 onDashboardChanged(it)
             }
         }, Modifier.align(Alignment.BottomCenter), onPause, onResume, onFinish, finishEnabled)
+    }
+}
+
+@Composable
+private fun RunSimulationControls(
+    state: RunSimulationState,
+    isActive: Boolean,
+    onRate: (Int) -> Unit,
+    onSpeed: (Double) -> Unit,
+    onClock: () -> Unit,
+    onAdvance: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val timeRateLabel = stringResource(R.string.recording_simulation_time_rate)
+    val decreaseSpeedLabel = stringResource(R.string.recording_simulation_speed_decrease)
+    val increaseSpeedLabel = stringResource(R.string.recording_simulation_speed_increase)
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+        shadowElevation = 8.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF9800).copy(alpha = 0.6f)),
+    ) {
+        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                Icon(Icons.AutoMirrored.Filled.DirectionsRun, contentDescription = null, tint = Color(0xFFEF6C00))
+                Text(stringResource(R.string.recording_simulation_title), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.weight(1f))
+                Text(formatDuration(state.elapsedSeconds.toLong()), style = MaterialTheme.typography.labelMedium, fontFamily = FontFamily.Monospace)
+                listOf(1, 10, 60).forEach { rate ->
+                    TextButton(
+                        onClick = { onRate(rate) },
+                        modifier = Modifier.semantics { contentDescription = "$timeRateLabel $rate×" },
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 5.dp, vertical = 0.dp),
+                    ) {
+                        Text(if (rate == state.timeRate) "✓${rate}×" else "${rate}×", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+                FilledIconButton(onClick = onClock, enabled = isActive && !state.isComplete) {
+                    Icon(if (state.isClockRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = stringResource(if (state.isClockRunning) R.string.recording_simulation_clock_pause else R.string.recording_simulation_clock_play))
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                TextButton(
+                    onClick = { onSpeed(-1.0) },
+                    modifier = Modifier.semantics { contentDescription = decreaseSpeedLabel },
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 7.dp),
+                ) { Text("−") }
+                Text(String.format(java.util.Locale.getDefault(), stringResource(R.string.recording_simulation_speed_format), state.speedKilometersPerHour), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                TextButton(
+                    onClick = { onSpeed(1.0) },
+                    modifier = Modifier.semantics { contentDescription = increaseSpeedLabel },
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 7.dp),
+                ) { Text("+") }
+                Spacer(Modifier.weight(1f))
+                OutlinedButton(onClick = { onAdvance(60) }, enabled = isActive && !state.isComplete, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) {
+                    Text(stringResource(R.string.recording_simulation_advance_one_minute))
+                }
+                OutlinedButton(onClick = { onAdvance(300) }, enabled = isActive && !state.isComplete, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)) {
+                    Text(stringResource(R.string.recording_simulation_advance_five_minutes))
+                }
+            }
+        }
     }
 }
 

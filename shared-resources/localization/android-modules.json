@@ -37,7 +37,16 @@
       "file": "strings.xml"
     },
     { "keyPrefix": "progress", "androidPrefix": "progress_", "resourceRoot": "android/feature/progress/src/main/res", "file": "strings.xml" },
-    { "keyPrefix": "recording", "androidPrefix": "recording_", "resourceRoot": "android/feature/recording/src/main/res", "file": "strings.xml" },
+    {
+      "keyPrefix": "recording",
+      "androidPrefix": "recording_",
+      "sources": [
+        { "keyPrefix": "recording", "androidPrefix": "recording_" },
+        { "keyPrefix": "run.simulation", "androidPrefix": "recording_simulation_" }
+      ],
+      "resourceRoot": "android/feature/recording/src/main/res",
+      "file": "strings.xml"
+    },
     { "keyPrefix": "safety", "androidPrefix": "", "resourceRoot": "android/feature/safety/src/main/res", "file": "strings.xml" },
     { "keyPrefix": "settings", "androidPrefix": "", "resourceRoot": "android/feature/settings/src/main/res", "file": "strings.xml" },
     { "keyPrefix": "social", "androidPrefix": "social_", "resourceRoot": "android/feature/social/src/main/res", "file": "strings.xml" },
