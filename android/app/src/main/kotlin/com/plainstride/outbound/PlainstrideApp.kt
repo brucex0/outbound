@@ -343,7 +343,9 @@ private fun SignedInApp(
             val primaryDestination = TopLevelDestination.entries.firstOrNull { it.route == currentDestination?.route }
             if (primaryDestination != null) {
                 val lifecycleOwner = LocalLifecycleOwner.current
-                val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsStateWithLifecycle()
+                val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsStateWithLifecycle(
+                    minActiveState = Lifecycle.State.CREATED,
+                )
                 val launcherScale = remember { Animatable(1f) }
                 val launcherRotation = remember { Animatable(0f) }
                 val launcherShimmer = remember { Animatable(0f) }
