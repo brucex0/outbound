@@ -128,7 +128,7 @@ fun ProgressScreen(
                 buckets.forEachIndexed { index, bucket ->
                     val barHeight = (bucket.distanceMeters / maximum).toFloat() * size.height
                     drawLine(
-                        color = Color(0xFF2E7D62),
+                        color = Color(0xFFFF9500),
                         start = Offset(slot * index + slot / 2, size.height),
                         end = Offset(slot * index + slot / 2, size.height - barHeight),
                         strokeWidth = slot * 0.48f,
