@@ -124,11 +124,15 @@ import kotlinx.serialization.json.JsonElement
     val skipped: Boolean get() = commitment?.skipped == true
 }
 @Serializable data class GroupRecentActivity(val type:String="running",val title:String?=null,val startedAt:String,val durationSecs:Int?=null,val distanceM:Double?=null,val elevationM:Double?=null,val avgPace:Double?=null,val avgHeartRate:Int?=null,val energyKilocalories:Int?=null)
-@Serializable data class GroupFocus(val mode: String = "none", val focusConfigured: Boolean = false, val sharedTarget: Int? = null)
-@Serializable data class GroupWeek(val focusMode: String = "none", val contributedCount: Int = 0, val targetCount: Int? = null)
+@Serializable data class GroupFocus(val mode: String = "none", val focusConfigured: Boolean = false, val sharedTarget: Int? = null, val themeKey: String? = null, val themeTitle: String? = null, val themeNote: String? = null)
+@Serializable data class GroupWeek(val id: String = "none", val focusMode: String = "none", val focusConfigured: Boolean = false, val contributedCount: Int = 0, val targetCount: Int? = null, val themeKey: String? = null, val themeTitle: String? = null, val themeNote: String? = null, val state: String = "open")
 @Serializable data class GroupNotice(val id:String,val title:String?=null,val body:String,val pinned:Boolean=false,val publishedAt:String?=null,val editedAt:String?=null)
 @Serializable data class GroupInvitationSnapshot(val id:String,val recipient:SocialPerson?=null,val status:String="pending")
 @Serializable data class GroupCapability(val weeklyTheme:Boolean=false,val workoutContributions:Boolean=false,val presetCheers:Boolean=false,val notices:Boolean=false,val scheduledActivities:Boolean=true)
+@Serializable data class GroupActivitySummary(val id:String,val title:String,val startsAt:String,val endsAt:String?=null,val locationName:String?=null,val paceNote:String?=null,val status:String="scheduled",val attendeeCount:Int=0,val currentUserGoing:Boolean=false)
+@Serializable data class GroupMoment(val id:String,val type:String,val createdAt:String,val title:String?=null)
+@Serializable data class GroupWeekHistory(val id:String,val startsAt:String,val themeKey:String?=null,val themeTitle:String?=null,val state:String="recorded")
+@Serializable data class GroupPendingRequest(val status:String="pending")
 @Serializable data class GroupSummary(
     val id: String,
     val name: String,
@@ -142,15 +146,21 @@ import kotlinx.serialization.json.JsonElement
     val city: String? = null,
     val memberLimit: Int = 500,
     val memberCount: Int = 0,
+    val owner: SocialPerson? = null,
+    val completionPresentationPending: Boolean = false,
     val currentUserMuted: Boolean = false,
     val eligibleForToday: Boolean = false,
     val upcomingFocus: GroupFocus = GroupFocus(),
     val week: GroupWeek = GroupWeek(),
     val members: List<GroupMember> = emptyList(),
     val invitations: List<GroupInvitationSnapshot> = emptyList(),
+    val upcomingActivities: List<GroupActivitySummary> = emptyList(),
+    val recentMoments: List<GroupMoment> = emptyList(),
+    val history: List<GroupWeekHistory>? = null,
     val capabilities: GroupCapability = GroupCapability(),
     val notices: List<GroupNotice> = emptyList(),
     val unreadNoticeCount: Int = 0,
+    val pendingRequest: GroupPendingRequest? = null,
     val featured: Boolean = false,
     val organizationVerificationState: String = "unverified",
 ) {

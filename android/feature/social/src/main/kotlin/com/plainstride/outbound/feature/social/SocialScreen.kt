@@ -110,7 +110,29 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
         else if(!state.loading&&targetType!=null&&targetId!=null)viewModel.openTarget(targetType,targetId)
     }
     val selectedActivityPost = state.selectedActivityPost?.let { selected -> state.home.posts.firstOrNull { it.id == selected.id } ?: selected }
-    if (selectedActivityPost == null) {
+    if (state.selectedGroupDetail != null) {
+        val group = state.selectedGroupDetail!!
+        BackHandler { viewModel.closeGroup() }
+        GroupDetailScreen(
+            group = group,
+            close = viewModel::closeGroup,
+            cheer = { recipient, preset -> viewModel.cheerGroup(group, recipient, preset) },
+            focus = { mode, target, next -> viewModel.setGroupFocus(group, mode, target, next) },
+            archive = { viewModel.setGroupArchived(group, group.lifecycle != "archived") },
+            invite = { inviteGroup = group },
+            rename = { name -> viewModel.renameGroup(group, name) },
+            commitment = { target, skipped -> viewModel.setGroupCommitment(group, target, skipped) },
+            mute = { muted -> viewModel.muteGroup(group, muted) },
+            leave = { viewModel.leaveGroup(group) },
+            remove = { userId -> viewModel.removeGroupMember(group, userId) },
+            trackMembersOpened = viewModel::trackGroupMembersOpened,
+            planActivity = { groupActivity = group },
+            requestJoin = { viewModel.joinGroup(group) },
+            openActivity = { eventId -> viewModel.openTarget("event", eventId) },
+            publishNotice = { title, body, pinned -> viewModel.createGroupNotice(group, title, body, pinned) },
+            markNoticesRead = { viewModel.markGroupNoticesRead(group) },
+        )
+    } else if (selectedActivityPost == null) {
         SocialScreen(state, selectedTab, { tab ->
             hasSelectedSocialTab = true
             selectedTab = tab
@@ -183,8 +205,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             },
         )
     }
-    state.selectedGroupDetail?.let { group -> GroupDetailScreen(group, viewModel::closeGroup, { recipient, preset -> viewModel.cheerGroup(group, recipient, preset) }, { mode,target,next->viewModel.setGroupFocus(group,mode,target,next) }, { viewModel.setGroupArchived(group,group.lifecycle!="archived") }, {inviteGroup=group}, {name->viewModel.renameGroup(group,name)}, {target,skipped->viewModel.setGroupCommitment(group,target,skipped)}, {muted->viewModel.muteGroup(group,muted)}, {viewModel.leaveGroup(group)}, {userId->viewModel.removeGroupMember(group,userId)}, viewModel::trackGroupMembersOpened, { groupActivity = group }) }
-    state.selectedEvent?.let{event->SocialEventDialog(event,{viewModel.setEventRsvp(event,!event.joined);viewModel.closeTarget()},{inviteEvent=event},viewModel::closeTarget)}
+    state.selectedEvent?.let{event->SocialEventDialog(event,{viewModel.setEventRsvp(event,!event.joined);viewModel.closeEvent()},{inviteEvent=event},viewModel::closeEvent)}
     if(createGroup)GroupCreateScreen(state.home.connections.filter{it.relationship in setOf("accepted","connected")},{createGroup=false},viewModel::trackGroupTemplateSelected){template,name,people->viewModel.createGroup(template,name,people,java.util.TimeZone.getDefault().id);createGroup=false}
     inviteGroup?.let{group->PersonPickerDialog(stringResource(R.string.social_invite),state.home.connections,{inviteGroup=null}){person->viewModel.inviteToGroup(group,listOf(person),java.util.UUID.randomUUID().toString());inviteGroup=null}}
     inviteEvent?.let{event->PersonPickerDialog(stringResource(R.string.social_invite),state.home.connections,{inviteEvent=null}){person->viewModel.inviteToEvent(event,person);inviteEvent=null}}

@@ -31,6 +31,7 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 @Serializable data class RenameGroupBody(val name:String)
 @Serializable data class GroupCommitmentBody(val targetCount:Int?=null,val skipped:Boolean=false)
 @Serializable data class GroupMuteBody(val muted:Boolean)
+@Serializable data class GroupNoticeBody(val title:String?=null,val body:String,val activityEventId:String?=null,val pinned:Boolean=false)
 @Serializable data class GroupMutationResponse(val group:GroupSummary)
 @Serializable data class GroupInvitationGroup(val id:String,val name:String)
 @Serializable data class GroupInvitationDto(val id:String,val sender:SocialPerson,val group:GroupInvitationGroup)
@@ -88,6 +89,8 @@ interface SocialApiService {
     @POST("v1/social/invitations/{id}/decline") suspend fun declineEventInvitation(@Header("Authorization") auth:String,@Path("id") id:String):Response<Unit>
     @GET("v1/social/groups") suspend fun groups(@Header("Authorization") auth: String, @Query("scope") scope: String = "mine", @Query("query") query: String? = null, @Query("city") city: String? = null, @Query("cursor") cursor: String? = null): Response<GroupsResponse>
     @GET("v1/social/groups/{id}") suspend fun group(@Header("Authorization") auth: String, @Path("id") id: String): Response<GroupSummary>
+    @POST("v1/social/groups/{id}/notices") suspend fun createGroupNotice(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:GroupNoticeBody):Response<GroupMutationResponse>
+    @POST("v1/social/groups/{id}/notices/read") suspend fun markGroupNoticesRead(@Header("Authorization") auth:String,@Path("id") id:String):Response<GroupMutationResponse>
     @PATCH("v1/social/groups/{id}") suspend fun renameGroup(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:RenameGroupBody):Response<GroupSummary>
     @PUT("v1/social/groups/{id}/commitment") suspend fun groupCommitment(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:GroupCommitmentBody):Response<GroupSummary>
     @PUT("v1/social/groups/{id}/notifications") suspend fun muteGroup(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:GroupMuteBody):Response<GroupSummary>

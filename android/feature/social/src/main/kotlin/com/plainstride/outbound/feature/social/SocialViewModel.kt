@@ -288,6 +288,7 @@ sealed interface ConnectionEffect {
     fun closeProfile() = mutableState.update { it.copy(selectedProfile = null, connectionProfileCode = null, connectionProfileIsSelf = false) }
     fun openTarget(type:String,id:String){when(type){"activity","post"->viewModelScope.launch{var post=mutableState.value.home.posts.firstOrNull{it.id==id||it.activity?.id==id};var cursor=mutableState.value.home.nextCursor;repeat(5){if(post!=null||cursor==null)return@repeat;repository.loadFeed(cursor).onSuccess{page->post=page.items.firstOrNull{it.id==id||it.activity?.id==id};cursor=page.nextCursor}};post?.let(::openComments)};"event"->viewModelScope.launch{repository.event(id).onSuccess{event->mutableState.update{it.copy(selectedEvent=event)}}};"group"->viewModelScope.launch{repository.group(id).onSuccess{group->mutableState.update{it.copy(selectedGroupDetail=group)}}};"invitation"->mutableState.update{state->state.copy(selectedInvitation=state.home.invitations.firstOrNull{it.id==id||it.objectId==id})}}}
     fun closeTarget()=mutableState.update{it.copy(selectedEvent=null,selectedGroupDetail=null,selectedInvitation=null)}
+    fun closeEvent()=mutableState.update{it.copy(selectedEvent=null)}
     fun openGroup(group: GroupSummary) = viewModelScope.launch {
         repository.group(group.id).onSuccess { value -> mutableState.update { it.copy(selectedGroupDetail = value) } }
         analytics.record(AnalyticsEvent("group_opened", mapOf(
@@ -389,6 +390,8 @@ sealed interface ConnectionEffect {
     }
     fun setGroupArchived(group:GroupSummary,archived:Boolean)=mutate("group_lifecycle_changed"){repository.setGroupArchived(group.id,archived).getOrThrow();closeGroup();refresh()}
     fun renameGroup(group:GroupSummary,name:String)=mutate("group_renamed"){repository.renameGroup(group.id,name).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
+    fun createGroupNotice(group:GroupSummary,title:String?,body:String,pinned:Boolean)=mutate("group_notice_published"){repository.createGroupNotice(group.id,title,body,pinned).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}}}
+    fun markGroupNoticesRead(group:GroupSummary)=mutate("group_notices_read"){repository.markGroupNoticesRead(group.id).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}}}
     fun setGroupCommitment(group:GroupSummary,target:Int?,skipped:Boolean)=mutate("group_personal_target_changed"){repository.setGroupCommitment(group.id,target,skipped).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
     fun muteGroup(group:GroupSummary,muted:Boolean)=mutate("group_notifications_changed"){repository.muteGroup(group.id,muted).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}}}
     fun leaveGroup(group:GroupSummary)=mutate("group_member_left"){repository.leaveGroup(group.id).getOrThrow();closeGroup();refresh()}

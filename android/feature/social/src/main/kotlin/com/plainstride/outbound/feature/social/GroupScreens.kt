@@ -1,6 +1,7 @@
 package com.plainstride.outbound.feature.social
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -21,8 +22,10 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.lazy.LazyListScope
 
 @Composable fun GroupCreateScreen(connections:List<SocialPerson>,close:()->Unit,selectTemplate:(String)->Unit,create:(String,String?,List<SocialPerson>)->Unit)=Dialog(onDismissRequest=close){
  var template by rememberSaveable{mutableStateOf<String?>(null)}
@@ -99,10 +102,18 @@ fun GroupDetailScreen(
     remove: (String) -> Unit,
     trackMembersOpened: (Int) -> Unit,
     planActivity: () -> Unit,
-) = Dialog(onDismissRequest = close) {
+    requestJoin: () -> Unit,
+    openActivity: (String) -> Unit,
+    publishNotice: (String?, String, Boolean) -> Unit,
+    markNoticesRead: () -> Unit,
+) {
     var settings by rememberSaveable { mutableStateOf(false) }
     var focusOpen by rememberSaveable { mutableStateOf(false) }
     var showMembers by rememberSaveable { mutableStateOf(false) }
+    var showNoticeComposer by rememberSaveable { mutableStateOf(false) }
+    var noticeTitle by rememberSaveable { mutableStateOf("") }
+    var noticeBody by rememberSaveable { mutableStateOf("") }
+    var pinNotice by rememberSaveable { mutableStateOf(false) }
     var pendingRemoval by remember { mutableStateOf<GroupMember?>(null) }
     val orderedMembers = remember(group.members) {
         group.members.withIndex()
@@ -116,83 +127,95 @@ fun GroupDetailScreen(
     fun memberCanBeRemoved(member: GroupMember) = canManage && !member.isCurrentUser && member.role != "owner" &&
         (group.currentUserRole == "owner" || member.role == "member")
 
+    val context = LocalContext.current
+    val isCommunity = group.trustPolicy == "community"
+    val isMember = group.currentUserRole != null || orderedMembers.any { it.isCurrentUser }
+    val dateFormatter = remember(context) { java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT, context.resources.configuration.locales[0]) }
+
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column {
-            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(close) { Icon(Icons.Outlined.ArrowBack, stringResource(R.string.social_done)) }
-                Text(group.name, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                IconButton({ settings = true }) { Icon(Icons.Outlined.Settings, stringResource(R.string.group_manage)) }
+                Text(group.name, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
+                if (group.currentUserRole in setOf("owner", "admin")) IconButton({ settings = true }) { Icon(Icons.Outlined.Settings, stringResource(R.string.group_manage)) }
             }
             LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 item {
-                    if (group.trustPolicy == "community") {
-                        ElevatedCard {
-                            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(stringResource(R.string.group_about), fontWeight = FontWeight.SemiBold)
-                                Text(group.description ?: stringResource(R.string.group_community_detail))
-                                Text(
-                                    if (group.joinPolicy == "request") stringResource(R.string.group_request_to_join) else stringResource(R.string.group_open_join),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        }
-                    } else {
-                        val target = group.target
-                        ElevatedCard {
-                            Column(Modifier.padding(18.dp)) {
-                                Text(stringResource(R.string.group_relationship), fontWeight = FontWeight.SemiBold)
-                                Text(if (target != null) stringResource(R.string.social_group_progress, group.completed, target) else stringResource(R.string.group_no_numeric_focus))
-                                target?.let { LinearProgressIndicator({ (group.completed.toFloat() / it).coerceIn(0f, 1f) }, Modifier.fillMaxWidth().padding(top = 12.dp)) }
-                            }
-                        }
-                    }
-                }
-                if (group.trustPolicy == "community") {
-                    items(group.notices, key = GroupNotice::id) { notice ->
-                        ElevatedCard {
-                            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(notice.title ?: stringResource(R.string.group_notice_update), fontWeight = FontWeight.SemiBold)
-                                Text(notice.body)
-                                if (notice.pinned) Text(stringResource(R.string.group_notice_pinned), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                    }
-                }
-                item {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.social_members, group.memberCount.takeIf { it > 0 } ?: group.members.size), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        if (canInviteMore) TextButton(invite) { Text(stringResource(R.string.social_invite)) }
-                    }
-                }
-                item {
                     ElevatedCard {
-                        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                orderedMembers.take(3).forEach { member ->
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                        SocialAvatar(member.person)
-                                        Text(member.person.displayName.trim().split(Regex("\\s+")).firstOrNull().orEmpty(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1)
-                                    }
-                                }
+                        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(stringResource(if (isCommunity) R.string.group_community_badge else R.string.group_private_badge), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                if (group.featured) Text(stringResource(R.string.group_featured_badge), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                if (group.organizationVerificationState == "verified") Text(stringResource(R.string.group_verified_badge), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                             }
-                            TextButton({
-                                showMembers = true
-                                trackMembersOpened(group.memberCount.takeIf { it > 0 } ?: group.members.size)
-                            }) { Text(stringResource(R.string.group_members_more_action)) }
+                            Text(group.description ?: stringResource(R.string.group_detail_inspiration), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.social_members, group.memberCount.takeIf { it > 0 } ?: group.members.size), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
-                item {
-                    Button({ if (group.trustPolicy == "community") planActivity() else focusOpen = true }, Modifier.fillMaxWidth()) {
-                        Text(if (group.trustPolicy == "community") stringResource(R.string.group_plan_activity) else stringResource(R.string.group_weekly_focus))
+                if (isCommunity) {
+                    if (group.currentUserRole == null && !isMember) item {
+                        Button(requestJoin, Modifier.fillMaxWidth(), enabled = group.pendingRequest?.status != "pending") { Text(stringResource(if (group.pendingRequest?.status == "pending") R.string.group_request_pending else R.string.group_request_to_join)) }
                     }
+                    if (!group.description.isNullOrBlank()) item {
+                        ElevatedCard { Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(stringResource(R.string.group_about), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text(group.description, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(when (group.joinPolicy) { "request" -> stringResource(R.string.group_request_to_join); "open" -> stringResource(R.string.group_open_join); else -> stringResource(R.string.group_invite_only) }, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        } }
+                    }
+                    if (group.notices.isNotEmpty()) item {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(stringResource(R.string.group_notices_heading), Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                if (group.unreadNoticeCount > 0) Text(stringResource(R.string.group_unread), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                            }
+                            group.notices.forEach { notice -> ElevatedCard {
+                                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) { if (notice.pinned) Icon(Icons.Outlined.PushPin, null, Modifier.size(16.dp)); Text(notice.title ?: stringResource(R.string.group_notice_update), Modifier.weight(1f), fontWeight = FontWeight.SemiBold); notice.publishedAt?.let { raw -> Text(runCatching { dateFormatter.format(java.util.Date.from(java.time.OffsetDateTime.parse(raw).toInstant())) }.getOrDefault(""), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+                                    Text(notice.body)
+                                }
+                            } }
+                            if (group.unreadNoticeCount > 0 && isMember) TextButton(markNoticesRead) { Text(stringResource(R.string.group_mark_notices_read)) }
+                        }
+                    }
+                    upcomingActivityItems(group, dateFormatter, openActivity)
+                    if (isMember) memberSection(group, orderedMembers, showMembers = { showMembers = true; trackMembersOpened(group.memberCount.takeIf { it > 0 } ?: group.members.size) })
+                    if (canManage && group.capabilities.notices) item { OutlinedButton({ showNoticeComposer = true }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_post_update)) } }
+                    if (canInviteMore) item { OutlinedButton(invite, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_invite_connections)) } }
+                    item { Button(planActivity, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_plan_activity)) } }
+                } else {
+                    upcomingActivityItems(group, dateFormatter, openActivity)
+                    item { privateFocusCard(group, focusOpen = { focusOpen = true }) }
+                    memberSection(group, orderedMembers, showMembers = { showMembers = true; trackMembersOpened(group.memberCount.takeIf { it > 0 } ?: group.members.size) })
+                    if (group.invitations.isNotEmpty()) items(group.invitations.filter { it.status == "pending" }, key = GroupInvitationSnapshot::id) { invitation ->
+                        ElevatedCard { Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            SocialAvatar(invitation.recipient ?: SocialPerson(id = invitation.id, displayName = stringResource(R.string.group_invited_person)))
+                            Text(invitation.recipient?.displayName ?: stringResource(R.string.group_invited_person), Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.group_invited_status), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } }
+                    }
+                    if (canInviteMore) item { OutlinedButton(invite, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_invite_connections)) } }
+                    item { Button(planActivity, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_plan_activity)) } }
+                    if (group.recentMoments.isNotEmpty()) item { momentsCard(group, dateFormatter) }
+                    group.history?.takeIf { it.isNotEmpty() }?.let { history -> item { historyCard(history) } }
                 }
             }
         }
     }
     if (focusOpen) GroupFocusDialog(group, { focusOpen = false }, focus, commitment)
     if (settings) GroupSettingsDialog(group, { settings = false }, rename, mute, archive, leave, remove)
+    if (showNoticeComposer) AlertDialog(
+        onDismissRequest = { showNoticeComposer = false },
+        title = { Text(stringResource(R.string.group_post_update)) },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedTextField(noticeTitle, { noticeTitle = it.take(120) }, label = { Text(stringResource(R.string.group_notice_title)) }, singleLine = true)
+            OutlinedTextField(noticeBody, { noticeBody = it.take(1000) }, label = { Text(stringResource(R.string.group_notice_body)) }, minLines = 3)
+            Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(pinNotice, { pinNotice = it }); Text(stringResource(R.string.group_notice_pin)) }
+        } },
+        confirmButton = { TextButton(onClick = { publishNotice(noticeTitle, noticeBody, pinNotice); noticeTitle = ""; noticeBody = ""; pinNotice = false; showNoticeComposer = false }, enabled = noticeBody.isNotBlank()) { Text(stringResource(R.string.social_done)) } },
+        dismissButton = { TextButton({ showNoticeComposer = false }) { Text(stringResource(R.string.social_cancel)) } },
+    )
     if (showMembers) {
         Dialog(onDismissRequest = { showMembers = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -253,6 +276,121 @@ fun GroupDetailScreen(
             confirmButton = { TextButton({ remove(member.person.id); pendingRemoval = null }) { Text(stringResource(R.string.group_member_remove_action)) } },
             dismissButton = { TextButton({ pendingRemoval = null }) { Text(stringResource(R.string.social_cancel)) } },
         )
+    }
+}
+
+private fun LazyListScope.upcomingActivityItems(group: GroupSummary, dateFormat: java.text.DateFormat, openActivity: (String) -> Unit) {
+    if (group.upcomingActivities.isNotEmpty()) item {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.group_up_next), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            group.upcomingActivities.forEach { activity ->
+                ElevatedCard(onClick = { openActivity(activity.id) }) {
+                    Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Surface(Modifier.size(42.dp), shape = androidx.compose.foundation.shape.CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = .12f)) {
+                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Event, null, tint = MaterialTheme.colorScheme.primary) }
+                        }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(activity.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                            val date = runCatching { dateFormat.format(java.util.Date.from(java.time.OffsetDateTime.parse(activity.startsAt).toInstant())) }.getOrDefault(activity.startsAt)
+                            Text(listOfNotNull(date, activity.locationName?.takeIf(String::isNotBlank), stringResource(R.string.group_going_count, activity.attendeeCount)).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                        }
+                        Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun LazyListScope.memberSection(group: GroupSummary, members: List<GroupMember>, showMembers: () -> Unit) {
+    item {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.group_members_heading), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            ElevatedCard {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        members.take(3).forEach { member ->
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                SocialAvatar(member.person)
+                                Text(member.person.displayName.trim().split(Regex("\\s+")).firstOrNull().orEmpty(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1)
+                            }
+                        }
+                    }
+                    TextButton(showMembers) { Text(stringResource(R.string.group_members_more_action)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable private fun privateFocusCard(group: GroupSummary, focusOpen: () -> Unit) {
+    val isOwner = group.currentUserRole == "owner"
+    val commitment = group.members.firstOrNull { it.isCurrentUser }?.target
+    ElevatedCard {
+        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.group_weekly_theme), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                if (isOwner || (group.week.focusConfigured && group.focusMode in setOf("theme", "personal_targets"))) {
+                    TextButton(focusOpen) { Text(stringResource(if (!group.week.focusConfigured) R.string.group_focus_choose else R.string.group_edit)) }
+                }
+            }
+            when {
+                !group.week.focusConfigured -> Text(stringResource(if (isOwner) R.string.group_theme_unconfigured_owner else R.string.group_theme_unconfigured_member), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                group.week.themeTitle != null -> {
+                    Text(group.week.themeTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                    group.week.themeNote?.takeIf(String::isNotBlank)?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    Text(stringResource(R.string.group_theme_activity_count, group.completed), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    commitment?.let { Text(stringResource(R.string.group_commitment_progress, group.members.firstOrNull { m -> m.isCurrentUser }?.completed ?: 0, it), fontWeight = FontWeight.SemiBold) }
+                }
+                group.focusMode == "none" -> Text(stringResource(R.string.group_focus_none_detail), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                group.target != null -> {
+                    LinearProgressIndicator({ (group.completed.toFloat() / (group.target ?: 1)).coerceIn(0f, 1f) }, Modifier.fillMaxWidth())
+                    Text(stringResource(R.string.social_group_progress, group.completed, group.target!!), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                else -> Text(stringResource(R.string.group_no_numeric_focus), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            val next = group.upcomingFocus
+            if (next.focusConfigured && (next.themeKey != group.week.themeKey || next.themeTitle != group.week.themeTitle) && !next.themeTitle.isNullOrBlank()) {
+                HorizontalDivider()
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(stringResource(R.string.group_next_week), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(next.themeTitle, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                    next.themeNote?.takeIf(String::isNotBlank)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                }
+            }
+        }
+    }
+}
+
+@Composable private fun momentsCard(group: GroupSummary, dateFormat: java.text.DateFormat) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(stringResource(R.string.group_recent_moments), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ElevatedCard { Column(Modifier.padding(horizontal = 14.dp)) {
+            group.recentMoments.forEach { moment ->
+                Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Icon(if (moment.type == "cheer") Icons.Outlined.Favorite else Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
+                    Text(moment.title ?: stringResource(if (moment.type == "cheer") R.string.group_moment_cheer else R.string.group_moment_activity), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                    Text(runCatching { dateFormat.format(java.util.Date.from(java.time.OffsetDateTime.parse(moment.createdAt).toInstant())) }.getOrDefault(""), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        } }
+    }
+}
+
+@Composable private fun historyCard(history: List<GroupWeekHistory>) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(stringResource(R.string.group_history_heading), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ElevatedCard { Column(Modifier.padding(horizontal = 14.dp)) {
+            history.take(6).forEach { week ->
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(runCatching { java.time.OffsetDateTime.parse(week.startsAt).toLocalDate().toString() }.getOrDefault(week.startsAt))
+                        week.themeTitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    }
+                    Text(stringResource(if (week.state == "completed") R.string.group_completed else R.string.group_week_recorded), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        } }
     }
 }
 
