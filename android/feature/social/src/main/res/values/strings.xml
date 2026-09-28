@@ -29,6 +29,7 @@
     <string name="social_connection_request_updated">Connection request updated</string>
     <string name="social_connections">Connections</string>
     <string name="social_connections_empty">Better together. Find people you know and make movement feel shared.</string>
+    <string name="social_connections_sent">Sent</string>
     <string name="social_delete_post">Delete post</string>
     <string name="social_delete_post_confirmation_message">This removes the post from Social. Your saved activity is not deleted.</string>
     <string name="social_delete_post_confirmation_title">Delete this post?</string>

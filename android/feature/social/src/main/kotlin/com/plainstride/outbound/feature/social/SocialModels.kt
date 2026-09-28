@@ -161,6 +161,7 @@ import kotlinx.serialization.json.JsonElement
 }
 @Serializable data class SocialHome(
     val connections: List<SocialPerson> = emptyList(),
+    val connectionNextCursor: String? = null,
     val posts: List<SocialPost> = emptyList(),
     val upcomingRuns: List<SocialEvent> = emptyList(),
     val pastEvents: List<SocialEvent> = emptyList(),

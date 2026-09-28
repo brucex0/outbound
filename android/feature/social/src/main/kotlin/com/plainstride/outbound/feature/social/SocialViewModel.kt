@@ -26,6 +26,8 @@ data class SocialUiState(
     val feedCursor: String? = null, val feedLoading: Boolean = false,
     val feedLoadFailed: Boolean = false,
     val connectionRequestLoading: Boolean = false,
+    val connectionsLoadingMore: Boolean = false,
+    val connectionsLoadFailed: Boolean = false,
     val connectionProfileLoading: Boolean = false, val connectionProfileCode: String? = null,
     val connectionProfileIsSelf: Boolean = false,
 )
@@ -51,6 +53,7 @@ sealed interface ConnectionEffect {
     private var activityPhotoJob: Job? = null
     private var activityFeedLoadTracked = false
     private var feedPagesLoaded = 1
+    private var connectionPagesLoaded = 1
 
     fun start(accountId: String, localeTag: String) {
         if (this.accountId == accountId && this.localeTag == localeTag) return
@@ -59,6 +62,7 @@ sealed interface ConnectionEffect {
         mutableState.update { it.copy(groupDirectory = emptyList(), groupDirectoryQuery = "", groupDirectoryLoading = false, groupDirectoryFailed = false) }
         activityFeedLoadTracked = false
         feedPagesLoaded = 1
+        connectionPagesLoaded = 1
         viewModelScope.launch { repository.observeHome(accountId, localeTag).collect { cached ->
             when (cached) {
                 CachedSocialHome.Empty -> Unit
@@ -121,6 +125,27 @@ sealed interface ConnectionEffect {
                 )))
             }.onFailure { mutableState.update { it.copy(feedLoadFailed = true) } }
             mutableState.update { it.copy(feedLoading = false) }
+        }
+    }
+    fun loadMoreConnections() {
+        val current = mutableState.value
+        val cursor = current.home.connectionNextCursor ?: return
+        if (current.connectionsLoadingMore) return
+        viewModelScope.launch {
+            mutableState.update { it.copy(connectionsLoadingMore = true, connectionsLoadFailed = false) }
+            repository.loadConnections(cursor).onSuccess { page ->
+                mutableState.update { state -> state.copy(home = state.home.copy(
+                    connections = (state.home.connections + page.items).distinctBy { it.connectionId ?: it.id },
+                    connectionNextCursor = page.nextCursor,
+                )) }
+                connectionPagesLoaded += 1
+                analytics.record(AnalyticsEvent("paginated_list_page_loaded", mapOf(
+                    AnalyticsProperty.Source to "connections",
+                    AnalyticsProperty.CountBucket to countBucket(page.items.size),
+                    AnalyticsProperty.PageDepthBucket to when { connectionPagesLoaded == 2 -> "page_2"; connectionPagesLoaded <= 4 -> "pages_3_4"; else -> "page_5_plus" },
+                )))
+            }.onFailure { mutableState.update { it.copy(connectionsLoadFailed = true) } }
+            mutableState.update { it.copy(connectionsLoadingMore = false) }
         }
     }
     fun toggleCheer(post: SocialPost) = mutate("social_cheer_toggled") { repository.setCheer(post.id, !post.viewerHasCheered).getOrThrow(); refresh() }

@@ -95,12 +95,16 @@ class OfflineFirstSocialRepository @Inject constructor(
                     val groupResult = groups.await()
                     when (groupResult) {
                         is ApiResult.Failure -> groupResult
-                        is ApiResult.Success -> ApiResult.Success(core.value.copy(
-                            connections = (connections.await() as? ApiResult.Success)?.value?.connections.orEmpty().map { it.person.copy(relationshipDetails = SocialRelationship(it.id, it.status, it.direction), relationship = it.status, isActive = it.isInActiveWorkout, connectionId = it.id, connectionDirection=it.direction) },
-                            invitations = (core.value.invitations + (groupInvitations.await() as? ApiResult.Success)?.value?.invitations.orEmpty().map { SocialInvitation(it.id,"group",it.group.name,it.sender,it.group.id) }).distinctBy(SocialInvitation::id),
-                            recognitions = (awards.await() as? ApiResult.Success)?.value?.awards.orEmpty(),
-                            groups = groupResult.value.groups,
-                        ))
+                        is ApiResult.Success -> {
+                            val connectionPage = connections.await() as? ApiResult.Success
+                            ApiResult.Success(core.value.copy(
+                                connections = connectionPage?.value?.connections.orEmpty().map { it.person.copy(relationshipDetails = SocialRelationship(it.id, it.status, it.direction), relationship = it.status, isActive = it.isInActiveWorkout, connectionId = it.id, connectionDirection=it.direction) },
+                                connectionNextCursor = connectionPage?.value?.nextCursor,
+                                invitations = (core.value.invitations + (groupInvitations.await() as? ApiResult.Success)?.value?.invitations.orEmpty().map { SocialInvitation(it.id,"group",it.group.name,it.sender,it.group.id) }).distinctBy(SocialInvitation::id),
+                                recognitions = (awards.await() as? ApiResult.Success)?.value?.awards.orEmpty(),
+                                groups = groupResult.value.groups,
+                            ))
+                        }
                     }
                 }
             }

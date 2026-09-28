@@ -150,6 +150,8 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
         inviteByLink = viewModel::inviteByLink,
         acceptRequest = { person -> person.connectionId?.let(viewModel::acceptConnection) },
         declineRequest = { person -> person.connectionId?.let(viewModel::removeConnection) },
+        cancelRequest = { person -> person.connectionId?.let(viewModel::removeConnection) },
+        loadMoreConnections = viewModel::loadMoreConnections,
         close = { connectionsOpen = false },
     )
     if (scannerOpen) ConnectionQrScannerScreen(
@@ -380,10 +382,10 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                 item { OutlinedTextField(state.search, search, Modifier.fillMaxWidth(), singleLine = true, label = { Text(stringResource(R.string.social_search_people)) }, leadingIcon = { Icon(Icons.Outlined.Search, null) }) }
                 if (state.searchResults.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_search_people)) }; items(state.searchResults, key = SocialPerson::id) { person -> PersonRow(person) { openProfile(person) } } }
                 if (incomingRequests.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_requests)) }; items(incomingRequests, key = SocialPerson::id) { person -> RequesterCard(person, { openProfile(person) }, { acceptRequest(person) }, { declineRequest(person) }) } }
-                item { SectionHeader(stringResource(R.string.social_connections), action = stringResource(R.string.social_all), onAction = openConnections) }
+                val showAllConnections = acceptedConnections.size > 8 || state.home.connectionNextCursor != null
+                item { SectionHeader(stringResource(R.string.social_connections), action = if (showAllConnections) stringResource(R.string.social_all) else null, onAction = openConnections) }
                 if (acceptedConnections.isEmpty()) item { EmptyCard(stringResource(R.string.social_connections_empty), Icons.Outlined.PersonAdd) }
-                items(acceptedConnections, key = SocialPerson::id) { person -> PersonRow(person) { openProfile(person) } }
-                item { OutlinedButton(openConnections, Modifier.fillMaxWidth()) { Text(stringResource(R.string.social_all)) } }
+                items(acceptedConnections.take(8), key = SocialPerson::id) { person -> PersonRow(person) { openProfile(person) } }
             }
             SocialFeatureTab.GROUPS -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + PrimaryBottomToolbarClearance), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (groupInvitations.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_invite)) }; items(groupInvitations, key = SocialInvitation::id) { InvitationCard(it) { invitation -> openTarget("invitation", invitation.id) } } }
@@ -499,8 +501,10 @@ private fun ConnectionsDialog(
     inviteByLink: () -> Unit,
     acceptRequest: (SocialPerson) -> Unit,
     declineRequest: (SocialPerson) -> Unit,
+    cancelRequest: (SocialPerson) -> Unit,
+    loadMoreConnections: () -> Unit,
     close: () -> Unit,
-) = Dialog(onDismissRequest = close) {
+) = Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
     var addMenuExpanded by remember { mutableStateOf(false) }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.padding(16.dp)) {
@@ -538,6 +542,27 @@ private fun ConnectionsDialog(
                 if (state.home.invitations.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_invite)) }; items(state.home.invitations, key = SocialInvitation::id) { invitation -> InvitationCard(invitation, reviewInvitation) } }
                 val accepted = state.home.connections.filter { it.relationship in setOf("accepted", "connected") }
                 if (accepted.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_connections)) }; items(accepted, key = SocialPerson::id) { PersonRow(it) { openProfile(it) } } }
+                val outgoing = state.home.connections.filter { it.relationship == "pending" && it.connectionDirection == "outgoing" }
+                if (outgoing.isNotEmpty()) {
+                    item { SectionHeader(stringResource(R.string.social_connections_sent)) }
+                    items(outgoing, key = SocialPerson::id) { person ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            PersonRow(person) { openProfile(person) }
+                            IconButton(onClick = { cancelRequest(person) }, enabled = !state.connectionRequestLoading) {
+                                Icon(Icons.Outlined.Close, stringResource(R.string.social_cancel), tint = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+                }
+                if (state.home.connectionNextCursor != null || state.connectionsLoadingMore || state.connectionsLoadFailed) {
+                    item {
+                        when {
+                            state.connectionsLoadingMore -> Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp) }
+                            state.connectionsLoadFailed -> TextButton(loadMoreConnections, Modifier.fillMaxWidth()) { Text(stringResource(R.string.social_feed_load_more_failed)) }
+                            else -> TextButton(loadMoreConnections, Modifier.fillMaxWidth()) { Text(stringResource(R.string.social_load_more)) }
+                        }
+                    }
+                }
             }
         }
     }
