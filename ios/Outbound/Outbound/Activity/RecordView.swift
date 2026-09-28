@@ -436,6 +436,10 @@ struct RecordView: View {
         .onChange(of: activePage) { _, newPage in
             guard showCamera else { return }
             preferredSessionPageRawValue = newPage.rawValue
+            track(.init(.liveWorkoutPageSelected, properties: [
+                .selectionType: .string(newPage.rawValue),
+                .sourceType: .string("page_selection")
+            ]))
         }
         .onChange(of: plannedIntent) { _, intent in
             applyWorkoutMusicSuggestion()
@@ -1123,7 +1127,7 @@ struct RecordView: View {
         }
         activePage = preferredSessionPage
         isLiveWorkoutPanelExpanded = false
-        showCamera = true
+        presentLiveSurface()
         ActivityDiagnosticLog.notice(.recovery, "Recovery presentation rendered stage=recording")
         guide.setSpeechEnabled(voiceGuideSpeechEnabled)
         guide.activate(
@@ -1173,7 +1177,7 @@ struct RecordView: View {
         isLiveWorkoutPanelExpanded = false
         capturedPhotos = []
         pendingActivity = nil
-        showCamera = true
+        presentLiveSurface()
         recorder.seedLiveRunForUITest()
 #endif
     }
@@ -1226,6 +1230,12 @@ struct RecordView: View {
     }
 #endif
 
+    private func presentLiveSurface() {
+        // Tell Today to release its setup map before the workout map appears.
+        onLiveSurfaceVisibilityChange?(true)
+        showCamera = true
+    }
+
     private func beginRecordingAfterLiveShareSetup(companionBrief: CompanionSessionBriefDTO? = nil) {
         ActiveSessionPhotoJournal.replace(with: capturedPhotos)
         pendingActivity = nil
@@ -1258,7 +1268,7 @@ struct RecordView: View {
             )
         )
         trackFeatureExposure("live_guidance")
-        showCamera = true
+        presentLiveSurface()
 #if DEBUG
         if !ProcessInfo.processInfo.arguments.contains("-OutboundDemoCapture") {
             phoneWorkoutCoordinator.preparePhoneFirst(
@@ -1624,7 +1634,7 @@ struct RecordView: View {
         activeIntent = plannedIntent ?? .freestyleRun
         activePage = preferredSessionPage
         isLiveWorkoutPanelExpanded = false
-        showCamera = true
+        presentLiveSurface()
         guide.setSpeechEnabled(voiceGuideSpeechEnabled)
         guide.activate(
             with: guideStore.profile,

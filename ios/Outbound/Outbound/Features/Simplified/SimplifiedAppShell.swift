@@ -1087,12 +1087,14 @@ private struct SimplifiedTodayView: View {
                 VStack(spacing: 0) {
                     ZStack(alignment: .bottom) {
                         OutboundPalette.background
-                        ActivityLaunchMap(
-                            locationManager: launchLocationManager,
-                            route: preActivityRoute,
-                            safeZone: ActivityMapSafeZone(bottomInset: mapAttributionBottomInset)
-                        )
-                        .clipped()
+                        if !isActivityFullscreenVisible {
+                            ActivityLaunchMap(
+                                locationManager: launchLocationManager,
+                                route: preActivityRoute,
+                                safeZone: ActivityMapSafeZone(bottomInset: mapAttributionBottomInset)
+                            )
+                            .clipped()
+                        }
 
                         if launchGoalMode == .planned
                             || activitySessionState != .idle

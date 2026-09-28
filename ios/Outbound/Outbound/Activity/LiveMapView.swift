@@ -37,7 +37,11 @@ struct LiveMapView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                mapSurface
+                if activePage == .map {
+                    mapSurface
+                } else {
+                    Color(.systemBackground).ignoresSafeArea()
+                }
                 bottomControls(expandedHeight: geometry.size.height)
                 if !isWorkoutPanelExpanded {
                     rightControls
