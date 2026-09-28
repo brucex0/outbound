@@ -399,6 +399,7 @@ private fun SignedInApp(
                 }
                 Row(
                     Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
@@ -450,7 +451,7 @@ private fun SignedInApp(
                     Spacer(Modifier.width(10.dp))
                     val contextualStart = primaryDestination == TopLevelDestination.Today && !hasActiveSession
                     NavigationBar(
-                        modifier = Modifier.weight(1f).height(64.dp).clip(RoundedCornerShape(32.dp)),
+                        modifier = Modifier.width(260.dp).height(56.dp).clip(RoundedCornerShape(28.dp)),
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f),
                         tonalElevation = 0.dp,
                     ) {
@@ -487,6 +488,7 @@ private fun SignedInApp(
                                             if (isContextualStart) TodayR.string.today_start else destination.label,
                                         ),
                                         tint = iconTint,
+                                        modifier = Modifier.size(28.dp),
                                     )
                                 },
                                 label = null,
