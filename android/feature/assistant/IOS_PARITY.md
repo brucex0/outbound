@@ -16,6 +16,7 @@ Open this file when changing Android assistant behavior, its launcher entry poin
 ## State and behavior contract
 
 - Persistent launcher is available from Social, Today, and Me. The live recording HUD exposes a compact assistant entry alongside voice commands.
+- The persistent launcher begins its animation after 500 ms in the foreground, then scales up, tilts, brightens with a shimmer, and emits an expanding ring before a spring settle and 2.8-second pause. Android mirrors the iOS motion and resets it when the app leaves the foreground.
 - The assistant starts with a persisted introduction and offers the same contextual quick starts as iOS: Today workout prompts when available, otherwise Log a workout, Plan, Support, and Brainstorm.
 - The conversation stores the user's original text for display and transcript history; product context is added only to the service request and is never rendered as a message.
 - The composer stays above the software keyboard, and voice listening status stays beside the composer with an animated waveform.

@@ -28,11 +28,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.keyframes
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -72,6 +74,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -164,6 +168,7 @@ import android.content.Intent
 import android.provider.Settings
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.coroutineScope
 import com.plainstride.outbound.reminders.ReminderViewModel
 
 private enum class TopLevelDestination(
@@ -337,6 +342,13 @@ private fun SignedInApp(
         bottomBar = {
             val primaryDestination = TopLevelDestination.entries.firstOrNull { it.route == currentDestination?.route }
             if (primaryDestination != null) {
+                val lifecycleOwner = LocalLifecycleOwner.current
+                val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsStateWithLifecycle()
+                val launcherScale = remember { Animatable(1f) }
+                val launcherRotation = remember { Animatable(0f) }
+                val launcherShimmer = remember { Animatable(0f) }
+                val launcherRingScale = remember { Animatable(0.72f) }
+                val launcherRingOpacity = remember { Animatable(0f) }
                 LaunchedEffect(primaryDestination) {
                     if (!trackedAssistantExposure) {
                         integrationViewModel.trackAssistantLauncherEligibleExposure(primaryDestination.route)
@@ -348,29 +360,88 @@ private fun SignedInApp(
                         trackedAssistantAnimation = true
                     }
                 }
-                val launcherMotion = rememberInfiniteTransition(label = "assistantLauncher")
-                val launcherScale by launcherMotion.animateFloat(
-                    initialValue = 1f,
-                    targetValue = 1.16f,
-                    animationSpec = infiniteRepeatable(animation = keyframes {
-                        durationMillis = 4_000
-                        1f at 0
-                        1.16f at 320
-                        1f at 640
-                        1f at 4_000
-                    }),
-                    label = "assistantLauncherScale",
-                )
+                LaunchedEffect(primaryDestination, lifecycleState) {
+                    if (!lifecycleState.isAtLeast(Lifecycle.State.RESUMED)) {
+                        launcherScale.snapTo(1f)
+                        launcherRotation.snapTo(0f)
+                        launcherShimmer.snapTo(0f)
+                        launcherRingScale.snapTo(0.72f)
+                        launcherRingOpacity.snapTo(0f)
+                        return@LaunchedEffect
+                    }
+
+                    delay(500)
+                    while (true) {
+                        coroutineScope {
+                            launch { launcherScale.animateTo(1.17f, tween(320, easing = LinearOutSlowInEasing)) }
+                            launch { launcherRotation.animateTo(-10f, tween(320, easing = LinearOutSlowInEasing)) }
+                            launch { launcherShimmer.animateTo(0.9f, tween(320, easing = LinearOutSlowInEasing)) }
+                            launch { launcherRingScale.animateTo(0.94f, tween(320, easing = LinearOutSlowInEasing)) }
+                            launch { launcherRingOpacity.animateTo(0.82f, tween(320, easing = LinearOutSlowInEasing)) }
+                        }
+
+                        val returnSpring = spring<Float>(dampingRatio = 0.48f, stiffness = Spring.StiffnessMedium)
+                        coroutineScope {
+                            launch { launcherScale.animateTo(1f, returnSpring) }
+                            launch { launcherRotation.animateTo(0f, returnSpring) }
+                            launch { launcherShimmer.animateTo(0f, returnSpring) }
+                            launch { launcherRingScale.animateTo(1.55f, returnSpring) }
+                            launch { launcherRingOpacity.animateTo(0f, returnSpring) }
+                        }
+
+                        launcherRingScale.snapTo(0.72f)
+                        delay(2_800)
+                    }
+                }
                 Row(
                     Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    PlainstrideFloatingAction(style = PlainstrideFloatingActionStyle.Accent, onClick = {
-                        assistantEntryDestination = primaryDestination.route
-                        integrationViewModel.trackAssistantOpened(primaryDestination.route)
-                        navController.navigate(ASSISTANT_ROUTE) { launchSingleTop = true }
-                    }) {
-                        Icon(Icons.Default.AutoAwesome, stringResource(R.string.tab_assistant), Modifier.size(22.dp).graphicsLayer { scaleX = launcherScale; scaleY = launcherScale })
+                    Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                        Canvas(
+                            Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    scaleX = launcherRingScale.value
+                                    scaleY = launcherRingScale.value
+                                    alpha = launcherRingOpacity.value
+                                },
+                        ) {
+                            drawCircle(
+                                color = Color.White,
+                                radius = size.minDimension / 2f,
+                                style = Stroke(width = 2.dp.toPx()),
+                            )
+                        }
+                        PlainstrideFloatingAction(
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = launcherScale.value
+                                scaleY = launcherScale.value
+                            },
+                            style = PlainstrideFloatingActionStyle.Accent,
+                            onClick = {
+                                assistantEntryDestination = primaryDestination.route
+                                integrationViewModel.trackAssistantOpened(primaryDestination.route)
+                                navController.navigate(ASSISTANT_ROUTE) { launchSingleTop = true }
+                            },
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.AutoAwesome,
+                                    stringResource(R.string.tab_assistant),
+                                    Modifier.size(22.dp).graphicsLayer { rotationZ = launcherRotation.value },
+                                )
+                                Icon(
+                                    Icons.Default.AutoAwesome,
+                                    null,
+                                    Modifier.size(22.dp).blur(0.8.dp).graphicsLayer {
+                                        scaleX = 1.28f
+                                        scaleY = 1.28f
+                                        alpha = launcherShimmer.value
+                                    },
+                                )
+                            }
+                        }
                     }
                     Spacer(Modifier.width(10.dp))
                     val contextualStart = primaryDestination == TopLevelDestination.Today && !hasActiveSession
