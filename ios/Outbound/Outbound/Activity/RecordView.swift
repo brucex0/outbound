@@ -2248,7 +2248,10 @@ struct RecordView: View {
     }
 
     private var setupActivityType: ActivityType {
-        (plannedIntent ?? .freestyleRun).resolvedActivityType
+        if case .sport(let sport) = selectedWorkoutChoice {
+            return sport.activityType
+        }
+        return (plannedIntent ?? .freestyleRun).resolvedActivityType
     }
 
     private func autoPauseEnabled(for activityType: ActivityType) -> Bool {
