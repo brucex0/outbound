@@ -252,7 +252,7 @@ struct CameraHUDView: View {
             .coordinatedTooltip(
                 .swipeToMap,
                 isEligible: recorder.state == .paused,
-                text: String(localized: "tooltip.swipe_to_map", defaultValue: "Swipe to map"),
+                text: String(localized: "tooltip.swipe_to_map", defaultValue: "Tap to open map"),
                 arrowEdge: .trailing
             )
 

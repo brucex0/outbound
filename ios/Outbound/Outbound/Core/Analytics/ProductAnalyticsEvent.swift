@@ -53,6 +53,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activitySimulationControlUsed = "activity_simulation_control_used"
     case liveActivityReconciled = "live_activity_reconciled"
     case liveWorkoutPanelDisplayChanged = "live_workout_panel_display_changed"
+    case liveWorkoutPageSelected = "live_workout_page_selected"
     case watchFeatureExposed = "watch_feature_exposed"
     case watchConnectionAttempted = "watch_connection_attempted"
     case watchConnectionResult = "watch_connection_result"
@@ -360,6 +361,7 @@ enum ProductAnalyticsSchema {
         .activitySimulationControlUsed: [.control, .selectionType],
         .liveActivityReconciled: [.result],
         .liveWorkoutPanelDisplayChanged: [.selectionType, .sourceType],
+        .liveWorkoutPageSelected: [.selectionType, .sourceType],
         .watchFeatureExposed: [.sourceType],
         .watchConnectionAttempted: [.sourceType],
         .watchConnectionResult: [.sourceType, .result, .errorCategory, .latencyBucket],
