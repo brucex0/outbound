@@ -47,6 +47,8 @@ The retired `sunset` and `solarFlare` persisted values decode as Victory Gold.
 - `heroForegroundColor`: readable content color over the actual hero gradient. Bright themes use dark foregrounds; darker themes use white.
 - Dark appearance values: every palette property uses adaptive light and dark colors rather than opacity alone.
 - Android defines the complete neutral Material surface-container ramp for both appearances, and the app-root surface supplies the matching foreground color to direct Compose screens.
+- Android maps Material `primary` to the selected theme accent, matching the iOS root `.tint`; use the action color only for components whose design calls for a filled action. Primary foregrounds must retain readable contrast in every palette.
+- Android status and navigation bar icon contrast follows the app's selected appearance mode, including when it differs from the device setting.
 
 The selected theme is also injected through `EnvironmentValues.outboundTheme`. Any view whose rendering depends on a theme must read that environment value so SwiftUI refreshes it immediately. Do not read `UserDefaults` directly from a view.
 

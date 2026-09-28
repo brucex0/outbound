@@ -13,6 +13,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
 
 /** Stable theme identifiers shared with iOS and account preferences. */
 enum class PlainstrideThemeId(val serializedName: String) {
@@ -85,13 +86,16 @@ fun PlainstrideTheme(
     content: @Composable () -> Unit,
 ) {
     val brand = plainstrideThemeColors(theme, darkTheme)
+    // Match SwiftUI's app-wide `.tint(theme.accentColor)`. The action color is
+    // intentionally reserved for surfaces that explicitly call for a filled action.
+    val onAccent = if (brand.accent.luminance() > 0.179f) Color(0xFF161A17) else Color.White
     val materialColors = if (darkTheme) {
         val background = Color(0xFF101512)
         val surface = Color(0xFF171D19)
         val onSurface = Color(0xFFE0E6E1)
         darkColorScheme(
-            primary = brand.action,
-            onPrimary = brand.heroForeground,
+            primary = brand.accent,
+            onPrimary = onAccent,
             primaryContainer = brand.accent.copy(alpha = .28f).compositeOver(background),
             onPrimaryContainer = brand.accent,
             secondary = brand.secondary,
@@ -124,10 +128,10 @@ fun PlainstrideTheme(
         val surface = Color.White
         val onSurface = Color(0xFF18201C)
         lightColorScheme(
-            primary = brand.action,
-            onPrimary = brand.heroForeground,
+            primary = brand.accent,
+            onPrimary = onAccent,
             primaryContainer = brand.accent.copy(alpha = .16f).compositeOver(background),
-            onPrimaryContainer = brand.action,
+            onPrimaryContainer = brand.accent,
             secondary = brand.secondary,
             secondaryContainer = brand.secondary.copy(alpha = .12f).compositeOver(background),
             onSecondaryContainer = Color(0xFF18201C),
