@@ -21,6 +21,7 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:network"))
+    implementation(project(":core:location"))
     implementation(project(":core:weather"))
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)

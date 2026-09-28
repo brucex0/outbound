@@ -5,4 +5,11 @@
     <string name="route_map_description">Route map</string>
     <string name="route_map_unavailable">Map unavailable</string>
     <string name="route_start">Start</string>
+    <string name="location_chip_accessibility">Enable location access</string>
+    <string name="location_chip_accessibility_hint">Opens options to turn location access on</string>
+    <string name="location_chip_label">Enable location</string>
+    <string name="location_permission_close">Close</string>
+    <string name="location_permission_enable">Enable location</string>
+    <string name="location_permission_message">Outdoor activities need location to map your route and record pace. Grant access to start, or turn it on in Settings if it was denied before.</string>
+    <string name="location_permission_title">Enable location</string>
 </resources>

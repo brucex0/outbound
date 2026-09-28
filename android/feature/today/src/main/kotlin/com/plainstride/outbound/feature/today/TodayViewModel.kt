@@ -116,7 +116,6 @@ class TodayViewModel @Inject constructor(
     val weather = mutableWeather
     private val mutablePlanPicker = MutableStateFlow(PlanPickerUiState())
     val planPicker = mutablePlanPicker
-    val weatherPermissionRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     val state = combine(
         accountScope.flatMapLatest { repository.observePlanning(it.first, it.second) },
@@ -140,7 +139,7 @@ class TodayViewModel @Inject constructor(
     fun refreshWeather() = viewModelScope.launch {
         when (val result = weatherPolicy.guidance()) {
             is TodayWeatherResult.Available -> mutableWeather.value = result.guidance
-            TodayWeatherResult.PermissionRequired -> weatherPermissionRequests.emit(Unit)
+            TodayWeatherResult.PermissionRequired -> Unit
             TodayWeatherResult.Unavailable -> Unit
         }
     }

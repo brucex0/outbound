@@ -5,4 +5,11 @@
     <string name="route_map_description">路线地图</string>
     <string name="route_map_unavailable">地图不可用</string>
     <string name="route_start">起点</string>
+    <string name="location_chip_accessibility">开启位置访问权限</string>
+    <string name="location_chip_accessibility_hint">打开位置访问设置选项</string>
+    <string name="location_chip_label">开启定位</string>
+    <string name="location_permission_close">关闭</string>
+    <string name="location_permission_enable">开启定位</string>
+    <string name="location_permission_message">户外活动需要位置信息来绘制路线并记录配速。授予权限后即可开始；如果之前拒绝过，请前往设置开启。</string>
+    <string name="location_permission_title">开启定位</string>
 </resources>

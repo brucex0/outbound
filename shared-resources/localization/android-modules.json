@@ -7,7 +7,17 @@
   },
   "modules": [
     { "keyPrefix": "app", "androidPrefix": "", "resourceRoot": "android/app/src/main/res", "file": "strings.xml" },
-    { "keyPrefix": "design", "androidPrefix": "", "resourceRoot": "android/core/designsystem/src/main/res", "file": "strings.xml" },
+    {
+      "keyPrefix": "design",
+      "androidPrefix": "",
+      "sources": [
+        { "keyPrefix": "design", "androidPrefix": "" },
+        { "keyPrefix": "record.location.permission", "androidPrefix": "location_permission_" },
+        { "keyPrefix": "record.location.chip", "androidPrefix": "location_chip_" }
+      ],
+      "resourceRoot": "android/core/designsystem/src/main/res",
+      "file": "strings.xml"
+    },
     { "keyPrefix": "weather", "androidPrefix": "weather_", "resourceRoot": "android/core/weather/src/main/res", "file": "strings.xml" },
     { "keyPrefix": "activity", "androidPrefix": "activity_", "resourceRoot": "android/feature/activity/src/main/res", "file": "strings.xml" },
     { "keyPrefix": "assistant", "androidPrefix": "", "resourceRoot": "android/feature/assistant/src/main/res", "file": "strings.xml" },

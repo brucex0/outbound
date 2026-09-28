@@ -12,6 +12,7 @@
 
 - Today launches the prepared activity directly into a cancelable, spoken countdown when Voice Guide is enabled.
 - Outdoor activity start follows iOS preflight: explain location use before the system prompt, direct previously denied users to app settings, refresh authorization when returning from settings, and hold the start until a location fix is no older than 15 seconds and no less accurate than 80 meters. Indoor sessions bypass both gates. A lost permission or GPS fix during countdown blocks recording and returns to the matching permission or acquisition state.
+- Outdoor activity setup also shows the iOS “Enable location” chip while access is unavailable. It opens the same explanation and first-request versus app-settings path as Today and weather; indoor setup hides the chip.
 - Active recording is non-dismissible. Pause reveals separate Resume and Finish controls; Finish requires confirmation.
 - The map and camera share compact and expanded dashboard state. Tap or vertical drag changes state without dismissing the activity.
 - The compact dashboard mirrors iOS's glanceable time / primary action / optional Finish / distance row; the expanded dashboard owns the title and status, goal hero, progress, metric cards, current workout step, route name, and labeled controls.

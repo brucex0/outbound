@@ -5,4 +5,11 @@
     <string name="route_map_description">Mapa de la ruta</string>
     <string name="route_map_unavailable">Mapa no disponible</string>
     <string name="route_start">Inicio</string>
+    <string name="location_chip_accessibility">Activar el acceso a la ubicación</string>
+    <string name="location_chip_accessibility_hint">Abre las opciones para activar el acceso a la ubicación</string>
+    <string name="location_chip_label">Activar ubicación</string>
+    <string name="location_permission_close">Cerrar</string>
+    <string name="location_permission_enable">Activar ubicación</string>
+    <string name="location_permission_message">Las actividades al aire libre necesitan tu ubicación para trazar la ruta y registrar el ritmo. Activa el acceso para empezar o habilítalo en Ajustes si ya lo denegaste.</string>
+    <string name="location_permission_title">Activa la ubicación</string>
 </resources>
