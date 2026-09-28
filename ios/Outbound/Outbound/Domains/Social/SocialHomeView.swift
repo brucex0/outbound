@@ -1521,7 +1521,17 @@ private struct SocialGroupsView: View {
 
                 TextField(String(localized: "social.groups.search", defaultValue: "Search Groups by name or city"), text: $groupSearch)
                     .textFieldStyle(.roundedBorder)
-                    .onSubmit { Task { await refresh() } }
+                    .onSubmit {
+                        Task {
+                            await refresh()
+                            if !groupSearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                await analyticsManager?.track(.init(.groupDiscoverySearched, properties: [
+                                    .entrySource: .string("groups"),
+                                    .countBucket: .string(ProductAnalyticsBucket.count(discoveryGroups.count)),
+                                ]))
+                            }
+                        }
+                    }
 
                 if discoveryGroups.isEmpty {
                     HStack(spacing: 12) {

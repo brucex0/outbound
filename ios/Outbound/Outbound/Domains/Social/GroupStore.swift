@@ -16,7 +16,7 @@ final class GroupContributionCenter: ObservableObject {
 final class GroupStore: ObservableObject {
     @Published private(set) var groups: [GroupDTO] = []
     @Published private(set) var invitations: [GroupInvitationDTO] = []
-    @Published private(set) var memberLimit = 6
+    @Published private(set) var memberLimit = 500
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
     @Published private(set) var toastMessage: String?
@@ -55,7 +55,7 @@ final class GroupStore: ObservableObject {
         activeUserID = userID
         groups = []
         invitations = []
-        memberLimit = 6
+        memberLimit = 500
         errorMessage = nil
         toastMessage = nil
         lastConfirmedContribution = nil
@@ -378,7 +378,7 @@ final class GroupStore: ObservableObject {
         let rina = GroupPersonDTO(id: "ui-test-rina", displayName: "Rina Runner", avatarUrl: nil)
         return GroupDTO(
             id: "ui-test-weekend-crew", name: "Bruce, Daniel, Rina's Group", lifecycle: "active", role: "owner",
-            owner: bruce, resetWeekday: 1, timeZone: "America/Los_Angeles", memberLimit: 6,
+            owner: bruce, resetWeekday: 1, timeZone: "America/Los_Angeles", memberLimit: 500,
             memberCount: 3, eligibleForToday: true,
             members: [
                 GroupMemberDTO(id: "ui-test-group-bruce", user: bruce, role: "owner", isCurrentUser: true, commitment: .init(targetCount: 3, skipped: false), contributedCount: 1, recentActivity: .init(type: "running", title: "Golden Gate recovery run", startedAt: now.addingTimeInterval(-86_400), durationSecs: 1_740, distanceM: 4_600, elevationM: 38, avgPace: 378, avgHeartRate: 138, energyKilocalories: 315)),

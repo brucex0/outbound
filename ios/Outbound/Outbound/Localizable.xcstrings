@@ -3757,6 +3757,34 @@
         }
       }
     },
+    "group.members.more_action": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "More" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Más" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "更多" } }
+      }
+    },
+    "group.member.remove_action": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove member" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Eliminar miembro" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "移除成员" } }
+      }
+    },
+    "group.member.remove_confirm_title": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Remove this member?" } },
+        "es": { "stringUnit": { "state": "translated", "value": "¿Eliminar a esta persona del grupo?" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "要移除此成员吗？" } }
+      }
+    },
+    "group.member.actions": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Member actions" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Acciones para miembros" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "成员操作" } }
+      }
+    },
     "group.moment.cheer": {
       "localizations": {
         "en": {

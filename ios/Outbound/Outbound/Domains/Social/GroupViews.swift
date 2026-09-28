@@ -7,6 +7,14 @@ private func groupMemberCountLabel(_ count: Int) -> String {
     return String(localized: "group.members.count", defaultValue: "\(count) members")
 }
 
+private func groupMemberPriority(_ role: String) -> Int {
+    switch role {
+    case "owner": 0
+    case "admin": 1
+    default: 2
+    }
+}
+
 struct GroupDirectoryDetailView: View {
     @EnvironmentObject private var groupStore: GroupStore
     let groupID: String
@@ -540,9 +548,19 @@ struct GroupDetailView: View {
     @State private var showsFocus = false
     @State private var showsNoticeComposer = false
     @State private var showsInvite = false
+    @State private var showsMembers = false
+    @State private var showsMemberInvite = false
+    @State private var memberPendingRemoval: GroupMemberDTO?
 
     private var current: GroupDTO { groupStore.groups.first(where: { $0.id == group.id }) ?? group }
     private var invitees: [GroupPersonDTO] { current.members.filter { !$0.isCurrentUser }.map(\.user) }
+    private var orderedMembers: [GroupMemberDTO] {
+        current.members.enumerated().sorted {
+            let leftPriority = groupMemberPriority($0.element.role)
+            let rightPriority = groupMemberPriority($1.element.role)
+            return leftPriority == rightPriority ? $0.offset < $1.offset : leftPriority < rightPriority
+        }.map(\.element)
+    }
 
     var body: some View {
         ScrollView {
@@ -584,6 +602,7 @@ struct GroupDetailView: View {
         }
         .sheet(isPresented: $showsFocus) { NavigationStack { GroupFocusEditor(group: current) } }
         .sheet(isPresented: $showsNoticeComposer) { CommunityNoticeComposer(group: current) }
+        .sheet(isPresented: $showsMembers) { fullMembersSheet }
         .task {
             await groupStore.refreshGroup(id: current.id)
             track(.groupProgressOpened, [.entrySource: .string("group_detail"), .selectionType: .string(current.week.focusMode), .participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))])
@@ -663,7 +682,7 @@ struct GroupDetailView: View {
 
     private var communityOverview: some View {
         VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-            if current.role == nil {
+            if current.role == nil && !current.members.contains(where: \.isCurrentUser) {
                 Button {
                     Task { _ = await groupStore.requestMembership(in: current) }
                 } label: {
@@ -703,7 +722,9 @@ struct GroupDetailView: View {
                 }
             }
             if !current.upcomingActivities.isEmpty { upcomingActivitiesSection }
-            communityMembersSection
+            if current.role != nil || current.members.contains(where: \.isCurrentUser) {
+                communityMembersSection
+            }
             if current.role == "owner" || current.role == "admin" {
                 Button { showsNoticeComposer = true } label: { Label(String(localized: "group.notice.publish", defaultValue: "Post an update"), systemImage: "megaphone") }
                     .buttonStyle(.bordered)
@@ -716,14 +737,135 @@ struct GroupDetailView: View {
     private var communityMembersSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(String(localized: "group.members", defaultValue: "MEMBERS")).socialSectionLabel()
-            OutboundCard {
-                ForEach(current.members) { member in
-                    HStack { SocialAvatar(name: member.user.displayName, avatarURL: member.user.avatarUrl); Text(member.user.displayName); Spacer(); if member.role != "member" { Text(member.role.capitalized).font(.caption).foregroundStyle(.secondary) } }
-                        .frame(minHeight: 44)
+            memberSummaryCard
+        }
+    }
+
+    private var memberSummaryCard: some View {
+        OutboundCard {
+            HStack(spacing: 10) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(orderedMembers.prefix(3)) { member in
+                            HStack(spacing: 6) {
+                                SocialAvatar(name: member.user.displayName, avatarURL: member.user.avatarUrl, size: 30)
+                                Text(firstName(member.user.displayName))
+                                    .font(.subheadline.weight(.medium))
+                                    .lineLimit(1)
+                            }
+                            .accessibilityElement(children: .combine)
+                        }
+                    }
                 }
-                if current.memberCount > current.members.count { Text(String(localized: "group.members.more", defaultValue: "and (current.memberCount - current.members.count) more members")).font(.caption).foregroundStyle(.secondary) }
+                Button(action: showAllMembers) {
+                    Text(String(localized: "group.members.more_action", defaultValue: "More"))
+                        .font(.subheadline.weight(.semibold))
+                }
+                .fixedSize()
+            }
+            .frame(minHeight: 40)
+        }
+    }
+
+    private var fullMembersSheet: some View {
+        NavigationStack {
+            List {
+                ForEach(orderedMembers) { member in
+                    HStack(alignment: .top, spacing: 12) {
+                        SocialAvatar(name: member.user.displayName, avatarURL: member.user.avatarUrl)
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(member.user.displayName).font(.headline)
+                                Spacer(minLength: 8)
+                                if member.role != "member" {
+                                    Text(member.role.capitalized).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            if current.trustPolicy == "community" {
+                                Text(member.role.capitalized).font(.caption).foregroundStyle(.secondary)
+                            } else {
+                                Text(memberStatus(member)).font(.caption).foregroundStyle(.secondary)
+                                if let activity = member.recentActivity {
+                                    Text("\(activityTitle(activity)) · \(activitySummary(activity))")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(2)
+                                }
+                            }
+                        }
+                        if current.trustPolicy != "community", !member.isCurrentUser {
+                            memberCheerMenu(member)
+                        }
+                        if canInviteMembers && canRemove(member) {
+                            Menu {
+                                Button(String(localized: "group.remove_member", defaultValue: "Remove member"), role: .destructive) {
+                                    memberPendingRemoval = member
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis").frame(width: 36, height: 44)
+                            }
+                            .accessibilityLabel(String(localized: "group.member.actions", defaultValue: "Member actions"))
+                        }
+                    }
+                    .padding(.vertical, 4)
+                    .listRowBackground(OutboundPalette.background)
+                }
+            }
+            .listStyle(.plain)
+            .background(OutboundPalette.background)
+            .navigationTitle(String(localized: "group.members.manage", defaultValue: "Members"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if canInviteMembers {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(String(localized: "group.invite.more", defaultValue: "Invite connections")) { showsMemberInvite = true }
+                            .disabled(current.memberCount + current.invitations.count >= current.memberLimit)
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(String(localized: "common.done", defaultValue: "Done")) { showsMembers = false }
+                }
+            }
+            .sheet(isPresented: $showsMemberInvite) {
+                GroupInviteView(group: current, entrySource: "group_members")
+                    .environmentObject(groupStore)
+                    .environmentObject(socialStore)
+            }
+            .confirmationDialog(
+                String(localized: "group.member.remove_confirm_title", defaultValue: "Remove this member?"),
+                isPresented: Binding(get: { memberPendingRemoval != nil }, set: { if !$0 { memberPendingRemoval = nil } }),
+                titleVisibility: .visible
+            ) {
+                Button(String(localized: "group.remove_member", defaultValue: "Remove member"), role: .destructive) {
+                    guard let member = memberPendingRemoval else { return }
+                    Task {
+                        if await groupStore.removeMember(member, from: current) != nil {
+                            track(.groupMemberRemoved, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))])
+                        }
+                        memberPendingRemoval = nil
+                    }
+                }
+                Button(String(localized: "common.cancel", defaultValue: "Cancel"), role: .cancel) { memberPendingRemoval = nil }
             }
         }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func firstName(_ displayName: String) -> String {
+        displayName.split(whereSeparator: \.isWhitespace).first.map(String.init) ?? displayName
+    }
+
+    private func showAllMembers() {
+        showsMembers = true
+        track(.groupMembersOpened, [
+            .entrySource: .string("group_detail"),
+            .participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount)),
+        ])
+    }
+
+    private func canRemove(_ member: GroupMemberDTO) -> Bool {
+        guard !member.isCurrentUser, member.role != "owner" else { return false }
+        return current.role == "owner" || (current.role == "admin" && member.role == "member")
     }
 
     private func refreshAfterPlanning() {
@@ -744,7 +886,6 @@ struct GroupDetailView: View {
                     .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 Text(current.description ?? String(localized: "group.detail.inspiration", defaultValue: "Building a positive life, one activity at a time."))
                     .font(.headline)
-                HStack(spacing: -8) { ForEach(current.members.prefix(6)) { SocialAvatar(name: $0.user.displayName, avatarURL: $0.user.avatarUrl).overlay(Circle().stroke(OutboundPalette.background, lineWidth: 2)) } }
                 Text(groupMemberCountLabel(current.memberCount)).font(.subheadline).foregroundStyle(.secondary)
             }
         }
@@ -828,56 +969,35 @@ struct GroupDetailView: View {
     private var membersSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(String(localized: "group.members", defaultValue: "MEMBERS")).socialSectionLabel()
-            ForEach(current.members) { member in
-                OutboundCard {
-                    HStack(spacing: 12) {
-                        SocialAvatar(name: member.user.displayName, avatarURL: member.user.avatarUrl)
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(member.user.displayName).font(.headline)
-                            Text(memberStatus(member)).font(.caption).foregroundStyle(.secondary)
-                            if let activity = member.recentActivity {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(activityTitle(activity))
-                                        .font(.subheadline.weight(.semibold))
-                                    Text(activitySummary(activity))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(2)
-                                }
-                                .padding(.top, 5)
+            memberSummaryCard
+        }
+    }
+
+    private func memberCheerMenu(_ member: GroupMemberDTO) -> some View {
+        Menu {
+            ForEach(["encouragement", "celebration", "support"], id: \.self) { preset in
+                if let existing = existingCheer(to: member, preset: preset) {
+                    Button(String(format: String(localized: "group.cheer.remove_format", defaultValue: "Remove %@"), cheerTitle(preset)), role: .destructive) {
+                        Task {
+                            if await groupStore.removeCheer(existing, from: current) != nil {
+                                track(.groupCheerRemoved, [.selectionType: .string(preset)])
                             }
                         }
-                        Spacer()
-                        if !member.isCurrentUser {
-                            Menu {
-                                ForEach(["encouragement", "celebration", "support"], id: \.self) { preset in
-                                    if let existing = existingCheer(to: member, preset: preset) {
-                                        Button(String(format: String(localized: "group.cheer.remove_format", defaultValue: "Remove %@"), cheerTitle(preset)), role: .destructive) {
-                                            Task {
-                                                if await groupStore.removeCheer(existing, from: current) != nil {
-                                                    track(.groupCheerRemoved, [.selectionType: .string(preset)])
-                                                }
-                                            }
-                                        }
-                                    } else {
-                                        Button(cheerTitle(preset)) {
-                                            Task {
-                                                if await groupStore.sendCheer(group: current, member: member, presetType: preset) {
-                                                    track(.groupCheerSent, [.selectionType: .string(preset)])
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            } label: {
-                                Image(systemName: "heart").frame(width: 44, height: 44)
+                    }
+                } else {
+                    Button(cheerTitle(preset)) {
+                        Task {
+                            if await groupStore.sendCheer(group: current, member: member, presetType: preset) {
+                                track(.groupCheerSent, [.selectionType: .string(preset)])
                             }
-                                .accessibilityLabel(String(localized: "group.cheer", defaultValue: "Send a Cheer"))
                         }
                     }
                 }
             }
+        } label: {
+            Image(systemName: "heart").frame(width: 44, height: 44)
         }
+        .accessibilityLabel(String(localized: "group.cheer", defaultValue: "Send a Cheer"))
     }
 
     private var pendingInvitationsSection: some View {
@@ -1346,7 +1466,7 @@ struct GroupManagementView: View {
                 Section(String(localized: "group.week.settings", defaultValue: "Group week")) { Picker(String(localized: "group.reset_day", defaultValue: "Reset day"), selection: $resetWeekday) { ForEach(1...7, id: \.self) { Text(isoWeekdayName($0)).tag($0) } }; TextField(String(localized: "group.timezone", defaultValue: "Time zone"), text: $timeZone); Picker(String(localized: "group.focus.apply", defaultValue: "Apply"), selection: $calendarApply) { Text(String(localized: "group.apply.now", defaultValue: "Now")).tag("now"); Text(String(localized: "group.apply.next", defaultValue: "Next week")).tag("next_week") } }
                 Section(String(localized: "group.members.manage", defaultValue: "Members")) { ForEach(current.members.filter { !$0.isCurrentUser }) { member in Menu { if current.role == "owner" { Button(member.role == "admin" ? String(localized: "group.role.demote", defaultValue: "Make member") : String(localized: "group.role.promote", defaultValue: "Make admin")) { Task { _ = await groupStore.setRole(member.role == "admin" ? "member" : "admin", for: member, in: current) } }; Button(String(localized: "group.transfer", defaultValue: "Transfer ownership")) { Task { if await groupStore.transferOwnership(of: current, to: member) != nil { track(.groupOwnershipTransferred, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } } }; Button(String(localized: "group.remove_member", defaultValue: "Remove member"), role: .destructive) { Task { if await groupStore.removeMember(member, from: current) != nil { track(.groupMemberRemoved, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } } } label: { HStack { Text(member.user.displayName); Spacer(); Image(systemName: "ellipsis").frame(width: 44, height: 44) } } } }
                 Section { if current.lifecycle == "archived" { Button(String(localized: "group.reactivate", defaultValue: "Reactivate Group")) { Task { if await groupStore.reactivate(current) != nil { track(.groupReactivated, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } } } else { Button(String(localized: "group.archive", defaultValue: "Archive Group"), role: .destructive) { Task { if await groupStore.archive(current) { track(.groupArchived, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } } } }
-            } else {
+            } else if current.role == "member" {
                 Section { Button(String(localized: "group.leave", defaultValue: "Leave Group"), role: .destructive) { Task { if await groupStore.leave(current) { track(.groupMemberLeft, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]); dismiss() } } } }
             }
         }

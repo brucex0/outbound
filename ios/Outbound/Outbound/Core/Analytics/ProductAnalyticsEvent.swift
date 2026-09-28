@@ -105,6 +105,8 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case groupThemeChanged = "group_theme_changed"
     case groupTargetChanged = "group_target_changed"
     case groupProgressOpened = "group_progress_opened"
+    case groupMembersOpened = "group_members_opened"
+    case groupDiscoverySearched = "group_discovery_searched"
     case groupCheerSent = "group_cheer_sent"
     case groupCheerRemoved = "group_cheer_removed"
     case groupPlanActivityStarted = "group_plan_activity_started"
@@ -422,6 +424,8 @@ enum ProductAnalyticsSchema {
         .groupThemeChanged: [.selectionType, .sourceType],
         .groupTargetChanged: [.selectionType, .targetBucket, .sourceType],
         .groupProgressOpened: [.entrySource, .selectionType, .participantCountBucket],
+        .groupMembersOpened: [.entrySource, .participantCountBucket],
+        .groupDiscoverySearched: [.entrySource, .countBucket],
         .groupCheerSent: [.selectionType],
         .groupCheerRemoved: [.selectionType],
         .groupPlanActivityStarted: [.entrySource, .participantCountBucket],

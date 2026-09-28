@@ -84,7 +84,7 @@ extension GroupDTO {
         owner = try container.decodeIfPresent(GroupPersonDTO.self, forKey: .owner) ?? GroupPersonDTO(id: "system", displayName: "Plainstride", avatarUrl: nil)
         resetWeekday = try container.decodeIfPresent(Int.self, forKey: .resetWeekday) ?? 1
         timeZone = try container.decodeIfPresent(String.self, forKey: .timeZone) ?? TimeZone.current.identifier
-        memberLimit = try container.decodeIfPresent(Int.self, forKey: .memberLimit) ?? 100
+        memberLimit = try container.decodeIfPresent(Int.self, forKey: .memberLimit) ?? 500
         memberCount = try container.decodeIfPresent(Int.self, forKey: .memberCount) ?? 0
         eligibleForToday = try container.decodeIfPresent(Bool.self, forKey: .eligibleForToday) ?? false
         members = try container.decodeIfPresent([GroupMemberDTO].self, forKey: .members) ?? []
