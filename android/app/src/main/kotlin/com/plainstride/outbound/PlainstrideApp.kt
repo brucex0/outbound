@@ -398,7 +398,7 @@ private fun SignedInApp(
                                         imageVector = when {
                                             isContextualStart -> Icons.Default.PlayCircle
                                             destination == TopLevelDestination.Social -> Icons.Default.Groups
-                                            destination == TopLevelDestination.Today -> Icons.Default.Today
+                                            destination == TopLevelDestination.Today -> Icons.Default.AutoAwesome
                                             else -> Icons.Default.Person
                                         },
                                         contentDescription = stringResource(

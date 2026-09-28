@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -46,14 +47,14 @@ import androidx.compose.ui.window.Dialog
  Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
   Row(verticalAlignment=Alignment.CenterVertically){IconButton(close){Icon(Icons.Outlined.Close,stringResource(R.string.social_done))};Text(stringResource(R.string.social_groups_create_choose_title),Modifier.weight(1f),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)}
   Text(stringResource(R.string.social_groups_create_choose_detail),color=MaterialTheme.colorScheme.onSurfaceVariant)
-  GroupTemplateCard(R.string.social_groups_template_private_title,R.string.social_groups_template_private_detail){choose("motivation")}
-  GroupTemplateCard(R.string.social_groups_template_community_title,R.string.social_groups_template_community_detail){choose("activities")}
+  GroupTemplateCard(R.string.social_groups_template_private_title,R.string.social_groups_template_private_detail,false){choose("motivation")}
+  GroupTemplateCard(R.string.social_groups_template_community_title,R.string.social_groups_template_community_detail,true){choose("activities")}
  }
 }
 
-@Composable private fun GroupTemplateCard(title:Int,detail:Int,onClick:()->Unit){
+@Composable private fun GroupTemplateCard(title:Int,detail:Int,isCommunity:Boolean,onClick:()->Unit){
  ElevatedCard(onClick=onClick){Row(Modifier.fillMaxWidth().padding(18.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(14.dp)){
-  Surface(Modifier.size(44.dp),shape=androidx.compose.foundation.shape.CircleShape,color=MaterialTheme.colorScheme.primary.copy(alpha=.12f)){Box(contentAlignment=Alignment.Center){GroupMarkIcon(Modifier.size(25.dp),MaterialTheme.colorScheme.primary)}}
+  Surface(Modifier.size(44.dp),shape=androidx.compose.foundation.shape.CircleShape,color=MaterialTheme.colorScheme.primary.copy(alpha=.12f)){Box(contentAlignment=Alignment.Center){GroupTypeIcon(isCommunity,Modifier.size(25.dp),MaterialTheme.colorScheme.primary)}}
   Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)){Text(stringResource(title),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold);Text(stringResource(detail),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)}
   Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)
  }}
@@ -61,9 +62,13 @@ import androidx.compose.ui.window.Dialog
 
 @Composable private fun GroupCreationHero(template:String){
  ElevatedCard{Row(Modifier.fillMaxWidth().padding(20.dp),verticalAlignment=Alignment.Top,horizontalArrangement=Arrangement.spacedBy(14.dp)){
-  Surface(Modifier.size(52.dp),shape=androidx.compose.foundation.shape.CircleShape,color=MaterialTheme.colorScheme.primary.copy(alpha=.12f)){Box(contentAlignment=Alignment.Center){GroupMarkIcon(Modifier.size(30.dp),MaterialTheme.colorScheme.primary)}}
+  Surface(Modifier.size(52.dp),shape=androidx.compose.foundation.shape.CircleShape,color=MaterialTheme.colorScheme.primary.copy(alpha=.12f)){Box(contentAlignment=Alignment.Center){GroupTypeIcon(template=="activities",Modifier.size(30.dp),MaterialTheme.colorScheme.primary)}}
   Column(verticalArrangement=Arrangement.spacedBy(7.dp)){Text(if(template=="activities")stringResource(R.string.social_groups_create_community_hero_title) else stringResource(R.string.social_groups_create_private_hero_title),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text(if(template=="activities")stringResource(R.string.social_groups_create_community_hero_detail) else stringResource(R.string.social_groups_create_private_hero_detail),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)}
  }}
+}
+
+@Composable fun GroupTypeIcon(isCommunity:Boolean,modifier:Modifier=Modifier,tint:Color=MaterialTheme.colorScheme.primary){
+ if(isCommunity) Icon(Icons.Filled.Groups,contentDescription=null,modifier=modifier,tint=tint) else GroupMarkIcon(modifier,tint)
 }
 
 @Composable fun GroupMarkIcon(modifier:Modifier=Modifier,tint:Color=MaterialTheme.colorScheme.primary){
