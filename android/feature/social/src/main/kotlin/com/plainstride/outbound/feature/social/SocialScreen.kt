@@ -22,6 +22,7 @@ import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -57,9 +58,10 @@ import com.plainstride.outbound.feature.activity.ActivityExport
 import com.plainstride.outbound.feature.activity.ActivityViewModel
 import com.plainstride.outbound.feature.activity.R as ActivityR
 
-@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,inboxCount:Int=0,unitSystem:MeasurementUnitSystem=MeasurementUnitSystem.metric,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={},onRoutesTabSelected:()->Unit={},communityRoutesContent: @Composable () -> Unit = {}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
+@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,inboxCount:Int=0,unitSystem:MeasurementUnitSystem=MeasurementUnitSystem.metric,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={},onRoutesTabSelected:()->Unit={},communityRoutesContent: @Composable (Int) -> Unit = {}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
     var selectedTab by rememberSaveable { mutableStateOf(SocialFeatureTab.FEED) }
     var hasSelectedSocialTab by rememberSaveable { mutableStateOf(false) }
+    var routeImportRequest by rememberSaveable { mutableStateOf(0) }
     var createGroup by rememberSaveable { mutableStateOf(false) };var inviteGroup by remember { mutableStateOf<GroupSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var groupActivity by remember { mutableStateOf<GroupSummary?>(null) };var connectionsOpen by rememberSaveable { mutableStateOf(false) }
     var scannerOpen by rememberSaveable { mutableStateOf(false) }
     var scannerFeedback by remember { mutableStateOf<String?>(null) }
@@ -115,9 +117,9 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             if (tab == SocialFeatureTab.ROUTES) onRoutesTabSelected()
             if (tab == SocialFeatureTab.GROUPS) { viewModel.refresh(); viewModel.refreshGroupDirectory() }
             viewModel.trackSocialTabSelected(tab.analyticsValue)
-        }, inboxCount, unitSystem, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openGroup, viewModel::openComments, viewModel::openActivityDetail, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, { group ->
+        }, inboxCount, unitSystem, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openGroup, viewModel::openComments, viewModel::openActivityDetail, viewModel::openTarget, onConditions, onCommunity, onNotifications, { routeImportRequest += 1 }, viewModel::toggleCheer, { group ->
             viewModel.joinGroup(group)
-        }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, communityRoutesContent, modifier, viewModel = viewModel, feedListState = feedListState)
+        }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, communityRoutesContent, modifier, viewModel = viewModel, feedListState = feedListState, routeImportRequest = routeImportRequest)
     } else {
         BackHandler { viewModel.closeActivityDetail() }
         SocialActivityDetail(
@@ -221,7 +223,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable private fun SocialScreen(state: SocialUiState, selectedTab: SocialFeatureTab, selectTab: (SocialFeatureTab) -> Unit, inboxCount: Int, unitSystem: MeasurementUnitSystem, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, communityRoutesContent: @Composable () -> Unit, modifier: Modifier, viewModel: SocialViewModel, feedListState: LazyListState) {
+@Composable private fun SocialScreen(state: SocialUiState, selectedTab: SocialFeatureTab, selectTab: (SocialFeatureTab) -> Unit, inboxCount: Int, unitSystem: MeasurementUnitSystem, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, requestRouteImport:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, communityRoutesContent: @Composable (Int) -> Unit, modifier: Modifier, viewModel: SocialViewModel, feedListState: LazyListState, routeImportRequest:Int) {
     var safetyPost by remember { mutableStateOf<SocialPost?>(null) }
     var blockConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
     var deletionConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
@@ -232,6 +234,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
     var trackedActiveNowExposure by rememberSaveable { mutableStateOf(false) }
     var trackedUpcomingExposure by rememberSaveable { mutableStateOf(false) }
     var trackedFirstFeedCard by rememberSaveable { mutableStateOf(false) }
+    var createMenuExpanded by remember { mutableStateOf(false) }
     val acceptedConnections = state.home.connections.filter { it.relationship in setOf("accepted", "connected") }.sortedWith(compareByDescending<SocialPerson> { it.isActive }.thenBy { it.displayName.substringBefore(' ').lowercase() })
     val activeConnections = acceptedConnections.filter(SocialPerson::isActive)
     val incomingRequests = state.home.connections.filter { it.relationship == "pending" && it.connectionDirection == "incoming" }
@@ -258,8 +261,31 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
     Column(modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             SocialIconButton(conditions, stringResource(R.string.social_conditions)) { Icon(Icons.Outlined.WbSunny, null) }
-            SocialIconButton(community, stringResource(R.string.social_community)) { Icon(Icons.Outlined.People, null) }
-            SocialIconButton(notifications, stringResource(R.string.social_notifications)) { BadgedBox({ if (maxOf(inboxCount, groupAttention) > 0) Badge(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError) { Text(maxOf(inboxCount, groupAttention).coerceAtMost(99).toString()) } }) { Icon(Icons.Outlined.Notifications, null) } }
+            Box {
+                SocialIconButton({ createMenuExpanded = true }, stringResource(R.string.social_more)) { Icon(Icons.Outlined.AddCircle, null) }
+                DropdownMenu(expanded = createMenuExpanded, onDismissRequest = { createMenuExpanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.social_add_connection)) },
+                        leadingIcon = { Icon(Icons.Outlined.PersonAdd, null) },
+                        onClick = { createMenuExpanded = false; selectTab(SocialFeatureTab.PEOPLE) },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.social_group_create)) },
+                        leadingIcon = { Icon(Icons.Outlined.GroupAdd, null) },
+                        onClick = { createMenuExpanded = false; selectTab(SocialFeatureTab.GROUPS); createGroup() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.social_tab_routes)) },
+                        leadingIcon = { Icon(Icons.Outlined.FileDownload, null) },
+                        onClick = { createMenuExpanded = false; selectTab(SocialFeatureTab.ROUTES); requestRouteImport() },
+                    )
+                }
+            }
+            SocialIconButton(notifications, stringResource(R.string.social_notifications)) {
+                BadgedBox({ if (inboxCount > 0) Badge(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError) { Text(if (inboxCount > 9) "9+" else inboxCount.toString()) } }) {
+                    Icon(Icons.Filled.Notifications, null)
+                }
+            }
         }
         Row(
             Modifier.fillMaxWidth()
@@ -395,7 +421,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                 if (state.groupDirectoryFailed) item { TextButton(viewModel::refreshGroupDirectory, Modifier.fillMaxWidth()) { Text(stringResource(R.string.social_feed_load_more_failed)) } }
                 if (state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             }
-            SocialFeatureTab.ROUTES -> Box(Modifier.weight(1f)) { communityRoutesContent() }
+            SocialFeatureTab.ROUTES -> Box(Modifier.weight(1f)) { communityRoutesContent(routeImportRequest) }
         }
     }
     safetyPost?.takeUnless(SocialPost::isCurrentUser)?.let { post -> var reason by remember { mutableStateOf(ReportReason.OTHER) }; AlertDialog(onDismissRequest = { safetyPost = null }, title = { Text(stringResource(R.string.social_safety_title)) }, text = { Column { Text(stringResource(R.string.social_safety_body)); ReportReason.entries.forEach { option -> Row(verticalAlignment=Alignment.CenterVertically){RadioButton(reason==option,{reason=option});Text(reportReasonLabel(option))} } } }, confirmButton = { TextButton({ report(post, reason.wireValue); safetyPost = null }) { Text(stringResource(R.string.social_report)) } }, dismissButton = { TextButton({ blockConfirmationPost = post; safetyPost = null }) { Text(stringResource(R.string.social_block)) } }) }

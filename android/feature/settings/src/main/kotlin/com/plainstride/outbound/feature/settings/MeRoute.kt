@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.MilitaryTech
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.outlined.AccountCircle
@@ -44,6 +45,8 @@ import androidx.compose.material.icons.outlined.QrCode
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -157,6 +160,8 @@ fun MeRoute(
     onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit,
     onReplayOnboarding: () -> Unit,
+    inboxCount: Int = 0,
+    onNotifications: () -> Unit = {},
     connections: List<SocialPerson> = emptyList(),
     insights: List<MeInsight> = emptyList(),
     milestones: List<MeMilestone> = emptyList(),
@@ -192,6 +197,8 @@ fun MeRoute(
             onMyQrCode = onMyQrCode,
             onConnections = { onMeDestination("connections"); onConnections() },
             onMyRoutes = { onMeDestination("my_routes"); onMyRoutes() },
+            inboxCount = inboxCount,
+            onNotifications = onNotifications,
             onMilestones = { onMeDestination("milestones"); page = MePage.Milestones },
             benefitsContent = benefitsContent,
             activityContent = activityContent,
@@ -235,6 +242,8 @@ private fun MeOverview(
     onMyQrCode: () -> Unit,
     onConnections: () -> Unit,
     onMyRoutes: () -> Unit,
+    inboxCount: Int,
+    onNotifications: () -> Unit,
     onMilestones: () -> Unit,
     benefitsContent: @Composable () -> Unit,
     activityContent: @Composable () -> Unit,
@@ -246,6 +255,15 @@ private fun MeOverview(
         contentWindowInsets = WindowInsets(0),
         topBar = { TopAppBar(title = { Text(stringResource(R.string.me_title)) }, actions = {
             IconButton(onClick = onRefresh) { Icon(Icons.Outlined.Refresh, stringResource(R.string.refresh)) }
+            IconButton(onClick = onNotifications) {
+                BadgedBox(badge = {
+                    if (inboxCount > 0) Badge(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError) {
+                        Text(if (inboxCount > 9) "9+" else inboxCount.toString())
+                    }
+                }) {
+                    Icon(Icons.Filled.Notifications, stringResource(SocialR.string.social_notifications))
+                }
+            }
             IconButton(onClick = onSettings) { Icon(Icons.Outlined.Settings, stringResource(R.string.settings_title)) }
         }) },
     ) { padding ->
