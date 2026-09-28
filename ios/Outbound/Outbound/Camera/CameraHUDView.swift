@@ -619,7 +619,8 @@ private struct HoldToPauseControl: View {
                     GeometryReader { geometry in
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .fill(.white.opacity(0.2))
-                            .frame(width: geometry.size.width * holdProgress)
+                            .frame(width: geometry.size.width)
+                            .scaleEffect(x: holdProgress, anchor: .leading)
                     }
                     .accessibilityHidden(true)
 
