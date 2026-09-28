@@ -127,6 +127,7 @@ import kotlinx.serialization.json.JsonElement
 @Serializable data class GroupFocus(val mode: String = "none", val focusConfigured: Boolean = false, val sharedTarget: Int? = null)
 @Serializable data class GroupWeek(val focusMode: String = "none", val contributedCount: Int = 0, val targetCount: Int? = null)
 @Serializable data class GroupNotice(val id:String,val title:String?=null,val body:String,val pinned:Boolean=false,val publishedAt:String?=null,val editedAt:String?=null)
+@Serializable data class GroupInvitationSnapshot(val id:String,val recipient:SocialPerson?=null,val status:String="pending")
 @Serializable data class GroupCapability(val weeklyTheme:Boolean=false,val workoutContributions:Boolean=false,val presetCheers:Boolean=false,val notices:Boolean=false,val scheduledActivities:Boolean=true)
 @Serializable data class GroupSummary(
     val id: String,
@@ -139,13 +140,14 @@ import kotlinx.serialization.json.JsonElement
     val joinPolicy: String? = null,
     val description: String? = null,
     val city: String? = null,
-    val memberLimit: Int = 6,
+    val memberLimit: Int = 500,
     val memberCount: Int = 0,
     val currentUserMuted: Boolean = false,
     val eligibleForToday: Boolean = false,
     val upcomingFocus: GroupFocus = GroupFocus(),
     val week: GroupWeek = GroupWeek(),
     val members: List<GroupMember> = emptyList(),
+    val invitations: List<GroupInvitationSnapshot> = emptyList(),
     val capabilities: GroupCapability = GroupCapability(),
     val notices: List<GroupNotice> = emptyList(),
     val unreadNoticeCount: Int = 0,

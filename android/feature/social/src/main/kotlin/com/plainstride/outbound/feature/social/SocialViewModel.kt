@@ -14,6 +14,8 @@ import com.plainstride.outbound.core.analytics.*
 data class SocialUiState(
     val home: SocialHome = SocialHome(), val loading: Boolean = true, val refreshing: Boolean = false,
     val offline: Boolean = false, val search: String = "", val searchResults: List<SocialPerson> = emptyList(),
+    val groupDirectory: List<GroupSummary> = emptyList(), val groupDirectoryQuery: String = "",
+    val groupDirectoryLoading: Boolean = false, val groupDirectoryFailed: Boolean = false,
     val selectedProfile: SocialPerson? = null, val selectedGroupDetail: GroupSummary? = null,
     val selectedPost:SocialPost?=null,val comments:List<SocialComment> = emptyList(),
     val selectedActivityPost: SocialPost? = null,
@@ -45,6 +47,7 @@ sealed interface ConnectionEffect {
     private var accountId: String? = null
     private var localeTag = "en"
     private var searchJob: Job? = null
+    private var groupDirectoryJob: Job? = null
     private var activityPhotoJob: Job? = null
     private var activityFeedLoadTracked = false
     private var feedPagesLoaded = 1
@@ -52,6 +55,8 @@ sealed interface ConnectionEffect {
     fun start(accountId: String, localeTag: String) {
         if (this.accountId == accountId && this.localeTag == localeTag) return
         this.accountId = accountId; this.localeTag = localeTag
+        groupDirectoryJob?.cancel()
+        mutableState.update { it.copy(groupDirectory = emptyList(), groupDirectoryQuery = "", groupDirectoryLoading = false, groupDirectoryFailed = false) }
         activityFeedLoadTracked = false
         feedPagesLoaded = 1
         viewModelScope.launch { repository.observeHome(accountId, localeTag).collect { cached ->
@@ -78,6 +83,30 @@ sealed interface ConnectionEffect {
         val normalized = Normalizer.normalize(query.trim(), Normalizer.Form.NFKC)
         if (normalized.isEmpty()) { mutableState.update { it.copy(searchResults = emptyList()) }; return }
         searchJob = viewModelScope.launch { delay(300); repository.searchPeople(normalized).onSuccess { people -> mutableState.update { it.copy(searchResults = people) } } }
+    }
+    fun searchGroupDirectory(query: String) {
+        mutableState.update { it.copy(groupDirectoryQuery = query) }
+        groupDirectoryJob?.cancel()
+        groupDirectoryJob = viewModelScope.launch {
+            delay(300)
+            loadGroupDirectory(query)
+        }
+    }
+    fun refreshGroupDirectory() {
+        groupDirectoryJob?.cancel()
+        groupDirectoryJob = viewModelScope.launch { loadGroupDirectory(mutableState.value.groupDirectoryQuery) }
+    }
+    private suspend fun loadGroupDirectory(query: String) {
+        mutableState.update { it.copy(groupDirectoryLoading = true, groupDirectoryFailed = false) }
+        repository.discoverGroups(query).onSuccess { groups ->
+            mutableState.update { it.copy(groupDirectory = groups.filter { group -> group.currentUserRole == null }, groupDirectoryLoading = false) }
+            if (query.isNotBlank()) analytics.record(AnalyticsEvent("group_discovery_searched", mapOf(
+                AnalyticsProperty.EntrySource to "groups",
+                AnalyticsProperty.CountBucket to countBucket(groups.size),
+            )))
+        }.onFailure {
+            mutableState.update { it.copy(groupDirectoryLoading = false, groupDirectoryFailed = true) }
+        }
     }
     fun loadMore() { val cursor = mutableState.value.home.nextCursor ?: return; if (mutableState.value.feedLoading) return
         viewModelScope.launch {
@@ -234,10 +263,17 @@ sealed interface ConnectionEffect {
     fun closeProfile() = mutableState.update { it.copy(selectedProfile = null, connectionProfileCode = null, connectionProfileIsSelf = false) }
     fun openTarget(type:String,id:String){when(type){"activity","post"->viewModelScope.launch{var post=mutableState.value.home.posts.firstOrNull{it.id==id||it.activity?.id==id};var cursor=mutableState.value.home.nextCursor;repeat(5){if(post!=null||cursor==null)return@repeat;repository.loadFeed(cursor).onSuccess{page->post=page.items.firstOrNull{it.id==id||it.activity?.id==id};cursor=page.nextCursor}};post?.let(::openComments)};"event"->viewModelScope.launch{repository.event(id).onSuccess{event->mutableState.update{it.copy(selectedEvent=event)}}};"group"->viewModelScope.launch{repository.group(id).onSuccess{group->mutableState.update{it.copy(selectedGroupDetail=group)}}};"invitation"->mutableState.update{state->state.copy(selectedInvitation=state.home.invitations.firstOrNull{it.id==id||it.objectId==id})}}}
     fun closeTarget()=mutableState.update{it.copy(selectedEvent=null,selectedGroupDetail=null,selectedInvitation=null)}
-    fun openGroup(group: GroupSummary) = viewModelScope.launch { repository.group(group.id).onSuccess { value -> mutableState.update { it.copy(selectedGroupDetail = value) } } }
+    fun openGroup(group: GroupSummary) = viewModelScope.launch {
+        repository.group(group.id).onSuccess { value -> mutableState.update { it.copy(selectedGroupDetail = value) } }
+        analytics.record(AnalyticsEvent("group_opened", mapOf(
+            AnalyticsProperty.EntrySource to "groups",
+            AnalyticsProperty.SelectionType to if (group.trustPolicy == "community") "community" else "private",
+            AnalyticsProperty.ParticipantCountBucket to countBucket(group.memberCount),
+        )))
+    }
     fun consumeGroupInvite(token: String) = mutate("group_invite_link_consumed") { repository.consumeGroupInvite(token).getOrThrow().let { group -> mutableState.update { it.copy(selectedGroupDetail = group) } }; refresh() }
     fun closeGroup() = mutableState.update { it.copy(selectedGroupDetail = null) }
-    fun joinGroup(group: GroupSummary) = mutate("social_group_membership_changed") { repository.setGroupMembership(group.id, group.role == null).getOrThrow(); refresh() }
+    fun joinGroup(group: GroupSummary) = mutate("social_group_membership_changed") { repository.setGroupMembership(group.id, group.role == null).getOrThrow(); refresh(); refreshGroupDirectory() }
     fun report(post: SocialPost, reason: String) = mutate("social_content_reported", SocialMessage.REPORTED) { repository.reportPost(post.id, ReportReason.entries.firstOrNull { it.wireValue == reason } ?: ReportReason.OTHER).getOrThrow() }
     fun deletePost(post: SocialPost) = mutate("social_post_deleted") { repository.deletePost(post.id).getOrThrow(); refresh() }
     fun block(post: SocialPost) = mutate("social_person_blocked", SocialMessage.BLOCKED) { repository.block(post.author.id).getOrThrow(); refresh() }
@@ -332,6 +368,12 @@ sealed interface ConnectionEffect {
     fun muteGroup(group:GroupSummary,muted:Boolean)=mutate("group_notifications_changed"){repository.muteGroup(group.id,muted).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}}}
     fun leaveGroup(group:GroupSummary)=mutate("group_member_left"){repository.leaveGroup(group.id).getOrThrow();closeGroup();refresh()}
     fun removeGroupMember(group:GroupSummary,userId:String)=mutate("group_member_removed"){repository.removeGroupMember(group.id,userId).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
+    fun trackGroupMembersOpened(memberCount: Int) = analytics.record(AnalyticsEvent("group_members_opened", mapOf(
+        AnalyticsProperty.EntrySource to "group_detail",
+        AnalyticsProperty.ParticipantCountBucket to when (memberCount.coerceAtLeast(0)) {
+            0 -> "0"; 1 -> "1"; in 2..3 -> "2_3"; in 4..7 -> "4_7"; else -> "8_plus"
+        },
+    )))
     fun respondToInvitation(invitation:SocialInvitation,accept:Boolean)=mutate("social_invitation_responded"){repository.respondToInvitation(invitation,accept).getOrThrow();closeTarget();refresh()}
     private fun mutate(event: String, success: SocialMessage = SocialMessage.ACTION_COMPLETE, block: suspend () -> Unit) = viewModelScope.launch { runCatching { block() }.onSuccess { messages.emit(success); analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "success"))) }.onFailure { messages.emit(SocialMessage.ACTION_FAILED); analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "failure"))) } }
 

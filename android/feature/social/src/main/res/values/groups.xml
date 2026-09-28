@@ -22,6 +22,14 @@
     <string name="group_rename">Update name</string>
     <string name="group_mute">Mute Group notifications</string>
     <string name="group_remove_member">Remove %1$s</string>
+    <string name="group_members_manage">Members</string>
+    <string name="group_members_more_action">More</string>
+    <string name="group_member_remove_action">Remove member</string>
+    <string name="group_member_remove_confirm_title">Remove this member?</string>
+    <string name="group_discover_title">Discover</string>
+    <string name="group_discover_search">Search Groups by name or city</string>
+    <string name="group_discover_empty_title">No public Groups nearby yet</string>
+    <string name="group_discover_empty_detail">Check back as more activity Groups become available.</string>
     <string name="group_leave">Leave Group</string>
     <string name="social_group_archive">Archive Group</string>
     <string name="social_group_set_focus">Set Weekly Theme</string>

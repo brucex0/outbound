@@ -42,6 +42,7 @@ interface SocialRepository {
     suspend fun connectionLinkPreview(code: String): Result<ConnectionLinkPreview>
     suspend fun consumeConnectionLink(code: String): Result<ConnectionLinkResult>
     suspend fun groups(): Result<List<GroupSummary>>
+    suspend fun discoverGroups(query: String?): Result<List<GroupSummary>>
     suspend fun group(id: String): Result<GroupSummary>
     suspend fun cheerGroup(id: String, recipientId: String, preset: String): Result<Unit>
     suspend fun renameGroup(id:String,name:String):Result<GroupSummary>
@@ -142,6 +143,7 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun consumeConnectionLink(code: String) = authenticated { apiCall { api.consumeConnectionLink(it, code) } }
         .map { response -> response.copy(person = response.person.withRelationship(response.relationship)) }
     override suspend fun groups() = authenticated { apiCall { api.groups(it) } }.map { it.groups }
+    override suspend fun discoverGroups(query: String?) = authenticated { apiCall { api.groups(it, scope = "discover", query = query?.trim()?.takeIf(String::isNotEmpty)) } }.map { it.groups }
     override suspend fun group(id: String) = authenticated { apiCall { api.group(it, id) } }
     override suspend fun cheerGroup(id: String, recipientId: String, preset: String) = authenticated { apiCall { api.groupCheer(it, id, CheerBody(recipientId, preset)) } }
     override suspend fun renameGroup(id:String,name:String)=authenticated{apiCall{api.renameGroup(it,id,RenameGroupBody(name.trim()))}}

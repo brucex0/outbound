@@ -9,6 +9,14 @@
     <string name="group_about">简介</string>
     <string name="group_community_detail">一起组织活动和发布动态，但不会公开成员的训练记录。</string>
     <string name="group_request_to_join">申请加入</string>
+    <string name="group_members_manage">成员</string>
+    <string name="group_members_more_action">更多</string>
+    <string name="group_member_remove_action">移除成员</string>
+    <string name="group_member_remove_confirm_title">要移除此成员吗？</string>
+    <string name="group_discover_title">发现</string>
+    <string name="group_discover_search">按群组名称或城市搜索</string>
+    <string name="group_discover_empty_title">附近还没有公开群组</string>
+    <string name="group_discover_empty_detail">有更多活动群组开放后再来看看。</string>
     <string name="group_open_join">任何人都可以加入</string>
     <string name="group_notice_update">群组动态</string>
     <string name="group_notice_pinned">已置顶动态</string>

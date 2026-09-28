@@ -13,6 +13,7 @@ enum class AnalyticsProperty(val wireName: String) {
     Permission("permission"),
     ErrorCategory("error_category"),
     CountBucket("count_bucket"),
+    ParticipantCountBucket("participant_count_bucket"),
     DurationBucket("duration_bucket"),
     DistanceBucket("distance_bucket"),
     PageDepthBucket("page_depth_bucket"),

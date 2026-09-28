@@ -9,6 +9,14 @@
     <string name="group_about">Información</string>
     <string name="group_community_detail">Coordina actividades y novedades sin mostrar los entrenamientos de los miembros.</string>
     <string name="group_request_to_join">Solicitar unirse</string>
+    <string name="group_members_manage">Miembros</string>
+    <string name="group_members_more_action">Más</string>
+    <string name="group_member_remove_action">Eliminar miembro</string>
+    <string name="group_member_remove_confirm_title">¿Eliminar a esta persona del grupo?</string>
+    <string name="group_discover_title">Descubrir</string>
+    <string name="group_discover_search">Buscar Grupos por nombre o ciudad</string>
+    <string name="group_discover_empty_title">Aún no hay Grupos públicos cerca</string>
+    <string name="group_discover_empty_detail">Vuelve más tarde para descubrir nuevos Grupos de actividades.</string>
     <string name="group_open_join">Cualquiera puede unirse</string>
     <string name="group_notice_update">Novedad del grupo</string>
     <string name="group_notice_pinned">Novedad fijada</string>

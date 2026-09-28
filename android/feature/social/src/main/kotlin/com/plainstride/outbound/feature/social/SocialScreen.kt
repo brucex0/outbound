@@ -113,10 +113,10 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             hasSelectedSocialTab = true
             selectedTab = tab
             if (tab == SocialFeatureTab.ROUTES) onRoutesTabSelected()
-            if (tab == SocialFeatureTab.GROUPS) viewModel.refresh()
+            if (tab == SocialFeatureTab.GROUPS) { viewModel.refresh(); viewModel.refreshGroupDirectory() }
             viewModel.trackSocialTabSelected(tab.analyticsValue)
         }, inboxCount, unitSystem, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openGroup, viewModel::openComments, viewModel::openActivityDetail, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, { group ->
-            if (group.trustPolicy == "trusted_private") viewModel.openGroup(group) else viewModel.joinGroup(group)
+            viewModel.joinGroup(group)
         }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, communityRoutesContent, modifier, viewModel = viewModel, feedListState = feedListState)
     } else {
         BackHandler { viewModel.closeActivityDetail() }
@@ -179,7 +179,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             },
         )
     }
-    state.selectedGroupDetail?.let { group -> GroupDetailScreen(group, viewModel::closeGroup, { recipient, preset -> viewModel.cheerGroup(group, recipient, preset) }, { mode,target,next->viewModel.setGroupFocus(group,mode,target,next) }, { viewModel.setGroupArchived(group,group.lifecycle!="archived") }, {inviteGroup=group}, {name->viewModel.renameGroup(group,name)}, {target,skipped->viewModel.setGroupCommitment(group,target,skipped)}, {muted->viewModel.muteGroup(group,muted)}, {viewModel.leaveGroup(group)}, {userId->viewModel.removeGroupMember(group,userId)}, { groupActivity = group }) }
+    state.selectedGroupDetail?.let { group -> GroupDetailScreen(group, viewModel::closeGroup, { recipient, preset -> viewModel.cheerGroup(group, recipient, preset) }, { mode,target,next->viewModel.setGroupFocus(group,mode,target,next) }, { viewModel.setGroupArchived(group,group.lifecycle!="archived") }, {inviteGroup=group}, {name->viewModel.renameGroup(group,name)}, {target,skipped->viewModel.setGroupCommitment(group,target,skipped)}, {muted->viewModel.muteGroup(group,muted)}, {viewModel.leaveGroup(group)}, {userId->viewModel.removeGroupMember(group,userId)}, viewModel::trackGroupMembersOpened, { groupActivity = group }) }
     state.selectedEvent?.let{event->SocialEventDialog(event,{viewModel.setEventRsvp(event,!event.joined);viewModel.closeTarget()},{inviteEvent=event},viewModel::closeTarget)}
     if(createGroup)GroupCreateScreen(state.home.connections.filter{it.relationship in setOf("accepted","connected")},{createGroup=false},viewModel::trackGroupTemplateSelected){template,name,people->viewModel.createGroup(template,name,people,java.util.TimeZone.getDefault().id);createGroup=false}
     inviteGroup?.let{group->PersonPickerDialog(stringResource(R.string.social_invite),state.home.connections,{inviteGroup=null}){person->viewModel.inviteToGroup(group,listOf(person),java.util.UUID.randomUUID().toString());inviteGroup=null}}
@@ -363,7 +363,36 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                 if (groupInvitations.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_invite)) }; items(groupInvitations, key = SocialInvitation::id) { InvitationCard(it) { invitation -> openTarget("invitation", invitation.id) } } }
                 item { SectionHeader(stringResource(R.string.social_groups), action = stringResource(R.string.social_group_create), onAction = createGroup) }
                 if (state.home.groups.isEmpty() && !state.loading) item { CompanionCard(onClick = createGroup) { Text(stringResource(R.string.social_group_empty), fontWeight = FontWeight.SemiBold); Spacer(Modifier.height(10.dp)); Text(stringResource(R.string.social_group_create), fontWeight = FontWeight.Bold) } }
-                items(state.home.groups, key = GroupSummary::id) { item -> GroupCard(item, groupDisplayName(item, state.home.groups)) { group(item) } }
+                items(state.home.groups, key = GroupSummary::id) { item -> GroupCard(item, groupDisplayName(item, state.home.groups), { openGroup(item) }) { group(item) } }
+                item { SectionHeader(stringResource(R.string.group_discover_title)) }
+                item {
+                    OutlinedTextField(
+                        value = state.groupDirectoryQuery,
+                        onValueChange = viewModel::searchGroupDirectory,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text(stringResource(R.string.group_discover_search)) },
+                        leadingIcon = { Icon(Icons.Outlined.Search, null) },
+                    )
+                }
+                if (state.groupDirectoryLoading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+                val discoverGroups = state.groupDirectory.filter { it.currentUserRole == null }
+                if (!state.groupDirectoryLoading && discoverGroups.isEmpty()) {
+                    item {
+                        SocialCard {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Icon(Icons.Outlined.TravelExplore, null, tint = MaterialTheme.colorScheme.primary)
+                                Column {
+                                    Text(stringResource(R.string.group_discover_empty_title), fontWeight = FontWeight.SemiBold)
+                                    Text(stringResource(R.string.group_discover_empty_detail), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    items(discoverGroups, key = GroupSummary::id) { item -> GroupCard(item, groupDisplayName(item, discoverGroups), { openGroup(item) }) { group(item) } }
+                }
+                if (state.groupDirectoryFailed) item { TextButton(viewModel::refreshGroupDirectory, Modifier.fillMaxWidth()) { Text(stringResource(R.string.social_feed_load_more_failed)) } }
                 if (state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             }
             SocialFeatureTab.ROUTES -> Box(Modifier.weight(1f)) { communityRoutesContent() }
@@ -532,7 +561,19 @@ private fun groupDisplayName(group: GroupSummary, all: List<GroupSummary>): Stri
     val duplicates = all.count { it.name.trim().lowercase() == normalized }
     return if (duplicates > 1 && !group.city.isNullOrBlank()) "${group.name} · ${group.city}" else group.name
 }
-@Composable private fun GroupCard(group: GroupSummary, displayName: String, membership: () -> Unit) = SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { GroupTypeIcon(group.trustPolicy == "community", Modifier.size(24.dp), MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(displayName, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_members, group.memberCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; TextButton(membership) { Text(if (group.trustPolicy == "trusted_private") stringResource(R.string.social_open) else stringResource(if (group.currentUserRole != null) R.string.social_leave else R.string.social_join)) } } }
+@Composable private fun GroupCard(group: GroupSummary, displayName: String, openGroup: () -> Unit, joinGroup: () -> Unit) = SocialCard(onClick = openGroup) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        GroupTypeIcon(group.trustPolicy == "community", Modifier.size(24.dp), MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(displayName, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.social_members, group.memberCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (group.currentUserRole == null && group.trustPolicy == "community") {
+            TextButton(joinGroup) { Text(stringResource(if (group.joinPolicy == "request") R.string.group_request_to_join else R.string.social_join)) }
+        }
+    }
+}
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, loadPhotoThumbnail: suspend (String) -> ByteArray?, profile: () -> Unit, openActivity:()->Unit, cheer: () -> Unit, comments:()->Unit, openProfile: (SocialPerson) -> Unit, safety: () -> Unit) {
