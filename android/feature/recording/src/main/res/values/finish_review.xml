@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
+<resources>
+    <string name="recording_capacity_much_longer">Much longer</string>
+    <string name="recording_capacity_none">No</string>
+    <string name="recording_capacity_prompt">Could you comfortably have continued?</string>
+    <string name="recording_capacity_ten_minutes">10 min</string>
+    <string name="recording_discard_review_message">This activity hasn’t been saved. If you close now, it will be permanently discarded.</string>
+    <string name="recording_discard_review_title">Discard unsaved activity?</string>
+    <string name="recording_review_photo_delete_selected">Delete selected</string>
+    <string name="recording_review_photo_empty">No photo added</string>
+    <string name="recording_review_photo_finish">Finish</string>
+    <string name="recording_review_photo_import">Import photo</string>
+    <string name="recording_review_photo_number">Photo %1$d</string>
+    <string name="recording_review_photo_section_title">Photos</string>
+    <string name="recording_review_photo_start">Start</string>
+    <string name="recording_review_photo_take">Take photo</string>
+    <string name="recording_reflection_about_right">About right</string>
+    <string name="recording_reflection_easy">Easy</string>
+    <string name="recording_reflection_too_hard">Too hard</string>
+    <string name="recording_review_calories">Calories</string>
+</resources>

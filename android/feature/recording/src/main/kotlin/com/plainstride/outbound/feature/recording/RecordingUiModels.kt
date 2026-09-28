@@ -69,4 +69,5 @@ enum class RecordingGoalType { FREESTYLE, DISTANCE, TIME, CALORIES, WORKOUT }
 
 enum class RecordingSurfaceMode { MAP, CAMERA }
 
-enum class ReflectionChoice { STRONG, STEADY, TOUGH }
+enum class ReflectionChoice { EASY, ABOUT_RIGHT, TOO_HARD }
+enum class ContinuationCapacity { NONE, TEN_MINUTES, MUCH_LONGER }

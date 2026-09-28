@@ -26,7 +26,10 @@
 - DEBUG setup includes the iOS Redmond Harvest run simulator. It samples the same route through the recording location filter, route map, and live metrics without requiring the device to move; Android still requires location permission to start its location-typed foreground service. The live overlay provides adjustable speed, an iOS-style 1×/10×/60× rate dropdown, visible start/pause control, and +1m/+5m deterministic advances. Synthetic sessions remain subject to the normal finish, review, save, and discard flow.
 - Offline setup and active recording show an activity-specific status that confirms the activity is saved on device and will sync later; the signed-in shell banner is hidden while this route is visible.
 - Post-run review leads with the recorded route (or a non-route activity hero), overlays the close and Save controls like iOS, and follows with contextual motivation, core stats, optional perceived effort, and photo review.
-- Save is disabled below the shared iOS threshold of five minutes or 500 meters; closing the review always requires destructive confirmation.
+- The finish photo manager supports multiple imported or camera photos, full-screen paging, long-press multi-select, selected-photo removal, and order changes. Imports preserve EXIF date and GPS when available, are orientation-corrected and bounded to a 2048-pixel longest edge, and map to interpolated route distance; GPS pins are accepted only within 500 meters of the route. Android uses the system camera and photo picker in place of iOS's in-app camera and PhotosPicker.
+- The finish hero pages between route and photos. Photo captions follow iOS start / finish / route-distance rules, and every ordered photo with its capture time, route distance, plausible coordinate, and capture context is persisted with the activity.
+- Perceived effort matches iOS Easy / About right / Too hard choices, with continuation capacity shown only for Easy. Feedback is submitted through the existing workout feedback endpoint when the runner selected an answer. Finish stats use the shared calorie estimator and account measurement units.
+- Save is disabled below the shared iOS threshold of five minutes or 500 meters. Closing an eligible unsaved review requires destructive confirmation; an ineligible review closes directly, matching iOS.
 
 ## Resources, Analytics, And Accessibility
 
