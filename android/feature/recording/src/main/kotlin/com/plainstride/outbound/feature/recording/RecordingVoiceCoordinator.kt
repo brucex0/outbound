@@ -2,7 +2,7 @@ package com.plainstride.outbound.feature.recording
 
 import android.content.Context
 import android.media.AudioManager
-import android.media.AudioAttributes
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.speech.tts.TextToSpeech
@@ -143,7 +143,6 @@ class RecordingVoiceCoordinator @Inject constructor(
         textToSpeechReady = ready
         logDebug("tts_init_result status=$status ready=$ready queued=${pendingSpeech.size}")
         if (readyEngine != null) {
-            readyEngine.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
             readyEngine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) = logDebug("tts_playback_start utterance=$utteranceId")
                 override fun onDone(utteranceId: String?) = logDebug("tts_playback_done utterance=$utteranceId")
@@ -183,8 +182,11 @@ class RecordingVoiceCoordinator @Inject constructor(
         val utteranceId = "recording-speech-${System.nanoTime()}-$cue"
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val outputTypes = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).map { it.type }.distinct()
-        logDebug("tts_audio_route cue=$cue mediaVolume=${audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)}/${audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)} muted=${audioManager.isStreamMute(AudioManager.STREAM_MUSIC)} outputTypes=$outputTypes")
-        val result = engine.speak(message, queueMode, null, utteranceId)
+        logDebug("tts_audio_route cue=$cue stream=tts ttsVolume=${audioManager.getStreamVolume(TEXT_TO_SPEECH_STREAM)}/${audioManager.getStreamMaxVolume(TEXT_TO_SPEECH_STREAM)} ttsMuted=${audioManager.isStreamMute(TEXT_TO_SPEECH_STREAM)} mediaVolume=${audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)}/${audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)} outputTypes=$outputTypes")
+        val speechParams = Bundle().apply {
+            putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, TEXT_TO_SPEECH_STREAM)
+        }
+        val result = engine.speak(message, queueMode, speechParams, utteranceId)
         if (result == TextToSpeech.SUCCESS) logDebug("tts_enqueue cue=$cue result=$result")
         else logError("tts_enqueue_failed cue=$cue result=$result")
     }
@@ -211,6 +213,8 @@ class RecordingVoiceCoordinator @Inject constructor(
     private companion object {
         const val TAG = "RecordingVoice"
         const val TEXT_TO_SPEECH_PREPARE_TIMEOUT_MS = 5_000L
+        // STREAM_TTS is framework-defined as 9 but hidden from the public SDK.
+        const val TEXT_TO_SPEECH_STREAM = 9
     }
 
     private data class QueuedSpeech(val message: String, val queueMode: Int, val cue: String)
