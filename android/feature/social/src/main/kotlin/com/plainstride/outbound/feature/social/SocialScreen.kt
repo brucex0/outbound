@@ -113,6 +113,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             hasSelectedSocialTab = true
             selectedTab = tab
             if (tab == SocialFeatureTab.ROUTES) onRoutesTabSelected()
+            if (tab == SocialFeatureTab.GROUPS) viewModel.refresh()
             viewModel.trackSocialTabSelected(tab.analyticsValue)
         }, inboxCount, unitSystem, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openGroup, viewModel::openComments, viewModel::openActivityDetail, viewModel::openTarget, onConditions, onCommunity, onNotifications, viewModel::toggleCheer, { group ->
             if (group.trustPolicy == "trusted_private") viewModel.openGroup(group) else viewModel.joinGroup(group)
@@ -180,7 +181,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
     }
     state.selectedGroupDetail?.let { group -> GroupDetailScreen(group, viewModel::closeGroup, { recipient, preset -> viewModel.cheerGroup(group, recipient, preset) }, { mode,target,next->viewModel.setGroupFocus(group,mode,target,next) }, { viewModel.setGroupArchived(group,group.lifecycle!="archived") }, {inviteGroup=group}, {name->viewModel.renameGroup(group,name)}, {target,skipped->viewModel.setGroupCommitment(group,target,skipped)}, {muted->viewModel.muteGroup(group,muted)}, {viewModel.leaveGroup(group)}, {userId->viewModel.removeGroupMember(group,userId)}, { groupActivity = group }) }
     state.selectedEvent?.let{event->SocialEventDialog(event,{viewModel.setEventRsvp(event,!event.joined);viewModel.closeTarget()},{inviteEvent=event},viewModel::closeTarget)}
-    if(createGroup)GroupCreateScreen(state.home.connections.filter{it.relationship in setOf("accepted","connected")},{createGroup=false}){template,name,people->viewModel.createGroup(template,name,people,java.util.TimeZone.getDefault().id);createGroup=false}
+    if(createGroup)GroupCreateScreen(state.home.connections.filter{it.relationship in setOf("accepted","connected")},{createGroup=false},viewModel::trackGroupTemplateSelected){template,name,people->viewModel.createGroup(template,name,people,java.util.TimeZone.getDefault().id);createGroup=false}
     inviteGroup?.let{group->PersonPickerDialog(stringResource(R.string.social_invite),state.home.connections,{inviteGroup=null}){person->viewModel.inviteToGroup(group,listOf(person),java.util.UUID.randomUUID().toString());inviteGroup=null}}
     inviteEvent?.let{event->PersonPickerDialog(stringResource(R.string.social_invite),state.home.connections,{inviteEvent=null}){person->viewModel.inviteToEvent(event,person);inviteEvent=null}}
     groupActivity?.let { group -> GroupActivityComposer({ groupActivity = null }) { title, location -> viewModel.createGroupActivity(group, title, location); groupActivity = null } }
@@ -531,7 +532,7 @@ private fun groupDisplayName(group: GroupSummary, all: List<GroupSummary>): Stri
     val duplicates = all.count { it.name.trim().lowercase() == normalized }
     return if (duplicates > 1 && !group.city.isNullOrBlank()) "${group.name} · ${group.city}" else group.name
 }
-@Composable private fun GroupCard(group: GroupSummary, displayName: String, membership: () -> Unit) = SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.Flag, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(displayName, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_members, group.memberCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; TextButton(membership) { Text(if (group.trustPolicy == "trusted_private") stringResource(R.string.social_open) else stringResource(if (group.role != null) R.string.social_leave else R.string.social_join)) } } }
+@Composable private fun GroupCard(group: GroupSummary, displayName: String, membership: () -> Unit) = SocialCard { Row(verticalAlignment = Alignment.CenterVertically) { GroupMarkIcon(Modifier.size(24.dp), MaterialTheme.colorScheme.primary); Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(displayName, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_members, group.memberCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; TextButton(membership) { Text(if (group.trustPolicy == "trusted_private") stringResource(R.string.social_open) else stringResource(if (group.currentUserRole != null) R.string.social_leave else R.string.social_join)) } } }
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, loadPhotoThumbnail: suspend (String) -> ByteArray?, profile: () -> Unit, openActivity:()->Unit, cheer: () -> Unit, comments:()->Unit, openProfile: (SocialPerson) -> Unit, safety: () -> Unit) {

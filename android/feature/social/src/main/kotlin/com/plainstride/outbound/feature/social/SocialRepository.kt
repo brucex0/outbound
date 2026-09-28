@@ -92,12 +92,16 @@ class OfflineFirstSocialRepository @Inject constructor(
                 is ApiResult.Failure -> core
                 is ApiResult.Success -> {
                     val groupResult = groups.await()
-                    ApiResult.Success(core.value.copy(
-                    connections = (connections.await() as? ApiResult.Success)?.value?.connections.orEmpty().map { it.person.copy(relationshipDetails = SocialRelationship(it.id, it.status, it.direction), relationship = it.status, isActive = it.isInActiveWorkout, connectionId = it.id, connectionDirection=it.direction) },
-                    invitations = (core.value.invitations + (groupInvitations.await() as? ApiResult.Success)?.value?.invitations.orEmpty().map { SocialInvitation(it.id,"group",it.group.name,it.sender,it.group.id) }).distinctBy(SocialInvitation::id),
-                    recognitions = (awards.await() as? ApiResult.Success)?.value?.awards.orEmpty(),
-                    groups = (groupResult as? ApiResult.Success)?.value?.groups.orEmpty(),
-                )) }
+                    when (groupResult) {
+                        is ApiResult.Failure -> groupResult
+                        is ApiResult.Success -> ApiResult.Success(core.value.copy(
+                            connections = (connections.await() as? ApiResult.Success)?.value?.connections.orEmpty().map { it.person.copy(relationshipDetails = SocialRelationship(it.id, it.status, it.direction), relationship = it.status, isActive = it.isInActiveWorkout, connectionId = it.id, connectionDirection=it.direction) },
+                            invitations = (core.value.invitations + (groupInvitations.await() as? ApiResult.Success)?.value?.invitations.orEmpty().map { SocialInvitation(it.id,"group",it.group.name,it.sender,it.group.id) }).distinctBy(SocialInvitation::id),
+                            recognitions = (awards.await() as? ApiResult.Success)?.value?.awards.orEmpty(),
+                            groups = groupResult.value.groups,
+                        ))
+                    }
+                }
             }
         } }.onSuccess { home ->
             val now = System.currentTimeMillis()

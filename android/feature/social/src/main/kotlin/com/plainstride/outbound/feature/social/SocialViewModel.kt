@@ -318,6 +318,7 @@ sealed interface ConnectionEffect {
         }
     }
     fun createGroup(template:String,name:String?,members:List<SocialPerson>,timeZone:String?)=mutate("group_created"){repository.createGroup(template,name,members.map{it.id},timeZone).getOrThrow().let{created->mutableState.update{it.copy(selectedGroupDetail=created)}};refresh()}
+    fun trackGroupTemplateSelected(template:String) = analytics.record(AnalyticsEvent("group_template_selected", mapOf(AnalyticsProperty.SelectionType to template)))
     fun inviteToGroup(group:GroupSummary,members:List<SocialPerson>,idempotencyKey:String)=mutate("group_invitation_sent"){repository.inviteToGroup(group.id,members.map{it.id},idempotencyKey).getOrThrow();openGroup(group)}
     fun setGroupFocus(group:GroupSummary,mode:String,target:Int?,nextWeek:Boolean)=mutate("group_focus_changed"){repository.setGroupFocus(group.id,mode,target,nextWeek).getOrThrow();openGroup(group)}
     fun createGroupActivity(group: GroupSummary, title: String, location: String?) = mutate("group_activity_created") {

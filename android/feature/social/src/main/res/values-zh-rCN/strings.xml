@@ -47,6 +47,17 @@
     <string name="social_group_progress">本周已完成 %1$d/%2$d 次活动</string>
     <string name="social_group_reactivate">重新启用</string>
     <string name="social_groups">群组</string>
+    <string name="social_groups_create_choose_detail">先选择谁可以加入，之后还可以调整其他设置。</string>
+    <string name="social_groups_create_choose_title">你要创建哪种群组？</string>
+    <string name="social_groups_create_community_access">任何人都能找到并加入此社群。成员的运动记录仍为私密。</string>
+    <string name="social_groups_create_community_hero_detail">创建一个友好的空间，分享动态并安排活动。</string>
+    <string name="social_groups_create_community_hero_title">让社区成员相聚。</string>
+    <string name="social_groups_create_private_hero_detail">和最亲近的人分享目标与进步，彼此加油。</string>
+    <string name="social_groups_create_private_hero_title">积极运动，一起向上。</string>
+    <string name="social_groups_template_community_detail">聚集大家分享动态、组织活动。</string>
+    <string name="social_groups_template_community_title">开放社群 · 任何人都可加入</string>
+    <string name="social_groups_template_private_detail">与信任的人分享进展，彼此鼓励。</string>
+    <string name="social_groups_template_private_title">私人圈子 · 仅限邀请</string>
     <string name="social_guide_noticed">向导发现了这个</string>
     <string name="social_hybrid">线下集合或随地加入</string>
     <string name="social_incoming_requests">%1$d 个好友请求</string>

@@ -3,6 +3,8 @@ package com.plainstride.outbound.feature.social
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -10,25 +12,30 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 
-@Composable fun GroupCreateScreen(connections:List<SocialPerson>,close:()->Unit,create:(String,String?,List<SocialPerson>)->Unit)=Dialog(onDismissRequest=close){
+@Composable fun GroupCreateScreen(connections:List<SocialPerson>,close:()->Unit,selectTemplate:(String)->Unit,create:(String,String?,List<SocialPerson>)->Unit)=Dialog(onDismissRequest=close){
  var template by rememberSaveable{mutableStateOf<String?>(null)}
  var name by rememberSaveable{mutableStateOf("")};var selected by remember{mutableStateOf(setOf<String>())}
  Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background){
-  if(template==null) GroupTemplateChooser(close){template=it} else Column {
+  if(template==null) GroupTemplateChooser(close){selectTemplate(it);template=it} else Column {
    Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){IconButton(close){Icon(Icons.Outlined.Close,stringResource(R.string.social_done))};Text(stringResource(R.string.group_create_title),Modifier.weight(1f),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
    LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
-    item{ElevatedCard{Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(if(template=="activities")stringResource(R.string.group_template_activities_title) else stringResource(R.string.group_template_motivation_title),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text(if(template=="activities")stringResource(R.string.group_template_activities_detail) else stringResource(R.string.group_template_motivation_detail))}}}
+    item{GroupCreationHero(template!!)}
     if(template=="motivation"){
      item{Text(stringResource(R.string.group_create_people),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold);Text(stringResource(R.string.group_create_selected,selected.size),style=MaterialTheme.typography.bodySmall)}
      items(connections,key=SocialPerson::id){person->val checked=person.id in selected;Card(onClick={selected=if(checked)selected-person.id else selected+person.id}){Row(Modifier.fillMaxWidth().padding(12.dp),verticalAlignment=Alignment.CenterVertically){SocialAvatar(person);Spacer(Modifier.width(12.dp));Text(person.displayName,Modifier.weight(1f));Checkbox(checked,{selected=if(checked)selected-person.id else selected+person.id})}}}
     }
     item{OutlinedTextField(name,{name=it.take(80)},Modifier.fillMaxWidth(),label={Text(stringResource(R.string.group_create_name))},supportingText={Text(if(template=="activities")stringResource(R.string.group_create_community_name_help) else stringResource(R.string.group_create_name_help))})}
-    if(template=="activities") item{Text(stringResource(R.string.group_create_community_detail),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+    if(template=="activities") item{Text(stringResource(R.string.social_groups_create_community_access),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
    }
    Button({create(template!!,name.trim().ifEmpty{null},connections.filter{it.id in selected})},Modifier.fillMaxWidth().padding(16.dp).heightIn(min=50.dp),enabled=template=="activities"&&name.isNotBlank()||template=="motivation"&&selected.isNotEmpty()){Text(stringResource(R.string.group_create_action))}
   }
@@ -36,11 +43,38 @@ import androidx.compose.ui.window.Dialog
 }
 
 @Composable private fun GroupTemplateChooser(close:()->Unit,choose:(String)->Unit){
- Column(Modifier.fillMaxSize().padding(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
-  Row(verticalAlignment=Alignment.CenterVertically){IconButton(close){Icon(Icons.Outlined.Close,stringResource(R.string.social_done))};Text(stringResource(R.string.group_create_choose_title),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)}
-  Text(stringResource(R.string.group_create_choose_detail),color=MaterialTheme.colorScheme.onSurfaceVariant)
-  ElevatedCard(onClick={choose("motivation")}){Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(stringResource(R.string.group_template_motivation_title),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text(stringResource(R.string.group_template_motivation_detail))}}
-  ElevatedCard(onClick={choose("activities")}){Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(stringResource(R.string.group_template_activities_title),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text(stringResource(R.string.group_template_activities_detail))}}
+ Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+  Row(verticalAlignment=Alignment.CenterVertically){IconButton(close){Icon(Icons.Outlined.Close,stringResource(R.string.social_done))};Text(stringResource(R.string.social_groups_create_choose_title),Modifier.weight(1f),style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold)}
+  Text(stringResource(R.string.social_groups_create_choose_detail),color=MaterialTheme.colorScheme.onSurfaceVariant)
+  GroupTemplateCard(R.string.social_groups_template_private_title,R.string.social_groups_template_private_detail){choose("motivation")}
+  GroupTemplateCard(R.string.social_groups_template_community_title,R.string.social_groups_template_community_detail){choose("activities")}
+ }
+}
+
+@Composable private fun GroupTemplateCard(title:Int,detail:Int,onClick:()->Unit){
+ ElevatedCard(onClick=onClick){Row(Modifier.fillMaxWidth().padding(18.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(14.dp)){
+  Surface(Modifier.size(44.dp),shape=androidx.compose.foundation.shape.CircleShape,color=MaterialTheme.colorScheme.primary.copy(alpha=.12f)){Box(contentAlignment=Alignment.Center){GroupMarkIcon(Modifier.size(25.dp),MaterialTheme.colorScheme.primary)}}
+  Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)){Text(stringResource(title),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold);Text(stringResource(detail),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+  Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)
+ }}
+}
+
+@Composable private fun GroupCreationHero(template:String){
+ ElevatedCard{Row(Modifier.fillMaxWidth().padding(20.dp),verticalAlignment=Alignment.Top,horizontalArrangement=Arrangement.spacedBy(14.dp)){
+  Surface(Modifier.size(52.dp),shape=androidx.compose.foundation.shape.CircleShape,color=MaterialTheme.colorScheme.primary.copy(alpha=.12f)){Box(contentAlignment=Alignment.Center){GroupMarkIcon(Modifier.size(30.dp),MaterialTheme.colorScheme.primary)}}
+  Column(verticalArrangement=Arrangement.spacedBy(7.dp)){Text(if(template=="activities")stringResource(R.string.social_groups_create_community_hero_title) else stringResource(R.string.social_groups_create_private_hero_title),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold);Text(if(template=="activities")stringResource(R.string.social_groups_create_community_hero_detail) else stringResource(R.string.social_groups_create_private_hero_detail),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+ }}
+}
+
+@Composable fun GroupMarkIcon(modifier:Modifier=Modifier,tint:Color=MaterialTheme.colorScheme.primary){
+ androidx.compose.foundation.Canvas(modifier){
+  val scale=minOf(size.width,size.height)/19f;val center=Offset(size.width/2f,size.height/2f)
+  drawCircle(tint,7.2f*scale,center,style=Stroke(1.7f*scale))
+  listOf(-1f,1f).forEach{side->
+   val head=Offset(center.x+side*1.55f*scale,center.y-1.55f*scale);drawCircle(tint,1.45f*scale,head)
+   val left=center.x+(side*1.75f-2.1f)*scale;val top=center.y+(.4f)*scale
+   rotate(side*10f,pivot=Offset(center.x+side*1.75f*scale,center.y+1.65f*scale)){drawRoundRect(tint,topLeft=Offset(left,top),size=Size(4.2f*scale,2.5f*scale),cornerRadius=androidx.compose.ui.geometry.CornerRadius(1.25f*scale))}
+  }
  }
 }
 

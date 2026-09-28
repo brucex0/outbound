@@ -124,7 +124,7 @@ Social has four destinations after consolidation:
 ### Organize activities
 
 - Promise: coordinate a community, publish updates, and plan activities.
-- Defaults: `community`, unlisted, request-to-join, notices and scheduled activities enabled, weekly theme/contributions/Cheers disabled.
+- Defaults: `community`, public, open-to-join, notices and scheduled activities enabled, weekly theme/contributions/Cheers disabled.
 - The tailored form asks for a name, optional description, city, activity interests, and initial invitations. It does not require a first notice or activity.
 - Activity interests such as running, walking, hiking, cycling, swimming, strength, or mixed improve discovery but never restrict which activities the Group may schedule.
 - After creation, offer `Plan an activity`, `Post an update`, or `Invite people`.
@@ -332,7 +332,7 @@ Verification is build-only for this release: backend TypeScript, iOS phone and W
 - Social presents one Groups destination and no Circle destination.
 - A person can create either template without learning a second entity name.
 - Motivation-template Groups preserve weekly themes, optional commitments, qualifying contributions, authorized workout context, preset Cheers, and post-activity acknowledgement without adding a Group container to Today.
-- Organize-activities Groups support unlisted creation, invitations or join requests, notices, member administration, and Group-owned activity events across supported activity types.
+- Organize-activities Groups start public and open-to-join, with notices, member administration, and Group-owned activity events across supported activity types. Owners can later choose unlisted visibility or a request-to-join policy.
 - Duplicate display names work throughout creation, search, invitations, membership, event attribution, rename, and deep linking because stable IDs and opaque tokens provide identity.
 - Public discovery returns only community Groups.
 - No community response or aggregate links an ordinary member workout or exposes workout, route, health, plan, or companion data.
