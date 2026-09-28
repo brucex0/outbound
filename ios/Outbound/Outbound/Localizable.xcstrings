@@ -36463,6 +36463,38 @@
         }
       }
     },
+    "app.connectivity.offline": {
+      "comment": "[android:app] Generated Android name: connectivity_offline.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Offline · changes saved on this device" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Sin conexión · cambios guardados en este dispositivo" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "当前离线 · 更改已保存在此设备" } }
+      }
+    },
+    "app.connectivity.offline.accessibility": {
+      "comment": "[android:app] Generated Android name: connectivity_offline_accessibility.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Offline. Changes are saved on this device and will sync later." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Sin conexión. Los cambios se guardan en este dispositivo y se sincronizarán más tarde." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "当前离线。更改已保存在此设备，稍后将同步。" } }
+      }
+    },
+    "app.connectivity.pending": {
+      "comment": "[android:app] Generated Android name: connectivity_pending.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Some items still need to sync" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Aún quedan elementos por sincronizar" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "仍有部分内容待同步" } }
+      }
+    },
+    "app.connectivity.pending.accessibility": {
+      "comment": "[android:app] Generated Android name: connectivity_pending_accessibility.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Some saved items still need to sync. Plainstride will retry automatically." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Aún quedan elementos guardados por sincronizar. Plainstride volverá a intentarlo automáticamente." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "仍有部分已保存内容待同步。Plainstride 会自动重试。" } }
+      }
+    },
     "app.tab.today": {
       "comment": "Shared with Android app; generated Android name: tab_today. [android:app] Generated Android name: tab_today.",
       "localizations": {
@@ -42754,6 +42786,22 @@
             "value": "继续"
           }
         }
+      }
+    },
+    "recording.offline.status": {
+      "comment": "[android:recording] Generated Android name: recording_offline_status.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Offline · activity saved on this device" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Sin conexión · actividad guardada en este dispositivo" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "当前离线 · 活动已保存在此设备" } }
+      }
+    },
+    "recording.offline.accessibility": {
+      "comment": "[android:recording] Generated Android name: recording_offline_accessibility.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Offline. Activity saved on this device and will sync later." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Sin conexión. La actividad se guardó en este dispositivo y se sincronizará más tarde." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "当前离线。活动已保存在此设备，稍后将同步。" } }
       }
     },
     "recording.close": {

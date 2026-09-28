@@ -21,6 +21,7 @@
 - The live map opens on the runner, keeps native pan/zoom controls, renders the selected route and recorded trail separately, and does not continuously zoom out as new samples arrive.
 - Recovery returns to the live surface paused; completion stays in the same route for reflection, local save, or confirmed discard. Confirmed discard waits for the recording service to reach idle before navigating away, preventing recovery from reopening the discarded activity.
 - Finish remains disabled while required photo persistence is pending.
+- Offline setup and active recording show an activity-specific status that confirms the activity is saved on device and will sync later; the signed-in shell banner is hidden while this route is visible.
 - Post-run review leads with the recorded route (or a non-route activity hero), overlays the close and Save controls like iOS, and follows with contextual motivation, core stats, optional perceived effort, and photo review.
 - Save is disabled below the shared iOS threshold of five minutes or 500 meters; closing the review always requires destructive confirmation.
 
@@ -36,6 +37,7 @@
 - Planned distance workout, manual free run, timed walk, calorie goal, structured workout, and followed route.
 - Active and paused map/camera surfaces, compact and expanded dashboard, pending photo write, finish confirmation, recovery, and post-run review.
 - English, Spanish, and Simplified Chinese; light/dark themes; compact phone and increased font scale.
+- Offline before start, during map and camera recording, and during a connectivity recovery while an activity remains active.
 
 ## Current Status
 

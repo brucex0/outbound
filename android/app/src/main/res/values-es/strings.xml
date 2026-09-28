@@ -125,4 +125,8 @@
     <string name="rewards_current_rewards">Recompensas actuales</string>
     <string name="rewards_current_rewards_detail">Aquí aparecen las ventajas de Plus que ganes o recibas.</string>
     <string name="rewards_no_active_rewards">Aún no tienes recompensas activas.</string>
+    <string name="connectivity_offline">Sin conexión · cambios guardados en este dispositivo</string>
+    <string name="connectivity_offline_accessibility">Sin conexión. Los cambios se guardan en este dispositivo y se sincronizarán más tarde.</string>
+    <string name="connectivity_pending">Aún quedan elementos por sincronizar</string>
+    <string name="connectivity_pending_accessibility">Aún quedan elementos guardados por sincronizar. Plainstride volverá a intentarlo automáticamente.</string>
 </resources>

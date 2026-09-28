@@ -45,6 +45,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
@@ -141,6 +142,7 @@ data class RecordedActivityReview(
 fun RecordingRoute(
     accountId: String,
     launch: RecordingLaunchConfiguration,
+    isOffline: Boolean = false,
     onSaved: (RecordedActivityReview, ActivityPhotoAlbumExportResult?) -> Unit,
     onSavedSideEffects: (RecordedActivityReview) -> Unit = {},
     onExit: () -> Unit,
@@ -452,7 +454,36 @@ fun RecordingRoute(
         }
     }
 
-    Box(modifier.fillMaxSize()) { if(postSaveStretchKind!=null) PostWorkoutStretchRoute(requireNotNull(postSaveStretchKind),{val r=postSaveReview;val export=postSavePhotoAlbumExport;postSaveReview=null;postSavePhotoAlbumExport=null;postSaveStretchKind=null;if(r!=null)onSaved(r,export)},{n,result->viewModel.trackStretchEvent(n,requireNotNull(postSaveStretchKind),result)}) else {content();SnackbarHost(saveSnackbar,Modifier.align(Alignment.BottomCenter))} }
+    Box(modifier.fillMaxSize()) {
+        if (postSaveStretchKind != null) {
+            PostWorkoutStretchRoute(
+                requireNotNull(postSaveStretchKind),
+                { val review = postSaveReview; val export = postSavePhotoAlbumExport; postSaveReview = null; postSavePhotoAlbumExport = null; postSaveStretchKind = null; if (review != null) onSaved(review, export) },
+                { name, result -> viewModel.trackStretchEvent(name, requireNotNull(postSaveStretchKind), result) },
+            )
+        } else {
+            content()
+            SnackbarHost(saveSnackbar, Modifier.align(Alignment.BottomCenter))
+        }
+        if (isOffline && postSaveStretchKind == null) {
+            Surface(
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
+                    .semantics { contentDescription = context.getString(R.string.recording_offline_accessibility) },
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+                shadowElevation = 6.dp,
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 14.dp).height(36.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                ) {
+                    Icon(Icons.Default.CloudOff, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(16.dp))
+                    Text(stringResource(R.string.recording_offline_status), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
 
     if (showGpsWait) AlertDialog(
         onDismissRequest = {

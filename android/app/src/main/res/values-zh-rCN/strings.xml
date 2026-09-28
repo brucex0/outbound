@@ -125,4 +125,8 @@
     <string name="rewards_current_rewards">当前奖励</string>
     <string name="rewards_current_rewards_detail">你赚取或获赠的 Plus 权益会显示在这里。</string>
     <string name="rewards_no_active_rewards">暂时没有生效中的奖励。</string>
+    <string name="connectivity_offline">当前离线 · 更改已保存在此设备</string>
+    <string name="connectivity_offline_accessibility">当前离线。更改已保存在此设备，稍后将同步。</string>
+    <string name="connectivity_pending">仍有部分内容待同步</string>
+    <string name="connectivity_pending_accessibility">仍有部分已保存内容待同步。Plainstride 会自动重试。</string>
 </resources>

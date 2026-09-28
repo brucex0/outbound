@@ -125,4 +125,8 @@
     <string name="rewards_current_rewards">Current rewards</string>
     <string name="rewards_current_rewards_detail">Plus benefits you earn or receive appear here.</string>
     <string name="rewards_no_active_rewards">No active rewards yet.</string>
+    <string name="connectivity_offline">Offline · changes saved on this device</string>
+    <string name="connectivity_offline_accessibility">Offline. Changes are saved on this device and will sync later.</string>
+    <string name="connectivity_pending">Some items still need to sync</string>
+    <string name="connectivity_pending_accessibility">Some saved items still need to sync. Plainstride will retry automatically.</string>
 </resources>

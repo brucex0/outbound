@@ -26,6 +26,7 @@ Primary flow:
 | --- | --- | --- |
 | App flow, Swift files, recording, camera, persistence, guide analysis | `docs/ios-architecture.md` | Source layout, module responsibilities, current recording and AI guide shape |
 | Android public-release port, parity contract, platform substitutions, phases, and release gates | `docs/android-port.md` | Full-scope Kotlin/Compose architecture, cross-platform contract strategy, phase deliverables, verification gates, and release definition of done |
+| Android shell connectivity status and offline/reconnect UI parity | `android/app/IOS_PARITY.md` | iOS connectivity authority, Android monitor and banners, pending sync behavior, accessibility, and reference scenarios |
 | Android toolchain, variants, build-only checks, lint, and local SDK setup | `docs/android-build.md` | Copy-pasteable phone/Wear build commands, environment requirements, and release-safe variant rules |
 | Android Play release, signing, privacy, store metadata, monitoring, and rollback | `docs/android-release.md` | Secret-backed bundle commands, Data safety inputs, asset checklist, licenses, staged rollout, kill switches, and rollback runbook |
 | App themes, palette contract, theme picker, discovery tip | `docs/themes.md` | Nine theme definitions, adaptive colors, reactive application rules, and extension checklist |

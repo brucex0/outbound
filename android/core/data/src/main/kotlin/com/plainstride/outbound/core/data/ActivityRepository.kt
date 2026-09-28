@@ -50,6 +50,7 @@ import com.plainstride.outbound.core.network.apiCall
 
 interface ActivityRepository {
     fun observePage(accountId: String, offset: Int = 0, limit: Int = 30): Flow<ActivityPage>
+    fun observePendingSyncCount(accountId: String): Flow<Int>
     suspend fun activity(accountId: String, activityId: String): SavedActivity?
     suspend fun save(activity: SavedActivity)
     suspend fun edit(activity: SavedActivity)
@@ -68,6 +69,9 @@ class OfflineFirstActivityRepository(
     private val now: () -> Instant = Instant::now,
 ) : ActivityRepository {
     private val dao: ActivityDao get() = database.activityDao()
+
+    override fun observePendingSyncCount(accountId: String): Flow<Int> =
+        database.syncOutboxDao().observeCount(accountId)
 
     override fun observePage(accountId: String, offset: Int, limit: Int): Flow<ActivityPage> {
         require(offset >= 0 && limit in 1..200)

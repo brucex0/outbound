@@ -69,6 +69,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
@@ -86,6 +88,8 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Groups2
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.CloudSync
 import android.content.pm.PackageManager
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
@@ -99,6 +103,8 @@ import com.plainstride.outbound.auth.AuthMessage
 import com.plainstride.outbound.auth.AuthOperation
 import com.plainstride.outbound.auth.AuthUiState
 import com.plainstride.outbound.auth.AuthViewModel
+import com.plainstride.outbound.connectivity.ConnectivityViewModel
+import com.plainstride.outbound.connectivity.ConnectivityUiState
 import com.plainstride.outbound.core.auth.SessionState
 import com.plainstride.outbound.core.designsystem.PlainstrideFloatingAction
 import com.plainstride.outbound.core.designsystem.PlainstrideFloatingActionStyle
@@ -279,11 +285,14 @@ private fun SignedInApp(
     val healthViewModel:HealthIntegrationViewModel=hiltViewModel()
     val healthPermissions by healthViewModel.permissions.collectAsStateWithLifecycle()
     val integrationViewModel: P0IntegrationViewModel = hiltViewModel()
+    val connectivityViewModel: ConnectivityViewModel = hiltViewModel()
+    val connectivityState by connectivityViewModel.state.collectAsStateWithLifecycle()
     val rewardsViewModel: RewardsViewModel = hiltViewModel()
     val rewardsState by rewardsViewModel.state.collectAsStateWithLifecycle()
     val reminderViewModel: ReminderViewModel = hiltViewModel()
     val integration by integrationViewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(accountId) { accountId?.let { integrationViewModel.start(it, resources.configuration.locales[0].toLanguageTag());cycleViewModel.start(it);healthViewModel.start(it) } }
+    LaunchedEffect(accountId) { accountId?.let(connectivityViewModel::start) }
     LaunchedEffect(accountId) {
         accountId?.let { activeRecordingViewModel.recover(it, recordingLocationPermission(context)) }
     }
@@ -417,10 +426,11 @@ private fun SignedInApp(
                 contentPadding.calculateBottomPadding()
             },
         )
+        Box(Modifier.fillMaxSize().padding(contentInsets)) {
         NavHost(
             navController = navController,
             startDestination = TopLevelDestination.Today.route,
-            modifier = Modifier.padding(contentInsets),
+            modifier = Modifier.fillMaxSize().padding(top = if (connectivityState.isOffline && currentDestination?.route != RECORDING_ROUTE || connectivityState.pendingSyncCount > 0 && currentDestination?.route != RECORDING_ROUTE) 52.dp else 0.dp),
         ) {
             TopLevelDestination.entries.forEach { destination ->
                 composable(destination.route) {
@@ -616,6 +626,7 @@ private fun SignedInApp(
                 RecordingRoute(
                     accountId = requireNotNull(accountId) { "Authenticated session is missing its account identifier." },
                     launch = recordingLaunch,
+                    isOffline = connectivityState.isOffline,
                     unitSystem = measurementUnitSystem,
                     weightKilograms = integration.weightKilograms,
                     onSavedSideEffects = { review -> suppressRecordingRecovery = true; healthViewModel.export(review); integrationViewModel.completePlannedWorkout(recordingLaunch, review) },
@@ -725,6 +736,12 @@ private fun SignedInApp(
                 )
             }
         }
+        if (currentDestination?.route != RECORDING_ROUTE) {
+            Box(Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.TopCenter) {
+                ConnectivityBanner(connectivityState)
+            }
+        }
+        }
     }
     if (authState.confirmDeletion) AlertDialog(
         onDismissRequest = authViewModel::cancelDeletion,
@@ -733,6 +750,35 @@ private fun SignedInApp(
         confirmButton = { TextButton(onClick = { authViewModel.deleteAccount(context) }) { Text(stringResource(R.string.delete_account_confirm)) } },
         dismissButton = { TextButton(onClick = authViewModel::cancelDeletion) { Text(stringResource(R.string.cancel)) } },
     )
+}
+
+@Composable
+private fun ConnectivityBanner(state: ConnectivityUiState, modifier: Modifier = Modifier) {
+    val message = when {
+        state.isOffline -> stringResource(R.string.connectivity_offline)
+        state.pendingSyncCount > 0 -> stringResource(R.string.connectivity_pending)
+        else -> return
+    }
+    val icon = if (state.isOffline) Icons.Default.CloudOff else Icons.Default.CloudSync
+    val accessibilityLabel = stringResource(
+        if (state.isOffline) R.string.connectivity_offline_accessibility else R.string.connectivity_pending_accessibility,
+    )
+    Surface(
+        modifier = modifier.semantics(mergeDescendants = true) { contentDescription = accessibilityLabel },
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+        shadowElevation = 6.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.28f)),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 14.dp).height(36.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(16.dp))
+            Text(message, style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+        }
+    }
 }
 
 @Composable

@@ -40,3 +40,21 @@
 ## Platform Substitutions
 
 - Compose Navigation replaces SwiftUI/UIKit tab coordination; the product topology remains identical.
+
+## Connectivity
+
+- iOS authority: `ios/Outbound/Outbound/Core/ConnectivityStore.swift`, `ios/Outbound/Outbound/App/MainTabView.swift`, and the activity status in `ios/Outbound/Outbound/Camera/CameraHUDView.swift` and `Activity/RecordView.swift`.
+- Android counterpart: `connectivity/NetworkConnectivityMonitor.kt`, `ConnectivityViewModel.kt`, the signed-in shell in `PlainstrideApp.kt`, and `feature/recording/RecordingScreen.kt`.
+- The app observes Android network availability, displays the localized offline capsule across signed-in screens, and replaces it with a pending-sync capsule after reconnection while activity writes remain in the account's local outbox.
+- Reconnection schedules the existing unique WorkManager activity-sync job. The active recording route hides the shell capsule and shows an activity-specific offline status instead.
+- Network status is environmental and has no corresponding iOS analytics event. Banner and recording status expose a combined localized accessibility label.
+
+### Reference Scenarios
+
+- Online with no pending writes; airplane mode while on Today, Social, Me, and nested signed-in screens; restore connectivity with queued activity writes; drain the outbox and dismiss the pending-sync banner.
+- Begin and continue an activity offline; restore connectivity and confirm local recording remains active while sync resumes.
+- English, Spanish, and Simplified Chinese; light/dark themes; TalkBack announcement of offline and pending-sync states.
+
+### Status
+
+- Connectivity monitoring, global and recording banners, account-scoped pending outbox visibility, and reconnect scheduling are implemented. Manual airplane-mode and TalkBack validation remain device checks.
