@@ -11,6 +11,7 @@ final class AppleMusicService: MusicService {
     private var currentQuickPick: MusicQuickPick?
     private var currentSelection: [MusicSearchResult] = []
     private var queuedSongs: MusicItemCollection<Song>?
+    private var lastKnownIsPlaying = false
     private var playbackUpdateHandler: (@MainActor (MusicPlaybackSnapshot) -> Void)?
     private var playbackObservers: Set<AnyCancellable> = []
 
@@ -63,7 +64,7 @@ final class AppleMusicService: MusicService {
 
     func loadQuickPicks() async throws -> [MusicQuickPick] {
         var picks: [MusicQuickPick] = []
-        if player.queue.currentEntry != nil || queuedSongs != nil || currentQuickPick != nil || !currentSelection.isEmpty {
+        if queuedSongs != nil || currentQuickPick != nil || !currentSelection.isEmpty {
             picks.append(
                 MusicQuickPick(
                     id: "continue-current",
@@ -159,8 +160,9 @@ final class AppleMusicService: MusicService {
             player.state.shuffleMode = shuffle ? .songs : .off
             try await player.prepareToPlay()
             try await player.play()
+            lastKnownIsPlaying = true
             Self.logger.info(
-                "Apple Music player started. quickPickID=\(quickPick.id, privacy: .public) playbackStatus=\(String(describing: self.player.state.playbackStatus), privacy: .public)"
+                "Apple Music player started. quickPickID=\(quickPick.id, privacy: .public)"
             )
         }
 
@@ -197,18 +199,21 @@ final class AppleMusicService: MusicService {
         player.state.shuffleMode = shuffle ? .songs : .off
         try await player.prepareToPlay()
         try await player.play()
+        lastKnownIsPlaying = true
         return playbackSnapshot()
     }
 
     func pause() async -> MusicPlaybackSnapshot {
         Self.logger.info("Pause Apple Music playback.")
         player.pause()
+        lastKnownIsPlaying = false
         return playbackSnapshot(isPlayingOverride: false)
     }
 
     func stop() async -> MusicPlaybackSnapshot {
         Self.logger.info("Stop Apple Music playback at workout end.")
         player.stop()
+        lastKnownIsPlaying = false
         return playbackSnapshot()
     }
 
@@ -235,9 +240,10 @@ final class AppleMusicService: MusicService {
     }
 
     private func resumeIfPossible() async throws {
-        if player.queue.currentEntry != nil || queuedSongs != nil || currentQuickPick != nil || !currentSelection.isEmpty {
+        if queuedSongs != nil || currentQuickPick != nil || !currentSelection.isEmpty {
             Self.logger.info("Resume existing Apple Music queue.")
             try await player.play()
+            lastKnownIsPlaying = true
             return
         }
 
@@ -262,6 +268,7 @@ final class AppleMusicService: MusicService {
             player.state.repeatMode = .all
             try await player.prepareToPlay()
             try await player.play()
+            lastKnownIsPlaying = true
             Self.logger.info("Started fallback Apple Music queue.")
             return
         } catch {
@@ -354,17 +361,10 @@ final class AppleMusicService: MusicService {
     }
 
     private func playbackSnapshot(isPlayingOverride: Bool? = nil) -> MusicPlaybackSnapshot {
-        // MusicKit can briefly report its previous playback status immediately
-        // after pause/play. A completed command is authoritative for the UI.
-        let isPlaying = isPlayingOverride ?? (player.state.playbackStatus == .playing)
-        if let song = player.queue.currentEntry?.item as? Song {
-            return MusicPlaybackSnapshot(
-                title: song.title,
-                subtitle: song.artistName,
-                isPlaying: isPlaying,
-                hasActiveQueue: true
-            )
-        }
+        // Reading MusicKit's playbackStatus can synchronously wait on its XPC
+        // service. Keep UI snapshots based on completed commands so a stalled
+        // Music process cannot block the app's main thread.
+        let isPlaying = isPlayingOverride ?? lastKnownIsPlaying
         if let currentQuickPick {
             return MusicPlaybackSnapshot(
                 title: currentQuickPick.title,
