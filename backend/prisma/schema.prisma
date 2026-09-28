@@ -1375,7 +1375,7 @@ model SocialGroup {
   noticesEnabled         Boolean            @default(false)
   scheduledActivitiesEnabled Boolean         @default(true)
   memberActivityCreation Boolean            @default(false)
-  memberLimit            Int                @default(100)
+  memberLimit            Int                @default(500)
   resetWeekday           Int                @default(1) // ISO weekday, 1 = Monday
   timeZone               String             @default("UTC")
   defaultFocusMode       String             @default("none") // theme | personal_targets | shared_target | none

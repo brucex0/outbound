@@ -178,6 +178,7 @@ Community detail has no general member activity feed. Completed Group activities
 - Admins may manage members, notices, and activities but cannot transfer ownership or change trust policy.
 - Members may leave, mute optional notifications, report the Group or content, and block another member.
 - Owners cannot leave until they transfer ownership or archive the Group.
+- New Groups use the server-configured member capacity, which defaults to `500` and can be adjusted with `GROUP_MEMBER_LIMIT` (valid range `2`–`5000`). The configured value is returned to clients and stored on each Group at creation.
 - Removal, leaving, and blocking revoke future access immediately.
 - Archiving preserves history but prevents new invitations, notices, and activities.
 - Ownership recovery without the current owner is an operator action and is deferred until a secure recovery policy exists.

@@ -3,8 +3,8 @@ import { getPrismaClient } from "./prisma.js";
 import type { SupportedLocale } from "../middleware/locale.js";
 import { compactPerson } from "./apiAssetURLs.js";
 
-export const GROUP_MEMBER_LIMIT_DEFAULT = 6;
-export const GROUP_MEMBER_LIMIT_MAXIMUM = 100;
+export const GROUP_MEMBER_LIMIT_DEFAULT = 500;
+export const GROUP_MEMBER_LIMIT_MAXIMUM = 5000;
 const shareSafeMemberSelect = { id: true, displayName: true, avatarUrl: true } as const;
 
 export function configuredGroupMemberLimit(env: NodeJS.ProcessEnv = process.env) {
@@ -86,7 +86,7 @@ export async function assertNoBlockedGroupMember(groupId: string, userId: string
 
 export async function createGroup(ownerId: string, input: GroupInput) {
   const template = input.template ?? "motivation";
-  const memberLimit = template === "motivation" ? configuredGroupMemberLimit() : 100;
+  const memberLimit = configuredGroupMemberLimit();
   const memberIds = [...new Set(input.memberUserIds.filter((id) => id !== ownerId))];
   if (template === "motivation" && memberIds.length === 0) throw new GroupDomainError("members_required", "Choose at least one accepted connection.");
   if (memberIds.length > memberLimit - 1) throw new GroupDomainError("capacity", "That is more people than this Group can currently include.");

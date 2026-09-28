@@ -128,7 +128,7 @@ $HOME/google-cloud-sdk/bin/gcloud scheduler jobs describe outbound-planning-main
   --project=outbound-494602 --location=us-central1
 ```
 
-`GROUP_MEMBER_LIMIT` controls the capacity assigned to newly created Groups and defaults to `6`. The backend accepts values from `2` through `100`, returns the active policy to clients, and snapshots the value onto each Group so later experiments do not unexpectedly shrink or expand existing groups.
+`GROUP_MEMBER_LIMIT` controls the capacity assigned to newly created Groups and defaults to `500`. The backend accepts values from `2` through `5000`, returns the active policy to clients, and snapshots the value onto each Group so later configuration changes do not unexpectedly shrink or expand existing groups.
 
 The Social Groups cutover is intentionally destructive before release. Rebuild a disposable local database from the final Prisma schema, then reseed:
 
