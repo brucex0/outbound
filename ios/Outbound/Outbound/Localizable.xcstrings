@@ -45903,6 +45903,259 @@
         }
       }
     },
+    "social.groups.create.choose_title": {
+      "comment": "Group creation copy. [android:social] Generated Android name: social_groups_create_choose_title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What kind of group are you creating?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué tipo de grupo vas a crear?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你要创建哪种群组？"
+          }
+        }
+      }
+    },
+    "social.groups.create.choose_detail": {
+      "comment": "Group creation copy. [android:social] Generated Android name: social_groups_create_choose_detail.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose who can join. You can adjust other settings later."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige quién puede unirse. Después podrás ajustar otras opciones."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先选择谁可以加入，之后还可以调整其他设置。"
+          }
+        }
+      }
+    },
+    "social.groups.template.private.title": {
+      "comment": "Group creation copy. [android:social] Generated Android name: social_groups_template_private_title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Private circle · Invite only"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Círculo privado · Solo por invitación"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "私人圈子 · 仅限邀请"
+          }
+        }
+      }
+    },
+    "social.groups.template.private.detail": {
+      "comment": "Group creation copy. [android:social] Generated Android name: social_groups_template_private_detail.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share progress and encourage people you trust."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comparte avances y anima a las personas en quienes confías."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "与信任的人分享进展，彼此鼓励。"
+          }
+        }
+      }
+    },
+    "social.groups.template.community.title": {
+      "comment": "Group creation copy. [android:social] Generated Android name: social_groups_template_community_title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open community · Anyone can join"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comunidad abierta · Cualquiera puede unirse"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开放社群 · 任何人都可加入"
+          }
+        }
+      }
+    },
+    "social.groups.template.community.detail": {
+      "comment": "Group creation copy. [android:social] Generated Android name: social_groups_template_community_detail.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bring people together to share updates and organize activities."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reúne a personas para compartir novedades y organizar actividades."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "聚集大家分享动态、组织活动。"
+          }
+        }
+      }
+    },
+    "social.groups.create.community.hero_title": {
+      "comment": "Group creation copy. [android:social] Generated Android name: social_groups_create_community_hero_title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bring your community together."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reúne a tu comunidad."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "让社区成员相聚。"
+          }
+        }
+      }
+    },
+    "social.groups.create.community.hero_detail": {
+      "comment": "Group creation copy. [android:social] Generated Android name: social_groups_create_community_hero_detail.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create a welcoming place to share updates and plan activities."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crea un espacio acogedor para compartir novedades y planificar actividades."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "创建一个友好的空间，分享动态并安排活动。"
+          }
+        }
+      }
+    },
+    "social.groups.create.community.access": {
+      "comment": "Group creation copy. [android:social] Generated Android name: social_groups_create_community_access.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anyone can find and join this community. Members’ workouts stay private."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cualquiera puede encontrar y unirse a esta comunidad. Los entrenamientos de sus miembros son privados."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "任何人都能找到并加入此社群。成员的运动记录仍为私密。"
+          }
+        }
+      }
+    },
+    "social.groups.create.private.hero_title": {
+      "comment": "Group creation copy. [android:social] Generated Android name: social_groups_create_private_hero_title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active. Positive. Together."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activos. Positivos. Juntos."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "积极运动，一起向上。"
+          }
+        }
+      }
+    },
+    "social.groups.create.private.hero_detail": {
+      "comment": "Group creation copy. [android:social] Generated Android name: social_groups_create_private_hero_detail.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share goals and progress with the people closest to you—and cheer each other on."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comparte metas y avances con quienes más quieres. Anímense mutuamente."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "和最亲近的人分享目标与进步，彼此加油。"
+          }
+        }
+      }
+    },
     "social.title": {
       "comment": "Shared with Android social; generated Android name: social_title. [android:social] Generated Android name: social_title.",
       "localizations": {

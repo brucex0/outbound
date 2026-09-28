@@ -312,21 +312,19 @@ struct GroupCreateView: View {
     private var templateChooser: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-                Text(String(localized: "group.create.choose_title", defaultValue: "What brings people together?"))
+                Text(String(localized: "social.groups.create.choose_title", defaultValue: "What kind of group are you creating?"))
                     .font(.largeTitle.bold())
-                Text(String(localized: "group.create.choose_detail", defaultValue: "Choose a starting point. You can adjust safe settings later."))
+                Text(String(localized: "social.groups.create.choose_detail", defaultValue: "Choose who can join. You can adjust other settings later."))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 templateCard(
-                    title: String(localized: "group.template.motivation.title", defaultValue: "Stay motivated together"),
-                    detail: String(localized: "group.template.motivation.detail", defaultValue: "Share progress and encourage a few people you trust."),
-                    icon: "heart.group.fill",
+                    title: String(localized: "social.groups.template.private.title", defaultValue: "Private circle · Invite only"),
+                    detail: String(localized: "social.groups.template.private.detail", defaultValue: "Share progress and encourage people you trust."),
                     template: "motivation"
                 )
                 templateCard(
-                    title: String(localized: "group.template.activities.title", defaultValue: "Organize activities"),
-                    detail: String(localized: "group.template.activities.detail", defaultValue: "Coordinate a community, publish updates, and plan activities."),
-                    icon: "calendar.badge.plus",
+                    title: String(localized: "social.groups.template.community.title", defaultValue: "Open community · Anyone can join"),
+                    detail: String(localized: "social.groups.template.community.detail", defaultValue: "Bring people together to share updates and organize activities."),
                     template: "activities"
                 )
             }
@@ -337,11 +335,11 @@ struct GroupCreateView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func templateCard(title: String, detail: String, icon: String, template: String) -> some View {
-        Button { selectedTemplate = template } label: {
+    private func templateCard(title: String, detail: String, template: String) -> some View {
+        Button { selectTemplate(template) } label: {
             OutboundCard(style: .companion) {
                 HStack(spacing: 14) {
-                    Image(systemName: icon).font(.title2).foregroundStyle(OutboundPalette.companion).frame(width: 44, height: 44).background(OutboundPalette.companion.opacity(0.12), in: Circle())
+                    GroupMark().foregroundStyle(OutboundPalette.companion).frame(width: 24, height: 24).frame(width: 44, height: 44).background(OutboundPalette.companion.opacity(0.12), in: Circle())
                     VStack(alignment: .leading, spacing: 4) {
                         Text(title).font(.headline).foregroundStyle(.primary)
                         Text(detail).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.leading)
@@ -377,7 +375,7 @@ struct GroupCreateView: View {
                     }.buttonStyle(.bordered).tint(activityInterests.contains(interest) ? OutboundPalette.companion : .secondary)
                 }
             }
-            Text(String(localized: "group.create.community.join_policy", defaultValue: "This Group starts unlisted with request-to-join. You can share an invite link after creation."))
+            Text(String(localized: "social.groups.create.community.access", defaultValue: "Anyone can find and join this community. Members’ workouts stay private."))
                 .font(.caption).foregroundStyle(.secondary)
             connectionPicker(title: String(localized: "group.create.community.invite", defaultValue: "Invite people now (optional)"))
         }
@@ -398,21 +396,24 @@ struct GroupCreateView: View {
     private var creationHero: some View {
         OutboundCard(style: .companion) {
             VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 12) {
-                    ForEach(["figure.walk", "figure.run", "figure.outdoor.cycle"], id: \.self) { symbol in
-                        Image(systemName: symbol)
-                            .font(.title2)
-                            .foregroundStyle(OutboundPalette.companion)
-                            .frame(width: 44, height: 44)
-                            .background(OutboundPalette.companion.opacity(0.12), in: Circle())
-                    }
-                }
-                Text(String(localized: "group.create.inspiration_title", defaultValue: "Active. Positive. Together."))
+                GroupMark().foregroundStyle(OutboundPalette.companion).frame(width: 28, height: 28).frame(width: 52, height: 52).background(OutboundPalette.companion.opacity(0.12), in: Circle())
+                Text(selectedTemplate == "activities"
+                    ? String(localized: "social.groups.create.community.hero_title", defaultValue: "Bring your community together.")
+                    : String(localized: "social.groups.create.private.hero_title", defaultValue: "Active. Positive. Together."))
                     .font(.title2.bold())
-                Text(String(localized: "group.create.inspiration_detail", defaultValue: "Share goals and progress with the people closest to you—and cheer each other on."))
+                Text(selectedTemplate == "activities"
+                    ? String(localized: "social.groups.create.community.hero_detail", defaultValue: "Create a welcoming place to share updates and plan activities.")
+                    : String(localized: "social.groups.create.private.hero_detail", defaultValue: "Share goals and progress with the people closest to you—and cheer each other on."))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+
+    private func selectTemplate(_ template: String) {
+        selectedTemplate = template
+        Task {
+            await analyticsManager?.track(.init(.groupTemplateSelected, properties: [.selectionType: .string(template)]))
         }
     }
 
