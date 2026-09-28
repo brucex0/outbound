@@ -685,7 +685,7 @@ struct RecordView: View {
                 enableLocationFromPermissionModal()
             }
 
-            Button(String(localized: "common.close", defaultValue: "Close"), role: .cancel) {
+            Button(String(localized: "record.location.permission.close", defaultValue: "Close"), role: .cancel) {
                 cancelLocationWait()
             }
         } message: {
