@@ -5,6 +5,7 @@ This is a personal project.
 ## Worktree Discipline
 
 - When a task changes more than 10 lines of code, do all work in a Git worktree under `~/dev/outbound/worktrees`.
+- If worktree setup fails because Git metadata permissions block it, stop retrying worktree setup and continue in the current checkout; report any Git operation that is also blocked by those permissions.
 - After verification succeeds, merge the worktree branch back into the branch that was checked out before the task, then remove the worktree and delete its branch.
 - Keep unrelated working-tree changes out of the merge and cleanup.
 
