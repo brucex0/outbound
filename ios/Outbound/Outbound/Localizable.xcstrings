@@ -35587,6 +35587,7 @@
       }
     },
     "run.simulation.advance.five_minutes": {
+      "comment": "[android:recording] Debug run simulation time jump.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -35609,6 +35610,7 @@
       }
     },
     "run.simulation.advance.one_minute": {
+      "comment": "[android:recording] Debug run simulation time jump.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -35631,6 +35633,7 @@
       }
     },
     "run.simulation.clock.pause": {
+      "comment": "[android:recording] Debug run simulation accessibility label.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -35653,6 +35656,7 @@
       }
     },
     "run.simulation.clock.play": {
+      "comment": "[android:recording] Debug run simulation accessibility label.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -35675,6 +35679,7 @@
       }
     },
     "run.simulation.route.name": {
+      "comment": "[android:recording] Debug route display name.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -35697,6 +35702,7 @@
       }
     },
     "run.simulation.setup.detail": {
+      "comment": "[android:recording] Debug run simulation setup description.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -35719,6 +35725,7 @@
       }
     },
     "run.simulation.setup.title": {
+      "comment": "[android:recording] Debug run simulation setup title.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -35741,6 +35748,7 @@
       }
     },
     "run.simulation.speed.decrease": {
+      "comment": "[android:recording] Debug run simulation accessibility label.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -35763,7 +35771,7 @@
       }
     },
     "run.simulation.speed.format": {
-      "comment": "The argument is the whole-number simulated running speed in kilometers per hour.",
+      "comment": "[android:recording] Debug run simulation speed format. The argument is the whole-number simulated running speed in kilometers per hour.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -35786,6 +35794,7 @@
       }
     },
     "run.simulation.speed.increase": {
+      "comment": "[android:recording] Debug run simulation accessibility label.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -35808,6 +35817,7 @@
       }
     },
     "run.simulation.testing.section": {
+      "comment": "[android:recording] Debug setup section heading.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -35830,6 +35840,7 @@
       }
     },
     "run.simulation.time_rate": {
+      "comment": "[android:recording] Debug run simulation accessibility label.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -35852,6 +35863,7 @@
       }
     },
     "run.simulation.title": {
+      "comment": "[android:recording] Debug run simulation title.",
       "localizations": {
         "en": {
           "stringUnit": {
