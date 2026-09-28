@@ -1367,7 +1367,7 @@ private fun ReflectionScreen(
     Scaffold(contentWindowInsets = WindowInsets.safeDrawing) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
-                Box(Modifier.fillMaxWidth().height(280.dp).background(MaterialTheme.colorScheme.primaryContainer)) {
+                Box(Modifier.fillMaxWidth().height(200.dp).background(MaterialTheme.colorScheme.primaryContainer)) {
                     if (snapshot.track.size > 1) PlainstrideRouteMap(
                         points = snapshot.track.map { MapCoordinate(it.latitude, it.longitude) },
                         modifier = Modifier.fillMaxSize(),
