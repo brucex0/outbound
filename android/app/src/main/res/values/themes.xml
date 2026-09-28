@@ -8,6 +8,6 @@
         <item name="android:windowActionModeOverlay">true</item>
     </style>
     <style name="Theme.Plainstride.Starting" parent="Theme.Plainstride">
-        <item name="android:windowBackground">@drawable/splash_screen</item>
+        <item name="android:windowBackground">@color/plainstride_splash_background</item>
     </style>
 </resources>
