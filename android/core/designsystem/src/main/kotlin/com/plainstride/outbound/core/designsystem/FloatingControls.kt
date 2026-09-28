@@ -16,6 +16,9 @@ import androidx.compose.ui.unit.dp
 
 enum class PlainstrideFloatingActionStyle { Hero, Accent }
 
+/** Height reserved above the persistent primary bottom toolbar, including its vertical margins. */
+val PrimaryBottomToolbarClearance = 76.dp
+
 /** Opaque map-level action shared by Today controls and the persistent assistant launcher. */
 @Composable
 fun PlainstrideFloatingAction(

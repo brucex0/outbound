@@ -296,7 +296,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                 onRefresh = refresh,
                 modifier = Modifier.weight(1f),
             ) {
-            LazyColumn(Modifier.fillMaxSize(), state = feedListState, contentPadding = PaddingValues(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            LazyColumn(Modifier.fillMaxSize(), state = feedListState, contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp + PrimaryBottomToolbarClearance), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (activeConnections.isNotEmpty()) item {
                     Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                         SectionHeader(stringResource(R.string.social_active_now_title))
@@ -350,7 +350,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                 }
             }
             }
-            SocialFeatureTab.PEOPLE -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SocialFeatureTab.PEOPLE -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + PrimaryBottomToolbarClearance), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 item { OutlinedTextField(state.search, search, Modifier.fillMaxWidth(), singleLine = true, label = { Text(stringResource(R.string.social_search_people)) }, leadingIcon = { Icon(Icons.Outlined.Search, null) }) }
                 if (state.searchResults.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_search_people)) }; items(state.searchResults, key = SocialPerson::id) { person -> PersonRow(person) { openProfile(person) } } }
                 if (incomingRequests.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_requests)) }; items(incomingRequests, key = SocialPerson::id) { person -> RequesterCard(person, { openProfile(person) }, { acceptRequest(person) }, { declineRequest(person) }) } }
@@ -359,7 +359,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                 items(acceptedConnections, key = SocialPerson::id) { person -> PersonRow(person) { openProfile(person) } }
                 item { OutlinedButton(openConnections, Modifier.fillMaxWidth()) { Text(stringResource(R.string.social_all)) } }
             }
-            SocialFeatureTab.GROUPS -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SocialFeatureTab.GROUPS -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + PrimaryBottomToolbarClearance), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (groupInvitations.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_invite)) }; items(groupInvitations, key = SocialInvitation::id) { InvitationCard(it) { invitation -> openTarget("invitation", invitation.id) } } }
                 item { SectionHeader(stringResource(R.string.social_groups), action = stringResource(R.string.social_group_create), onAction = createGroup) }
                 if (state.home.groups.isEmpty() && !state.loading) item { CompanionCard(onClick = createGroup) { Text(stringResource(R.string.social_group_empty), fontWeight = FontWeight.SemiBold); Spacer(Modifier.height(10.dp)); Text(stringResource(R.string.social_group_create), fontWeight = FontWeight.Bold) } }

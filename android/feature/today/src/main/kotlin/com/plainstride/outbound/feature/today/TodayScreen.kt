@@ -102,6 +102,7 @@ import com.plainstride.outbound.core.model.AdjustmentProposal
 import com.plainstride.outbound.core.model.Modality
 import com.plainstride.outbound.core.model.StandaloneWorkout
 import com.plainstride.outbound.core.designsystem.PlainstrideRouteMap
+import com.plainstride.outbound.core.designsystem.PrimaryBottomToolbarClearance
 import com.plainstride.outbound.core.designsystem.PlainstrideFloatingAction
 import com.plainstride.outbound.core.model.activity.PlannedCalorieEstimate
 
@@ -297,7 +298,7 @@ fun TodayScreen(
     }
 
     // Keep the map in the upper region, matching iOS Today; the dock owns the separate lower region.
-    Column(modifier.fillMaxSize().padding(bottom = 76.dp)) {
+    Column(modifier.fillMaxSize().padding(bottom = PrimaryBottomToolbarClearance)) {
         Box(Modifier.fillMaxWidth().weight(1f)) {
             PlainstrideRouteMap(
                 points = emptyList(),

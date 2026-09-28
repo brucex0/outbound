@@ -36,8 +36,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.put
 
-@Composable fun CommunityRouteScreen(library: RouteLibrary, scope: RouteScope, onScope: (RouteScope)->Unit, onRefresh:()->Unit, onSearch:(String)->Unit, onFollow:(com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration)->Unit, onBookmark:(CommunityRoute)->Unit,publishableActivities:List<Pair<String,String>> = emptyList(),onPublish:(String,String,String?)->Unit={_,_,_->},onImport:(Boolean)->Unit={},embedded:Boolean=false,routeDetail:CommunityRoute?=null,routeDetailLoading:Boolean=false,onLoadDetail:(String)->Unit={},onRemovePublished:(String)->Unit={},onClearDetail:()->Unit={},unitSystem:com.plainstride.outbound.core.model.activity.MeasurementUnitSystem=com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric,onImportedDelete:()->Unit={}) {
- if(embedded){EmbeddedCommunityRouteLibrary(library,scope,onScope,onRefresh,onSearch,onFollow,onBookmark,onImport,routeDetail,routeDetailLoading,onLoadDetail,onRemovePublished,onClearDetail,unitSystem,onImportedDelete);return}
+@Composable fun CommunityRouteScreen(library: RouteLibrary, scope: RouteScope, onScope: (RouteScope)->Unit, onRefresh:()->Unit, onSearch:(String)->Unit, onFollow:(com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration)->Unit, onBookmark:(CommunityRoute)->Unit,publishableActivities:List<Pair<String,String>> = emptyList(),onPublish:(String,String,String?)->Unit={_,_,_->},onImport:(Boolean)->Unit={},embedded:Boolean=false,bottomContentPadding:androidx.compose.ui.unit.Dp=0.dp,routeDetail:CommunityRoute?=null,routeDetailLoading:Boolean=false,onLoadDetail:(String)->Unit={},onRemovePublished:(String)->Unit={},onClearDetail:()->Unit={},unitSystem:com.plainstride.outbound.core.model.activity.MeasurementUnitSystem=com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric,onImportedDelete:()->Unit={}) {
+ if(embedded){EmbeddedCommunityRouteLibrary(library,scope,onScope,onRefresh,onSearch,onFollow,onBookmark,onImport,routeDetail,routeDetailLoading,onLoadDetail,onRemovePublished,onClearDetail,unitSystem,onImportedDelete,bottomContentPadding);return}
  val context=LocalContext.current
  var pendingNearby by remember { mutableStateOf(false) }
  val locationPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->pendingNearby=false;if(granted){onScope(RouteScope.NEARBY);onRefresh()}}
@@ -81,6 +81,7 @@ private fun EmbeddedCommunityRouteLibrary(
  onClearDetail:()->Unit,
  unitSystem:com.plainstride.outbound.core.model.activity.MeasurementUnitSystem,
  onImportedDelete:()->Unit,
+ bottomContentPadding:androidx.compose.ui.unit.Dp,
 ) {
  val context=LocalContext.current
  var query by remember { mutableStateOf("") }
@@ -95,7 +96,7 @@ private fun EmbeddedCommunityRouteLibrary(
   val route=runCatching{context.contentResolver.openInputStream(uri)?.bufferedReader()?.use{reader->importRoute(reader.readText(),uri.lastPathSegment)}}.getOrNull()
   if(route!=null){importedRoutes=listOf(route)+importedRoutes.filterNot{it.id==route.id};selectedRoute=route;onImport(true)}else onImport(false)
  }
- LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(bottom=16.dp),verticalArrangement=Arrangement.spacedBy(0.dp)) {
+ LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(bottom=16.dp+bottomContentPadding),verticalArrangement=Arrangement.spacedBy(0.dp)) {
   item {
    Row(Modifier.fillMaxWidth().heightIn(min=52.dp).padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
     Icon(Icons.Outlined.Search,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)

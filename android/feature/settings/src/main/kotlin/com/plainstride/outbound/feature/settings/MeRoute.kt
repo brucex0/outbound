@@ -8,7 +8,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -88,6 +90,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.plainstride.outbound.core.designsystem.PlainstrideThemeId
+import com.plainstride.outbound.core.designsystem.PrimaryBottomToolbarClearance
 import com.plainstride.outbound.core.designsystem.plainstrideThemeColors
 import com.plainstride.outbound.feature.social.SocialAvatar
 import com.plainstride.outbound.feature.social.SocialConnectionsPreview
@@ -239,12 +242,14 @@ private fun MeOverview(
 ) {
     Scaffold(
         modifier = modifier,
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0),
         topBar = { TopAppBar(title = { Text(stringResource(R.string.me_title)) }, actions = {
             IconButton(onClick = onRefresh) { Icon(Icons.Outlined.Refresh, stringResource(R.string.refresh)) }
             IconButton(onClick = onSettings) { Icon(Icons.Outlined.Settings, stringResource(R.string.settings_title)) }
         }) },
     ) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp), contentPadding = PaddingValues(bottom = PrimaryBottomToolbarClearance), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item { OutlinedCard(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onSettings)) {
                 Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     SocialAvatar(
@@ -330,11 +335,11 @@ private fun NavigationCard(label: Int, body: Int, icon: androidx.compose.ui.grap
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MilestonesScreen(milestones: List<PersonalMilestone>, onBack: () -> Unit, modifier: Modifier) {
-    Scaffold(modifier, topBar = { TopAppBar(
+    Scaffold(modifier = modifier, containerColor = Color.Transparent, contentWindowInsets = WindowInsets(0), topBar = { TopAppBar(
         title = { Text(stringResource(R.string.me_milestones)) },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) } },
     ) }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp), contentPadding = PaddingValues(bottom = PrimaryBottomToolbarClearance), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item {
                 Text(
                     stringResource(R.string.recognition_history_intro),
@@ -512,11 +517,11 @@ private fun SettingsScreen(
         )
         return
     }
-    Scaffold(modifier, topBar = { TopAppBar(
+    Scaffold(modifier = modifier, containerColor = Color.Transparent, contentWindowInsets = WindowInsets(0), topBar = { TopAppBar(
         title = { Text(stringResource(R.string.settings_title)) },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) } },
     ) }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(bottom = PrimaryBottomToolbarClearance), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             item { SectionTitle(stringResource(R.string.account)) }
             item { ListItem(
                 headlineContent = { Text(state.account?.displayName ?: stringResource(R.string.runner)) },
@@ -621,13 +626,13 @@ private fun SettingsScreen(
     onBack: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
-    Scaffold(topBar = {
+    Scaffold(containerColor = Color.Transparent, contentWindowInsets = WindowInsets(0), topBar = {
         TopAppBar(
             title = { Text(stringResource(R.string.appearance)) },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) } },
         )
     }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding)) {
+        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(bottom = PrimaryBottomToolbarClearance)) {
             item { ChoiceRow(stringResource(R.string.mode), AppearanceMode.entries, appearance, { stringResource(when (it) { AppearanceMode.System -> R.string.system_mode; AppearanceMode.Light -> R.string.light_mode; AppearanceMode.Dark -> R.string.dark_mode }) }, onAppearance) }
             item { SectionTitle(stringResource(R.string.theme)) }
             items(PlainstrideThemeId.entries) { theme ->
