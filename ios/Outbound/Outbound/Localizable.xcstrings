@@ -244,19 +244,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tap to open map"
+            "value": "Swipe to map"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Toca para abrir el mapa"
+            "value": "Desliza para ver el mapa"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "轻点打开地图"
+            "value": "滑动查看地图"
           }
         }
       }

@@ -151,18 +151,7 @@ struct CameraHUDView: View {
                 statusCardHeight = height
             }
         }
-        .onAppear {
-            if activePage == .camera {
-                camera.start()
-            }
-        }
-        .onChange(of: activePage) { _, page in
-            if page == .camera {
-                camera.start()
-            } else {
-                camera.stop()
-            }
-        }
+        .onAppear { camera.start() }
         .onDisappear { camera.stop() }
     }
 
@@ -252,7 +241,7 @@ struct CameraHUDView: View {
             .coordinatedTooltip(
                 .swipeToMap,
                 isEligible: recorder.state == .paused,
-                text: String(localized: "tooltip.swipe_to_map", defaultValue: "Tap to open map"),
+                text: String(localized: "tooltip.swipe_to_map", defaultValue: "Swipe to map"),
                 arrowEdge: .trailing
             )
 

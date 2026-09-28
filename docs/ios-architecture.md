@@ -46,7 +46,7 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 
 ## Recording
 
-- `Activity/RecordView.swift`: compatibility container for the retained Today and standalone activity surface. It preserves the existing launch, recovery, guidance, live sharing, pause/resume/finish, and reflection-first save behavior while delegating setup composition and map/control measurement to the extracted activity views below. During a live workout it mounts only the selected map or camera view; the controls on each view switch between them without a paging container.
+- `Activity/RecordView.swift`: compatibility container for the retained Today and standalone activity surface. It preserves the existing launch, recovery, guidance, live sharing, pause/resume/finish, and reflection-first save behavior while delegating setup composition and map/control measurement to the extracted activity views below.
 - `Activity/ActivitySessionController.swift`: main-actor lifecycle boundary for setup, location preflight, countdown, recording, review, save, and post-save phases. It coordinates the existing `ActivityRecorder` and feature stores without replacing their domain ownership, and publishes the shared session portal state and map safe-zone contract.
 - `Activity/ActivityLaunchCoordinator.swift`: testable launch-intent and permission/GPS preflight boundary shared by Today and event launches. It does not own recording metrics or persistence.
 - `Activity/ActivitySetupView.swift`: shared launch layout for Today and standalone recording. The host supplies map, route, goal, option, and dock content so setup state and analytics remain in the retained container while layout does not.

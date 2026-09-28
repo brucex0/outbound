@@ -436,10 +436,6 @@ struct RecordView: View {
         .onChange(of: activePage) { _, newPage in
             guard showCamera else { return }
             preferredSessionPageRawValue = newPage.rawValue
-            track(.init(.liveWorkoutPageSelected, properties: [
-                .selectionType: .string(newPage.rawValue),
-                .sourceType: .string("control")
-            ]))
         }
         .onChange(of: plannedIntent) { _, intent in
             applyWorkoutMusicSuggestion()
@@ -789,7 +785,7 @@ struct RecordView: View {
 
     private var liveRecordingSurface: some View {
         ZStack {
-            if activePage == .camera {
+            TabView(selection: $activePage) {
                 CameraHUDView(
                     recorder: recorder,
                     guide: guide,
@@ -813,7 +809,9 @@ struct RecordView: View {
                         .locationAttached: .boolean(meta.coordinate != nil)
                     ]))
                 }
-            } else {
+                .tag(SessionPage.camera)
+                .ignoresSafeArea()
+
                 LiveMapView(
                     recorder: recorder,
                     locationManager: recorder.locationManager,
@@ -830,7 +828,11 @@ struct RecordView: View {
                     onFinish: finishRecording,
                     isFinishEnabled: !isCapturingSessionPhoto
                 )
+                .tag(SessionPage.map)
+                .ignoresSafeArea()
             }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .ignoresSafeArea()
 
             if let countdownStep {
                 ActivityStartCountdownOverlay(
