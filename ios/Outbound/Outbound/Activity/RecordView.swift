@@ -73,6 +73,10 @@ struct RecordView: View {
     @StateObject private var launchPreferenceStore: ActivityLaunchPreferenceStore
     @AppStorage("preferred_session_page_v1") private var preferredSessionPageRawValue = SessionPage.map.rawValue
     @AppStorage("voice_guide_enabled_v1") private var isVoiceGuideEnabled = true
+    @AppStorage("auto_pause_running_enabled_v1") private var autoPauseRunningEnabled = true
+    @AppStorage("auto_pause_cycling_enabled_v1") private var autoPauseCyclingEnabled = true
+    @AppStorage("auto_pause_walking_enabled_v1") private var autoPauseWalkingEnabled = false
+    @AppStorage("auto_pause_hiking_enabled_v1") private var autoPauseHikingEnabled = false
     @State private var showCamera = false
     @State private var activePage: SessionPage = .map
     @State private var isLiveWorkoutPanelExpanded = false
@@ -1393,6 +1397,7 @@ struct RecordView: View {
 #endif
         recorder.start(
             activityType: activeIntent?.resolvedActivityType ?? .running,
+            autoPauseEnabled: autoPauseEnabled(for: activeIntent?.resolvedActivityType ?? .running),
             routeGuidance: routeGuidance,
             canonicalStartDate: phoneWorkoutCoordinator.canonicalStartDate,
             sessionMetadata: phoneWorkoutCoordinator.recordingMetadata(),
@@ -2121,6 +2126,7 @@ struct RecordView: View {
                         launchShoeControl
                         launchCompanionControl
                         launchEnvironmentControl
+                        launchAutoPauseControl
                     }
                     .padding(.leading, 16)
                     .padding(.trailing, isEmbeddedInToday ? 16 : 0)
@@ -2217,6 +2223,52 @@ struct RecordView: View {
                 .selectionType: .string(isIndoorSession ? "indoor" : "outdoor")
             ]))
         })
+    }
+
+    private var launchAutoPauseControl: AnyView {
+        let activityType = setupActivityType
+        guard [.running, .cycling, .walking, .hiking].contains(activityType) else {
+            return AnyView(EmptyView())
+        }
+        let enabled = autoPauseEnabled(for: activityType)
+        return AnyView(setupUtilityButton(
+            title: String(localized: "record.setup.auto_pause", defaultValue: "Auto Pause"),
+            value: enabled
+                ? String(localized: "common.on", defaultValue: "On")
+                : String(localized: "common.off", defaultValue: "Off"),
+            isConfigured: enabled
+        ) {
+            setAutoPauseEnabled(!enabled, for: activityType)
+            track(.init(.activityConfigurationChanged, properties: [
+                .changeType: .string("auto_pause"),
+                .selectionType: .string(enabled ? "disabled" : "enabled"),
+                .activityType: .string(activityType.rawValue)
+            ]))
+        })
+    }
+
+    private var setupActivityType: ActivityType {
+        (plannedIntent ?? .freestyleRun).resolvedActivityType
+    }
+
+    private func autoPauseEnabled(for activityType: ActivityType) -> Bool {
+        switch activityType {
+        case .running: autoPauseRunningEnabled
+        case .cycling: autoPauseCyclingEnabled
+        case .walking: autoPauseWalkingEnabled
+        case .hiking: autoPauseHikingEnabled
+        case .swimming, .strengthTraining, .mobility: AutoPauseDefaults.isEnabled(for: activityType)
+        }
+    }
+
+    private func setAutoPauseEnabled(_ enabled: Bool, for activityType: ActivityType) {
+        switch activityType {
+        case .running: autoPauseRunningEnabled = enabled
+        case .cycling: autoPauseCyclingEnabled = enabled
+        case .walking: autoPauseWalkingEnabled = enabled
+        case .hiking: autoPauseHikingEnabled = enabled
+        case .swimming, .strengthTraining, .mobility: break
+        }
     }
 
     /// One text-only toggle beside the other setup settings. It is hidden for
@@ -3477,6 +3529,7 @@ struct RecordView: View {
             .liveShareEnabled: .boolean(liveShareStore.isArmedForNextActivity),
             .indoor: .boolean(isIndoorSession),
             .voiceGuideEnabled: .boolean(voiceGuideSpeechEnabled),
+            .autoPauseEnabled: .boolean(recorder.autoPauseEnabled),
             .participantCountBucket: .string(ProductAnalyticsBucket.count(liveGroupStore.participants.count)),
             .dogCompanionEnabled: .boolean(intent.resolvedActivityType.ineligibleForCompanion != true && companionType != nil)
         ]

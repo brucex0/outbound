@@ -7,6 +7,7 @@ struct ActiveSessionJournal {
     let elapsedSeconds: Int
     let wasPaused: Bool
     let activityType: ActivityType?
+    let autoPauseEnabled: Bool?
     let walkingStepCount: Int?
     let companionType: ActivityCompanionType?
     let routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?
@@ -22,6 +23,7 @@ struct ActiveSessionJournal {
         elapsedSeconds: Int,
         wasPaused: Bool,
         activityType: ActivityType?,
+        autoPauseEnabled: Bool? = nil,
         walkingStepCount: Int? = nil,
         companionType: ActivityCompanionType? = nil,
         routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?,
@@ -36,6 +38,7 @@ struct ActiveSessionJournal {
         self.elapsedSeconds = elapsedSeconds
         self.wasPaused = wasPaused
         self.activityType = activityType
+        self.autoPauseEnabled = autoPauseEnabled
         self.walkingStepCount = walkingStepCount
         self.companionType = companionType
         self.routeGuidanceRecoverySeed = routeGuidanceRecoverySeed
@@ -57,6 +60,7 @@ struct ActiveSessionJournal {
                 elapsedSeconds: metadata.elapsedSeconds,
                 wasPaused: metadata.wasPaused,
                 activityType: metadata.activityType,
+                autoPauseEnabled: metadata.autoPauseEnabled,
                 walkingStepCount: metadata.walkingStepCount,
                 companionType: metadata.companionType,
                 routeGuidanceRecoverySeed: metadata.routeGuidanceRecoverySeed,
@@ -84,6 +88,7 @@ struct ActiveSessionJournal {
                 elapsedSeconds: elapsedSeconds,
                 wasPaused: wasPaused,
                 activityType: activityType,
+                autoPauseEnabled: autoPauseEnabled,
                 walkingStepCount: walkingStepCount,
                 companionType: companionType,
                 routeGuidanceRecoverySeed: routeGuidanceRecoverySeed,
@@ -136,6 +141,7 @@ struct ActiveSessionJournal {
         let elapsedSeconds: Int
         let wasPaused: Bool
         let activityType: ActivityType?
+        let autoPauseEnabled: Bool?
         let walkingStepCount: Int?
         let companionType: ActivityCompanionType?
         let routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?
