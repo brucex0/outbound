@@ -60,6 +60,7 @@
     <string name="assistant_destination_music_summary">连接音乐服务并选择训练音乐。</string>
     <string name="assistant_accessibility_open_destination">打开%1$s</string>
     <string name="assistant_listening">正在聆听…</string>
+    <string name="assistant_stop_listening">停止聆听</string>
     <string name="assistant_speech_error">语音识别暂不可用，你可以改为输入请求。</string>
     <string name="assistant_today_easier">降低这次训练的强度</string>
     <string name="assistant_prompt_today_easier">请降低今天训练的强度</string>

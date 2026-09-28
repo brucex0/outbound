@@ -40,13 +40,10 @@ class AssistantViewModel @Inject constructor(
     private var accountId: String? = null
 
     val suggestions = listOf(
-        AssistantSuggestion("discover", AssistantCapability.Discover, context.getString(R.string.assistant_suggestion_discover), context.getString(R.string.assistant_prompt_discover)),
+        AssistantSuggestion("log-workout", AssistantCapability.Plan, context.getString(R.string.assistant_suggestion_log_workout), context.getString(R.string.assistant_prompt_log_workout)),
+        AssistantSuggestion("plan", AssistantCapability.Plan, context.getString(R.string.assistant_suggestion_plan), context.getString(R.string.assistant_prompt_plan)),
         AssistantSuggestion("support", AssistantCapability.Support, context.getString(R.string.assistant_suggestion_support), context.getString(R.string.assistant_prompt_support)),
         AssistantSuggestion("brainstorm", AssistantCapability.Brainstorm, context.getString(R.string.assistant_suggestion_brainstorm), context.getString(R.string.assistant_prompt_brainstorm)),
-        AssistantSuggestion("plan", AssistantCapability.Plan, context.getString(R.string.assistant_suggestion_plan), context.getString(R.string.assistant_prompt_plan)),
-        AssistantSuggestion("log-workout", AssistantCapability.Plan, context.getString(R.string.assistant_suggestion_log_workout), context.getString(R.string.assistant_prompt_log_workout)),
-        AssistantSuggestion("live-status", AssistantCapability.Plan, context.getString(R.string.assistant_live_status), context.getString(R.string.assistant_prompt_live_status)),
-        AssistantSuggestion("live-focus", AssistantCapability.Discover, context.getString(R.string.assistant_live_focus), context.getString(R.string.assistant_prompt_live_focus)),
     )
 
     fun initialize(accountId: String) {
@@ -140,7 +137,7 @@ class AssistantViewModel @Inject constructor(
                 recentMessages = state.value.conversation.messages.takeLast(12),
                 clientCapabilities = listOf("action-confirmation", "memory-controls", "context-receipt"),
                 timeZoneIdentifier = TimeZone.getDefault().id,
-            ))
+            ), visibleUserText = prompt)
             if (result is ApiResult.Failure) {
                 repository.appendAssistantMessage(account, fallback(capability, screen), capability)
             }

@@ -16,7 +16,9 @@ Open this file when changing Android assistant behavior, its launcher entry poin
 ## State and behavior contract
 
 - Persistent launcher is available from Social, Today, and Me. The live recording HUD exposes a compact assistant entry alongside voice commands.
-- The assistant starts with a persisted introduction and offers Discover, Navigate, Support, Brainstorm, and Plan prompts. Today and live-session contexts replace generic prompts with context-specific suggestions.
+- The assistant starts with a persisted introduction and offers the same contextual quick starts as iOS: Today workout prompts when available, otherwise Log a workout, Plan, Support, and Brainstorm.
+- The conversation stores the user's original text for display and transcript history; product context is added only to the service request and is never rendered as a message.
+- The composer stays above the software keyboard, and voice listening status stays beside the composer with an animated waveform.
 - Turns send the current surface, inferred companion task, bounded recent transcript, and device time zone to `POST /v1/companion/turns`. Assistant text and actions remain separate from analytics.
 - Companion action confirmations show the server title, explanation, accept, and reject labels. Accept/reject outcomes are appended to the transcript; successful Today mutations trigger a Today refresh.
 - A recognized navigation request uses a local typed destination catalog, adds an explicit Open action, then routes within the app. It cannot choose arbitrary views.

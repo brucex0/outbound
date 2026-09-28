@@ -60,6 +60,7 @@
     <string name="assistant_destination_music_summary">Conecta un servicio de música y elige música para entrenar.</string>
     <string name="assistant_accessibility_open_destination">Abrir %1$s</string>
     <string name="assistant_listening">Escuchando…</string>
+    <string name="assistant_stop_listening">Dejar de escuchar</string>
     <string name="assistant_speech_error">El reconocimiento de voz no está disponible. Puedes escribir tu solicitud.</string>
     <string name="assistant_today_easier">Haz más suave este entrenamiento</string>
     <string name="assistant_prompt_today_easier">Haz más suave el entrenamiento de hoy</string>

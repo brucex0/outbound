@@ -84,8 +84,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 - `RecordView` owns the compact live-session assistant entry.
 - `AssistantView` remains the expanded assistant surface with:
   - a short hero summary
-  - five capability chips: Discover, Navigate, Support, Brainstorm, Plan
-  - quick-start prompt cards
+  - contextual quick-start prompt cards (Today shows workout-focused prompts; other screens show Log a workout, Plan, Support, and Brainstorm)
   - a lightweight conversation timeline
   - a bottom composer with a microphone shortcut for short activity-start commands, including an animated listening wave and live transcript text in the composer
 - The Today workout card no longer carries a separate sparkle button or `Ask companion` menu action. Its assistant work uses the global `AssistantStore` transcript and Today-focused context.

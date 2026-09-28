@@ -37,7 +37,7 @@ fun createCompanionApi(baseUrl: String, client: OkHttpClient): CompanionApi = Re
 interface CompanionRepository {
     val state: StateFlow<CompanionConversationState>
     suspend fun restore(accountId: String, conversationKey: String = "android-assistant")
-    suspend fun send(accountId: String, request: CompanionTurnRequest): ApiResult<CompanionTurnResponse>
+    suspend fun send(accountId: String, request: CompanionTurnRequest, visibleUserText: String = request.prompt): ApiResult<CompanionTurnResponse>
     suspend fun decide(accountId: String, actionId: String, accept: Boolean): ApiResult<CompanionDecisionResponse>
     suspend fun reset(accountId: String, conversationKey: String = "android-assistant")
     suspend fun appendAssistantMessage(accountId: String, text: String, capability: AssistantCapability? = null)
@@ -56,13 +56,13 @@ class OfflineFirstCompanionRepository(
     override suspend fun restore(accountId: String, conversationKey: String) = mutex.withLock {
         val saved = cache.get(accountId, NAMESPACE, conversationKey, LOCALE)?.payloadJson
             ?.let { runCatching { PlainstrideJson.decodeFromString<PersistedConversation>(it) }.getOrNull() }
-        mutableState.value = CompanionConversationState(messages = saved?.messages.orEmpty().takeLast(MAX_MESSAGES))
+        mutableState.value = CompanionConversationState(messages = saved?.messages.orEmpty().takeLast(MAX_MESSAGES).map(::visibleMessage))
     }
 
-    override suspend fun send(accountId: String, request: CompanionTurnRequest): ApiResult<CompanionTurnResponse> = mutex.withLock {
+    override suspend fun send(accountId: String, request: CompanionTurnRequest, visibleUserText: String): ApiResult<CompanionTurnResponse> = mutex.withLock {
         val prompt = request.prompt.trim().take(MAX_PROMPT)
         require(prompt.isNotEmpty())
-        val user = CompanionMessage("user", prompt, Instant.now().toString())
+        val user = CompanionMessage("user", visibleUserText.trim().take(MAX_PROMPT), Instant.now().toString())
         val history = (mutableState.value.messages + user).takeLast(MAX_MESSAGES)
         mutableState.value = mutableState.value.copy(messages = history, sending = true, lastFailure = null)
         persist(accountId, request.conversationKey, history)
@@ -127,6 +127,23 @@ class OfflineFirstCompanionRepository(
         "something went wrong. please try again.",
         "sorry, something went wrong.",
     )
+
+    private fun visibleMessage(message: CompanionMessage): CompanionMessage {
+        if (message.role != "user") return message
+        val catalogMarkers = listOf(
+            "\n\nUse this current Plainstride feature catalog as the source of truth.",
+            "\n\nUsa este catálogo actual de Plainstride como fuente de verdad.",
+            "\n\n请以这份最新的 Plainstride 功能目录为准，",
+        )
+        val marker = catalogMarkers.firstOrNull { message.text.contains(it) } ?: return message
+        val rawRequest = message.text.substringBefore(marker)
+        val request = if (rawRequest.startsWith("用户请求：")) {
+            rawRequest.substringAfter("用户请求：")
+        } else {
+            rawRequest.substringAfter(":")
+        }.trim()
+        return message.copy(text = request)
+    }
 
     private companion object { const val NAMESPACE = "companion"; const val LOCALE = "all"; const val MAX_MESSAGES = 40; const val MAX_PROMPT = 8_000 }
 }

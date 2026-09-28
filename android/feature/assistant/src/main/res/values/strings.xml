@@ -60,6 +60,7 @@
     <string name="assistant_destination_music_summary">Connect a music service and choose music for an activity.</string>
     <string name="assistant_accessibility_open_destination">Open %1$s</string>
     <string name="assistant_listening">Listening…</string>
+    <string name="assistant_stop_listening">Stop listening</string>
     <string name="assistant_speech_error">Speech recognition is unavailable. You can type your request instead.</string>
     <string name="assistant_today_easier">Make this workout easier</string>
     <string name="assistant_prompt_today_easier">Make today’s workout easier</string>
