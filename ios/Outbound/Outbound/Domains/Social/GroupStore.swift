@@ -92,7 +92,9 @@ final class GroupStore: ObservableObject {
             let existingDetails = Dictionary(uniqueKeysWithValues: groups.map { ($0.id, $0) })
             groups = ordered(response.groups.map { summary in
                 guard let detail = existingDetails[summary.id], detail.isDetailedPayload else { return summary }
-                return detail
+                var refreshedDetail = detail
+                refreshedDetail.unreadNoticeCount = summary.unreadNoticeCount
+                return refreshedDetail
             })
             persistCurrentState()
             errorMessage = nil

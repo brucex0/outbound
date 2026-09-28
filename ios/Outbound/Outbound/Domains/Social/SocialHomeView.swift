@@ -1643,6 +1643,14 @@ private struct SocialGroupsView: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            if unreadNoticeCount(for: group) > 0 {
+                Text(String(localized: "group.notices.unread", defaultValue: "Unread"))
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(OutboundPalette.companion)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(OutboundPalette.companion.opacity(0.12), in: Capsule())
+            }
             if let trailing {
                 Image(systemName: trailing)
                     .font(.caption.weight(.semibold))
@@ -1661,6 +1669,10 @@ private struct SocialGroupsView: View {
                 .buttonStyle(.bordered)
             }
         }
+    }
+
+    private func unreadNoticeCount(for group: SocialGroupDTO) -> Int {
+        groupStore.groups.first(where: { $0.id == group.id })?.unreadNoticeCount ?? 0
     }
 
     private func invitationCard(_ invitation: GroupInvitationDTO) -> some View {
