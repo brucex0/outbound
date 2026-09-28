@@ -842,6 +842,7 @@ struct RecordView: View {
                 .simultaneousGesture(sessionPageSwipeGesture)
                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.24), value: activePage)
             }
+            .ignoresSafeArea()
 
             if let countdownStep {
                 ActivityStartCountdownOverlay(
