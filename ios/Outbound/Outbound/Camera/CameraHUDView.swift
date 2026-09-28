@@ -612,15 +612,10 @@ private struct HoldToPauseControl: View {
                 .background(tint, in: Circle())
                 .overlay { holdProgressRing }
             } else {
-                HStack(spacing: 12) {
-                    Image(systemName: "pause.fill")
-                        .font(.headline.weight(.bold))
-
+                HStack {
                     Text(String(localized: "session.action.pause.hold", defaultValue: "Hold to pause"))
                         .font(.headline.weight(.bold))
                         .frame(maxWidth: .infinity)
-
-                    holdProgressIndicator
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: size)
@@ -656,22 +651,6 @@ private struct HoldToPauseControl: View {
             }
             .padding(1)
             .accessibilityHidden(true)
-    }
-
-    private var holdProgressIndicator: some View {
-        ZStack {
-            Circle()
-                .stroke(.white.opacity(0.35), lineWidth: 2)
-            Circle()
-                .trim(from: 0, to: holdProgress)
-                .stroke(.white, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-            Image(systemName: "hand.tap.fill")
-                .font(.caption2.weight(.bold))
-                .opacity(holdProgress == 0 ? 0.9 : 0)
-        }
-        .frame(width: 26, height: 26)
-        .accessibilityHidden(true)
     }
 
     private func updatePressProgress(_ isPressing: Bool) {
