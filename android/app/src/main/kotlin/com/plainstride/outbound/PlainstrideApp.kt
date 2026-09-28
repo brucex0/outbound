@@ -113,6 +113,7 @@ import com.plainstride.outbound.connectivity.ConnectivityUiState
 import com.plainstride.outbound.core.auth.SessionState
 import com.plainstride.outbound.core.designsystem.PlainstrideFloatingAction
 import com.plainstride.outbound.core.designsystem.PlainstrideFloatingActionStyle
+import com.plainstride.outbound.core.designsystem.LocalPlainstrideThemeColors
 import com.plainstride.outbound.core.designsystem.PrimaryBottomToolbarClearance
 import com.plainstride.outbound.feature.activity.ActivityHistoryRoute
 import com.plainstride.outbound.feature.activity.ActivityMessage
@@ -149,6 +150,7 @@ import com.plainstride.outbound.feature.livecoach.LiveCoachRecordingEffect
 import com.plainstride.outbound.feature.livecoach.LiveCoachSettingsSection
 import com.plainstride.outbound.feature.assistant.AssistantRoute
 import com.plainstride.outbound.feature.assistant.MusicRoute
+import com.plainstride.outbound.feature.assistant.MusicViewModel
 import com.plainstride.outbound.core.assistant.VoiceSport
 import com.plainstride.outbound.feature.social.SocialRoute
 import com.plainstride.outbound.feature.today.WorkoutLaunchIntent
@@ -297,6 +299,8 @@ private fun SignedInApp(
     val rewardsViewModel: RewardsViewModel = hiltViewModel()
     val rewardsState by rewardsViewModel.state.collectAsStateWithLifecycle()
     val reminderViewModel: ReminderViewModel = hiltViewModel()
+    val musicViewModel: MusicViewModel = hiltViewModel()
+    val musicState by musicViewModel.music.collectAsStateWithLifecycle()
     val integration by integrationViewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(accountId) { accountId?.let { integrationViewModel.start(it, resources.configuration.locales[0].toLanguageTag());cycleViewModel.start(it);healthViewModel.start(it) } }
     LaunchedEffect(accountId) { accountId?.let(connectivityViewModel::start) }
@@ -453,6 +457,7 @@ private fun SignedInApp(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f),
                         tonalElevation = 0.dp,
                     ) {
+                        val themeColors = LocalPlainstrideThemeColors.current
                         TopLevelDestination.entries.forEach { destination ->
                             val isContextualStart = destination == TopLevelDestination.Today && contextualStart
                             NavigationBarItem(
@@ -469,6 +474,11 @@ private fun SignedInApp(
                                     }
                                 },
                                 icon = {
+                                    val iconTint = when {
+                                        isContextualStart -> themeColors.action
+                                        destination == primaryDestination -> MaterialTheme.colorScheme.primary
+                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
                                     Icon(
                                         imageVector = when {
                                             isContextualStart -> Icons.Default.PlayCircle
@@ -479,10 +489,18 @@ private fun SignedInApp(
                                         contentDescription = stringResource(
                                             if (isContextualStart) TodayR.string.today_start else destination.label,
                                         ),
+                                        tint = iconTint,
                                     )
                                 },
                                 label = null,
                                 alwaysShowLabel = false,
+                                colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    indicatorColor = Color.Transparent,
+                                ),
                             )
                         }
                     }
@@ -533,6 +551,8 @@ private fun SignedInApp(
                                 navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
                             },
                             onOpenMusic = { navController.navigate(MUSIC_ROUTE) },
+                            musicConfigured = musicState.queue.items.isNotEmpty() || musicState.playback.isPlaying,
+                            shoesConfigured = integration.defaultGearId != null,
                             onOpenLiveTrack = { navController.navigate(SAFETY_ROUTE) },
                             onOpenShoes = { navController.navigate(PROGRESS_ROUTE) },
                             onOpenInbox = { navController.navigate(NOTIFICATIONS_ROUTE) },
