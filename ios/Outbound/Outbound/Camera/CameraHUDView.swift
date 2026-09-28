@@ -612,7 +612,17 @@ private struct HoldToPauseControl: View {
                 .background(tint, in: Circle())
                 .overlay { holdProgressRing }
             } else {
-                HStack {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(tint)
+
+                    GeometryReader { geometry in
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(.white.opacity(0.2))
+                            .frame(width: geometry.size.width * holdProgress)
+                    }
+                    .accessibilityHidden(true)
+
                     Text(String(localized: "session.action.pause.hold", defaultValue: "Hold to pause"))
                         .font(.headline.weight(.bold))
                         .frame(maxWidth: .infinity)
@@ -620,7 +630,7 @@ private struct HoldToPauseControl: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: size)
                 .foregroundStyle(.white)
-                .background(tint, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
         }
         .foregroundStyle(.white)
