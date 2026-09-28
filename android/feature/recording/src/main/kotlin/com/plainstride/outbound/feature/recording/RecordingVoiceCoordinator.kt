@@ -127,20 +127,35 @@ class RecordingVoiceCoordinator @Inject constructor(
 
     private fun completeTextToSpeechInitialization(status: Int, initialization: CompletableDeferred<Boolean>) {
         val engine = textToSpeech?.takeIf { status == TextToSpeech.SUCCESS }
-        val ready = engine != null
+        val readyEngine = engine?.takeIf(::selectSpeechLanguage)
+        val ready = readyEngine != null
         textToSpeechReady = ready
-        if (ready) {
-            engine.language = Locale.getDefault()
-            engine.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+        if (readyEngine != null) {
+            readyEngine.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
             while (pendingSpeech.isNotEmpty()) {
                 val (pendingMessage, pendingQueueMode) = pendingSpeech.removeFirst()
-                speakNow(engine, pendingMessage, pendingQueueMode)
+                speakNow(readyEngine, pendingMessage, pendingQueueMode)
             }
         } else {
             pendingSpeech.clear()
         }
         if (!initialization.isCompleted) initialization.complete(ready)
     }
+
+    private fun selectSpeechLanguage(engine: TextToSpeech): Boolean {
+        val preferred = preferredSpeechLocale()
+        val candidates = listOf(preferred, Locale.forLanguageTag(preferred.language), Locale.US).distinct()
+        for (locale in candidates) {
+            val availability = engine.isLanguageAvailable(locale)
+            if (availability >= TextToSpeech.LANG_AVAILABLE && engine.setLanguage(locale) >= TextToSpeech.LANG_AVAILABLE) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun preferredSpeechLocale(): Locale =
+        context.resources.configuration.locales[0] ?: Locale.getDefault()
 
     private fun speakNow(engine: TextToSpeech, message: String, queueMode: Int) =
         engine.speak(message, queueMode, null, "recording-speech-${System.nanoTime()}")

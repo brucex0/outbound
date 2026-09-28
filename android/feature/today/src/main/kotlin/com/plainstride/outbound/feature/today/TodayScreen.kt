@@ -145,7 +145,7 @@ fun TodayRoute(
     activeSession: Boolean,
     completedToday: Boolean,
     onStartWorkout: (WorkoutLaunchIntent, TodayLaunchOptions) -> Unit,
-    onStartFreestyle: () -> Unit,
+    onStartFreestyle: (TodayLaunchOptions) -> Unit,
     onReturnToSession: () -> Unit,
     onSetUpPlan: () -> Unit,
     onBuildPlan: () -> Unit = onSetUpPlan,
@@ -256,7 +256,7 @@ fun TodayScreen(
     weather: WeatherGuidance?,
     onRefresh: () -> Unit,
     onStart: (ActivitySuggestion, String, TodayLaunchOptions) -> Unit,
-    onStartFreestyle: () -> Unit,
+    onStartFreestyle: (TodayLaunchOptions) -> Unit,
     onReturnToSession: () -> Unit,
     onSetUpPlan: () -> Unit,
     onBuildPlan: () -> Unit,
@@ -323,7 +323,7 @@ fun TodayScreen(
     val launchPreparedActivity = {
         if (activityChoice == TodayActivityChoice.PLANNED) {
             suggestion?.let { onStart(it, "today_planned", TodayLaunchOptions(indoor, voiceGuideEnabled, companionType)) }
-                ?: onStartFreestyle()
+                ?: onStartFreestyle(TodayLaunchOptions(indoor, voiceGuideEnabled, companionType))
         } else {
             val catalogVersion = (state.catalog as? CachedResource.Available)?.value?.version
             onStartManual(TodayManualLaunch(activityChoice, goalChoice, distanceMeters, durationSeconds, calories, indoor, voiceGuideEnabled, curatedWorkout, catalogVersion, companionType))
@@ -385,7 +385,7 @@ fun TodayScreen(
                     )
                     state.hasNoCachedSuggestion -> NoSuggestionCard(
                         noPlan = (state.planning as? CachedResource.Available)?.value?.plan == null,
-                        onStartFreestyle = onStartFreestyle,
+                        onStartFreestyle = { onStartFreestyle(TodayLaunchOptions(indoor, voiceGuideEnabled, companionType)) },
                         onSetUpPlan = onSetUpPlan,
                         onRefresh = onRefresh,
                     )

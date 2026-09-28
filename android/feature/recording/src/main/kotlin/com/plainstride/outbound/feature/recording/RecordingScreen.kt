@@ -89,13 +89,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.Canvas
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -350,11 +353,12 @@ fun RecordingRoute(
 
     LaunchedEffect(ui.countdown) {
         val current = ui.countdown ?: return@LaunchedEffect
-        if (ui.countdownVoiceReady) viewModel.speakCountdown(current)
-        delay(1_000)
-        if (current > 1) viewModel.updateCountdown(current - 1)
+        if (ui.countdownVoiceReady) {
+            if (current == 0) viewModel.speakGo() else viewModel.speakCountdown(current)
+        }
+        delay(if (current == 0) 420L else 1_000L)
+        if (current > 0) viewModel.updateCountdown(current - 1)
         else {
-            if (ui.countdownVoiceReady) viewModel.speakGo()
             val permission = permissionState()
             if (!ui.launch.indoor && !(BuildConfig.DEBUG && ui.launch.simulatedRunEnabled) && permission != LocationPermissionState.PRECISE && permission != LocationPermissionState.APPROXIMATE) {
                 viewModel.clearCountdown()
@@ -462,10 +466,17 @@ fun RecordingRoute(
                 onSimulationClock = viewModel::toggleRunSimulationClock,
                 onSimulationAdvance = viewModel::advanceRunSimulation,
             )
-            ui.countdown != null -> CountdownScreen(ui.countdown!!, onCancel = {
-                viewModel.cancelCountdown()
-                onExit()
-            })
+            ui.countdown != null -> CountdownScreen(
+                value = ui.countdown!!,
+                snapshot = snapshot,
+                configuration = ui.launch,
+                locationPermission = permissionState(),
+                runSimulation = snapshot.runSimulation,
+                onCancel = {
+                    viewModel.cancelCountdown()
+                    onExit()
+                },
+            )
             launch.startImmediately || ui.launch.startImmediately -> StartingActivityScreen()
             else -> ActivitySetupScreen(
                 configuration = ui.launch,
@@ -664,12 +675,51 @@ private fun ActivitySetupScreen(
 }
 
 @Composable
-private fun CountdownScreen(value: Int, onCancel: () -> Unit) {
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
-        Text(value.toString(), style = MaterialTheme.typography.displayLarge, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Black,
-            modifier = Modifier.semantics { contentDescription = value.toString() })
+private fun CountdownScreen(
+    value: Int,
+    snapshot: RecordingSnapshot,
+    configuration: RecordingLaunchConfiguration,
+    locationPermission: LocationPermissionState,
+    runSimulation: RunSimulationState?,
+    onCancel: () -> Unit,
+) {
+    val progress = (4 - value.coerceIn(0, 3)) / 4f
+    val label = if (value == 0) stringResource(R.string.recording_go) else value.toString()
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        TrackMap(snapshot, configuration, locationPermission, runSimulation, Modifier.fillMaxSize())
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.42f)))
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Box(Modifier.size(188.dp), contentAlignment = Alignment.Center) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val stroke = 8.dp.toPx()
+                    drawArc(
+                        color = Color.White.copy(alpha = 0.2f),
+                        startAngle = -90f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        style = Stroke(stroke),
+                    )
+                    drawArc(
+                        color = Color(0xFFFF9F0A),
+                        startAngle = -90f,
+                        sweepAngle = 360f * progress,
+                        useCenter = false,
+                        style = Stroke(stroke, cap = StrokeCap.Round),
+                    )
+                }
+                Text(
+                    label,
+                    style = if (value == 0) MaterialTheme.typography.displayMedium else MaterialTheme.typography.displayLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    modifier = Modifier.semantics { contentDescription = label },
+                )
+            }
+            Text("Plainstride", style = MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.86f), fontWeight = FontWeight.SemiBold)
+        }
         TextButton(onClick = onCancel, modifier = Modifier.align(Alignment.BottomCenter).padding(32.dp)) {
-            Text(stringResource(R.string.recording_cancel), color = MaterialTheme.colorScheme.onPrimary)
+            Text(stringResource(R.string.recording_cancel), color = Color.White)
         }
     }
 }

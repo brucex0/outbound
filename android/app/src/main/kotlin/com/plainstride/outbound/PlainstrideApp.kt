@@ -538,8 +538,15 @@ private fun SignedInApp(
                                 recordingLaunch = intent.toRecordingLaunch().copy(gearId = integration.defaultGearId,privateTrainingSignal=cycleState.currentSignal.takeIf{cycleState.enabled&&it!=CycleTrainingSignal.NO_ADJUSTMENT}?.wireValue,startImmediately=true,indoor=options.indoor,voiceGuideEnabled=options.voiceGuideEnabled,companionType=options.companionType)
                                 navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
                             },
-                            onStartFreestyle = {
-                                recordingLaunch = RecordingLaunchConfiguration(gearId = integration.defaultGearId)
+                            onStartFreestyle = { options ->
+                                recordingLaunch = RecordingLaunchConfiguration(
+                                    gearId = integration.defaultGearId,
+                                    entrySource = "today_freestyle",
+                                    startImmediately = true,
+                                    indoor = options.indoor,
+                                    voiceGuideEnabled = options.voiceGuideEnabled,
+                                    companionType = options.companionType,
+                                )
                                 navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
                             },
                             onReturnToSession = { navController.navigate(RECORDING_ROUTE) { launchSingleTop = true } },
