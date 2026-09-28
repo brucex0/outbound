@@ -11947,6 +11947,22 @@
         }
       }
     },
+    "record.setup.auto_pause": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausa automática"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动暂停"
+          }
+        }
+      }
+    },
     "record.setup.more_options": {
       "localizations": {
         "es": {

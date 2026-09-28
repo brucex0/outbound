@@ -42,6 +42,7 @@ final class ActivityRecorder: ObservableObject {
     @Published private(set) var heartRateEffort: PlainstrideHeartRateEffort = .unavailable
     @Published var liveSnapshot: ActiveSessionSnapshot = .empty
     @Published var autoPaused = false
+    private(set) var autoPauseEnabled = true
     @Published private(set) var lastAutoPauseRecoveredDurationSeconds = 0
     @Published private(set) var recoveredSession = false
     @Published private(set) var recoveredAwaitingSave = false
@@ -120,6 +121,7 @@ final class ActivityRecorder: ObservableObject {
 
     func start(
         activityType: ActivityType = .running,
+        autoPauseEnabled: Bool? = nil,
         routeGuidance: ActiveRouteGuidanceJournal? = nil,
         canonicalStartDate: Date? = nil,
         sessionMetadata: ActivityRecordingSessionMetadata? = nil,
@@ -142,6 +144,7 @@ final class ActivityRecorder: ObservableObject {
         currentSegmentStartDate = now
         accumulatedActiveDuration = max(0, now.timeIntervalSince(resolvedStartDate))
         self.activityType = activityType
+        self.autoPauseEnabled = autoPauseEnabled ?? AutoPauseDefaults.isEnabled(for: activityType)
         self.sessionMetadata = sessionMetadata
         self.companionType = companionType
         recoveredWatchLifecycle = nil
@@ -613,6 +616,10 @@ final class ActivityRecorder: ObservableObject {
 #if DEBUG
         guard runSimulationState == nil else { return }
 #endif
+        guard autoPauseEnabled else {
+            resetAutoPauseCandidate()
+            return
+        }
         guard Double(currentElapsedSeconds(at: now)) >= autoPauseWarmupSeconds else {
             resetAutoPauseCandidate()
             return
@@ -638,6 +645,10 @@ final class ActivityRecorder: ObservableObject {
 #if DEBUG
         guard runSimulationState == nil else { return }
 #endif
+        guard autoPauseEnabled else {
+            resetAutoResumeCandidate()
+            return
+        }
         guard let speed = locationManager.currentSpeedMetersPerSecond else {
             resetAutoResumeCandidate()
             return
@@ -691,6 +702,7 @@ final class ActivityRecorder: ObservableObject {
         currentSegmentStartDate = nil
         elapsedSeconds = journal.elapsedSeconds
         activityType = journal.activityType ?? .running
+        autoPauseEnabled = journal.autoPauseEnabled ?? AutoPauseDefaults.isEnabled(for: activityType)
         companionType = journal.companionType
         locationManager.restoreTracking(
             from: points,
@@ -775,6 +787,7 @@ final class ActivityRecorder: ObservableObject {
             elapsedSeconds: elapsedSeconds,
             wasPaused: state == .paused,
             activityType: activityType,
+            autoPauseEnabled: autoPauseEnabled,
             walkingStepCount: walkingStepCount,
             companionType: companionType,
             routeGuidanceRecoverySeed: routeGuidance?.recoverySeed,

@@ -100,6 +100,9 @@ Track:
 - `live_share_enabled`;
 - `indoor`;
 - `voice_guide_enabled`.
+- `auto_pause_enabled`.
+
+Auto Pause setup changes use `activity_configuration_changed` with `change_type=auto_pause`, the enabled/disabled selection, and canonical activity type. The preference value is also captured on `activity_started`.
 
 `activity_saved` may add coarse duration, distance, goal-completion, and photo-count buckets. Keep exact activity facts in the activity record, not general product analytics.
 
