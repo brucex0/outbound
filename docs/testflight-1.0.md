@@ -1,4 +1,4 @@
-# TestFlight and App Store 1.7.3 Submission Sheet
+# TestFlight and App Store 1.7.4 Submission Sheet
 
 Open this for the current TestFlight upload and public App Store release. Product behavior and release mechanics remain in `docs/app-store-release.md`.
 
@@ -7,8 +7,8 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - App Store name: `Plainstride` (confirm availability in App Store Connect).
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
-- Version: `1.7.3`
-- Build: `47`
+- Version: `1.7.4`
+- Build: `48`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -54,11 +54,11 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- ui tests
-- [BE] Ground live coach planning in reliable evidence
-- Add hold to pause strings
-- [iOS] Cue validated race pace deviations
-- [iOS] Detect major live pace shifts
+- [iOS] Avoid release compiler crash in feed controller
+- [Droid] Match post-save celebration with iOS
+- [iOS] Add sundae burst to saved activity celebration
+- [iOS] Add debug Harvest route to route library
+- [iOS] Replace filler stretch with reviewed routines
 - Plus 50 more fixes and improvements
 
 ### App Store What's New
@@ -178,6 +178,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.7.3 (47)`, validate, and upload from Xcode Organizer.
+- Archive `1.7.4 (48)`, validate, and upload from Xcode Organizer.
 - After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.
