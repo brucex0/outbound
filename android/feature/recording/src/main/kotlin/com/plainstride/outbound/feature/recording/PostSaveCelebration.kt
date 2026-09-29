@@ -31,7 +31,6 @@ import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -52,7 +51,7 @@ fun PostSaveCelebration(
     sessionKey: String,
     onDone: () -> Unit,
 ) {
-    val context = LocalContext.current
+    val accessibilityLabel = stringResource(R.string.recording_post_save_accessibility)
     val reducedMotion = remember { !ValueAnimator.areAnimatorsEnabled() }
     val progress = remember(sessionKey) { Animatable(if (reducedMotion) 1f else 0f) }
     val points = remember(track) { normalizedRoute(track) }
@@ -67,7 +66,7 @@ fun PostSaveCelebration(
         modifier = Modifier
             .fillMaxSize()
             .background(PostcardBackdrop)
-            .semantics { contentDescription = context.getString(R.string.recording_post_save_accessibility) }
+            .semantics { contentDescription = accessibilityLabel }
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
