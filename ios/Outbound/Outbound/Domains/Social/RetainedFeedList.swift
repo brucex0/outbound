@@ -35,6 +35,11 @@ struct RetainedFeedList<Row: Identifiable & Equatable, Content: View>: UIViewCon
         private let refreshControl = UIRefreshControl()
         private var refreshTask: Task<Void, Never>?
 
+        // Keep this generic controller's deinitializer nonisolated. Swift 6.3.2
+        // crashes in EarlyPerfInliner when optimizing synthesized isolated
+        // deinits for generic classes that target iOS versions below 26.
+        nonisolated deinit {}
+
         override func loadView() {
             let layout = UICollectionViewFlowLayout()
             layout.scrollDirection = .vertical
