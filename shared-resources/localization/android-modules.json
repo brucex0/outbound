@@ -71,6 +71,15 @@
       "file": "finish_review.xml"
     },
     { "keyPrefix": "record.setup", "androidPrefix": "", "resourceRoot": "android/feature/recording/src/main/res", "file": "auto_pause.xml" },
+    {
+      "keyPrefix": "recording_post_save",
+      "androidPrefix": "recording_post_save_",
+      "sources": [
+        { "keyPrefix": "activity.post_save", "androidPrefix": "recording_post_save_" }
+      ],
+      "resourceRoot": "android/feature/recording/src/main/res",
+      "file": "post_save_celebration.xml"
+    },
     { "keyPrefix": "safety", "androidPrefix": "", "resourceRoot": "android/feature/safety/src/main/res", "file": "strings.xml" },
     { "keyPrefix": "settings", "androidPrefix": "", "resourceRoot": "android/feature/settings/src/main/res", "file": "strings.xml" },
     { "keyPrefix": "social", "androidPrefix": "social_", "resourceRoot": "android/feature/social/src/main/res", "file": "strings.xml" },

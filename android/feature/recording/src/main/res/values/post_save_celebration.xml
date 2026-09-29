@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
+<resources>
+    <string name="recording_post_save_accessibility">Activity saved celebration</string>
+    <string name="recording_post_save_done">Done</string>
+    <string name="recording_post_save_message">You made time for this today.</string>
+</resources>

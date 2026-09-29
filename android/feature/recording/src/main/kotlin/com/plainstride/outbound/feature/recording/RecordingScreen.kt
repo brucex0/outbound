@@ -195,8 +195,30 @@ fun RecordingRoute(
     var postSaveStretchKind by remember { mutableStateOf<ActivityKind?>(null) }
     var postSaveReview by remember { mutableStateOf<RecordedActivityReview?>(null) }
     var postSavePhotoAlbumExport by remember { mutableStateOf<ActivityPhotoAlbumExportResult?>(null) }
+    var postSaveCelebrationReview by remember { mutableStateOf<RecordedActivityReview?>(null) }
+    var didDismissPostSaveCelebration by remember { mutableStateOf(false) }
     val saveSnackbar = remember { SnackbarHostState() }
     val saveFailedMessage = stringResource(R.string.recording_save_failed)
+
+    fun finishPostSaveCelebration() {
+        if (didDismissPostSaveCelebration) return
+        didDismissPostSaveCelebration = true
+        postSaveCelebrationReview = null
+        if (postSaveStretchKind == null) {
+            val review = postSaveReview ?: return
+            val export = postSavePhotoAlbumExport
+            postSaveReview = null
+            postSavePhotoAlbumExport = null
+            onSaved(review, export)
+        }
+    }
+
+    LaunchedEffect(postSaveCelebrationReview?.snapshot?.sessionId) {
+        if (postSaveCelebrationReview != null) {
+            didDismissPostSaveCelebration = false
+            viewModel.trackPostSaveCelebrationExposed()
+        }
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -215,7 +237,12 @@ fun RecordingRoute(
             scope.launch {
                 val result = viewModel.saveFinished(review, exportPhoto, weightKilograms)
                 if (result.saved) {
-                    viewModel.markSaved(); onSavedSideEffects(review); val kind=review.snapshot.activityKind; if(PostWorkoutStretchCatalog.routine(kind)!=null){postSaveReview=review;postSavePhotoAlbumExport=overrideResult?:result.photoAlbumExport;postSaveStretchKind=kind}else onSaved(review,overrideResult?:result.photoAlbumExport)
+                    viewModel.markSaved()
+                    onSavedSideEffects(review)
+                    postSaveReview = review
+                    postSavePhotoAlbumExport = overrideResult ?: result.photoAlbumExport
+                    postSaveStretchKind = review.snapshot.activityKind.takeIf { PostWorkoutStretchCatalog.routine(it) != null }
+                    postSaveCelebrationReview = review
                 } else {
                     saveSnackbar.showSnackbar(saveFailedMessage)
                 }
@@ -533,7 +560,14 @@ fun RecordingRoute(
     }
 
     Box(modifier.fillMaxSize()) {
-        if (postSaveStretchKind != null) {
+        if (postSaveCelebrationReview != null) {
+            val review = requireNotNull(postSaveCelebrationReview)
+            PostSaveCelebration(
+                track = review.snapshot.track,
+                sessionKey = review.snapshot.sessionId ?: review.snapshot.recordedAtEpochMilliseconds.toString(),
+                onDone = ::finishPostSaveCelebration,
+            )
+        } else if (postSaveStretchKind != null) {
             PostWorkoutStretchRoute(
                 requireNotNull(postSaveStretchKind),
                 { val review = postSaveReview; val export = postSavePhotoAlbumExport; postSaveReview = null; postSavePhotoAlbumExport = null; postSaveStretchKind = null; if (review != null) onSaved(review, export) },
@@ -543,7 +577,7 @@ fun RecordingRoute(
             content()
             SnackbarHost(saveSnackbar, Modifier.align(Alignment.BottomCenter))
         }
-        if (isOffline && postSaveStretchKind == null) {
+        if (isOffline && postSaveStretchKind == null && postSaveCelebrationReview == null) {
             Surface(
                 modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
                     .semantics { contentDescription = context.getString(R.string.recording_offline_accessibility) },

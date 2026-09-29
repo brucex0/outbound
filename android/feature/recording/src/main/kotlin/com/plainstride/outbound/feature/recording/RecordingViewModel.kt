@@ -313,6 +313,12 @@ class RecordingViewModel @Inject constructor(
         )))
     }
     fun trackStretchEvent(name: String, kind: ActivityKind, result: String?) { val routine=PostWorkoutStretchCatalog.routine(kind)?:return; val p=mutableMapOf<AnalyticsProperty,Any>(AnalyticsProperty.ActivityType to kind.name.lowercase(),AnalyticsProperty.RoutineId to routine.id); result?.let{p[AnalyticsProperty.Result]=it}; if(name.startsWith("post_workout_stretch_")) analytics.record(AnalyticsEvent(name,p)) }
+
+    fun trackPostSaveCelebrationExposed() {
+        analytics.record(AnalyticsEvent("feature_exposed", mapOf(
+            AnalyticsProperty.Feature to "activity_post_save_celebration",
+        )))
+    }
     fun trackDashboardChanged(expanded: Boolean) = analytics.record(AnalyticsEvent(
         "activity_dashboard_changed",
         mapOf(AnalyticsProperty.Result to if (expanded) "expanded" else "compact"),

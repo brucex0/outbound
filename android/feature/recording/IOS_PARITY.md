@@ -30,6 +30,7 @@
 - The finish hero pages between route and photos. Photo captions follow iOS start / finish / route-distance rules, and every ordered photo with its capture time, route distance, plausible coordinate, and capture context is persisted with the activity.
 - Perceived effort matches iOS Easy / About right / Too hard choices, with continuation capacity shown only for Easy. Feedback is submitted through the existing workout feedback endpoint when the runner selected an answer. Finish stats use the shared calorie estimator and account measurement units.
 - Save is disabled below the shared iOS threshold of five minutes or 500 meters. Closing an eligible unsaved review requires destructive confirmation; an ineligible review closes directly, matching iOS.
+- A successful local save shows the shared activity postcard before the optional post-save stretch or activity-surface exit. It traces the saved route (or the fixed doodle path without a route), uses the shared vector runner and copy, auto-continues after four seconds, supports a Done skip, respects Android animator-duration scale, and emits only `feature_exposed/activity_post_save_celebration`.
 
 ## Resources, Analytics, And Accessibility
 
