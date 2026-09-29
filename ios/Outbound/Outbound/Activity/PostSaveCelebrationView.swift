@@ -45,6 +45,7 @@ struct PostSaveCelebrationCard: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var routeProgress: CGFloat = 0
     @State private var sundaeBurstProgress: CGFloat = 0
+    @State private var sundaeOpacity: CGFloat = 1
 
     private var routePoints: [CGPoint] {
         let coordinates = activity.routeCoordinates
@@ -81,11 +82,18 @@ struct PostSaveCelebrationCard: View {
             .onAppear {
                 routeProgress = reduceMotion ? 1 : 0
                 sundaeBurstProgress = reduceMotion ? 1 : 0
+                sundaeOpacity = 1
                 guard !reduceMotion else { return }
                 withAnimation(.easeInOut(duration: 1.4)) { routeProgress = 1 }
                 withAnimation(.spring(response: 0.42, dampingFraction: 0.58).delay(1.18)) {
                     sundaeBurstProgress = 1
                 }
+            }
+            .task(id: activity.id) {
+                let holdDuration: UInt64 = reduceMotion ? 2_000_000_000 : 3_600_000_000
+                try? await Task.sleep(nanoseconds: holdDuration)
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeOut(duration: 0.35)) { sundaeOpacity = 0 }
             }
     }
 
@@ -120,11 +128,11 @@ struct PostSaveCelebrationCard: View {
                     PostcardRunner(isReducedMotion: reduceMotion)
                         .frame(width: 48, height: 58)
                         .position(x: mascotPoint.x, y: mascotPoint.y)
-                        .opacity(routeProgress > 0.04 && sundaeBurstProgress < 0.22 ? 1 : 0)
+                        .opacity(routeProgress > 0.04 ? 1 : 0)
                 }
 
-                if sundaeBurstProgress > 0 {
-                    SundaeBurst(progress: sundaeBurstProgress)
+                if sundaeBurstProgress > 0 && sundaeOpacity > 0 {
+                    SundaeBurst(progress: sundaeBurstProgress, opacity: sundaeOpacity)
                         .frame(width: 88, height: 88)
                         .position(burstPoint)
                         .accessibilityHidden(true)
@@ -165,6 +173,7 @@ struct PostSaveCelebrationCard: View {
 
 private struct SundaeBurst: View {
     let progress: CGFloat
+    let opacity: CGFloat
 
     private let sprinkleColors: [Color] = [
         Color(red: 0.96, green: 0.35, blue: 0.48),
@@ -234,7 +243,7 @@ private struct SundaeBurst: View {
             context.fill(cherry, with: .color(Color(red: 0.88, green: 0.20, blue: 0.30)))
         }
         .scaleEffect(0.72 + 0.28 * progress)
-        .opacity(progress)
+        .opacity(opacity)
     }
 }
 

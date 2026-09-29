@@ -11,13 +11,13 @@ Give each saved activity a brief, personal moment of recognition. The celebratio
 - Show only after the activity has been durably saved locally. A failed or ineligible save never shows it.
 - Present a centered, rounded activity postcard over a softly tinted full-screen background.
 - Draw the saved route as a bright, rounded line when at least two route points exist. Normalize the coordinates into the postcard bounds; do not show map tiles or start/end labels. For activities without a route, use the same simple looping path on both platforms.
-- Animate the route drawing from start to finish over 1.4 seconds. A small, friendly runner mascot follows the line. As it reaches the finish, a playful ice-cream sundae pops in with a short sprinkle burst. Keep both illustrations simple vector geometry so both platforms can reproduce the same shapes without platform-specific emoji or system artwork.
+- Animate the route drawing from start to finish over 1.4 seconds. A small, friendly runner mascot follows the line. As it reaches the finish, a playful ice-cream sundae pops in with a short sprinkle burst, holds briefly, then fades away to uncover the route. Keep both illustrations simple vector geometry so both platforms can reproduce the same shapes without platform-specific emoji or system artwork.
 - Show one short, warm message. V1 default: “You made time for this today.” Use the same copy for every activity; do not imply a personal record or make claims from activity data.
 - Keep the post-save page open until the runner acts; do not auto-dismiss the celebration or automatically return to the main page.
 - For eligible Run, Bike, Hike, and Swim activities, place the postcard and celebration message at the top of the optional stretch page. Offer two selectable, timed routines: a full-body cooldown (about 5 minutes) and a focused hip-flexor, hamstring, and glute routine (about 2½ minutes). The runner can start the selected routine or choose `Done` to close the page.
 - For ineligible activities, show the postcard, message, and localized `Done` action without stretch choices.
 - The celebration card's route trace runs once over 1.4 seconds, then remains visible while the runner chooses what to do.
-- Respect Reduce Motion / system animator duration scale: show the completed route, mascot pose, and fully formed sundae without tracing, movement, or flying sprinkles. Do not play sound or haptics in V1.
+- Respect Reduce Motion / system animator duration scale: show the completed route, mascot pose, and fully formed sundae without tracing, movement, or flying sprinkles; fade the sundae after a short pause. Do not play sound or haptics in V1.
 - Keep user-authored content and route coordinates out of analytics. Record a bounded `activity_post_save_celebration` feature exposure and stretch funnel events with only activity type, stable routine ID, and bounded dismissal result.
 
 ## Platform Status
