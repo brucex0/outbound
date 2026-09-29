@@ -1,5 +1,7 @@
 # Post-Workout Stretch Implementation Prompt
 
+> Historical checklist: the current iOS-first post-save flow and reviewed routine choices are defined in [`activity-post-save-celebration.md`](activity-post-save-celebration.md). Use that document as the source of truth; this older prompt predates the persistent celebration and routine picker.
+
 Use this prompt to implement Plainstride's optional post-save stretching experience on iOS and Android.
 
 ## Prompt

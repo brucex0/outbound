@@ -35,56 +35,62 @@ enum PostWorkoutStretchCatalog {
     static func routines(for type: ActivityType) -> [StretchRoutine]? {
         guard PostWorkoutStretchEligibility.isEligible(type) else { return nil }
         let prefix = type.rawValue
-        let base = [
-            ("calf", "post_workout_stretch.movement.calf", "post_workout_stretch.instruction.calf", "post_workout_stretch.side.left", "figure.walk"),
-            ("quad", "post_workout_stretch.movement.quad", "post_workout_stretch.instruction.quad", "post_workout_stretch.side.right", "figure.stand"),
-            ("hip", "post_workout_stretch.movement.hip", "post_workout_stretch.instruction.hip", "post_workout_stretch.side.left", "figure.flexibility"),
-            ("shoulder", "post_workout_stretch.movement.shoulder", "post_workout_stretch.instruction.shoulder", nil, "figure.arms.open")
-        ].map { id, titleKey, instructionKey, sideKey, icon in
-            StretchMovement(
-                id: "\(prefix)_\(id)",
-                title: stretchText(titleKey, id.capitalized),
-                instruction: stretchText(instructionKey, "Move gently within your comfort."),
-                side: sideKey.map { stretchText($0, "Side") },
-                duration: 60,
-                icon: icon
-            )
-        }
-        let quickReset = [base[0], base[2]].map { movement in
-            StretchMovement(
-                id: movement.id,
-                title: movement.title,
-                instruction: movement.instruction,
-                side: movement.side,
-                duration: 45,
-                icon: movement.icon
-            )
-        }
+        let cooldown = bilateralSteps(prefix: prefix, id: "glute", titleKey: "glute", instructionKey: "glute", seconds: 30, icon: "figure.flexibility")
+            + bilateralSteps(prefix: prefix, id: "hamstring", titleKey: "hamstring", instructionKey: "hamstring", seconds: 30, icon: "figure.flexibility")
+            + [singleStep(prefix: prefix, id: "inner_thigh", titleKey: "inner_thigh", instructionKey: "inner_thigh", side: "both", seconds: 30, icon: "figure.flexibility")]
+            + bilateralSteps(prefix: prefix, id: "calf", titleKey: "calf", instructionKey: "calf", seconds: 30, icon: "figure.walk")
+            + bilateralSteps(prefix: prefix, id: "quad", titleKey: "quad", instructionKey: "quad", seconds: 30, icon: "figure.stand")
+        let hipsAndHamstrings = bilateralSteps(prefix: prefix, id: "hip_flexor", titleKey: "hip_flexor", instructionKey: "hip_flexor", seconds: 20, icon: "figure.flexibility")
+            + bilateralSteps(prefix: prefix, id: "hamstring", titleKey: "hamstring", instructionKey: "hamstring", seconds: 20, icon: "figure.flexibility")
+            + bilateralSteps(prefix: prefix, id: "glute", titleKey: "glute", instructionKey: "glute", seconds: 20, icon: "figure.flexibility")
 
         return [
             StretchRoutine(
-                id: "post_save_\(prefix)_full_body_v1",
-                title: stretchText("activity.post_save.program.full_body", "Full-body reset"),
-                durationLabel: stretchText("activity.post_save.program.full_body.duration", "4 min"),
-                movements: base
+                id: "post_save_\(prefix)_cooldown_v2",
+                title: stretchText("activity.post_save.program.full_body", "Full-body cooldown"),
+                durationLabel: stretchText("activity.post_save.program.full_body.duration", "About 5 min"),
+                movements: cooldown
             ),
             StretchRoutine(
-                id: "post_save_\(prefix)_lower_body_v1",
-                title: stretchText("activity.post_save.program.lower_body", "Lower-body reset"),
-                durationLabel: stretchText("activity.post_save.program.lower_body.duration", "3 min"),
-                movements: Array(base.prefix(3))
-            ),
-            StretchRoutine(
-                id: "post_save_\(prefix)_quick_reset_v1",
-                title: stretchText("activity.post_save.program.quick_reset", "Quick reset"),
-                durationLabel: stretchText("activity.post_save.program.quick_reset.duration", "90 sec"),
-                movements: quickReset
+                id: "post_save_\(prefix)_hips_hamstrings_v2",
+                title: stretchText("activity.post_save.program.hips_hamstrings", "Hips & hamstrings"),
+                durationLabel: stretchText("activity.post_save.program.hips_hamstrings.duration", "About 2½ min"),
+                movements: hipsAndHamstrings
             )
         ]
     }
 
-    static func routine(for type: ActivityType) -> StretchRoutine? {
-        routines(for: type)?.first
+    private static func bilateralSteps(
+        prefix: String,
+        id: String,
+        titleKey: String,
+        instructionKey: String,
+        seconds: Int,
+        icon: String
+    ) -> [StretchMovement] {
+        ["left", "right"].map { side in
+            singleStep(prefix: prefix, id: id, titleKey: titleKey, instructionKey: instructionKey, side: side, seconds: seconds, icon: icon)
+        }
+    }
+
+    private static func singleStep(
+        prefix: String,
+        id: String,
+        titleKey: String,
+        instructionKey: String,
+        side: String,
+        seconds: Int,
+        icon: String
+    ) -> StretchMovement {
+        let sideKey = "post_workout_stretch.side.\(side)"
+        return StretchMovement(
+            id: "\(prefix)_\(id)_\(side)",
+            title: stretchText("post_workout_stretch.movement.\(titleKey)", titleKey.capitalized),
+            instruction: stretchText("post_workout_stretch.instruction.\(instructionKey)", "Move gently within your comfort."),
+            side: stretchText(sideKey, "Side"),
+            duration: seconds,
+            icon: icon
+        )
     }
 }
 
