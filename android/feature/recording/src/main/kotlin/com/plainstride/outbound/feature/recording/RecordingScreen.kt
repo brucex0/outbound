@@ -241,7 +241,7 @@ fun RecordingRoute(
                     onSavedSideEffects(review)
                     postSaveReview = review
                     postSavePhotoAlbumExport = overrideResult ?: result.photoAlbumExport
-                    postSaveStretchKind = review.snapshot.activityKind.takeIf { PostWorkoutStretchCatalog.routine(it) != null }
+                    postSaveStretchKind = review.snapshot.activityKind.takeIf { PostWorkoutStretchCatalog.routines(it) != null }
                     postSaveCelebrationReview = review
                 } else {
                     saveSnackbar.showSnackbar(saveFailedMessage)
@@ -560,18 +560,30 @@ fun RecordingRoute(
     }
 
     Box(modifier.fillMaxSize()) {
-        if (postSaveCelebrationReview != null) {
+        if (postSaveStretchKind != null) {
+            val review = requireNotNull(postSaveReview)
+            val export = postSavePhotoAlbumExport
+            PostWorkoutStretchRoute(
+                kind = requireNotNull(postSaveStretchKind),
+                track = review.snapshot.track,
+                sessionKey = review.snapshot.sessionId ?: review.snapshot.recordedAtEpochMilliseconds.toString(),
+                onDone = {
+                    postSaveCelebrationReview = null
+                    postSaveReview = null
+                    postSavePhotoAlbumExport = null
+                    postSaveStretchKind = null
+                    onSaved(review, export)
+                },
+                onEvent = { name, routineId, result ->
+                    viewModel.trackStretchEvent(name, requireNotNull(postSaveStretchKind), routineId, result)
+                },
+            )
+        } else if (postSaveCelebrationReview != null) {
             val review = requireNotNull(postSaveCelebrationReview)
             PostSaveCelebration(
                 track = review.snapshot.track,
                 sessionKey = review.snapshot.sessionId ?: review.snapshot.recordedAtEpochMilliseconds.toString(),
                 onDone = ::finishPostSaveCelebration,
-            )
-        } else if (postSaveStretchKind != null) {
-            PostWorkoutStretchRoute(
-                requireNotNull(postSaveStretchKind),
-                { val review = postSaveReview; val export = postSavePhotoAlbumExport; postSaveReview = null; postSavePhotoAlbumExport = null; postSaveStretchKind = null; if (review != null) onSaved(review, export) },
-                { name, result -> viewModel.trackStretchEvent(name, requireNotNull(postSaveStretchKind), result) },
             )
         } else {
             content()

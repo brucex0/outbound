@@ -4,4 +4,24 @@
     <string name="recording_post_save_accessibility">Celebración de actividad guardada</string>
     <string name="recording_post_save_done">Listo</string>
     <string name="recording_post_save_message">Hoy te hiciste un espacio para moverte.</string>
+    <string name="recording_post_save_program_full_body">Vuelta a la calma</string>
+    <string name="recording_post_save_program_full_body_duration">Unos 5 min</string>
+    <string name="recording_post_save_program_hips_hamstrings">Caderas e isquiotibiales</string>
+    <string name="recording_post_save_program_hips_hamstrings_duration">Unos 2,5 min</string>
+    <string name="recording_post_save_program_title">Elige una rutina</string>
+    <string name="recording_stretch_instruction_calf">Apóyate y entra suavemente en el estiramiento.</string>
+    <string name="recording_stretch_instruction_glute">Túmbate boca arriba, cruza un tobillo sobre el muslo contrario y acerca suavemente las piernas al pecho.</string>
+    <string name="recording_stretch_instruction_hamstring">Túmbate y eleva una pierna. Sujétala por detrás del muslo y acércala suavemente, manteniendo la rodilla ligeramente extendida.</string>
+    <string name="recording_stretch_instruction_hip_flexor">Colócate de rodillas en posición de zancada, bascula suavemente la pelvis y mantén la espalda neutra al avanzar.</string>
+    <string name="recording_stretch_instruction_inner_thigh">Siéntate con la espalda erguida y las plantas de los pies juntas. Deja que las rodillas se abran sin empujarlas.</string>
+    <string name="recording_stretch_instruction_quad">Sujeta una pared o silla y mantén las rodillas juntas.</string>
+    <string name="recording_stretch_movement_calf">Estiramiento de pantorrilla</string>
+    <string name="recording_stretch_movement_glute">Estiramiento de glúteos tumbado</string>
+    <string name="recording_stretch_movement_hamstring">Estiramiento de isquiotibiales tumbado</string>
+    <string name="recording_stretch_movement_hip_flexor">Estiramiento de flexores de cadera de rodillas</string>
+    <string name="recording_stretch_movement_inner_thigh">Estiramiento sentado de la cara interna del muslo</string>
+    <string name="recording_stretch_movement_quad">Cuádriceps de pie</string>
+    <string name="recording_stretch_side_both">Ambos lados</string>
+    <string name="recording_stretch_side_left">Lado izquierdo</string>
+    <string name="recording_stretch_side_right">Lado derecho</string>
 </resources>

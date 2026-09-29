@@ -312,7 +312,15 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.DistanceBucket to distanceBucket(current.distanceMeters),
         )))
     }
-    fun trackStretchEvent(name: String, kind: ActivityKind, result: String?) { val routine=PostWorkoutStretchCatalog.routine(kind)?:return; val p=mutableMapOf<AnalyticsProperty,Any>(AnalyticsProperty.ActivityType to kind.name.lowercase(),AnalyticsProperty.RoutineId to routine.id); result?.let{p[AnalyticsProperty.Result]=it}; if(name.startsWith("post_workout_stretch_")) analytics.record(AnalyticsEvent(name,p)) }
+    fun trackStretchEvent(name: String, kind: ActivityKind, routineId: String?, result: String?) {
+        val routine = PostWorkoutStretchCatalog.routines(kind).orEmpty().firstOrNull { it.id == routineId } ?: return
+        val properties = mutableMapOf<AnalyticsProperty, Any>(
+            AnalyticsProperty.ActivityType to kind.name.lowercase(),
+            AnalyticsProperty.RoutineId to routine.id,
+        )
+        result?.let { properties[AnalyticsProperty.Result] = it }
+        if (name.startsWith("post_workout_stretch_")) analytics.record(AnalyticsEvent(name, properties))
+    }
 
     fun trackPostSaveCelebrationExposed() {
         analytics.record(AnalyticsEvent("feature_exposed", mapOf(

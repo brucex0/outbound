@@ -2,6 +2,7 @@ package com.plainstride.outbound.feature.recording
 
 import android.animation.ValueAnimator
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -25,19 +26,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
+import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.sin
 
 private val PostcardBackdrop = Color(0xFFFFF0DB)
 private val PostcardPaper = Color(0xFFFFFCF2)
@@ -52,15 +56,6 @@ fun PostSaveCelebration(
     onDone: () -> Unit,
 ) {
     val accessibilityLabel = stringResource(R.string.recording_post_save_accessibility)
-    val reducedMotion = remember { !ValueAnimator.areAnimatorsEnabled() }
-    val progress = remember(sessionKey) { Animatable(if (reducedMotion) 1f else 0f) }
-    val points = remember(track) { normalizedRoute(track) }
-
-    LaunchedEffect(sessionKey, reducedMotion) {
-        if (!reducedMotion) progress.animateTo(1f, tween(durationMillis = 1_400))
-        delay(4_000)
-        onDone()
-    }
 
     Column(
         modifier = Modifier
@@ -71,37 +66,11 @@ fun PostSaveCelebration(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .widthIn(max = 360.dp)
-                .height(250.dp)
-                .shadow(20.dp, RoundedCornerShape(28.dp), ambientColor = Color(0xFF3B2B1F).copy(alpha = 0.14f))
-                .clip(RoundedCornerShape(28.dp))
-                .background(PostcardPaper),
-        ) {
-            Canvas(Modifier.fillMaxSize()) {
-                val pixelPoints = points.map { androidx.compose.ui.geometry.Offset(it.x * size.width, it.y * size.height) }
-                val route = Path().apply {
-                    pixelPoints.firstOrNull()?.let { moveTo(it.x, it.y) }
-                    pixelPoints.drop(1).forEach { lineTo(it.x, it.y) }
-                }
-                val measure = PathMeasure().apply { setPath(route, false) }
-                val partialRoute = Path()
-                measure.getSegment(0f, measure.length * progress.value, partialRoute, true)
-                drawPath(
-                    path = partialRoute,
-                    color = PostcardOrange,
-                    style = Stroke(width = 7.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
-                )
-
-                val runner = pointOnPath(pixelPoints, progress.value)
-                if (runner != null && progress.value > 0.04f) drawRunner(runner)
-
-                pixelPoints.firstOrNull()?.let { drawCircle(PostcardNavy, radius = 5.5.dp.toPx(), center = it) }
-                pixelPoints.lastOrNull()?.let { drawCircle(PostcardNavy, radius = 5.5.dp.toPx(), center = it) }
-            }
-        }
+        PostSaveCelebrationCard(
+            track = track,
+            sessionKey = sessionKey,
+            modifier = Modifier.fillMaxWidth().widthIn(max = 360.dp).height(250.dp),
+        )
 
         Spacer(Modifier.height(22.dp))
         Text(
@@ -119,6 +88,67 @@ fun PostSaveCelebration(
             colors = ButtonDefaults.buttonColors(containerColor = PostcardOrange, contentColor = Color.White),
         ) {
             Text(stringResource(R.string.recording_post_save_done), fontSize = 16.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+fun PostSaveCelebrationCard(
+    track: List<RecordedLocationSample>,
+    sessionKey: String,
+    modifier: Modifier = Modifier,
+) {
+    val accessibilityLabel = stringResource(R.string.recording_post_save_accessibility)
+    val reducedMotion = remember { !ValueAnimator.areAnimatorsEnabled() }
+    val progress = remember(sessionKey) { Animatable(if (reducedMotion) 1f else 0f) }
+    val sundaeProgress = remember(sessionKey) { Animatable(if (reducedMotion) 1f else 0f) }
+    val points = remember(track) { normalizedRoute(track) }
+
+    LaunchedEffect(sessionKey, reducedMotion) {
+        if (!reducedMotion) {
+            progress.animateTo(1f, tween(durationMillis = 1_400))
+            sundaeProgress.animateTo(1f, spring(dampingRatio = 0.58f, stiffness = 420f))
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .shadow(20.dp, RoundedCornerShape(28.dp), ambientColor = Color(0xFF3B2B1F).copy(alpha = 0.14f))
+            .clip(RoundedCornerShape(28.dp))
+            .background(PostcardPaper)
+            .semantics { contentDescription = accessibilityLabel },
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val pixelPoints = points.map { Offset(it.x * size.width, it.y * size.height) }
+            val route = Path().apply {
+                pixelPoints.firstOrNull()?.let { moveTo(it.x, it.y) }
+                pixelPoints.drop(1).forEach { lineTo(it.x, it.y) }
+            }
+            val measure = PathMeasure().apply { setPath(route, false) }
+            val partialRoute = Path()
+            measure.getSegment(0f, measure.length * progress.value, partialRoute, true)
+            drawPath(
+                path = partialRoute,
+                color = PostcardOrange,
+                style = Stroke(width = 7.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
+            )
+
+            val finish = pixelPoints.lastOrNull()
+            val runner = pointOnPath(pixelPoints, progress.value)
+            if (runner != null && finish != null && progress.value > 0.04f && sundaeProgress.value < 0.22f) {
+                drawRunner(runner)
+            }
+            pixelPoints.firstOrNull()?.let { drawCircle(PostcardNavy, radius = 5.5.dp.toPx(), center = it) }
+            finish?.let { drawCircle(PostcardNavy, radius = 5.5.dp.toPx(), center = it) }
+
+            if (finish != null && sundaeProgress.value > 0f) {
+                val inset = 46.dp.toPx()
+                val burstCenter = Offset(
+                    x = (finish.x).coerceIn(inset, size.width - inset),
+                    y = (finish.y - 33.dp.toPx()).coerceIn(inset, size.height - inset),
+                )
+                drawSundaeBurst(burstCenter, sundaeProgress.value)
+            }
         }
     }
 }
@@ -151,7 +181,7 @@ private fun normalizedRoute(track: List<RecordedLocationSample>): List<Normalize
     }
 }
 
-private fun pointOnPath(points: List<androidx.compose.ui.geometry.Offset>, fraction: Float): androidx.compose.ui.geometry.Offset? {
+private fun pointOnPath(points: List<Offset>, fraction: Float): Offset? {
     if (points.isEmpty()) return null
     if (points.size == 1) return points.first()
     val lengths = points.zipWithNext { a, b -> hypot(b.x - a.x, b.y - a.y) }
@@ -163,46 +193,32 @@ private fun pointOnPath(points: List<androidx.compose.ui.geometry.Offset>, fract
             val start = points[index]
             val end = points[index + 1]
             val t = if (length == 0f) 0f else remaining / length
-            return androidx.compose.ui.geometry.Offset(
-                start.x + (end.x - start.x) * t,
-                start.y + (end.y - start.y) * t,
-            )
+            return Offset(start.x + (end.x - start.x) * t, start.y + (end.y - start.y) * t)
         }
         remaining -= length
     }
     return points.last()
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawRunner(center: androidx.compose.ui.geometry.Offset) {
+private fun DrawScope.drawRunner(center: Offset) {
     val runnerWidth = 48.dp.toPx()
     val runnerHeight = 58.dp.toPx()
-    val headRadius = 6.dp.toPx()
-    val limbStroke = 4.dp.toPx()
-    val bodyStroke = 8.dp.toPx()
-    val scaleX = runnerWidth / 48.dp.toPx()
-    val scaleY = runnerHeight / 58.dp.toPx()
-    val anchor = androidx.compose.ui.geometry.Offset(center.x - runnerWidth / 2, center.y - runnerHeight / 2)
-    fun p(x: Float, y: Float) = androidx.compose.ui.geometry.Offset(anchor.x + x * scaleX, anchor.y + y * scaleY)
+    val anchor = Offset(center.x - runnerWidth / 2, center.y - runnerHeight / 2)
+    fun p(x: Float, y: Float) = Offset(anchor.x + x.dp.toPx(), anchor.y + y.dp.toPx())
 
-    drawCircle(PostcardCream, headRadius, p(24f, 5f))
+    drawCircle(PostcardCream, 6.dp.toPx(), p(24f, 5f))
     val cap = Path().apply {
         val start = p(17f, 11f)
         val control = p(24f, 3f)
         val end = p(32f, 9f)
-        val finish = p(34f, 11f)
         moveTo(start.x, start.y)
         quadraticTo(control.x, control.y, end.x, end.y)
-        lineTo(finish.x, finish.y)
+        lineTo(p(34f, 11f).x, p(34f, 11f).y)
     }
-    drawPath(cap, PostcardOrange, style = Stroke(width = limbStroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    drawPath(cap, PostcardOrange, style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
 
-    val body = Path().apply {
-        val start = p(24f, 19f)
-        val end = p(23f, 33f)
-        moveTo(start.x, start.y)
-        lineTo(end.x, end.y)
-    }
-    drawPath(body, PostcardOrange, style = Stroke(width = bodyStroke, cap = StrokeCap.Round))
+    val body = Path().apply { moveTo(p(24f, 19f).x, p(24f, 19f).y); lineTo(p(23f, 33f).x, p(23f, 33f).y) }
+    drawPath(body, PostcardOrange, style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round))
 
     val limbs = Path().apply {
         moveTo(p(23f, 23f).x, p(23f, 23f).y); lineTo(p(14f, 15f).x, p(14f, 15f).y)
@@ -210,5 +226,44 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawRunner(center: 
         moveTo(p(23f, 32f).x, p(23f, 32f).y); lineTo(p(14f, 43f).x, p(14f, 43f).y); lineTo(p(9f, 43f).x, p(9f, 43f).y)
         moveTo(p(25f, 32f).x, p(25f, 32f).y); lineTo(p(34f, 40f).x, p(34f, 40f).y); lineTo(p(39f, 38f).x, p(39f, 38f).y)
     }
-    drawPath(limbs, PostcardNavy, style = Stroke(width = limbStroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    drawPath(limbs, PostcardNavy, style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+}
+
+private fun DrawScope.drawSundaeBurst(center: Offset, progress: Float) {
+    val sprinkles = listOf(Color(0xFFF55975), Color(0xFF40AE91), Color(0xFFFFAE33), Color(0xFF7666C8))
+    val angles = listOf(-150f, -112f, -72f, -28f, 18f, 58f, 105f, 148f)
+    angles.forEachIndexed { index, degrees ->
+        val angle = Math.toRadians(degrees.toDouble())
+        val startRadius = 18.dp.toPx()
+        val endRadius = 37.dp.toPx() * progress
+        val start = Offset(center.x + cos(angle).toFloat() * startRadius, center.y + sin(angle).toFloat() * startRadius)
+        val end = Offset(center.x + cos(angle).toFloat() * endRadius, center.y + sin(angle).toFloat() * endRadius)
+        drawLine(sprinkles[index % sprinkles.size], start, end, strokeWidth = 4.dp.toPx(), cap = StrokeCap.Round)
+    }
+
+    val cone = Path().apply {
+        moveTo(center.x - 16.dp.toPx(), center.y - 3.dp.toPx())
+        lineTo(center.x + 16.dp.toPx(), center.y - 3.dp.toPx())
+        lineTo(center.x + 2.dp.toPx(), center.y + 33.dp.toPx())
+        quadraticTo(center.x, center.y + 36.dp.toPx(), center.x - 2.dp.toPx(), center.y + 33.dp.toPx())
+        close()
+    }
+    drawPath(cone, Color(0xFFCC7A3D))
+
+    val scoops = listOf(
+        Triple(-10f, -10f, Color(0xFF8CC9A1)),
+        Triple(2f, -18f, Color(0xFFFC8A9B)),
+        Triple(13f, -8f, Color(0xFFFFD580)),
+    )
+    scoops.forEachIndexed { index, (x, y, color) ->
+        val radius = listOf(13f, 15f, 12f)[index].dp.toPx()
+        drawCircle(color, radius, Offset(center.x + x.dp.toPx(), center.y + y.dp.toPx()))
+    }
+
+    val stem = Path().apply {
+        moveTo(center.x + 8.dp.toPx(), center.y - 30.dp.toPx())
+        quadraticTo(center.x + 15.dp.toPx(), center.y - 34.dp.toPx(), center.x + 17.dp.toPx(), center.y - 27.dp.toPx())
+    }
+    drawPath(stem, Color(0xFF337A4F), style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
+    drawCircle(Color(0xFFE0344D), 4.5.dp.toPx(), Offset(center.x + 7.5.dp.toPx(), center.y - 31.5.dp.toPx()))
 }

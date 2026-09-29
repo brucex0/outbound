@@ -75,7 +75,10 @@
       "keyPrefix": "recording_post_save",
       "androidPrefix": "recording_post_save_",
       "sources": [
-        { "keyPrefix": "activity.post_save", "androidPrefix": "recording_post_save_" }
+        { "keyPrefix": "activity.post_save", "androidPrefix": "recording_post_save_" },
+        { "keyPrefix": "post_workout_stretch.movement", "androidPrefix": "recording_stretch_movement_" },
+        { "keyPrefix": "post_workout_stretch.instruction", "androidPrefix": "recording_stretch_instruction_" },
+        { "keyPrefix": "post_workout_stretch.side", "androidPrefix": "recording_stretch_side_" }
       ],
       "resourceRoot": "android/feature/recording/src/main/res",
       "file": "post_save_celebration.xml"

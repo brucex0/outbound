@@ -4,4 +4,24 @@
     <string name="recording_post_save_accessibility">Activity saved celebration</string>
     <string name="recording_post_save_done">Done</string>
     <string name="recording_post_save_message">You made time for this today.</string>
+    <string name="recording_post_save_program_full_body">Full-body cooldown</string>
+    <string name="recording_post_save_program_full_body_duration">About 5 min</string>
+    <string name="recording_post_save_program_hips_hamstrings">Hips &amp; hamstrings</string>
+    <string name="recording_post_save_program_hips_hamstrings_duration">About 2½ min</string>
+    <string name="recording_post_save_program_title">Choose a stretch</string>
+    <string name="recording_stretch_instruction_calf">Stand supported and gently lean into the stretch.</string>
+    <string name="recording_stretch_instruction_glute">Lie on your back, cross one ankle over the opposite thigh, and draw your legs gently toward your chest.</string>
+    <string name="recording_stretch_instruction_hamstring">Lie back and raise one leg. Hold behind the thigh and gently draw it toward you, keeping the knee softly straight.</string>
+    <string name="recording_stretch_instruction_hip_flexor">Kneel in a split stance, gently tuck your pelvis, and keep your spine neutral as you shift forward.</string>
+    <string name="recording_stretch_instruction_inner_thigh">Sit tall with the soles of your feet together. Let your knees relax outward without pushing them down.</string>
+    <string name="recording_stretch_instruction_quad">Hold a wall or chair and keep your knees close.</string>
+    <string name="recording_stretch_movement_calf">Calf release</string>
+    <string name="recording_stretch_movement_glute">Reclining glute stretch</string>
+    <string name="recording_stretch_movement_hamstring">Lying hamstring stretch</string>
+    <string name="recording_stretch_movement_hip_flexor">Kneeling hip-flexor stretch</string>
+    <string name="recording_stretch_movement_inner_thigh">Seated inner-thigh stretch</string>
+    <string name="recording_stretch_movement_quad">Standing quad stretch</string>
+    <string name="recording_stretch_side_both">Both sides</string>
+    <string name="recording_stretch_side_left">Left side</string>
+    <string name="recording_stretch_side_right">Right side</string>
 </resources>

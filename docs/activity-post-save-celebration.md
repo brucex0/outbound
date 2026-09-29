@@ -22,8 +22,7 @@ Give each saved activity a brief, personal moment of recognition. The celebratio
 
 ## Platform Status
 
-- iOS implements this contract first so the owner can review the combined celebration and stretch-choice experience.
-- Android should match this contract after the iOS experience is approved; until then its current post-save flow is intentionally not considered parity-complete.
+- iOS and Android show the same route celebration and, for eligible activities, place it above the optional stretch choices. Each platform uses native vector drawing and respects its system reduced-motion setting.
 
 ## Routine Content Basis
 
