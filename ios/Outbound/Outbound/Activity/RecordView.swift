@@ -86,6 +86,7 @@ struct RecordView: View {
     @State private var selectedPreActivityPhotoItem: PhotosPickerItem?
     @State private var pendingActivity: PendingFinishedActivity?
     @State private var postSaveStretchContext: PostSavedStretchContext?
+    @State private var postSaveCelebrationActivity: SavedActivity?
     @State private var elevationCorrectionTask: Task<ActivitySummary, Never>?
     @State private var plannedIntent: SessionIntent?
     @State private var activeIntent: SessionIntent?
@@ -238,7 +239,7 @@ struct RecordView: View {
                             }
                     }
                 }
-            } else if showCamera || pendingActivity != nil || postSaveStretchContext != nil {
+            } else if showCamera || pendingActivity != nil || postSaveStretchContext != nil || postSaveCelebrationActivity != nil {
                 activityFullscreenSurface
             } else {
                 readyView
@@ -725,7 +726,15 @@ struct RecordView: View {
             Color(.systemBackground)
                 .ignoresSafeArea()
 
-            if let postSaveStretchContext { PostWorkoutStretchView(context: postSaveStretchContext, onExit: finishPostSaveStretch).zIndex(2) }
+            if let postSaveCelebrationActivity {
+                PostSaveCelebrationView(activity: postSaveCelebrationActivity, onContinue: finishPostSaveCelebration)
+                    .zIndex(3)
+                    .onAppear {
+                        track(.init(.featureExposed, properties: [
+                            .feature: .string("activity_post_save_celebration")
+                        ]))
+                    }
+            } else if let postSaveStretchContext { PostWorkoutStretchView(context: postSaveStretchContext, onExit: finishPostSaveStretch).zIndex(2) }
             else if let pendingActivity { postRunSummarySurface(pendingActivity).transition(postRunSummaryTransition).zIndex(1) }
             else {
                 liveRecordingSurface
@@ -1789,11 +1798,20 @@ struct RecordView: View {
             activities: activityStore.activities,
             phase: DailyMotivationEngine.phase(for: activityStore.activities)
         )
-        if let routine = PostWorkoutStretchCatalog.routine(for: savedActivity.activityType), savedActivity.source.kind == .outbound { postSaveStretchContext = PostSavedStretchContext(activityType: savedActivity.activityType, routine: routine) }
+        if let routine = PostWorkoutStretchCatalog.routine(for: savedActivity.activityType), savedActivity.source.kind == .outbound {
+            postSaveStretchContext = PostSavedStretchContext(activityType: savedActivity.activityType, routine: routine)
+        }
+        postSaveCelebrationActivity = savedActivity
         clearPending(recoveryReason: .saved)
-        sessionController.completeSave(withPostSaveFlow: postSaveStretchContext != nil)
-        if postSaveStretchContext == nil { onCloseRequest?(false) }
+        sessionController.completeSave(withPostSaveFlow: true)
         return true
+    }
+
+    private func finishPostSaveCelebration() {
+        postSaveCelebrationActivity = nil
+        guard postSaveStretchContext == nil else { return }
+        sessionController.completeSave(withPostSaveFlow: false)
+        onCloseRequest?(false)
     }
 
     private func finishPostSaveStretch() { postSaveStretchContext = nil; onCloseRequest?(false) }
