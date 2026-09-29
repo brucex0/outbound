@@ -43,7 +43,16 @@ struct CommunityRouteLibraryView: View {
         _selectedRoute = State(initialValue: selection)
     }
 
-    private var routes: [CommunityRoute] { mode == .mine ? store.mine : store.discovered }
+    private var routes: [CommunityRoute] {
+        let storedRoutes = mode == .mine ? store.mine : store.discovered
+#if DEBUG
+        guard mode == .discover else { return storedRoutes }
+        return [HarvestHalfMarathonSimulation.communityRoute]
+            + storedRoutes.filter { $0.id != HarvestHalfMarathonSimulation.routeID }
+#else
+        return storedRoutes
+#endif
+    }
 
     var body: some View {
         List {
@@ -370,6 +379,14 @@ private struct CommunityRouteRow: View {
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
+#if DEBUG
+                if route.id == HarvestHalfMarathonSimulation.routeID {
+                    Text(String(localized: "route.library.test_badge", defaultValue: "Test"))
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.orange)
+                        .accessibilityLabel(String(localized: "route.library.test_badge.accessibility", defaultValue: "Test route"))
+                }
+#endif
             }
             Spacer()
             if route.isBookmarked && !route.isOwnedByCurrentUser {
@@ -617,7 +634,7 @@ struct CommunityRouteDetailView: View {
 
 #if DEBUG
 struct DebugCommunityRouteLibraryHarness: View {
-    @StateObject private var store = CommunityRouteStore(initialDiscovered: [Self.redmondRoute])
+    @StateObject private var store = CommunityRouteStore(initialDiscovered: [HarvestHalfMarathonSimulation.communityRoute])
     @StateObject private var measurementPreferences = MeasurementPreferences()
 
     var body: some View {
@@ -629,33 +646,6 @@ struct DebugCommunityRouteLibraryHarness: View {
         .preferredColorScheme(.light)
     }
 
-    private static let redmondRoute = CommunityRoute(
-        id: HarvestHalfMarathonSimulation.routeID,
-        name: "Redmond Harvest Half Marathon",
-        description: "A scenic out-and-back half marathon through Redmond.",
-        activityType: "running",
-        visibility: "public",
-        geometry: .init(
-            type: "LineString",
-            coordinates: HarvestHalfMarathonSimulation.route.points.map { point in
-                [point.longitude, point.latitude, point.altitude ?? 0]
-            }
-        ),
-        distanceM: 21_097.5,
-        elevationGainM: 112,
-        routeShape: "out_and_back",
-        bookmarkCount: 1,
-        completionCount: 18,
-        isBookmarked: true,
-        isOwnedByCurrentUser: false,
-        owner: .init(
-            id: "debug-active-runner",
-            username: "test-active-runner",
-            displayName: "Avery Runner",
-            avatarUrl: nil
-        ),
-        distanceFromSearchM: nil
-    )
 }
 #endif
 

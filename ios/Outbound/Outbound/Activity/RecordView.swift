@@ -367,6 +367,12 @@ struct RecordView: View {
         .onChange(of: plannedIntent?.preparedRoute, initial: true) { _, route in
             onPreActivityRouteChange?(route)
         }
+#if DEBUG
+        .onChange(of: plannedIntent?.preparedRoute?.id, initial: true) { _, routeID in
+            isRunSimulationEnabled = routeID == HarvestHalfMarathonSimulation.routeID
+                && recorder.state == .idle
+        }
+#endif
         .onChange(of: showsEmbeddedLiveSurface, initial: true) { _, isVisible in
             onLiveSurfaceVisibilityChange?(isVisible)
         }
@@ -5173,9 +5179,7 @@ struct RecordView: View {
 
     private func applyRoute(_ route: PreparedRoute?) {
 #if DEBUG
-        if route?.id != HarvestHalfMarathonSimulation.routeID {
-            isRunSimulationEnabled = false
-        }
+        isRunSimulationEnabled = route?.id == HarvestHalfMarathonSimulation.routeID
 #endif
         let currentIntent = plannedIntent ?? .freestyleRun
         if let route {

@@ -9934,6 +9934,22 @@
         }
       }
     },
+    "route.library.test_badge": {
+      "comment": "Label shown on the built-in debug-only route.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Test" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Prueba" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "测试" } }
+      }
+    },
+    "route.library.test_badge.accessibility": {
+      "comment": "Accessibility label for the built-in debug-only test route badge.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Test route" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Ruta de prueba" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "测试路线" } }
+      }
+    },
     "route.library.accessibility.selected": {
       "localizations": {
         "en": {
@@ -35797,6 +35813,14 @@
             "value": "雷德蒙德 Harvest 半程马拉松"
           }
         }
+      }
+    },
+    "run.simulation.route.description": {
+      "comment": "Description for the built-in debug route.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "A scenic out-and-back half marathon through Redmond." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Una media maratón panorámica de ida y vuelta por Redmond." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "一条途经雷德蒙德的风景往返半程马拉松路线。" } }
       }
     },
     "run.simulation.setup.detail": {

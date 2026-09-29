@@ -153,6 +153,40 @@ enum HarvestHalfMarathonSimulation {
         activityType: .running,
         routeShape: "out_and_back"
     )
+
+    static let communityRoute = CommunityRoute(
+        id: routeID,
+        name: String(
+            localized: "run.simulation.route.name",
+            defaultValue: "Redmond Harvest Half Marathon"
+        ),
+        description: String(
+            localized: "run.simulation.route.description",
+            defaultValue: "A scenic out-and-back half marathon through Redmond."
+        ),
+        activityType: "running",
+        visibility: "public",
+        geometry: .init(
+            type: "LineString",
+            coordinates: route.points.map { point in
+                [point.longitude, point.latitude, point.altitude ?? 0]
+            }
+        ),
+        distanceM: 21_097.5,
+        elevationGainM: 112,
+        routeShape: "out_and_back",
+        bookmarkCount: 1,
+        completionCount: 18,
+        isBookmarked: true,
+        isOwnedByCurrentUser: false,
+        owner: .init(
+            id: "debug-active-runner",
+            username: "test-active-runner",
+            displayName: "Avery Runner",
+            avatarUrl: nil
+        ),
+        distanceFromSearchM: nil
+    )
 }
 
 struct RunSimulationControls: View {
