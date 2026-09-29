@@ -63,7 +63,7 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### App Store What's New
 
-Plainstride 1.7 makes every run easier to start, guide, and finish. A redesigned map-first setup brings workouts, goals, Music, Live Track, shoes, environment, and voice guidance together. Live coaching now supports planned and standalone workouts, while improved recovery protects finished activities until they are saved. This release also strengthens recognition milestones, routes, Apple Health import, social and profile navigation, activity photos, and access to versioned Terms of Service.
+Start your next run faster with map-first setup that keeps goals, Music, Live Track, shoes, and voice guidance close at hand. Adaptive workout suggestions and live coaching better match your plan and recent activity. Improved save and recovery flows help protect finished activities and celebrate your progress. Group joining and notices are clearer, with more useful plan recommendations and richer activity details.
 
 ### How to Report Feedback
 
