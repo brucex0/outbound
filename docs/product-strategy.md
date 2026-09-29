@@ -446,6 +446,8 @@ Build love, motivation, and consistency around moving. Make showing up feel good
 
 These are product ideas to validate with runners, teens, coaches, and families before adding them to a delivery roadmap.
 
+The first coach-led validation slice is specified in `docs/team-practice-pilot.md`; its UX and API are proposals awaiting owner confirmation before implementation.
+
 ## Hard Priorities
 
 If only five things can happen next, choose these:
