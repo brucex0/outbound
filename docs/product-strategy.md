@@ -419,6 +419,33 @@ Outbound should own:
 - `Can you help me feel proud enough to come back tomorrow?`
 - `Can the people who matter help the week feel shared without turning it into a competition?`
 
+## Early-Team Wedge: Teen Endurance Sports
+
+### Hypothesis
+
+Strava has had many years to build a network around people's friends, activity history, and personal records. Pulling established athletes away from that network may be difficult. Outbound could instead start with younger athletes who are forming their habits and communities now, then grow through their teammates, families, and friends.
+
+One possible first community is high school cross-country runners, with mountain biking and other school endurance teams as adjacent groups. This is an exploration, not a validated acquisition strategy.
+
+### Coach-Led Use Case
+
+A high school coach may need to support dozens of athletes during a practice. Outbound could help a coach organize a team and adapt the existing Cheer Me On experience so the coach can see participating athletes run live and send timely encouragement or short instructions.
+
+The product value would be practical team coordination paired with personal motivation: athletes feel supported while coaches can keep track of a dispersed practice. Team setup, coach permissions, and live visibility would need clear privacy and safety rules appropriate for teen athletes, including control over who can see a session and when.
+
+### Product Promise
+
+Build love, motivation, and consistency around moving. Make showing up feel good, help people feel supported by their community, and recognize effort in a way that encourages them to return.
+
+### Experience Ideas To Explore
+
+- Give the guide or AI companion a warm animated character presence, with a few subtle expressions or reactions instead of a static sparkle.
+- Make a meaningful activity save feel rewarding with a brief celebration and an encouraging message that recognizes effort or consistency, not only performance.
+- Let people express themselves in comments with emoji reactions and optional emoji in comment text.
+- Keep playful motion and celebration brief, with controls to reduce or disable animation so the experience suits different ages and preferences.
+
+These are product ideas to validate with runners, teens, coaches, and families before adding them to a delivery roadmap.
+
 ## Hard Priorities
 
 If only five things can happen next, choose these:
