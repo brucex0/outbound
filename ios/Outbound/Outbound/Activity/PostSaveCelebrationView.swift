@@ -44,6 +44,7 @@ struct PostSaveCelebrationCard: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var routeProgress: CGFloat = 0
+    @State private var sundaeBurstProgress: CGFloat = 0
 
     private var routePoints: [CGPoint] {
         let coordinates = activity.routeCoordinates
@@ -79,8 +80,11 @@ struct PostSaveCelebrationCard: View {
         postcard
             .onAppear {
                 routeProgress = reduceMotion ? 1 : 0
-                if !reduceMotion {
-                    withAnimation(.easeInOut(duration: 1.4)) { routeProgress = 1 }
+                sundaeBurstProgress = reduceMotion ? 1 : 0
+                guard !reduceMotion else { return }
+                withAnimation(.easeInOut(duration: 1.4)) { routeProgress = 1 }
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.58).delay(1.18)) {
+                    sundaeBurstProgress = 1
                 }
             }
     }
@@ -91,6 +95,11 @@ struct PostSaveCelebrationCard: View {
             let size = proxy.size
             let normalized = points.map { CGPoint(x: $0.x * size.width, y: $0.y * size.height) }
             let mascotPoint = point(on: normalized, fraction: routeProgress)
+            let finishPoint = normalized.last ?? CGPoint(x: size.width * 0.9, y: size.height * 0.2)
+            let burstPoint = CGPoint(
+                x: min(max(finishPoint.x, 46), size.width - 46),
+                y: min(max(finishPoint.y - 33, 45), size.height - 45)
+            )
 
             ZStack {
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
@@ -111,7 +120,14 @@ struct PostSaveCelebrationCard: View {
                     PostcardRunner(isReducedMotion: reduceMotion)
                         .frame(width: 48, height: 58)
                         .position(x: mascotPoint.x, y: mascotPoint.y)
-                        .opacity(routeProgress > 0.04 ? 1 : 0)
+                        .opacity(routeProgress > 0.04 && sundaeBurstProgress < 0.22 ? 1 : 0)
+                }
+
+                if sundaeBurstProgress > 0 {
+                    SundaeBurst(progress: sundaeBurstProgress)
+                        .frame(width: 88, height: 88)
+                        .position(burstPoint)
+                        .accessibilityHidden(true)
                 }
 
                 Circle()
@@ -144,6 +160,81 @@ struct PostSaveCelebrationCard: View {
             remaining -= length
         }
         return points.last
+    }
+}
+
+private struct SundaeBurst: View {
+    let progress: CGFloat
+
+    private let sprinkleColors: [Color] = [
+        Color(red: 0.96, green: 0.35, blue: 0.48),
+        Color(red: 0.25, green: 0.68, blue: 0.57),
+        Color(red: 0.99, green: 0.68, blue: 0.20),
+        Color(red: 0.46, green: 0.40, blue: 0.78)
+    ]
+
+    var body: some View {
+        Canvas { context, size in
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            let particleAngles: [CGFloat] = [-150, -112, -72, -28, 18, 58, 105, 148]
+            for (index, degrees) in particleAngles.enumerated() {
+                let angle = degrees * .pi / 180
+                let innerRadius: CGFloat = 18
+                let outerRadius: CGFloat = 37 * progress
+                let start = CGPoint(
+                    x: center.x + cos(angle) * innerRadius,
+                    y: center.y + sin(angle) * innerRadius
+                )
+                let end = CGPoint(
+                    x: center.x + cos(angle) * outerRadius,
+                    y: center.y + sin(angle) * outerRadius
+                )
+                var sprinkle = Path()
+                sprinkle.move(to: start)
+                sprinkle.addLine(to: end)
+                context.stroke(
+                    sprinkle,
+                    with: .color(sprinkleColors[index % sprinkleColors.count]),
+                    style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                )
+            }
+
+            var cone = Path()
+            cone.move(to: CGPoint(x: center.x - 16, y: center.y - 3))
+            cone.addLine(to: CGPoint(x: center.x + 16, y: center.y - 3))
+            cone.addLine(to: CGPoint(x: center.x + 2, y: center.y + 33))
+            cone.addQuadCurve(to: CGPoint(x: center.x - 2, y: center.y + 33), control: CGPoint(x: center.x, y: center.y + 36))
+            cone.closeSubpath()
+            context.fill(cone, with: .color(Color(red: 0.80, green: 0.48, blue: 0.24)))
+
+            var waffleLines = Path()
+            for offset: CGFloat in [-9, 0, 9] {
+                waffleLines.move(to: CGPoint(x: center.x + offset - 8, y: center.y + 2))
+                waffleLines.addLine(to: CGPoint(x: center.x + offset + 5, y: center.y + 29))
+                waffleLines.move(to: CGPoint(x: center.x + offset + 8, y: center.y + 2))
+                waffleLines.addLine(to: CGPoint(x: center.x + offset - 5, y: center.y + 29))
+            }
+            context.stroke(waffleLines, with: .color(Color(red: 0.94, green: 0.69, blue: 0.40)), lineWidth: 1.3)
+
+            let scoops: [(CGPoint, CGFloat, Color)] = [
+                (CGPoint(x: center.x - 10, y: center.y - 10), 13, Color(red: 0.55, green: 0.79, blue: 0.63)),
+                (CGPoint(x: center.x + 2, y: center.y - 18), 15, Color(red: 0.99, green: 0.54, blue: 0.62)),
+                (CGPoint(x: center.x + 13, y: center.y - 8), 12, Color(red: 1.0, green: 0.84, blue: 0.52))
+            ]
+            for (point, radius, color) in scoops {
+                let scoop = Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2))
+                context.fill(scoop, with: .color(color))
+            }
+
+            var cherryStem = Path()
+            cherryStem.move(to: CGPoint(x: center.x + 8, y: center.y - 30))
+            cherryStem.addQuadCurve(to: CGPoint(x: center.x + 17, y: center.y - 27), control: CGPoint(x: center.x + 15, y: center.y - 34))
+            context.stroke(cherryStem, with: .color(Color(red: 0.20, green: 0.48, blue: 0.31)), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+            let cherry = Path(ellipseIn: CGRect(x: center.x + 3, y: center.y - 36, width: 9, height: 9))
+            context.fill(cherry, with: .color(Color(red: 0.88, green: 0.20, blue: 0.30)))
+        }
+        .scaleEffect(0.72 + 0.28 * progress)
+        .opacity(progress)
     }
 }
 
