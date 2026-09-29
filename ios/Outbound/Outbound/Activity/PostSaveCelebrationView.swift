@@ -5,6 +5,43 @@ struct PostSaveCelebrationView: View {
     let activity: SavedActivity
     let onContinue: () -> Void
 
+    var body: some View {
+        ZStack {
+            Color(red: 1.0, green: 0.94, blue: 0.86)
+                .ignoresSafeArea()
+
+            VStack(spacing: 22) {
+                PostSaveCelebrationCard(activity: activity)
+                    .frame(maxWidth: 360)
+                    .frame(height: 250)
+
+                Text(String(localized: "activity.post_save.message", defaultValue: "You made time for this today."))
+                    .font(.title3.weight(.semibold))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Color(red: 0.11, green: 0.16, blue: 0.22))
+                    .accessibilityAddTraits(.isHeader)
+
+                Button(action: onContinue) {
+                    Text(String(localized: "activity.post_save.done", defaultValue: "Done"))
+                        .font(.headline)
+                        .frame(minWidth: 112, minHeight: 48)
+                        .padding(.horizontal, 14)
+                        .foregroundStyle(.white)
+                        .background(Color(red: 0.94, green: 0.35, blue: 0.13), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("PostSaveCelebrationDoneButton")
+            }
+            .padding(.horizontal, 24)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(String(localized: "activity.post_save.accessibility", defaultValue: "Activity saved celebration")))
+    }
+}
+
+struct PostSaveCelebrationCard: View {
+    let activity: SavedActivity
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var routeProgress: CGFloat = 0
 
@@ -39,45 +76,13 @@ struct PostSaveCelebrationView: View {
     }
 
     var body: some View {
-        ZStack {
-            Color(red: 1.0, green: 0.94, blue: 0.86)
-                .ignoresSafeArea()
-
-            VStack(spacing: 22) {
-                postcard
-                    .frame(maxWidth: 360)
-                    .frame(height: 250)
-
-                Text(String(localized: "activity.post_save.message", defaultValue: "You made time for this today."))
-                    .font(.title3.weight(.semibold))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(Color(red: 0.11, green: 0.16, blue: 0.22))
-                    .accessibilityAddTraits(.isHeader)
-
-                Button(action: onContinue) {
-                    Text(String(localized: "activity.post_save.done", defaultValue: "Done"))
-                        .font(.headline)
-                        .frame(minWidth: 112, minHeight: 48)
-                        .padding(.horizontal, 14)
-                        .foregroundStyle(.white)
-                        .background(Color(red: 0.94, green: 0.35, blue: 0.13), in: Capsule())
+        postcard
+            .onAppear {
+                routeProgress = reduceMotion ? 1 : 0
+                if !reduceMotion {
+                    withAnimation(.easeInOut(duration: 1.4)) { routeProgress = 1 }
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("PostSaveCelebrationDoneButton")
             }
-            .padding(.horizontal, 24)
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text(String(localized: "activity.post_save.accessibility", defaultValue: "Activity saved celebration")))
-        .task(id: activity.id) {
-            routeProgress = reduceMotion ? 1 : 0
-            if !reduceMotion {
-                withAnimation(.easeInOut(duration: 1.4)) { routeProgress = 1 }
-            }
-            try? await Task.sleep(for: .seconds(4))
-            guard !Task.isCancelled else { return }
-            onContinue()
-        }
     }
 
     private var postcard: some View {

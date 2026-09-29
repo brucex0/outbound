@@ -28,6 +28,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activitySaveIneligibleShown = "activity_save_ineligible_shown"
     case postWorkoutStretchOffered = "post_workout_stretch_offered"
     case postWorkoutStretchStarted = "post_workout_stretch_started"
+    case postWorkoutStretchProgramSelected = "post_workout_stretch_program_selected"
     case postWorkoutStretchCompleted = "post_workout_stretch_completed"
     case postWorkoutStretchDismissed = "post_workout_stretch_dismissed"
     case activityDiscardPrompted = "activity_discard_prompted"
@@ -334,6 +335,11 @@ enum ProductAnalyticsSchema {
         .activityFinished: [.durationBucket, .distanceBucket, .goalCompletionBucket],
         .activitySaved: [.activityType, .goalType, .durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket, .musicEnabled, .routeSelected, .shoeSelected, .groupRunEnabled, .indoor, .dogCompanionEnabled],
         .activitySaveIneligibleShown: [.activityType, .durationBucket, .distanceBucket],
+        .postWorkoutStretchOffered: [.activityType, .routineID],
+        .postWorkoutStretchStarted: [.activityType, .routineID],
+        .postWorkoutStretchProgramSelected: [.activityType, .routineID],
+        .postWorkoutStretchCompleted: [.activityType, .routineID],
+        .postWorkoutStretchDismissed: [.activityType, .routineID, .result],
         .activityDiscardPrompted: [.durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket],
         .activityDiscarded: [.durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket],
         .activityDeleted: [.sourceType, .countBucket],

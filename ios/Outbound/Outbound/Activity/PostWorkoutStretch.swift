@@ -19,18 +19,20 @@ struct StretchMovement: Identifiable, Sendable {
     let icon: String
 }
 
-struct StretchRoutine: Sendable {
+struct StretchRoutine: Sendable, Identifiable {
     let id: String
+    let title: String
+    let durationLabel: String
     let movements: [StretchMovement]
 }
 
 struct PostSavedStretchContext {
     let activityType: ActivityType
-    let routine: StretchRoutine
+    let routines: [StretchRoutine]
 }
 
 enum PostWorkoutStretchCatalog {
-    static func routine(for type: ActivityType) -> StretchRoutine? {
+    static func routines(for type: ActivityType) -> [StretchRoutine]? {
         guard PostWorkoutStretchEligibility.isEligible(type) else { return nil }
         let prefix = type.rawValue
         let base = [
@@ -38,20 +40,51 @@ enum PostWorkoutStretchCatalog {
             ("quad", "post_workout_stretch.movement.quad", "post_workout_stretch.instruction.quad", "post_workout_stretch.side.right", "figure.stand"),
             ("hip", "post_workout_stretch.movement.hip", "post_workout_stretch.instruction.hip", "post_workout_stretch.side.left", "figure.flexibility"),
             ("shoulder", "post_workout_stretch.movement.shoulder", "post_workout_stretch.instruction.shoulder", nil, "figure.arms.open")
+        ].map { id, titleKey, instructionKey, sideKey, icon in
+            StretchMovement(
+                id: "\(prefix)_\(id)",
+                title: stretchText(titleKey, id.capitalized),
+                instruction: stretchText(instructionKey, "Move gently within your comfort."),
+                side: sideKey.map { stretchText($0, "Side") },
+                duration: 60,
+                icon: icon
+            )
+        }
+        let quickReset = [base[0], base[2]].map { movement in
+            StretchMovement(
+                id: movement.id,
+                title: movement.title,
+                instruction: movement.instruction,
+                side: movement.side,
+                duration: 45,
+                icon: movement.icon
+            )
+        }
+
+        return [
+            StretchRoutine(
+                id: "post_save_\(prefix)_full_body_v1",
+                title: stretchText("activity.post_save.program.full_body", "Full-body reset"),
+                durationLabel: stretchText("activity.post_save.program.full_body.duration", "4 min"),
+                movements: base
+            ),
+            StretchRoutine(
+                id: "post_save_\(prefix)_lower_body_v1",
+                title: stretchText("activity.post_save.program.lower_body", "Lower-body reset"),
+                durationLabel: stretchText("activity.post_save.program.lower_body.duration", "3 min"),
+                movements: Array(base.prefix(3))
+            ),
+            StretchRoutine(
+                id: "post_save_\(prefix)_quick_reset_v1",
+                title: stretchText("activity.post_save.program.quick_reset", "Quick reset"),
+                durationLabel: stretchText("activity.post_save.program.quick_reset.duration", "90 sec"),
+                movements: quickReset
+            )
         ]
-        return StretchRoutine(
-            id: "post_save_\(prefix)_v1",
-            movements: base.map { id, titleKey, instructionKey, sideKey, icon in
-                StretchMovement(
-                    id: "\(prefix)_\(id)",
-                    title: stretchText(titleKey, id.capitalized),
-                    instruction: stretchText(instructionKey, "Move gently within your comfort.") ,
-                    side: sideKey.map { stretchText($0, "Side") },
-                    duration: 60,
-                    icon: icon
-                )
-            }
-        )
+    }
+
+    static func routine(for type: ActivityType) -> StretchRoutine? {
+        routines(for: type)?.first
     }
 }
 
@@ -71,7 +104,7 @@ enum PostWorkoutStretchCatalog {
     @Published var running = false
     @Published var complete = false
     @Published var phase: Phase = .idle
-    let routine: StretchRoutine
+    private(set) var routine: StretchRoutine
     private var task: Task<Void, Never>?
 
     init(routine: StretchRoutine) {
@@ -100,6 +133,14 @@ enum PostWorkoutStretchCatalog {
         }
     }
     func pause() { running = false; task?.cancel() }
+
+    func select(_ routine: StretchRoutine) {
+        guard !running, phase == .idle else { return }
+        self.routine = routine
+        index = 0
+        remaining = 0
+        complete = false
+    }
 
     func startMovementNow() {
         guard phase == .preparing || phase == .transitioning else { return }
@@ -147,75 +188,112 @@ struct PostWorkoutStretchView: View {
     @StateObject private var timer: PostWorkoutStretchTimer
     @State private var narrator = StretchNarrator()
     let context: PostSavedStretchContext
+    let activity: SavedActivity
     let onExit: () -> Void
     @State private var chosen = false
     @State private var confirmEnd = false
     @State private var completedTracked = false
     @State private var speaksInstructions = true
 
-    init(context: PostSavedStretchContext, onExit: @escaping () -> Void) {
+    init(context: PostSavedStretchContext, activity: SavedActivity, onExit: @escaping () -> Void) {
         self.context = context
+        self.activity = activity
         self.onExit = onExit
-        _timer = StateObject(wrappedValue: PostWorkoutStretchTimer(routine: context.routine))
+        _timer = StateObject(wrappedValue: PostWorkoutStretchTimer(routine: context.routines[0]))
     }
 
     var body: some View {
-        VStack(spacing: 20) {
-            HStack {
-                Text(stretchText("post_workout_stretch.activity_saved", "Activity saved")).font(.title2.bold())
-                Spacer()
-            }
+        Group {
             if !chosen {
-                Spacer()
-                Text(stretchText("post_workout_stretch.offer_title", "A gentle reset?")).font(.title.bold())
-                Text(stretchText("post_workout_stretch.offer_body", "Take a few minutes for an optional, easy stretch routine.")).multilineTextAlignment(.center)
-                Toggle(stretchText("post_workout_stretch.voice_over", "Speak instructions aloud"), isOn: $speaksInstructions)
-                    .fixedSize(horizontal: false, vertical: true)
-                Button(stretchText("post_workout_stretch.start", "Start stretching")) {
-                    chosen = true
-                    track(.postWorkoutStretchStarted)
-                    timer.start()
-                    speakCurrentMovement()
-                }.buttonStyle(.borderedProminent).frame(minHeight: 52)
-                Button(stretchText("post_workout_stretch.done", "Done")) { finish("not_started") }.frame(minHeight: 48)
-                Text(stretchText("post_workout_stretch.disclaimer", "General wellness guidance. Stop if you feel pain, dizziness, or unusual discomfort.")).font(.footnote).foregroundStyle(.secondary)
-                Spacer()
-            } else if timer.complete {
-                Spacer()
-                Image(systemName: "checkmark.circle.fill").font(.system(size: 64)).foregroundStyle(.green)
-                Text(stretchText("post_workout_stretch.complete", "Stretch complete")).font(.title.bold())
-                Button(stretchText("post_workout_stretch.done", "Done")) { finish(nil) }.buttonStyle(.borderedProminent).frame(minHeight: 52)
-                Spacer()
-            } else {
-                Spacer()
-                Image(systemName: timer.movement.icon).font(.system(size: 60)).foregroundStyle(.orange)
-                if timer.phase == .preparing {
-                    Text(stretchText("post_workout_stretch.get_ready", "Get ready")).font(.headline).foregroundStyle(.secondary)
-                } else if timer.phase == .transitioning {
-                    Text(stretchText("post_workout_stretch.transition", "Transition")).font(.headline).foregroundStyle(.secondary)
-                }
-                Text(timer.movement.title).font(.title.bold())
-                if let side = timer.movement.side { Text(side).foregroundStyle(.orange) }
-                Text(timer.movement.instruction).multilineTextAlignment(.center)
-                Text(timer.remaining.formatted()).font(.system(size: 56, weight: .bold, design: .rounded)).monospacedDigit()
-                let movementProgress = timer.phase == .holding
-                    ? 1 - Double(timer.remaining) / Double(max(timer.movement.duration, 1))
-                    : 0
-                ProgressView(value: Double(timer.index) + movementProgress, total: Double(timer.routine.movements.count))
-                Text(stretchText("post_workout_stretch.safety", "Move only into gentle tension. Stop if you feel pain.")).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                HStack {
-                    Button(timer.running ? stretchText("post_workout_stretch.pause", "Pause") : stretchText("post_workout_stretch.resume", "Resume")) { toggleTimer() }.buttonStyle(.borderedProminent)
-                    if timer.phase == .preparing || timer.phase == .transitioning {
-                        Button(stretchText("post_workout_stretch.start_now", "Start now")) { timer.startMovementNow() }.buttonStyle(.bordered)
-                    } else if timer.index < timer.routine.movements.count - 1 {
-                        Button(stretchText("post_workout_stretch.next", "Next")) { timer.next() }.buttonStyle(.bordered)
+                ScrollView {
+                    VStack(spacing: 16) {
+                        PostSaveCelebrationCard(activity: activity)
+                            .id(activity.id)
+                            .frame(height: 205)
+
+                        Text(String(localized: "activity.post_save.message", defaultValue: "You made time for this today."))
+                            .font(.title3.weight(.semibold))
+                            .multilineTextAlignment(.center)
+                            .accessibilityAddTraits(.isHeader)
+
+                        Text(stretchText("post_workout_stretch.offer_title", "A gentle reset?"))
+                            .font(.title2.bold())
+                            .padding(.top, 4)
+                        Text(stretchText("post_workout_stretch.offer_body", "Take a few minutes for an optional, easy stretch routine."))
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(.secondary)
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(String(localized: "activity.post_save.program.title", defaultValue: "Choose a stretch"))
+                                .font(.headline)
+                            ForEach(context.routines) { routine in
+                                stretchProgramOption(routine)
+                            }
+                        }
+
+                        Toggle(stretchText("post_workout_stretch.voice_over", "Speak instructions aloud"), isOn: $speaksInstructions)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Button(stretchText("post_workout_stretch.start", "Start stretching")) {
+                            chosen = true
+                            track(.postWorkoutStretchStarted)
+                            timer.start()
+                            speakCurrentMovement()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .frame(maxWidth: .infinity, minHeight: 52)
+
+                        Button(stretchText("post_workout_stretch.done", "Done")) { finish("not_started") }
+                            .frame(minHeight: 48)
+
+                        Text(stretchText("post_workout_stretch.disclaimer", "General wellness guidance. Stop if you feel pain, dizziness, or unusual discomfort."))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
                     }
+                    .frame(maxWidth: 480)
+                    .padding(24)
+                    .frame(maxWidth: .infinity)
                 }
-                Button(stretchText("post_workout_stretch.end", "End")) { timer.running ? (confirmEnd = true) : finish("ended_early") }.frame(minHeight: 48)
-                Spacer()
+            } else if timer.complete {
+                VStack(spacing: 20) {
+                    Spacer()
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 64)).foregroundStyle(.green)
+                    Text(stretchText("post_workout_stretch.complete", "Stretch complete")).font(.title.bold())
+                    Button(stretchText("post_workout_stretch.done", "Done")) { finish(nil) }.buttonStyle(.borderedProminent).frame(minHeight: 52)
+                    Spacer()
+                }
+            } else {
+                VStack(spacing: 20) {
+                    Spacer()
+                    Image(systemName: timer.movement.icon).font(.system(size: 60)).foregroundStyle(.orange)
+                    if timer.phase == .preparing {
+                        Text(stretchText("post_workout_stretch.get_ready", "Get ready")).font(.headline).foregroundStyle(.secondary)
+                    } else if timer.phase == .transitioning {
+                        Text(stretchText("post_workout_stretch.transition", "Transition")).font(.headline).foregroundStyle(.secondary)
+                    }
+                    Text(timer.movement.title).font(.title.bold())
+                    if let side = timer.movement.side { Text(side).foregroundStyle(.orange) }
+                    Text(timer.movement.instruction).multilineTextAlignment(.center)
+                    Text(timer.remaining.formatted()).font(.system(size: 56, weight: .bold, design: .rounded)).monospacedDigit()
+                    let movementProgress = timer.phase == .holding
+                        ? 1 - Double(timer.remaining) / Double(max(timer.movement.duration, 1))
+                        : 0
+                    ProgressView(value: Double(timer.index) + movementProgress, total: Double(timer.routine.movements.count))
+                    Text(stretchText("post_workout_stretch.safety", "Move only into gentle tension. Stop if you feel pain.")).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    HStack {
+                        Button(timer.running ? stretchText("post_workout_stretch.pause", "Pause") : stretchText("post_workout_stretch.resume", "Resume")) { toggleTimer() }.buttonStyle(.borderedProminent)
+                        if timer.phase == .preparing || timer.phase == .transitioning {
+                            Button(stretchText("post_workout_stretch.start_now", "Start now")) { timer.startMovementNow() }.buttonStyle(.bordered)
+                        } else if timer.index < timer.routine.movements.count - 1 {
+                            Button(stretchText("post_workout_stretch.next", "Next")) { timer.next() }.buttonStyle(.bordered)
+                        }
+                    }
+                    Button(stretchText("post_workout_stretch.end", "End")) { timer.running ? (confirmEnd = true) : finish("ended_early") }.frame(minHeight: 48)
+                    Spacer()
+                }
             }
         }
-        .padding(24)
         .safeAreaPadding(.vertical)
         .background(Color(.systemBackground))
         .onAppear { track(.postWorkoutStretchOffered) }
@@ -255,6 +333,41 @@ struct PostWorkoutStretchView: View {
         onExit()
     }
 
+    @ViewBuilder
+    private func stretchProgramOption(_ routine: StretchRoutine) -> some View {
+        let isSelected = timer.routine.id == routine.id
+        Button {
+            guard !isSelected else { return }
+            timer.select(routine)
+            track(.postWorkoutStretchProgramSelected, routineID: routine.id)
+        } label: {
+            HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(routine.title).font(.subheadline.weight(.semibold))
+                    Text(routine.durationLabel).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(isSelected ? Color.orange : Color.secondary)
+            }
+            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+            .padding(.horizontal, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(isSelected ? Color.orange.opacity(0.10) : Color(.secondarySystemBackground))
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(isSelected ? Color.orange : Color.clear, lineWidth: 1.5)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityIdentifier("StretchProgramOption-\(routine.id)")
+    }
+
     private func toggleTimer() {
         if timer.running {
             timer.pause()
@@ -278,8 +391,11 @@ struct PostWorkoutStretchView: View {
         narrator.speak(spokenText, locale: AppLanguage.speechLocale)
     }
 
-    private func track(_ event: ProductEventName, result: String? = nil) {
-        var properties: [ProductPropertyKey: AnalyticsValue] = [.activityType: .string(context.activityType.rawValue), .routineID: .string(context.routine.id)]
+    private func track(_ event: ProductEventName, result: String? = nil, routineID: String? = nil) {
+        var properties: [ProductPropertyKey: AnalyticsValue] = [
+            .activityType: .string(context.activityType.rawValue),
+            .routineID: .string(routineID ?? timer.routine.id)
+        ]
         if let result { properties[.result] = .string(result) }
         Task { await analytics?.track(.init(event, properties: properties)) }
     }

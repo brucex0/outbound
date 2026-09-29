@@ -87,6 +87,7 @@ struct RecordView: View {
     @State private var pendingActivity: PendingFinishedActivity?
     @State private var postSaveStretchContext: PostSavedStretchContext?
     @State private var postSaveCelebrationActivity: SavedActivity?
+    @State private var lastPostSaveCelebrationExposureID: UUID?
     @State private var elevationCorrectionTask: Task<ActivitySummary, Never>?
     @State private var plannedIntent: SessionIntent?
     @State private var activeIntent: SessionIntent?
@@ -727,14 +728,26 @@ struct RecordView: View {
                 .ignoresSafeArea()
 
             if let postSaveCelebrationActivity {
-                PostSaveCelebrationView(activity: postSaveCelebrationActivity, onContinue: finishPostSaveCelebration)
-                    .zIndex(3)
-                    .onAppear {
-                        track(.init(.featureExposed, properties: [
-                            .feature: .string("activity_post_save_celebration")
-                        ]))
+                Group {
+                    if let postSaveStretchContext {
+                        PostWorkoutStretchView(
+                            context: postSaveStretchContext,
+                            activity: postSaveCelebrationActivity,
+                            onExit: finishPostSaveStretch
+                        )
+                    } else {
+                        PostSaveCelebrationView(activity: postSaveCelebrationActivity, onContinue: finishPostSaveCelebration)
                     }
-            } else if let postSaveStretchContext { PostWorkoutStretchView(context: postSaveStretchContext, onExit: finishPostSaveStretch).zIndex(2) }
+                }
+                .zIndex(3)
+                .onAppear {
+                    guard lastPostSaveCelebrationExposureID != postSaveCelebrationActivity.id else { return }
+                    lastPostSaveCelebrationExposureID = postSaveCelebrationActivity.id
+                    track(.init(.featureExposed, properties: [
+                        .feature: .string("activity_post_save_celebration")
+                    ]))
+                }
+            }
             else if let pendingActivity { postRunSummarySurface(pendingActivity).transition(postRunSummaryTransition).zIndex(1) }
             else {
                 liveRecordingSurface
@@ -1798,8 +1811,8 @@ struct RecordView: View {
             activities: activityStore.activities,
             phase: DailyMotivationEngine.phase(for: activityStore.activities)
         )
-        if let routine = PostWorkoutStretchCatalog.routine(for: savedActivity.activityType), savedActivity.source.kind == .outbound {
-            postSaveStretchContext = PostSavedStretchContext(activityType: savedActivity.activityType, routine: routine)
+        if let routines = PostWorkoutStretchCatalog.routines(for: savedActivity.activityType), savedActivity.source.kind == .outbound {
+            postSaveStretchContext = PostSavedStretchContext(activityType: savedActivity.activityType, routines: routines)
         }
         postSaveCelebrationActivity = savedActivity
         clearPending(recoveryReason: .saved)
@@ -1809,12 +1822,17 @@ struct RecordView: View {
 
     private func finishPostSaveCelebration() {
         postSaveCelebrationActivity = nil
-        guard postSaveStretchContext == nil else { return }
+        postSaveStretchContext = nil
         sessionController.completeSave(withPostSaveFlow: false)
         onCloseRequest?(false)
     }
 
-    private func finishPostSaveStretch() { postSaveStretchContext = nil; onCloseRequest?(false) }
+    private func finishPostSaveStretch() {
+        postSaveStretchContext = nil
+        postSaveCelebrationActivity = nil
+        sessionController.completeSave(withPostSaveFlow: false)
+        onCloseRequest?(false)
+    }
 
     private func discardPendingActivity() {
         if let pendingActivity {
