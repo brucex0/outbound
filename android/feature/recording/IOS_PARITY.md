@@ -30,7 +30,7 @@
 - The finish hero pages between route and photos. Photo captions follow iOS start / finish / route-distance rules, and every ordered photo with its capture time, route distance, plausible coordinate, and capture context is persisted with the activity.
 - Perceived effort matches iOS Easy / About right / Too hard choices, with continuation capacity shown only for Easy. Feedback is submitted through the existing workout feedback endpoint when the runner selected an answer. Finish stats use the shared calorie estimator and account measurement units.
 - Save is disabled below the shared iOS threshold of five minutes or 500 meters. Closing an eligible unsaved review requires destructive confirmation; an ineligible review closes directly, matching iOS.
-- A successful local save shows the shared activity postcard before the activity-surface exit. For Run, Bike, Hike, and Swim, the postcard and message sit above the same two optional stretch choices as iOS: a full-body cooldown and a focused hips-and-hamstrings routine. Other activity types show the postcard on its own. The postcard traces the saved route (or fixed doodle path without a route), uses the shared vector runner and sundae burst, stays open until the runner chooses Done, and respects Android animator-duration scale. Analytics records the existing `feature_exposed/activity_post_save_celebration` exposure and stretch funnel with stable routine IDs only.
+- A successful local save shows the shared activity postcard before the activity-surface exit. For Run, Bike, Hike, and Swim, the postcard and message sit above the same two optional stretch choices as iOS: a full-body cooldown and a focused hips-and-hamstrings routine. Other activity types show the postcard on its own. The postcard traces the saved route (or fixed doodle path without a route), uses the shared vector runner and sundae burst, fades the sundae after a short pause, stays open until the runner chooses Done, and respects Android animator-duration scale. Analytics records the existing `feature_exposed/activity_post_save_celebration` exposure and stretch funnel with stable routine IDs only.
 
 ## Resources, Analytics, And Accessibility
 
@@ -38,7 +38,7 @@
 - Setup is tracked only when its screen is shown. Start, pause, resume, finish, save eligibility, discard, surface, media, dashboard-state, and Auto Pause configuration events use the canonical sanitized iOS event names and Android platform property.
 - Debug builds log direct-launch Voice Guide precedence, TTS engine initialization and locale selection, countdown cue enqueue results, and TTS playback callbacks under `RecordingStart` and `RecordingVoice`; logs never include spoken text.
 - The debug simulator uses `activity_configuration_changed`, `activity_simulation_started`, and `activity_simulation_control_used` with the iOS allowlisted property names and coarse speed/distance values.
-- Controls expose semantic labels, retain 48dp-or-larger primary targets, and do not rely on color alone. Reduced motion shows the completed route and fully formed sundae without tracing or flying sprinkles.
+- Controls expose semantic labels, retain 48dp-or-larger primary targets, and do not rely on color alone. Reduced motion shows the completed route and fully formed sundae without tracing or flying sprinkles, then fades the sundae after a short pause.
 
 ## Reference Scenarios
 

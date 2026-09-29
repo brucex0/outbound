@@ -2,8 +2,8 @@ package com.plainstride.outbound.feature.recording
 
 import android.animation.ValueAnimator
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -102,6 +102,7 @@ fun PostSaveCelebrationCard(
     val reducedMotion = remember { !ValueAnimator.areAnimatorsEnabled() }
     val progress = remember(sessionKey) { Animatable(if (reducedMotion) 1f else 0f) }
     val sundaeProgress = remember(sessionKey) { Animatable(if (reducedMotion) 1f else 0f) }
+    val sundaeOpacity = remember(sessionKey) { Animatable(1f) }
     val points = remember(track) { normalizedRoute(track) }
 
     LaunchedEffect(sessionKey, reducedMotion) {
@@ -109,6 +110,8 @@ fun PostSaveCelebrationCard(
             progress.animateTo(1f, tween(durationMillis = 1_400))
             sundaeProgress.animateTo(1f, spring(dampingRatio = 0.58f, stiffness = 420f))
         }
+        kotlinx.coroutines.delay(2_000)
+        sundaeOpacity.animateTo(0f, tween(durationMillis = 350))
     }
 
     Box(
@@ -135,19 +138,19 @@ fun PostSaveCelebrationCard(
 
             val finish = pixelPoints.lastOrNull()
             val runner = pointOnPath(pixelPoints, progress.value)
-            if (runner != null && finish != null && progress.value > 0.04f && sundaeProgress.value < 0.22f) {
+            if (runner != null && finish != null && progress.value > 0.04f) {
                 drawRunner(runner)
             }
             pixelPoints.firstOrNull()?.let { drawCircle(PostcardNavy, radius = 5.5.dp.toPx(), center = it) }
             finish?.let { drawCircle(PostcardNavy, radius = 5.5.dp.toPx(), center = it) }
 
-            if (finish != null && sundaeProgress.value > 0f) {
+            if (finish != null && sundaeProgress.value > 0f && sundaeOpacity.value > 0f) {
                 val inset = 46.dp.toPx()
                 val burstCenter = Offset(
                     x = (finish.x).coerceIn(inset, size.width - inset),
                     y = (finish.y - 33.dp.toPx()).coerceIn(inset, size.height - inset),
                 )
-                drawSundaeBurst(burstCenter, sundaeProgress.value)
+                drawSundaeBurst(burstCenter, sundaeProgress.value, sundaeOpacity.value)
             }
         }
     }
@@ -229,7 +232,7 @@ private fun DrawScope.drawRunner(center: Offset) {
     drawPath(limbs, PostcardNavy, style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
 }
 
-private fun DrawScope.drawSundaeBurst(center: Offset, progress: Float) {
+private fun DrawScope.drawSundaeBurst(center: Offset, progress: Float, opacity: Float) {
     val sprinkles = listOf(Color(0xFFF55975), Color(0xFF40AE91), Color(0xFFFFAE33), Color(0xFF7666C8))
     val angles = listOf(-150f, -112f, -72f, -28f, 18f, 58f, 105f, 148f)
     angles.forEachIndexed { index, degrees ->
@@ -238,7 +241,7 @@ private fun DrawScope.drawSundaeBurst(center: Offset, progress: Float) {
         val endRadius = 37.dp.toPx() * progress
         val start = Offset(center.x + cos(angle).toFloat() * startRadius, center.y + sin(angle).toFloat() * startRadius)
         val end = Offset(center.x + cos(angle).toFloat() * endRadius, center.y + sin(angle).toFloat() * endRadius)
-        drawLine(sprinkles[index % sprinkles.size], start, end, strokeWidth = 4.dp.toPx(), cap = StrokeCap.Round)
+        drawLine(sprinkles[index % sprinkles.size].copy(alpha = opacity), start, end, strokeWidth = 4.dp.toPx(), cap = StrokeCap.Round)
     }
 
     val cone = Path().apply {
@@ -248,7 +251,7 @@ private fun DrawScope.drawSundaeBurst(center: Offset, progress: Float) {
         quadraticTo(center.x, center.y + 36.dp.toPx(), center.x - 2.dp.toPx(), center.y + 33.dp.toPx())
         close()
     }
-    drawPath(cone, Color(0xFFCC7A3D))
+    drawPath(cone, Color(0xFFCC7A3D).copy(alpha = opacity))
 
     val scoops = listOf(
         Triple(-10f, -10f, Color(0xFF8CC9A1)),
@@ -257,13 +260,13 @@ private fun DrawScope.drawSundaeBurst(center: Offset, progress: Float) {
     )
     scoops.forEachIndexed { index, (x, y, color) ->
         val radius = listOf(13f, 15f, 12f)[index].dp.toPx()
-        drawCircle(color, radius, Offset(center.x + x.dp.toPx(), center.y + y.dp.toPx()))
+        drawCircle(color.copy(alpha = opacity), radius, Offset(center.x + x.dp.toPx(), center.y + y.dp.toPx()))
     }
 
     val stem = Path().apply {
         moveTo(center.x + 8.dp.toPx(), center.y - 30.dp.toPx())
         quadraticTo(center.x + 15.dp.toPx(), center.y - 34.dp.toPx(), center.x + 17.dp.toPx(), center.y - 27.dp.toPx())
     }
-    drawPath(stem, Color(0xFF337A4F), style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
-    drawCircle(Color(0xFFE0344D), 4.5.dp.toPx(), Offset(center.x + 7.5.dp.toPx(), center.y - 31.5.dp.toPx()))
+    drawPath(stem, Color(0xFF337A4F).copy(alpha = opacity), style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
+    drawCircle(Color(0xFFE0344D).copy(alpha = opacity), 4.5.dp.toPx(), Offset(center.x + 7.5.dp.toPx(), center.y - 31.5.dp.toPx()))
 }
