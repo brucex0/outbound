@@ -40,7 +40,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.put
 
-@Composable fun CommunityRouteScreen(library: RouteLibrary, scope: RouteScope, onScope: (RouteScope)->Unit, onRefresh:()->Unit, onSearch:(String)->Unit, onFollow:(com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration)->Unit, onBookmark:(CommunityRoute)->Unit,publishableActivities:List<Pair<String,String>> = emptyList(),onPublish:(String,String,String?)->Unit={_,_,_->},onImport:(Boolean)->Unit={},embedded:Boolean=false,bottomContentPadding:androidx.compose.ui.unit.Dp=0.dp,routeDetail:CommunityRoute?=null,routeDetailLoading:Boolean=false,onLoadDetail:(String)->Unit={},onRemovePublished:(String)->Unit={},onClearDetail:()->Unit={},unitSystem:com.plainstride.outbound.core.model.activity.MeasurementUnitSystem=com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric,onImportedDelete:()->Unit={},importRequest:Int=0,searchQuery:String="") {
+@Composable fun CommunityRouteScreen(library: RouteLibrary, scope: RouteScope, onScope: (RouteScope)->Unit, onRefresh:()->Unit, onSearch:(String)->Unit, onFollow:(com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration)->Unit, onBookmark:(CommunityRoute)->Unit,publishableActivities:List<Pair<String,String>> = emptyList(),onPublish:(String,String,String?)->Unit={_,_,_->},onImport:(Boolean)->Unit={},bottomContentPadding:androidx.compose.ui.unit.Dp=0.dp,routeDetail:CommunityRoute?=null,routeDetailLoading:Boolean=false,onLoadDetail:(String)->Unit={},onRemovePublished:(String)->Unit={},onClearDetail:()->Unit={},unitSystem:com.plainstride.outbound.core.model.activity.MeasurementUnitSystem=com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric,onImportedDelete:()->Unit={},importRequest:Int=0,searchQuery:String="") {
  val debugRoute = if (BuildConfig.DEBUG && scope != RouteScope.MINE) {
   debugHarvestRoute(
    stringResource(com.plainstride.outbound.feature.recording.R.string.recording_simulation_route_name),
@@ -49,7 +49,7 @@ import kotlinx.serialization.json.put
  val visibleRoutes = if (debugRoute == null) library.routes else
   listOf(debugRoute) + library.routes.filterNot { it.id == HarvestRunSimulation.ROUTE_ID }
  val visibleLibrary = library.copy(routes = visibleRoutes)
- SharedCommunityRouteLibrary(visibleLibrary,scope,onScope,onRefresh,onSearch,onFollow,onBookmark,onImport,routeDetail,routeDetailLoading,onLoadDetail,onRemovePublished,onClearDetail,unitSystem,onImportedDelete,bottomContentPadding,importRequest,embedded,publishableActivities,onPublish,searchQuery)
+ SharedCommunityRouteLibrary(visibleLibrary,scope,onScope,onRefresh,onSearch,onFollow,onBookmark,onImport,routeDetail,routeDetailLoading,onLoadDetail,onRemovePublished,onClearDetail,unitSystem,onImportedDelete,bottomContentPadding,importRequest,publishableActivities,onPublish,searchQuery)
 }
 
 @Composable
@@ -71,7 +71,6 @@ private fun SharedCommunityRouteLibrary(
  onImportedDelete:()->Unit,
  bottomContentPadding:androidx.compose.ui.unit.Dp,
  importRequest:Int,
- embedded:Boolean,
  publishableActivities:List<Pair<String,String>>,
  onPublish:(String,String,String?)->Unit,
  searchQuery:String,
@@ -94,13 +93,13 @@ private fun SharedCommunityRouteLibrary(
  }
  LaunchedEffect(searchQuery) { query=searchQuery;submittedQuery=searchQuery.isNotBlank() }
  LaunchedEffect(importRequest) { if (importRequest > handledImportRequest) { handledImportRequest = importRequest; importFile.launch(arrayOf("application/gpx+xml","application/geo+json","application/json","text/xml","text/plain")) } }
- LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(bottom=16.dp+bottomContentPadding),verticalArrangement=Arrangement.spacedBy(0.dp)) {
-  if(!embedded) item {
-   Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
-    Text(stringResource(R.string.routes_title),Modifier.weight(1f),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
+ Column(Modifier.fillMaxSize()) {
+ LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(bottom=16.dp+bottomContentPadding),verticalArrangement=Arrangement.spacedBy(0.dp)) {
+  item {
+   Row(Modifier.fillMaxWidth().padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically) {
+    SingleChoiceSegmentedButtonRow(Modifier.weight(1f)) { listOf(RouteScope.DISCOVERY,RouteScope.MINE).forEachIndexed { index,item -> SegmentedButton(scope==item,{if(scope!=item){query="";submittedQuery=false;onScope(item)}},SegmentedButtonDefaults.itemShape(index,2)){Text(stringResource(if(item==RouteScope.MINE)R.string.routes_mine else R.string.routes_discover))} } }
     IconButton(onRefresh){Icon(Icons.Outlined.Refresh,stringResource(R.string.routes_refresh))}
    }
-   SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal=16.dp)) { listOf(RouteScope.DISCOVERY,RouteScope.MINE).forEachIndexed { index,item -> SegmentedButton(scope==item,{if(scope!=item){query="";submittedQuery=false;onScope(item)}},SegmentedButtonDefaults.itemShape(index,2)){Text(stringResource(if(item==RouteScope.MINE)R.string.routes_mine else R.string.routes_discover))} } }
   }
   if(scope==RouteScope.MINE&&publishableActivities.isNotEmpty()) item { Column(Modifier.padding(horizontal=16.dp)){publishableActivities.forEach { activity -> RouteLibraryAction(stringResource(R.string.routes_publish_activity,activity.second),Icons.Outlined.Publish){publish=activity} } } }
   if(scope!=RouteScope.MINE) {
@@ -156,6 +155,7 @@ private fun SharedCommunityRouteLibrary(
    }
    HorizontalDivider(Modifier.padding(start=62.dp))
   }
+ }
  }
  if(pendingNearby)AlertDialog(onDismissRequest={pendingNearby=false},title={Text(stringResource(R.string.routes_location_title))},text={Text(stringResource(R.string.routes_location_body))},confirmButton={TextButton({locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)}){Text(stringResource(R.string.routes_location_allow))}},dismissButton={TextButton({pendingNearby=false}){Text(stringResource(R.string.routes_close))}})
  publish?.let{activity->var name by remember(activity){mutableStateOf(activity.second)};var description by remember(activity){mutableStateOf("")};AlertDialog({publish=null},title={Text(stringResource(R.string.routes_publish))},text={Column{OutlinedTextField(name,{name=it.take(80)},label={Text(stringResource(R.string.routes_publish_name))});OutlinedTextField(description,{description=it.take(300)},label={Text(stringResource(R.string.routes_publish_description))})}},confirmButton={TextButton({onPublish(activity.first,name,description.takeIf(String::isNotBlank));publish=null},enabled=name.isNotBlank()){Text(stringResource(R.string.routes_publish))}},dismissButton={TextButton({publish=null}){Text(stringResource(R.string.routes_close))}})}
