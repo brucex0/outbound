@@ -47,7 +47,7 @@ These values are implemented in iOS `Guide/LiveGuidanceModels.swift` and `Guide/
 | `challenge_complete` | The selected challenge duration elapsed after its cue was spoken. | Challenge start was spoken and the selected duration elapsed. | Once per selected challenge. |
 | `workout_instruction` | A selected standalone workout reached a catalog-authored execution boundary. | Exact instruction ID plus a distance or elapsed-time trigger carried in the cached workout; the server-issued phrase plan carries the matching ID and trigger. | Once per instruction ID; stale crossings are skipped. |
 
-Pace values are accepted only from 60 through 3,600 seconds per kilometer. Rolling pace needs at least four valid samples. The guide retains 240 active seconds of history so accelerated run simulations preserve the same detector windows as live sessions.
+Pace values are accepted only from 60 through 3,600 seconds per kilometer. Rolling pace needs at least four valid samples. The guide retains 240 active seconds of history so accelerated run simulations preserve the same detector windows as live sessions. Android delivers each simulated second through a buffered coaching stream because its UI state stream conflates rapid updates; its live-coach request omits absent optional fields so the server accepts the session and supplies the audio pack.
 
 The instability detector waits for established pace because the first GPS pace estimate can include a pre-start location fix and is refreshed from overlapping 30-second windows. Counting eight one-second snapshots from that settling estimate caused false early pace-change cues.
 

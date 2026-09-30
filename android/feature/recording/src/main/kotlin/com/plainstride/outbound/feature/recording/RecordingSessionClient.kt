@@ -24,6 +24,7 @@ class RecordingSessionClient(context: Context) : AutoCloseable {
     private var pendingRecovery: PendingRecovery? = null
 
     val snapshots: Flow<RecordingSnapshot> = coordinator.filterNotNull().flatMapLatest { it.snapshot }
+    val simulationSnapshots: Flow<RecordingSnapshot> = coordinator.filterNotNull().flatMapLatest { it.simulationSnapshots }
     val events: Flow<RecordingEvent> = coordinator.flatMapLatest { it?.events ?: emptyFlow() }
 
     private val connection = object : ServiceConnection {

@@ -14,6 +14,7 @@ import retrofit2.http.Query
 import retrofit2.http.Streaming
 import com.plainstride.outbound.core.network.PlainstrideJson
 import okhttp3.MediaType.Companion.toMediaType
+import kotlinx.serialization.json.Json
 
 interface LiveCoachApi {
     @GET("v1/live-coach/config") suspend fun config(@Header("Authorization") authorization: String): Response<LiveCoachConfig>
@@ -26,8 +27,12 @@ interface LiveCoachApi {
     @POST("v1/live-coach/sessions/{id}/end") suspend fun end(@Header("Authorization") authorization: String, @Path("id") id: String, @Body request: EndSessionRequest): Response<Ack>
 }
 
+// Strict live-coach request schemas reject explicit nulls for absent options.
+// Retain default fields such as contractVersion in the serialized request.
+private val LiveCoachJson = Json(PlainstrideJson) { explicitNulls = false }
+
 fun createLiveCoachApi(baseUrl: String, client: OkHttpClient): LiveCoachApi = Retrofit.Builder()
     .baseUrl(if (baseUrl.endsWith('/')) baseUrl else "$baseUrl/")
     .client(client)
-    .addConverterFactory(PlainstrideJson.asConverterFactory("application/json".toMediaType()))
+    .addConverterFactory(LiveCoachJson.asConverterFactory("application/json".toMediaType()))
     .build().create(LiveCoachApi::class.java)

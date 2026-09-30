@@ -56,6 +56,8 @@ import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -165,7 +167,10 @@ class LiveCoachViewModel @Inject constructor(
     fun attachRecording(launch: RecordingLaunchConfiguration, unitSystem: MeasurementUnitSystem) {
         if (observer != null) return
         observer = viewModelScope.launch {
-            client.snapshots.collect { snapshot -> process(snapshot, launch, unitSystem) }
+            merge(
+                client.snapshots.filter { it.runSimulation == null || it.status != RecordingStatus.ACTIVE },
+                client.simulationSnapshots,
+            ).collect { snapshot -> process(snapshot, launch, unitSystem) }
         }
     }
 

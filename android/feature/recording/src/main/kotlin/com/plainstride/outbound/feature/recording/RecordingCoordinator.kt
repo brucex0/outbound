@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -49,6 +50,13 @@ class RecordingCoordinator internal constructor(
     val snapshot: StateFlow<RecordingSnapshot> = _snapshot.asStateFlow()
     private val _events = MutableSharedFlow<RecordingEvent>(extraBufferCapacity = 16)
     val events: SharedFlow<RecordingEvent> = _events.asSharedFlow()
+    // StateFlow conflates the one-second steps in accelerated simulations. Coaching
+    // needs each step to establish separate, stable pace windows.
+    private val _simulationSnapshots = MutableSharedFlow<RecordingSnapshot>(
+        extraBufferCapacity = 512,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    val simulationSnapshots: SharedFlow<RecordingSnapshot> = _simulationSnapshots.asSharedFlow()
 
     private var tickJob: Job? = null
     private var locationJob: Job? = null
@@ -615,6 +623,7 @@ class RecordingCoordinator internal constructor(
                 _snapshot.value.startedAtEpochMilliseconds ?: clock.utcMillis(),
                 simulationStartElapsedRealtimeNanos ?: clock.elapsedRealtimeNanos(),
             ))
+            _simulationSnapshots.tryEmit(_snapshot.value.copy(track = emptyList()))
         }
         if (simulation.isComplete) {
             stopSimulationClock()
