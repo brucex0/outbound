@@ -20,7 +20,7 @@ data class RunSimulationState(
 }
 
 /** DEBUG fixture matching iOS HarvestHalfMarathonSimulation.route. */
-internal object HarvestRunSimulation {
+object HarvestRunSimulation {
     const val ROUTE_ID = "debug-redmond-harvest-half-marathon"
 
     val route = FollowedRouteConfiguration(

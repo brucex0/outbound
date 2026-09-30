@@ -1,5 +1,5 @@
 plugins { alias(libs.plugins.android.library); alias(libs.plugins.kotlin.compose); alias(libs.plugins.kotlin.serialization); alias(libs.plugins.hilt); alias(libs.plugins.ksp) }
-android { namespace = "com.plainstride.outbound.feature.community"; compileSdk = 36; compileSdkMinor = 1; defaultConfig { minSdk = 26 }; buildFeatures { compose = true } }
+android { namespace = "com.plainstride.outbound.feature.community"; compileSdk = 36; compileSdkMinor = 1; defaultConfig { minSdk = 26 }; buildFeatures { compose = true; buildConfig = true } }
 dependencies {
  implementation(project(":core:model"))
  implementation(project(":core:designsystem"))

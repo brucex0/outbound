@@ -48,4 +48,6 @@
     <string name="route_library_search_prompt">路线或地点</string>
     <string name="route_library_section_community">社区路线</string>
     <string name="route_library_section_imported">导入的路线</string>
+    <string name="route_library_test_badge">测试</string>
+    <string name="route_library_test_badge_accessibility">测试路线</string>
 </resources>

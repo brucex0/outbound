@@ -17,7 +17,7 @@ Open this when implementing saved routes, route discovery, route import/export, 
 
 - Today exposes `Explore routes` beside the primary workout and Quick Start actions.
 - Activity setup opens the route picker directly so a route can be combined with a freestyle or planned workout. Each route-library scope permits at most one automatic initial load per app session: the setup picker requests one nearby load, standalone discovery loads the community list, and My Routes loads the saved list. SwiftUI reconstruction never starts another request. Pull to refresh, search, and `Find routes near me` are explicit refresh actions. The picker supports direct row selection, lets the selected row be tapped again to remove the route, keeps the choice pending until confirmation, and closes after applying the choice. `Close` leaves the activity unchanged.
-- Debug builds always include the Redmond Harvest Half Marathon in route discovery, marked `Test`. Selecting it from activity setup automatically enables simulated GPS for the run; its route geometry is bundled locally.
+- Debug builds on iOS and Android always include the Redmond Harvest Half Marathon in route discovery, marked `Test`. Selecting it to start a run automatically enables simulated GPS; its geometry is bundled locally. Android still requires location permission for its foreground recording service.
 - Social's community menu links to route discovery and Social may show nearby/popular route cards.
 - Me exposes `My Routes`, containing routes owned or bookmarked by the runner.
 - Discovery supports nearby results, text/location search, current map area, distance, elevation, activity type, and route shape as the dataset grows.

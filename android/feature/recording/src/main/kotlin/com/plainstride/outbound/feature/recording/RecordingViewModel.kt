@@ -96,11 +96,13 @@ class RecordingViewModel @Inject constructor(
     fun configure(configuration: RecordingLaunchConfiguration, unitSystem: MeasurementUnitSystem = MeasurementUnitSystem.metric) {
         if (mutableState.value.startRequested) return
         presentationUnitSystem = unitSystem
+        val isDebugHarvestLaunch = BuildConfig.DEBUG &&
+            configuration.followedRoute?.id == HarvestRunSimulation.ROUTE_ID
         val restored=context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).getString(LAUNCH_KEY,null)?.let{runCatching{launchJson.decodeFromString<RecordingLaunchConfiguration>(it)}.getOrNull()}
         // A direct launch carries an explicit activity, goal, and Voice Guide choice from Today.
         // Reusing the last setup here can silently replace those choices (including disabling
         // countdown speech) when the previous session used the same sport.
-        val base = if (configuration.startImmediately) configuration
+        val base = if (configuration.startImmediately || isDebugHarvestLaunch) configuration
         else restored?.takeIf { it.activityKind == configuration.activityKind } ?: configuration
         val autoPauseEnabled = context.getSharedPreferences(LAUNCH_PREFERENCES, Context.MODE_PRIVATE)
             .getBoolean(autoPauseKey(base.activityKind), AutoPauseDefaults.enabled(base.activityKind))
@@ -108,8 +110,16 @@ class RecordingViewModel @Inject constructor(
             autoPauseEnabled = autoPauseEnabled,
             // This is a navigation-time decision from Today, not a persisted setup preference.
             startImmediately = configuration.startImmediately,
+            simulatedRunEnabled = isDebugHarvestLaunch || (BuildConfig.DEBUG && base.simulatedRunEnabled),
+            followedRoute = if (isDebugHarvestLaunch) {
+                HarvestRunSimulation.route.copy(reverse = configuration.followedRoute.reverse)
+            } else base.followedRoute,
         )
         mutableState.value = mutableState.value.copy(launch = effective)
+        if (isDebugHarvestLaunch) analytics.record(AnalyticsEvent("activity_configuration_changed", mapOf(
+            AnalyticsProperty.ChangeType to "run_simulation",
+            AnalyticsProperty.SelectionType to "enabled",
+        )))
         debugLog("configure source=${effective.entrySource} direct=${configuration.startImmediately} restoredApplied=${!configuration.startImmediately && restored?.activityKind == configuration.activityKind} requestedVoice=${configuration.voiceGuideEnabled} restoredVoice=${restored?.voiceGuideEnabled} effectiveVoice=${effective.voiceGuideEnabled}")
         if (!effective.startImmediately) analytics.record(AnalyticsEvent("activity_setup_viewed", mapOf(
                 AnalyticsProperty.Source to effective.entrySource,

@@ -48,4 +48,6 @@
     <string name="route_library_search_prompt">Ruta o ubicación</string>
     <string name="route_library_section_community">Rutas de la comunidad</string>
     <string name="route_library_section_imported">Rutas importadas</string>
+    <string name="route_library_test_badge">Prueba</string>
+    <string name="route_library_test_badge_accessibility">Ruta de prueba</string>
 </resources>
