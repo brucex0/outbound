@@ -55,27 +55,6 @@ private struct ConnectionLinkProfileLoadingView: View {
     }
 }
 
-private enum CompactTabBarLayout {
-    static let assistantGap: CGFloat = 16
-    static let assistantVerticalOffset: CGFloat = 4
-    // The native floating capsule extends beyond the tab items on each side.
-    static let capsuleSideInset: CGFloat = 38
-
-    static func itemWidth(for barWidth: CGFloat) -> CGFloat {
-        barWidth < 390 ? 42 : 44
-    }
-
-    static func itemSpacing(for barWidth: CGFloat) -> CGFloat {
-        barWidth < 390 ? 6 : 8
-    }
-
-    static func assistantLeadingInset(for barWidth: CGFloat) -> CGFloat {
-        let itemsWidth = 3 * itemWidth(for: barWidth) + 2 * itemSpacing(for: barWidth)
-        let capsuleLeadingEdge = (barWidth - itemsWidth) / 2 - capsuleSideInset
-        return max(12, capsuleLeadingEdge - assistantGap - AssistantLauncherButton.diameter)
-    }
-}
-
 private struct AssistantLauncherButton: View {
     static let diameter: CGFloat = 44
 
@@ -223,6 +202,92 @@ private struct AssistantLauncherButton: View {
     }
 }
 
+private enum CompactDockLayout {
+    static let capsuleWidth: CGFloat = 192
+    static let capsuleHeight: CGFloat = 56
+    static let assistantGap: CGFloat = 16
+    static let bottomPadding: CGFloat = 6
+    static let embeddedSetupBottomInset: CGFloat = 80
+}
+
+private struct CompactNavigationBar: View {
+    let selection: SimplifiedAppTab
+    let showsStart: Bool
+    let accentColor: Color
+    let actionColor: Color
+    let onSelect: (SimplifiedAppTab) -> Void
+    let onStart: () -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            tabButton(.social)
+            tabButton(.today)
+            tabButton(.me)
+        }
+        .padding(.horizontal, 6)
+        .frame(width: CompactDockLayout.capsuleWidth, height: CompactDockLayout.capsuleHeight)
+        .background {
+            Capsule()
+                .fill(.regularMaterial)
+                .overlay(Capsule().fill(Color(uiColor: .systemBackground).opacity(0.45)))
+        }
+        .overlay(Capsule().strokeBorder(.white.opacity(0.24), lineWidth: 0.7))
+        .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
+    }
+
+    private func tabButton(_ tab: SimplifiedAppTab) -> some View {
+        let isSelected = selection == tab
+        let isStart = tab == .today && showsStart
+        let symbol: String = switch tab {
+        case .social: "person.2.fill"
+        case .today: isStart ? "play.circle.fill" : "sparkles"
+        case .me: "person.crop.circle"
+        }
+        let label: String = switch tab {
+        case .social: String(localized: "Social")
+        case .today: isStart
+            ? String(localized: "record.start.short", defaultValue: "Start")
+            : String(localized: "Today")
+        case .me: String(localized: "Me")
+        }
+        let identifier: String = switch tab {
+        case .social: "tab.social"
+        case .today: isStart ? "tab.start" : "tab.today"
+        case .me: "tab.me"
+        }
+
+        return Button {
+            if isStart {
+                onStart()
+            } else if !isSelected {
+                onSelect(tab)
+            }
+        } label: {
+            ZStack {
+                if isSelected {
+                    Capsule()
+                        .fill(Color.primary.opacity(0.08))
+                        .frame(width: 48, height: 44)
+                }
+
+                Image(systemName: symbol)
+                    .font(.system(size: isStart ? 30 : 22, weight: .semibold))
+                    .foregroundStyle(isStart ? actionColor : isSelected ? accentColor : .primary)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: CompactDockLayout.capsuleHeight)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityHint(isStart
+            ? String(localized: "record.start.accessibility_hint", defaultValue: "Starts the prepared activity")
+            : "")
+        .accessibilityIdentifier(identifier)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
 struct SimplifiedAppShell: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.outboundTheme) private var theme
@@ -263,7 +328,6 @@ struct SimplifiedAppShell: View {
     @State private var replacementPlanRecommendation: TrainingPlanRecommendation?
     @State private var connectionFeedback: ConnectionLinkFeedback?
     @State private var connectionProfilePresentation: ConnectionProfilePresentation?
-    @State private var tabBarWidth: CGFloat = 393
     @State private var appShellPresentation: SimplifiedAppShellPresentation?
 
     var body: some View {
@@ -274,6 +338,7 @@ struct SimplifiedAppShell: View {
                     Image(systemName: "person.2")
                         .accessibilityLabel(String(localized: "Social"))
                 }
+                .toolbar(.hidden, for: .tabBar)
 
             SimplifiedTodayView(
                 isSelected: selection == .today,
@@ -302,6 +367,7 @@ struct SimplifiedAppShell: View {
                     Image(systemName: "sparkles")
                         .accessibilityLabel(String(localized: "Today"))
                 }
+                .toolbar(.hidden, for: .tabBar)
 
             SimplifiedMeView(
                 onOpenPlan: { openPlanManagement(from: "me_current_focus") }
@@ -311,6 +377,7 @@ struct SimplifiedAppShell: View {
                     Image(systemName: "person.crop.circle")
                         .accessibilityLabel(String(localized: "Me"))
                 }
+                .toolbar(.hidden, for: .tabBar)
         }
         .tint(guideCatalog.selectedTheme.accentColor)
         .fullScreenCover(item: $appShellPresentation) { presentation in
@@ -323,32 +390,13 @@ struct SimplifiedAppShell: View {
                 }
             }
         }
-        .background {
-            NativeContextualTabBarBridge(
-                selectedTab: selection,
-                showsStart: selection == .today
-                    && activitySessionState == .idle
-                    && !isActivityFullscreenVisible,
-                actionColor: theme.actionColor,
-                onSelect: selectTabWithoutAnimation,
-                onStart: onContextualStart,
-                onTabBarWidthChange: { width in
-                    guard abs(tabBarWidth - width) > 0.5 else { return }
-                    tabBarWidth = width
-                }
-            )
-            .frame(width: 0, height: 0)
-        }
         .onChange(of: selection, initial: true) { _, tab in
             feedbackPage = tab.feedbackPageName
         }
-        .overlay(alignment: .bottomLeading) {
-            assistantLaunchButton
-                .opacity(isActivityFullscreenVisible ? 0 : 1)
-                .allowsHitTesting(!isActivityFullscreenVisible)
-                .accessibilityHidden(isActivityFullscreenVisible)
-                .padding(.leading, CompactTabBarLayout.assistantLeadingInset(for: tabBarWidth))
-                .offset(y: CompactTabBarLayout.assistantVerticalOffset)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !isActivityFullscreenVisible {
+                compactDock
+            }
         }
         .overlay(alignment: .top) {
             if let connectionFeedback {
@@ -657,6 +705,23 @@ struct SimplifiedAppShell: View {
         }
     }
 
+    private var compactDock: some View {
+        HStack(spacing: CompactDockLayout.assistantGap) {
+            assistantLaunchButton
+
+            CompactNavigationBar(
+                selection: selection,
+                showsStart: selection == .today && activitySessionState == .idle,
+                accentColor: guideCatalog.selectedTheme.accentColor,
+                actionColor: theme.actionColor,
+                onSelect: selectTabWithoutAnimation,
+                onStart: onContextualStart
+            )
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.bottom, CompactDockLayout.bottomPadding)
+    }
+
     private var assistantAnalyticsDestination: String {
         switch selection {
         case .social: "social"
@@ -733,312 +798,6 @@ struct SimplifiedAppShell: View {
         }
     }
 
-}
-
-private struct NativeContextualTabBarBridge: UIViewControllerRepresentable {
-    let selectedTab: SimplifiedAppTab
-    let showsStart: Bool
-    let actionColor: Color
-    let onSelect: (SimplifiedAppTab) -> Void
-    let onStart: () -> Void
-    let onTabBarWidthChange: (CGFloat) -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    func makeUIViewController(context: Context) -> TabBarAttachmentViewController {
-        let controller = TabBarAttachmentViewController()
-        controller.onResolveTabBarController = { tabBarController in
-            context.coordinator.attach(to: tabBarController)
-        }
-        return controller
-    }
-
-    func updateUIViewController(_ uiViewController: TabBarAttachmentViewController, context: Context) {
-        context.coordinator.update(
-            selectedTab: selectedTab,
-            showsStart: showsStart,
-            actionColor: UIColor(actionColor),
-            onSelect: onSelect,
-            onStart: onStart,
-            onTabBarWidthChange: onTabBarWidthChange
-        )
-    }
-
-    static func dismantleUIViewController(
-        _ uiViewController: TabBarAttachmentViewController,
-        coordinator: Coordinator
-    ) {
-        coordinator.detach()
-    }
-
-    final class Coordinator {
-        private struct VisualState {
-            let showsStart: Bool
-            let actionColor: UIColor
-
-            func matches(_ other: VisualState) -> Bool {
-                showsStart == other.showsStart && actionColor.isEqual(other.actionColor)
-            }
-        }
-
-        private weak var tabBarController: UITabBarController?
-        private weak var appliedItem: UITabBarItem?
-        private var selectionPressRecognizer: UILongPressGestureRecognizer?
-        private var selectedTab = SimplifiedAppTab.today
-        private var showsStart = false
-        private var actionColor = UIColor.systemOrange
-        private var appliedVisualState: VisualState?
-        private var isDeferredApplyScheduled = false
-        private var onSelect: ((SimplifiedAppTab) -> Void)?
-        private var onStart: (() -> Void)?
-        private var onTabBarWidthChange: ((CGFloat) -> Void)?
-
-        func update(
-            selectedTab: SimplifiedAppTab,
-            showsStart: Bool,
-            actionColor: UIColor,
-            onSelect: @escaping (SimplifiedAppTab) -> Void,
-            onStart: @escaping () -> Void,
-            onTabBarWidthChange: @escaping (CGFloat) -> Void
-        ) {
-            let previousState = VisualState(showsStart: self.showsStart, actionColor: self.actionColor)
-            let nextState = VisualState(showsStart: showsStart, actionColor: actionColor)
-            self.selectedTab = selectedTab
-            self.showsStart = showsStart
-            self.actionColor = actionColor
-            self.onSelect = onSelect
-            self.onStart = onStart
-            self.onTabBarWidthChange = onTabBarWidthChange
-            if let tabBarController {
-                configureCompactItemLayout(tabBarController.tabBar)
-            }
-            reportTabBarWidth()
-            if !nextState.matches(previousState) || appliedVisualState == nil {
-                configureTabBar()
-            }
-        }
-
-        func attach(to controller: UITabBarController?) {
-            guard let controller else { return }
-            if tabBarController !== controller {
-                detach()
-                tabBarController = controller
-                appliedItem = nil
-                appliedVisualState = nil
-            }
-            installSelectionPressRecognizer(on: controller)
-            configureTabBar()
-            reportTabBarWidth()
-        }
-
-        func detach() {
-            if let selectionPressRecognizer {
-                tabBarController?.tabBar.removeGestureRecognizer(selectionPressRecognizer)
-            }
-            tabBarController = nil
-            appliedItem = nil
-            appliedVisualState = nil
-            isDeferredApplyScheduled = false
-            selectionPressRecognizer = nil
-            onTabBarWidthChange = nil
-        }
-
-        private func installSelectionPressRecognizer(on controller: UITabBarController) {
-            guard selectionPressRecognizer == nil else { return }
-            let recognizer = UILongPressGestureRecognizer(
-                target: self,
-                action: #selector(handleTabBarPress(_:))
-            )
-            recognizer.minimumPressDuration = 0
-            recognizer.allowableMovement = 12
-            recognizer.cancelsTouchesInView = true
-            recognizer.delaysTouchesBegan = false
-            controller.tabBar.addGestureRecognizer(recognizer)
-            selectionPressRecognizer = recognizer
-        }
-
-        @objc private func handleTabBarPress(_ recognizer: UILongPressGestureRecognizer) {
-            guard recognizer.state == .began,
-                  let tabBarController,
-                  let itemCount = tabBarController.tabBar.items?.count,
-                  itemCount == 3
-            else { return }
-
-            let location = recognizer.location(in: tabBarController.tabBar)
-            guard let targetIndex = tabIndex(
-                at: location.x,
-                in: tabBarController.tabBar,
-                itemCount: itemCount
-            ) else { return }
-
-            if targetIndex == 1, selectedTab == .today, showsStart {
-                onStart?()
-                return
-            }
-
-            guard let targetTab = tab(for: targetIndex), targetTab != selectedTab else { return }
-            // Hide Today-owned overlays before UIKit lays out the incoming tab.
-            onSelect?(targetTab)
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            UIView.performWithoutAnimation {
-                tabBarController.selectedIndex = targetIndex
-            }
-            CATransaction.commit()
-        }
-
-        private func tab(for index: Int) -> SimplifiedAppTab? {
-            switch index {
-            case 0: .social
-            case 1: .today
-            case 2: .me
-            default: nil
-            }
-        }
-
-        private func configureTabBar(allowsDeferredRetry: Bool = true) {
-            guard let tabBarController else { return }
-            configureCompactItemLayout(tabBarController.tabBar)
-            guard applyCenterItem(to: tabBarController) else {
-                if allowsDeferredRetry {
-                    scheduleDeferredApply(on: tabBarController)
-                }
-                return
-            }
-        }
-
-        private func configureCompactItemLayout(_ tabBar: UITabBar) {
-            tabBar.itemPositioning = .centered
-            tabBar.itemWidth = CompactTabBarLayout.itemWidth(for: tabBar.bounds.width)
-            tabBar.itemSpacing = CompactTabBarLayout.itemSpacing(for: tabBar.bounds.width)
-        }
-
-        private func tabIndex(at locationX: CGFloat, in tabBar: UITabBar, itemCount: Int) -> Int? {
-            guard itemCount > 0, tabBar.itemWidth > 0 else { return nil }
-            let step = tabBar.itemWidth + tabBar.itemSpacing
-            let contentWidth = tabBar.itemWidth * CGFloat(itemCount)
-                + tabBar.itemSpacing * CGFloat(itemCount - 1)
-            let firstCenter = (tabBar.bounds.width - contentWidth) / 2 + tabBar.itemWidth / 2
-            let index = Int(round((locationX - firstCenter) / step))
-            guard (0..<itemCount).contains(index) else { return nil }
-            return index
-        }
-
-        private func reportTabBarWidth() {
-            guard let width = tabBarController?.tabBar.bounds.width,
-                  width.isFinite,
-                  width > 0
-            else { return }
-            onTabBarWidthChange?(width)
-        }
-
-        private func scheduleDeferredApply(on controller: UITabBarController) {
-            guard !isDeferredApplyScheduled else { return }
-            isDeferredApplyScheduled = true
-            DispatchQueue.main.async { [weak self, weak controller] in
-                guard let self else { return }
-                self.isDeferredApplyScheduled = false
-                guard let controller, self.tabBarController === controller else { return }
-                self.configureTabBar(allowsDeferredRetry: false)
-            }
-        }
-
-        private func applyCenterItem(to controller: UITabBarController) -> Bool {
-            guard let item = controller.tabBar.items?[safe: 1] else { return false }
-            let visualState = VisualState(showsStart: showsStart, actionColor: actionColor)
-            if appliedItem === item,
-               let appliedVisualState,
-               visualState.matches(appliedVisualState) {
-                return true
-            }
-
-            UIView.performWithoutAnimation {
-                if showsStart {
-                    let configuration = UIImage.SymbolConfiguration(pointSize: 30, weight: .semibold)
-                    let image = UIImage(systemName: "play.circle.fill", withConfiguration: configuration)?
-                        .withTintColor(actionColor, renderingMode: .alwaysOriginal)
-                    item.title = nil
-                    item.image = image
-                    item.selectedImage = image
-                    item.imageInsets = .zero
-                    item.accessibilityLabel = String(localized: "record.start.short", defaultValue: "Start")
-                    item.accessibilityHint = String(localized: "record.start.accessibility_hint", defaultValue: "Starts the prepared activity")
-                    item.accessibilityIdentifier = "tab.start"
-                } else {
-                    let image = UIImage(systemName: "sparkles")?.withRenderingMode(.alwaysTemplate)
-                    item.title = nil
-                    item.image = image
-                    item.selectedImage = image
-                    item.imageInsets = .zero
-                    item.accessibilityLabel = String(localized: "Today")
-                    item.accessibilityHint = nil
-                    item.accessibilityIdentifier = "tab.today"
-                }
-                controller.tabBar.setNeedsLayout()
-                controller.tabBar.layoutIfNeeded()
-            }
-            reportTabBarWidth()
-            appliedItem = item
-            appliedVisualState = visualState
-            return true
-        }
-    }
-}
-
-private final class TabBarAttachmentViewController: UIViewController {
-    var onResolveTabBarController: ((UITabBarController?) -> Void)?
-
-    override func loadView() {
-        let view = UIView(frame: .zero)
-        view.backgroundColor = .clear
-        view.isUserInteractionEnabled = false
-        self.view = view
-    }
-
-    override func didMove(toParent parent: UIViewController?) {
-        super.didMove(toParent: parent)
-        resolveTabBarController()
-    }
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        resolveTabBarController()
-    }
-
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        resolveTabBarController()
-    }
-
-    private func resolveTabBarController() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            let resolvedController = self.tabBarController
-                ?? Self.findTabBarController(in: self.view.window?.rootViewController)
-            self.onResolveTabBarController?(resolvedController)
-        }
-    }
-
-    private static func findTabBarController(in controller: UIViewController?) -> UITabBarController? {
-        guard let controller else { return nil }
-        if let tabBarController = controller as? UITabBarController {
-            return tabBarController
-        }
-        for child in controller.children {
-            if let tabBarController = findTabBarController(in: child) {
-                return tabBarController
-            }
-        }
-        return findTabBarController(in: controller.presentedViewController)
-    }
-}
-
-private extension Collection {
-    subscript(safe index: Index) -> Element? {
-        indices.contains(index) ? self[index] : nil
-    }
 }
 
 private enum ActivityOverflowAction {
@@ -1132,6 +891,7 @@ private struct SimplifiedTodayView: View {
                 activityLaunchSurface
                     .opacity(isSelected ? 1 : 0)
                     .allowsHitTesting(isSelected)
+                    .padding(.bottom, isActivityFullscreenVisible ? 0 : CompactDockLayout.embeddedSetupBottomInset)
                     .zIndex(isActivityFullscreenVisible ? 10 : 0)
             }
             .onPreferenceChange(MapAttributionOcclusionHeightPreferenceKey.self) { height in
@@ -1147,7 +907,6 @@ private struct SimplifiedTodayView: View {
             .navigationDestination(isPresented: $showsSocialInbox) { SocialNotificationsView() }
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar(isActivityFullscreenVisible ? .hidden : .visible, for: .navigationBar)
-            .toolbar(isActivityFullscreenVisible ? .hidden : .visible, for: .tabBar)
             .toolbar {
                 if tooltipCoordinator.canEventuallyPresent(.themeDiscovery) {
                     ToolbarItem(placement: .topBarTrailing) {
