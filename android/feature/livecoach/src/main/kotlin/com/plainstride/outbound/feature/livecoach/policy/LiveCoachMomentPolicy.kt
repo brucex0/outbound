@@ -217,19 +217,33 @@ class LiveCoachMomentPolicy {
     private fun instability(s: CoachSnapshot, grade: Double?): DetectedMoment? {
         if (hasRacePaceTarget(s)
             || s.segmentPhase in setOf("work", "recovery")
-            || (s.segmentElapsedSeconds ?: s.elapsedSeconds) < 20
+            || s.elapsedSeconds < 180
+            || (s.segmentElapsedSeconds ?: s.elapsedSeconds) < 180
             || meaningfulGrade(grade)
         ) return null
         if (lastInstabilityAt?.let { s.elapsedSeconds - it < 180 } == true) return null
-        val values = paceValues(s.elapsedSeconds - 90, s.elapsedSeconds)
-        if (values.size < 8) return null
-        val sorted = values.sorted()
-        val spread = percentile(.9, sorted) - percentile(.1, sorted)
+        // Separated windows avoid treating repeated snapshots of one settling
+        // GPS estimate as evidence of an abrupt change.
+        val earlier = stablePaceWindow(s.elapsedSeconds - 90, s.elapsedSeconds - 60) ?: return null
+        val recent = stablePaceWindow(s.elapsedSeconds - 30, s.elapsedSeconds) ?: return null
         val referencePace = s.targetPaceSecondsPerKilometer
             ?.takeIf { it.isFinite() && it in 60.0..3_600.0 }
-        if (spread < max(60.0, (referencePace ?: 0.0) * .15)) return null
+        if (abs(recent - earlier) < max(60.0, (referencePace ?: 0.0) * .15)) return null
         lastInstabilityAt = s.elapsedSeconds
-        return DetectedMoment(LiveCoachMoment.PaceInstability, s.elapsedSeconds, values.average(), referencePace)
+        return DetectedMoment(LiveCoachMoment.PaceInstability, s.elapsedSeconds, recent, referencePace)
+    }
+
+    private fun stablePaceWindow(start: Int, end: Int): Double? {
+        val paceBySecond = mutableMapOf<Int, Double>()
+        history.forEach { sample ->
+            val pace = sample.paceSecondsPerKilometer
+            if (sample.elapsedSeconds in start..end && pace != null) {
+                paceBySecond[sample.elapsedSeconds] = pace
+            }
+        }
+        val seconds = paceBySecond.keys.sorted()
+        if (seconds.size < 8 || seconds.last() - seconds.first() < 20) return null
+        return percentile(.5, paceBySecond.values.sorted())
     }
 
     private fun targetLocked(s: CoachSnapshot, grade: Double?): DetectedMoment? {
