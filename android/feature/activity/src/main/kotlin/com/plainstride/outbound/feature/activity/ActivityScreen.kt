@@ -86,6 +86,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -118,6 +119,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import java.time.Instant
+import android.widget.Toast
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -296,6 +298,7 @@ fun ActivityHistoryRoute(
     initialActivityId: String? = null,
     onBack: () -> Unit,
     onMessage: suspend (ActivityMessage) -> Unit,
+    onPublishRoute: suspend (String, String) -> Boolean,
     modifier: Modifier = Modifier,
     viewModel: ActivityViewModel = hiltViewModel(),
 ) {
@@ -318,6 +321,7 @@ fun ActivityHistoryRoute(
         onShareCard = { viewModel.shareCard(selected, unitSystem) },
         onShareAction = viewModel::trackShareAction,
         onCalorieExposure = viewModel::trackCalorieExposure,
+        onPublishRoute = onPublishRoute,
         photoBytes = viewModel::photoBytes,
         modifier = modifier,
     )
@@ -404,10 +408,12 @@ private fun ActivityDetailScreen(
     onShareCard: () -> ActivityExport?,
     onShareAction: (String) -> Unit,
     onCalorieExposure: () -> Unit,
+    onPublishRoute: suspend (String, String) -> Boolean,
     photoBytes: (String) -> ByteArray?,
     modifier: Modifier,
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val calorieEstimate = remember(activity, weightKilograms) {
         activity.energyKilocalories?.takeIf { it > 0 }
             ?: WorkoutCalorieEstimator.estimate(
@@ -423,6 +429,9 @@ private fun ActivityDetailScreen(
     val routeSegments = remember(activity.track) { paceColoredRouteSegments(activity.track) }
     var edit by rememberSaveable { mutableStateOf(false) }
     var delete by rememberSaveable { mutableStateOf(false) }
+    var publishRoute by rememberSaveable(activity.id) { mutableStateOf(false) }
+    var routeName by rememberSaveable(activity.id) { mutableStateOf(activity.title) }
+    var publishingRoute by remember { mutableStateOf(false) }
     var sharePreview by remember { mutableStateOf<ActivityExport?>(null) }
     var selectedPhotoIndex by rememberSaveable(activity.id) { mutableStateOf(firstLocatedPhotoIndex(activity.photos)) }
     var lightboxPhotoIndex by rememberSaveable(activity.id) { mutableStateOf<Int?>(null) }
@@ -477,6 +486,7 @@ private fun ActivityDetailScreen(
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.activity_back)) } },
             actions = {
                 IconButton(onClick = { sharePreview = onShareCard() }) { Icon(Icons.Outlined.Share, stringResource(R.string.activity_share_card)) }
+                if(activity.track.size>1) IconButton(onClick={publishRoute=true}) { Icon(Icons.Outlined.Route,stringResource(R.string.activity_route_publish_action)) }
                 IconButton(onClick = { edit = true }) { Icon(Icons.Outlined.Edit, stringResource(R.string.activity_edit)) }
             },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f)),
@@ -571,6 +581,24 @@ private fun ActivityDetailScreen(
         }
     }
     if (edit) EditTitleDialog(activity.title, { edit = false }, { onEdit(it); edit = false })
+    if (publishRoute) AlertDialog(
+        onDismissRequest = { if(!publishingRoute)publishRoute=false },
+        title = { Text(stringResource(R.string.activity_route_publish_title)) },
+        text = { Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            OutlinedTextField(routeName,{routeName=it.take(80)},label={Text(stringResource(R.string.activity_route_publish_name))},singleLine=true)
+            Text(stringResource(R.string.activity_route_publish_privacy),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        } },
+        confirmButton = { TextButton(onClick={
+            publishingRoute=true
+            coroutineScope.launch {
+                val succeeded=onPublishRoute(activity.serverActivityId?:activity.id,routeName.trim())
+                publishingRoute=false
+                if(succeeded)publishRoute=false
+                Toast.makeText(context,context.getString(if(succeeded)R.string.activity_route_publish_success else R.string.activity_route_publish_failed),Toast.LENGTH_SHORT).show()
+            }
+        },enabled=routeName.isNotBlank()&&!publishingRoute){if(publishingRoute)CircularProgressIndicator(Modifier.size(18.dp)) else Text(stringResource(R.string.activity_route_publish_confirm))} },
+        dismissButton = { TextButton(onClick={publishRoute=false},enabled=!publishingRoute){Text(stringResource(R.string.activity_cancel))} },
+    )
     if (delete) AlertDialog(onDismissRequest = { delete = false }, title = { Text(stringResource(R.string.activity_delete_title)) },
         text = { Text(stringResource(R.string.activity_delete_body)) },
         confirmButton = { TextButton(onClick = { delete = false; onDelete() }) { Text(stringResource(R.string.activity_delete)) } },

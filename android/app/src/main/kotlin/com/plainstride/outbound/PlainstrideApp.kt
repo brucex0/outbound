@@ -782,6 +782,7 @@ private fun SignedInApp(
                     initialActivityId = activityTarget,
                     onBack = { navController.popBackStack() },
                     onMessage = { message -> snackbar.showSnackbar(resources.getString(activityMessageResource(message))) },
+                    onPublishRoute = integrationViewModel::publishSavedActivityRoute,
                 )
             }
             composable(MUSIC_ROUTE) { MusicRoute(onClose = { navController.popBackStack() }) }
@@ -796,7 +797,7 @@ private fun SignedInApp(
                             Text(stringResource(com.plainstride.outbound.feature.community.R.string.routes_title), style = MaterialTheme.typography.titleLarge)
                         }
                         Box(Modifier.weight(1f)) {
-                            CommunityRouteScreen(integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search, { launch -> recordingLaunch=launch;navController.popBackStack();navController.navigate(RECORDING_ROUTE) }, integrationViewModel::bookmark,integration.publishableActivities,integrationViewModel::publishRoute,integrationViewModel::trackRouteImport,routeDetail=integration.selectedCommunityRoute,routeDetailLoading=integration.communityRouteLoading,onLoadDetail=integrationViewModel::loadCommunityRoute,onRemovePublished=integrationViewModel::removePublishedRoute,onClearDetail=integrationViewModel::clearCommunityRoute,unitSystem=measurementUnitSystem,searchQuery=integration.routeQuery)
+                            CommunityRouteScreen(integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search, { launch -> recordingLaunch=launch;navController.popBackStack();navController.navigate(RECORDING_ROUTE) }, integrationViewModel::bookmark,integrationViewModel::trackRouteImport,routeDetail=integration.selectedCommunityRoute,routeDetailLoading=integration.communityRouteLoading,onLoadDetail=integrationViewModel::loadCommunityRoute,onRemovePublished=integrationViewModel::removePublishedRoute,onClearDetail=integrationViewModel::clearCommunityRoute,unitSystem=measurementUnitSystem,searchQuery=integration.routeQuery)
                         }
                     }
                 }

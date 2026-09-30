@@ -53,6 +53,13 @@
     <string name="activity_recent_import">Import from Health Connect</string>
     <string name="activity_recent_title">RECENT</string>
     <string name="activity_reflection">Reflection</string>
+    <string name="activity_route_publish_action">Save route to the community</string>
+    <string name="activity_route_publish_title">Save Route</string>
+    <string name="activity_route_publish_name">Route name</string>
+    <string name="activity_route_publish_privacy">Plainstride removes activity times and trims the beginning and end of longer routes before publishing. Everyone can discover and save this route.</string>
+    <string name="activity_route_publish_confirm">Publish</string>
+    <string name="activity_route_publish_success">Route published</string>
+    <string name="activity_route_publish_failed">Route could not be published. Try again.</string>
     <string name="activity_route">Route</string>
     <string name="activity_route_description">Map of the recorded route</string>
     <string name="activity_save">Save</string>

@@ -53,6 +53,13 @@
     <string name="activity_recent_import">Importar desde Health Connect</string>
     <string name="activity_recent_title">RECIENTE</string>
     <string name="activity_reflection">Reflexión</string>
+    <string name="activity_route_publish_action">Guardar ruta en la comunidad</string>
+    <string name="activity_route_publish_title">Guardar ruta</string>
+    <string name="activity_route_publish_name">Nombre de la ruta</string>
+    <string name="activity_route_publish_privacy">Antes de publicar, Plainstride elimina los tiempos de la actividad y recorta el inicio y el final de las rutas más largas. Cualquiera podrá descubrir y guardar esta ruta.</string>
+    <string name="activity_route_publish_confirm">Publicar</string>
+    <string name="activity_route_publish_success">Ruta publicada</string>
+    <string name="activity_route_publish_failed">No se pudo publicar la ruta. Inténtalo de nuevo.</string>
     <string name="activity_route">Ruta</string>
     <string name="activity_route_description">Mapa de la ruta registrada</string>
     <string name="activity_save">Guardar</string>

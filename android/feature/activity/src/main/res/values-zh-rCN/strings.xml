@@ -53,6 +53,13 @@
     <string name="activity_recent_import">从健康数据同步导入</string>
     <string name="activity_recent_title">最近</string>
     <string name="activity_reflection">活动感受</string>
+    <string name="activity_route_publish_action">将路线保存到社区</string>
+    <string name="activity_route_publish_title">保存路线</string>
+    <string name="activity_route_publish_name">路线名称</string>
+    <string name="activity_route_publish_privacy">发布前，Plainstride 会移除活动时间，并裁剪较长路线的起点和终点。所有人都能发现并保存这条路线。</string>
+    <string name="activity_route_publish_confirm">发布</string>
+    <string name="activity_route_publish_success">路线已发布</string>
+    <string name="activity_route_publish_failed">无法发布路线。请重试。</string>
     <string name="activity_route">路线</string>
     <string name="activity_route_description">本次活动的记录路线图</string>
     <string name="activity_save">保存</string>

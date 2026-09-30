@@ -41,7 +41,6 @@ data class P0IntegrationState(
     val progress: ProgressScreenState = ProgressScreenState(ProgressStatsEngine.snapshot(emptyList()), emptyList()),
     val completedToday: Boolean = false,
     val defaultGearId: String? = null,
-    val publishableActivities: List<Pair<String,String>> = emptyList(),
     val pushEnabled: Boolean = true,
     val connections: List<SocialPerson> = emptyList(),
     val recognitions: List<RecognitionAward> = emptyList(),
@@ -80,7 +79,6 @@ data class P0IntegrationState(
                 val items = page.activities.map { ProgressActivity(it.id, it.title, Instant.parse(it.startedAt), it.durationSecs, it.distanceM, it.elevationGainM, it.averageHeartRateBpm) }
                 mutable.update { state -> state.copy(
                     progress = ProgressScreenState(ProgressStatsEngine.snapshot(items), emptyList()),
-                    publishableActivities = page.activities.filter { it.track.size > 1 }.take(20).map { it.id to it.title },
                 ) }
             }
         }
@@ -132,7 +130,13 @@ data class P0IntegrationState(
         routes.refresh(id,locale,requestedScope,query,coarse(location?.latitude),coarse(location?.longitude))
     }}
     fun bookmark(route:CommunityRoute)=viewModelScope.launch{routes.bookmark(route.id,!route.isBookmarked);refreshRoutes()}
-    fun publishRoute(activityId:String,name:String,description:String?)=viewModelScope.launch{routes.publish(activityId,name,description).onSuccess{refreshRoutes()}}
+    suspend fun publishSavedActivityRoute(activityId:String,name:String):Boolean {
+        analytics.record(AnalyticsEvent("route_publish_started",mapOf(AnalyticsProperty.EntrySource to "me_activity_detail")))
+        val result=routes.publish(activityId,name,null)
+        analytics.record(AnalyticsEvent(if(result.isSuccess)"route_publish_completed" else "route_publish_failed",mapOf(AnalyticsProperty.EntrySource to "me_activity_detail")+if(result.isFailure)mapOf(AnalyticsProperty.ErrorCategory to "request_failed") else emptyMap()))
+        if(result.isSuccess)refreshRoutes()
+        return result.isSuccess
+    }
     fun refreshInbox()=viewModelScope.launch{safety.inbox().onSuccess{response->mutable.update{it.copy(notifications=response.notifications)}}}
     fun openInbox() {
         val items = NotificationPresentationPolicy.items(mutable.value.notifications)
