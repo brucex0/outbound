@@ -12,6 +12,7 @@ struct CommunityRouteLibraryView: View {
     @EnvironmentObject private var store: CommunityRouteStore
     @StateObject private var locator = RouteDiscoveryLocator()
     @State private var query = ""
+    @State private var myRoutesOnly = false
     @State private var nearbyActive = false
     @State private var discoveryTask: Task<Void, Never>?
     @State private var importsFile = false
@@ -32,6 +33,7 @@ struct CommunityRouteLibraryView: View {
         self.mode = mode
         self.embedded = embedded
         self.importRequestID = importRequestID
+        _myRoutesOnly = State(initialValue: mode == .mine)
         initialSelection = nil
         onSelect = nil
     }
@@ -46,9 +48,15 @@ struct CommunityRouteLibraryView: View {
     }
 
     private var routes: [CommunityRoute] {
-        let storedRoutes = mode == .mine ? store.mine : store.discovered
+        let storedRoutes = myRoutesOnly ? store.mine : store.discovered
+        if myRoutesOnly {
+            let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
+            return term.isEmpty ? storedRoutes : storedRoutes.filter {
+                $0.name.localizedCaseInsensitiveContains(term)
+                    || $0.owner.displayName.localizedCaseInsensitiveContains(term)
+            }
+        }
 #if DEBUG
-        guard mode == .discover else { return storedRoutes }
         return [HarvestHalfMarathonSimulation.communityRoute]
             + storedRoutes.filter { $0.id != HarvestHalfMarathonSimulation.routeID }
 #else
@@ -58,8 +66,7 @@ struct CommunityRouteLibraryView: View {
 
     var body: some View {
         List {
-            if mode == .discover {
-                Section {
+            Section {
                     HStack(spacing: 10) {
                         Image(systemName: "magnifyingglass")
                             .foregroundStyle(.secondary)
@@ -71,7 +78,7 @@ struct CommunityRouteLibraryView: View {
                                     let wasNotEmpty = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                                     query = newValue
                                     if wasNotEmpty && newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                        resetDiscovery()
+                                        clearSearch()
                                     }
                                 }
                             )
@@ -80,7 +87,7 @@ struct CommunityRouteLibraryView: View {
                         .onSubmit { submitSearch() }
                         if !query.isEmpty {
                             Button {
-                                resetDiscovery()
+                                clearSearch()
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
                                     .frame(width: 44, height: 44)
@@ -98,9 +105,14 @@ struct CommunityRouteLibraryView: View {
                         .accessibilityLabel(String(localized: "Search"))
                     }
                     .frame(minHeight: 44)
-                }
             }
-            if mode == .discover {
+            Section {
+                Toggle(
+                    String(localized: "route.library.filter.my_only", defaultValue: "My routes only"),
+                    isOn: Binding(get: { myRoutesOnly }, set: { setMyRoutesOnly($0) })
+                )
+            }
+            if !myRoutesOnly {
                 Section {
                     Button {
                         nearbyActive = true
@@ -135,6 +147,17 @@ struct CommunityRouteLibraryView: View {
                     .buttonStyle(RouteLibraryActionButtonStyle())
                 }
             }
+            if myRoutesOnly {
+                Section {
+                    Button { importsFile = true } label: {
+                        Label(
+                            String(localized: "route.library.action.import", defaultValue: "Import GPX or GeoJSON"),
+                            systemImage: "square.and.arrow.down"
+                        )
+                    }
+                    .buttonStyle(RouteLibraryActionButtonStyle())
+                }
+            }
             if !store.imported.isEmpty {
                 Section(String(localized: "route.library.section.imported", defaultValue: "Imported routes")) {
                     ForEach(store.imported) { route in
@@ -153,7 +176,7 @@ struct CommunityRouteLibraryView: View {
                 }
             }
             Section(
-                mode == .mine
+                myRoutesOnly
                     ? String(localized: "route.library.section.saved_published", defaultValue: "Saved and published")
                     : String(localized: "route.library.section.community", defaultValue: "Community routes")
             ) {
@@ -163,12 +186,12 @@ struct CommunityRouteLibraryView: View {
                         .accessibilityLabel(String(localized: "route.library.loading", defaultValue: "Loading routes"))
                 } else if routes.isEmpty {
                     ContentUnavailableView(
-                        mode == .mine
+                        myRoutesOnly
                             ? String(localized: "route.library.empty.saved.title", defaultValue: "No saved routes")
                             : String(localized: "route.library.empty.community.title", defaultValue: "No routes found"),
                         systemImage: "map",
                         description: Text(
-                            mode == .mine
+                            myRoutesOnly
                                 ? String(localized: "route.library.empty.saved.description", defaultValue: "Publish a route from one of your activities or save a community route.")
                                 : String(localized: "route.library.empty.community.description", defaultValue: "Try another search or import a route to follow.")
                         )
@@ -184,7 +207,7 @@ struct CommunityRouteLibraryView: View {
             embedded
                 ? ""
                 : (onSelect == nil
-                ? (mode == .mine
+                ? (myRoutesOnly
                     ? String(localized: "library.my_routes", defaultValue: "My Routes")
                     : String(localized: "route.library.title.explore", defaultValue: "Explore Routes"))
                 : String(localized: "route.library.title.select", defaultValue: "Select Route"))
@@ -217,7 +240,7 @@ struct CommunityRouteLibraryView: View {
             importsFile = true
         }
         .onAppear {
-            if mode == .mine {
+            if myRoutesOnly {
                 guard store.beginAutomaticMineLoadIfNeeded() else { return }
                 Task { await store.refreshMine() }
             } else {
@@ -275,7 +298,7 @@ struct CommunityRouteLibraryView: View {
         let succeeded: Bool
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if mode == .mine {
+        if myRoutesOnly {
             source = "mine"
             succeeded = await store.refreshMine()
         } else if !trimmedQuery.isEmpty {
@@ -297,6 +320,7 @@ struct CommunityRouteLibraryView: View {
 
     private func submitSearch() {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !myRoutesOnly else { return }
         guard !trimmed.isEmpty else { resetDiscovery(); return }
         nearbyActive = false
         discoveryTask?.cancel()
@@ -328,6 +352,29 @@ struct CommunityRouteLibraryView: View {
             let succeeded = await store.refreshDiscovery()
             await analyticsManager?.track(.init(.routeLibraryRefreshed, properties: [
                 .sourceType: .string("discovery"),
+                .result: .string(succeeded ? "success" : "failed"),
+            ]))
+        }
+    }
+
+    private func clearSearch() {
+        if myRoutesOnly {
+            query = ""
+        } else {
+            resetDiscovery()
+        }
+    }
+
+    private func setMyRoutesOnly(_ enabled: Bool) {
+        guard myRoutesOnly != enabled else { return }
+        myRoutesOnly = enabled
+        nearbyActive = false
+        query = ""
+        discoveryTask?.cancel()
+        discoveryTask = Task {
+            let succeeded = enabled ? await store.refreshMine() : await store.refreshDiscovery()
+            await analyticsManager?.track(.init(.routeLibraryRefreshed, properties: [
+                .sourceType: .string(enabled ? "mine" : "discovery"),
                 .result: .string(succeeded ? "success" : "failed"),
             ]))
         }

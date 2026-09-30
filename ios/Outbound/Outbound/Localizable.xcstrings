@@ -10063,6 +10063,14 @@
         }
       }
     },
+    "route.library.filter.my_only": {
+      "comment": "[android:community] Generated Android name: route_library_filter_my_only.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "My routes only" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Solo mis rutas" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "仅我的路线" } }
+      }
+    },
     "route.library.action.find_nearby": {
       "comment": "[android:community] Generated Android name: route_library_action_find_nearby.",
       "localizations": {
