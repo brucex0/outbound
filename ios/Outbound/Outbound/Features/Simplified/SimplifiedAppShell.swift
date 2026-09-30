@@ -56,17 +56,17 @@ private struct ConnectionLinkProfileLoadingView: View {
 }
 
 private enum CompactTabBarLayout {
-    static let assistantGap: CGFloat = 10
+    static let assistantGap: CGFloat = 16
     static let assistantVerticalOffset: CGFloat = 4
     // The native floating capsule extends beyond the tab items on each side.
-    static let capsuleSideInset: CGFloat = 20
+    static let capsuleSideInset: CGFloat = 38
 
     static func itemWidth(for barWidth: CGFloat) -> CGFloat {
-        barWidth < 390 ? 54 : 60
+        barWidth < 390 ? 42 : 44
     }
 
     static func itemSpacing(for barWidth: CGFloat) -> CGFloat {
-        barWidth < 390 ? 8 : 12
+        barWidth < 390 ? 6 : 8
     }
 
     static func assistantLeadingInset(for barWidth: CGFloat) -> CGFloat {
