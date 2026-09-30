@@ -82,6 +82,7 @@
     <string name="plan_builder_build_detail">Create a plan around your goals, activities, and week.</string>
     <string name="plan_builder_create">Create my plan</string>
     <string name="plan_builder_create_error">We couldn’t create your plan. Your answers are saved.</string>
+    <string name="plan_builder_retry">Retry</string>
     <string name="plan_builder_creating">Building a plan around your week…</string>
     <string name="plan_builder_event_date">Event date</string>
     <string name="plan_builder_event_distance">Event distance</string>
@@ -172,7 +173,19 @@
     <string name="plan_builder_smart_setup_days_none">No usual days</string>
     <string name="plan_builder_smart_setup_use">Use this setup</string>
     <string name="plan_builder_smart_setup_adjust">Adjust it</string>
+    <string name="plan_builder_smart_setup_constraints">Anything changed? Injury, illness, travel, or schedule constraints (optional)</string>
     <string name="plan_builder_change_answer">Change</string>
+    <string name="plan_builder_conversation_thinking">Understanding your goal</string>
+    <string name="plan_builder_conversation_goal_acknowledged">%1$s — got it.</string>
+    <string name="plan_builder_conversation_confirm_time">Use this target time</string>
+    <string name="plan_builder_conversation_weeks">%1$d weeks</string>
+    <string name="plan_builder_conversation_optional_answer">Optional — you can continue without adding anything.</string>
+    <string name="plan_builder_conversation_success_placeholder">For example: longer runs feel comfortable</string>
+    <string name="plan_builder_conversation_edit_answer">Edit %1$s</string>
+    <string name="plan_builder_date_done">Done</string>
+    <string name="plan_builder_review_event">Event</string>
+    <string name="plan_builder_review_horizon">Review point</string>
+    <string name="plan_builder_review_success">Meaningful progress</string>
     <string name="plan_builder_event_distance_answer">Event distance: %1$s</string>
     <string name="plan_builder_event_date_answer">Event date: %1$s</string>
     <string name="plan_builder_event_intent_answer">Race approach: %1$s</string>

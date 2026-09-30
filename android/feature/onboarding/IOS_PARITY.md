@@ -51,5 +51,8 @@
 - First-use onboarding and Settings replay use the reusable plan builder. The Today no-plan entry opens it with `planned_button` analytics attribution.
 - The Today planned-workout card's Change plan action loads reviewed recommendations, supports plan details and build-my-plan routing, and asks before replacing an active plan. Recommendation loading, activation outcomes, and picker entry use bounded analytics.
 - Goal intake follows the iOS conversation pattern: quick replies and interpreted text confirm the same objective state, event and review details must be confirmed, confirmed answers can be edited, and established-runner setup can be accepted or adjusted.
+- The typed-goal composer uses the iOS-style up-arrow send control and a compact busy indicator. If intake context is still loading, sending a goal fetches it first and then continues the conversation. Interpreted activities are retained, including running for event goals.
+- The Android objective screen keeps confirmed answers in the conversation, reveals one event/review question at a time, and scrolls as answers arrive. Goal/activity tiles, selected rows, and the welcome promise follow the iOS hierarchy. Its review includes the event or review horizon and optional progress signal.
+- Plan creation omits unset optional motivation fields from the API request, saves Health Connect/manual body details before creation when the server lacks them, and offers Retry in temporary failure feedback while retaining the draft. The creation event includes a bounded error category.
 - The `all_plans` source is modeled and instrumented; wiring awaits the Android All Plans screen, which does not yet exist.
 - No owner-approved behavioral exceptions.

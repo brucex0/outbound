@@ -82,6 +82,7 @@
     <string name="plan_builder_build_detail">Crea un plan según tus objetivos, actividades y semana.</string>
     <string name="plan_builder_create">Crear mi plan</string>
     <string name="plan_builder_create_error">No pudimos crear tu plan. Tus respuestas están guardadas.</string>
+    <string name="plan_builder_retry">Reintentar</string>
     <string name="plan_builder_creating">Creando un plan que encaje en tu semana…</string>
     <string name="plan_builder_event_date">Fecha del evento</string>
     <string name="plan_builder_event_distance">Distancia del evento</string>
@@ -172,7 +173,19 @@
     <string name="plan_builder_smart_setup_days_none">Sin días habituales</string>
     <string name="plan_builder_smart_setup_use">Usar este ajuste</string>
     <string name="plan_builder_smart_setup_adjust">Ajustarlo</string>
+    <string name="plan_builder_smart_setup_constraints">¿Ha cambiado algo? Lesiones, enfermedad, viajes o límites de horario (opcional)</string>
     <string name="plan_builder_change_answer">Cambiar</string>
+    <string name="plan_builder_conversation_thinking">Interpretando tu objetivo</string>
+    <string name="plan_builder_conversation_goal_acknowledged">Perfecto: %1$s.</string>
+    <string name="plan_builder_conversation_confirm_time">Usar este tiempo objetivo</string>
+    <string name="plan_builder_conversation_weeks">%1$d semanas</string>
+    <string name="plan_builder_conversation_optional_answer">Opcional: puedes continuar sin añadir nada.</string>
+    <string name="plan_builder_conversation_success_placeholder">Por ejemplo: sentirme cómodo en carreras más largas</string>
+    <string name="plan_builder_conversation_edit_answer">Editar %1$s</string>
+    <string name="plan_builder_date_done">Listo</string>
+    <string name="plan_builder_review_event">Evento</string>
+    <string name="plan_builder_review_horizon">Momento de revisión</string>
+    <string name="plan_builder_review_success">Progreso importante</string>
     <string name="plan_builder_event_distance_answer">Distancia de la carrera: %1$s</string>
     <string name="plan_builder_event_date_answer">Fecha de la carrera: %1$s</string>
     <string name="plan_builder_event_intent_answer">Enfoque para la carrera: %1$s</string>

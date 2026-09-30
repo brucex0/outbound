@@ -1,6 +1,7 @@
 package com.plainstride.outbound.core.network
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.json.JsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -45,8 +46,9 @@ data class CreateTrainingGoalRequest(
     val daysPerWeekTarget: Int? = null,
     val maxSessionMinutes: Int? = null,
     val riskTolerance: String? = null,
-    val primaryMotivation: PrimaryMotivation? = null,
-    val preferredRunGoalType: RunGoalType? = null,
+    // The goal API accepts these as absent, but rejects explicit null values.
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val primaryMotivation: PrimaryMotivation? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val preferredRunGoalType: RunGoalType? = null,
     val constraints: Map<String, String>? = null,
 )
 

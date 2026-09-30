@@ -36,6 +36,7 @@ data class OnboardingUiState(
     val intakeContext: PlanIntakeContext? = null,
     val interpretingGoal: Boolean = false,
     val interpretationReply: String? = null,
+    val interpretationFailed: Boolean = false,
 )
 
 sealed interface OnboardingEffect {
@@ -99,8 +100,12 @@ class OnboardingViewModel @Inject constructor(
             OnboardingStep.Activities -> OnboardingStep.Objective
             OnboardingStep.Baseline -> OnboardingStep.Activities
             OnboardingStep.Week -> OnboardingStep.Baseline
-            OnboardingStep.Profile -> OnboardingStep.Week
-            OnboardingStep.Review -> if (mutableState.value.hasPlanningBodyProfile()) OnboardingStep.Week else OnboardingStep.Profile
+            OnboardingStep.Profile -> if (mutableState.value.usesSuggestedSetup()) OnboardingStep.Activities else OnboardingStep.Week
+            OnboardingStep.Review -> when {
+                !mutableState.value.hasPlanningBodyProfile() -> OnboardingStep.Profile
+                mutableState.value.usesSuggestedSetup() -> OnboardingStep.Activities
+                else -> OnboardingStep.Week
+            }
             else -> return
         }
         moveTo(previous)
@@ -115,6 +120,7 @@ class OnboardingViewModel @Inject constructor(
                 objective = objective,
                 objectiveConfirmed = true,
                 goalInputText = null,
+                goalDescription = "",
                 eventDistanceConfirmed = false,
                 eventDateConfirmed = false,
                 eventIntentConfirmed = false,
@@ -123,7 +129,7 @@ class OnboardingViewModel @Inject constructor(
                 activities = activities,
             )
         }
-        mutableState.value = mutableState.value.copy(interpretationReply = null)
+        mutableState.value = mutableState.value.copy(interpretationReply = null, interpretationFailed = false)
         analytics.record(AnalyticsEvent("plan_intake_goal_interpreted", mapOf(AnalyticsProperty.Result to "success", AnalyticsProperty.SourceType to "quick_reply")))
     }
 
@@ -131,6 +137,7 @@ class OnboardingViewModel @Inject constructor(
         update { it.copy(
             objectiveConfirmed = false,
             goalInputText = null,
+            goalDescription = "",
             eventDistanceConfirmed = false,
             eventDateConfirmed = false,
             eventIntentConfirmed = false,
@@ -138,7 +145,7 @@ class OnboardingViewModel @Inject constructor(
             reviewHorizonConfirmed = false,
             successSignal = "",
         ) }
-        mutableState.value = mutableState.value.copy(interpretationReply = null)
+        mutableState.value = mutableState.value.copy(interpretationReply = null, interpretationFailed = false)
         analytics.record(AnalyticsEvent("plan_intake_answer_edited", mapOf(AnalyticsProperty.SelectionType to "goal", AnalyticsProperty.SourceType to "conversation")))
     }
 
@@ -169,23 +176,40 @@ class OnboardingViewModel @Inject constructor(
     fun interpretGoal(message: String) {
         val state = mutableState.value
         val draft = state.draft ?: return
-        val context = state.intakeContext ?: return
         if (message.isBlank() || state.interpretingGoal) return
         viewModelScope.launch {
-            mutableState.value = mutableState.value.copy(interpretingGoal = true, interpretationReply = null)
+            mutableState.value = mutableState.value.copy(interpretingGoal = true, interpretationReply = null, interpretationFailed = false)
+            val context = mutableState.value.intakeContext
+                ?: repository.planIntakeContext(draft.objective.takeIf { draft.objectiveConfirmed }).getOrNull()
+            if (context == null) {
+                mutableState.value = mutableState.value.copy(interpretingGoal = false, interpretationFailed = true)
+                analytics.record(AnalyticsEvent("plan_intake_goal_interpreted", mapOf(
+                    AnalyticsProperty.Result to "failure",
+                    AnalyticsProperty.SourceType to "conversation_text",
+                    AnalyticsProperty.ErrorCategory to "unavailable",
+                )))
+                return@launch
+            }
+            if (mutableState.value.intakeContext == null) {
+                val withContext = draft.withIntakeContext(context)
+                drafts.save(withContext)
+                mutableState.value = mutableState.value.copy(draft = withContext, intakeContext = context)
+                analytics.record(AnalyticsEvent("plan_intake_context_loaded", mapOf(AnalyticsProperty.SourceType to context.dataTier)))
+            }
+            val requestDraft = mutableState.value.draft ?: draft
             val request = PlanIntakeInterpretRequest(
                 message.trim(),
                 context.contextVersion,
                 PlanIntakeDraftRequest(
-                    objective = draft.objective.apiValue.takeIf { draft.objectiveConfirmed },
+                    objective = requestDraft.objective.apiValue.takeIf { requestDraft.objectiveConfirmed },
                     activities = emptyList(),
-                    eventDate = draft.eventDate.takeIf { draft.eventDateConfirmed },
-                    eventDistanceMeters = draft.eventDistanceMeters.takeIf { draft.eventDistanceConfirmed },
-                    eventIntent = draft.eventIntent.takeIf { draft.eventIntentConfirmed },
-                    targetTimeSeconds = draft.targetTimeSeconds.takeIf { draft.targetTimeConfirmed },
-                    reviewHorizonWeeks = draft.reviewHorizonWeeks.takeIf { draft.reviewHorizonConfirmed },
-                    sessionsPerWeek = draft.sessionsPerWeek,
-                    maxSessionMinutes = draft.availableMinutes,
+                    eventDate = requestDraft.eventDate.takeIf { requestDraft.eventDateConfirmed },
+                    eventDistanceMeters = requestDraft.eventDistanceMeters.takeIf { requestDraft.eventDistanceConfirmed },
+                    eventIntent = requestDraft.eventIntent.takeIf { requestDraft.eventIntentConfirmed },
+                    targetTimeSeconds = requestDraft.targetTimeSeconds.takeIf { requestDraft.targetTimeConfirmed },
+                    reviewHorizonWeeks = requestDraft.reviewHorizonWeeks.takeIf { requestDraft.reviewHorizonConfirmed },
+                    sessionsPerWeek = requestDraft.sessionsPerWeek,
+                    maxSessionMinutes = requestDraft.availableMinutes,
                 ),
             )
             repository.interpretPlanIntake(request).fold(
@@ -202,10 +226,13 @@ class OnboardingViewModel @Inject constructor(
                     }
                     val recognized = result.recognizedFields.toSet()
                     val current = mutableState.value.draft ?: draft
+                    val mentionedActivities = result.activities.mapNotNull(String::toPlanActivity)
+                    val selectedActivities = PlanActivity.entries.filter { it in current.activities || it in mentionedActivities || objective == PlanObjective.EventPreparation && it == PlanActivity.Run }
                     val updated = current.copy(
                         objective = objective,
                         objectiveConfirmed = true,
                         goalInputText = message.trim(),
+                        activities = selectedActivities,
                         eventDistanceConfirmed = "eventDistanceMeters" in recognized && result.eventDistanceMeters != null,
                         eventDateConfirmed = "eventDate" in recognized && result.eventDate != null,
                         eventIntentConfirmed = ("eventIntent" in recognized && result.eventIntent != null) || ("targetTimeSeconds" in recognized && result.targetTimeSeconds != null),
@@ -223,7 +250,7 @@ class OnboardingViewModel @Inject constructor(
                     analytics.record(AnalyticsEvent("plan_intake_goal_interpreted", mapOf(AnalyticsProperty.Result to "success", AnalyticsProperty.SourceType to "conversation_text")))
                 },
                 onFailure = {
-                    mutableState.value = mutableState.value.copy(interpretingGoal = false, interpretationReply = "fallback")
+                    mutableState.value = mutableState.value.copy(interpretingGoal = false, interpretationFailed = true)
                     analytics.record(AnalyticsEvent("plan_intake_goal_interpreted", mapOf(AnalyticsProperty.Result to "failure", AnalyticsProperty.SourceType to "conversation_text", AnalyticsProperty.ErrorCategory to "unavailable")))
                 },
             )
@@ -312,7 +339,8 @@ class OnboardingViewModel @Inject constructor(
         if (firstUse && account.needsIdentity) initial = initial.copy(step = OnboardingStep.Identity)
 
         val context = repository.planIntakeContext().getOrNull()
-        if (context != null) initial = initial.withIntakeContext(context)
+        initial = if (context != null) initial.withIntakeContext(context)
+            else initial.copy(intakeContextVersion = null)
         drafts.save(initial)
         mutableState.value = OnboardingUiState(
             loading = false,
@@ -375,7 +403,10 @@ class OnboardingViewModel @Inject constructor(
         repository.updateTrainingProfile(training).fold(
             onSuccess = {
                 val refreshedContext = repository.planIntakeContext(draft.objective).getOrNull()
-                val refreshedDraft = refreshedContext?.let { draft.withIntakeContext(it) } ?: draft
+                // Updating the profile changes the server's intake version. If its refresh is
+                // unavailable, omit the old version instead of submitting a guaranteed stale one.
+                val refreshedDraft = refreshedContext?.let { draft.withIntakeContext(it) }
+                    ?: draft.copy(intakeContextVersion = null)
                 drafts.save(refreshedDraft)
                 mutableState.value = mutableState.value.copy(saving = false, draft = refreshedDraft, intakeContext = refreshedContext ?: mutableState.value.intakeContext)
                 analytics.record(AnalyticsEvent(
@@ -415,7 +446,7 @@ class OnboardingViewModel @Inject constructor(
                 val reviewDraft = draft.copy(step = OnboardingStep.Review)
                 drafts.save(reviewDraft)
                 mutableState.value = mutableState.value.copy(saving = false, draft = reviewDraft)
-                trackCreation(draft, "failure", startedAt)
+                trackCreation(draft, "failure", startedAt, it)
                 mutableEffects.emit(OnboardingEffect.PlanCreationUnavailable)
             },
         )
@@ -445,7 +476,7 @@ class OnboardingViewModel @Inject constructor(
         if (step == OnboardingStep.Profile) analytics.record(AnalyticsEvent("onboarding_training_profile_viewed"))
     }
 
-    private fun trackCreation(draft: OnboardingDraft, result: String, startedAt: Long) {
+    private fun trackCreation(draft: OnboardingDraft, result: String, startedAt: Long, error: Throwable? = null) {
         val seconds = (System.nanoTime() - startedAt) / 1_000_000_000.0
         val latency = when {
             seconds < 2 -> "under_2s"
@@ -453,12 +484,23 @@ class OnboardingViewModel @Inject constructor(
             seconds < 10 -> "5s_10s"
             else -> "10s_plus"
         }
-        analytics.record(AnalyticsEvent("plan_creation_completed", mapOf(
+        val properties = mutableMapOf(
             AnalyticsProperty.Result to result,
             AnalyticsProperty.LatencyBucket to latency,
             AnalyticsProperty.GoalType to draft.objective.analyticsValue,
             AnalyticsProperty.CountBucket to "activities_${draft.activities.size}",
-        )))
+        )
+        if (error != null) properties[AnalyticsProperty.ErrorCategory] = when (error) {
+            is OnboardingDataException.Api -> when (error.failure.httpStatus) {
+                400 -> "http_400"
+                409 -> "http_409"
+                in 400..499 -> "http_4xx"
+                in 500..599 -> "http_5xx"
+                else -> "http_other"
+            }
+            else -> "unknown"
+        }
+        analytics.record(AnalyticsEvent("plan_creation_completed", properties))
     }
 
     private fun OnboardingDraft.planInput() = PlanBuilderInput(
@@ -516,7 +558,10 @@ class OnboardingViewModel @Inject constructor(
     }
 }
 
-private fun OnboardingUiState.hasPlanningBodyProfile() = intakeContext?.bodyProfile?.completeForPlanning == true || draft?.requiredBodyProfileComplete() == true
+// Local or Health Connect values still need to be saved before the server can build a plan.
+private fun OnboardingUiState.hasPlanningBodyProfile() = intakeContext?.bodyProfile?.completeForPlanning == true
+private fun OnboardingUiState.usesSuggestedSetup() =
+    intakeContext?.suggestedSetup?.confidence == "high" && draft?.observedBaselineConfirmed == true
 
 private fun OnboardingDraft.withIntakeContext(context: PlanIntakeContext): OnboardingDraft {
     val metric = measurementSystem == MeasurementSystem.Metric
