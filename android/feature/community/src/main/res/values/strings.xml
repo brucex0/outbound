@@ -29,6 +29,8 @@
     <string name="route_import_preview_title">Preview Route</string>
     <string name="route_library_accessibility_saved">Saved to My Routes</string>
     <string name="route_library_action_delete">Delete</string>
+    <string name="route_library_action_clear_search">Clear search</string>
+    <string name="route_library_action_show_all">Show all routes</string>
     <string name="route_library_action_find_nearby">Find routes near me</string>
     <string name="route_library_action_import">Import GPX or GeoJSON</string>
     <string name="route_library_action_start">Start Route Guidance</string>

@@ -40,7 +40,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.put
 
-@Composable fun CommunityRouteScreen(library: RouteLibrary, scope: RouteScope, onScope: (RouteScope)->Unit, onRefresh:()->Unit, onSearch:(String)->Unit, onFollow:(com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration)->Unit, onBookmark:(CommunityRoute)->Unit,publishableActivities:List<Pair<String,String>> = emptyList(),onPublish:(String,String,String?)->Unit={_,_,_->},onImport:(Boolean)->Unit={},embedded:Boolean=false,bottomContentPadding:androidx.compose.ui.unit.Dp=0.dp,routeDetail:CommunityRoute?=null,routeDetailLoading:Boolean=false,onLoadDetail:(String)->Unit={},onRemovePublished:(String)->Unit={},onClearDetail:()->Unit={},unitSystem:com.plainstride.outbound.core.model.activity.MeasurementUnitSystem=com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric,onImportedDelete:()->Unit={},importRequest:Int=0) {
+@Composable fun CommunityRouteScreen(library: RouteLibrary, scope: RouteScope, onScope: (RouteScope)->Unit, onRefresh:()->Unit, onSearch:(String)->Unit, onFollow:(com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration)->Unit, onBookmark:(CommunityRoute)->Unit,publishableActivities:List<Pair<String,String>> = emptyList(),onPublish:(String,String,String?)->Unit={_,_,_->},onImport:(Boolean)->Unit={},embedded:Boolean=false,bottomContentPadding:androidx.compose.ui.unit.Dp=0.dp,routeDetail:CommunityRoute?=null,routeDetailLoading:Boolean=false,onLoadDetail:(String)->Unit={},onRemovePublished:(String)->Unit={},onClearDetail:()->Unit={},unitSystem:com.plainstride.outbound.core.model.activity.MeasurementUnitSystem=com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric,onImportedDelete:()->Unit={},importRequest:Int=0,searchQuery:String="") {
  val debugRoute = if (BuildConfig.DEBUG && scope != RouteScope.MINE) {
   debugHarvestRoute(
    stringResource(com.plainstride.outbound.feature.recording.R.string.recording_simulation_route_name),
@@ -49,35 +49,11 @@ import kotlinx.serialization.json.put
  val visibleRoutes = if (debugRoute == null) library.routes else
   listOf(debugRoute) + library.routes.filterNot { it.id == HarvestRunSimulation.ROUTE_ID }
  val visibleLibrary = library.copy(routes = visibleRoutes)
- if(embedded){EmbeddedCommunityRouteLibrary(visibleLibrary,scope,onScope,onRefresh,onSearch,onFollow,onBookmark,onImport,routeDetail,routeDetailLoading,onLoadDetail,onRemovePublished,onClearDetail,unitSystem,onImportedDelete,bottomContentPadding,importRequest);return}
- val context=LocalContext.current
- var pendingNearby by remember { mutableStateOf(false) }
- val locationPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->pendingNearby=false;if(granted){onScope(RouteScope.NEARBY);onRefresh()}}
- var query by remember { mutableStateOf("") }
- var selected by remember { mutableStateOf<CommunityRoute?>(null) }
- var imported by remember { mutableStateOf<List<CommunityRoute>>(emptyList()) }
- var publish by remember { mutableStateOf<Pair<String,String>?>(null) }
- val importFile=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->
-  uri ?: return@rememberLauncherForActivityResult
-  val route=runCatching{context.contentResolver.openInputStream(uri)?.bufferedReader()?.use{reader->importRoute(reader.readText(),uri.lastPathSegment)}}.getOrNull()
-  if(route!=null){imported=listOf(route)+imported.filterNot{it.id==route.id};selected=route;onImport(true)}else onImport(false)
- }
-  LazyColumn(Modifier.fillMaxSize(), contentPadding=PaddingValues(16.dp), verticalArrangement=Arrangement.spacedBy(12.dp)) {
-  item { Row { Text(stringResource(R.string.routes_title), style=MaterialTheme.typography.headlineMedium, fontWeight=FontWeight.Bold, modifier=Modifier.weight(1f)); IconButton({importFile.launch(arrayOf("application/gpx+xml","application/geo+json","application/json","text/xml","text/plain"))}){Icon(Icons.Outlined.FileOpen,stringResource(R.string.route_library_action_import))}; IconButton(onRefresh){Icon(Icons.Outlined.Refresh,stringResource(R.string.routes_refresh))} } }
-  if(scope==RouteScope.MINE&&publishableActivities.isNotEmpty())item{publishableActivities.forEach{activity->TextButton({publish=activity}){Icon(Icons.Outlined.Publish,null);Spacer(Modifier.width(8.dp));Text(stringResource(R.string.routes_publish_activity,activity.second))}}}
-  item { SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()){ RouteScope.entries.forEachIndexed { index,item->SegmentedButton(item==scope,{if(item==RouteScope.NEARBY&&context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED)pendingNearby=true else onScope(item)},SegmentedButtonDefaults.itemShape(index,RouteScope.entries.size)){Text(stringResource(when(item){RouteScope.DISCOVERY->R.string.routes_discover;RouteScope.MINE->R.string.routes_mine;RouteScope.NEARBY->R.string.routes_nearby}))} } } }
-  if(scope==RouteScope.DISCOVERY) item { OutlinedTextField(query,{query=it;onSearch(it)},Modifier.fillMaxWidth(),label={Text(stringResource(R.string.routes_search))},leadingIcon={Icon(Icons.Outlined.Search,null)}) }
-  if(library.stale) item { Text(stringResource(R.string.routes_offline),style=MaterialTheme.typography.labelMedium) }
-  items(imported + visibleRoutes,key=CommunityRoute::id){ route->ElevatedCard({selected=route},Modifier.fillMaxWidth()){Column{ route.coordinates().takeIf{it.size>1}?.let { PlainstrideRouteMap(it,Modifier.fillMaxWidth().height(150.dp)) }; Column(Modifier.padding(16.dp)){Row{Text(route.name,Modifier.weight(1f),fontWeight=FontWeight.SemiBold);if(!route.id.startsWith("import:")&&!isDebugHarvestRoute(route))IconButton({onBookmark(route)}){Icon(if(route.isBookmarked) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder,stringResource(R.string.routes_bookmark))}};if(isDebugHarvestRoute(route))DebugTestRouteBadge();Text(stringResource(R.string.routes_summary,route.distanceM/1000,route.elevationGainM?:0.0));if(!route.id.startsWith("import:")&&!isDebugHarvestRoute(route))Text(stringResource(R.string.routes_community_counts,route.bookmarkCount,route.completionCount),style=MaterialTheme.typography.bodySmall)}}} }
-  if(visibleRoutes.isEmpty()&&imported.isEmpty()) item { Text(stringResource(R.string.routes_empty),Modifier.padding(24.dp)) }
- }
- selected?.let { route -> RouteDetailDialog(route,{selected=null}) { reverse -> selected=null;onFollow(CommunityRecordingCoordinator.launch(route,reverse)) } }
- publish?.let{activity->var name by remember(activity){mutableStateOf(activity.second)};var description by remember(activity){mutableStateOf("")};AlertDialog({publish=null},title={Text(stringResource(R.string.routes_publish))},text={Column{OutlinedTextField(name,{name=it.take(80)},label={Text(stringResource(R.string.routes_publish_name))});OutlinedTextField(description,{description=it.take(300)},label={Text(stringResource(R.string.routes_publish_description))})}},confirmButton={TextButton({onPublish(activity.first,name,description.takeIf(String::isNotBlank));publish=null},enabled=name.isNotBlank()){Text(stringResource(R.string.routes_publish))}},dismissButton={TextButton({publish=null}){Text(stringResource(R.string.routes_close))}})}
- if(pendingNearby)AlertDialog(onDismissRequest={pendingNearby=false},title={Text(stringResource(R.string.routes_location_title))},text={Text(stringResource(R.string.routes_location_body))},confirmButton={TextButton({locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)}){Text(stringResource(R.string.routes_location_allow))}},dismissButton={TextButton({pendingNearby=false}){Text(stringResource(R.string.routes_close))}})
+ SharedCommunityRouteLibrary(visibleLibrary,scope,onScope,onRefresh,onSearch,onFollow,onBookmark,onImport,routeDetail,routeDetailLoading,onLoadDetail,onRemovePublished,onClearDetail,unitSystem,onImportedDelete,bottomContentPadding,importRequest,embedded,publishableActivities,onPublish,searchQuery)
 }
 
 @Composable
-private fun EmbeddedCommunityRouteLibrary(
+private fun SharedCommunityRouteLibrary(
  library:RouteLibrary,
  scope:RouteScope,
  onScope:(RouteScope)->Unit,
@@ -95,36 +71,60 @@ private fun EmbeddedCommunityRouteLibrary(
  onImportedDelete:()->Unit,
  bottomContentPadding:androidx.compose.ui.unit.Dp,
  importRequest:Int,
+ embedded:Boolean,
+ publishableActivities:List<Pair<String,String>>,
+ onPublish:(String,String,String?)->Unit,
+ searchQuery:String,
 ) {
  val context=LocalContext.current
- var query by remember { mutableStateOf("") }
+ var query by remember { mutableStateOf(searchQuery) }
  var selectedRoute by remember { mutableStateOf<CommunityRoute?>(null) }
  var selectedImportedRoute by remember { mutableStateOf<CommunityRoute?>(null) }
  var confirmDeleteImported by remember { mutableStateOf<CommunityRoute?>(null) }
  var importedRoutes by remember { mutableStateOf<List<CommunityRoute>>(emptyList()) }
  var pendingNearby by remember { mutableStateOf(false) }
+ var publish by remember { mutableStateOf<Pair<String,String>?>(null) }
+ var submittedQuery by remember { mutableStateOf(searchQuery.isNotBlank()) }
  var handledImportRequest by rememberSaveable { mutableStateOf(0) }
- val locationPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->pendingNearby=false;if(granted){onScope(RouteScope.NEARBY);onRefresh()}}
+ val locationPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->pendingNearby=false;if(granted){query="";submittedQuery=false;onScope(RouteScope.NEARBY)}}
  val importFile=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->
   uri ?: return@rememberLauncherForActivityResult
   val route=runCatching{context.contentResolver.openInputStream(uri)?.bufferedReader()?.use{reader->importRoute(reader.readText(),uri.lastPathSegment)}}.getOrNull()
   if(route!=null){importedRoutes=listOf(route)+importedRoutes.filterNot{it.id==route.id};selectedRoute=route;onImport(true)}else onImport(false)
  }
+ LaunchedEffect(searchQuery) { query=searchQuery;submittedQuery=searchQuery.isNotBlank() }
  LaunchedEffect(importRequest) { if (importRequest > handledImportRequest) { handledImportRequest = importRequest; importFile.launch(arrayOf("application/gpx+xml","application/geo+json","application/json","text/xml","text/plain")) } }
  LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(bottom=16.dp+bottomContentPadding),verticalArrangement=Arrangement.spacedBy(0.dp)) {
+  if(!embedded) item {
+   Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
+    Text(stringResource(R.string.routes_title),Modifier.weight(1f),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)
+    IconButton(onRefresh){Icon(Icons.Outlined.Refresh,stringResource(R.string.routes_refresh))}
+   }
+   SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal=16.dp)) { listOf(RouteScope.DISCOVERY,RouteScope.MINE).forEachIndexed { index,item -> SegmentedButton(scope==item,{if(scope!=item){query="";submittedQuery=false;onScope(item)}},SegmentedButtonDefaults.itemShape(index,2)){Text(stringResource(if(item==RouteScope.MINE)R.string.routes_mine else R.string.routes_discover))} } }
+  }
+  if(scope==RouteScope.MINE&&publishableActivities.isNotEmpty()) item { Column(Modifier.padding(horizontal=16.dp)){publishableActivities.forEach { activity -> RouteLibraryAction(stringResource(R.string.routes_publish_activity,activity.second),Icons.Outlined.Publish){publish=activity} } } }
+  if(scope!=RouteScope.MINE) {
   item {
    Row(Modifier.fillMaxWidth().heightIn(min=52.dp).padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
     Icon(Icons.Outlined.Search,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)
-    OutlinedTextField(query,{query=it},Modifier.weight(1f),singleLine=true,placeholder={Text(stringResource(R.string.route_library_search_prompt))},keyboardOptions=androidx.compose.foundation.text.KeyboardOptions(imeAction=androidx.compose.ui.text.input.ImeAction.Search),keyboardActions=androidx.compose.foundation.text.KeyboardActions(onSearch={onSearch(query)}))
-    IconButton(onClick={onSearch(query)},modifier=Modifier.sizeIn(minWidth=44.dp,minHeight=44.dp)){Icon(Icons.Outlined.ArrowForward,stringResource(R.string.route_library_search_prompt))}
+    OutlinedTextField(query,{value->query=value;if(value.isBlank()&&submittedQuery){submittedQuery=false;onSearch("")}},Modifier.weight(1f),singleLine=true,placeholder={Text(stringResource(R.string.route_library_search_prompt))},keyboardOptions=androidx.compose.foundation.text.KeyboardOptions(imeAction=androidx.compose.ui.text.input.ImeAction.Search),keyboardActions=androidx.compose.foundation.text.KeyboardActions(onSearch={submittedQuery=query.isNotBlank();onSearch(query)}),trailingIcon={if(query.isNotEmpty())IconButton({query="";submittedQuery=false;onSearch("")}){Icon(Icons.Outlined.Close,stringResource(R.string.route_library_action_clear_search))}})
+    IconButton(onClick={submittedQuery=query.isNotBlank();onSearch(query)},modifier=Modifier.sizeIn(minWidth=44.dp,minHeight=44.dp)){Icon(Icons.Outlined.ArrowForward,stringResource(R.string.routes_search))}
    }
   }
   item {
    Column(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=6.dp)) {
-    RouteLibraryAction(stringResource(R.string.route_library_action_find_nearby),Icons.Outlined.MyLocation){if(context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED)pendingNearby=true else{onScope(RouteScope.NEARBY);onRefresh()}}
+    if(scope==RouteScope.NEARBY)RouteLibraryAction(stringResource(R.string.route_library_action_show_all),Icons.Outlined.Map){query="";submittedQuery=false;onScope(RouteScope.DISCOVERY)}
+    else RouteLibraryAction(stringResource(R.string.route_library_action_find_nearby),Icons.Outlined.MyLocation){if(context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED)pendingNearby=true else{query="";submittedQuery=false;onScope(RouteScope.NEARBY)}}
     RouteLibraryAction(stringResource(R.string.route_library_action_import),Icons.Outlined.FileOpen){importFile.launch(arrayOf("application/gpx+xml","application/geo+json","application/json","text/xml","text/plain"))}
    }
   }
+  }
+  if(scope==RouteScope.MINE) item {
+   Column(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=6.dp)) {
+    RouteLibraryAction(stringResource(R.string.route_library_action_import),Icons.Outlined.FileOpen){importFile.launch(arrayOf("application/gpx+xml","application/geo+json","application/json","text/xml","text/plain"))}
+   }
+  }
+  if(library.stale)item{Text(stringResource(R.string.routes_offline),Modifier.padding(horizontal=16.dp),style=MaterialTheme.typography.labelMedium)}
   if(importedRoutes.isNotEmpty()) {
    item { RouteLibrarySectionLabel(stringResource(R.string.route_library_section_imported)) }
    items(importedRoutes,key=CommunityRoute::id){route->
@@ -136,7 +136,7 @@ private fun EmbeddedCommunityRouteLibrary(
     HorizontalDivider(Modifier.padding(start=62.dp))
    }
   }
-  item { RouteLibrarySectionLabel(stringResource(R.string.route_library_section_community)) }
+  item { RouteLibrarySectionLabel(stringResource(if(scope==RouteScope.MINE)R.string.routes_mine else R.string.route_library_section_community)) }
   if(library.routes.isEmpty()&&routeDetailLoading) item { Box(Modifier.fillMaxWidth().padding(vertical=28.dp),contentAlignment=Alignment.Center){CircularProgressIndicator(Modifier.size(28.dp));Text(stringResource(R.string.route_library_loading),Modifier.padding(top=44.dp),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)} }
   else if(library.routes.isEmpty()) item {
    Column(Modifier.fillMaxWidth().padding(horizontal=32.dp,vertical=28.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -158,6 +158,7 @@ private fun EmbeddedCommunityRouteLibrary(
   }
  }
  if(pendingNearby)AlertDialog(onDismissRequest={pendingNearby=false},title={Text(stringResource(R.string.routes_location_title))},text={Text(stringResource(R.string.routes_location_body))},confirmButton={TextButton({locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)}){Text(stringResource(R.string.routes_location_allow))}},dismissButton={TextButton({pendingNearby=false}){Text(stringResource(R.string.routes_close))}})
+ publish?.let{activity->var name by remember(activity){mutableStateOf(activity.second)};var description by remember(activity){mutableStateOf("")};AlertDialog({publish=null},title={Text(stringResource(R.string.routes_publish))},text={Column{OutlinedTextField(name,{name=it.take(80)},label={Text(stringResource(R.string.routes_publish_name))});OutlinedTextField(description,{description=it.take(300)},label={Text(stringResource(R.string.routes_publish_description))})}},confirmButton={TextButton({onPublish(activity.first,name,description.takeIf(String::isNotBlank));publish=null},enabled=name.isNotBlank()){Text(stringResource(R.string.routes_publish))}},dismissButton={TextButton({publish=null}){Text(stringResource(R.string.routes_close))}})}
  selectedRoute?.let{selected->
   val detail=routeDetail?.takeIf{it.id==selected.id}?:selected
   EmbeddedCommunityRouteDetail(route=detail,loading=routeDetailLoading&&routeDetail?.id!=selected.id,unitSystem=unitSystem,onClose={selectedRoute=null;onClearDetail()},onRetry={if(!isDebugHarvestRoute(selected))onLoadDetail(selected.id)},onFollow={reverse->onFollow(CommunityRecordingCoordinator.launch(detail,reverse));selectedRoute=null;onClearDetail()},onBookmark={onBookmark(detail)},onRemovePublished={onRemovePublished(detail.id)})
@@ -196,6 +197,7 @@ private fun routeDistanceLabel(meters:Double,unitSystem:com.plainstride.outbound
 @Composable private fun EmbeddedCommunityRouteDetail(route:CommunityRoute,loading:Boolean,unitSystem:com.plainstride.outbound.core.model.activity.MeasurementUnitSystem,onClose:()->Unit,onRetry:()->Unit,onFollow:(Boolean)->Unit,onBookmark:()->Unit,onRemovePublished:()->Unit){
  val context=LocalContext.current
  var bookmarked by remember(route.id){mutableStateOf(route.isBookmarked)}
+ var reverse by remember(route.id){mutableStateOf(false)}
  var confirmRemove by remember{mutableStateOf(false)}
  Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
   Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background) {
@@ -205,7 +207,7 @@ private fun routeDistanceLabel(meters:Double,unitSystem:com.plainstride.outbound
      item {
       Box(Modifier.fillMaxWidth().height(310.dp).clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surfaceVariant),contentAlignment=Alignment.Center){
        val points=route.coordinates()
-       if(points.size>1)PlainstrideRouteMap(points,Modifier.fillMaxSize()) else if(loading)CircularProgressIndicator() else Column(horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(8.dp)){Icon(Icons.Outlined.WifiOff,null);Text(stringResource(R.string.route_library_detail_unavailable_title),style=MaterialTheme.typography.titleSmall);TextButton(onRetry){Text(stringResource(R.string.route_library_detail_retry))}}
+       if(points.size>1)PlainstrideRouteMap(if(reverse)points.reversed() else points,Modifier.fillMaxSize()) else if(loading)CircularProgressIndicator() else Column(horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(8.dp)){Icon(Icons.Outlined.WifiOff,null);Text(stringResource(R.string.route_library_detail_unavailable_title),style=MaterialTheme.typography.titleSmall);TextButton(onRetry){Text(stringResource(R.string.route_library_detail_retry))}}
       }
      }
      item { Column(verticalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -217,7 +219,9 @@ private fun routeDistanceLabel(meters:Double,unitSystem:com.plainstride.outbound
       Text(stringResource(R.string.route_library_detail_stats_format,route.bookmarkCount,route.completionCount),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
       route.description?.takeIf(String::isNotBlank)?.let{Text(it,Modifier.padding(top=4.dp),style=MaterialTheme.typography.bodyMedium)}
      } }
-     item { Button({onFollow(false)},Modifier.fillMaxWidth().heightIn(min=48.dp)){Text(stringResource(R.string.route_library_action_start))} }
+     item { Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text(stringResource(R.string.routes_reverse),Modifier.weight(1f));Switch(reverse,{reverse=it})} }
+     item { Button({onFollow(reverse)},Modifier.fillMaxWidth().heightIn(min=48.dp)){Text(stringResource(R.string.route_library_action_start))} }
+     item { TextButton({shareRoute(context,route)},Modifier.fillMaxWidth(),enabled=route.guidancePoints().size>1){Text(stringResource(R.string.routes_export))} }
      item {
       if(route.isOwner)OutlinedButton({confirmRemove=true},Modifier.fillMaxWidth(),enabled=!loading){Icon(Icons.Outlined.Delete,null);Spacer(Modifier.width(8.dp));Text(stringResource(R.string.route_library_remove_published_action))}
       else if(!isDebugHarvestRoute(route))OutlinedButton({onBookmark();bookmarked=!bookmarked},Modifier.fillMaxWidth(),enabled=!loading){Icon(if(bookmarked)Icons.Outlined.BookmarkRemove else Icons.Outlined.Bookmark,null);Spacer(Modifier.width(8.dp));Text(stringResource(if(bookmarked)R.string.library_my_routes_remove else R.string.library_my_routes_save))}
@@ -229,7 +233,6 @@ private fun routeDistanceLabel(meters:Double,unitSystem:com.plainstride.outbound
  if(confirmRemove)AlertDialog(onDismissRequest={confirmRemove=false},title={Text(stringResource(R.string.route_library_remove_published_confirmation_title))},text={Text(stringResource(R.string.route_library_remove_published_confirmation_message))},confirmButton={TextButton({confirmRemove=false;onRemovePublished()},colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.error)){Text(stringResource(R.string.route_library_remove_published_confirm))}},dismissButton={TextButton({confirmRemove=false}){Text(stringResource(R.string.routes_close))}})
 }
 
-@Composable private fun RouteDetailDialog(route:CommunityRoute,close:()->Unit,follow:(Boolean)->Unit){val context=LocalContext.current;var reverse by remember{mutableStateOf(false)};AlertDialog(onDismissRequest=close,title={Text(route.name)},text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)){route.description?.let{Text(it)};route.coordinates().takeIf{it.size>1}?.let{PlainstrideRouteMap(if(reverse)it.reversed() else it,Modifier.fillMaxWidth().height(220.dp))};Row{Text(stringResource(R.string.routes_reverse),Modifier.weight(1f));Switch(reverse,{reverse=it})};TextButton({shareRoute(context,route)}){Text(stringResource(R.string.routes_export))}}},confirmButton={Button({follow(reverse)}){Text(stringResource(R.string.routes_follow))}},dismissButton={TextButton(close){Text(stringResource(R.string.routes_close))}})}
 private fun shareRoute(context:android.content.Context,route:CommunityRoute){val points=route.guidancePoints();if(points.size<2)return;val directory=File(context.cacheDir,"activity_exports").apply{mkdirs()};val file=File(directory,"route-${route.id.filter(Char::isLetterOrDigit).take(48)}.gpx");file.writeBytes(OfflineRouteExporter.gpx(route.name,points));val uri=FileProvider.getUriForFile(context,"${context.packageName}.activityphotos",file);context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("application/gpx+xml").putExtra(Intent.EXTRA_STREAM,uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),null))}
 
 private fun CommunityRoute.coordinates(): List<MapCoordinate> {

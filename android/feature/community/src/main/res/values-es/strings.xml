@@ -29,6 +29,8 @@
     <string name="route_import_preview_title">Vista previa de la ruta</string>
     <string name="route_library_accessibility_saved">Guardada en Mis rutas</string>
     <string name="route_library_action_delete">Eliminar</string>
+    <string name="route_library_action_clear_search">Borrar búsqueda</string>
+    <string name="route_library_action_show_all">Ver todas las rutas</string>
     <string name="route_library_action_find_nearby">Buscar rutas cercanas</string>
     <string name="route_library_action_import">Importar GPX o GeoJSON</string>
     <string name="route_library_action_start">Iniciar guía de ruta</string>

@@ -29,6 +29,8 @@
     <string name="route_import_preview_title">预览路线</string>
     <string name="route_library_accessibility_saved">已保存到我的路线</string>
     <string name="route_library_action_delete">删除</string>
+    <string name="route_library_action_clear_search">清除搜索</string>
+    <string name="route_library_action_show_all">查看所有路线</string>
     <string name="route_library_action_find_nearby">查找附近路线</string>
     <string name="route_library_action_import">导入 GPX 或 GeoJSON</string>
     <string name="route_library_action_start">开始路线引导</string>

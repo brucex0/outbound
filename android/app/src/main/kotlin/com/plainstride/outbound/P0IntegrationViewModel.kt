@@ -35,7 +35,7 @@ import com.plainstride.outbound.core.analytics.AnalyticsProperty
 import com.plainstride.outbound.core.analytics.ProductAnalytics
 
 data class P0IntegrationState(
-    val routes: RouteLibrary = RouteLibrary(), val routeScope: RouteScope = RouteScope.DISCOVERY,
+    val routes: RouteLibrary = RouteLibrary(), val routeScope: RouteScope = RouteScope.DISCOVERY, val routeQuery: String = "",
     val selectedCommunityRoute: CommunityRoute? = null, val communityRouteLoading: Boolean = false,
     val notifications: List<InboxNotification> = emptyList(),
     val progress: ProgressScreenState = ProgressScreenState(ProgressStatsEngine.snapshot(emptyList()), emptyList()),
@@ -112,18 +112,24 @@ data class P0IntegrationState(
         refreshInbox()
         registerPush()
     }
-    fun scope(value:RouteScope){mutable.update{it.copy(routeScope=value)};observeRoutes();refreshRoutes()}
-    fun search(value:String){if(value.length==1||value.length%3==0)refreshRoutes(value)}
+    private var routeRefreshJob: kotlinx.coroutines.Job? = null
+    fun scope(value:RouteScope){mutable.update{it.copy(routeScope=value,routeQuery="")};observeRoutes();refreshRoutes()}
+    fun search(value:String){
+        val oldScope=mutable.value.routeScope
+        mutable.update{it.copy(routeScope=RouteScope.DISCOVERY,routeQuery=value.trim())}
+        if(oldScope!=RouteScope.DISCOVERY)observeRoutes()
+        refreshRoutes()
+    }
     fun loadCommunityRoute(id:String){viewModelScope.launch(Dispatchers.IO){mutable.update{it.copy(selectedCommunityRoute=null,communityRouteLoading=true)};routes.detail(id).onSuccess{route->mutable.update{it.copy(selectedCommunityRoute=route,communityRouteLoading=false)}}.onFailure{mutable.update{it.copy(communityRouteLoading=false)}}}}
     fun clearCommunityRoute(){mutable.update{it.copy(selectedCommunityRoute=null,communityRouteLoading=false)}}
     fun removePublishedRoute(id:String)=viewModelScope.launch{routes.remove(id).onSuccess{clearCommunityRoute();refreshRoutes()}}
-    fun refreshRoutes(query:String=""){val id=accountId?:return;viewModelScope.launch(Dispatchers.IO){
-        val location=if(mutable.value.routeScope==RouteScope.NEARBY&&(
+    fun refreshRoutes(){val id=accountId?:return;val requestedScope=mutable.value.routeScope;val query=mutable.value.routeQuery;routeRefreshJob?.cancel();routeRefreshJob=viewModelScope.launch(Dispatchers.IO){
+        val location=if(requestedScope==RouteScope.NEARBY&&(
             context.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)==android.content.pm.PackageManager.PERMISSION_GRANTED ||
             context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)==android.content.pm.PackageManager.PERMISSION_GRANTED
         ))runCatching{Tasks.await(LocationServices.getFusedLocationProviderClient(context).lastLocation)}.getOrNull() else null
         fun coarse(value:Double?)=value?.let{kotlin.math.round(it*100.0)/100.0}
-        routes.refresh(id,locale,mutable.value.routeScope,query,coarse(location?.latitude),coarse(location?.longitude))
+        routes.refresh(id,locale,requestedScope,query,coarse(location?.latitude),coarse(location?.longitude))
     }}
     fun bookmark(route:CommunityRoute)=viewModelScope.launch{routes.bookmark(route.id,!route.isBookmarked);refreshRoutes()}
     fun publishRoute(activityId:String,name:String,description:String?)=viewModelScope.launch{routes.publish(activityId,name,description).onSuccess{refreshRoutes()}}
