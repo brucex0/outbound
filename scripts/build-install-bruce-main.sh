@@ -13,6 +13,8 @@ TARGET_DEVICE_NAME="${TARGET_DEVICE_NAME:-Bruce main}"
 CORE_DEVICE_ID="${CORE_DEVICE_ID:-591E461F-4950-5FBD-A797-4777F1E83532}"
 SIMULATOR_ID="${SIMULATOR_ID:-}"
 BUNDLE_ID="plainstride.outbound"
+CACHED_BUILD_ROOT="/tmp/outbound-latest-build"
+INSTALL_TIMEOUT="${INSTALL_TIMEOUT:-120}"
 EXTENSION_BUNDLE_ID="${BUNDLE_ID}.liveactivity"
 WATCH_BUNDLE_ID="${BUNDLE_ID}.watchkitapp"
 DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM:-WT54K7D7VH}"
@@ -39,6 +41,9 @@ log() {
 }
 
 cleanup() {
+  if [[ -n "${cache_staging_dir:-}" ]]; then
+    rm -rf -- "$cache_staging_dir"
+  fi
   # Every run gets its own mktemp build directory, so nothing can reuse it once
   # this script exits. Removing it here stops /tmp from accumulating another
   # ~2.5 GB copy per build. Set KEEP_DERIVED_DATA=1 to keep the build products.
@@ -82,6 +87,7 @@ Environment:
   DERIVED_DATA_PATH  Optional. Defaults to a fresh temp directory under /tmp
                      that is deleted when the script exits.
   KEEP_DERIVED_DATA  Set to 1 to keep that temp build directory for inspection.
+  INSTALL_TIMEOUT    Device install timeout in seconds. Defaults to 120.
   TARGET_DEVICE_NAME Defaults to Bruce main.
   CORE_DEVICE_ID     Defaults to Bruce main's current CoreDevice ID.
   SIMULATOR_ID       Optional simulator UUID. Defaults to the first available
@@ -299,6 +305,11 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+if [[ ! "$INSTALL_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
+  echo "INSTALL_TIMEOUT must be a positive number of seconds." >&2
+  exit 2
+fi
+
 if [[ "$enable_test_personas" == true && "$launch_after_install" != true ]]; then
   echo "--with-test-personas requires --launch." >&2
   exit 2
@@ -426,6 +437,20 @@ if [[ "$build_only" == true ]]; then
   exit 0
 fi
 
+# Preserve the installable app before a device install can stall or be interrupted.
+# The full temporary DerivedData directory is still cleaned up on exit.
+mkdir -p "$CACHED_BUILD_ROOT/$build_product_directory"
+cache_staging_dir="$(mktemp -d "$CACHED_BUILD_ROOT/.staging.XXXXXX")"
+log "Saving latest installable build..."
+ditto "$APP_PATH" "$cache_staging_dir/Outbound.app"
+cached_app_path="$CACHED_BUILD_ROOT/$build_product_directory/Outbound.app"
+rm -rf -- "$cached_app_path"
+mv "$cache_staging_dir/Outbound.app" "$cached_app_path"
+rmdir "$cache_staging_dir"
+cache_staging_dir=""
+APP_PATH="$cached_app_path"
+log "Saved app: ${APP_PATH}"
+
 if [[ "$target_simulator" == true ]]; then
   simulator_state="$(xcrun simctl list devices | awk -v id="$SIMULATOR_ID" 'index($0, id) { print; exit }')"
   if [[ -z "$simulator_state" ]]; then
@@ -451,6 +476,7 @@ else
   log "Installing Outbound on ${TARGET_DEVICE_NAME}..."
   run_with_prefix "[install]" xcrun devicectl device install app \
     --device "$CORE_DEVICE_ID" \
+    --timeout "$INSTALL_TIMEOUT" \
     "$APP_PATH"
 fi
 

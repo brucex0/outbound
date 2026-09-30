@@ -177,6 +177,16 @@ needed, installs the app, and launches it without requiring Xcode.
 
 The helper now prints timestamped phase logs and streams `xcodebuild` output, so if it appears slow you can see whether it is still in the build, device-check, install, or launch step.
 For install builds, it reports missing local signing inputs and still runs `xcodebuild -allowProvisioningUpdates` so Xcode can refresh certificates and provisioning profiles from the signed-in account.
+Before installing, it saves the installable app at `/tmp/outbound-latest-build/Debug-iphoneos/Outbound.app` or `/tmp/outbound-latest-build/Debug-iphonesimulator/Outbound.app`. It still deletes the full temporary DerivedData directory on exit. Device installation fails after 120 seconds instead of waiting indefinitely; set `INSTALL_TIMEOUT` to change this limit.
+
+To reinstall the most recent existing build without rebuilding:
+
+```sh
+./scripts/reinstall-latest-ios.sh --main
+./scripts/reinstall-latest-ios.sh --emulator
+```
+
+The reinstall helper checks the saved app, active temporary builds, and Xcode's Outbound DerivedData, then selects the newest compatible Debug app. It installs over the existing app to preserve local data. Add `--launch` to open it afterward, `--app /path/to/Outbound.app` to select a specific build, or `--reset` to uninstall first and delete local app data. Set `SIMULATOR_ID` to choose a specific emulator.
 
 If Xcode itself shows stale package errors for dependencies that are no longer in the project, clear only Outbound's local DerivedData entries and reopen the project:
 
@@ -265,7 +275,8 @@ xcodebuild -allowProvisioningUpdates \
 
 xcrun devicectl device install app \
   --device 591E461F-4950-5FBD-A797-4777F1E83532 \
-  /tmp/outbound-device-derived/Build/Products/Debug-iphoneos/Outbound.app
+  --timeout 120 \
+  /tmp/outbound-latest-build/Debug-iphoneos/Outbound.app
 ```
 
 Optional launch, only when the phone is unlocked:
