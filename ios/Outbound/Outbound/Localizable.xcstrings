@@ -10071,12 +10071,20 @@
         }
       }
     },
-    "route.library.filter.my_only": {
-      "comment": "[android:community] Generated Android name: route_library_filter_my_only.",
+    "route.library.filter.title": {
+      "comment": "[android:community] Generated Android name: route_library_filter_title.",
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "My routes only" } },
-        "es": { "stringUnit": { "state": "translated", "value": "Solo mis rutas" } },
-        "zh-Hans": { "stringUnit": { "state": "translated", "value": "仅我的路线" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Filter routes" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Filtrar rutas" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "筛选路线" } }
+      }
+    },
+    "route.library.filter.clear": {
+      "comment": "[android:community] Generated Android name: route_library_filter_clear.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Clear" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Quitar filtros" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "清除筛选" } }
       }
     },
     "route.library.action.find_nearby": {

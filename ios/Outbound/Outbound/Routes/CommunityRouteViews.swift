@@ -101,8 +101,22 @@ struct CommunityRouteLibraryView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(String(localized: "Search"))
-                        Button {
-                            setMyRoutesOnly(!myRoutesOnly)
+                        Menu {
+                            Button {
+                                setMyRoutesOnly(true)
+                            } label: {
+                                if myRoutesOnly {
+                                    Label(String(localized: "library.my_routes", defaultValue: "My Routes"), systemImage: "checkmark")
+                                } else {
+                                    Text(String(localized: "library.my_routes", defaultValue: "My Routes"))
+                                }
+                            }
+                            Button {
+                                if myRoutesOnly { setMyRoutesOnly(false) }
+                                else { resetDiscovery() }
+                            } label: {
+                                Label(String(localized: "route.library.filter.clear", defaultValue: "Clear"), systemImage: "xmark")
+                            }
                         } label: {
                             Image(systemName: myRoutesOnly
                                   ? "line.3.horizontal.decrease.circle.fill"
@@ -110,8 +124,7 @@ struct CommunityRouteLibraryView: View {
                                 .foregroundStyle(myRoutesOnly ? Color.accentColor : Color.secondary)
                                 .frame(width: 44, height: 44)
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(String(localized: "route.library.filter.my_only", defaultValue: "My routes only"))
+                        .accessibilityLabel(String(localized: "route.library.filter.title", defaultValue: "Filter routes"))
                         .accessibilityValue(myRoutesOnly
                             ? String(localized: "common.on", defaultValue: "On")
                             : String(localized: "common.off", defaultValue: "Off"))
