@@ -7,8 +7,10 @@ import SwiftUI
 final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioRecorderDelegate {
     @Published var sessions: [InvitedLiveShareDTO] = []
     @Published var session: InvitedLiveShareDTO?
+    @Published var isLoadingSession: Bool
+    @Published var sessionLoadFailed = false
     @Published var isRecording = false
-    @Published var statusMessage: String?
+    @Published fileprivate var statusMessage: CheerFeedback?
     @Published var latestCheer: VoiceCheerReceiptDTO?
     private var recorder: AVAudioRecorder?
     private var recordingStartedAt: Date?
@@ -17,6 +19,7 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
 
     init(initialSession: InvitedLiveShareDTO? = nil) {
         session = initialSession
+        isLoadingSession = initialSession == nil
         latestCheer = initialSession?.latestCheer
         usesFixture = initialSession != nil
         super.init()
@@ -25,18 +28,31 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
     func refreshSessions() async { sessions = (try? await api.fetchInvitedLiveShares().sessions) ?? sessions }
     func refresh(id: String) async {
         guard !usesFixture else { return }
-        if let value = try? await api.fetchInvitedLiveShare(id: id) {
+        if session == nil {
+            isLoadingSession = true
+            sessionLoadFailed = false
+        }
+        defer { isLoadingSession = false }
+        do {
+            let value = try await api.fetchInvitedLiveShare(id: id)
             session = value
             latestCheer = value.latestCheer
+            sessionLoadFailed = false
+        } catch {
+            if session == nil { sessionLoadFailed = true }
         }
     }
 
     func beginRecording() {
         guard !isRecording else { return }
+        statusMessage = nil
         AVAudioApplication.requestRecordPermission { [weak self] allowed in
             Task { @MainActor in
                 guard let self else { return }
-                guard allowed else { self.statusMessage = String(localized: "cheer.microphone.required", defaultValue: "Microphone access is needed to send a voice cheer."); return }
+                guard allowed else {
+                    self.statusMessage = CheerFeedback(message: String(localized: "cheer.microphone.required", defaultValue: "Microphone access is needed to send a voice Cheer."), isSuccess: false)
+                    return
+                }
                 do {
                     let audioSession = AVAudioSession.sharedInstance()
                     try audioSession.setCategory(.playAndRecord, mode: .spokenAudio, options: [.defaultToSpeaker, .allowBluetoothHFP])
@@ -48,7 +64,9 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
                     self.recorder = recorder
                     self.recordingStartedAt = Date()
                     self.isRecording = true
-                } catch { self.statusMessage = String(localized: "cheer.record.failed", defaultValue: "Couldn’t start recording.") }
+                } catch {
+                    self.statusMessage = CheerFeedback(message: String(localized: "cheer.record.failed", defaultValue: "Couldn’t start recording."), isSuccess: false)
+                }
             }
         }
     }
@@ -57,23 +75,38 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
         guard let recorder, let session, isRecording else { return }
         recorder.stop(); isRecording = false
         let durationMs = min(15_000, max(250, Int(Date().timeIntervalSince(recordingStartedAt ?? Date()) * 1_000)))
-        guard let audio = try? Data(contentsOf: recorder.url) else { return }
+        guard let audio = try? Data(contentsOf: recorder.url) else {
+            try? FileManager.default.removeItem(at: recorder.url)
+            self.recorder = nil
+            statusMessage = CheerFeedback(message: String(localized: "cheer.audio.failed", defaultValue: "Couldn’t prepare your Cheer to send."), isSuccess: false)
+            return
+        }
         try? FileManager.default.removeItem(at: recorder.url)
         self.recorder = nil
         Task {
             do {
                 latestCheer = try await api.sendVoiceCheer(shareID: session.id, audio: audio, durationMs: durationMs)
-                statusMessage = String(localized: "cheer.sent", defaultValue: "Voice cheer sent")
+                statusMessage = CheerFeedback(message: String(localized: "cheer.sent", defaultValue: "Voice Cheer sent"), isSuccess: true, tracksSendResult: true)
             }
-            catch { statusMessage = String(localized: "cheer.send.failed", defaultValue: "Couldn’t send your cheer.") }
+            catch {
+                statusMessage = CheerFeedback(message: String(localized: "cheer.send.failed", defaultValue: "Couldn’t send your Cheer."), isSuccess: false, tracksSendResult: true)
+            }
         }
     }
+}
+
+fileprivate struct CheerFeedback: Identifiable, Equatable {
+    let id = UUID()
+    let message: String
+    let isSuccess: Bool
+    var tracksSendResult = false
 }
 
 struct LiveCheerView: View {
     let sessionID: String
     let entrySource: String
     @StateObject private var store: LiveCheerStore
+    @State private var toast: CheerFeedback?
     @Environment(\.analyticsManager) private var analyticsManager
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
@@ -139,10 +172,6 @@ struct LiveCheerView: View {
                     if let receipt = store.latestCheer {
                         VoiceCheerDeliveryStatus(receipt: receipt)
                     }
-                    if let message = store.statusMessage,
-                       message != String(localized: "cheer.sent", defaultValue: "Voice cheer sent") {
-                        Text(message).font(.caption).foregroundStyle(.secondary)
-                    }
                 }
                 .padding()
                 .navigationTitle(
@@ -161,7 +190,25 @@ struct LiveCheerView: View {
                         .accessibilityLabel(String(localized: "common.close", defaultValue: "Close"))
                     }
                 }
-            } else { ProgressView() }
+            } else if store.isLoadingSession {
+                ProgressView()
+            } else if store.sessionLoadFailed {
+                ContentUnavailableView {
+                    Label(
+                        String(localized: "cheer.session.unavailable.title", defaultValue: "Live activity unavailable"),
+                        systemImage: "location.slash"
+                    )
+                } description: {
+                    Text(String(localized: "cheer.session.unavailable.message", defaultValue: "This activity isn’t available right now. Check your connection or try again."))
+                } actions: {
+                    Button(String(localized: "cheer.session.unavailable.retry", defaultValue: "Try again")) {
+                        Task { await store.refresh(id: sessionID) }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            } else {
+                ProgressView()
+            }
         }
         .task {
             await store.refresh(id: sessionID)
@@ -171,12 +218,31 @@ struct LiveCheerView: View {
             ]))
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(5))
+                guard store.session != nil else { continue }
                 await store.refresh(id: sessionID)
             }
         }
-        .onChange(of: store.statusMessage) { _, message in
-            guard let message else { return }
-            Task { await analyticsManager?.track(.init(.liveVoiceCheerSent, properties: [.result: .string(message == String(localized: "cheer.sent", defaultValue: "Voice cheer sent") ? "success" : "failure")])) }
+        .onChange(of: store.statusMessage) { _, feedback in
+            guard let feedback else { return }
+            toast = feedback
+            if feedback.tracksSendResult {
+                Task { await analyticsManager?.track(.init(.liveVoiceCheerSent, properties: [.result: .string(feedback.isSuccess ? "success" : "failure")])) }
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if let toast {
+                CheerToastView(feedback: toast)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 28)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy, value: toast)
+        .task(id: toast?.id) {
+            guard let toastID = toast?.id else { return }
+            do { try await Task.sleep(for: .seconds(3)) } catch { return }
+            guard toast?.id == toastID else { return }
+            withAnimation(.snappy) { toast = nil }
         }
     }
 
@@ -207,6 +273,21 @@ struct LiveCheerView: View {
         return hours > 0
             ? String(format: "%d:%02d:%02d", hours, minutes, remainingSeconds)
             : String(format: "%d:%02d", minutes, remainingSeconds)
+    }
+}
+
+private struct CheerToastView: View {
+    let feedback: CheerFeedback
+
+    var body: some View {
+        Label(feedback.message, systemImage: feedback.isSuccess ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(feedback.isSuccess ? Color.green : Color.red, in: Capsule())
+            .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
+            .accessibilityAddTraits(.isStaticText)
     }
 }
 
