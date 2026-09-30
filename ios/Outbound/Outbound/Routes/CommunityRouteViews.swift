@@ -13,7 +13,6 @@ struct CommunityRouteLibraryView: View {
     @StateObject private var locator = RouteDiscoveryLocator()
     @State private var query = ""
     @State private var nearbyActive = false
-    @State private var searchActive = false
     @State private var discoveryTask: Task<Void, Never>?
     @State private var importsFile = false
     @State private var importedRoute: PreparedRoute?
@@ -66,7 +65,16 @@ struct CommunityRouteLibraryView: View {
                             .foregroundStyle(.secondary)
                         TextField(
                             String(localized: "route.library.search.prompt", defaultValue: "Route or location"),
-                            text: $query
+                            text: Binding(
+                                get: { query },
+                                set: { newValue in
+                                    let wasNotEmpty = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                    query = newValue
+                                    if wasNotEmpty && newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                        resetDiscovery()
+                                    }
+                                }
+                            )
                         )
                         .submitLabel(.search)
                         .onSubmit { submitSearch() }
@@ -96,7 +104,6 @@ struct CommunityRouteLibraryView: View {
                 Section {
                     Button {
                         nearbyActive = true
-                        searchActive = false
                         query = ""
                         discoveryTask?.cancel()
                         locator.requestLocation()
@@ -206,11 +213,6 @@ struct CommunityRouteLibraryView: View {
                 }
             }
         }
-        .onChange(of: query) { oldValue, newValue in
-            if !oldValue.isEmpty && newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && searchActive {
-                resetDiscovery()
-            }
-        }
         .onChange(of: importRequestID) { _, _ in
             importsFile = true
         }
@@ -297,7 +299,6 @@ struct CommunityRouteLibraryView: View {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { resetDiscovery(); return }
         nearbyActive = false
-        searchActive = true
         discoveryTask?.cancel()
         discoveryTask = Task {
             let succeeded = await store.search(trimmed)
@@ -321,7 +322,6 @@ struct CommunityRouteLibraryView: View {
 
     private func resetDiscovery() {
         nearbyActive = false
-        searchActive = false
         query = ""
         discoveryTask?.cancel()
         discoveryTask = Task {
