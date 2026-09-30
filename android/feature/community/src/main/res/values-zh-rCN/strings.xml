@@ -18,7 +18,7 @@
     <string name="routes_reverse">&amp;#x53CD;&amp;#x5411;&amp;#x8DDF;&amp;#x968F;</string>
     <string name="routes_search">&amp;#x641C;&amp;#x7D22;&amp;#x8DEF;&amp;#x7EBF;</string>
     <string name="routes_summary">%1$.1f &amp;#x516C;&amp;#x91CC; &amp;#xB7; &amp;#x722C;&amp;#x5347; %2$.0f &amp;#x7C73;</string>
-    <string name="routes_title">&amp;#x793E;&amp;#x533A;&amp;#x8DEF;&amp;#x7EBF;</string>
+    <string name="routes_title">路线</string>
     <string name="library_my_routes_remove">从我的路线中移除</string>
     <string name="library_my_routes_save">保存到我的路线</string>
     <string name="route_import_action_delete">删除导入的路线</string>
@@ -49,7 +49,6 @@
     <string name="route_library_remove_published_confirmation_title">要移除已发布路线吗？</string>
     <string name="route_library_row_summary_format">%1$s · 由 %2$s 创建</string>
     <string name="route_library_search_prompt">路线或地点</string>
-    <string name="route_library_section_community">社区路线</string>
     <string name="route_library_section_imported">导入的路线</string>
     <string name="route_library_test_badge">测试</string>
     <string name="route_library_test_badge_accessibility">测试路线</string>

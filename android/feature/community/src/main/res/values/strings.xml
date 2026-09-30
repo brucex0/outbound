@@ -18,7 +18,7 @@
     <string name="routes_reverse">Follow in reverse</string>
     <string name="routes_search">Search routes</string>
     <string name="routes_summary">%1$.1f km · %2$.0f m elevation</string>
-    <string name="routes_title">Community routes</string>
+    <string name="routes_title">Routes</string>
     <string name="library_my_routes_remove">Remove from My Routes</string>
     <string name="library_my_routes_save">Save to My Routes</string>
     <string name="route_import_action_delete">Delete Imported Route</string>
@@ -49,7 +49,6 @@
     <string name="route_library_remove_published_confirmation_title">Remove published route?</string>
     <string name="route_library_row_summary_format">%1$s · by %2$s</string>
     <string name="route_library_search_prompt">Route or location</string>
-    <string name="route_library_section_community">Community routes</string>
     <string name="route_library_section_imported">Imported routes</string>
     <string name="route_library_test_badge">Test</string>
     <string name="route_library_test_badge_accessibility">Test route</string>

@@ -55,7 +55,7 @@
     <string name="reminder_setting">Recordatorio de entrenamiento</string>
     <string name="reminder_setting_body">Los días con entrenamiento planificado a las %1$s</string>
     <string name="reminder_title">¿Listo para moverte?</string>
-    <string name="routes_destination">Rutas de la comunidad</string>
+    <string name="routes_destination">Rutas</string>
     <string name="safety_destination">Seguridad y ubicación en vivo</string>
     <string name="shortcut_assistant">Preguntar al compañero</string>
     <string name="shortcut_start">Iniciar entrenamiento</string>

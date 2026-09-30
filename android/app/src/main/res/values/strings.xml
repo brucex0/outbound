@@ -55,7 +55,7 @@
     <string name="reminder_setting">Workout reminder</string>
     <string name="reminder_setting_body">On planned workout days at %1$s</string>
     <string name="reminder_title">Ready to move?</string>
-    <string name="routes_destination">Community routes</string>
+    <string name="routes_destination">Routes</string>
     <string name="safety_destination">Safety &amp; live sharing</string>
     <string name="shortcut_assistant">Ask Companion</string>
     <string name="shortcut_start">Start workout</string>

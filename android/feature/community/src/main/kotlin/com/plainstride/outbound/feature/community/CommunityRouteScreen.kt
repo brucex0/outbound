@@ -94,17 +94,13 @@ private fun SharedCommunityRouteLibrary(
  Column(Modifier.fillMaxSize()) {
  LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(bottom=16.dp+bottomContentPadding),verticalArrangement=Arrangement.spacedBy(0.dp)) {
   item {
-   Row(Modifier.fillMaxWidth().padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically) {
-    FilterChip(selected=scope==RouteScope.MINE,onClick={query="";submittedQuery=false;onScope(if(scope==RouteScope.MINE)RouteScope.DISCOVERY else RouteScope.MINE)},label={Text(stringResource(R.string.route_library_filter_my_only))})
-    Spacer(Modifier.weight(1f))
-    IconButton(onRefresh){Icon(Icons.Outlined.Refresh,stringResource(R.string.routes_refresh))}
-   }
-  }
-  item {
    Row(Modifier.fillMaxWidth().heightIn(min=52.dp).padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-    Icon(Icons.Outlined.Search,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)
     OutlinedTextField(query,{value->query=value;if(value.isBlank()&&submittedQuery){submittedQuery=false;if(scope!=RouteScope.MINE)onSearch("")}},Modifier.weight(1f),singleLine=true,placeholder={Text(stringResource(R.string.route_library_search_prompt))},keyboardOptions=androidx.compose.foundation.text.KeyboardOptions(imeAction=androidx.compose.ui.text.input.ImeAction.Search),keyboardActions=androidx.compose.foundation.text.KeyboardActions(onSearch={submittedQuery=query.isNotBlank();if(scope!=RouteScope.MINE)onSearch(query)}),trailingIcon={if(query.isNotEmpty())IconButton({query="";submittedQuery=false;if(scope!=RouteScope.MINE)onSearch("")}){Icon(Icons.Outlined.Close,stringResource(R.string.route_library_action_clear_search))}})
     IconButton(onClick={submittedQuery=query.isNotBlank();if(scope!=RouteScope.MINE)onSearch(query)},modifier=Modifier.sizeIn(minWidth=44.dp,minHeight=44.dp)){Icon(Icons.Outlined.ArrowForward,stringResource(R.string.routes_search))}
+    IconToggleButton(checked=scope==RouteScope.MINE,onCheckedChange={selected->query="";submittedQuery=false;onScope(if(selected)RouteScope.MINE else RouteScope.DISCOVERY)},modifier=Modifier.sizeIn(minWidth=44.dp,minHeight=44.dp)) {
+     Icon(Icons.Outlined.FilterList,stringResource(R.string.route_library_filter_my_only),tint=if(scope==RouteScope.MINE)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    IconButton(onRefresh,modifier=Modifier.sizeIn(minWidth=44.dp,minHeight=44.dp)){Icon(Icons.Outlined.Refresh,stringResource(R.string.routes_refresh))}
    }
   }
   if(scope!=RouteScope.MINE)item {
@@ -131,7 +127,6 @@ private fun SharedCommunityRouteLibrary(
     HorizontalDivider(Modifier.padding(start=62.dp))
    }
   }
-  item { RouteLibrarySectionLabel(stringResource(if(scope==RouteScope.MINE)R.string.routes_mine else R.string.route_library_section_community)) }
   if(displayedRoutes.isEmpty()&&routeDetailLoading) item { Box(Modifier.fillMaxWidth().padding(vertical=28.dp),contentAlignment=Alignment.Center){CircularProgressIndicator(Modifier.size(28.dp));Text(stringResource(R.string.route_library_loading),Modifier.padding(top=44.dp),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)} }
   else if(displayedRoutes.isEmpty()) item {
    Column(Modifier.fillMaxWidth().padding(horizontal=32.dp,vertical=28.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(8.dp)) {

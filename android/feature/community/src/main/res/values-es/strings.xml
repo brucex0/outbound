@@ -18,7 +18,7 @@
     <string name="routes_reverse">Seguir en sentido inverso</string>
     <string name="routes_search">Buscar rutas</string>
     <string name="routes_summary">%1$.1f km &amp;#xB7; %2$.0f m de desnivel</string>
-    <string name="routes_title">Rutas de la comunidad</string>
+    <string name="routes_title">Rutas</string>
     <string name="library_my_routes_remove">Quitar de Mis rutas</string>
     <string name="library_my_routes_save">Guardar en Mis rutas</string>
     <string name="route_import_action_delete">Eliminar ruta importada</string>
@@ -49,7 +49,6 @@
     <string name="route_library_remove_published_confirmation_title">¿Eliminar la ruta publicada?</string>
     <string name="route_library_row_summary_format">%1$s · por %2$s</string>
     <string name="route_library_search_prompt">Ruta o ubicación</string>
-    <string name="route_library_section_community">Rutas de la comunidad</string>
     <string name="route_library_section_imported">Rutas importadas</string>
     <string name="route_library_test_badge">Prueba</string>
     <string name="route_library_test_badge_accessibility">Ruta de prueba</string>
