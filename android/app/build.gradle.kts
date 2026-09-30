@@ -178,5 +178,6 @@ dependencies {
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.health.connect)
     implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
     debugImplementation(libs.compose.ui.tooling)
 }
