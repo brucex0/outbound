@@ -264,6 +264,14 @@ class TodayViewModel @Inject constructor(
         ),
     )
 
+    fun trackWeatherDetailsOpened() = analytics.record(
+        AnalyticsEvent("today_weather_details_opened", mapOf(AnalyticsProperty.Source to "today_weather_pill")),
+    )
+
+    fun trackWeatherAttributionOpened() = analytics.record(
+        AnalyticsEvent("weather_attribution_opened", mapOf(AnalyticsProperty.Source to "today_weather_details")),
+    )
+
     fun trackLaunchConfiguration(changeType: String, selection: String) = analytics.record(
         AnalyticsEvent(
             "activity_configuration_changed",

@@ -223,6 +223,8 @@ fun TodayRoute(
         onSubmitConstraint = viewModel::submitConstraint,
         onDecideAdjustment = viewModel::decideAdjustment,
         onCardDisplayChanged = viewModel::trackCardDisplayChanged,
+        onWeatherDetailsOpened = viewModel::trackWeatherDetailsOpened,
+        onWeatherAttributionOpened = viewModel::trackWeatherAttributionOpened,
         onLaunchConfigurationChanged = viewModel::trackLaunchConfiguration,
         calorieEstimate = viewModel::calorieEstimate,
         guidanceContent = guidanceContent,
@@ -277,6 +279,8 @@ fun TodayScreen(
     onSubmitConstraint: (TodayConstraint, String, String?) -> Unit,
     onDecideAdjustment: (String, Boolean) -> Unit,
     onCardDisplayChanged: (Boolean) -> Unit = {},
+    onWeatherDetailsOpened: () -> Unit = {},
+    onWeatherAttributionOpened: () -> Unit = {},
     onLaunchConfigurationChanged: (String, String) -> Unit = { _, _ -> },
     calorieEstimate:suspend (TodayActivityChoice,Int)->PlannedCalorieEstimate?={_,_->null},
     guidanceContent: @Composable () -> Unit = {},
@@ -352,7 +356,10 @@ fun TodayScreen(
             )
             Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 TodayTopControls(weather, useFahrenheit, inboxCount, {
-                    if (locationGranted && weather != null) showsWeather = true else onRequestLocationAccess()
+                    if (locationGranted && weather != null) {
+                        onWeatherDetailsOpened()
+                        showsWeather = true
+                    } else onRequestLocationAccess()
                 }, onOpenInbox)
                 Box {
                     PlainstrideFloatingAction(onClick = { overflowExpanded = true }) {
@@ -464,12 +471,28 @@ fun TodayScreen(
         onSubmit = onSubmitConstraint,
         onDecision = { id, accept -> onDecideAdjustment(id, accept); showsChange = false },
     )
-    if (showsWeather && weather != null) AlertDialog(
-        onDismissRequest = { showsWeather = false },
-        title = { Text(weather.headline) },
-        text = { Text(weather.detail) },
-        confirmButton = { TextButton(onClick = { showsWeather = false }) { Text(stringResource(R.string.today_done)) } },
-    )
+    if (showsWeather && weather != null) {
+        val uriHandler = LocalUriHandler.current
+        AlertDialog(
+            onDismissRequest = { showsWeather = false },
+            title = { Text(weather.headline) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(weather.detail)
+                    Text(
+                        weather.attribution,
+                        modifier = Modifier.clickable(role = Role.Button) {
+                            onWeatherAttributionOpened()
+                            uriHandler.openUri(weather.attributionUrl)
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            },
+            confirmButton = { TextButton(onClick = { showsWeather = false }) { Text(stringResource(R.string.today_done)) } },
+        )
+    }
     if (showsCatalog) CuratedWorkoutSheet(
         workouts = (state.catalog as? CachedResource.Available)?.value?.workouts.orEmpty()
             .filter { it.sport.lowercase() in activityChoice.catalogSportNames() },
@@ -685,7 +708,6 @@ private fun WorkoutRecommendationCard(
     onOpen: () -> Unit,
     onChange: () -> Unit,
 ) {
-    val uriHandler = LocalUriHandler.current
     val toggleDescription = stringResource(if (minimized) R.string.today_expand_card else R.string.today_collapse_card)
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .96f))) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -707,7 +729,6 @@ private fun WorkoutRecommendationCard(
             if (!minimized) {
                 weather?.let {
                     Text("${it.headline} · ${it.detail}", style = MaterialTheme.typography.bodySmall, color = if (it.unsafe) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(it.attribution, modifier = Modifier.clickable(role = Role.Button) { uriHandler.openUri(it.attributionUrl) }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                 }
                 PhasePreview(suggestion.steps)
                 if (stale) Text(
