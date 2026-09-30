@@ -18,6 +18,7 @@
 - The Notification Center action uses the shared unread count in a high-contrast numeric badge rather than a low-visibility dot.
 - Connections, Your groups, Upcoming, Past activities, Groups, and Recent activity share the iOS section-label, rounded-card, spacing, and action hierarchy.
 - Connections preserve a footprint-matched initial placeholder, accepted-person previews, active-workout indicators, and a dedicated full-screen list/search surface. Its People-tab `All` action is not duplicated below the list, and the action is hidden when all accepted connections fit in the preview and there is no additional page.
+- Connections navigation requests are consumed after opening the destination. The full-screen dialog is transient across top-level tab switches, so returning to Social or Me does not reopen a previously dismissed or abandoned Connections view. An actual Connections opening emits one `connections_opened` event with a bounded entry source.
 - Incoming requests render as tappable requester profile cards on Social home and in Connections, with separate icon-only Accept and Decline actions; the requester profile retains both labeled actions.
 - Empty, invitation, Group creation, event, Group, recognition, and feed states use the same standard or companion card role as iOS.
 - Feed cards remain map-first with overlaid stats and Cheer, comment, profile, and safety actions. Tapping anywhere else on an activity card opens its detail page. Route previews use the shared Google map renderer as a non-interactive snapshot-like surface with gestures, map chrome, and endpoint markers disabled, matching the iOS `interactionModes: []` presentation.
@@ -46,6 +47,7 @@
 ## Verification Scenarios
 
 - Initial loading, empty connections, accepted connections, active-workout presence, Group empty/list/invitation, upcoming/past empty/list, Groups, empty/populated feed, and avatar success/fallback.
+- Open Connections from Me, leave it through a top-level tab, and switch between Social and Me; the dialog stays closed until Connections is explicitly opened again. Repeat after a notification or deep link opens Connections.
 - Activity feed active-runner ordering and profile navigation, prioritized upcoming events, empty/loading/populated states, refresh and pagination/retry, preference units, card route/stat overlays, milestones, photos, Cheers and cheerer-list/profile navigation, comments, report/block/delete, and activity-detail entry. Activity detail with and without photos, optional metrics, splits, missing photo coordinates, collapsed/split/expanded sheet drag with map resizing, photo captions and selection, and owner share preview.
 - Light/dark themes, supported locales, font scaling, and TalkBack traversal remain manual device checks.
 - QR loading/success/failure, camera first use/denial/unavailable, invalid payload, self-scan, duplicate/existing relationship, success, and offline retry remain manual device checks.

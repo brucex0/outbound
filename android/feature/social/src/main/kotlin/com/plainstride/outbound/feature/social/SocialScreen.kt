@@ -58,11 +58,11 @@ import com.plainstride.outbound.feature.activity.ActivityExport
 import com.plainstride.outbound.feature.activity.ActivityViewModel
 import com.plainstride.outbound.feature.activity.R as ActivityR
 
-@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,inboxCount:Int=0,unitSystem:MeasurementUnitSystem=MeasurementUnitSystem.metric,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={},onRoutesTabSelected:()->Unit={},communityRoutesContent: @Composable (Int) -> Unit = {}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
+@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,targetEntrySource:String="deep_link",inboxCount:Int=0,unitSystem:MeasurementUnitSystem=MeasurementUnitSystem.metric,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onTargetConsumed:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={},onRoutesTabSelected:()->Unit={},communityRoutesContent: @Composable (Int) -> Unit = {}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
     var selectedTab by rememberSaveable { mutableStateOf(SocialFeatureTab.FEED) }
     var hasSelectedSocialTab by rememberSaveable { mutableStateOf(false) }
     var routeImportRequest by rememberSaveable { mutableStateOf(0) }
-    var createGroup by rememberSaveable { mutableStateOf(false) };var inviteGroup by remember { mutableStateOf<GroupSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var groupActivity by remember { mutableStateOf<GroupSummary?>(null) };var connectionsOpen by rememberSaveable { mutableStateOf(false) }
+    var createGroup by rememberSaveable { mutableStateOf(false) };var inviteGroup by remember { mutableStateOf<GroupSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var groupActivity by remember { mutableStateOf<GroupSummary?>(null) };var connectionsOpen by remember { mutableStateOf(false) }
     var scannerOpen by rememberSaveable { mutableStateOf(false) }
     var scannerFeedback by remember { mutableStateOf<String?>(null) }
     val feedListState = rememberLazyListState()
@@ -100,14 +100,21 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
         kotlinx.coroutines.delay(2_000)
         scannerFeedback = null
     }
-    LaunchedEffect(targetType,targetId,state.loading){
-        if (!state.loading && targetType == "connections") connectionsOpen = true
+    LaunchedEffect(targetType,targetId,targetEntrySource,state.loading){
+        if (!state.loading && targetType == "connections") {
+            connectionsOpen = true
+            viewModel.trackConnectionsOpened(targetEntrySource)
+            onTargetConsumed()
+        }
         else if (!state.loading && targetType == "connection_link" && !targetId.isNullOrBlank()) {
             viewModel.openConnectionCodeProfile(targetId)
             onConnectionLinkConsumed()
         }
         else if(!state.loading&&targetType=="group_invite"&&targetId!=null){viewModel.consumeGroupInvite(targetId);onGroupInviteConsumed()}
-        else if(!state.loading&&targetType!=null&&targetId!=null)viewModel.openTarget(targetType,targetId)
+        else if(!state.loading&&targetType!=null&&targetId!=null){
+            viewModel.openTarget(targetType,targetId)
+            onTargetConsumed()
+        }
     }
     val selectedActivityPost = state.selectedActivityPost?.let { selected -> state.home.posts.firstOrNull { it.id == selected.id } ?: selected }
     if (state.selectedGroupDetail != null) {
@@ -139,7 +146,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             if (tab == SocialFeatureTab.ROUTES) onRoutesTabSelected()
             if (tab == SocialFeatureTab.GROUPS) { viewModel.refresh(); viewModel.refreshGroupDirectory() }
             viewModel.trackSocialTabSelected(tab.analyticsValue)
-        }, inboxCount, unitSystem, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true }, viewModel::openGroup, viewModel::openComments, viewModel::openActivityDetail, viewModel::openTarget, onConditions, onCommunity, onNotifications, { routeImportRequest += 1 }, viewModel::toggleCheer, { group ->
+        }, inboxCount, unitSystem, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true; viewModel.trackConnectionsOpened("social_home_preview") }, viewModel::openGroup, viewModel::openComments, viewModel::openActivityDetail, viewModel::openTarget, onConditions, onCommunity, onNotifications, { routeImportRequest += 1 }, viewModel::toggleCheer, { group ->
             viewModel.joinGroup(group)
         }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, communityRoutesContent, modifier, viewModel = viewModel, feedListState = feedListState, routeImportRequest = routeImportRequest)
     } else {

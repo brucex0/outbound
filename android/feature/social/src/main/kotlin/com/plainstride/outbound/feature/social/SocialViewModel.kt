@@ -82,6 +82,10 @@ sealed interface ConnectionEffect {
             .onFailure { mutableState.update { s -> s.copy(offline = true) }; messages.emit(SocialMessage.ACTION_FAILED) }
         mutableState.update { it.copy(refreshing = false, loading = false) }
     } }
+    fun trackConnectionsOpened(entrySource: String) = analytics.record(AnalyticsEvent(
+        "connections_opened",
+        mapOf(AnalyticsProperty.EntrySource to entrySource),
+    ))
     fun search(query: String) {
         mutableState.update { it.copy(search = query) }; searchJob?.cancel()
         val normalized = Normalizer.normalize(query.trim(), Normalizer.Form.NFKC)
