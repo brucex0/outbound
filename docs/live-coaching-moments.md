@@ -53,6 +53,8 @@ The instability detector waits for established pace because the first GPS pace e
 
 Android now evaluates major pace instability before its ordinary coaching cooldown and carries an optional typed race intent from the recording launch into live-coach context. Android currently has no race-planner entry point, so that race-specific detector is active only when a launch supplies a validated race target; ordinary typed workout targets continue to use their segment-specific pace bands.
 
+The `routeGuidanceActive` live-state field means a spoken route instruction is temporarily occupying the guide audio path, as on iOS. Selecting or simulating a followed route alone does not set it. Android does not yet speak route instructions, so its live-coach requests leave this field false and keep pace and progress cues eligible.
+
 ## Typed Workout Targets
 
 `SessionCoachingTarget` makes workout meaning explicit instead of parsing localized labels. A target contains a phase, an optional pace band, and whether steady target-lock reinforcement is appropriate.

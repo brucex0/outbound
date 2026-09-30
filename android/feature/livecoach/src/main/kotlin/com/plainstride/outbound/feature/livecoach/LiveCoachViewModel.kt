@@ -638,7 +638,10 @@ private fun RecordingSnapshot.toLiveState(
     gradePercent = gradePercent?.takeIf { it.isFinite() && it in -40.0..40.0 },
     workoutSegmentIndex = coach.segmentIndex,
     workoutSegmentPhase = coach.segmentPhase,
-    routeGuidanceActive = launch.followedRoute != null,
+    // This flag means a route instruction is currently taking the speech channel,
+    // not merely that the runner selected a route. Android does not yet speak
+    // route instructions, so route selection must not silence live coaching.
+    routeGuidanceActive = false,
 )
 
 private fun RecordingLaunchConfiguration.activeSegment(elapsedSeconds: Int): ActiveSegment? {
