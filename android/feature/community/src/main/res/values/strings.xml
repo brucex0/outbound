@@ -31,7 +31,8 @@
     <string name="route_library_action_delete">Delete</string>
     <string name="route_library_action_clear_search">Clear search</string>
     <string name="route_library_action_show_all">Show all routes</string>
-    <string name="route_library_filter_my_only">My routes only</string>
+    <string name="route_library_filter_title">Filter routes</string>
+    <string name="route_library_filter_clear">Clear</string>
     <string name="route_library_action_find_nearby">Find routes near me</string>
     <string name="route_library_action_import">Import GPX or GeoJSON</string>
     <string name="route_library_action_start">Start Route Guidance</string>

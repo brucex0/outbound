@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
@@ -28,6 +29,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import android.content.Intent
 import android.Manifest
 import android.content.pm.PackageManager
@@ -39,8 +41,10 @@ import java.util.UUID
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.put
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
-@Composable fun CommunityRouteScreen(library: RouteLibrary, scope: RouteScope, onScope: (RouteScope)->Unit, onRefresh:()->Unit, onSearch:(String)->Unit, onFollow:(com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration)->Unit, onBookmark:(CommunityRoute)->Unit,onImport:(Boolean)->Unit={},bottomContentPadding:androidx.compose.ui.unit.Dp=0.dp,routeDetail:CommunityRoute?=null,routeDetailLoading:Boolean=false,onLoadDetail:(String)->Unit={},onRemovePublished:(String)->Unit={},onClearDetail:()->Unit={},unitSystem:com.plainstride.outbound.core.model.activity.MeasurementUnitSystem=com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric,onImportedDelete:()->Unit={},importRequest:Int=0,searchQuery:String="") {
+@Composable fun CommunityRouteScreen(library: RouteLibrary, scope: RouteScope, onScope: (RouteScope)->Unit, onRefresh:()->Job?, onSearch:(String)->Unit, onFollow:(com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration)->Unit, onBookmark:(CommunityRoute)->Unit,onImport:(Boolean)->Unit={},bottomContentPadding:androidx.compose.ui.unit.Dp=0.dp,routeDetail:CommunityRoute?=null,routeDetailLoading:Boolean=false,onLoadDetail:(String)->Unit={},onRemovePublished:(String)->Unit={},onClearDetail:()->Unit={},unitSystem:com.plainstride.outbound.core.model.activity.MeasurementUnitSystem=com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric,onImportedDelete:()->Unit={},importRequest:Int=0,searchQuery:String="") {
  val debugRoute = if (BuildConfig.DEBUG && scope != RouteScope.MINE) {
   debugHarvestRoute(
    stringResource(com.plainstride.outbound.feature.recording.R.string.recording_simulation_route_name),
@@ -57,7 +61,7 @@ private fun SharedCommunityRouteLibrary(
  library:RouteLibrary,
  scope:RouteScope,
  onScope:(RouteScope)->Unit,
- onRefresh:()->Unit,
+ onRefresh:()->Job?,
  onSearch:(String)->Unit,
  onFollow:(com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration)->Unit,
  onBookmark:(CommunityRoute)->Unit,
@@ -74,7 +78,11 @@ private fun SharedCommunityRouteLibrary(
  searchQuery:String,
 ) {
  val context=LocalContext.current
+ val keyboardController=LocalSoftwareKeyboardController.current
+ val coroutineScope=rememberCoroutineScope()
  var query by remember { mutableStateOf(searchQuery) }
+ var refreshing by remember { mutableStateOf(false) }
+ var filterMenuExpanded by remember { mutableStateOf(false) }
  var selectedRoute by remember { mutableStateOf<CommunityRoute?>(null) }
  var selectedImportedRoute by remember { mutableStateOf<CommunityRoute?>(null) }
  var confirmDeleteImported by remember { mutableStateOf<CommunityRoute?>(null) }
@@ -91,16 +99,18 @@ private fun SharedCommunityRouteLibrary(
  }
  LaunchedEffect(searchQuery) { query=searchQuery;submittedQuery=searchQuery.isNotBlank() }
  LaunchedEffect(importRequest) { if (importRequest > handledImportRequest) { handledImportRequest = importRequest; importFile.launch(arrayOf("application/gpx+xml","application/geo+json","application/json","text/xml","text/plain")) } }
- Column(Modifier.fillMaxSize()) {
- LazyColumn(Modifier.weight(1f),contentPadding=PaddingValues(bottom=16.dp+bottomContentPadding),verticalArrangement=Arrangement.spacedBy(0.dp)) {
+ PullToRefreshBox(isRefreshing=refreshing,onRefresh={refreshing=true;coroutineScope.launch { try { onRefresh()?.join() } finally { refreshing=false } }},modifier=Modifier.fillMaxSize()) {
+ LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(bottom=16.dp+bottomContentPadding),verticalArrangement=Arrangement.spacedBy(0.dp)) {
   item {
    Row(Modifier.fillMaxWidth().heightIn(min=52.dp).padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-    OutlinedTextField(query,{value->query=value;if(value.isBlank()&&submittedQuery){submittedQuery=false;if(scope!=RouteScope.MINE)onSearch("")}},Modifier.weight(1f),singleLine=true,placeholder={Text(stringResource(R.string.route_library_search_prompt))},keyboardOptions=androidx.compose.foundation.text.KeyboardOptions(imeAction=androidx.compose.ui.text.input.ImeAction.Search),keyboardActions=androidx.compose.foundation.text.KeyboardActions(onSearch={submittedQuery=query.isNotBlank();if(scope!=RouteScope.MINE)onSearch(query)}),trailingIcon={if(query.isNotEmpty())IconButton({query="";submittedQuery=false;if(scope!=RouteScope.MINE)onSearch("")}){Icon(Icons.Outlined.Close,stringResource(R.string.route_library_action_clear_search))}})
-    IconButton(onClick={submittedQuery=query.isNotBlank();if(scope!=RouteScope.MINE)onSearch(query)},modifier=Modifier.sizeIn(minWidth=44.dp,minHeight=44.dp)){Icon(Icons.Outlined.ArrowForward,stringResource(R.string.routes_search))}
-    IconToggleButton(checked=scope==RouteScope.MINE,onCheckedChange={selected->query="";submittedQuery=false;onScope(if(selected)RouteScope.MINE else RouteScope.DISCOVERY)},modifier=Modifier.sizeIn(minWidth=44.dp,minHeight=44.dp)) {
-     Icon(Icons.Outlined.FilterList,stringResource(R.string.route_library_filter_my_only),tint=if(scope==RouteScope.MINE)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+    TextField(query,{value->query=value;if(value.isBlank()&&submittedQuery){submittedQuery=false;if(scope!=RouteScope.MINE)onSearch("")}},Modifier.weight(1f),singleLine=true,shape=RoundedCornerShape(28.dp),placeholder={Text(stringResource(R.string.route_library_search_prompt))},leadingIcon={Icon(Icons.Outlined.Search,null)},keyboardOptions=androidx.compose.foundation.text.KeyboardOptions(imeAction=androidx.compose.ui.text.input.ImeAction.Search),keyboardActions=androidx.compose.foundation.text.KeyboardActions(onSearch={submittedQuery=query.isNotBlank();if(scope!=RouteScope.MINE)onSearch(query);keyboardController?.hide()}),trailingIcon={if(query.isNotEmpty())IconButton({query="";submittedQuery=false;if(scope!=RouteScope.MINE)onSearch("")}){Icon(Icons.Outlined.Close,stringResource(R.string.route_library_action_clear_search))}},colors=TextFieldDefaults.colors(focusedIndicatorColor=Color.Transparent,unfocusedIndicatorColor=Color.Transparent))
+    Box {
+     IconButton(onClick={filterMenuExpanded=true},modifier=Modifier.sizeIn(minWidth=44.dp,minHeight=44.dp)){Icon(Icons.Outlined.FilterList,stringResource(R.string.route_library_filter_title),tint=if(scope==RouteScope.MINE)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)}
+     DropdownMenu(expanded=filterMenuExpanded,onDismissRequest={filterMenuExpanded=false}) {
+      DropdownMenuItem(text={Text(stringResource(R.string.routes_mine))},onClick={filterMenuExpanded=false;query="";submittedQuery=false;if(scope!=RouteScope.MINE)onScope(RouteScope.MINE)},leadingIcon={if(scope==RouteScope.MINE)Icon(Icons.Outlined.Check,null)})
+      DropdownMenuItem(text={Text(stringResource(R.string.route_library_filter_clear))},onClick={filterMenuExpanded=false;query="";submittedQuery=false;onScope(RouteScope.DISCOVERY)})
+     }
     }
-    IconButton(onRefresh,modifier=Modifier.sizeIn(minWidth=44.dp,minHeight=44.dp)){Icon(Icons.Outlined.Refresh,stringResource(R.string.routes_refresh))}
    }
   }
   if(scope!=RouteScope.MINE)item {

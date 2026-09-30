@@ -121,14 +121,14 @@ data class P0IntegrationState(
     fun loadCommunityRoute(id:String){viewModelScope.launch(Dispatchers.IO){mutable.update{it.copy(selectedCommunityRoute=null,communityRouteLoading=true)};routes.detail(id).onSuccess{route->mutable.update{it.copy(selectedCommunityRoute=route,communityRouteLoading=false)}}.onFailure{mutable.update{it.copy(communityRouteLoading=false)}}}}
     fun clearCommunityRoute(){mutable.update{it.copy(selectedCommunityRoute=null,communityRouteLoading=false)}}
     fun removePublishedRoute(id:String)=viewModelScope.launch{routes.remove(id).onSuccess{clearCommunityRoute();refreshRoutes()}}
-    fun refreshRoutes(){val id=accountId?:return;val requestedScope=mutable.value.routeScope;val query=mutable.value.routeQuery;routeRefreshJob?.cancel();routeRefreshJob=viewModelScope.launch(Dispatchers.IO){
+    fun refreshRoutes():Job?{val id=accountId?:return null;val requestedScope=mutable.value.routeScope;val query=mutable.value.routeQuery;routeRefreshJob?.cancel();routeRefreshJob=viewModelScope.launch(Dispatchers.IO){
         val location=if(requestedScope==RouteScope.NEARBY&&(
             context.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)==android.content.pm.PackageManager.PERMISSION_GRANTED ||
             context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)==android.content.pm.PackageManager.PERMISSION_GRANTED
         ))runCatching{Tasks.await(LocationServices.getFusedLocationProviderClient(context).lastLocation)}.getOrNull() else null
         fun coarse(value:Double?)=value?.let{kotlin.math.round(it*100.0)/100.0}
         routes.refresh(id,locale,requestedScope,query,coarse(location?.latitude),coarse(location?.longitude))
-    }}
+    };return routeRefreshJob}
     fun bookmark(route:CommunityRoute)=viewModelScope.launch{routes.bookmark(route.id,!route.isBookmarked);refreshRoutes()}
     suspend fun publishSavedActivityRoute(activityId:String,name:String):Boolean {
         analytics.record(AnalyticsEvent("route_publish_started",mapOf(AnalyticsProperty.EntrySource to "me_activity_detail")))
