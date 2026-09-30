@@ -18,6 +18,7 @@ dry_run=false
 commit_changes=true
 configure_beta=true
 beta_setup_only=false
+upload_only_ipa=""
 submit_public_release=false
 manual_release=false
 requested_version=""
@@ -48,6 +49,7 @@ usage() {
   cat <<USAGE
 Usage: $0 [--dry-run] [--no-commit] [--version VERSION]
           [--build-number NUMBER]
+          [--upload-only IPA_PATH]
           [--beta-group NAME] [--setup-only | --skip-beta-setup]
           [--public-release [--manual-release]]
 
@@ -64,6 +66,9 @@ Options:
                          Public releases otherwise bump its last component.
   --build-number NUMBER  Use NUMBER instead of incrementing by one. NUMBER may
                          equal the current build to publish prepared metadata.
+  --upload-only IPA_PATH Retry an existing signed IPA without rebuilding or
+                         changing version metadata. Reads its version and build
+                         from the IPA; explicit values must match.
   --beta-group NAME      Assign the build to this exact TestFlight group name.
                          If omitted, the sole internal group is selected.
   --setup-only           Configure an existing uploaded build without
@@ -90,8 +95,8 @@ Environment:
   APP_STORE_LOCALE  App Store What's New locale. Defaults to en-US.
   ASC_PROCESSING_TIMEOUT  Seconds to wait for processing. Defaults to 3600.
   ASC_POLL_INTERVAL      Poll interval in seconds. Defaults to 30.
-  ASC_UPLOAD_TIMEOUT     Seconds to allow xcodebuild's upload/export phase.
-                         Defaults to 1800; the archive is preserved on timeout.
+  ASC_UPLOAD_TIMEOUT     Seconds to allow each IPA export or upload attempt.
+                         Defaults to 1800; signed output is preserved on timeout.
 
 Post-upload setup requires an App Store Connect API key. Public submission also
 requires complete App Store metadata and an API key role allowed to submit it.
@@ -116,6 +121,11 @@ while [[ $# -gt 0 ]]; do
       shift
       [[ $# -gt 0 ]] || fail "--build-number requires a value"
       requested_build="$1"
+      ;;
+    --upload-only)
+      shift
+      [[ $# -gt 0 ]] || fail "--upload-only requires an IPA path"
+      upload_only_ipa="$1"
       ;;
     --beta-group)
       shift
@@ -151,10 +161,13 @@ fi
 if [[ "$beta_setup_only" == true && "$configure_beta" == false && "$submit_public_release" == false ]]; then
   fail "--setup-only requires beta setup or --public-release"
 fi
+if [[ "$beta_setup_only" == true && -n "$upload_only_ipa" ]]; then
+  fail "--upload-only cannot be combined with --setup-only"
+fi
 
 cd "$ROOT_DIR"
 
-for tool in curl find git jq pgrep ruby xcodebuild xcrun plutil; do
+for tool in curl find git jq pgrep ruby unzip xcodebuild xcrun plutil; do
   command -v "$tool" >/dev/null 2>&1 || fail "required tool not found: $tool"
 done
 
@@ -204,6 +217,9 @@ fi
 if [[ "$dry_run" == false && ( "$configure_beta" == true || "$submit_public_release" == true ) && "$use_asc_api_key" == false ]]; then
   fail "post-upload setup requires ASC_KEY_PATH, ASC_KEY_ID, and ASC_ISSUER_ID (or the configured local key); omit --public-release and use --skip-beta-setup to upload only"
 fi
+if [[ -n "$upload_only_ipa" && "$use_asc_api_key" == false ]]; then
+  fail "--upload-only requires an App Store Connect API key"
+fi
 
 [[ -f "$PROJECT_FILE" ]] || fail "Xcode project file not found: $PROJECT_FILE"
 [[ -f "$RELEASE_DOC" ]] || fail "release document not found: $RELEASE_DOC"
@@ -235,9 +251,9 @@ RUBY
     } 2>&1)" || fail "$app_store_release_notes"
 fi
 
-if [[ "$dry_run" == false && "$beta_setup_only" == false && -n "$(git status --porcelain --untracked-files=no)" ]]; then
+if [[ "$dry_run" == false && "$beta_setup_only" == false && -z "$upload_only_ipa" && -n "$(git status --porcelain --untracked-files=no)" ]]; then
   fail "tracked files are already modified; commit or stash them before publishing"
-elif [[ "$dry_run" == true && "$beta_setup_only" == false && -n "$(git status --porcelain --untracked-files=no)" ]]; then
+elif [[ "$dry_run" == true && "$beta_setup_only" == false && -z "$upload_only_ipa" && -n "$(git status --porcelain --untracked-files=no)" ]]; then
   log "Warning: tracked files are modified; a real publish would stop"
 fi
 
@@ -273,11 +289,27 @@ current_marketing_version="${version_info%%$'\t'*}"
 current_build="${version_info#*$'\t'}"
 [[ "$current_build" =~ ^[0-9]+$ ]] || fail "current build number is not an integer: $current_build"
 
+if [[ -n "$upload_only_ipa" ]]; then
+  [[ -f "$upload_only_ipa" && -r "$upload_only_ipa" ]] || fail "IPA is not readable: $upload_only_ipa"
+  ipa_path="$(cd "$(dirname "$upload_only_ipa")" && pwd)/$(basename "$upload_only_ipa")"
+  ipa_info_plist="$(mktemp /tmp/plainstride-ipa-info.XXXXXX)"
+  trap 'rm -f "$ipa_info_plist"' EXIT
+  unzip -p "$ipa_path" 'Payload/Outbound.app/Info.plist' >"$ipa_info_plist" || fail "IPA does not contain the Outbound app Info.plist"
+  ipa_bundle_id="$(plutil -extract CFBundleIdentifier raw -o - "$ipa_info_plist")"
+  ipa_version="$(plutil -extract CFBundleShortVersionString raw -o - "$ipa_info_plist")"
+  ipa_build="$(plutil -extract CFBundleVersion raw -o - "$ipa_info_plist")"
+  [[ "$ipa_bundle_id" == "$APP_BUNDLE_ID" ]] || fail "IPA bundle ID is $ipa_bundle_id, expected $APP_BUNDLE_ID"
+  [[ -z "$requested_version" || "$requested_version" == "$ipa_version" ]] || fail "requested version differs from IPA version $ipa_version"
+  [[ -z "$requested_build" || "$requested_build" == "$ipa_build" ]] || fail "requested build differs from IPA build $ipa_build"
+  requested_version="$ipa_version"
+  requested_build="$ipa_build"
+fi
+
 if [[ -n "$requested_version" ]]; then
   [[ "$requested_version" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]] || \
     fail "requested version must contain one to three dot-separated integers"
   marketing_version="$requested_version"
-elif [[ "$submit_public_release" == true && "$beta_setup_only" == false ]]; then
+elif [[ "$submit_public_release" == true && "$beta_setup_only" == false && -z "$upload_only_ipa" ]]; then
   marketing_version="$({ CURRENT_VERSION="$current_marketing_version" ruby <<'RUBY'
 version = ENV.fetch("CURRENT_VERSION")
 parts = version.split(".")
@@ -294,7 +326,7 @@ if [[ "$submit_public_release" == true && "$marketing_version" != "$current_mark
   app_store_release_notes="${app_store_release_notes//Plainstride ${current_marketing_version}/Plainstride ${marketing_version}}"
 fi
 
-if [[ "$beta_setup_only" == false ]]; then
+if [[ "$beta_setup_only" == false && -z "$upload_only_ipa" ]]; then
   version_order="$({ CURRENT_VERSION="$current_marketing_version" NEXT_VERSION="$marketing_version" ruby <<'RUBY'
 current = ENV.fetch("CURRENT_VERSION").split(".").map { |part| Integer(part, 10) }
 requested = ENV.fetch("NEXT_VERSION").split(".").map { |part| Integer(part, 10) }
@@ -308,18 +340,23 @@ fi
 if [[ -n "$requested_build" ]]; then
   [[ "$requested_build" =~ ^[0-9]+$ ]] || fail "requested build number must be an integer"
   next_build="$requested_build"
-  if [[ "$beta_setup_only" == false ]]; then
+  if [[ "$beta_setup_only" == false && -z "$upload_only_ipa" ]]; then
     (( next_build >= current_build )) || fail "new build number must not be lower than $current_build"
   fi
-elif [[ "$beta_setup_only" == true ]]; then
+elif [[ "$beta_setup_only" == true || -n "$upload_only_ipa" ]]; then
   next_build="$current_build"
 else
   next_build="$((current_build + 1))"
   (( next_build > current_build )) || fail "new build number must be greater than $current_build"
 fi
 
+if [[ -n "$upload_only_ipa" && ( "$configure_beta" == true || "$submit_public_release" == true ) && \
+  ( "$marketing_version" != "$current_marketing_version" || "$next_build" != "$current_build" ) ]]; then
+  fail "IPA ${marketing_version} (${next_build}) differs from prepared metadata ${current_marketing_version} (${current_build}); use --skip-beta-setup to upload it without mismatched release notes"
+fi
+
 release_notes_generated=false
-if [[ "$beta_setup_only" == true ]] || (( next_build == current_build )); then
+if [[ "$beta_setup_only" == true || -n "$upload_only_ipa" ]] || (( next_build == current_build )); then
   release_notes="$documented_release_notes"
 else
   last_release_commit="$(git log \
@@ -355,7 +392,10 @@ RUBY
   release_notes_generated=true
 fi
 
-if [[ "$beta_setup_only" == true ]]; then
+if [[ -n "$upload_only_ipa" ]]; then
+  log "Plainstride ${marketing_version}: retrying signed IPA for build ${next_build}"
+  log "IPA: $ipa_path"
+elif [[ "$beta_setup_only" == true ]]; then
   log "Plainstride ${marketing_version}: configuring existing build ${next_build}"
 elif [[ "$marketing_version" == "$current_marketing_version" ]] && (( next_build == current_build )); then
   log "Plainstride ${marketing_version}: using prepared build ${current_build}"
@@ -381,7 +421,9 @@ if [[ "$submit_public_release" == true ]]; then
 else
   log "App Store submission: skipped"
 fi
-if [[ "$release_notes_generated" == true ]]; then
+if [[ "$configure_beta" == false && "$submit_public_release" == false ]]; then
+  log "Release notes: skipped"
+elif [[ "$release_notes_generated" == true ]]; then
   log "Release notes from commits after $(git rev-parse --short "$last_release_commit"):"
   while IFS= read -r release_note_line; do
     log "  ${release_note_line}"
@@ -395,7 +437,18 @@ if [[ "$dry_run" == true ]]; then
   exit 0
 fi
 
+if [[ -n "$upload_only_ipa" ]]; then
+  if pgrep -x altool >/dev/null 2>&1; then
+    fail "another altool upload is still running; stop it before retrying this IPA"
+  fi
+  ruby scripts/testflight-upload-status.rb \
+    --version "$marketing_version" \
+    --build-number "$next_build" \
+    --fail-if-build-exists
+fi
+
 if [[ "$beta_setup_only" == false ]]; then
+if [[ -z "$upload_only_ipa" ]]; then
 PROJECT_FILE="$PROJECT_FILE" APP_BUNDLE_ID="$APP_BUNDLE_ID" EXTENSION_BUNDLE_ID="$EXTENSION_BUNDLE_ID" WATCH_BUNDLE_ID="$WATCH_BUNDLE_ID" OLD_VERSION="$current_marketing_version" NEW_VERSION="$marketing_version" OLD_BUILD="$current_build" NEW_BUILD="$next_build" ruby <<'RUBY'
 path = ENV.fetch("PROJECT_FILE")
 bundle_ids = [ENV.fetch("APP_BUNDLE_ID"), ENV.fetch("EXTENSION_BUNDLE_ID"), ENV.fetch("WATCH_BUNDLE_ID")]
@@ -557,6 +610,7 @@ cat >"$export_options" <<PLIST
 </dict>
 </plist>
 PLIST
+fi
 
 terminate_process_tree() {
   local process_id="$1"
@@ -582,7 +636,7 @@ run_with_timeout() {
   elapsed=0
   while kill -0 "$process_id" 2>/dev/null; do
     if (( elapsed >= timeout_seconds )); then
-      log "${operation} exceeded ${timeout_seconds}s; stopping it and preserving the archive"
+      log "${operation} exceeded ${timeout_seconds}s; stopping it and preserving signed output"
       terminate_process_tree "$process_id" TERM
       sleep 2
       terminate_process_tree "$process_id" KILL
@@ -597,6 +651,7 @@ run_with_timeout() {
 }
 
 if [[ "$use_asc_api_key" == true ]]; then
+  if [[ -z "$upload_only_ipa" ]]; then
   log "Exporting signed IPA for App Store Connect (timeout: ${asc_upload_timeout}s)..."
   export_status=0
   if run_with_timeout "$asc_upload_timeout" "IPA export" xcodebuild \
@@ -620,6 +675,7 @@ if [[ "$use_asc_api_key" == true ]]; then
 
   ipa_path="$(find "$export_path" -maxdepth 1 -type f -name '*.ipa' -print -quit)"
   [[ -n "$ipa_path" ]] || fail "Xcode export did not produce an IPA in $export_path"
+  fi
   log "Uploading build ${next_build} with altool (timeout: ${asc_upload_timeout}s)..."
   upload_status=0
   if run_with_timeout "$asc_upload_timeout" "App Store Connect upload" xcrun altool \
@@ -651,14 +707,23 @@ else
   fi
 fi
 if (( upload_status != 0 )); then
-  if (( upload_status == 124 )); then
+  if [[ -n "$upload_only_ipa" ]]; then
+    printf '\nUpload failed; the signed IPA is preserved:\n  %s\n\n' "$ipa_path" >&2
+  elif (( upload_status == 124 )); then
     printf '\nUpload timed out after %ss, but the verified Organizer archive was preserved:\n  %s\n\n' "$asc_upload_timeout" "$archive_path" >&2
   else
     printf '\nUpload failed, but the verified Organizer archive was preserved:\n  %s\n\n' "$archive_path" >&2
   fi
-  printf 'Open Xcode > Window > Organizer, select Plainstride %s (%s), then choose Distribute App > App Store Connect.\n' "$marketing_version" "$next_build" >&2
+  if [[ -z "$upload_only_ipa" ]]; then
+    printf 'Open Xcode > Window > Organizer, select Plainstride %s (%s), then choose Distribute App > App Store Connect.\n' "$marketing_version" "$next_build" >&2
+  fi
   if [[ "$use_asc_api_key" == false ]]; then
     printf 'For reliable command-line uploads, set ASC_KEY_PATH, ASC_KEY_ID, and ASC_ISSUER_ID to an App Store Connect API key.\n' >&2
+  fi
+  if [[ "$use_asc_api_key" == true ]]; then
+    printf 'The signed IPA is preserved at:\n  %s\n' "$ipa_path" >&2
+    printf 'Inspect the pending upload with scripts/testflight-upload-status.rb --version %s --build-number %s.\n' "$marketing_version" "$next_build" >&2
+    printf 'After the transfer issue is resolved, retry this IPA with --upload-only.\n' >&2
   fi
   exit 1
 fi

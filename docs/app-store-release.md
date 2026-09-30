@@ -96,6 +96,60 @@ expires, the signed archive is preserved and the script prints the Organizer
 fallback. A timeout can still leave an accepted upload on Apple's side, so
 check App Store Connect before retrying the same build number.
 
+### Recover a stalled upload
+
+Keep the signed IPA printed by the script after an upload failure. Inspect
+Apple's latest upload records before trying again:
+
+```sh
+ruby scripts/testflight-upload-status.rb --latest
+```
+
+Use the version and build of the intended IPA to inspect its upload files:
+
+```sh
+ruby scripts/testflight-upload-status.rb --version "$VERSION" --build-number "$BUILD"
+```
+
+Both status commands are read-only. The detailed command reports whether a
+build record exists and which upload files are still waiting. `AWAITING_UPLOAD`
+with an incomplete `ASSET_SPI` file means the transfer of Apple's SPI analysis
+has not finished;
+rebuilding the app does not address that transfer failure. Repeated
+`NSURLErrorDomain -1005` or checksum mismatches in Xcode's ContentDelivery logs
+point to the path between the Mac and Apple's object storage. Try a different
+network and check Apple's system status before another upload. The script cannot
+repair that connection.
+
+After all Xcode, Transporter, and `altool` uploads for the build have stopped,
+an abandoned `AWAITING_UPLOAD` reservation can be removed explicitly. Copy the
+exact ID printed by the status command:
+
+```sh
+ruby scripts/testflight-upload-status.rb \
+  --version "$VERSION" --build-number "$BUILD" \
+  --delete-awaiting "$UPLOAD_ID"
+```
+
+The helper refuses to delete a record when a build record exists, when the
+identity does not match, or when the record is no longer `AWAITING_UPLOAD`. The
+next upload can then create a fresh reservation. Do not delete a record while
+an uploader is active.
+
+Retry the preserved IPA without another compile, archive, version change, or
+metadata commit:
+
+```sh
+./scripts/publish-testflight.sh \
+  --upload-only /path/to/Outbound.ipa
+```
+
+The script reads the IPA's bundle ID, version, and build number. If the IPA is
+older than the prepared project metadata, pass `--skip-beta-setup` to avoid
+applying notes for another build. On a successful transfer of the current
+prepared build, the script continues with processing and TestFlight setup. If
+the build was already accepted, run `--setup-only` instead.
+
 Preview the next build number without changing files:
 
 ```sh
