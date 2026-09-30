@@ -15,14 +15,12 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class AssistantUiState(
     val conversation: CompanionConversationState = CompanionConversationState(),
     val draft: String = "",
-    val speech: SpeechRecognitionState = SpeechRecognitionState.Idle,
     val activityCommand: PreparedActivityCommand? = null,
 )
 
@@ -32,10 +30,11 @@ class AssistantViewModel @Inject constructor(
     private val analytics: ProductAnalytics,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
-    private val speech = AndroidSpeechRecognizer(context)
     private val draft = MutableStateFlow("")
     private val activityCommand = MutableStateFlow<PreparedActivityCommand?>(null)
-    val state: StateFlow<AssistantUiState> = combine(repository.state, draft, speech.state, activityCommand, ::AssistantUiState)
+    val state: StateFlow<AssistantUiState> = kotlinx.coroutines.flow.combine(repository.state, draft, activityCommand) { conversation, currentDraft, command ->
+        AssistantUiState(conversation, currentDraft, command)
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AssistantUiState())
     private var accountId: String? = null
 
@@ -58,21 +57,7 @@ class AssistantViewModel @Inject constructor(
     }
 
     fun draft(value: String) { draft.value = value.take(8_000) }
-    fun listen(permission: Boolean) {
-        analytics.record(AnalyticsEvent("assistant_voice_started"))
-        speech.start(permission)
-    }
-    fun stopListening() = speech.stop()
     fun consumeActivityCommand() { activityCommand.value = null }
-    fun handleSpeechResult(transcript: String, screen: String) {
-        draft.value = transcript
-        send(screen)
-    }
-    fun handleStableSpeechCommand(transcript: String, screen: String) {
-        if (ActivityVoiceCommandParser.parse(transcript) == null) return
-        speech.cancel()
-        handleSpeechResult(transcript, screen)
-    }
     fun selectSuggestion(suggestion: AssistantSuggestion, screen: String) {
         trackEngagement(screen, "suggestion")
         submit(suggestion.prompt, suggestion.capability, screen)
@@ -199,8 +184,6 @@ class AssistantViewModel @Inject constructor(
         prompt.containsAny("plan", "week", "schedule", "goal") -> AssistantCapability.Plan
         else -> AssistantCapability.Discover
     }
-
-    override fun onCleared() { speech.close(); super.onCleared() }
 }
 
 private fun String.containsAny(vararg values: String) = values.any { contains(it, ignoreCase = true) }

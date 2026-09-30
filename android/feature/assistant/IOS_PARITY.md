@@ -19,7 +19,7 @@ Open this file when changing Android assistant behavior, its launcher entry poin
 - The persistent launcher begins its animation after 500 ms in the foreground, then scales up, tilts, brightens with a shimmer, and emits an expanding ring before a spring settle and 2.8-second pause. Android mirrors the iOS motion and resets it when the app leaves the foreground.
 - The assistant starts with a persisted introduction and offers the same contextual quick starts as iOS: Today workout prompts when available, otherwise Log a workout, Plan, Support, and Brainstorm.
 - The conversation stores the user's original text for display and transcript history; product context is added only to the service request and is never rendered as a message.
-- The composer stays above the software keyboard, and voice listening status stays beside the composer with an animated waveform.
+- The typed composer stays above the software keyboard. Assistant microphone input is not supported on Android; recording voice commands remain available in the recording flow.
 - Turns send the current surface, inferred companion task, bounded recent transcript, and device time zone to `POST /v1/companion/turns`. Assistant text and actions remain separate from analytics.
 - Companion action confirmations show the server title, explanation, accept, and reject labels. Accept/reject outcomes are appended to the transcript; successful Today mutations trigger a Today refresh.
 - A recognized navigation request uses a local typed destination catalog, adds an explicit Open action, then routes within the app. It cannot choose arbitrary views.
@@ -31,7 +31,7 @@ Open this file when changing Android assistant behavior, its launcher entry poin
 
 - Assistant copy is translated in `src/main/res/values/strings.xml`, `values-es/strings.xml`, and `values-zh-rCN/strings.xml`.
 - The event contract uses `assistant_launcher_opened` and `assistant_meaningful_engagement`, with only a bounded destination and entry source. Prompts, responses, workout details, and runner data are never included.
-- Launcher and microphone controls have localized accessibility labels. Suggestion, send, confirmation, and navigation actions use native Compose buttons and keep the active recording controls visible behind the assistant route.
+- The launcher has a localized accessibility label. Suggestion, send, confirmation, and navigation actions use native Compose buttons and keep the active recording controls visible behind the assistant route.
 - Companion request recent-message objects contain only role and text. Account IDs remain in the repository key and are not added to request content or analytics.
 
 ## Reference scenarios
@@ -39,11 +39,10 @@ Open this file when changing Android assistant behavior, its launcher entry poin
 1. Open from Today, choose “Make this workout easier,” review the confirmation, reject it, and verify the original workout remains visible.
 2. Accept a Today adjustment and verify the Today card refreshes after the server confirms execution.
 3. Ask “open activity history,” choose Open, and verify the correct destination opens.
-4. Type or dictate “start a 5K run”; verify recording setup shows a 5 km target and does not start until the user taps Start.
-5. Dictate a non-command question; verify the transcript remains editable and can be sent as assistant chat.
-6. Open from the active recording HUD, ask “How am I doing?”, and verify the turn uses the live-session surface while the recording remains active.
-7. Simulate an unavailable or generic-failure companion response and verify a localized answer is appended without exposing raw error text.
-8. Reset and reopen in English, Spanish, and Simplified Chinese; verify the localized intro and prompts.
+4. Type “start a 5K run”; verify recording setup shows a 5 km target and does not start until the user taps Start.
+5. Open from the active recording HUD, ask “How am I doing?”, and verify the turn uses the live-session surface while the recording remains active.
+6. Simulate an unavailable or generic-failure companion response and verify a localized answer is appended without exposing raw error text.
+7. Reset and reopen in English, Spanish, and Simplified Chinese; verify the localized intro and prompts.
 
 ## Current status and platform differences
 

@@ -698,10 +698,18 @@ private fun SignedInApp(
                     onClose = { navController.popBackStack() },
                     onNavigate = { route ->
                         when (route) {
-                            "today", "social", "me" -> navController.navigate(route) { launchSingleTop = true }
+                            "today", "social", "me" -> navController.navigate(route) {
+                                popUpTo(TopLevelDestination.Today.route) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                             "settings" -> {
                                 settingsRequest += 1
-                                navController.navigate("me") { launchSingleTop = true }
+                                navController.navigate(TopLevelDestination.Me.route) {
+                                    popUpTo(TopLevelDestination.Today.route) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
                             }
                             MUSIC_ROUTE, ACTIVITY_HISTORY_ROUTE, HEALTH_ROUTE -> navController.navigate(route) { launchSingleTop = true }
                             else -> navController.navigate("me") { launchSingleTop = true }
