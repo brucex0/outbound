@@ -120,6 +120,7 @@ class OnboardingViewModel @Inject constructor(
                 objective = objective,
                 objectiveConfirmed = true,
                 goalInputText = null,
+                goalDescription = "",
                 eventDistanceConfirmed = false,
                 eventDateConfirmed = false,
                 eventIntentConfirmed = false,
@@ -136,6 +137,7 @@ class OnboardingViewModel @Inject constructor(
         update { it.copy(
             objectiveConfirmed = false,
             goalInputText = null,
+            goalDescription = "",
             eventDistanceConfirmed = false,
             eventDateConfirmed = false,
             eventIntentConfirmed = false,
@@ -174,23 +176,40 @@ class OnboardingViewModel @Inject constructor(
     fun interpretGoal(message: String) {
         val state = mutableState.value
         val draft = state.draft ?: return
-        val context = state.intakeContext ?: return
         if (message.isBlank() || state.interpretingGoal) return
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(interpretingGoal = true, interpretationReply = null, interpretationFailed = false)
+            val context = mutableState.value.intakeContext
+                ?: repository.planIntakeContext(draft.objective.takeIf { draft.objectiveConfirmed }).getOrNull()
+            if (context == null) {
+                mutableState.value = mutableState.value.copy(interpretingGoal = false, interpretationFailed = true)
+                analytics.record(AnalyticsEvent("plan_intake_goal_interpreted", mapOf(
+                    AnalyticsProperty.Result to "failure",
+                    AnalyticsProperty.SourceType to "conversation_text",
+                    AnalyticsProperty.ErrorCategory to "unavailable",
+                )))
+                return@launch
+            }
+            if (mutableState.value.intakeContext == null) {
+                val withContext = draft.withIntakeContext(context)
+                drafts.save(withContext)
+                mutableState.value = mutableState.value.copy(draft = withContext, intakeContext = context)
+                analytics.record(AnalyticsEvent("plan_intake_context_loaded", mapOf(AnalyticsProperty.SourceType to context.dataTier)))
+            }
+            val requestDraft = mutableState.value.draft ?: draft
             val request = PlanIntakeInterpretRequest(
                 message.trim(),
                 context.contextVersion,
                 PlanIntakeDraftRequest(
-                    objective = draft.objective.apiValue.takeIf { draft.objectiveConfirmed },
+                    objective = requestDraft.objective.apiValue.takeIf { requestDraft.objectiveConfirmed },
                     activities = emptyList(),
-                    eventDate = draft.eventDate.takeIf { draft.eventDateConfirmed },
-                    eventDistanceMeters = draft.eventDistanceMeters.takeIf { draft.eventDistanceConfirmed },
-                    eventIntent = draft.eventIntent.takeIf { draft.eventIntentConfirmed },
-                    targetTimeSeconds = draft.targetTimeSeconds.takeIf { draft.targetTimeConfirmed },
-                    reviewHorizonWeeks = draft.reviewHorizonWeeks.takeIf { draft.reviewHorizonConfirmed },
-                    sessionsPerWeek = draft.sessionsPerWeek,
-                    maxSessionMinutes = draft.availableMinutes,
+                    eventDate = requestDraft.eventDate.takeIf { requestDraft.eventDateConfirmed },
+                    eventDistanceMeters = requestDraft.eventDistanceMeters.takeIf { requestDraft.eventDistanceConfirmed },
+                    eventIntent = requestDraft.eventIntent.takeIf { requestDraft.eventIntentConfirmed },
+                    targetTimeSeconds = requestDraft.targetTimeSeconds.takeIf { requestDraft.targetTimeConfirmed },
+                    reviewHorizonWeeks = requestDraft.reviewHorizonWeeks.takeIf { requestDraft.reviewHorizonConfirmed },
+                    sessionsPerWeek = requestDraft.sessionsPerWeek,
+                    maxSessionMinutes = requestDraft.availableMinutes,
                 ),
             )
             repository.interpretPlanIntake(request).fold(
@@ -207,10 +226,13 @@ class OnboardingViewModel @Inject constructor(
                     }
                     val recognized = result.recognizedFields.toSet()
                     val current = mutableState.value.draft ?: draft
+                    val mentionedActivities = result.activities.mapNotNull(String::toPlanActivity)
+                    val selectedActivities = PlanActivity.entries.filter { it in current.activities || it in mentionedActivities || objective == PlanObjective.EventPreparation && it == PlanActivity.Run }
                     val updated = current.copy(
                         objective = objective,
                         objectiveConfirmed = true,
                         goalInputText = message.trim(),
+                        activities = selectedActivities,
                         eventDistanceConfirmed = "eventDistanceMeters" in recognized && result.eventDistanceMeters != null,
                         eventDateConfirmed = "eventDate" in recognized && result.eventDate != null,
                         eventIntentConfirmed = ("eventIntent" in recognized && result.eventIntent != null) || ("targetTimeSeconds" in recognized && result.targetTimeSeconds != null),

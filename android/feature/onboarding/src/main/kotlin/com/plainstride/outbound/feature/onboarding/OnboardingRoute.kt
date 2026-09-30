@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.outlined.MonitorWeight
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -41,6 +43,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -304,12 +307,13 @@ private fun ObjectiveStep(
                 minLines = 1,
                 maxLines = 4,
             )
-            Button(
+            FilledIconButton(
                 onClick = { interpretGoal(goalMessage.value) },
-                enabled = goalMessage.value.isNotBlank() && !state.interpretingGoal && state.intakeContext != null,
+                enabled = goalMessage.value.isNotBlank() && !state.interpretingGoal,
+                modifier = Modifier.size(44.dp).semantics { contentDescription = useGoalLabel },
             ) {
-                if (state.interpretingGoal) CircularProgressIndicator(Modifier.height(20.dp), strokeWidth = 2.dp)
-                else Text("↑", modifier = Modifier.semantics { contentDescription = useGoalLabel })
+                if (state.interpretingGoal) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                else Icon(Icons.Outlined.ArrowUpward, contentDescription = null)
             }
         }
         if (state.interpretingGoal) CoachMessage(R.string.plan_builder_conversation_thinking)
