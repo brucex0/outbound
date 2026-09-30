@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.plainstride.outbound.feature.social.SocialPerson
+import com.plainstride.outbound.core.model.activity.MeasurementUnitSystem
 
 /** Feature-owned Android integration for permissions, contact picking, and safe link sharing. */
 @Composable
@@ -23,6 +24,7 @@ fun SafetyRoute(
     targetKind: String = "group",
     connections: List<SocialPerson> = emptyList(),
     accountId: String? = null,
+    unitSystem: MeasurementUnitSystem = MeasurementUnitSystem.metric,
     viewModel: SafetySettingsViewModel = hiltViewModel(),
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -54,7 +56,7 @@ fun SafetyRoute(
             confirm = { contact -> pickingConnection = false; viewModel.add(contact) },
         )
     }
-    if(targetKind=="live"&&targetId!=null){LiveCheerFollowerScreen(follower,followerLoading,followerMessage,viewModel::sendVoiceCheer);return}
+    if(targetKind=="live"&&targetId!=null){LiveCheerFollowerScreen(follower,followerLoading,followerMessage,unitSystem,viewModel::sendVoiceCheer);return}
     SafetySettingsScreen(
         contacts = contacts,
         permission = permission,

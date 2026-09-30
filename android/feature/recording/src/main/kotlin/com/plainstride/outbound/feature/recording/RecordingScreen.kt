@@ -180,7 +180,6 @@ fun RecordingRoute(
     val ui by viewModel.state.collectAsStateWithLifecycle()
     val snapshot by viewModel.snapshot.collectAsStateWithLifecycle()
     val voiceListening by viewModel.voiceListening.collectAsStateWithLifecycle()
-    sessionEffect(snapshot)
     var askedForLocation by remember(context) {
         mutableStateOf(LocationPermissionAccess.wasRequestedBefore(context))
     }
@@ -607,6 +606,7 @@ fun RecordingRoute(
                 }
             }
         }
+        sessionEffect(snapshot)
     }
 
     if (showGpsWait) AlertDialog(

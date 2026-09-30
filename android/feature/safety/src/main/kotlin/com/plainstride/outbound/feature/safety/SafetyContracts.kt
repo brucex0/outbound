@@ -19,10 +19,14 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 @Serializable data class LiveLocation(val recordedAt:String,val latitude:Double,val longitude:Double,val altitudeM:Double?=null,val accuracyM:Double?=null,val elapsedSeconds:Int,val distanceM:Double)
 @Serializable data class LiveRunner(val id:String,val displayName:String,val username:String?=null,val avatarUrl:String?=null)
 @Serializable data class LiveRoutePoint(val recordedAt:String?=null,val latitude:Double,val longitude:Double)
-@Serializable data class InvitedLiveShare(val id:String,val status:String,val runner:LiveRunner,val sport:String="run",val title:String="Live run",val startedAt:String,val expiresAt:String,val endedAt:String?=null,val lastLocationAt:String?=null,val lastLocation:LiveRoutePoint?=null,val routePreview:List<LiveRoutePoint> = emptyList(),val elapsedSeconds:Int=0,val distanceM:Double=0.0,val currentPaceSecsPerKm:Double?=null,val heartRate:Int?=null)
+@Serializable data class VoiceCheerReceipt(val id:String,val createdAt:String,val deliveredAt:String?=null,val playedAt:String?=null,val acknowledgedAt:String?=null)
+@Serializable data class InvitedLiveShare(val id:String,val status:String,val runner:LiveRunner,val sport:String="run",val title:String="Live run",val voiceCheerEnabled:Boolean=false,val startedAt:String,val expiresAt:String,val endedAt:String?=null,val lastLocationAt:String?=null,val lastLocation:LiveRoutePoint?=null,val routePreview:List<LiveRoutePoint> = emptyList(),val elapsedSeconds:Int=0,val distanceM:Double=0.0,val currentPaceSecsPerKm:Double?=null,val heartRate:Int?=null,val latestCheer:VoiceCheerReceipt?=null)
 @Serializable data class InvitedLiveShares(val sessions:List<InvitedLiveShare> = emptyList())
 @Serializable data class VoiceCheerRequest(val audioBase64:String,val contentType:String="audio/mp4",val durationMs:Int)
 @Serializable data class VoiceCheerResponse(val id:String,val createdAt:String)
+@Serializable data class VoiceCheerSender(val id:String,val displayName:String,val avatarUrl:String?=null)
+@Serializable data class VoiceCheer(val id:String,val audioBase64:String,val contentType:String,val durationMs:Int,val createdAt:String,val deliveredAt:String,val sender:VoiceCheerSender)
+@Serializable data class VoiceCheersResponse(val cheers:List<VoiceCheer> = emptyList())
 @Serializable data class PushDeviceRequest(val token:String,val platform:String="android",val appBundle:String,val locale:String?=null)
 @Serializable data class InboxActor(val id:String,val displayName:String,val avatarUrl:String?=null)
 @Serializable data class InboxNotification(val id:String,val type:String,val objectId:String?=null,val message:String,val readAt:String?=null,val createdAt:String="",val actor:InboxActor?=null)
@@ -45,6 +49,9 @@ interface SafetyApi {
  @GET("v1/safety/live-shares/invited") suspend fun invitedShares(@Header("Authorization") auth:String):Response<InvitedLiveShares>
  @GET("v1/safety/live-shares/invited/{id}") suspend fun invitedShare(@Header("Authorization") auth:String,@Path("id") id:String):Response<InvitedLiveShare>
  @POST("v1/safety/live-shares/invited/{id}/cheers") suspend fun sendVoiceCheer(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:VoiceCheerRequest):Response<VoiceCheerResponse>
+ @GET("v1/safety/live-shares/{id}/cheers") suspend fun voiceCheers(@Header("Authorization") auth:String,@Path("id") id:String):Response<VoiceCheersResponse>
+ @POST("v1/safety/live-shares/{id}/cheers/{cheerId}/played") suspend fun markVoiceCheerPlayed(@Header("Authorization") auth:String,@Path("id") id:String,@Path("cheerId") cheerId:String):Response<VoiceCheerReceipt>
+ @POST("v1/safety/live-shares/{id}/cheers/{cheerId}/acknowledge") suspend fun acknowledgeVoiceCheer(@Header("Authorization") auth:String,@Path("id") id:String,@Path("cheerId") cheerId:String):Response<VoiceCheerReceipt>
  @PUT("v1/notifications/devices") suspend fun register(@Header("Authorization") auth:String,@Body body:PushDeviceRequest):Response<Unit>
  @DELETE("v1/notifications/devices/{token}") suspend fun unregister(@Header("Authorization") auth:String,@Path("token") token:String):Response<Unit>
  @GET("v1/social/notifications") suspend fun inbox(@Header("Authorization") auth:String):Response<InboxResponse>

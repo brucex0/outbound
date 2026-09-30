@@ -32,6 +32,17 @@ class LiveShareCoordinator @Inject constructor(private val api:SafetyApi,private
  suspend fun invitedShares()=authenticated{apiCall{api.invitedShares(it)}}.map{it.sessions}
  suspend fun invitedShare(id:String)=authenticated{apiCall{api.invitedShare(it,id)}}
  suspend fun sendVoiceCheer(id:String,audioBase64:String,durationMs:Int)=authenticated{apiCall{api.sendVoiceCheer(it,id,VoiceCheerRequest(audioBase64=audioBase64,durationMs=durationMs.coerceIn(250,15_000)))}}.also{result->analytics.record(AnalyticsEvent("live_voice_cheer_sent",mapOf(AnalyticsProperty.Result to if(result.isSuccess)"success" else "failure")))}
+ private var lastCheerFetchAt=0L
+ suspend fun pendingVoiceCheer():Result<VoiceCheer?> {
+  val share=mutableActive.value?:return Result.success(null)
+  val now=SystemClock.elapsedRealtime();if(now-lastCheerFetchAt<4_000)return Result.success(null);lastCheerFetchAt=now
+  return authenticated { apiCall { api.voiceCheers(it,share.id) } }.map { it.cheers.firstOrNull() }
+ }
+ suspend fun markVoiceCheerPlayed(cheer:VoiceCheer):Result<VoiceCheerReceipt> {
+  val share=mutableActive.value?:return Result.failure(IllegalStateException("share_ended"))
+  return authenticated { apiCall { api.markVoiceCheerPlayed(it,share.id,cheer.id) } }
+ }
+ suspend fun acknowledgeVoiceCheer(shareId:String,cheerId:String)=authenticated { apiCall { api.acknowledgeVoiceCheer(it,shareId,cheerId) } }
  suspend fun updateGroupRun(id:String,point:GroupLocationUpdate)=authenticated{apiCall{api.updateGroupLocation(it,id,point)}}.onSuccess(::saveGroup)
  suspend fun leaveGroupRun(id:String,finished:Boolean)=authenticated{auth->apiCall{if(finished)api.finishGroupRun(auth,id)else api.leaveGroupRun(auth,id)}}.onSuccess{clearGroup()}
  suspend fun updateRecording(point:LiveLocation,paceSecondsPerKilometer:Double?){update(point);mutableGroup.value?.let{group->updateGroupRun(group.id,GroupLocationUpdate(point.recordedAt,point.latitude,point.longitude,point.altitudeM,point.accuracyM,point.elapsedSeconds,point.distanceM,paceSecondsPerKilometer))}}

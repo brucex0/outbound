@@ -802,7 +802,7 @@ private fun SignedInApp(
                     }
                 }
             }
-            composable(SAFETY_ROUTE) { SafetyRoute(safetyTarget?.second, safetyTarget?.first ?: "group", integration.connections, accountId) }
+            composable(SAFETY_ROUTE) { SafetyRoute(safetyTarget?.second, safetyTarget?.first ?: "group", integration.connections, accountId, measurementUnitSystem) }
             composable(HEALTH_ROUTE) { HealthDestination(healthPermissions, healthViewModel::refresh) { navController.popBackStack() } }
             composable(NOTIFICATIONS_ROUTE, deepLinks = listOf(navDeepLink { uriPattern = "plainstride://notification/{destination}?id={id}&notification={notification}" })) {
                 LaunchedEffect(Unit) { integrationViewModel.openInbox() }
