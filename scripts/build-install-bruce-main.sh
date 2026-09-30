@@ -466,10 +466,16 @@ if [[ "$target_simulator" == true ]]; then
   run_with_prefix "[install]" xcrun simctl install "$SIMULATOR_ID" "$APP_PATH"
 else
   log "Checking device availability..."
-  if ! xcrun devicectl list devices --hide-headers | grep -Fq "$CORE_DEVICE_ID"; then
+  device_row="$(xcrun devicectl list devices --timeout 15 --hide-headers | grep -F "$CORE_DEVICE_ID" || true)"
+  if [[ -z "$device_row" ]]; then
     echo "Configured CoreDevice ID not currently available: ${CORE_DEVICE_ID}" >&2
     echo "Set CORE_DEVICE_ID to the current identifier for ${TARGET_DEVICE_NAME} from:" >&2
     echo "  xcrun devicectl list devices" >&2
+    exit 1
+  fi
+  if [[ "$device_row" == *"connecting"* ]]; then
+    echo "${TARGET_DEVICE_NAME} is stuck connecting in CoreDevice; installation cannot start." >&2
+    echo "Unlock the phone and connect it to this Mac by USB, then retry when 'xcrun devicectl list devices' shows it as available." >&2
     exit 1
   fi
 

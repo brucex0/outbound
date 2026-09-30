@@ -178,6 +178,7 @@ needed, installs the app, and launches it without requiring Xcode.
 The helper now prints timestamped phase logs and streams `xcodebuild` output, so if it appears slow you can see whether it is still in the build, device-check, install, or launch step.
 For install builds, it reports missing local signing inputs and still runs `xcodebuild -allowProvisioningUpdates` so Xcode can refresh certificates and provisioning profiles from the signed-in account.
 Before installing, it saves the installable app at `/tmp/outbound-latest-build/Debug-iphoneos/Outbound.app` or `/tmp/outbound-latest-build/Debug-iphonesimulator/Outbound.app`. It still deletes the full temporary DerivedData directory on exit. Device installation fails after 120 seconds instead of waiting indefinitely; set `INSTALL_TIMEOUT` to change this limit.
+If `xcrun devicectl list devices` shows `Bruce main` as `connecting`, the helper stops before installing. Unlock the phone and connect it to the Mac by USB, then rerun once CoreDevice shows it as available. A paired device can still have a stalled local-network tunnel.
 
 To reinstall the most recent existing build without rebuilding:
 

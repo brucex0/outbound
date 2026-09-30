@@ -189,6 +189,16 @@ if [[ "$target" == emulator ]]; then
     run_with_prefix "[launch]" xcrun simctl launch --terminate-running-process "$SIMULATOR_ID" "$BUNDLE_ID"
   fi
 else
+  device_row="$(xcrun devicectl list devices --timeout 15 --hide-headers | grep -F "$CORE_DEVICE_ID" || true)"
+  if [[ -z "$device_row" ]]; then
+    echo "Bruce main is not listed by CoreDevice. Check its connection with 'xcrun devicectl list devices'." >&2
+    exit 1
+  fi
+  if [[ "$device_row" == *"connecting"* ]]; then
+    echo "Bruce main is stuck connecting in CoreDevice; installation cannot start." >&2
+    echo "Unlock the phone and connect it to this Mac by USB, then retry when 'xcrun devicectl list devices' shows it as available." >&2
+    exit 1
+  fi
   if [[ "$reset_app" == true ]]; then
     log "Removing installed app and its local data from Bruce main..."
     run_with_prefix "[uninstall]" xcrun devicectl device uninstall app \
