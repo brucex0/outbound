@@ -9935,7 +9935,7 @@
       }
     },
     "route.library.test_badge": {
-      "comment": "Label shown on the built-in debug-only route.",
+      "comment": "[android:community] Label shown on the built-in debug-only route.",
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Test" } },
         "es": { "stringUnit": { "state": "translated", "value": "Prueba" } },
@@ -9943,7 +9943,7 @@
       }
     },
     "route.library.test_badge.accessibility": {
-      "comment": "Accessibility label for the built-in debug-only test route badge.",
+      "comment": "[android:community] Accessibility label for the built-in debug-only test route badge.",
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Test route" } },
         "es": { "stringUnit": { "state": "translated", "value": "Ruta de prueba" } },
