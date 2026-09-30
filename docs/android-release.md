@@ -16,6 +16,29 @@ Open this for Play Console preparation, signed bundles, release policy, privacy 
 ./gradlew :app:bundleRelease :wear:bundleRelease
 ```
 
+## Reusable Play Publishing Script
+
+From the repository root, build a signed phone bundle and publish it to the
+existing Alpha closed-testing track with:
+
+```sh
+PLAINSTRIDE_VERSION_CODE=1 PLAINSTRIDE_VERSION_NAME=1.0 \
+  ./scripts/publish-android-play.sh --track closed --publish
+```
+
+The script requires the Android Publisher API to be enabled and the active
+`gcloud` account to have Play Console release access. It reads upload-key
+passwords from the existing macOS Keychain entries or corresponding environment
+variables, builds and verifies the AAB, uploads it, validates the edit, and
+commits the release. `closed` targets the default `alpha` track; `internal` and
+`production` are also supported. Increase the version code for every upload.
+Without `--publish`, the script only builds the signed AAB.
+
+Configure track countries and testers in Play Console before publishing a
+closed-testing release. Production builds also require the Maps, Google server
+client, Firebase, and production Google RevenueCat Gradle properties described
+in the release checks below.
+
 Before upload, inspect the AAB signature, application ID, version, mapping file, native symbols if present, and merged release manifest. Retain the AAB, `mapping.txt`, dependency report, commit SHA, version inputs, and rollout configuration together.
 
 ## Security And Platform Checks
@@ -77,4 +100,6 @@ Before widening production rollout:
 6. For client rollback, promote the last known-good source as a new build with a higher version code. Never attempt to upload an older version code.
 7. Preserve compatible backend auth and activity APIs while both client versions are active. Document any forced sign-in or destructive local reset in release notes.
 
-Owner sign-off is required for production publishing; this repository workflow only prepares and verifies artifacts.
+Owner sign-off is required for production publishing. The publishing script can
+commit a Play track release when invoked with `--publish`; check the destination
+and release configuration before running it.
