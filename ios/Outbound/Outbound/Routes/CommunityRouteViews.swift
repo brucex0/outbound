@@ -12,6 +12,9 @@ struct CommunityRouteLibraryView: View {
     @EnvironmentObject private var store: CommunityRouteStore
     @StateObject private var locator = RouteDiscoveryLocator()
     @State private var query = ""
+    @State private var nearbyActive = false
+    @State private var searchActive = false
+    @State private var discoveryTask: Task<Void, Never>?
     @State private var importsFile = false
     @State private var importedRoute: PreparedRoute?
     @State private var selectedRoute: PreparedRoute?
@@ -56,7 +59,7 @@ struct CommunityRouteLibraryView: View {
 
     var body: some View {
         List {
-            if embedded {
+            if mode == .discover {
                 Section {
                     HStack(spacing: 10) {
                         Image(systemName: "magnifyingglass")
@@ -66,9 +69,19 @@ struct CommunityRouteLibraryView: View {
                             text: $query
                         )
                         .submitLabel(.search)
-                        .onSubmit { Task { await store.search(query) } }
+                        .onSubmit { submitSearch() }
+                        if !query.isEmpty {
+                            Button {
+                                resetDiscovery()
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .frame(width: 44, height: 44)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(String(localized: "route.library.action.clear_search", defaultValue: "Clear search"))
+                        }
                         Button {
-                            Task { await store.search(query) }
+                            submitSearch()
                         } label: {
                             Image(systemName: "arrow.right.circle.fill")
                                 .frame(width: 44, height: 44)
@@ -81,11 +94,30 @@ struct CommunityRouteLibraryView: View {
             }
             if mode == .discover {
                 Section {
-                    Button { locator.requestLocation() } label: {
+                    Button {
+                        nearbyActive = true
+                        searchActive = false
+                        query = ""
+                        discoveryTask?.cancel()
+                        locator.requestLocation()
+                        if let location = locator.location {
+                            refreshNearby(location)
+                        }
+                    } label: {
                         Label(
                             String(localized: "route.library.action.find_nearby", defaultValue: "Find routes near me"),
                             systemImage: "location.fill"
                         )
+                    }
+                    .buttonStyle(RouteLibraryActionButtonStyle())
+                    if nearbyActive {
+                        Button { resetDiscovery() } label: {
+                            Label(
+                                String(localized: "route.library.action.show_all", defaultValue: "Show all routes"),
+                                systemImage: "map"
+                            )
+                        }
+                        .buttonStyle(RouteLibraryActionButtonStyle())
                     }
                     Button { importsFile = true } label: {
                         Label(
@@ -93,6 +125,7 @@ struct CommunityRouteLibraryView: View {
                             systemImage: "square.and.arrow.down"
                         )
                     }
+                    .buttonStyle(RouteLibraryActionButtonStyle())
                 }
             }
             if !store.imported.isEmpty {
@@ -173,8 +206,11 @@ struct CommunityRouteLibraryView: View {
                 }
             }
         }
-        .communityRouteSearchable(enabled: !embedded, text: $query)
-        .onSubmit(of: .search) { Task { await store.search(query) } }
+        .onChange(of: query) { oldValue, newValue in
+            if !oldValue.isEmpty && newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && searchActive {
+                resetDiscovery()
+            }
+        }
         .onChange(of: importRequestID) { _, _ in
             importsFile = true
         }
@@ -182,16 +218,16 @@ struct CommunityRouteLibraryView: View {
             if mode == .mine {
                 guard store.beginAutomaticMineLoadIfNeeded() else { return }
                 Task { await store.refreshMine() }
-            } else if onSelect != nil {
-                guard store.beginAutomaticNearbyLoadIfNeeded() else { return }
-                locator.requestLocation()
             } else {
                 guard store.beginAutomaticDiscoveryLoadIfNeeded() else { return }
                 Task { await store.refreshDiscovery() }
             }
         }
         .refreshable { await refreshVisibleRoutes() }
-        .onChange(of: locator.location) { _, location in guard let location else { return }; Task { await store.refreshNearby(location: location) } }
+        .onChange(of: locator.location) { _, location in
+            guard let location, nearbyActive else { return }
+            refreshNearby(location)
+        }
         .fileImporter(isPresented: $importsFile, allowedContentTypes: [.xml, .json, .data]) { result in
             do {
                 let url = try result.get(); guard url.startAccessingSecurityScopedResource() else { throw RouteImportError.invalid }; defer { url.stopAccessingSecurityScopedResource() }
@@ -243,7 +279,7 @@ struct CommunityRouteLibraryView: View {
         } else if !trimmedQuery.isEmpty {
             source = "search"
             succeeded = await store.search(trimmedQuery)
-        } else if let location = locator.location {
+        } else if nearbyActive, let location = locator.location {
             source = "nearby"
             succeeded = await store.refreshNearby(location: location)
         } else {
@@ -255,6 +291,46 @@ struct CommunityRouteLibraryView: View {
             .sourceType: .string(source),
             .result: .string(succeeded ? "success" : "failed"),
         ]))
+    }
+
+    private func submitSearch() {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { resetDiscovery(); return }
+        nearbyActive = false
+        searchActive = true
+        discoveryTask?.cancel()
+        discoveryTask = Task {
+            let succeeded = await store.search(trimmed)
+            await analyticsManager?.track(.init(.routeLibraryRefreshed, properties: [
+                .sourceType: .string("search"),
+                .result: .string(succeeded ? "success" : "failed"),
+            ]))
+        }
+    }
+
+    private func refreshNearby(_ location: CLLocation) {
+        discoveryTask?.cancel()
+        discoveryTask = Task {
+            let succeeded = await store.refreshNearby(location: location)
+            await analyticsManager?.track(.init(.routeLibraryRefreshed, properties: [
+                .sourceType: .string("nearby"),
+                .result: .string(succeeded ? "success" : "failed"),
+            ]))
+        }
+    }
+
+    private func resetDiscovery() {
+        nearbyActive = false
+        searchActive = false
+        query = ""
+        discoveryTask?.cancel()
+        discoveryTask = Task {
+            let succeeded = await store.refreshDiscovery()
+            await analyticsManager?.track(.init(.routeLibraryRefreshed, properties: [
+                .sourceType: .string("discovery"),
+                .result: .string(succeeded ? "success" : "failed"),
+            ]))
+        }
     }
 
     @ViewBuilder
@@ -319,20 +395,13 @@ struct CommunityRouteLibraryView: View {
     }
 }
 
-private extension View {
-    @ViewBuilder
-    func communityRouteSearchable(
-        enabled: Bool,
-        text: Binding<String>
-    ) -> some View {
-        if enabled {
-            searchable(
-                text: text,
-                prompt: Text(String(localized: "route.library.search.prompt", defaultValue: "Route or location"))
-            )
-        } else {
-            self
-        }
+private struct RouteLibraryActionButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .background(configuration.isPressed ? Color.accentColor.opacity(0.16) : .clear)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 

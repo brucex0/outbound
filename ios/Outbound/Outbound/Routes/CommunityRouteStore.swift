@@ -188,7 +188,6 @@ final class CommunityRouteStore: ObservableObject {
     private let maximumImportedRoutes = 100
     private let maximumImportedPointCount = 250_000
     private var hasBegunAutomaticDiscoveryLoad = false
-    private var hasBegunAutomaticNearbyLoad = false
     private var hasBegunAutomaticMineLoad = false
     private var loadingOperationCount = 0
 
@@ -275,13 +274,6 @@ final class CommunityRouteStore: ObservableObject {
     }
 
     @discardableResult
-    func beginAutomaticNearbyLoadIfNeeded() -> Bool {
-        guard !hasBegunAutomaticNearbyLoad else { return false }
-        hasBegunAutomaticNearbyLoad = true
-        return true
-    }
-
-    @discardableResult
     func beginAutomaticMineLoadIfNeeded() -> Bool {
         guard !hasBegunAutomaticMineLoad else { return false }
         hasBegunAutomaticMineLoad = true
@@ -293,7 +285,9 @@ final class CommunityRouteStore: ObservableObject {
         beginLoading()
         defer { endLoading() }
         do {
-            discovered = try await APIClient.shared.fetchCommunityRoutes(query: query).routes
+            let routes = try await APIClient.shared.fetchCommunityRoutes(query: query).routes
+            guard !Task.isCancelled else { return false }
+            discovered = routes
             clearError()
             return true
         } catch {
@@ -321,6 +315,7 @@ final class CommunityRouteStore: ObservableObject {
             } else {
                 nearby = []
             }
+            guard !Task.isCancelled else { return false }
             discovered = (named + nearby).reduce(into: []) { result, route in
                 if !result.contains(where: { $0.id == route.id }) { result.append(route) }
             }
@@ -353,7 +348,9 @@ final class CommunityRouteStore: ObservableObject {
         beginLoading()
         defer { endLoading() }
         do {
-            discovered = try await APIClient.shared.fetchNearbyRoutes(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude).routes
+            let routes = try await APIClient.shared.fetchNearbyRoutes(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude).routes
+            guard !Task.isCancelled else { return false }
+            discovered = routes
             clearError()
             return true
         } catch {
