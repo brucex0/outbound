@@ -28,7 +28,7 @@ beta_locale="${BETA_LOCALE:-en-US}"
 app_store_locale="${APP_STORE_LOCALE:-en-US}"
 asc_processing_timeout="${ASC_PROCESSING_TIMEOUT:-3600}"
 asc_poll_interval="${ASC_POLL_INTERVAL:-30}"
-asc_upload_timeout="${ASC_UPLOAD_TIMEOUT:-1800}"
+asc_upload_timeout="${ASC_UPLOAD_TIMEOUT:-900}"
 
 timestamp() {
   date '+%H:%M:%S'
@@ -68,7 +68,8 @@ Options:
                          equal the current build to publish prepared metadata.
   --upload-only IPA_PATH Retry an existing signed IPA without rebuilding or
                          changing version metadata. Reads its version and build
-                         from the IPA; explicit values must match.
+                         from the IPA; explicit values must match. One abandoned
+                         Apple upload is reset when safe before retrying.
   --beta-group NAME      Assign the build to this exact TestFlight group name.
                          If omitted, the sole internal group is selected.
   --setup-only           Configure an existing uploaded build without
@@ -96,7 +97,8 @@ Environment:
   ASC_PROCESSING_TIMEOUT  Seconds to wait for processing. Defaults to 3600.
   ASC_POLL_INTERVAL      Poll interval in seconds. Defaults to 30.
   ASC_UPLOAD_TIMEOUT     Seconds to allow each IPA export or upload attempt.
-                         Defaults to 1800; signed output is preserved on timeout.
+                         Defaults to 900; signed output is preserved on timeout.
+                         A failed altool upload gets one guarded retry.
 
 Post-upload setup requires an App Store Connect API key. Public submission also
 requires complete App Store metadata and an API key role allowed to submit it.
@@ -437,14 +439,25 @@ if [[ "$dry_run" == true ]]; then
   exit 0
 fi
 
-if [[ -n "$upload_only_ipa" ]]; then
+if [[ "$beta_setup_only" == false && "$use_asc_api_key" == true ]]; then
   if pgrep -x altool >/dev/null 2>&1; then
-    fail "another altool upload is still running; stop it before retrying this IPA"
+    fail "another altool upload is still running; stop it before publishing this build"
   fi
-  ruby scripts/testflight-upload-status.rb \
+  prepare_status=0
+  if ruby scripts/testflight-upload-status.rb \
     --version "$marketing_version" \
     --build-number "$next_build" \
-    --fail-if-build-exists
+    --prepare-upload; then
+    prepare_status=0
+  else
+    prepare_status=$?
+  fi
+  case "$prepare_status" in
+    0|2) ;;
+    3) fail "build already exists in App Store Connect; use --setup-only instead of uploading again" ;;
+    4) fail "Apple has a recent or active upload reservation for this build; inspect it before retrying" ;;
+    *) fail "could not safely inspect or reset the Apple upload reservation" ;;
+  esac
 fi
 
 if [[ "$beta_setup_only" == false ]]; then
@@ -676,22 +689,57 @@ if [[ "$use_asc_api_key" == true ]]; then
   ipa_path="$(find "$export_path" -maxdepth 1 -type f -name '*.ipa' -print -quit)"
   [[ -n "$ipa_path" ]] || fail "Xcode export did not produce an IPA in $export_path"
   fi
-  log "Uploading build ${next_build} with altool (timeout: ${asc_upload_timeout}s)..."
-  upload_status=0
-  if run_with_timeout "$asc_upload_timeout" "App Store Connect upload" xcrun altool \
-    --upload-package "$ipa_path" \
-    --platform ios \
-    --apple-id "$APP_APPLE_ID" \
-    --bundle-id "$APP_BUNDLE_ID" \
-    --bundle-version "$next_build" \
-    --bundle-short-version-string "$marketing_version" \
-    --api-key "$asc_key_id" \
-    --api-issuer "$asc_issuer_id" \
-    --p8-file-path "$asc_key_path"; then
-    upload_status=0
-  else
-    upload_status=$?
-  fi
+  upload_status=1
+  for upload_attempt in 1 2; do
+    log "Uploading build ${next_build} with altool (attempt ${upload_attempt}/2, timeout: ${asc_upload_timeout}s)..."
+    upload_started_at="$(date -u +%s)"
+    if run_with_timeout "$asc_upload_timeout" "App Store Connect upload" xcrun altool \
+      --upload-package "$ipa_path" \
+      --platform ios \
+      --apple-id "$APP_APPLE_ID" \
+      --bundle-id "$APP_BUNDLE_ID" \
+      --bundle-version "$next_build" \
+      --bundle-short-version-string "$marketing_version" \
+      --api-key "$asc_key_id" \
+      --api-issuer "$asc_issuer_id" \
+      --p8-file-path "$asc_key_path"; then
+      upload_status=0
+      break
+    else
+      upload_status=$?
+    fi
+    if (( upload_attempt == 2 )); then
+      break
+    fi
+    log "Upload attempt failed (exit ${upload_status}); checking Apple's build and upload state..."
+    sleep 15
+    prepare_status=0
+    if ruby scripts/testflight-upload-status.rb \
+      --version "$marketing_version" \
+      --build-number "$next_build" \
+      --prepare-upload \
+      --attempt-started-at "$upload_started_at"; then
+      prepare_status=0
+    else
+      prepare_status=$?
+    fi
+    case "$prepare_status" in
+      0|2) log "Retrying the same signed IPA with a fresh upload reservation" ;;
+      3)
+        log "Apple already accepted this build; continuing with processing"
+        upload_status=0
+        break
+        ;;
+      4)
+        log "Apple's upload reservation is not safe to reset; leaving it untouched"
+        break
+        ;;
+      *)
+        log "Could not verify Apple's upload state; leaving the reservation untouched"
+        break
+        ;;
+    esac
+  done
 else
   log "Uploading build ${next_build} to App Store Connect (timeout: ${asc_upload_timeout}s)..."
   upload_status=0

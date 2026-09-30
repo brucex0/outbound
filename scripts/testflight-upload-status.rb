@@ -6,6 +6,7 @@ require "json"
 require "net/http"
 require "openssl"
 require "optparse"
+require "time"
 require "uri"
 
 STDOUT.sync = true
@@ -14,15 +15,22 @@ APP_BUNDLE_ID = "plainstride.outbound"
 DEFAULT_KEY_PATH = File.expand_path("~/Library/Application Support/Plainstride/AppStoreConnect/AuthKey_8F64X54A9C.p8")
 DEFAULT_KEY_ID = "8F64X54A9C"
 DEFAULT_ISSUER_ID = "fe8791ac-9cbb-424a-8491-233753db92a7"
+STALE_UPLOAD_AGE_SECONDS = 1800
 
 options = {}
 OptionParser.new do |parser|
-  parser.banner = "Usage: #{$PROGRAM_NAME} --latest | --version VERSION --build-number NUMBER [--delete-awaiting ID]"
+  parser.banner = "Usage: #{$PROGRAM_NAME} --latest | --version VERSION --build-number NUMBER [--prepare-upload | --delete-awaiting ID]"
   parser.on("--latest", "List recent uploads and builds without changing them") { options[:latest] = true }
   parser.on("--version VERSION", "Marketing version to inspect") { |value| options[:version] = value }
   parser.on("--build-number NUMBER", "Build number to inspect") { |value| options[:build] = value }
   parser.on("--delete-awaiting ID", "Delete only this exact pending upload after all uploaders have stopped") do |value|
     options[:delete_id] = value
+  end
+  parser.on("--prepare-upload", "Clear one abandoned upload before retrying (exit 2: none, 3: accepted, 4: unsafe)") do
+    options[:prepare_upload] = true
+  end
+  parser.on("--attempt-started-at EPOCH", Integer, "Allow a pending record created by this failed upload attempt") do |value|
+    options[:attempt_started_at] = value
   end
   parser.on("--fail-if-build-exists", "Fail if App Store Connect already has this build") do
     options[:fail_if_build_exists] = true
@@ -32,9 +40,14 @@ end.parse!
 
 abort "unexpected arguments: #{ARGV.join(' ')}" unless ARGV.empty?
 if options[:latest]
-  abort "--latest cannot be combined with a version, build, or delete option" if options[:version] || options[:build] || options[:delete_id]
+  abort "--latest cannot be combined with a version, build, or mutation option" if options[:version] || options[:build] || options[:delete_id] || options[:prepare_upload] || options[:attempt_started_at]
 else
   abort "--version and --build-number are required" unless options[:version]&.match?(/\A\d+(?:\.\d+){0,2}\z/) && options[:build]&.match?(/\A\d+\z/)
+end
+abort "choose either --prepare-upload or --delete-awaiting" if options[:prepare_upload] && options[:delete_id]
+abort "--attempt-started-at requires --prepare-upload" if options[:attempt_started_at] && !options[:prepare_upload]
+if options[:attempt_started_at] && !((Time.now.to_i - 86_400)..Time.now.to_i).cover?(options[:attempt_started_at])
+  abort "--attempt-started-at must be within the past 24 hours"
 end
 if options[:delete_id] && !options[:delete_id].match?(/\A[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\z/)
   abort "--delete-awaiting requires an exact upload UUID"
@@ -66,8 +79,18 @@ request = lambda do |method, path, query = {}|
   http_request = request_class.new(uri)
   http_request["Authorization"] = "Bearer #{token}"
   http_request["Accept"] = "application/json"
-  response = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 10, read_timeout: 30) do |http|
-    http.request(http_request)
+  attempts = 0
+  begin
+    attempts += 1
+    response = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 10, read_timeout: 30) do |http|
+      http.request(http_request)
+    end
+  rescue SocketError, Timeout::Error, Errno::ECONNRESET, EOFError, OpenSSL::SSL::SSLError => error
+    if method == :get && attempts < 3
+      sleep attempts * 2
+      retry
+    end
+    abort "App Store Connect #{method.to_s.upcase} #{path}: #{error.class}: #{error.message}"
   end
   unless response.is_a?(Net::HTTPSuccess)
     error_body = JSON.parse(response.body) rescue {}
@@ -147,6 +170,40 @@ else
       puts "  #{file_attributes['assetType']}: #{file_attributes.dig('assetDeliveryState', 'state')} (#{file_attributes['fileSize']} bytes)"
     end
   end
+end
+
+# Exit codes for publish-testflight.sh: 0 reset, 2 no reservation, 3 accepted build,
+# 4 reservation exists but must not be reset; 1 is an API or validation error.
+if options[:prepare_upload]
+  unless builds.empty?
+    puts "Build already accepted; use --setup-only instead of uploading again."
+    exit 3
+  end
+  if uploads.empty?
+    puts "No upload reservation exists; a new upload can start."
+    exit 2
+  end
+  abort "expected exactly one matching upload; inspect the records before retrying" unless uploads.length == 1
+  upload = uploads.first
+  if upload.dig("attributes", "state", "state") != "AWAITING_UPLOAD" || upload.dig("relationships", "assetFile", "data", "id")
+    puts "Upload is no longer an empty pending reservation; wait for Apple to finish processing it."
+    exit 4
+  end
+  created_at = Time.iso8601(upload.fetch("attributes").fetch("createdDate"))
+  age_seconds = Time.now - created_at
+  started_at = options[:attempt_started_at]
+  from_this_attempt = started_at && created_at.to_i >= started_at - 5 && created_at <= Time.now + 5
+  unless age_seconds >= STALE_UPLOAD_AGE_SECONDS || from_this_attempt
+    puts "Pending reservation is only #{age_seconds.to_i}s old; wait or inspect it before retrying."
+    exit 4
+  end
+  if system("pgrep", "-x", "altool", out: File::NULL, err: File::NULL)
+    puts "altool is still running; refusing to reset its upload."
+    exit 4
+  end
+  request.call(:delete, "/v1/buildUploads/#{upload.fetch('id')}")
+  puts "Reset abandoned upload #{upload.fetch('id')}; a fresh reservation can be created."
+  exit 0
 end
 
 if options[:delete_id]

@@ -89,12 +89,16 @@ exact App Store Connect name:
 The same value can be supplied as `BETA_GROUP`. `BETA_LOCALE` overrides the
 release-note locale, and `ASC_PROCESSING_TIMEOUT` / `ASC_POLL_INTERVAL` tune the
 default one-hour processing wait and 30-second polling interval. Assigning an
-external group does not bypass Apple's Beta App Review. The
-upload/export phase is bounded by `ASC_UPLOAD_TIMEOUT` (default 1,800 seconds)
-so a stalled Xcode SPI/export-compliance request cannot wait forever; when it
-expires, the signed archive is preserved and the script prints the Organizer
-fallback. A timeout can still leave an accepted upload on Apple's side, so
-check App Store Connect before retrying the same build number.
+external group does not bypass Apple's Beta App Review. The upload/export
+phase is bounded by `ASC_UPLOAD_TIMEOUT` (default 900 seconds per attempt).
+With an API key, the script checks App Store Connect before uploading. It
+resets one `AWAITING_UPLOAD` reservation older than 30 minutes only when no
+build or app binary exists and no `altool` process is running. If `altool`
+fails or times out, it waits briefly, checks whether Apple accepted the build,
+and makes at most one more upload attempt using the same signed IPA. It can
+also reset the reservation created by its own failed attempt. An accepted
+build is never reset or uploaded again. The archive and IPA are preserved if
+recovery cannot finish.
 
 ### Recover a stalled upload
 
@@ -118,7 +122,22 @@ has not finished; rebuilding the app does not address that transfer failure.
 Repeated `NSURLErrorDomain -1005` or checksum mismatches in Xcode's
 ContentDelivery logs locate the failure in transfer to Apple's object storage.
 Those logs alone cannot distinguish a local network problem from a stuck Apple
-upload reservation.
+upload reservation. For build 1.7.4 (48), the old reservation remained pending
+after multiple clients failed. Clearing it and sending the same IPA on the
+same network succeeded, even though `altool` still retried two transient
+connection errors. That result implicates the stale reservation but does not
+prove the network was fault-free.
+
+The Swift 6 concurrency messages in the build log were warnings. The archive
+and IPA export succeeded; they were not the cause of this upload failure.
+
+The publish script now performs this guarded recovery automatically when it
+uses the App Store Connect API key. If Apple has a recent pending upload that
+the script did not create, it stops and leaves the record intact. Do not start
+Xcode, Transporter, and the script uploads for the same build concurrently.
+Changing the IPA without changing its build number does not clear a pending
+reservation; upload the intended signed IPA after the stale record is reset.
+Once Apple accepts a build number, use a new number for changed app content.
 
 After all Xcode, Transporter, and `altool` uploads for the build have stopped,
 an abandoned `AWAITING_UPLOAD` reservation can be removed explicitly. Copy the
@@ -130,7 +149,7 @@ ruby scripts/testflight-upload-status.rb \
   --delete-awaiting "$UPLOAD_ID"
 ```
 
-The helper refuses to delete a record when a build record exists, when the
+The manual helper refuses to delete a record when a build record exists, when the
 identity does not match, or when the record is no longer `AWAITING_UPLOAD`. The
 next upload can then create a fresh reservation. Do not delete a record while
 an uploader is active. A fresh reservation may succeed on the same connection;
