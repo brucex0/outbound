@@ -27,9 +27,10 @@ Options:
   --help                              Show this help
 
 Without --publish, the script performs a signed bundle build only. Publishing
-uses the active gcloud account with the Android Publisher OAuth scope. Signing
-credentials are read from the PLAINSTRIDE_ANDROID_* environment variables or
-the existing macOS Keychain entries used by the local Android build helper.
+uses the Android Publisher OAuth scope. Set
+`PLAINSTRIDE_PLAY_SERVICE_ACCOUNT_JSON` to a protected service-account JSON
+file, or use the active gcloud account. Signing credentials come from the
+`PLAINSTRIDE_ANDROID_*` environment variables or existing macOS Keychain items.
 EOF
 }
 
@@ -155,20 +156,35 @@ if ((!PUBLISH)); then
   exit 0
 fi
 
-if [[ -z "${ACCESS_TOKEN:-}" ]]; then
-  if ! command -v gcloud >/dev/null 2>&1; then
-    echo "gcloud is required to obtain an Android Publisher access token." >&2
+TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/plainstride-play-publish.XXXXXX")"
+trap 'rm -rf "$TEMP_DIR"' EXIT
+chmod 700 "$TEMP_DIR"
+
+if ! command -v gcloud >/dev/null 2>&1; then
+  echo "gcloud is required to obtain an Android Publisher access token." >&2
+  exit 1
+fi
+if [[ -n "${PLAINSTRIDE_PLAY_SERVICE_ACCOUNT_JSON:-}" ]]; then
+  if [[ ! -f "$PLAINSTRIDE_PLAY_SERVICE_ACCOUNT_JSON" ]]; then
+    echo "Play service-account JSON file not found." >&2
     exit 1
   fi
+  GCLOUD_CONFIG="${TEMP_DIR}/gcloud"
+  mkdir -m 700 "$GCLOUD_CONFIG"
+  CLOUDSDK_CONFIG="$GCLOUD_CONFIG" gcloud auth activate-service-account \
+    --key-file="$PLAINSTRIDE_PLAY_SERVICE_ACCOUNT_JSON" --quiet >/dev/null
+  ACCESS_TOKEN="$(CLOUDSDK_CONFIG="$GCLOUD_CONFIG" gcloud auth print-access-token \
+    --scopes=https://www.googleapis.com/auth/androidpublisher 2>/dev/null)" || {
+    echo "The configured Play service account could not obtain an access token." >&2
+    exit 1
+  }
+else
   ACCESS_TOKEN="$(gcloud auth print-access-token --scopes=https://www.googleapis.com/auth/androidpublisher 2>/dev/null)" || {
     echo "No gcloud account can access the Android Publisher API." >&2
     exit 1
   }
 fi
 
-TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/plainstride-play-publish.XXXXXX")"
-trap 'rm -rf "$TEMP_DIR"' EXIT
-chmod 700 "$TEMP_DIR"
 AUTH_CONFIG="${TEMP_DIR}/curl-auth.conf"
 printf 'header = "Authorization: Bearer %s"\n' "$ACCESS_TOKEN" > "$AUTH_CONFIG"
 chmod 600 "$AUTH_CONFIG"

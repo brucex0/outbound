@@ -26,8 +26,11 @@ PLAINSTRIDE_VERSION_CODE=1 PLAINSTRIDE_VERSION_NAME=1.0 \
   ./scripts/publish-android-play.sh --track closed --publish
 ```
 
-The script requires the Android Publisher API to be enabled and the active
-`gcloud` account to have Play Console release access. It reads upload-key
+The script requires the Android Publisher API to be enabled and the Google
+identity to have Play Console release access. Use the active `gcloud` account,
+or set `PLAINSTRIDE_PLAY_SERVICE_ACCOUNT_JSON` to a protected service-account
+key file. Service-account JSON is never stored in the repository; the script
+uses an isolated temporary `gcloud` config for it. The script reads upload-key
 passwords from the existing macOS Keychain entries or corresponding environment
 variables, builds and verifies the AAB, uploads it, validates the edit, and
 commits the release. `closed` targets the default `alpha` track; `internal` and
@@ -35,7 +38,7 @@ commits the release. `closed` targets the default `alpha` track; `internal` and
 Without `--publish`, the script only builds the signed AAB.
 
 Configure track countries and testers in Play Console before publishing a
-closed-testing release. Production builds also require the Maps, Google server
+closed-testing release. Play bundles also require the Maps, Google server
 client, Firebase, and production Google RevenueCat Gradle properties described
 in the release checks below.
 
