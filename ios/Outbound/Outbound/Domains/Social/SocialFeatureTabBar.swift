@@ -44,9 +44,9 @@ struct SocialFeatureTabBar: View {
                 } label: {
                     HStack(spacing: 4) {
                         Text(tab.title)
-                            .font(.caption.weight(selection == tab ? .bold : .medium))
+                            .font(.subheadline.weight(selection == tab ? .bold : .medium))
                             .lineLimit(1)
-                            .minimumScaleFactor(0.72)
+                            .minimumScaleFactor(0.85)
                         if let badge = badges[tab] {
                             SocialFeatureTabBadgeView(badge: badge)
                         }
