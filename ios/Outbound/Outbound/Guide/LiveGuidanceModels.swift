@@ -624,27 +624,55 @@ final class LiveGuidanceDirector {
         guard !suppressedMomentTypes.contains(.paceInstability),
               activeSegment?.target.phase != .work,
               activeSegment?.target.phase != .recovery,
-              (activeSegment?.elapsedSeconds ?? snapshot.elapsedSeconds) >= 20,
+              snapshot.elapsedSeconds >= 180,
+              (activeSegment?.elapsedSeconds ?? snapshot.elapsedSeconds) >= 180,
               !isMeaningfulGrade(gradePercent),
               lastInstabilityElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= 180 }) ?? true
         else { return nil }
 
-        let values = paceValues(from: snapshot.elapsedSeconds - 90, through: snapshot.elapsedSeconds)
-        guard values.count >= 8 else { return nil }
-        let sorted = values.sorted()
-        let spread = percentile(0.9, in: sorted) - percentile(0.1, in: sorted)
+        // Compare separated windows after startup so repeated snapshots of one
+        // settling GPS estimate cannot count as an abrupt pace change.
+        let earlier = stablePaceWindow(
+            from: snapshot.elapsedSeconds - 90,
+            through: snapshot.elapsedSeconds - 60
+        )
+        let recent = stablePaceWindow(
+            from: snapshot.elapsedSeconds - 30,
+            through: snapshot.elapsedSeconds
+        )
+        guard let earlier, let recent else { return nil }
         let referencePace = activeSegment.flatMap {
             resolvedPaceTarget(for: $0, athleteReferencePace: athleteReferencePace)
         } ?? athleteReferencePace
         let spreadThreshold = referencePace.map { max(60, $0 * 0.15) } ?? 60
-        guard spread >= spreadThreshold else { return nil }
+        guard abs(recent - earlier) >= spreadThreshold else { return nil }
         lastInstabilityElapsedSeconds = snapshot.elapsedSeconds
         return DetectedLiveGuidanceMoment(
             type: .paceInstability,
             detectedAtElapsedSeconds: snapshot.elapsedSeconds,
-            baselinePaceSecondsPerKilometer: values.reduce(0, +) / Double(values.count),
+            baselinePaceSecondsPerKilometer: recent,
             targetPaceSecondsPerKilometer: referencePace
         )
+    }
+
+    private func stablePaceWindow(from start: Int, through end: Int) -> Double? {
+        var paceBySecond: [Int: Double] = [:]
+        for snapshot in history {
+            if snapshot.elapsedSeconds >= start,
+               snapshot.elapsedSeconds <= end,
+               let pace = snapshot.currentPaceSecsPerKm,
+               pace.isFinite,
+               (60...3_600).contains(pace) {
+                paceBySecond[snapshot.elapsedSeconds] = pace
+            }
+        }
+        let seconds = paceBySecond.keys.sorted()
+        guard seconds.count >= 8,
+              let first = seconds.first,
+              let last = seconds.last,
+              last - first >= 20
+        else { return nil }
+        return percentile(0.5, in: paceBySecond.values.sorted())
     }
 
     private func targetLockedMoment(
