@@ -10660,29 +10660,6 @@
         }
       }
     },
-    "route.library.section.community": {
-      "comment": "[android:community] Generated Android name: route_library_section_community.",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Community routes"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rutas de la comunidad"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "社区路线"
-          }
-        }
-      }
-    },
     "route.library.section.imported": {
       "comment": "[android:community] Generated Android name: route_library_section_imported.",
       "localizations": {
@@ -10702,28 +10679,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "导入的路线"
-          }
-        }
-      }
-    },
-    "route.library.section.saved_published": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Saved and published"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Guardadas y publicadas"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已保存和发布"
           }
         }
       }
@@ -36497,19 +36452,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Community routes"
+            "value": "Routes"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rutas de la comunidad"
+            "value": "Rutas"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "社区路线"
+            "value": "路线"
           }
         }
       }
@@ -39748,19 +39703,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Community routes"
+            "value": "Routes"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rutas de la comunidad"
+            "value": "Rutas"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "&#x793E;&#x533A;&#x8DEF;&#x7EBF;"
+            "value": "路线"
           }
         }
       }

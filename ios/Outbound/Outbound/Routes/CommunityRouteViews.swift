@@ -67,9 +67,7 @@ struct CommunityRouteLibraryView: View {
     var body: some View {
         List {
             Section {
-                    HStack(spacing: 10) {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundStyle(.secondary)
+                    HStack(spacing: 6) {
                         TextField(
                             String(localized: "route.library.search.prompt", defaultValue: "Route or location"),
                             text: Binding(
@@ -103,14 +101,22 @@ struct CommunityRouteLibraryView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(String(localized: "Search"))
+                        Button {
+                            setMyRoutesOnly(!myRoutesOnly)
+                        } label: {
+                            Image(systemName: myRoutesOnly
+                                  ? "line.3.horizontal.decrease.circle.fill"
+                                  : "line.3.horizontal.decrease.circle")
+                                .foregroundStyle(myRoutesOnly ? Color.accentColor : Color.secondary)
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(String(localized: "route.library.filter.my_only", defaultValue: "My routes only"))
+                        .accessibilityValue(myRoutesOnly
+                            ? String(localized: "common.on", defaultValue: "On")
+                            : String(localized: "common.off", defaultValue: "Off"))
                     }
                     .frame(minHeight: 44)
-            }
-            Section {
-                Toggle(
-                    String(localized: "route.library.filter.my_only", defaultValue: "My routes only"),
-                    isOn: Binding(get: { myRoutesOnly }, set: { setMyRoutesOnly($0) })
-                )
             }
             if !myRoutesOnly {
                 Section {
@@ -175,11 +181,7 @@ struct CommunityRouteLibraryView: View {
                     }
                 }
             }
-            Section(
-                myRoutesOnly
-                    ? String(localized: "route.library.section.saved_published", defaultValue: "Saved and published")
-                    : String(localized: "route.library.section.community", defaultValue: "Community routes")
-            ) {
+            Section {
                 if store.isLoading && routes.isEmpty {
                     ProgressView()
                         .frame(maxWidth: .infinity)
