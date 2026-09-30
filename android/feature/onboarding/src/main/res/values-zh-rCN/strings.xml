@@ -82,6 +82,7 @@
     <string name="plan_builder_build_detail">根据你的目标、运动类型和每周安排制定计划。</string>
     <string name="plan_builder_create">创建我的计划</string>
     <string name="plan_builder_create_error">暂时无法创建计划。你的回答已保存。</string>
+    <string name="plan_builder_retry">重试</string>
     <string name="plan_builder_creating">正在根据你的每周安排制定计划…</string>
     <string name="plan_builder_event_date">赛事日期</string>
     <string name="plan_builder_event_distance">赛事距离</string>
@@ -172,7 +173,19 @@
     <string name="plan_builder_smart_setup_days_none">暂无固定训练日</string>
     <string name="plan_builder_smart_setup_use">使用此安排</string>
     <string name="plan_builder_smart_setup_adjust">调整安排</string>
+    <string name="plan_builder_smart_setup_constraints">最近有变化吗？伤病、生病、出行或时间限制（可选）</string>
     <string name="plan_builder_change_answer">更改</string>
+    <string name="plan_builder_conversation_thinking">正在理解你的目标</string>
+    <string name="plan_builder_conversation_goal_acknowledged">好的，目标是：%1$s。</string>
+    <string name="plan_builder_conversation_confirm_time">使用这个目标时间</string>
+    <string name="plan_builder_conversation_weeks">%1$d 周</string>
+    <string name="plan_builder_conversation_optional_answer">选填，你可以不填写并直接继续。</string>
+    <string name="plan_builder_conversation_success_placeholder">例如：长距离跑起来更轻松</string>
+    <string name="plan_builder_conversation_edit_answer">编辑%1$s</string>
+    <string name="plan_builder_date_done">完成</string>
+    <string name="plan_builder_review_event">赛事</string>
+    <string name="plan_builder_review_horizon">回顾节点</string>
+    <string name="plan_builder_review_success">有意义的进步</string>
     <string name="plan_builder_event_distance_answer">比赛距离：%1$s</string>
     <string name="plan_builder_event_date_answer">比赛日期：%1$s</string>
     <string name="plan_builder_event_intent_answer">比赛目标：%1$s</string>
