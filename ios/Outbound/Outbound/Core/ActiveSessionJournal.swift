@@ -16,6 +16,7 @@ struct ActiveSessionJournal {
     let lastWatchLifecycle: PlainstrideWorkoutLifecycle?
     let lastWatchMessageSequence: UInt64?
     let recoveryStage: ActiveSessionRecoveryStage
+    let goalDistanceAdjustmentMeters: Double?
     let trackPoints: [JournalTrackPoint]
 
     init(
@@ -32,6 +33,7 @@ struct ActiveSessionJournal {
         lastWatchLifecycle: PlainstrideWorkoutLifecycle? = nil,
         lastWatchMessageSequence: UInt64? = nil,
         recoveryStage: ActiveSessionRecoveryStage = .recording,
+        goalDistanceAdjustmentMeters: Double? = nil,
         trackPoints: [JournalTrackPoint] = []
     ) {
         self.startedAt = startedAt
@@ -47,6 +49,7 @@ struct ActiveSessionJournal {
         self.lastWatchLifecycle = lastWatchLifecycle
         self.lastWatchMessageSequence = lastWatchMessageSequence
         self.recoveryStage = recoveryStage
+        self.goalDistanceAdjustmentMeters = goalDistanceAdjustmentMeters
         self.trackPoints = trackPoints
     }
 
@@ -69,6 +72,7 @@ struct ActiveSessionJournal {
                 lastWatchLifecycle: metadata.lastWatchLifecycle,
                 lastWatchMessageSequence: metadata.lastWatchMessageSequence,
                 recoveryStage: metadata.recoveryStage ?? .recording,
+                goalDistanceAdjustmentMeters: metadata.goalDistanceAdjustmentMeters,
                 trackPoints: ActiveSessionTrackJournal.load()
             )
         } catch {
@@ -96,7 +100,8 @@ struct ActiveSessionJournal {
                 heartRateEffortEngine: heartRateEffortEngine,
                 lastWatchLifecycle: lastWatchLifecycle,
                 lastWatchMessageSequence: lastWatchMessageSequence,
-                recoveryStage: recoveryStage
+                recoveryStage: recoveryStage,
+                goalDistanceAdjustmentMeters: goalDistanceAdjustmentMeters
             )
             let data = try JSONEncoder().encode(metadata)
             let directory = Self.fileURL.deletingLastPathComponent()
@@ -150,6 +155,7 @@ struct ActiveSessionJournal {
         let lastWatchLifecycle: PlainstrideWorkoutLifecycle?
         let lastWatchMessageSequence: UInt64?
         let recoveryStage: ActiveSessionRecoveryStage?
+        let goalDistanceAdjustmentMeters: Double?
     }
 }
 

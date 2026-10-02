@@ -270,6 +270,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case indoor
     case voiceGuideEnabled = "voice_guide_enabled"
     case autoPauseEnabled = "auto_pause_enabled"
+    case autoStopAtGoal = "auto_stop_at_goal"
     case dogCompanionEnabled = "dog_companion_enabled"
     case durationBucket = "duration_bucket"
     case distanceBucket = "distance_bucket"
@@ -330,7 +331,7 @@ enum ProductAnalyticsSchema {
         .appStartupResolved: [.destination, .latencyBucket, .sourceType],
         .activitySetupViewed: [.entrySource],
         .activityConfigurationChanged: [.changeType, .selectionType, .activityType, .goalType, .targetBucket, .sourceType, .pacingStrategy],
-        .activityStarted: [.entrySource, .activityType, .goalType, .targetBucket, .musicEnabled, .routeSelected, .shoeSelected, .preRunPhotoAdded, .groupRunEnabled, .liveShareEnabled, .indoor, .voiceGuideEnabled, .autoPauseEnabled, .dogCompanionEnabled, .participantCountBucket],
+        .activityStarted: [.entrySource, .activityType, .goalType, .targetBucket, .musicEnabled, .routeSelected, .shoeSelected, .preRunPhotoAdded, .groupRunEnabled, .liveShareEnabled, .indoor, .voiceGuideEnabled, .autoPauseEnabled, .autoStopAtGoal, .dogCompanionEnabled, .participantCountBucket],
         .activityPaused: [.sourceType],
         .activityResumed: [.sourceType, .durationBucket],
         .activityFinished: [.durationBucket, .distanceBucket, .goalCompletionBucket],

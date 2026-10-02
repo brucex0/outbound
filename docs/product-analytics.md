@@ -103,8 +103,10 @@ Track:
 - `indoor`;
 - `voice_guide_enabled`.
 - `auto_pause_enabled`.
+- `auto_stop_at_goal`: whether a manual distance, time, or calorie goal is set to pause recording when reached.
 
 Auto Pause setup changes use `activity_configuration_changed` with `change_type=auto_pause`, the enabled/disabled selection, and canonical activity type. The preference value is also captured on `activity_started`.
+Goal pause changes use `activity_configuration_changed` with `change_type=auto_stop_at_goal`, the enabled/disabled selection, and canonical activity type. The effective session value is also captured on `activity_started`. Do not include exact goal values in these events.
 
 `activity_saved` may add coarse duration, distance, goal-completion, and photo-count buckets. Keep exact activity facts in the activity record, not general product analytics.
 

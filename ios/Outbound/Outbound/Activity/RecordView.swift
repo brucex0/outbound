@@ -78,6 +78,7 @@ struct RecordView: View {
     @AppStorage("auto_pause_cycling_enabled_v1") private var autoPauseCyclingEnabled = true
     @AppStorage("auto_pause_walking_enabled_v1") private var autoPauseWalkingEnabled = false
     @AppStorage("auto_pause_hiking_enabled_v1") private var autoPauseHikingEnabled = false
+    @AppStorage("auto_stop_at_goal_enabled_v1") private var autoStopAtGoalEnabled = false
     @State private var showCamera = false
     @State private var activePage: SessionPage = .map
     @State private var isLiveWorkoutPanelExpanded = false
@@ -129,6 +130,7 @@ struct RecordView: View {
     @State private var showsRacePlanner = false
     @State private var didSeedLiveRunForUITest = false
     @State private var didRestoreSession = false
+    @State private var didAutoStopAtGoal = false
     @State private var showsRouteLibrary = false
     @State private var setupToastMessage: String?
     @State private var setupToastTask: Task<Void, Never>?
@@ -271,6 +273,7 @@ struct RecordView: View {
                 state: recorder.state,
                 intent: activeIntent ?? plannedIntent
             )
+            finishAtGoalIfNeeded(snapshot)
             trackGoalProgressIfNeeded(snapshot)
         }
         .onReceive(recorder.routeGuidanceEvents) { event in
@@ -1652,10 +1655,17 @@ struct RecordView: View {
     }
 
     private func pauseRecording() {
+        pauseRecording(distanceGoalMeters: nil)
+    }
+
+    private func pauseRecording(distanceGoalMeters: Double?) {
         if phoneWorkoutCoordinator.watchOwnsHealthKitPersistence {
-            phoneWorkoutCoordinator.requestPause(autoTriggered: recorder.autoPaused)
+            phoneWorkoutCoordinator.requestPause(
+                autoTriggered: recorder.autoPaused,
+                distanceGoalMeters: distanceGoalMeters
+            )
         } else {
-            recorder.pause()
+            recorder.pause(distanceGoalMeters: distanceGoalMeters)
         }
         sessionController.pause()
     }
@@ -1885,6 +1895,7 @@ struct RecordView: View {
         curatedWorkoutIntent = nil
         selectedWorkoutChoice = .sport(.run)
         manualActivityGoal = .freestyle
+        didAutoStopAtGoal = false
         manualSetupDrafts = [:]
         selectedGoalMode = .freestyle
         selectedSessionShoeID = nil
@@ -2080,17 +2091,24 @@ struct RecordView: View {
         } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(selectedGoalMode.title)
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.secondary)
                     Text(launchGoalValue)
                         .font(.system(.title2, design: .rounded).weight(.bold))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.78)
-                    Text(launchGoalHint)
+                    if autoStopAtGoalEnabled,
+                       [.distance, .time, .calories].contains(selectedGoalMode) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "pause.fill")
+                            Text(String(localized: "today.stop.at.goal", defaultValue: "Pause at goal"))
+                        }
                         .font(.caption2.weight(.medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.accentColor)
+                    } else if !launchGoalHint.isEmpty {
+                        Text(launchGoalHint)
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Spacer(minLength: 8)
                 Image(systemName: selectedGoalMode == .freestyle ? "checkmark" : "chevron.right")
@@ -2640,9 +2658,9 @@ struct RecordView: View {
             return String(localized: "race.planner.tap_change", defaultValue: "Tap to adjust race strategy")
         case .calories:
             return calorieEditorEstimateLabel
-                ?? String(localized: "record.goal.tap_change", defaultValue: "Tap to change")
+                ?? ""
         case .distance, .time:
-            return String(localized: "record.goal.tap_change", defaultValue: "Tap to change")
+            return ""
         }
     }
 
@@ -3468,6 +3486,24 @@ struct RecordView: View {
         }
     }
 
+    private func finishAtGoalIfNeeded(_ snapshot: ActiveSessionSnapshot) {
+        guard autoStopAtGoalEnabled,
+              !didAutoStopAtGoal,
+              recorder.state == .active,
+              [.distance, .time, .calories].contains(selectedGoalMode),
+              let ratio = goalCompletionRatio(
+                distanceMeters: snapshot.distanceMeters,
+                durationSeconds: snapshot.elapsedSeconds
+              ),
+              ratio >= 1
+        else { return }
+
+        didAutoStopAtGoal = true
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        let distanceGoal = selectedGoalMode == .distance ? currentActivityGoal.targetDistanceMeters : nil
+        pauseRecording(distanceGoalMeters: distanceGoal)
+    }
+
     private func handleRouteGuidanceEvent(_ event: RouteGuidanceEvent) {
         guard let route = (activeIntent ?? plannedIntent)?.preparedRoute else { return }
         switch event {
@@ -3525,6 +3561,9 @@ struct RecordView: View {
             .indoor: .boolean(isIndoorSession),
             .voiceGuideEnabled: .boolean(voiceGuideSpeechEnabled),
             .autoPauseEnabled: .boolean(recorder.autoPauseEnabled),
+            .autoStopAtGoal: .boolean(
+                autoStopAtGoalEnabled && [.distance, .time, .calories].contains(selectedGoalMode)
+            ),
             .participantCountBucket: .string(ProductAnalyticsBucket.count(liveGroupStore.participants.count)),
             .dogCompanionEnabled: .boolean(intent.resolvedActivityType.ineligibleForCompanion != true && companionType != nil)
         ]
@@ -4270,6 +4309,33 @@ struct RecordView: View {
 
     private var goalValueEditor: some View {
         VStack(alignment: .leading, spacing: 18) {
+            if goalEditorKind != nil {
+                Button {
+                    autoStopAtGoalEnabled.toggle()
+                    track(.init(.activityConfigurationChanged, properties: [
+                        .changeType: .string("auto_stop_at_goal"),
+                        .selectionType: .string(autoStopAtGoalEnabled ? "enabled" : "disabled"),
+                        .activityType: .string((plannedIntent ?? .freestyleRun).resolvedActivityType.rawValue)
+                    ]))
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: autoStopAtGoalEnabled ? "checkmark.square.fill" : "square")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(autoStopAtGoalEnabled ? theme.accentColor : Color.secondary)
+                        Text(String(localized: "today.stop.at.goal", defaultValue: "Pause at goal"))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(String(localized: "today.stop.at.goal", defaultValue: "Pause at goal"))
+                .accessibilityValue(autoStopAtGoalEnabled
+                    ? String(localized: "common.on", defaultValue: "On")
+                    : String(localized: "common.off", defaultValue: "Off"))
+            }
+
             if let kind = goalEditorKind {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -4776,6 +4842,7 @@ struct RecordView: View {
             plannedIntent = intent
         }
         selectedWorkoutChoice = .sport(.run)
+        didAutoStopAtGoal = false
         selectedGoalMode = .race
         selectedGuidanceChallenge = .off
         manualActivityGoal = .distanceMeters(race.distanceMeters)

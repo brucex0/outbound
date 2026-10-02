@@ -164,11 +164,11 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
         resetTransientState()
     }
 
-    func requestPause(autoTriggered: Bool = false, source: String = "iphone") {
+    func requestPause(autoTriggered: Bool = false, distanceGoalMeters: Double? = nil, source: String = "iphone") {
         guard lifecycle == .active || recorder?.state == .active else { return }
         send(kind: .pause)
         lifecycle = .paused
-        recorder?.pause(autoTriggered: autoTriggered)
+        recorder?.pause(autoTriggered: autoTriggered, distanceGoalMeters: distanceGoalMeters)
         track(.watchControlUsed, [.sourceType: .string(source), .control: .string("pause")])
     }
 

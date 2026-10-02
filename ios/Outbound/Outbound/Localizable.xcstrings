@@ -14424,6 +14424,29 @@
         }
       }
     },
+    "today.stop.at.goal": {
+      "comment": "Checkmark option and collapsed goal-card hint for pausing recording when a distance, time, or calorie goal is reached.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause at goal"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausar al alcanzar el objetivo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "达到目标时暂停"
+          }
+        }
+      }
+    },
     "today.change.plan": {
       "comment": "Shared with Android today. [android:today]",
       "localizations": {

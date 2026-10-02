@@ -74,6 +74,7 @@ final class ActivityRecorder: ObservableObject {
     private var lastJournalSaveAt: Date?
     private var lastJournaledTrackPointCount = 0
     private var activityType: ActivityType = .running
+    private var goalDistanceAdjustmentMeters = 0.0
     var averagePace: Double? {
         activityType.plausibleAveragePace(
             durationSeconds: Double(elapsedSeconds),
@@ -161,6 +162,7 @@ final class ActivityRecorder: ObservableObject {
         recoveredWatchMessageSequence = nil
         elapsedSeconds = 0
         distanceMeters = 0
+        goalDistanceAdjustmentMeters = 0
         elevationGainMeters = 0
         walkingStepCount = nil
         currentPace = nil
@@ -190,12 +192,16 @@ final class ActivityRecorder: ObservableObject {
             .sink { [weak self] _ in self?.tick() }
     }
 
-    func pause(autoTriggered: Bool = false) {
+    func pause(autoTriggered: Bool = false, distanceGoalMeters: Double? = nil) {
         guard state == .active else { return }
 #if DEBUG
         stopRunSimulationClock()
 #endif
         updateSessionMetrics(now: Date())
+        if let distanceGoalMeters, distanceGoalMeters > 0, distanceMeters >= distanceGoalMeters {
+            goalDistanceAdjustmentMeters += distanceGoalMeters - distanceMeters
+            distanceMeters = distanceGoalMeters
+        }
         autoPaused = autoTriggered
         state = .paused
         accumulatedActiveDuration = TimeInterval(elapsedSeconds)
@@ -264,10 +270,11 @@ final class ActivityRecorder: ObservableObject {
             plannedRoute: routeGuidance?.route
         )
         let finalDistanceMeters = stoppedTrack.preservesLiveMetrics
-            ? stoppedTrack.liveDistanceMeters
+            ? stoppedTrack.liveDistanceMeters + goalDistanceAdjustmentMeters
             : reconciledTrack.distanceMeters
                 + stoppedTrack.motionSupplementDistanceMeters
                 + stoppedTrack.motionTailDistanceMeters
+                + goalDistanceAdjustmentMeters
         let finalElevationGainMeters = stoppedTrack.preservesLiveMetrics
             ? elevationGainMeters
             : reconciledTrack.elevationGainMeters
@@ -366,6 +373,7 @@ final class ActivityRecorder: ObservableObject {
         recoveredActivityType = nil
         elapsedSeconds = 0
         distanceMeters = 0
+        goalDistanceAdjustmentMeters = 0
         elevationGainMeters = 0
         currentPace = nil
         companionType = nil
@@ -675,7 +683,7 @@ final class ActivityRecorder: ObservableObject {
 
     private func updateSessionMetrics(now: Date) {
         elapsedSeconds = currentElapsedSeconds(at: now)
-        distanceMeters = locationManager.totalDistanceMeters
+        distanceMeters = locationManager.totalDistanceMeters + goalDistanceAdjustmentMeters
         elevationGainMeters = locationManager.elevationGainMeters
         walkingStepCount = locationManager.walkingStepCount
         currentPace = locationManager.currentPaceSecsPerKm
@@ -703,6 +711,7 @@ final class ActivityRecorder: ObservableObject {
         elapsedSeconds = journal.elapsedSeconds
         activityType = journal.activityType ?? .running
         autoPauseEnabled = journal.autoPauseEnabled ?? AutoPauseDefaults.isEnabled(for: activityType)
+        goalDistanceAdjustmentMeters = journal.goalDistanceAdjustmentMeters ?? 0
         companionType = journal.companionType
         locationManager.restoreTracking(
             from: points,
@@ -795,7 +804,8 @@ final class ActivityRecorder: ObservableObject {
             heartRateEffortEngine: heartRateEngine,
             lastWatchLifecycle: recoveredWatchLifecycle,
             lastWatchMessageSequence: recoveredWatchMessageSequence,
-            recoveryStage: recoveryStage
+            recoveryStage: recoveryStage,
+            goalDistanceAdjustmentMeters: goalDistanceAdjustmentMeters
         ).save()
         if force {
             let stateName = switch state {
