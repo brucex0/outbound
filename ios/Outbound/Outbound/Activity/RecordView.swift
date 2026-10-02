@@ -58,6 +58,7 @@ struct RecordView: View {
     @EnvironmentObject var safetyContactStore: SafetyContactStore
     @EnvironmentObject var onboardingStore: OnboardingStore
     @EnvironmentObject var personalizationStore: PersonalizationStore
+    @EnvironmentObject var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject var socialStore: TogetherStore
     @EnvironmentObject var connectivityStore: ConnectivityStore
     @EnvironmentObject var communityRouteStore: CommunityRouteStore
@@ -101,7 +102,6 @@ struct RecordView: View {
     @State private var customCaloriesText = ""
     @State private var inlineCustomGoalKind: CustomGoalKind?
     @FocusState private var focusedCustomGoalKind: CustomGoalKind?
-    @State private var isGoalChooserPresented = false
     @State private var isCaloriesWeightPromptPresented = false
     @State private var caloriesWeightText = ""
     @State private var pendingCaloriesWeightAction: PendingCaloriesWeightAction?
@@ -538,7 +538,7 @@ struct RecordView: View {
         }
         .sheet(item: $setupSheet) { sheet in
             setupSheetView(sheet)
-                .presentationDetents([.medium, .large])
+                .presentationDetents(sheet == .goal ? [.large] : [.medium, .large])
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isAssistantPresented) {
@@ -2072,7 +2072,7 @@ struct RecordView: View {
             } else if selectedGoalMode == .race {
                 showsRacePlanner = true
             } else if selectedGoalMode != .freestyle {
-                isGoalChooserPresented.toggle()
+                setupSheet = .goal
             }
         } label: {
             HStack(spacing: 12) {
@@ -2104,10 +2104,6 @@ struct RecordView: View {
         }
         .buttonStyle(.plain)
         .disabled(selectedGoalMode == .planned || selectedGoalMode == .freestyle)
-        .popover(isPresented: $isGoalChooserPresented, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
-            compactGoalChooser
-                .presentationCompactAdaptation(.popover)
-        }
     }
 
     private func launchRoutePreviewCard(_ route: PreparedRoute) -> some View {
@@ -2612,75 +2608,6 @@ struct RecordView: View {
         }
     }
 
-    private var compactGoalChooser: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(selectedGoalMode.editorTitle)
-                .font(.headline)
-
-            GoalPresetFlow(horizontalSpacing: 7, verticalSpacing: 7) {
-                switch selectedGoalMode {
-                case .distance:
-                    ForEach(distanceGoalPresets) { preset in
-                        goalPresetButton(
-                            title: preset.title,
-                            isSelected: inlineCustomGoalKind != .distance && isSelectedDistancePreset(preset.meters)
-                        ) {
-                            dismissInlineCustomGoalInput()
-                            applyGoal(.distanceMeters(preset.meters))
-                            isGoalChooserPresented = false
-                        }
-                    }
-                case .time:
-                    ForEach(timeGoalPresets) { preset in
-                        goalPresetButton(
-                            title: preset.title,
-                            isSelected: inlineCustomGoalKind != .time && isSelectedTimePreset(preset.seconds)
-                        ) {
-                            dismissInlineCustomGoalInput()
-                            applyGoal(.timeSeconds(preset.seconds))
-                            isGoalChooserPresented = false
-                        }
-                    }
-                case .calories:
-                    ForEach(calorieGoalPresets, id: \.self) { calories in
-                        goalPresetButton(
-                            title: calorieGoalLabel(calories),
-                            isSelected: inlineCustomGoalKind != .calories && currentActivityGoal.targetCalories == calories
-                        ) {
-                            dismissInlineCustomGoalInput()
-                            applyGoal(.calories(calories))
-                            isGoalChooserPresented = false
-                        }
-                    }
-                case .planned, .curated, .freestyle, .race:
-                    EmptyView()
-                }
-
-                if let kind = selectedGoalMode.customGoalKind {
-                    goalPresetButton(
-                        title: String(localized: "record.goal.custom", defaultValue: "Custom"),
-                        isSelected: inlineCustomGoalKind == kind || isCustomGoalSelected(kind)
-                    ) {
-                        presentInlineCustomGoal(kind)
-                    }
-                }
-            }
-
-            if let kind = selectedGoalMode.customGoalKind,
-               inlineCustomGoalKind == kind {
-                inlineCustomGoalInput(kind)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
-
-            if selectedGoalMode == .calories, let estimate = calorieEditorEstimateLabel {
-                calorieEstimateCallout(estimate)
-            }
-        }
-        .padding(14)
-        .frame(idealWidth: 330)
-        .animation(.easeInOut(duration: 0.18), value: inlineCustomGoalKind)
-    }
-
     private var launchGoalValue: String {
         if selectedGoalMode == .planned {
             return plannedWorkoutIntent?.title ?? String(localized: "From your training plan")
@@ -2727,7 +2654,6 @@ struct RecordView: View {
             presentCaloriesWeightPrompt(for: .selectMode(reopenGoalEditor: false))
             return
         }
-        isGoalChooserPresented = false
         if mode == .curated {
             openCuratedWorkoutPicker()
             return
@@ -2748,7 +2674,6 @@ struct RecordView: View {
     }
 
     private func selectWorkoutChoice(_ choice: LaunchWorkoutChoice, trackChange: Bool = true) {
-        isGoalChooserPresented = false
         if trackChange, choice == .sport(.walk) {
             let didRequestPermission = recorder.locationManager.requestWalkingStepPermissionIfNeeded { result in
                 track(.init(.motionAuthorizationCompleted, properties: [
@@ -2766,13 +2691,19 @@ struct RecordView: View {
 
         switch choice {
         case .planned:
-            guard let plannedWorkoutIntent else {
+            let workoutIntent: SessionIntent
+            if let plannedWorkoutIntent {
+                workoutIntent = plannedWorkoutIntent
+            } else if trainingPlanStore.activePlan != nil {
+                workoutIntent = trainingPlanStore.todaySuggestion?.suggestedSession.intent ?? .freestyleRun
+                plannedWorkoutIntent = workoutIntent
+            } else {
                 onPlanBuilderRequested?()
                 return
             }
             selectedWorkoutChoice = .planned
             selectedGoalMode = .planned
-            nextBaseIntent = routeFreeIntent(from: plannedWorkoutIntent)
+            nextBaseIntent = routeFreeIntent(from: workoutIntent)
         case .sport(let sport):
             let draft = resolvedManualSetupDraft(for: sport)
             let goal = resolvedGoal(for: draft, mode: draft.selectedMode)
@@ -2816,7 +2747,6 @@ struct RecordView: View {
 
     private func openCuratedWorkoutPicker() {
         guard selectedManualSport != nil else { return }
-        isGoalChooserPresented = false
         track(.init(.planningSurfaceOpened, properties: [
             .sourceType: .string("curated_workouts"),
             .entrySource: .string("manual_mode_row"),
@@ -3118,7 +3048,18 @@ struct RecordView: View {
             Group {
                 switch sheet {
                 case .goal:
-                    ScrollView { goalSetupChoices.padding() }
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            goalSetupChoices.padding()
+                        }
+                        .scrollDismissesKeyboard(.interactively)
+                        .onChange(of: focusedCustomGoalKind) { _, kind in
+                            guard kind != nil else { return }
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                proxy.scrollTo("custom-goal-input", anchor: .bottom)
+                            }
+                        }
+                    }
                 case .music:
                     ScrollView { musicSetupChoices.padding() }
                 case .more:
@@ -3428,6 +3369,11 @@ struct RecordView: View {
 
     private func trackGuidanceEvent(_ event: LiveGuidanceTelemetryEvent) {
         switch event {
+        case .eligibilityResolved(let activityType, let result):
+            track(.init(.liveGuidanceEligibilityResolved, properties: [
+                .activityType: .string(activityType),
+                .result: .string(result)
+            ]))
         case .momentDetected(let type, let contract):
             track(.init(.liveGuidanceMomentDetected, properties: [
                 .momentType: .string(type.rawValue),
@@ -3940,6 +3886,14 @@ struct RecordView: View {
                 ))
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                if plannedIntent?.activityEvent?.id != nil {
+                    Text(String(
+                        localized: "record.group.event.detail",
+                        defaultValue: "Only people going to this Group activity can join its live map. Each runner chooses to share."
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
             }
         }
     }
@@ -3967,7 +3921,8 @@ struct RecordView: View {
                 liveGroupParticipantDisclosure
 
                 HStack(spacing: 10) {
-                    Button {
+                    if liveGroupStore.activeSession?.isLinkedToActivityEvent != true {
+                        Button {
                         Task {
                             track(.init(.groupRunInviteShared, properties: [
                                 .participantCountBucket: .string(ProductAnalyticsBucket.count(liveGroupStore.participants.count))
@@ -3975,61 +3930,134 @@ struct RecordView: View {
                             guard let presentation = liveGroupStore.invitePresentation(intent: plannedIntent) else { return }
                             await SystemSharePresenter.present(activityItems: presentation.activityItems)
                         }
-                    } label: {
-                        Label(String(localized: "common.invite", defaultValue: "Invite"), systemImage: "square.and.arrow.up")
-                            .font(.caption.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 40)
-                            .background(Color(.tertiarySystemBackground), in: Capsule())
+                        } label: {
+                            Label(String(localized: "common.invite", defaultValue: "Invite"), systemImage: "square.and.arrow.up")
+                                .font(.caption.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 40)
+                                .background(Color(.tertiarySystemBackground), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
 
                     Button(role: .destructive) {
                         liveGroupStore.stopFromManagementControl()
                     } label: {
-                        Label(liveGroupStore.activeSession?.isCreatedByCurrentUser == true ? "End" : "Leave", systemImage: "xmark")
+                        Label(
+                            liveGroupStore.activeSession?.isLinkedToActivityEvent == true
+                                ? String(localized: "record.group.event.stop", defaultValue: "Stop sharing")
+                                : (liveGroupStore.activeSession?.isCreatedByCurrentUser == true ? "End" : "Leave"),
+                            systemImage: "xmark"
+                        )
                             .font(.caption.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .frame(height: 40)
                             .background(Color(.tertiarySystemBackground), in: Capsule())
                     }
                     .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
                 }
             } else {
-                HStack(spacing: 10) {
-                    Button {
-                        Task {
-                            track(.init(.groupRunCreateAttempted))
-                            if let presentation = await liveGroupStore.createGroup(intent: plannedIntent) {
-                                track(.init(.groupRunCreated, properties: [
-                                    .participantCountBucket: .string(ProductAnalyticsBucket.count(liveGroupStore.participants.count))
-                                ]))
-                                await SystemSharePresenter.present(activityItems: presentation.activityItems)
+                if let activityEventID = plannedIntent?.activityEvent?.id {
+                    VStack(spacing: 10) {
+                        Button {
+                            Task {
+                                track(.init(.groupRunJoinAttempted))
+                                await liveGroupStore.joinActivityEvent(activityEventID)
+                                if liveGroupStore.isSharing {
+                                    track(.init(.groupRunJoined, properties: [
+                                        .participantCountBucket: .string(ProductAnalyticsBucket.count(liveGroupStore.participants.count))
+                                    ]))
+                                }
                             }
+                        } label: {
+                            Label(
+                                liveGroupStore.isJoining ? "Joining..." : String(localized: "record.group.event.share", defaultValue: "Share live map with attendees"),
+                                systemImage: "person.2.wave.2.fill"
+                            )
+                            .font(.caption.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 40)
+                            .background(Color(.tertiarySystemBackground), in: Capsule())
                         }
-                    } label: {
-                        Label(liveGroupStore.isCreating ? "Creating..." : "Create", systemImage: "plus")
-                            .font(.caption.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 40)
-                            .background(Color(.tertiarySystemBackground), in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(liveGroupStore.isCreating)
+                        .buttonStyle(.plain)
+                        .disabled(liveGroupStore.isJoining)
 
-                    Button {
-                        groupInviteText = ""
-                        trackFeatureExposure("group_run")
-                        isGroupJoinAlertPresented = true
-                    } label: {
-                        Label(liveGroupStore.isJoining ? "Joining..." : "Join", systemImage: "link")
+#if DEBUG
+                        Button {
+                            liveGroupStore.startDebugTestGroupRun(
+                                intent: plannedIntent,
+                                center: recorder.locationManager.location?.coordinate,
+                                activityEventID: activityEventID
+                            )
+                        } label: {
+                            Label(
+                                String(localized: "record.group.event.debug.start", defaultValue: "Simulate attendees"),
+                                systemImage: "person.3.fill"
+                            )
                             .font(.caption.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .frame(height: 40)
                             .background(Color(.tertiarySystemBackground), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+#endif
+                    }
+
+                } else {
+                    HStack(spacing: 10) {
+                        Button {
+                            Task {
+                                track(.init(.groupRunCreateAttempted))
+                                if let presentation = await liveGroupStore.createGroup(intent: plannedIntent) {
+                                    track(.init(.groupRunCreated, properties: [
+                                        .participantCountBucket: .string(ProductAnalyticsBucket.count(liveGroupStore.participants.count))
+                                    ]))
+                                    await SystemSharePresenter.present(activityItems: presentation.activityItems)
+                                }
+                            }
+                        } label: {
+                            Label(liveGroupStore.isCreating ? "Creating..." : "Create", systemImage: "plus")
+                                .font(.caption.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 40)
+                                .background(Color(.tertiarySystemBackground), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(liveGroupStore.isCreating)
+
+                        Button {
+                            groupInviteText = ""
+                            trackFeatureExposure("group_run")
+                            isGroupJoinAlertPresented = true
+                        } label: {
+                            Label(liveGroupStore.isJoining ? "Joining..." : "Join", systemImage: "link")
+                                .font(.caption.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 40)
+                                .background(Color(.tertiarySystemBackground), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(liveGroupStore.isJoining)
+                    }
+#if DEBUG
+                    Button {
+                        liveGroupStore.startDebugTestGroupRun(
+                            intent: plannedIntent,
+                            center: recorder.locationManager.location?.coordinate
+                        )
+                    } label: {
+                        Label(
+                            String(localized: "record.group.debug.start", defaultValue: "Start test group"),
+                            systemImage: "person.3.fill"
+                        )
+                        .font(.caption.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 40)
+                        .background(Color(.tertiarySystemBackground), in: Capsule())
                     }
                     .buttonStyle(.plain)
-                    .disabled(liveGroupStore.isJoining)
+#endif
                 }
             }
         }
@@ -4308,6 +4336,7 @@ struct RecordView: View {
                 }
                 if inlineCustomGoalKind == .distance {
                     inlineCustomGoalInput(.distance)
+                        .id("custom-goal-input")
                 }
             case .time:
                 GoalPresetFlow(horizontalSpacing: 8, verticalSpacing: 8) {
@@ -4328,6 +4357,7 @@ struct RecordView: View {
                 }
                 if inlineCustomGoalKind == .time {
                     inlineCustomGoalInput(.time)
+                        .id("custom-goal-input")
                 }
             case .calories:
                 GoalPresetFlow(horizontalSpacing: 8, verticalSpacing: 8) {
@@ -4348,6 +4378,7 @@ struct RecordView: View {
                 }
                 if inlineCustomGoalKind == .calories {
                     inlineCustomGoalInput(.calories)
+                        .id("custom-goal-input")
                 }
                 if let estimate = calorieEditorEstimateLabel {
                     calorieEstimateCallout(estimate)
@@ -4612,7 +4643,7 @@ struct RecordView: View {
                 .keyboardType(kind == .distance ? .decimalPad : .numberPad)
                 .font(.body.monospacedDigit().weight(.semibold))
                 .multilineTextAlignment(.leading)
-                .frame(width: 80, alignment: .leading)
+                .frame(minWidth: 48, maxWidth: .infinity, alignment: .leading)
                 .focused($focusedCustomGoalKind, equals: kind)
 
             Text(customGoalUnitLabel(for: kind))
@@ -4628,21 +4659,20 @@ struct RecordView: View {
                     .foregroundStyle(.white)
                     .frame(width: 36, height: 36)
                     .background(Color.orange, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .frame(width: 44, height: 44)
+                    .frame(width: 52, height: 52)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .disabled(customActivityGoal(for: kind) == nil)
             .accessibilityLabel(String(localized: "common.set", defaultValue: "Set"))
         }
-        .padding(.leading, 12)
-        .padding(.trailing, 2)
-        .frame(minHeight: 48)
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, minHeight: 60)
         .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(Color.secondary.opacity(0.22), lineWidth: 1)
         }
-        .fixedSize(horizontal: true, vertical: false)
     }
 
     private var currentActivityGoal: ActivityGoal {
@@ -5098,7 +5128,6 @@ struct RecordView: View {
     private func applyInlineCustomGoal(_ kind: CustomGoalKind) {
         guard applyCustomGoal(kind) else { return }
         dismissInlineCustomGoalInput()
-        isGoalChooserPresented = false
         if setupSheet == .goal {
             setupSheet = nil
         }

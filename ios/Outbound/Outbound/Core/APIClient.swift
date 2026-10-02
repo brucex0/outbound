@@ -885,6 +885,10 @@ final class APIClient {
         try await post("/live/group-runs/join", body: request)
     }
 
+    func joinLiveGroupRun(activityEventID: String) async throws -> LiveGroupSessionResponse {
+        try await post("/live/group-runs/activity-events/\(activityEventID)", body: EmptyBody())
+    }
+
     func fetchLiveGroupRun(sessionID: String) async throws -> LiveGroupSessionResponse {
         try await get("/live/group-runs/\(sessionID)")
     }
@@ -2550,6 +2554,7 @@ struct LiveGroupLocationUpdateRequest: Encodable {
 
 struct LiveGroupSessionResponse: Decodable {
     let id: String
+    let activityEventId: String?
     let status: String
     let title: String?
     let sport: String?

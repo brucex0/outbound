@@ -4,8 +4,8 @@ struct ActivityHistoryView: View {
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var recognitionStore: RecognitionStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
+    @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @Environment(\.analyticsManager) private var analyticsManager
-    @State private var selectedActivity: SavedActivity?
     @State private var selectedActivityIDs: Set<UUID> = []
     @State private var isSelecting = false
     @State private var confirmsDeletion = false
@@ -28,10 +28,6 @@ struct ActivityHistoryView: View {
             }
         }
         .navigationTitle("My Activities")
-        .navigationDestination(item: $selectedActivity) { activity in
-            ActivityDetailView(activity: activity)
-                .environmentObject(activityStore)
-        }
         .toolbar {
             if !activityStore.activities.isEmpty {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -97,7 +93,7 @@ struct ActivityHistoryView: View {
                     if isSelecting {
                         toggleSelection(for: activity.id)
                     } else {
-                        selectedActivity = activity
+                        appNavigationStore.openSharedDestination(.savedActivity(activity))
                     }
                 }
                 .accessibilityAddTraits(isSelecting && selectedActivityIDs.contains(activity.id) ? .isSelected : [])

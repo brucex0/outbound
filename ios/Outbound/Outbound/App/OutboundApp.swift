@@ -2075,6 +2075,7 @@ final class AppNavigationStore: ObservableObject {
     @Published private(set) var highlightedAssistantAnchorID: String?
     @Published var pendingActivityIntent: SessionIntent?
     @Published private(set) var pendingActivityEvent: ActivityEventDTO?
+    @Published var sharedDestinations: [SharedAppDestination] = []
     @Published var pendingLiveCheerPresentation: LiveCheerPresentationRequest?
     private(set) var pendingActivityEventAttendanceMode: String?
 
@@ -2090,6 +2091,19 @@ final class AppNavigationStore: ObservableObject {
     func prepareActivityEvent(_ event: ActivityEventDTO, attendanceMode: String?) {
         pendingActivityEventAttendanceMode = attendanceMode
         pendingActivityEvent = event
+    }
+
+    func openSharedDestination(_ destination: SharedAppDestination) {
+        sharedDestinations.append(destination)
+    }
+
+    func closeSharedDestination() {
+        guard !sharedDestinations.isEmpty else { return }
+        sharedDestinations.removeLast()
+    }
+
+    func closeAllSharedDestinations() {
+        sharedDestinations.removeAll()
     }
 
     func presentLiveCheer(sessionID: String, entrySource: String) {
@@ -2121,6 +2135,22 @@ final class AppNavigationStore: ObservableObject {
     func consumePreparedActivityEvent() {
         pendingActivityEvent = nil
         pendingActivityEventAttendanceMode = nil
+    }
+}
+
+enum SharedAppDestination: Identifiable {
+    case savedActivity(SavedActivity)
+    case socialActivity(TogetherPostDTO)
+    case plannedActivity(ActivityEventDTO, entrySource: String)
+    case runnerProfile(TogetherPersonDTO, username: String?, connection: SocialConnectionDTO?, entrySource: String)
+
+    var id: String {
+        switch self {
+        case .savedActivity(let activity): "saved_activity_\(activity.id)"
+        case .socialActivity(let post): "social_activity_\(post.id)"
+        case .plannedActivity(let event, _): "planned_activity_\(event.id)"
+        case .runnerProfile(let person, _, _, _): "runner_profile_\(person.id)"
+        }
     }
 }
 

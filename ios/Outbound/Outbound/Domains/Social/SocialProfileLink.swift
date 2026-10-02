@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SocialProfileLink<Label: View>: View {
+    @EnvironmentObject private var appNavigationStore: AppNavigationStore
     private let person: TogetherPersonDTO
     private let username: String?
     private let connection: SocialConnectionDTO?
@@ -41,13 +42,13 @@ struct SocialProfileLink<Label: View>: View {
     }
 
     var body: some View {
-        NavigationLink {
-            SocialProfileDestination(
-                person: person,
+        Button {
+            appNavigationStore.openSharedDestination(.runnerProfile(
+                person,
                 username: username,
                 connection: connection,
                 entrySource: entrySource
-            )
+            ))
         } label: {
             label
         }

@@ -200,6 +200,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case liveGuidanceAudioPlaybackRoute = "live_guidance_audio_playback_route"
     case liveGuidanceFixedAudioUnavailable = "live_guidance_fixed_audio_unavailable"
     case liveGuidanceVoiceSelected = "live_guidance_voice_selected"
+    case liveGuidanceEligibilityResolved = "live_guidance_eligibility_resolved"
     case pushNotificationOpened = "push_notification_opened"
     case workoutReminderSettingChanged = "workout_reminder_setting_changed"
     case workoutReminderPermissionResult = "workout_reminder_permission_result"
@@ -511,6 +512,7 @@ enum ProductAnalyticsSchema {
         .liveGuidanceAudioFirstByte: [.sourceType, .latencyBucket],
         .liveGuidanceAudioPlaybackRoute: [.sourceType],
         .liveGuidanceVoiceSelected: [.selectionType, .sourceType],
+        .liveGuidanceEligibilityResolved: [.activityType, .result],
         .pushNotificationOpened: [.sourceType, .selectionType],
         .workoutReminderSettingChanged: [.selectionType],
         .workoutReminderPermissionResult: [.result],

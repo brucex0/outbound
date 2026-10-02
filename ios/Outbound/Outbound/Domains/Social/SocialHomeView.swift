@@ -9,6 +9,7 @@ struct SocialHomeView: View {
 
     @Environment(\.analyticsManager) private var analyticsManager
     @Environment(\.outboundTheme) private var feedTheme
+    @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var groupStore: GroupStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
@@ -18,8 +19,6 @@ struct SocialHomeView: View {
     @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
     @EnvironmentObject private var healthImportStore: HealthImportStore
     @State private var selectedCommentPost: TogetherPostDTO?
-    @State private var selectedActivityPost: TogetherPostDTO?
-    @State private var selectedFeedProfile: TogetherPersonDTO?
     @State private var selectedCheersPost: TogetherPostDTO?
     @State private var selectedFeatureTab: SocialFeatureTab = .feed
     @State private var visitedFeatureTabs: Set<SocialFeatureTab> = [.feed]
@@ -207,22 +206,8 @@ struct SocialHomeView: View {
             .navigationDestination(isPresented: $isGroupCreationPresented) {
                 GroupCreateView()
             }
-            .modifier(SocialActivityCardNavigation(post: $selectedActivityPost))
-            .navigationDestination(isPresented: Binding(
-                get: { selectedFeedProfile != nil },
-                set: { if !$0 { selectedFeedProfile = nil } }
-            )) {
-                if let person = selectedFeedProfile {
-                    SocialProfileDestination(
-                        person: person,
-                        username: nil,
-                        connection: nil,
-                        entrySource: "activity_feed"
-                    )
-                }
-            }
-            .onChange(of: selectedActivityPost?.id) { previous, current in
-                guard previous != nil, current == nil else { return }
+            .onChange(of: appNavigationStore.sharedDestinations.last?.id) { previous, current in
+                guard previous?.hasPrefix("social_activity_") == true, current == nil else { return }
                 let count = socialStore.state.posts.count
                 track(.activityFeedReturned, properties: [
                     .sourceType: .string("activity_detail"),
@@ -387,7 +372,6 @@ struct SocialHomeView: View {
                 feedPagination
             }
         }
-        .ignoresSafeArea(.container, edges: .bottom)
     }
 
     private var feedRows: [SocialFeedRow] {
@@ -541,12 +525,9 @@ struct SocialHomeView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 10) {
                         ForEach(upcoming.prefix(3)) { run in
-                            NavigationLink {
-                                ActivityEventDetailView(run: run)
-                            } label: {
+                            SharedActivityEventButton(event: run) {
                                 upcomingCompactCard(run)
                             }
-                            .buttonStyle(.plain)
                             .simultaneousGesture(TapGesture().onEnded {
                                 trackUpcomingInteraction("card")
                             })
@@ -886,9 +867,7 @@ struct SocialHomeView: View {
             ForEach(socialStore.state.upcomingRuns.prefix(2)) { run in
                 OutboundCard {
                     ZStack(alignment: .topTrailing) {
-                        NavigationLink {
-                            ActivityEventDetailView(run: run)
-                        } label: {
+                        SharedActivityEventButton(event: run) {
                             VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                                 VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                                     Text(activityEventSourceLabel(run))
@@ -920,7 +899,6 @@ struct SocialHomeView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
 
                         if let invitationURL = socialStore.latestInvitationURL {
                             ShareLink(item: String(localized: "Join me for a run on Plainstride: \(invitationURL.absoluteString)")) {
@@ -1029,7 +1007,12 @@ struct SocialHomeView: View {
                 // Keep profile navigation separate from the native
                 // list row's selection and scroll-to-selection behavior.
                 Button {
-                    selectedFeedProfile = post.user
+                    appNavigationStore.openSharedDestination(.runnerProfile(
+                        post.user,
+                        username: nil,
+                        connection: nil,
+                        entrySource: "activity_feed"
+                    ))
                 } label: {
                     HStack {
                         SocialAvatar(name: post.user.displayName, avatarURL: post.user.avatarUrl)
@@ -1168,7 +1151,7 @@ struct SocialHomeView: View {
     }
 
     private func openFeedActivity(_ post: TogetherPostDTO) {
-        selectedActivityPost = post
+        appNavigationStore.openSharedDestination(.socialActivity(post))
         track(.activityDetailOpened, properties: [.sourceType: .string("social_feed")])
     }
 
@@ -1429,9 +1412,7 @@ private struct SocialActivityDiscoveryView: View {
                 )
             } else {
                 ForEach(socialStore.state.upcomingRuns) { activity in
-                    NavigationLink {
-                        ActivityEventDetailView(run: activity)
-                    } label: {
+                    SharedActivityEventButton(event: activity, entrySource: "social_discovery") {
                         VStack(alignment: .leading, spacing: 5) {
                             Text(activity.title)
                                 .font(.headline)
@@ -1741,6 +1722,7 @@ struct ActivityEventDetailView: View {
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
+    @EnvironmentObject private var liveGroupStore: LiveGroupStore
     let run: ActivityEventDTO
     var entrySource = "social_upcoming"
     @State private var detail: ActivityEventDetailDTO?
@@ -1814,16 +1796,42 @@ struct ActivityEventDetailView: View {
             }
             if !run.groups.isEmpty {
                 Section("Options") {
-                ForEach(run.groups) { option in
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(option.label).font(.headline)
-                        if let distance = option.distanceMeters {
-                            Text(MeasurementUnitSystem.metric.distanceString(meters: distance, fractionDigits: 1))
-                                .font(.caption).foregroundStyle(.secondary)
+                    ForEach(run.groups) { option in
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(option.label).font(.headline)
+                            if let distance = option.distanceMeters {
+                                Text(MeasurementUnitSystem.metric.distanceString(meters: distance, fractionDigits: 1))
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }
             }
+            if canManageActivityLiveMap {
+                Section(String(localized: "record.setup.run_options", defaultValue: "Run options")) {
+                    Button {
+                        toggleActivityLiveMapSharing()
+                    } label: {
+                        Label(
+                            isSharingLiveMapForThisActivity
+                                ? String(localized: "record.group.event.stop", defaultValue: "Stop sharing")
+                                : String(localized: "record.group.event.share", defaultValue: "Share live map with attendees"),
+                            systemImage: isSharingLiveMapForThisActivity ? "location.slash" : "person.2.wave.2.fill"
+                        )
+                    }
+                    .disabled(liveGroupStore.isJoining || hasDifferentActiveLiveMap)
+
+                    if isSharingLiveMapForThisActivity {
+                        Text(liveGroupStore.statusSummary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let message = liveGroupStore.lastErrorMessage {
+                        Text(message)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.orange)
+                    }
+                }
             }
             if let participants = detail?.participants, !participants.isEmpty {
                 Section {
@@ -2082,6 +2090,40 @@ struct ActivityEventDetailView: View {
         }
     }
 
+    private var canManageActivityLiveMap: Bool {
+        let status = detail?.status ?? run.status ?? "scheduled"
+        let isGoing = detail?.currentUserGoing ?? run.currentUserGoing ?? false
+        return (detail?.group ?? run.group) != nil
+            && isGoing
+            && ["scheduled", "active"].contains(status)
+    }
+
+    private var isSharingLiveMapForThisActivity: Bool {
+        liveGroupStore.activeSession?.isActive == true
+            && liveGroupStore.activeSession?.activityEventId == run.id
+    }
+
+    private var hasDifferentActiveLiveMap: Bool {
+        liveGroupStore.activeSession?.isActive == true && !isSharingLiveMapForThisActivity
+    }
+
+    private func toggleActivityLiveMapSharing() {
+        if isSharingLiveMapForThisActivity {
+            liveGroupStore.stopFromManagementControl()
+            return
+        }
+
+        Task {
+            await analyticsManager?.track(.init(.groupRunJoinAttempted))
+            await liveGroupStore.joinActivityEvent(run.id)
+            if isSharingLiveMapForThisActivity {
+                await analyticsManager?.track(.init(.groupRunJoined, properties: [
+                    .participantCountBucket: .string(ProductAnalyticsBucket.count(liveGroupStore.participants.count))
+                ]))
+            }
+        }
+    }
+
     private var canStartActivity: Bool {
         guard detail?.currentUserGoing ?? run.currentUserGoing ?? false else { return false }
         let status = detail?.status ?? run.status ?? "scheduled"
@@ -2282,9 +2324,7 @@ private struct PastActivityEventRow: View {
     let event: ActivityEventDTO
 
     var body: some View {
-        NavigationLink {
-            ActivityEventDetailView(run: event)
-        } label: {
+        SharedActivityEventButton(event: event, entrySource: "social_past_activity") {
             OutboundCard {
                 HStack(spacing: OutboundSpacing.compact) {
                     Image(systemName: "person.2.fill")
@@ -2302,7 +2342,6 @@ private struct PastActivityEventRow: View {
                 }
             }
         }
-        .buttonStyle(.plain)
     }
 }
 
@@ -3577,6 +3616,7 @@ struct SocialPersonProfileView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     @EnvironmentObject private var recognitionStore: RecognitionStore
+    @EnvironmentObject private var appNavigationStore: AppNavigationStore
     let person: TogetherPersonDTO
     var username: String? = nil
     @State private var sharedRecognitions: [RecognitionAwardDTO] = []
@@ -3631,8 +3671,8 @@ struct SocialPersonProfileView: View {
                     }
                 } else {
                     ForEach(posts) { post in
-                        NavigationLink {
-                            SocialActivityDetailView(post: post)
+                        Button {
+                            appNavigationStore.openSharedDestination(.socialActivity(post))
                         } label: {
                             OutboundCard {
                                 HStack {
@@ -3680,22 +3720,7 @@ struct SocialPersonProfileView: View {
     }
 }
 
-private struct SocialActivityCardNavigation: ViewModifier {
-    @Binding var post: TogetherPostDTO?
-
-    func body(content: Content) -> some View {
-        content.navigationDestination(isPresented: Binding(
-            get: { post != nil },
-            set: { if !$0 { post = nil } }
-        )) {
-            if let post {
-                SocialActivityDetailView(post: post)
-            }
-        }
-    }
-}
-
-private struct SocialActivityDetailView: View {
+struct SocialActivityDetailView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     @EnvironmentObject private var recognitionStore: RecognitionStore

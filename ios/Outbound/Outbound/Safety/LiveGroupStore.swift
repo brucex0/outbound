@@ -4,6 +4,7 @@ import Foundation
 
 struct LiveGroupSession: Identifiable, Hashable {
     let id: String
+    let activityEventId: String?
     let creatorUserId: String
     let currentUserId: String
     let title: String?
@@ -21,6 +22,10 @@ struct LiveGroupSession: Identifiable, Hashable {
 
     var isCreatedByCurrentUser: Bool {
         creatorUserId == currentUserId
+    }
+
+    var isLinkedToActivityEvent: Bool {
+        activityEventId != nil
     }
 
     var displayTitle: String {
@@ -134,6 +139,9 @@ final class LiveGroupStore: ObservableObject {
     private var lastSentDistanceM: Double?
     private var updateTask: Task<Void, Never>?
     private var pollingTask: Task<Void, Never>?
+#if DEBUG
+    private var isDebugTestGroupRun = false
+#endif
 
     init(api: APIClient? = nil) {
         self.api = api ?? APIClient.shared
@@ -181,6 +189,9 @@ final class LiveGroupStore: ObservableObject {
             return nil
         }
 
+#if DEBUG
+        isDebugTestGroupRun = false
+#endif
         isCreating = true
         lastErrorMessage = nil
         defer { isCreating = false }
@@ -212,6 +223,12 @@ final class LiveGroupStore: ObservableObject {
         let trimmed = invite.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
+#if DEBUG
+        if isDebugTestGroupRun {
+            isDebugTestGroupRun = false
+            stopLocalState(markEnded: true)
+        }
+#endif
         isJoining = true
         lastErrorMessage = nil
         defer { isJoining = false }
@@ -225,9 +242,35 @@ final class LiveGroupStore: ObservableObject {
         }
     }
 
+    func joinActivityEvent(_ activityEventID: String) async {
+        guard activeSession == nil else { return }
+        isJoining = true
+        lastErrorMessage = nil
+        defer { isJoining = false }
+
+        do {
+            let response = try await api.joinLiveGroupRun(activityEventID: activityEventID)
+            apply(response)
+            startPolling()
+        } catch {
+            lastErrorMessage = "Could not join the event live map: \(error.localizedDescription)"
+        }
+    }
+
     func ingest(_ snapshot: ActiveSessionSnapshot) {
         guard let session = activeSession, session.isActive, snapshot.isActive else { return }
         guard let location = snapshot.location else { return }
+#if DEBUG
+        if isDebugTestGroupRun {
+            participants = Self.debugParticipants(
+                centeredAt: CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude),
+                timestamp: snapshot.recordedAt,
+                distanceMeters: snapshot.distanceMeters,
+                includesRemoteAttendee: session.isLinkedToActivityEvent
+            )
+            return
+        }
+#endif
         guard shouldSend(snapshot: snapshot) else { return }
 
         lastSentAt = snapshot.recordedAt
@@ -265,6 +308,13 @@ final class LiveGroupStore: ObservableObject {
 
     func finishActivity() {
         guard let sessionID = activeSession?.id else { return }
+#if DEBUG
+        if isDebugTestGroupRun {
+            isDebugTestGroupRun = false
+            stopLocalState(markEnded: true)
+            return
+        }
+#endif
         updateTask?.cancel()
         updateTask = nil
         lastSentAt = nil
@@ -293,7 +343,7 @@ final class LiveGroupStore: ObservableObject {
 
     func stopFromManagementControl() {
         guard let session = activeSession else { return }
-        if session.isCreatedByCurrentUser {
+        if session.isCreatedByCurrentUser && !session.isLinkedToActivityEvent {
             end()
         } else {
             leave()
@@ -302,6 +352,13 @@ final class LiveGroupStore: ObservableObject {
 
     func leave() {
         guard let sessionID = activeSession?.id else { return }
+#if DEBUG
+        if isDebugTestGroupRun {
+            isDebugTestGroupRun = false
+            stopLocalState(markEnded: true)
+            return
+        }
+#endif
         stopLocalState(markEnded: true)
         Task { [api] in
             _ = try? await api.leaveLiveGroupRun(sessionID: sessionID)
@@ -310,6 +367,13 @@ final class LiveGroupStore: ObservableObject {
 
     func end() {
         guard let sessionID = activeSession?.id else { return }
+#if DEBUG
+        if isDebugTestGroupRun {
+            isDebugTestGroupRun = false
+            stopLocalState(markEnded: true)
+            return
+        }
+#endif
         stopLocalState(markEnded: true)
         Task { [api] in
             _ = try? await api.endLiveGroupRun(sessionID: sessionID)
@@ -362,6 +426,84 @@ final class LiveGroupStore: ObservableObject {
         }
     }
 
+#if DEBUG
+    func startDebugTestGroupRun(
+        intent: SessionIntent?,
+        center: CLLocationCoordinate2D?,
+        activityEventID: String? = nil
+    ) {
+        updateTask?.cancel()
+        pollingTask?.cancel()
+        updateTask = nil
+        pollingTask = nil
+        lastSentAt = nil
+        lastSentDistanceM = nil
+        isUpdating = false
+        lastErrorMessage = nil
+
+        let now = Date()
+        let origin = center ?? CLLocationCoordinate2D(latitude: 37.7699, longitude: -122.4862)
+        let sessionID = "debug-test-group-run"
+        let currentUserID = "debug-current-runner"
+        isDebugTestGroupRun = true
+        activeSession = LiveGroupSession(
+            id: sessionID,
+            activityEventId: activityEventID,
+            creatorUserId: currentUserID,
+            currentUserId: currentUserID,
+            title: "Test group run",
+            sport: intent?.sport.rawValue ?? "running",
+            startedAt: now,
+            expiresAt: now.addingTimeInterval(4 * 60 * 60),
+            endedAt: nil,
+            status: "active",
+            inviteToken: nil,
+            inviteURL: nil
+        )
+        participants = Self.debugParticipants(
+            centeredAt: origin,
+            timestamp: now,
+            distanceMeters: 0,
+            includesRemoteAttendee: activityEventID != nil
+        )
+    }
+
+    private static func debugParticipants(
+        centeredAt center: CLLocationCoordinate2D,
+        timestamp: Date,
+        distanceMeters: Double,
+        includesRemoteAttendee: Bool
+    ) -> [LiveGroupParticipant] {
+        var runners: [(String, String, Double, Double, Double)] = [
+            ("debug-runner-1", "Maya Chen", 42, 24, 430),
+            ("debug-runner-2", "Jordan Lee", -28, -36, 456),
+            ("debug-runner-3", "Alex Rivera", 8, 68, 415),
+        ]
+        if includesRemoteAttendee {
+            runners.append(("debug-runner-remote", "Remote attendee", 0, 15_000, 448))
+        }
+        return runners.map { id, name, northMeters, eastMeters, pace in
+            let coordinate = CLLocationCoordinate2D(
+                latitude: center.latitude + northMeters / 111_000,
+                longitude: center.longitude + eastMeters / (111_000 * max(cos(center.latitude * .pi / 180), 0.2))
+            )
+            return LiveGroupParticipant(
+                id: id,
+                userId: id,
+                displayName: name,
+                status: "active",
+                joinedAt: timestamp,
+                leftAt: nil,
+                lastLocationAt: timestamp,
+                coordinate: coordinate,
+                distanceM: max(0, distanceMeters + northMeters),
+                paceSecondsPerKM: pace,
+                isCurrentUser: false
+            )
+        }
+    }
+#endif
+
     private func shouldSend(snapshot: ActiveSessionSnapshot) -> Bool {
         guard let lastSentAt, let lastSentDistanceM else { return true }
         let timeDelta = snapshot.recordedAt.timeIntervalSince(lastSentAt)
@@ -372,6 +514,7 @@ final class LiveGroupStore: ObservableObject {
     private func apply(_ response: LiveGroupSessionResponse) {
         activeSession = LiveGroupSession(
             id: response.id,
+            activityEventId: response.activityEventId,
             creatorUserId: response.creatorUserId,
             currentUserId: response.currentUserId,
             title: response.title,

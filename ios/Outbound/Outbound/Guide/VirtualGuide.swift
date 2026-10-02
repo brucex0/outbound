@@ -155,6 +155,11 @@ final class VirtualGuide: NSObject, ObservableObject {
         challenge: LiveGuidanceChallenge = .off,
         suppressedMomentTypes: Set<LiveGuidanceMomentType> = []
     ) {
+        let activityType = (sessionIntent?.resolvedActivityType ?? .running).rawValue
+        guidanceEventHandler?(.eligibilityResolved(
+            activityType: activityType,
+            result: activityType == ActivityType.running.rawValue ? "running_ai_eligible" : "pacer_only"
+        ))
         sessionControlAudioPreloadTask?.cancel()
         sessionControlAudioPreloadTask = Task {
             await GuideAudioPackStore.shared.preloadAudio(
@@ -243,8 +248,12 @@ final class VirtualGuide: NSObject, ObservableObject {
         snapshotHistory.append(snapshot)
         retainRecentLiveGuidanceHistory(&snapshotHistory, through: snapshot.elapsedSeconds)
 
-        queueWorkoutInstructions(for: snapshot)
+        let runningSession = sessionIntent?.resolvedActivityType == .running
+        if runningSession {
+            queueWorkoutInstructions(for: snapshot)
+        }
         announceProgressIfNeeded(for: snapshot)
+        guard runningSession else { return }
         let update = momentDirector.ingest(snapshot, profile: profile, intent: sessionIntent)
         update.evaluatedCues.forEach { record in
             guidanceEventHandler?(.cueEvaluated(type: record.momentType, outcome: record.outcome))

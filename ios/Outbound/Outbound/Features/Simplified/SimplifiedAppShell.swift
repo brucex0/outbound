@@ -202,12 +202,13 @@ private struct AssistantLauncherButton: View {
     }
 }
 
-private enum CompactDockLayout {
-    static let capsuleWidth: CGFloat = 192
-    static let capsuleHeight: CGFloat = 56
-    static let assistantGap: CGFloat = 16
-    static let bottomPadding: CGFloat = 6
-    static let embeddedSetupBottomInset: CGFloat = 80
+enum FixedTabBarLayout {
+    static let navigationWidth: CGFloat = 176
+    static let navigationHeight: CGFloat = 54
+    static let selectedIconDiameter: CGFloat = 38
+    static let dockTopPadding: CGFloat = 8
+    static let dockHeight = navigationHeight + dockTopPadding
+    static let embeddedSetupBottomInset: CGFloat = 0
 }
 
 private struct CompactNavigationBar: View {
@@ -224,13 +225,9 @@ private struct CompactNavigationBar: View {
             tabButton(.today)
             tabButton(.me)
         }
-        .padding(.horizontal, 6)
-        .frame(width: CompactDockLayout.capsuleWidth, height: CompactDockLayout.capsuleHeight)
-        .background {
-            Capsule()
-                .fill(.regularMaterial)
-                .overlay(Capsule().fill(Color(uiColor: .systemBackground).opacity(0.45)))
-        }
+        .padding(.horizontal, 5)
+        .frame(width: FixedTabBarLayout.navigationWidth, height: FixedTabBarLayout.navigationHeight)
+        .background(.regularMaterial, in: Capsule())
         .overlay(Capsule().strokeBorder(.white.opacity(0.24), lineWidth: 0.7))
         .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
     }
@@ -240,7 +237,7 @@ private struct CompactNavigationBar: View {
         let isStart = tab == .today && showsStart
         let symbol: String = switch tab {
         case .social: "person.2.fill"
-        case .today: isStart ? "play.circle.fill" : "sparkles"
+        case .today: isStart ? "play.fill" : "sparkles"
         case .me: "person.crop.circle"
         }
         let label: String = switch tab {
@@ -263,20 +260,17 @@ private struct CompactNavigationBar: View {
                 onSelect(tab)
             }
         } label: {
-            ZStack {
-                if isSelected {
-                    Capsule()
-                        .fill(Color.primary.opacity(0.08))
-                        .frame(width: 48, height: 44)
+            Image(systemName: symbol)
+                .font(.system(size: isStart ? 19 : 20, weight: .semibold))
+                .foregroundStyle(isStart ? actionColor : isSelected ? accentColor : .primary)
+                .frame(width: FixedTabBarLayout.selectedIconDiameter, height: FixedTabBarLayout.selectedIconDiameter)
+                .background {
+                    if isSelected {
+                        Circle().fill(Color.primary.opacity(0.10))
+                    }
                 }
-
-                Image(systemName: symbol)
-                    .font(.system(size: isStart ? 30 : 22, weight: .semibold))
-                    .foregroundStyle(isStart ? actionColor : isSelected ? accentColor : .primary)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: CompactDockLayout.capsuleHeight)
-            .contentShape(Rectangle())
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
@@ -332,54 +326,79 @@ struct SimplifiedAppShell: View {
 
     var body: some View {
         TabView(selection: $selection) {
-            SocialHomeView()
-                .tag(SimplifiedAppTab.social)
-                .tabItem {
-                    Image(systemName: "person.2")
-                        .accessibilityLabel(String(localized: "Social"))
-                }
-                .toolbar(.hidden, for: .tabBar)
+            tabRoot {
+                SocialHomeView()
+            }
+            .tag(SimplifiedAppTab.social)
+            .tabItem {
+                Image(systemName: "person.2.fill")
+                    .accessibilityIdentifier("tab.social")
+            }
+            .toolbar(.hidden, for: .tabBar)
 
-            SimplifiedTodayView(
-                isSelected: selection == .today,
-                activitySessionState: activitySessionState,
-                isActivityFullscreenVisible: isActivityFullscreenVisible,
-                activityElapsedSeconds: activityElapsedSeconds,
-                activeSport: activeSport,
-                customizedRunIntent: $customizedTodayIntent,
-                selectedRouteName: $selectedRouteName,
-                activityLaunchSurface: activityLaunchSurface,
-                launchGoalMode: launchGoalMode,
-                showsActivityOverflowMenu: showsActivityOverflowMenu,
-                preActivityPhoto: preActivityPhoto,
-                preActivityRoute: preActivityRoute,
-                onPreActivityPhotoAction: onPreActivityPhotoAction,
-                onRouteSelectionAction: onRouteSelectionAction,
-                onRouteRemovalAction: onRouteRemovalAction,
-                onGroupRunAction: onGroupRunAction,
-                onOpenPlan: { openPlanManagement(from: "today_planned_card_plan") },
-                onChangePlan: { presentPlanPicker(from: "today_planned_card_change") },
-                onStartRun: onStartRun
-            )
+            tabRoot {
+                SimplifiedTodayView(
+                    isSelected: selection == .today,
+                    activitySessionState: activitySessionState,
+                    isActivityFullscreenVisible: isActivityFullscreenVisible,
+                    activityElapsedSeconds: activityElapsedSeconds,
+                    activeSport: activeSport,
+                    customizedRunIntent: $customizedTodayIntent,
+                    selectedRouteName: $selectedRouteName,
+                    activityLaunchSurface: activityLaunchSurface,
+                    launchGoalMode: launchGoalMode,
+                    showsActivityOverflowMenu: showsActivityOverflowMenu,
+                    preActivityPhoto: preActivityPhoto,
+                    preActivityRoute: preActivityRoute,
+                    onPreActivityPhotoAction: onPreActivityPhotoAction,
+                    onRouteSelectionAction: onRouteSelectionAction,
+                    onRouteRemovalAction: onRouteRemovalAction,
+                    onGroupRunAction: onGroupRunAction,
+                    onOpenPlan: { openPlanManagement(from: "today_planned_card_plan") },
+                    onChangePlan: { presentPlanPicker(from: "today_planned_card_change") },
+                    onStartRun: onStartRun
+                )
                 .assistantHighlightAnchor("today.primary-action")
-                .tag(SimplifiedAppTab.today)
-                .tabItem {
-                    Image(systemName: "sparkles")
-                        .accessibilityLabel(String(localized: "Today"))
-                }
-                .toolbar(.hidden, for: .tabBar)
+            }
+            .tag(SimplifiedAppTab.today)
+            .tabItem {
+                Image(systemName: "sparkles")
+                    .accessibilityIdentifier("tab.today")
+            }
+            .toolbar(.hidden, for: .tabBar)
 
-            SimplifiedMeView(
-                onOpenPlan: { openPlanManagement(from: "me_current_focus") }
-            )
-                .tag(SimplifiedAppTab.me)
-                .tabItem {
-                    Image(systemName: "person.crop.circle")
-                        .accessibilityLabel(String(localized: "Me"))
-                }
-                .toolbar(.hidden, for: .tabBar)
+            tabRoot {
+                SimplifiedMeView(
+                    onOpenPlan: { openPlanManagement(from: "me_current_focus") }
+                )
+            }
+            .tag(SimplifiedAppTab.me)
+            .tabItem {
+                Image(systemName: "person.crop.circle")
+                    .accessibilityIdentifier("tab.me")
+            }
+            .toolbar(.hidden, for: .tabBar)
         }
         .tint(guideCatalog.selectedTheme.accentColor)
+        .fullScreenCover(isPresented: Binding(
+            get: { !appNavigationStore.sharedDestinations.isEmpty },
+            set: { if !$0 { appNavigationStore.closeAllSharedDestinations() } }
+        )) {
+            NavigationStack {
+                if let destination = appNavigationStore.sharedDestinations.last {
+                    sharedDestinationView(destination)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) {
+                                Button {
+                                    appNavigationStore.closeSharedDestination()
+                                } label: {
+                                    Label(String(localized: "Back"), systemImage: "chevron.left")
+                                }
+                            }
+                        }
+            }
+        }
+        }
         .fullScreenCover(item: $appShellPresentation) { presentation in
             NavigationStack {
                 switch presentation {
@@ -392,11 +411,6 @@ struct SimplifiedAppShell: View {
         }
         .onChange(of: selection, initial: true) { _, tab in
             feedbackPage = tab.feedbackPageName
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !isActivityFullscreenVisible {
-                compactDock
-            }
         }
         .overlay(alignment: .top) {
             if let connectionFeedback {
@@ -653,6 +667,20 @@ struct SimplifiedAppShell: View {
         }
     }
 
+    @ViewBuilder
+    private func sharedDestinationView(_ destination: SharedAppDestination) -> some View {
+        switch destination {
+        case .savedActivity(let activity):
+            ActivityDetailView(activity: activity)
+        case .socialActivity(let post):
+            SocialActivityDetailView(post: post)
+        case .plannedActivity(let event, let entrySource):
+            ActivityEventDetailView(run: event, entrySource: entrySource)
+        case .runnerProfile(let person, let username, let connection, let entrySource):
+            SocialProfileDestination(person: person, username: username, connection: connection, entrySource: entrySource)
+        }
+    }
+
     private func connectionFeedbackToast(_ feedback: ConnectionLinkFeedback) -> some View {
         HStack(spacing: 8) {
             switch feedback.style {
@@ -705,10 +733,9 @@ struct SimplifiedAppShell: View {
         }
     }
 
-    private var compactDock: some View {
-        HStack(spacing: CompactDockLayout.assistantGap) {
+    private var bottomNavigationDock: some View {
+        HStack(alignment: .center, spacing: 10) {
             assistantLaunchButton
-
             CompactNavigationBar(
                 selection: selection,
                 showsStart: selection == .today && activitySessionState == .idle,
@@ -719,7 +746,27 @@ struct SimplifiedAppShell: View {
             )
         }
         .frame(maxWidth: .infinity)
-        .padding(.bottom, CompactDockLayout.bottomPadding)
+        .padding(.horizontal, 12)
+        .padding(.top, FixedTabBarLayout.dockTopPadding)
+        .background {
+            if selection == .today {
+                Rectangle()
+                    .fill(.ultraThickMaterial)
+                    .ignoresSafeArea(edges: .bottom)
+            }
+        }
+    }
+
+    private func tabRoot<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(spacing: 0) {
+            content()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if !isActivityFullscreenVisible {
+                bottomNavigationDock
+                    .frame(height: FixedTabBarLayout.dockHeight)
+            }
+        }
     }
 
     private var assistantAnalyticsDestination: String {
@@ -807,6 +854,22 @@ private enum ActivityOverflowAction {
     case removeRoute
 }
 
+struct SharedActivityEventButton<Label: View>: View {
+    @EnvironmentObject private var appNavigationStore: AppNavigationStore
+    let event: ActivityEventDTO
+    var entrySource = "social_upcoming"
+    @ViewBuilder let label: () -> Label
+
+    var body: some View {
+        Button {
+            appNavigationStore.openSharedDestination(.plannedActivity(event, entrySource: entrySource))
+        } label: {
+            label()
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 private struct SimplifiedTodayView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.outboundTheme) private var theme
@@ -818,6 +881,8 @@ private struct SimplifiedTodayView: View {
     @EnvironmentObject private var weatherStore: SituationalWeatherStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var socialStore: TogetherStore
+    @EnvironmentObject private var appNavigationStore: AppNavigationStore
+    @EnvironmentObject private var liveGroupStore: LiveGroupStore
     @EnvironmentObject private var healthImportStore: HealthImportStore
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
     @EnvironmentObject private var tooltipCoordinator: TooltipCoordinator
@@ -884,14 +949,17 @@ private struct SimplifiedTodayView: View {
                     }
 
                     Color.clear
-                        .frame(height: ActivityLaunchLayout.dockHeight)
+                        .frame(
+                            height: ActivityLaunchLayout.dockHeight
+                                + (isActivityFullscreenVisible ? 0 : FixedTabBarLayout.embeddedSetupBottomInset)
+                        )
                         .allowsHitTesting(false)
                 }
 
                 activityLaunchSurface
                     .opacity(isSelected ? 1 : 0)
                     .allowsHitTesting(isSelected)
-                    .padding(.bottom, isActivityFullscreenVisible ? 0 : CompactDockLayout.embeddedSetupBottomInset)
+                    .padding(.bottom, isActivityFullscreenVisible ? 0 : FixedTabBarLayout.embeddedSetupBottomInset)
                     .zIndex(isActivityFullscreenVisible ? 10 : 0)
             }
             .onPreferenceChange(MapAttributionOcclusionHeightPreferenceKey.self) { height in
@@ -903,7 +971,6 @@ private struct SimplifiedTodayView: View {
             .background(OutboundPalette.background)
             .ignoresSafeArea(edges: isActivityFullscreenVisible ? [] : .top)
             .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
             .navigationDestination(isPresented: $showsSocialInbox) { SocialNotificationsView() }
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar(isActivityFullscreenVisible ? .hidden : .visible, for: .navigationBar)
@@ -1186,12 +1253,10 @@ private struct SimplifiedTodayView: View {
     @ViewBuilder
     private var todayPeerCards: some View {
         VStack(spacing: OutboundSpacing.compact) {
-            if preActivityRoute == nil {
-                if let activityEventToday {
-                    activityEventCard(activityEventToday)
-                } else if launchGoalMode == .planned {
-                    plannedWorkoutCard
-                }
+            if let activityEventToday {
+                activityEventCard(activityEventToday)
+            } else if launchGoalMode == .planned {
+                plannedWorkoutCard
             }
 
             if activitySessionState != .idle {
@@ -1210,41 +1275,113 @@ private struct SimplifiedTodayView: View {
     }
 
     private func activityEventCard(_ event: ActivityEventDTO) -> some View {
-        NavigationLink {
-            ActivityEventDetailView(run: event, entrySource: "today_primary")
-        } label: {
-            OutboundCard(style: .companion) {
-                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                    HStack {
-                        Text(String(localized: "today.group_activity", defaultValue: "TODAY'S GROUP ACTIVITY"))
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.tertiary)
+        VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+            SharedActivityEventButton(event: event, entrySource: "today_primary") {
+                OutboundCard(style: .companion) {
+                    VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                        HStack {
+                            Text(String(localized: "today.group_activity", defaultValue: "TODAY'S GROUP ACTIVITY"))
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        ActivityEventSummaryContent(
+                            title: event.title,
+                            startsAt: event.startsAt,
+                            locationName: event.locationName,
+                            note: event.paceNote
+                        )
+                        Label(
+                            String(
+                                localized: "today.group_activity.paired_format",
+                                defaultValue: "Paired with \(todayWorkoutName) · \(todayTotalDuration)"
+                            ),
+                            systemImage: "checkmark.circle.fill"
+                        )
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
                     }
-                    ActivityEventSummaryContent(
-                        title: event.title,
-                        startsAt: event.startsAt,
-                        locationName: event.locationName,
-                        note: event.paceNote
-                    )
-                    Label(
-                        String(
-                            localized: "today.group_activity.paired_format",
-                            defaultValue: "Paired with \(todayWorkoutName) · \(todayTotalDuration)"
-                        ),
-                        systemImage: "checkmark.circle.fill"
-                    )
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    .contentShape(Rectangle())
                 }
-                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(String(localized: "social.event.open_details", defaultValue: "Opens activity details"))
+
+            if event.group != nil, event.currentUserGoing == true {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(String(localized: "record.setup.run_options", defaultValue: "Run options"))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    Button {
+                        toggleTodayActivityLiveMapSharing(for: event)
+                    } label: {
+                        Label(
+                            isSharingLiveMap(for: event)
+                                ? String(localized: "record.group.event.stop", defaultValue: "Stop sharing")
+                                : String(localized: "record.group.event.share", defaultValue: "Share live map with attendees"),
+                            systemImage: isSharingLiveMap(for: event) ? "location.slash" : "person.2.wave.2.fill"
+                        )
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(liveGroupStore.isJoining || hasDifferentActiveLiveMap(for: event))
+
+                    if isSharingLiveMap(for: event) {
+                        Text(liveGroupStore.statusSummary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else if hasDifferentActiveLiveMap(for: event) {
+                        Text(String(
+                            localized: "record.group.event.other_active",
+                            defaultValue: "Finish sharing your current group run before joining this one"
+                        ))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                    if let message = liveGroupStore.lastErrorMessage {
+                        Text(message)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.orange)
+                    }
+                }
+                .padding(.horizontal, OutboundSpacing.standard)
+                .padding(.vertical, OutboundSpacing.compact)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: OutboundRadius.card, style: .continuous))
             }
         }
-        .buttonStyle(.plain)
-        .accessibilityHint(String(localized: "social.event.open_details", defaultValue: "Opens activity details"))
+    }
+
+    private func isSharingLiveMap(for event: ActivityEventDTO) -> Bool {
+        liveGroupStore.activeSession?.isActive == true
+            && liveGroupStore.activeSession?.activityEventId == event.id
+    }
+
+    private func hasDifferentActiveLiveMap(for event: ActivityEventDTO) -> Bool {
+        liveGroupStore.activeSession?.isActive == true && !isSharingLiveMap(for: event)
+    }
+
+    private func toggleTodayActivityLiveMapSharing(for event: ActivityEventDTO) {
+        if isSharingLiveMap(for: event) {
+            liveGroupStore.stopFromManagementControl()
+            return
+        }
+
+        Task {
+            await analyticsManager?.track(.init(.groupRunJoinAttempted))
+            await liveGroupStore.joinActivityEvent(event.id)
+            if isSharingLiveMap(for: event) {
+                await analyticsManager?.track(.init(.groupRunJoined, properties: [
+                    .participantCountBucket: .string(ProductAnalyticsBucket.count(liveGroupStore.participants.count))
+                ]))
+            }
+        }
     }
 
     private var plannedWorkoutCard: some View {
@@ -1366,7 +1503,7 @@ private struct SimplifiedTodayView: View {
                     CompactIntervalPreview(phases: todayPhases)
 
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Why this workout?")
+                        Text(String(localized: "today.purpose", defaultValue: "Why this workout?"))
                             .font(.headline)
                         Text(todayExplanation)
                             .font(.subheadline)
@@ -1464,7 +1601,9 @@ private struct SimplifiedTodayView: View {
                 }
 
                 if let activity = activityStore.activities.first {
-                    NavigationLink(value: activity) {
+                    Button {
+                        appNavigationStore.openSharedDestination(.savedActivity(activity))
+                    } label: {
                         HStack(spacing: OutboundSpacing.standard) {
                             Image(systemName: "figure.run.circle.fill")
                                 .font(.title2)
@@ -2874,7 +3013,9 @@ private struct SimplifiedMeView: View {
                                 Text("Your completed runs will appear here.").font(.subheadline).foregroundStyle(.secondary)
                             } else {
                                 ForEach(activityStore.activities.prefix(3)) { activity in
-                                    NavigationLink(value: activity) {
+                                    Button {
+                                        appNavigationStore.openSharedDestination(.savedActivity(activity))
+                                    } label: {
                                         HStack {
                                             VStack(alignment: .leading) {
                                                 Text(activity.title).font(.subheadline.weight(.semibold))
@@ -2896,7 +3037,6 @@ private struct SimplifiedMeView: View {
             }
             .background(OutboundPalette.background)
             .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(for: SavedActivity.self) { ActivityDetailView(activity: $0) }
             .navigationDestination(isPresented: $showsConnections) { SocialConnectionsView() }
             .navigationDestination(isPresented: $showsAddConnection) { SocialConnectionsView(startsAdding: true) }
             .navigationDestination(isPresented: $showsSocialInbox) { SocialNotificationsView() }

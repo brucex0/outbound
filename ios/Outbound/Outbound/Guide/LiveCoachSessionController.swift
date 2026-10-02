@@ -8,9 +8,11 @@ final class LiveCoachSessionController {
     private var phraseUseCounts: [String: Int] = [:]
     private var prewarmTask: Task<Void, Never>?
     private var voiceProfileID = ""
+    private var sessionRequestedForEligibleSport = false
 
     var effectiveMode: LiveCoachAudioMode {
-        session?.effectiveMode ?? LiveCoachFeatureState.shared.configuration?.mode ?? .disabled
+        session?.effectiveMode
+            ?? (sessionRequestedForEligibleSport ? LiveCoachFeatureState.shared.configuration?.mode ?? .disabled : .disabled)
     }
 
     var accessReason: LiveCoachAccessReason {
@@ -31,6 +33,8 @@ final class LiveCoachSessionController {
         end(report: nil)
         phraseUseCounts = [:]
         guard let persona else { return }
+        guard (intent?.sport ?? persona.template.sport) == .run else { return }
+        sessionRequestedForEligibleSport = true
         voiceProfileID = persona.voice.id
         let plannedWorkoutReference = intent?.workoutReference?.source == "planned_workout"
             ? intent?.workoutReference
@@ -157,6 +161,7 @@ final class LiveCoachSessionController {
     }
 
     func end(report: LiveGuidanceSessionReport?) {
+        sessionRequestedForEligibleSport = false
         prewarmTask?.cancel()
         prewarmTask = nil
         createTask?.cancel()

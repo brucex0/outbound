@@ -176,6 +176,7 @@ struct LiveGuidanceSessionReport: Equatable {
 }
 
 enum LiveGuidanceTelemetryEvent: Equatable {
+    case eligibilityResolved(activityType: String, result: String)
     case momentDetected(type: LiveGuidanceMomentType, contract: CoachingContract)
     case cueSpoken(type: LiveGuidanceMomentType, contract: CoachingContract)
     case cueEvaluated(type: LiveGuidanceMomentType, outcome: LiveGuidanceCueOutcome)

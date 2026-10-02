@@ -32,6 +32,14 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         guard let moment = request.momentType else {
             return silentResult(source: .cachedFallback, result: .invalid, latency: .underOneSecond)
         }
+        guard request.sessionIntent?.resolvedActivityType == .running else {
+            return immediateFallback(
+                for: moment,
+                preferredMessage: request.preferredMessage,
+                result: .success,
+                latency: .underOneSecond
+            )
+        }
 
         let startedAt = Date()
         return try await LiveCoachAnalysisRace().run(
