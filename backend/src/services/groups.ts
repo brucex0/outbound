@@ -281,6 +281,7 @@ export async function groupPayload(groupId: string, viewerId: string, includeHis
         OR: [
           { participants: { some: { userId: viewerId, status: "going" } } },
           { invitations: { some: { recipientId: viewerId, status: { in: ["pending", "accepted"] } } } },
+          { group: { members: { some: { userId: viewerId, status: "active" } } } },
         ],
       },
       select: {
@@ -422,7 +423,7 @@ async function communityGroupPayload(group: any, viewerId: string) {
       : Promise.resolve([]),
     viewerMember ? prisma.groupNoticeRead.findUnique({ where: { groupId_userId: { groupId: group.id, userId: viewerId } }, select: { lastSeenNoticeId: true } }) : Promise.resolve(null),
     group.scheduledActivitiesEnabled
-      ? prisma.activityEvent.findMany({ where: { groupId: group.id, status: { in: ["scheduled", "active", "reconciling", "completed"] }, OR: [{ participants: { some: { userId: viewerId, status: "going" } } }, { invitations: { some: { recipientId: viewerId, status: { in: ["pending", "accepted"] } } } }, { visibility: "public" }] }, select: { id: true, title: true, startsAt: true, endsAt: true, locationName: true, status: true, activityType: true, creatorId: true, participants: { where: { status: "going" }, select: { userId: true, attendanceMode: true } } }, orderBy: { startsAt: "asc" }, take: 20 })
+      ? prisma.activityEvent.findMany({ where: { groupId: group.id, status: { in: ["scheduled", "active", "reconciling", "completed"] }, OR: [{ participants: { some: { userId: viewerId, status: "going" } } }, { invitations: { some: { recipientId: viewerId, status: { in: ["pending", "accepted"] } } } }, { group: { members: { some: { userId: viewerId, status: "active" } } } }, { visibility: "public" }] }, select: { id: true, title: true, startsAt: true, endsAt: true, locationName: true, status: true, activityType: true, creatorId: true, participants: { where: { status: "going" }, select: { userId: true, attendanceMode: true } } }, orderBy: { startsAt: "asc" }, take: 20 })
       : Promise.resolve([]),
     !viewerMember && group.joinPolicy === "request" ? prisma.groupJoinRequest.findUnique({ where: { groupId_requesterId: { groupId: group.id, requesterId: viewerId } }, select: { id: true, status: true } }) : Promise.resolve(null),
     viewerMember && ["owner", "admin"].includes(viewerMember.role)

@@ -1556,6 +1556,7 @@ function activityEventPayload(activity: any, currentUserId: string, connectionId
   const directInvitation = activity.invitations.find((invitation: any) => invitation.recipientId === currentUserId && invitation.status === "pending");
   const participantView = Boolean(currentParticipant?.status === "going" || directInvitation || activity.creatorId === currentUserId);
   const communityPublicView = activity.group?.trustPolicy === "community" && !participantView;
+  const restrictedGroupMemberView = Boolean(activity.group && !participantView);
   const source = activity.creatorId === currentUserId
     ? { kind: "createdByYou", label: "Created by you" }
     : currentParticipant?.status === "going"
@@ -1573,8 +1574,8 @@ function activityEventPayload(activity: any, currentUserId: string, connectionId
     startsAt: activity.startsAt,
     endsAt: activity.endsAt,
     locationName: activity.locationName,
-    latitude: communityPublicView ? null : activity.latitude,
-    longitude: communityPublicView ? null : activity.longitude,
+    latitude: communityPublicView || restrictedGroupMemberView ? null : activity.latitude,
+    longitude: communityPublicView || restrictedGroupMemberView ? null : activity.longitude,
     paceNote: activity.note,
     note: activity.note,
     participationMode: activity.participationMode,

@@ -208,6 +208,7 @@ A notice is an owner/admin broadcast for schedule changes, meetup information, c
 
 - `ActivityEvent.groupId` is the only Group source relation. Remove `sourceCircleId` and `clubId` during migration.
 - Owner/admin may create Group-visible activities; a trusted-private Group may also allow members when configured.
+- A Group activity appears in every active member's Group detail without individual invitations. Members opt in from activity details with the existing attendance RSVP; the creator is going automatically.
 - Each event uses a canonical activity type such as running, walking, hiking, cycling, swimming, or strength, or an explicit open/mixed policy. Group activity interests provide defaults but do not gate event types.
 - Exact meetup coordinates are visible only to joined or explicitly invited participants.
 - Non-members may see a public activity summary as a reason to join but never participant identities or coordinates.
