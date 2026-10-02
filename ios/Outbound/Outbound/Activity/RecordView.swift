@@ -100,7 +100,7 @@ struct RecordView: View {
     @State private var customDistanceText = ""
     @State private var customTimeText = ""
     @State private var customCaloriesText = ""
-    @State private var inlineCustomGoalKind: CustomGoalKind?
+    @State private var goalEditorSelection: ActivityGoal?
     @FocusState private var focusedCustomGoalKind: CustomGoalKind?
     @State private var isCaloriesWeightPromptPresented = false
     @State private var caloriesWeightText = ""
@@ -455,8 +455,11 @@ struct RecordView: View {
             sessionController.prepare(intent: intent)
         }
         .onChange(of: setupSheet) { _, sheet in
-            guard sheet == .music else { return }
-            prepareMusicPicker()
+            if sheet == .music {
+                prepareMusicPicker()
+            } else if sheet == .goal {
+                prepareGoalEditor()
+            }
         }
         .onChange(of: musicStore.snapshot.connectionState) { oldState, newState in
             guard oldState == .connecting, newState != .connecting else { return }
@@ -538,7 +541,7 @@ struct RecordView: View {
         }
         .sheet(item: $setupSheet) { sheet in
             setupSheetView(sheet)
-                .presentationDetents(sheet == .goal ? [.large] : [.medium, .large])
+                .presentationDetents(sheet == .goal ? [.height(310)] : [.medium, .large])
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isAssistantPresented) {
@@ -3048,18 +3051,7 @@ struct RecordView: View {
             Group {
                 switch sheet {
                 case .goal:
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            goalSetupChoices.padding()
-                        }
-                        .scrollDismissesKeyboard(.interactively)
-                        .onChange(of: focusedCustomGoalKind) { _, kind in
-                            guard kind != nil else { return }
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                proxy.scrollTo("custom-goal-input", anchor: .bottom)
-                            }
-                        }
-                    }
+                    goalValueEditor.padding(20)
                 case .music:
                     ScrollView { musicSetupChoices.padding() }
                 case .more:
@@ -3071,8 +3063,10 @@ struct RecordView: View {
             .navigationTitle(sheet.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "common.done", defaultValue: "Done")) { setupSheet = nil }
+                if sheet != .goal {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(String(localized: "common.done", defaultValue: "Done")) { setupSheet = nil }
+                    }
                 }
             }
         }
@@ -4274,131 +4268,131 @@ struct RecordView: View {
         }
     }
 
-    private var goalSetupChoices: some View {
+    private var goalValueEditor: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 8) {
-                goalModeButton(.freestyle)
-                goalModeButton(.distance)
-                goalModeButton(.time)
-                if plannedIntent?.sport == .run {
-                    goalModeButton(.race)
-                    goalModeButton(.calories)
+            if let kind = goalEditorKind {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(goalEditorPresetGoals(for: kind), id: \.self) { goal in
+                            goalPresetButton(
+                                title: goalEditorPresetTitle(goal),
+                                isSelected: goalEditorSelection == goal
+                            ) {
+                                goalEditorSelection = goal
+                                customGoalTextBinding(for: kind).wrappedValue = ""
+                            }
+                        }
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    TextField(
+                        customGoalAlertTitle(for: kind),
+                        text: goalEditorTextBinding(for: kind),
+                        prompt: Text("0")
+                    )
+                    .keyboardType(kind == .distance ? .decimalPad : .numberPad)
+                    .font(.body.monospacedDigit().weight(.semibold))
+                    .focused($focusedCustomGoalKind, equals: kind)
+
+                    Text(customGoalUnitLabel(for: kind))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .fixedSize()
+                }
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, minHeight: 54)
+                .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.secondary.opacity(0.22), lineWidth: 1)
                 }
             }
 
-            switch selectedGoalMode {
-            case .planned:
-                Text(String(localized: "From your training plan"))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            case .curated:
-                Text(curatedWorkoutIntent?.title ?? String(localized: "record.goal.choose_workout", defaultValue: "Choose a workout"))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            case .freestyle:
-                Text(String(localized: "record.goal.freestyle.detail", defaultValue: "No preset target. Tap Start and move by feel."))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Button {
-                    applyGoalAndDismiss(.freestyle)
-                } label: {
-                    Text(String(localized: "record.goal.use_freestyle", defaultValue: "Use Freestyle"))
-                        .frame(maxWidth: .infinity, minHeight: 44)
+            HStack(spacing: 12) {
+                Button(String(localized: "common.cancel", defaultValue: "Cancel")) {
+                    dismissGoalEditor()
+                }
+                .buttonStyle(.bordered)
+                .frame(maxWidth: .infinity)
+
+                Button(String(localized: "common.done", defaultValue: "Done")) {
+                    saveGoalEditorSelection()
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.orange)
-            case .race:
-                Button(String(localized: "race.planner.open", defaultValue: "Open race planner")) {
-                    setupSheet = nil
-                    Task { @MainActor in
-                        await Task.yield()
-                        showsRacePlanner = true
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.orange)
-            case .distance:
-                GoalPresetFlow(horizontalSpacing: 8, verticalSpacing: 8) {
-                    ForEach(distanceGoalPresets) { preset in
-                        goalPresetButton(
-                            title: preset.title,
-                            isSelected: inlineCustomGoalKind != .distance && isSelectedDistancePreset(preset.meters)
-                        ) {
-                            applyGoalAndDismiss(.distanceMeters(preset.meters))
-                        }
-                    }
-                    goalPresetButton(
-                        title: String(localized: "record.goal.custom", defaultValue: "Custom"),
-                        isSelected: inlineCustomGoalKind == .distance || isCustomDistanceSelected
-                    ) {
-                        presentInlineCustomGoal(.distance)
-                    }
-                }
-                if inlineCustomGoalKind == .distance {
-                    inlineCustomGoalInput(.distance)
-                        .id("custom-goal-input")
-                }
-            case .time:
-                GoalPresetFlow(horizontalSpacing: 8, verticalSpacing: 8) {
-                    ForEach(timeGoalPresets) { preset in
-                        goalPresetButton(
-                            title: preset.title,
-                            isSelected: inlineCustomGoalKind != .time && isSelectedTimePreset(preset.seconds)
-                        ) {
-                            applyGoalAndDismiss(.timeSeconds(preset.seconds))
-                        }
-                    }
-                    goalPresetButton(
-                        title: String(localized: "record.goal.custom", defaultValue: "Custom"),
-                        isSelected: inlineCustomGoalKind == .time || isCustomTimeSelected
-                    ) {
-                        presentInlineCustomGoal(.time)
-                    }
-                }
-                if inlineCustomGoalKind == .time {
-                    inlineCustomGoalInput(.time)
-                        .id("custom-goal-input")
-                }
-            case .calories:
-                GoalPresetFlow(horizontalSpacing: 8, verticalSpacing: 8) {
-                    ForEach(calorieGoalPresets, id: \.self) { calories in
-                        goalPresetButton(
-                            title: calorieGoalLabel(calories),
-                            isSelected: inlineCustomGoalKind != .calories && currentActivityGoal.targetCalories == calories
-                        ) {
-                            applyGoalAndDismiss(.calories(calories))
-                        }
-                    }
-                    goalPresetButton(
-                        title: String(localized: "record.goal.custom", defaultValue: "Custom"),
-                        isSelected: inlineCustomGoalKind == .calories || isCustomCaloriesSelected
-                    ) {
-                        presentInlineCustomGoal(.calories)
-                    }
-                }
-                if inlineCustomGoalKind == .calories {
-                    inlineCustomGoalInput(.calories)
-                        .id("custom-goal-input")
-                }
-                if let estimate = calorieEditorEstimateLabel {
-                    calorieEstimateCallout(estimate)
-                }
+                .frame(maxWidth: .infinity)
+                .disabled(goalEditorGoal == nil)
             }
-
-            Divider()
-
-            Button {
-                setupSheet = nil
-                Task { @MainActor in
-                    await Task.yield()
-                    openCuratedWorkoutPicker()
-                }
-            } label: {
-                Label(String(localized: "Curated"), systemImage: "sparkles.rectangle.stack")
-                    .font(.subheadline.weight(.semibold))
-            }
-            .disabled(selectedWorkoutChoice == .planned)
         }
+    }
+
+    private var goalEditorKind: CustomGoalKind? {
+        switch selectedGoalMode {
+        case .distance: .distance
+        case .time: .time
+        case .calories: .calories
+        default: nil
+        }
+    }
+
+    private var goalEditorGoal: ActivityGoal? {
+        guard let kind = goalEditorKind else { return nil }
+        return goalEditorSelection ?? customActivityGoal(for: kind)
+    }
+
+    private func goalEditorPresetGoals(for kind: CustomGoalKind) -> [ActivityGoal] {
+        switch kind {
+        case .distance: distanceGoalPresets.map { .distanceMeters($0.meters) }
+        case .time: timeGoalPresets.map { .timeSeconds($0.seconds) }
+        case .calories: calorieGoalPresets.map(ActivityGoal.calories)
+        }
+    }
+
+    private func goalEditorPresetTitle(_ goal: ActivityGoal) -> String {
+        switch goal {
+        case .distanceMeters(let meters):
+            measurementPreferences.unitSystem.distanceString(meters: meters, fractionDigits: 1)
+        case .timeSeconds(let seconds):
+            String(format: String(localized: "today.time.format", defaultValue: "%d min"), locale: .autoupdatingCurrent, seconds / 60)
+        case .calories(let calories): calorieGoalLabel(calories)
+        case .freestyle: ""
+        }
+    }
+
+    private func prepareGoalEditor() {
+        goalEditorSelection = nil
+        guard let kind = goalEditorKind else { return }
+        let currentGoal = currentActivityGoal
+        if goalEditorPresetGoals(for: kind).contains(currentGoal) {
+            goalEditorSelection = currentGoal
+            customGoalTextBinding(for: kind).wrappedValue = ""
+            return
+        }
+        switch kind {
+        case .distance:
+            if let meters = currentGoal.targetDistanceMeters {
+                customDistanceText = measurementPreferences.unitSystem.distanceValue(meters: meters)
+                    .formatted(.number.locale(.autoupdatingCurrent).precision(.fractionLength(0...2)).grouping(.never))
+            } else { customDistanceText = "" }
+        case .time:
+            customTimeText = currentGoal.targetDurationSeconds.map { String(max(1, $0 / 60)) } ?? ""
+        case .calories:
+            customCaloriesText = currentGoal.targetCalories.map(String.init) ?? ""
+        }
+    }
+
+    private func dismissGoalEditor() {
+        focusedCustomGoalKind = nil
+        goalEditorSelection = nil
+        setupSheet = nil
+    }
+
+    private func saveGoalEditorSelection() {
+        guard let goal = goalEditorGoal, applyGoal(goal, selectionType: goalEditorSelection == nil ? "custom" : "preset") else { return }
+        focusedCustomGoalKind = nil
+        goalEditorSelection = nil
+        setupSheet = nil
     }
 
     private var routeSetupCard: some View {
@@ -4593,25 +4587,6 @@ struct RecordView: View {
         return "\(minutes)m \(remainingSeconds)s"
     }
 
-    private func goalModeButton(_ mode: SessionGoalMode) -> some View {
-        Button {
-            selectGoalModeFromEditor(mode)
-        } label: {
-            Text(mode.title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(selectedGoalMode == mode ? .white : .primary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 9)
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-                .background(
-                    Capsule()
-                        .fill(selectedGoalMode == mode ? Color.orange : Color(.tertiarySystemBackground))
-                )
-        }
-        .buttonStyle(.plain)
-    }
-
     private func goalPresetButton(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 6) {
@@ -4631,48 +4606,6 @@ struct RecordView: View {
             .fixedSize(horizontal: true, vertical: false)
         }
         .buttonStyle(.plain)
-    }
-
-    private func inlineCustomGoalInput(_ kind: CustomGoalKind) -> some View {
-        HStack(spacing: 8) {
-            TextField(
-                customGoalAlertTitle(for: kind),
-                text: customGoalTextBinding(for: kind),
-                prompt: Text("0")
-            )
-                .keyboardType(kind == .distance ? .decimalPad : .numberPad)
-                .font(.body.monospacedDigit().weight(.semibold))
-                .multilineTextAlignment(.leading)
-                .frame(minWidth: 48, maxWidth: .infinity, alignment: .leading)
-                .focused($focusedCustomGoalKind, equals: kind)
-
-            Text(customGoalUnitLabel(for: kind))
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .fixedSize()
-
-            Button {
-                applyInlineCustomGoal(kind)
-            } label: {
-                Image(systemName: "checkmark")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 36, height: 36)
-                    .background(Color.orange, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .frame(width: 52, height: 52)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .disabled(customActivityGoal(for: kind) == nil)
-            .accessibilityLabel(String(localized: "common.set", defaultValue: "Set"))
-        }
-        .padding(.horizontal, 12)
-        .frame(maxWidth: .infinity, minHeight: 60)
-        .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.secondary.opacity(0.22), lineWidth: 1)
-        }
     }
 
     private var currentActivityGoal: ActivityGoal {
@@ -4699,32 +4632,6 @@ struct RecordView: View {
         ), value.isFinite else { return nil }
         let kilograms = measurementPreferences.unitSystem == .metric ? value : value * 0.45359237
         return (25...350).contains(kilograms) ? kilograms : nil
-    }
-
-    private func selectGoalModeFromEditor(_ mode: SessionGoalMode) {
-        dismissInlineCustomGoalInput()
-        if mode == .race {
-            setupSheet = nil
-            Task { @MainActor in
-                await Task.yield()
-                showsRacePlanner = true
-            }
-            return
-        }
-        guard mode == .calories else {
-            selectedGoalMode = mode
-            return
-        }
-        if !hasWeightForCalories {
-            setupSheet = nil
-            presentCaloriesWeightPrompt(for: .selectMode(reopenGoalEditor: true), afterCurrentPresentation: true)
-            return
-        }
-        if selectedWorkoutChoice == .planned {
-            selectedGoalMode = .calories
-        } else {
-            selectLaunchMode(.calories)
-        }
     }
 
     private func presentCaloriesWeightPrompt(
@@ -4950,56 +4857,6 @@ struct RecordView: View {
         )
     }
 
-    private func calorieEstimateCallout(_ estimate: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "ruler")
-                .foregroundStyle(theme.accentColor)
-            Text(estimate)
-                .foregroundStyle(.primary)
-        }
-        .font(.subheadline.weight(.semibold))
-        .padding(.horizontal, 12)
-        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-        .background(
-            theme.accentColor.opacity(0.12),
-            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-        )
-        .accessibilityElement(children: .combine)
-    }
-
-    private func isSelectedDistancePreset(_ meters: Double) -> Bool {
-        guard case .distanceMeters(let selectedMeters) = currentActivityGoal else { return false }
-        return abs(selectedMeters - meters) < 1
-    }
-
-    private func isSelectedTimePreset(_ seconds: Int) -> Bool {
-        guard case .timeSeconds(let selectedSeconds) = currentActivityGoal else { return false }
-        return selectedSeconds == seconds
-    }
-
-    private var isCustomDistanceSelected: Bool {
-        guard case .distanceMeters = currentActivityGoal else { return false }
-        return !distanceGoalPresets.contains { isSelectedDistancePreset($0.meters) }
-    }
-
-    private var isCustomTimeSelected: Bool {
-        guard case .timeSeconds = currentActivityGoal else { return false }
-        return !timeGoalPresets.contains { isSelectedTimePreset($0.seconds) }
-    }
-
-    private var isCustomCaloriesSelected: Bool {
-        guard let calories = currentActivityGoal.targetCalories else { return false }
-        return !calorieGoalPresets.contains(calories)
-    }
-
-    private func isCustomGoalSelected(_ kind: CustomGoalKind) -> Bool {
-        switch kind {
-        case .distance: return isCustomDistanceSelected
-        case .time: return isCustomTimeSelected
-        case .calories: return isCustomCaloriesSelected
-        }
-    }
-
     @discardableResult
     private func applyGoal(
         _ goal: ActivityGoal,
@@ -5082,57 +4939,6 @@ struct RecordView: View {
         return true
     }
 
-    private func applyGoalAndDismiss(_ goal: ActivityGoal) {
-        dismissInlineCustomGoalInput()
-        applyGoal(goal)
-        setupSheet = nil
-    }
-
-    private func presentInlineCustomGoal(_ kind: CustomGoalKind) {
-        if inlineCustomGoalKind != kind {
-            switch kind {
-            case .distance:
-                if let meters = currentActivityGoal.targetDistanceMeters {
-                    customDistanceText = measurementPreferences.unitSystem
-                        .distanceValue(meters: meters)
-                        .formatted(
-                            .number
-                                .locale(.autoupdatingCurrent)
-                                .precision(.fractionLength(0...2))
-                                .grouping(.never)
-                        )
-                } else {
-                    customDistanceText = ""
-                }
-            case .time:
-                customTimeText = currentActivityGoal.targetDurationSeconds
-                    .map { String(max(1, $0 / 60)) } ?? ""
-            case .calories:
-                customCaloriesText = currentActivityGoal.targetCalories.map(String.init) ?? ""
-            }
-        }
-
-        inlineCustomGoalKind = kind
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(200))
-            guard inlineCustomGoalKind == kind else { return }
-            focusedCustomGoalKind = kind
-        }
-    }
-
-    private func dismissInlineCustomGoalInput() {
-        inlineCustomGoalKind = nil
-        focusedCustomGoalKind = nil
-    }
-
-    private func applyInlineCustomGoal(_ kind: CustomGoalKind) {
-        guard applyCustomGoal(kind) else { return }
-        dismissInlineCustomGoalInput()
-        if setupSheet == .goal {
-            setupSheet = nil
-        }
-    }
-
     private func customGoalTextBinding(for kind: CustomGoalKind) -> Binding<String> {
         Binding(
             get: {
@@ -5148,6 +4954,17 @@ struct RecordView: View {
                 case .time: customTimeText = value
                 case .calories: customCaloriesText = value
                 }
+            }
+        )
+    }
+
+    private func goalEditorTextBinding(for kind: CustomGoalKind) -> Binding<String> {
+        let text = customGoalTextBinding(for: kind)
+        return Binding(
+            get: { text.wrappedValue },
+            set: { value in
+                text.wrappedValue = value
+                goalEditorSelection = nil
             }
         )
     }
@@ -5409,12 +5226,6 @@ struct RecordView: View {
                 )
             )
         }
-    }
-
-    @discardableResult
-    private func applyCustomGoal(_ kind: CustomGoalKind) -> Bool {
-        guard let goal = customActivityGoal(for: kind) else { return false }
-        return applyGoal(goal, selectionType: "custom")
     }
 
     private func customActivityGoal(for kind: CustomGoalKind) -> ActivityGoal? {
