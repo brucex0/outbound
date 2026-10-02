@@ -23,6 +23,9 @@ export class LiveCoachSessionService {
   constructor(private readonly prisma: PrismaClient) {}
 
   async create(userId: string, input: CreateLiveCoachSessionInput) {
+    if (input.sessionIntent.activityType !== "running") {
+      throw new AIProviderError("not_eligible", "AI live coaching is only available for running.");
+    }
     const feature = loadLiveCoachFeatureConfig();
     if (feature.mode === "disabled") throw new AIProviderError("not_eligible", "Server audio coaching is disabled.");
     if (!isLiveCoachLocaleEnabled(feature, input.locale)) {

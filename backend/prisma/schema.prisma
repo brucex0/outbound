@@ -628,6 +628,8 @@ model SafetyLiveSharePoint {
 
 model LiveGroupSession {
   id              String    @id @default(cuid())
+  activityEventId String?   @unique
+  activityEvent   ActivityEvent? @relation(fields: [activityEventId], references: [id], onDelete: Cascade)
   creatorUserId   String
   creator         User      @relation("LiveGroupSessionCreator", fields: [creatorUserId], references: [id], onDelete: Cascade)
   inviteTokenHash String    @unique
@@ -1623,6 +1625,7 @@ model ActivityEvent {
   options           ActivityEventOption[]
   invitations       Invitation[]
   participants      ActivityEventParticipant[]
+  liveGroupSession  LiveGroupSession?
 
   @@index([startsAt, status])
   @@index([groupId, startsAt])

@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
@@ -17,6 +18,112 @@ const createGroupRunSchema = z.object({
 
 const joinGroupRunSchema = z.object({
   invite: z.string().trim().min(8).max(512),
+});
+
+router.post("/group-runs/activity-events/:activityEventId", async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+
+  const user = await getAuthenticatedAppUser(c);
+  if (!user) return c.json({ error: "Authentication is required." }, 401);
+
+  const prisma = getPrismaClient();
+  const activityEventId = c.req.param("activityEventId");
+  const attendance = await prisma.activityEventParticipant.findFirst({
+    where: {
+      activityEventId,
+      userId: user.id,
+      status: "going",
+      activityEvent: { groupId: { not: null }, status: { in: ["scheduled", "active"] } },
+    },
+    include: { activityEvent: true },
+  });
+  if (!attendance) return c.json({ error: "Join this Group activity before sharing its live map." }, 403);
+
+  let session = await prisma.liveGroupSession.findUnique({
+    where: { activityEventId },
+    include: { participants: true },
+  });
+  if (!session) {
+    const now = new Date();
+    try {
+      session = await prisma.liveGroupSession.create({
+        data: {
+          activityEventId,
+          creatorUserId: user.id,
+          inviteTokenHash: hashToken(randomToken()),
+          title: attendance.activityEvent.title,
+          sport: attendance.activityEvent.activityType,
+          startedAt: now,
+          expiresAt: new Date(now.getTime() + 4 * 60 * 60 * 1000),
+          participants: {
+            create: { userId: user.id, displayName: user.displayName || user.username },
+          },
+        },
+        include: { participants: true },
+      });
+    } catch (error) {
+      // A second attendee may create the event session at the same time.
+      if (!isUniqueConstraintError(error)) throw error;
+      session = await prisma.liveGroupSession.findUnique({
+        where: { activityEventId },
+        include: { participants: true },
+      });
+    }
+  }
+  if (!session) return c.json({ error: "Could not open this Group live map." }, 500);
+
+  let activeSession = await requireActiveSession(session.id);
+  if (!activeSession && session.status === "ended" && session.activityEventId === activityEventId) {
+    const now = new Date();
+    await prisma.$transaction(async (transaction) => {
+      const reopened = await transaction.liveGroupSession.updateMany({
+        where: { id: session.id, activityEventId, status: "ended" },
+        data: {
+          status: "active",
+          endedAt: null,
+          startedAt: now,
+          expiresAt: new Date(now.getTime() + 4 * 60 * 60 * 1000),
+        },
+      });
+      if (reopened.count > 0) {
+        await transaction.liveGroupParticipant.updateMany({
+          where: { sessionId: session.id },
+          data: {
+            status: "left",
+            leftAt: now,
+            lastLocationAt: null,
+            lastLocation: Prisma.DbNull,
+            lastActivitySnapshot: Prisma.DbNull,
+          },
+        });
+      }
+    });
+    activeSession = await requireActiveSession(session.id);
+  }
+  if (!activeSession) return c.json({ error: "This Group live map has ended." }, 410);
+
+  await prisma.liveGroupParticipant.upsert({
+    where: { sessionId_userId: { sessionId: activeSession.id, userId: user.id } },
+    update: {
+      status: "active",
+      leftAt: null,
+      displayName: user.displayName || user.username,
+      lastLocationAt: null,
+      lastLocation: Prisma.DbNull,
+      lastActivitySnapshot: Prisma.DbNull,
+    },
+    create: {
+      sessionId: activeSession.id,
+      userId: user.id,
+      displayName: user.displayName || user.username,
+    },
+  });
+  const updated = await prisma.liveGroupSession.findUniqueOrThrow({
+    where: { id: activeSession.id },
+    include: { participants: true },
+  });
+  return c.json(groupRunPayload(updated, user.id));
 });
 
 const liveLocationSchema = z.object({
@@ -185,10 +292,17 @@ router.post("/group-runs/:id/participants/me/leave", async (c) => {
     data: {
       status: "left",
       leftAt: new Date(),
+      lastLocationAt: null,
+      lastLocation: Prisma.DbNull,
+      lastActivitySnapshot: Prisma.DbNull,
     },
   });
 
-  const updated = await closeIfNoActiveParticipants(session.id);
+  // Leaving an event live map opts out only this attendee. Keep the
+  // event-scoped session open so a going attendee can opt back in later.
+  const updated = session.activityEventId
+    ? (await refreshSessionStatus(session.id)) ?? session
+    : await closeIfNoActiveParticipants(session.id);
 
   return c.json(groupRunPayload(updated, user.id));
 });
@@ -322,6 +436,7 @@ async function closeIfNoActiveParticipants(sessionId: string) {
 function groupRunPayload(
   session: {
     id: string;
+    activityEventId?: string | null;
     status: string;
     title: string | null;
     sport: string | null;
@@ -348,6 +463,7 @@ function groupRunPayload(
   const now = Date.now();
   return {
     id: session.id,
+    activityEventId: session.activityEventId ?? null,
     status: session.status,
     title: session.title,
     sport: session.sport,
@@ -377,6 +493,10 @@ function groupRunPayload(
       };
     }),
   };
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }
 
 function randomToken() {
