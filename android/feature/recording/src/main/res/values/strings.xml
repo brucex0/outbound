@@ -3,6 +3,14 @@
 <resources>
     <string name="recording_acquiring_location">Acquiring location…</string>
     <string name="recording_activity_in_progress">Activity in progress</string>
+    <string name="recording_group_share">Share my live location with this Group activity</string>
+    <string name="recording_group_share_detail">Only going attendees who opt in can see each other on the live map.</string>
+    <string name="recording_group_shared">Sharing live location with this activity</string>
+    <string name="recording_group_stop_sharing">Stop sharing</string>
+    <string name="recording_group_active_elsewhere">You’re sharing another Group live map. Stop sharing there before joining this one.</string>
+    <string name="recording_group_participants">Live participants</string>
+    <string name="recording_group_waiting">Waiting for location</string>
+    <string name="recording_group_stale">Last seen %1$s ago</string>
     <string name="recording_activity_photo">Activity photo</string>
     <string name="recording_add_photo">Add activity photo</string>
     <string name="recording_approximate_warning">Approximate location is on. Distance and pace may be less accurate.</string>

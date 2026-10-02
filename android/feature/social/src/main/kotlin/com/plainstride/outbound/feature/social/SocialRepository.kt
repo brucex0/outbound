@@ -164,13 +164,13 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun addComment(postId:String,body:String):Result<SocialComment>{val clean=body.trim();if(clean.isEmpty()||clean.length>500)return Result.failure(SocialException(SocialError.INVALID_RESPONSE));return authenticated{apiCall{api.comment(it,postId,CommentBody(clean))}}}
     override suspend fun deleteComment(commentId:String)=authenticated{apiCall{api.deleteComment(it,commentId)}}
     override suspend fun setEventRsvp(eventId:String,going:Boolean,attendanceMode:String)=authenticated{auth->apiCall{if(going)api.rsvp(auth,eventId,AttendanceBody(attendanceMode))else api.leaveEvent(auth,eventId)}}
+    override suspend fun event(id:String)=authenticated{apiCall{api.event(it,id)}}
     override suspend fun inviteToEvent(eventId:String,personId:String?)=authenticated{apiCall{api.inviteEvent(it,eventId,EventInviteBody(personId))}}
     override suspend fun createGroup(template:String,name:String?,memberIds:List<String>,timeZone:String?)=authenticated{apiCall{api.createGroup(it,CreateGroupBody(template=template,name=name?.trim()?.takeIf(String::isNotEmpty),memberUserIds=memberIds.distinct(),timeZone=timeZone))}}
     override suspend fun inviteToGroup(groupId:String,memberIds:List<String>,idempotencyKey:String)=authenticated{apiCall{api.inviteGroup(it,groupId,GroupInviteBody(memberIds.distinct(),idempotencyKey))}}.map{it.group}
     override suspend fun consumeGroupInvite(token: String)=authenticated{apiCall{api.consumeGroupInvite(it,token)}}
     override suspend fun setGroupFocus(groupId:String,mode:String,target:Int?,applyNextWeek:Boolean)=authenticated{apiCall{api.focusGroup(it,groupId,GroupFocusBody(mode,target,if(applyNextWeek)"next_week" else "now"))}}
     override suspend fun setGroupArchived(groupId:String,archived:Boolean)=authenticated{auth->apiCall{if(archived)api.archiveGroup(auth,groupId)else api.reactivateGroup(auth,groupId)}}
-    override suspend fun event(id:String)=authenticated{apiCall{api.event(it,id)}}
     override suspend fun createEvent(body:CreateEventBody)=authenticated{apiCall{api.createEvent(it,body)}}
     override suspend fun eventResults(id:String)=authenticated{apiCall{api.eventResults(it,id)}}
     override suspend fun linkActivity(eventId:String,activityId:String)=authenticated{apiCall{api.linkActivity(it,eventId,LinkActivityBody(activityId))}}

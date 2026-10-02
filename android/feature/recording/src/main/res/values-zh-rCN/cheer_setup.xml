@@ -1,0 +1,7 @@
+<resources>
+    <string name="recording_cheer_on">为我加油</string>
+    <string name="recording_cheer_off">关闭</string>
+    <string name="recording_cheer_selected">已开启 · %1$s</string>
+    <string name="recording_cheer_generic">已开启</string>
+    <string name="recording_cheer_selected_count">已开启 · %1$d 位好友</string>
+</resources>

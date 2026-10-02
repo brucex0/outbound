@@ -145,6 +145,7 @@ import com.plainstride.outbound.core.model.activity.ActivityType
 import com.plainstride.outbound.core.model.activity.DistanceUnit
 import com.plainstride.outbound.core.model.activity.ElevationUnit
 import com.plainstride.outbound.core.model.activity.MeasurementUnitSystem
+import com.plainstride.outbound.core.model.activity.SharedLiveRun
 import com.plainstride.outbound.core.model.activity.SessionFormatting
 import com.plainstride.outbound.core.model.activity.WorkoutCalorieEstimator
 
@@ -166,12 +167,20 @@ fun RecordingRoute(
     onSavedSideEffects: (RecordedActivityReview) -> Unit = {},
     onExit: () -> Unit,
     onOpenAssistant: () -> Unit = {},
+    onCheerMeOn: () -> Unit = {},
+    cheerSelectedName: String? = null,
+    cheerSelectedCount: Int = 0,
     saveActivityPhotosToAlbum: Boolean = true,
     onPhotoAlbumPermissionDenied: () -> Unit = {},
+    onPrepareActivityStart: () -> Unit = {},
     modifier: Modifier = Modifier,
     unitSystem: MeasurementUnitSystem = MeasurementUnitSystem.metric,
     weightKilograms: Double? = null,
     sessionEffect: @Composable (RecordingSnapshot) -> Unit = {},
+    groupRun: SharedLiveRun? = null,
+    groupRunJoining: Boolean = false,
+    onToggleActivityLiveMap: () -> Unit = {},
+    onStopActivityLiveMap: () -> Unit = {},
     viewModel: RecordingViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -198,6 +207,17 @@ fun RecordingRoute(
     var didDismissPostSaveCelebration by remember { mutableStateOf(false) }
     val saveSnackbar = remember { SnackbarHostState() }
     val saveFailedMessage = stringResource(R.string.recording_save_failed)
+    val eventGroupRun = groupRun?.takeIf { run ->
+        launch.activityEventId != null && run.activityEventId == launch.activityEventId
+    }
+    val eventGroupSharing = eventGroupRun?.participants?.any { participant ->
+        participant.userId == eventGroupRun.currentUserId && participant.status in setOf("active", "stale")
+    } == true
+    val otherActiveGroupRun = groupRun?.takeIf { run ->
+        run.status == "active" && run.activityEventId != launch.activityEventId && run.participants.any { participant ->
+            participant.userId == run.currentUserId && participant.status in setOf("active", "stale")
+        }
+    }
 
     fun finishPostSaveCelebration() {
         if (didDismissPostSaveCelebration) return
@@ -304,6 +324,7 @@ fun RecordingRoute(
 
     fun beginCountdown() {
         pendingResume = false
+        onPrepareActivityStart()
         if (BuildConfig.DEBUG && ui.launch.simulatedRunEnabled) {
             val permission = permissionState()
             if (permission == LocationPermissionState.PRECISE || permission == LocationPermissionState.APPROXIMATE) {
@@ -503,6 +524,7 @@ fun RecordingRoute(
             snapshot.status == RecordingStatus.ACTIVE || snapshot.status == RecordingStatus.PAUSED -> LiveRecordingScreen(
                 snapshot = snapshot,
                 configuration = ui.launch,
+                groupRun = eventGroupRun?.takeIf { eventGroupSharing },
                 locationPermission = permissionState(),
                 unitSystem = unitSystem,
                 weightKilograms = weightKilograms,
@@ -529,10 +551,11 @@ fun RecordingRoute(
                 voiceListening = voiceListening,
                 onDashboardChanged = viewModel::trackDashboardChanged,
                 runSimulation = snapshot.runSimulation,
-                onSimulationRate = viewModel::setRunSimulationTimeRate,
+                    onSimulationRate = viewModel::setRunSimulationTimeRate,
                 onSimulationSpeed = viewModel::adjustRunSimulationSpeed,
                 onSimulationClock = viewModel::toggleRunSimulationClock,
                 onSimulationAdvance = viewModel::advanceRunSimulation,
+                onStopActivityLiveMap = onStopActivityLiveMap,
             )
             ui.countdown != null -> CountdownScreen(
                 value = ui.countdown!!,
@@ -548,9 +571,17 @@ fun RecordingRoute(
             launch.startImmediately || ui.launch.startImmediately -> StartingActivityScreen()
             else -> ActivitySetupScreen(
                 configuration = ui.launch,
+                activityLiveMapEnabled = eventGroupSharing,
+                activityLiveMapJoining = groupRunJoining,
+                activityLiveMapBlocked = otherActiveGroupRun != null,
+                onToggleActivityLiveMap = onToggleActivityLiveMap,
+                onStopActivityLiveMap = onStopActivityLiveMap,
                 permission = permissionState(),
                 onStart = ::beginCountdown,
                 onRequestLocationAccess = { showLocationEducation = true },
+                onCheerMeOn = onCheerMeOn,
+                cheerSelectedName = cheerSelectedName,
+                cheerSelectedCount = cheerSelectedCount,
                 onExit = onExit,
                 onSimulationChanged = viewModel::configureSimulatedRun,
                 onAutoPauseChanged = viewModel::setAutoPauseEnabled,
@@ -682,9 +713,17 @@ fun RecordingRoute(
 @Composable
 private fun ActivitySetupScreen(
     configuration: RecordingLaunchConfiguration,
+    activityLiveMapEnabled: Boolean,
+    activityLiveMapJoining: Boolean,
+    activityLiveMapBlocked: Boolean,
+    onToggleActivityLiveMap: () -> Unit,
+    onStopActivityLiveMap: () -> Unit,
     permission: LocationPermissionState,
     onStart: () -> Unit,
     onRequestLocationAccess: () -> Unit,
+    onCheerMeOn: () -> Unit,
+    cheerSelectedName: String?,
+    cheerSelectedCount: Int,
     onExit: () -> Unit,
     onSimulationChanged: (Boolean) -> Unit,
     onAutoPauseChanged: (Boolean) -> Unit,
@@ -698,6 +737,47 @@ private fun ActivitySetupScreen(
                 TextButton(onClick = onExit) { Text(stringResource(R.string.recording_close)) }
                 Text(configuration.title ?: stringResource(R.string.recording_freestyle), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                 Text(goalLabel(configuration.goal), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            configuration.activityEventId?.let { eventId ->
+                item {
+                    val sharing = activityLiveMapEnabled
+                    val liveShareAccessibilityLabel = stringResource(R.string.recording_group_share)
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+                        Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                                Text(stringResource(if(sharing) R.string.recording_group_shared else R.string.recording_group_share),style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.SemiBold)
+                                Text(stringResource(R.string.recording_group_share_detail),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            when {
+                                sharing -> TextButton(onClick=onStopActivityLiveMap){Text(stringResource(R.string.recording_group_stop_sharing))}
+                                activityLiveMapBlocked -> Row(
+                                    Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Text(
+                                        stringResource(R.string.recording_group_active_elsewhere),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    TextButton(onClick = onStopActivityLiveMap) {
+                                        Text(stringResource(R.string.recording_group_stop_sharing))
+                                    }
+                                }
+                                else -> Switch(
+                                    checked = false,
+                                    onCheckedChange = { onToggleActivityLiveMap() },
+                                    enabled = !activityLiveMapJoining && !activityLiveMapBlocked,
+                                    modifier = Modifier.semantics {
+                                        contentDescription = liveShareAccessibilityLabel
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    if(activityLiveMapJoining)LinearProgressIndicator(Modifier.fillMaxWidth())
+                }
             }
             if (configuration.workoutSteps.isNotEmpty()) {
                 item { Text(stringResource(R.string.recording_workout_plan), style = MaterialTheme.typography.titleMedium) }
@@ -722,6 +802,33 @@ private fun ActivitySetupScreen(
                                 modifier = Modifier.semantics { contentDescription = autoPauseLabel },
                             )
                         }
+                    }
+                }
+            }
+            item {
+                val hasCheerRecipients = cheerSelectedCount > 0
+                OutlinedButton(
+                    onClick = onCheerMeOn,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (hasCheerRecipients) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                        contentColor = if (hasCheerRecipients) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
+                    ),
+                ) {
+                    Icon(if (hasCheerRecipients) Icons.Default.Check else Icons.Default.Mic, null)
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                        Text(stringResource(R.string.recording_cheer_on), fontWeight = FontWeight.SemiBold)
+                        Text(
+                            when {
+                                cheerSelectedCount > 1 -> stringResource(R.string.recording_cheer_selected_count, cheerSelectedCount)
+                                cheerSelectedName != null -> stringResource(R.string.recording_cheer_selected, cheerSelectedName)
+                                cheerSelectedCount == 1 -> stringResource(R.string.recording_cheer_generic)
+                                else -> stringResource(R.string.recording_cheer_off)
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (hasCheerRecipients) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }
@@ -826,6 +933,7 @@ private fun StartingActivityScreen() {
 private fun LiveRecordingScreen(
     snapshot: RecordingSnapshot,
     configuration: RecordingLaunchConfiguration,
+    groupRun: SharedLiveRun?,
     locationPermission: LocationPermissionState,
     unitSystem: MeasurementUnitSystem,
     weightKilograms: Double?,
@@ -848,6 +956,7 @@ private fun LiveRecordingScreen(
     onSimulationSpeed: (Double) -> Unit,
     onSimulationClock: () -> Unit,
     onSimulationAdvance: (Int) -> Unit,
+    onStopActivityLiveMap: () -> Unit = {},
 ) {
     var dashboardExpanded by remember { mutableStateOf(false) }
     val energyKilocalories = WorkoutCalorieEstimator.liveEnergyKilocalories(
@@ -901,6 +1010,9 @@ private fun LiveRecordingScreen(
                 onAdvance = onSimulationAdvance,
                 modifier = Modifier.align(Alignment.TopCenter).padding(top = 58.dp, start = 12.dp, end = 12.dp),
             )
+        }
+        groupRun?.let { run ->
+            ActivityGroupLiveMapCard(run,Modifier.align(Alignment.TopStart).padding(top=16.dp,start=16.dp,end=16.dp),onStopActivityLiveMap)
         }
         SessionDashboard(snapshot, configuration, unitSystem, energyKilocalories, dashboardExpanded, {
             if (dashboardExpanded != it) {
@@ -1038,6 +1150,23 @@ private fun TrackMap(
             Text(stringResource(R.string.recording_acquiring_location))
         }
     }
+}
+
+@Composable
+private fun ActivityGroupLiveMapCard(run:SharedLiveRun,modifier:Modifier=Modifier,onStop:()->Unit){
+ val participants=run.participants.filter{it.status in setOf("active","stale")}
+ val mapPoints=participants.mapNotNull{participant->participant.latitude?.let{latitude->participant.longitude?.let{longitude->MapCoordinate(latitude,longitude)}}}
+ Surface(modifier=modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.surface.copy(alpha=.96f),shadowElevation=8.dp){
+  Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
+   Row(verticalAlignment=Alignment.CenterVertically){Text(stringResource(R.string.recording_group_participants),Modifier.weight(1f),style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.SemiBold);TextButton(onClick=onStop){Text(stringResource(R.string.recording_group_stop_sharing))}}
+   if(mapPoints.isNotEmpty())PlainstrideRouteMap(points=mapPoints,modifier=Modifier.fillMaxWidth().height(150.dp),showUserLocation=false,preciseLocationGranted=false,focusOnUser=false,fitRouteOnChange=true,markers=participants.mapNotNull{participant->participant.latitude?.let{latitude->participant.longitude?.let{longitude->com.plainstride.outbound.core.designsystem.MapRouteMarker(id=participant.id,coordinate=MapCoordinate(latitude,longitude),title=participant.displayName,selected=participant.userId==run.currentUserId)}}})
+   participants.forEach{participant->
+    val freshness=participant.lastLocationAt?.let{raw->runCatching{java.time.Duration.between(java.time.Instant.parse(raw),java.time.Instant.now()).seconds.coerceAtLeast(0)}.getOrNull()}
+    val status=when{participant.latitude==null||participant.longitude==null->stringResource(R.string.recording_group_waiting);freshness!=null&&freshness>60->stringResource(R.string.recording_group_stale,formatDuration(freshness));else->"${formatDistance(participant.distanceMeters,MeasurementUnitSystem.metric)} · ${formatDuration(participant.elapsedSeconds.toLong())}"}
+    Text("${participant.displayName} · $status",style=MaterialTheme.typography.bodySmall,maxLines=1,overflow=TextOverflow.Ellipsis)
+   }
+  }
+ }
 }
 
 @Composable

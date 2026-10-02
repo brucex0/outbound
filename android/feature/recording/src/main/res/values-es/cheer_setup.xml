@@ -1,0 +1,7 @@
+<resources>
+    <string name="recording_cheer_on">Anímame</string>
+    <string name="recording_cheer_off">Desactivado</string>
+    <string name="recording_cheer_selected">Activado · %1$s</string>
+    <string name="recording_cheer_generic">Activado</string>
+    <string name="recording_cheer_selected_count">Activado · %1$d personas</string>
+</resources>

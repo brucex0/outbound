@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -54,12 +55,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -93,7 +97,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Groups2
 import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.outlined.PeopleAlt
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import android.content.pm.PackageManager
@@ -119,6 +122,7 @@ import com.plainstride.outbound.core.designsystem.LocalPlainstrideThemeColors
 import com.plainstride.outbound.core.designsystem.PrimaryBottomToolbarClearance
 import com.plainstride.outbound.feature.activity.ActivityHistoryRoute
 import com.plainstride.outbound.feature.activity.ActivityMessage
+import com.plainstride.outbound.feature.activity.ActivityViewModel
 import com.plainstride.outbound.feature.activity.RecentActivitiesRoute
 import com.plainstride.outbound.reminders.ReminderSettingsRow
 import com.plainstride.outbound.feature.onboarding.OnboardingEffect
@@ -154,10 +158,18 @@ import com.plainstride.outbound.feature.assistant.AssistantRoute
 import com.plainstride.outbound.feature.assistant.MusicRoute
 import com.plainstride.outbound.core.assistant.VoiceSport
 import com.plainstride.outbound.feature.social.SocialRoute
+import com.plainstride.outbound.feature.social.SocialViewModel
+import com.plainstride.outbound.feature.social.SocialActivityDetailDestination
+import com.plainstride.outbound.feature.social.SocialActivityEventDestination
+import com.plainstride.outbound.feature.social.SocialProfileDestination
+import com.plainstride.outbound.feature.social.SocialPerson
 import com.plainstride.outbound.feature.today.WorkoutLaunchIntent
 import com.plainstride.outbound.feature.today.TodayManualLaunch
 import com.plainstride.outbound.feature.today.TodayActivityChoice
 import com.plainstride.outbound.feature.today.TodayGoalChoice
+import com.plainstride.outbound.feature.today.TodayShoeOption
+import com.plainstride.outbound.feature.today.TodayRouteSelection
+import com.plainstride.outbound.core.designsystem.MapCoordinate
 import com.plainstride.outbound.core.model.Modality
 import com.plainstride.outbound.core.model.activity.MeasurementUnitSystem
 import com.plainstride.outbound.feature.community.CommunityRouteScreen
@@ -165,6 +177,11 @@ import com.plainstride.outbound.feature.community.RouteScope
 import com.plainstride.outbound.feature.community.guidancePoints
 import com.plainstride.outbound.feature.health.*
 import com.plainstride.outbound.feature.progress.ProgressRoute
+import com.plainstride.outbound.feature.progress.ProgressUnitSystem
+import com.plainstride.outbound.feature.progress.AddShoeSheet
+import com.plainstride.outbound.feature.progress.GearSettingsSection
+import com.plainstride.outbound.feature.progress.NewShoe
+import com.plainstride.outbound.feature.progress.R as ProgressR
 import com.plainstride.outbound.feature.safety.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -276,7 +293,9 @@ private fun SignedInApp(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
     var recordingLaunch by remember { mutableStateOf(RecordingLaunchConfiguration()) }
+    var selectingRouteForToday by rememberSaveable { mutableStateOf(false) }
     var socialTarget by remember { mutableStateOf<SocialNavigationTarget?>(null) }
+    var sharedSocialProfile by remember { mutableStateOf<SocialPerson?>(null) }
     var activityTarget by remember { mutableStateOf<String?>(null) }
     var safetyTarget by remember { mutableStateOf<Pair<String,String>?>(null) }
     var notificationDetailID by remember { mutableStateOf<String?>(null) }
@@ -288,6 +307,8 @@ private fun SignedInApp(
     var settingsRequest by remember { mutableStateOf(0) }
     var trackedAssistantExposure by remember { mutableStateOf(false) }
     var trackedAssistantAnimation by remember { mutableStateOf(false) }
+    var cheerPickerVisible by remember { mutableStateOf(false) }
+    var addShoeSheetVisible by remember { mutableStateOf(false) }
     val activeRecordingViewModel:ActiveRecordingViewModel=hiltViewModel()
     val hasActiveSession by activeRecordingViewModel.active.collectAsStateWithLifecycle()
     var suppressRecordingRecovery by remember { mutableStateOf(false) }
@@ -301,14 +322,63 @@ private fun SignedInApp(
     val healthViewModel:HealthIntegrationViewModel=hiltViewModel()
     val healthPermissions by healthViewModel.permissions.collectAsStateWithLifecycle()
     val integrationViewModel: P0IntegrationViewModel = hiltViewModel()
+    val cheerPickerViewModel: SafetySettingsViewModel = hiltViewModel()
     val connectivityViewModel: ConnectivityViewModel = hiltViewModel()
     val connectivityState by connectivityViewModel.state.collectAsStateWithLifecycle()
     val rewardsViewModel: RewardsViewModel = hiltViewModel()
     val rewardsState by rewardsViewModel.state.collectAsStateWithLifecycle()
     val reminderViewModel: ReminderViewModel = hiltViewModel()
     val integration by integrationViewModel.state.collectAsStateWithLifecycle()
+    var todaySelectedRoute by remember(accountId) { mutableStateOf<com.plainstride.outbound.feature.community.CommunityRoute?>(null) }
+    var todayRouteReversed by rememberSaveable(accountId) { mutableStateOf(false) }
+    var selectedTodayShoeId by remember(accountId) { mutableStateOf<String?>(null) }
+    LaunchedEffect(integration.defaultGearId) {
+        if (selectedTodayShoeId == null) selectedTodayShoeId = integration.defaultGearId
+    }
+    val activeShoes = remember(integration.gearShoes) { integration.gearShoes.filterNot { it.isRetired } }
+    val selectedTodayShoe = selectedTodayShoeId?.let { id -> activeShoes.firstOrNull { it.id.toString() == id } }
+        ?: activeShoes.firstOrNull { it.id.toString() == integration.defaultGearId }
+        ?: activeShoes.firstOrNull()
+    val selectedTodayShoeIdForLaunch = selectedTodayShoe?.id?.toString()
+    val trustedContacts by cheerPickerViewModel.trustedContacts.collectAsStateWithLifecycle()
+    val sharesWithTrustedContactsByDefault by cheerPickerViewModel.sharesWithTrustedContactsByDefault.collectAsStateWithLifecycle()
+    val selectedCheerIds by cheerPickerViewModel.selectedRecipientIds.collectAsStateWithLifecycle()
+    val selectedCheerIdSet = selectedCheerIds.toSet()
+    val recordingSafetyViewModel: RecordingSafetyViewModel = hiltViewModel()
+    val sharedLiveGroupRun by recordingSafetyViewModel.coordinator.group.collectAsStateWithLifecycle()
+    val groupRunJoining by recordingSafetyViewModel.coordinator.groupJoining.collectAsStateWithLifecycle()
+    val toggleActivityLiveMap: (String) -> Unit = { eventId ->
+        if (recordingSafetyViewModel.coordinator.isSharingEvent(eventId)) {
+            recordingSafetyViewModel.coordinator.group.value?.let { run ->
+                scope.launch {
+                    recordingSafetyViewModel.coordinator.leaveGroupRun(run.id, finished = false)
+                        .onFailure { snackbar.showSnackbar(resources.getString(R.string.auth_generic_error)) }
+                }
+            }
+        } else {
+            scope.launch {
+                recordingSafetyViewModel.coordinator.joinActivityGroupRun(eventId)
+                    .onFailure { snackbar.showSnackbar(resources.getString(R.string.auth_generic_error)) }
+            }
+        }
+    }
+    val stopActivityLiveMap: () -> Unit = {
+        recordingSafetyViewModel.coordinator.group.value?.let { run ->
+            scope.launch {
+                recordingSafetyViewModel.coordinator.leaveGroupRun(run.id, finished = false)
+                    .onFailure { snackbar.showSnackbar(resources.getString(R.string.auth_generic_error)) }
+            }
+        }
+    }
     LaunchedEffect(accountId) { accountId?.let { integrationViewModel.start(it, resources.configuration.locales[0].toLanguageTag());cycleViewModel.start(it);healthViewModel.start(it) } }
+    LaunchedEffect(accountId) { cheerPickerViewModel.onAccountActivated(accountId) }
+    LaunchedEffect(integration.connections) { cheerPickerViewModel.onConnectionsUpdated(integration.connections) }
     LaunchedEffect(accountId) { accountId?.let(connectivityViewModel::start) }
+    LaunchedEffect(connectivityState.isOffline, connectivityState.pendingSyncCount > 0) {
+        if (!connectivityState.isOffline && connectivityState.pendingSyncCount > 0) {
+            snackbar.showSnackbar(resources.getString(R.string.connectivity_pending))
+        }
+    }
     LaunchedEffect(accountId) {
         accountId?.let { activeRecordingViewModel.recover(it, recordingLocationPermission(context)) }
     }
@@ -347,7 +417,7 @@ private fun SignedInApp(
 
     Scaffold(
         containerColor = Color.Transparent,
-        contentWindowInsets = if (currentDestination?.route == ACTIVITY_HISTORY_ROUTE) WindowInsets(0) else WindowInsets.safeDrawing,
+        contentWindowInsets = WindowInsets.safeDrawing,
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
             val primaryDestination = TopLevelDestination.entries.firstOrNull { it.route == currentDestination?.route }
@@ -526,11 +596,17 @@ private fun SignedInApp(
                 contentPadding.calculateBottomPadding()
             },
         )
-        Box(Modifier.fillMaxSize().padding(contentInsets)) {
+        Column(Modifier.fillMaxSize().padding(contentInsets).consumeWindowInsets(contentInsets)) {
+        if (currentDestination?.route != RECORDING_ROUTE && connectivityState.isOffline) {
+            ConnectivityBanner(
+                connectivityState,
+                Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp),
+            )
+        }
         NavHost(
             navController = navController,
             startDestination = TopLevelDestination.Today.route,
-            modifier = Modifier.fillMaxSize().padding(top = if (connectivityState.isOffline && currentDestination?.route != RECORDING_ROUTE || connectivityState.pendingSyncCount > 0 && currentDestination?.route != RECORDING_ROUTE) 52.dp else 0.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f),
         ) {
             TopLevelDestination.entries.forEach { destination ->
                 composable(destination.route) {
@@ -543,32 +619,57 @@ private fun SignedInApp(
                             activeSession = hasActiveSession,
                             completedToday = integration.completedToday,
                             onStartWorkout = { intent, options ->
-                                recordingLaunch = intent.toRecordingLaunch().copy(gearId = integration.defaultGearId,privateTrainingSignal=cycleState.currentSignal.takeIf{cycleState.enabled&&it!=CycleTrainingSignal.NO_ADJUSTMENT}?.wireValue,startImmediately=true,indoor=options.indoor,voiceGuideEnabled=options.voiceGuideEnabled,companionType=options.companionType)
+                                recordingLaunch = intent.toRecordingLaunch().copy(gearId = selectedTodayShoeIdForLaunch,privateTrainingSignal=cycleState.currentSignal.takeIf{cycleState.enabled&&it!=CycleTrainingSignal.NO_ADJUSTMENT}?.wireValue,startImmediately=true,indoor=options.indoor,voiceGuideEnabled=options.voiceGuideEnabled,companionType=options.companionType).withTodayRoute(todaySelectedRoute, todayRouteReversed)
                                 navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
                             },
                             onStartFreestyle = { options ->
                                 recordingLaunch = RecordingLaunchConfiguration(
-                                    gearId = integration.defaultGearId,
+                                    gearId = selectedTodayShoeIdForLaunch,
                                     entrySource = "today_freestyle",
                                     startImmediately = true,
                                     indoor = options.indoor,
                                     voiceGuideEnabled = options.voiceGuideEnabled,
                                     companionType = options.companionType,
-                                )
+                                ).withTodayRoute(todaySelectedRoute, todayRouteReversed)
                                 navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
                             },
                             onReturnToSession = { navController.navigate(RECORDING_ROUTE) { launchSingleTop = true } },
                             onSetUpPlan = { planBuilderSource = PlanBuilderSource.PlannedButton },
                             onBuildPlan = { planBuilderSource = PlanBuilderSource.AllPlans },
                             onStartManual = { setup ->
-                                recordingLaunch = setup.toRecordingLaunch(integration.defaultGearId)
+                                recordingLaunch = setup.toRecordingLaunch(selectedTodayShoeIdForLaunch).withTodayRoute(todaySelectedRoute, todayRouteReversed)
                                 navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
                             },
-                            shoesConfigured = integration.defaultGearId != null,
-                            onOpenLiveTrack = { navController.navigate(SAFETY_ROUTE) },
-                            onOpenShoes = { navController.navigate(PROGRESS_ROUTE) },
+                            shoes = activeShoes.map { com.plainstride.outbound.feature.today.TodayShoeOption(it.id.toString(), it.displayName) },
+                            selectedShoeId = selectedTodayShoeIdForLaunch,
+                            onSelectShoe = { shoe -> selectedTodayShoeId = shoe.id; integrationViewModel.trackShoeSelected("active_shoe") },
+                            onAddShoe = { integrationViewModel.trackShoeSelected("add_new"); addShoeSheetVisible = true },
+                            onOpenLiveTrack = { cheerPickerVisible = true },
                             onOpenInbox = { navController.navigate(NOTIFICATIONS_ROUTE) },
-                            onFindRoute = { navController.navigate(COMMUNITY_ROUTES_ROUTE) },
+                            onFindRoute = {
+                                selectingRouteForToday = true
+                                if (integration.routeScope != RouteScope.DISCOVERY) integrationViewModel.scope(RouteScope.DISCOVERY)
+                                integrationViewModel.trackTodayRouteLibraryOpened()
+                                todaySelectedRoute?.id?.let(integrationViewModel::loadCommunityRoute)
+                                navController.navigate(COMMUNITY_ROUTES_ROUTE)
+                            },
+                            selectedRoute = todaySelectedRoute?.let { route ->
+                                val points = route.guidancePoints().map { MapCoordinate(it.latitude, it.longitude) }
+                                val distance = com.plainstride.outbound.core.model.activity.SessionFormatting.distance(route.distanceM, measurementUnitSystem)
+                                val unit = if (measurementUnitSystem == MeasurementUnitSystem.metric) "km" else "mi"
+                                val label = resources.getString(TodayR.string.today_route_distance_format, distance.value, unit)
+                                TodayRouteSelection(route.id, route.name, label, points, todayRouteReversed)
+                            },
+                            onRemoveRoute = {
+                                integrationViewModel.trackTodayRouteRemoved(todaySelectedRoute)
+                                todaySelectedRoute = null
+                                todayRouteReversed = false
+                                integrationViewModel.clearCommunityRoute()
+                            },
+                            onRouteDirectionChanged = { reverse ->
+                                if (todayRouteReversed != reverse) integrationViewModel.trackTodayRouteDirection(reverse)
+                                todayRouteReversed = reverse
+                            },
                             useFahrenheit = settingsState.preferences.temperature == com.plainstride.outbound.feature.settings.TemperatureUnit.Fahrenheit,
                             inboxCount = NotificationPresentationPolicy.actionableAttentionCount(integration.notifications),
                             startRequest = todayStartRequest,
@@ -614,6 +715,9 @@ private fun SignedInApp(
                             onMyRoutes = {
                                 integrationViewModel.scope(com.plainstride.outbound.feature.community.RouteScope.MINE)
                                 navController.navigate(COMMUNITY_ROUTES_ROUTE) { launchSingleTop = true }
+                            },
+                            onOpenProgressInsights = {
+                                navController.navigate(PROGRESS_ROUTE) { launchSingleTop = true }
                             },
                             onMeDestination = settingsViewModel::trackMeDestination,
                             benefitsContent = {
@@ -669,11 +773,28 @@ private fun SignedInApp(
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_planned_workouts))
                                 ReminderSettingsRow(reminderViewModel, BuildConfig.DEBUG)
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_safety))
+                                ListItem(
+                                    headlineContent = { Text(stringResource(com.plainstride.outbound.feature.safety.R.string.trusted_contacts_title)) },
+                                    supportingContent = { Text(stringResource(com.plainstride.outbound.feature.safety.R.string.trusted_contacts_settings_body)) },
+                                    modifier = Modifier.clickable {
+                                        settingsViewModel.trackMeDestination("trusted_contacts")
+                                        navController.navigate(TRUSTED_CONTACTS_ROUTE)
+                                    },
+                                )
                                 ListItem(headlineContent = { Text(stringResource(R.string.safety_destination)) }, supportingContent = { Text(stringResource(SettingsR.string.settings_safety_body)) }, modifier = Modifier.clickable { navController.navigate(SAFETY_ROUTE) })
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_live_guidance))
                                 LiveCoachSettingsSection(onPlus = { navController.navigate(PLUS_ROUTE) })
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_health_and_body))
                                 accountId?.let { CycleAwareSection(it,cycleViewModel) }
+                                SettingsGroupTitle(stringResource(ProgressR.string.progress_gear))
+                                GearSettingsSection(
+                                    summaries = integration.gearMileage,
+                                    defaultShoeId = integration.defaultGearId,
+                                    units = if (measurementUnitSystem == MeasurementUnitSystem.metric) ProgressUnitSystem.METRIC else ProgressUnitSystem.IMPERIAL,
+                                    onAdd = { addShoeSheetVisible = true },
+                                    onMakeDefault = integrationViewModel::setDefaultGearShoe,
+                                    onRetire = integrationViewModel::retireGearShoe,
+                                )
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_integrations))
                                 ListItem(headlineContent = { Text(stringResource(R.string.music_settings_title)) }, supportingContent = { Text(stringResource(R.string.music_settings_body)) }, modifier = Modifier.clickable { navController.navigate(MUSIC_ROUTE) })
                                 ListItem(headlineContent = { Text(stringResource(R.string.progress_destination)) }, modifier = Modifier.clickable { navController.navigate(PROGRESS_ROUTE) })
@@ -685,11 +806,52 @@ private fun SignedInApp(
                             onMessage = { message -> snackbar.showSnackbar(resources.getString(settingsMessageResource(message))) },
                         )
                     } else if (destination == TopLevelDestination.Social && accountId != null) {
-                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.type,socialTarget?.id,targetEntrySource=socialTarget?.entrySource ?: "deep_link",inboxCount=NotificationPresentationPolicy.actionableAttentionCount(integration.notifications),unitSystem=measurementUnitSystem,onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE) { launchSingleTop = true }},onActivity={id->activityTarget=id;navController.navigate(ACTIVITY_HISTORY_ROUTE)},onMyInvite={navController.navigate(MY_QR_ROUTE){launchSingleTop=true}},onTargetConsumed={socialTarget=null},onConnectionLinkConsumed={socialTarget=null;onConnectionCodeConsumed()},onGroupInviteConsumed={socialTarget=null},onRoutesTabSelected={if(integration.routeScope!=RouteScope.DISCOVERY)integrationViewModel.scope(RouteScope.DISCOVERY)},communityRoutesContent={ routeImportRequest -> CommunityRouteScreen(integration.routes,integration.routeScope,integrationViewModel::scope,integrationViewModel::refreshRoutes,integrationViewModel::search,{launch->recordingLaunch=launch;navController.navigate(RECORDING_ROUTE)},integrationViewModel::bookmark,integrationViewModel::trackRouteImport,bottomContentPadding=PrimaryBottomToolbarClearance,routeDetail=integration.selectedCommunityRoute,routeDetailLoading=integration.communityRouteLoading,onLoadDetail=integrationViewModel::loadCommunityRoute,onRemovePublished=integrationViewModel::removePublishedRoute,onClearDetail=integrationViewModel::clearCommunityRoute,unitSystem=measurementUnitSystem,onImportedDelete=integrationViewModel::trackImportedRouteDeleted,importRequest=routeImportRequest,searchQuery=integration.routeQuery)})
+                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.type,socialTarget?.id,targetEntrySource=socialTarget?.entrySource ?: "deep_link",inboxCount=NotificationPresentationPolicy.actionableAttentionCount(integration.notifications),unitSystem=measurementUnitSystem,onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE) { launchSingleTop = true }},onActivity={id->activityTarget=id;navController.navigate(ACTIVITY_HISTORY_ROUTE)},onMyInvite={navController.navigate(MY_QR_ROUTE){launchSingleTop=true}},onTargetConsumed={socialTarget=null},onConnectionLinkConsumed={socialTarget=null;onConnectionCodeConsumed()},onGroupInviteConsumed={socialTarget=null},onRoutesTabSelected={if(integration.routeScope!=RouteScope.DISCOVERY)integrationViewModel.scope(RouteScope.DISCOVERY)},onOpenSharedActivity={id->navController.navigate("$SOCIAL_ACTIVITY_DETAIL_ROUTE/$id")},onOpenSharedEvent={id,source->navController.navigate("$SOCIAL_ACTIVITY_EVENT_ROUTE/$id?source=$source")},onOpenSharedProfile={person->sharedSocialProfile=person;navController.navigate("$SOCIAL_PROFILE_ROUTE/${person.id}")},groupRun=sharedLiveGroupRun?.toSharedLiveRun(),groupRunJoining=groupRunJoining,onToggleActivityLiveMap=toggleActivityLiveMap,onStartGroupActivity={event->recordingLaunch=RecordingLaunchConfiguration(activityKind=when(event.activityType?.lowercase()){"walking"->ActivityKind.WALKING;"hiking"->ActivityKind.HIKING;"cycling"->ActivityKind.CYCLING;"swimming"->ActivityKind.SWIMMING;else->ActivityKind.RUNNING},title=event.name,entrySource="group_event",activityEventId=event.id,startImmediately=false);navController.navigate(RECORDING_ROUTE){launchSingleTop=true}},communityRoutesContent={ routeImportRequest -> CommunityRouteScreen(integration.routes,integration.routeScope,integrationViewModel::scope,integrationViewModel::refreshRoutes,integrationViewModel::search,{launch->recordingLaunch=launch;navController.navigate(RECORDING_ROUTE)},integrationViewModel::bookmark,integrationViewModel::trackRouteImport,bottomContentPadding=PrimaryBottomToolbarClearance,routeDetail=integration.selectedCommunityRoute,routeDetailLoading=integration.communityRouteLoading,onLoadDetail=integrationViewModel::loadCommunityRoute,onRemovePublished=integrationViewModel::removePublishedRoute,onClearDetail=integrationViewModel::clearCommunityRoute,unitSystem=measurementUnitSystem,onImportedDelete=integrationViewModel::trackImportedRouteDeleted,importRequest=routeImportRequest,searchQuery=integration.routeQuery)})
                     } else {
                         FoundationScreen(destination, authState, authViewModel)
                     }
                 }
+            }
+            composable("$SOCIAL_ACTIVITY_DETAIL_ROUTE/{postId}") { entry ->
+                val postId = entry.arguments?.getString("postId").orEmpty()
+                val socialEntry = remember(navController) { navController.getBackStackEntry(TopLevelDestination.Social.route) }
+                val socialViewModel: SocialViewModel = hiltViewModel(socialEntry)
+                val activityViewModel: ActivityViewModel = hiltViewModel(socialEntry)
+                SocialActivityDetailDestination(
+                    postId = postId,
+                    unitSystem = measurementUnitSystem,
+                    viewModel = socialViewModel,
+                    activityViewModel = activityViewModel,
+                    onOpenSharedProfile = { person -> sharedSocialProfile = person; socialViewModel.trackProfileOpened(); navController.navigate("$SOCIAL_PROFILE_ROUTE/${person.id}") },
+                    onBack = { socialViewModel.closeActivityDetail(); navController.popBackStack() },
+                )
+            }
+            composable("$SOCIAL_ACTIVITY_EVENT_ROUTE/{eventId}?source={source}") { entry ->
+                val eventId = entry.arguments?.getString("eventId").orEmpty()
+                val source = entry.arguments?.getString("source") ?: "social_upcoming"
+                val socialEntry = remember(navController) { navController.getBackStackEntry(TopLevelDestination.Social.route) }
+                val socialViewModel: SocialViewModel = hiltViewModel(socialEntry)
+                SocialActivityEventDestination(
+                    eventId = eventId,
+                    entrySource = source,
+                    viewModel = socialViewModel,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable("$SOCIAL_PROFILE_ROUTE/{personId}") { entry ->
+                val personId = entry.arguments?.getString("personId").orEmpty()
+                DisposableEffect(personId) { onDispose { if (sharedSocialProfile?.id == personId) sharedSocialProfile = null } }
+                val socialEntry = remember(navController) { navController.getBackStackEntry(TopLevelDestination.Social.route) }
+                val socialViewModel: SocialViewModel = hiltViewModel(socialEntry)
+                SocialProfileDestination(
+                    person = sharedSocialProfile?.takeIf { it.id == personId },
+                    viewModel = socialViewModel,
+                    onOpenSharedActivity = { post ->
+                        socialViewModel.openActivityDetail(post)
+                        navController.navigate("$SOCIAL_ACTIVITY_DETAIL_ROUTE/${post.id}")
+                    },
+                    onBack = { sharedSocialProfile = null; navController.popBackStack() },
+                )
             }
             composable(ASSISTANT_ROUTE) {
                 AssistantRoute(
@@ -743,6 +905,7 @@ private fun SignedInApp(
                 RecordingRoute(
                     accountId = requireNotNull(accountId) { "Authenticated session is missing its account identifier." },
                     launch = recordingLaunch,
+                    onPrepareActivityStart = cheerPickerViewModel::applyTrustedContactDefault,
                     isOffline = connectivityState.isOffline,
                     unitSystem = measurementUnitSystem,
                     weightKilograms = integration.weightKilograms,
@@ -752,6 +915,9 @@ private fun SignedInApp(
                         integrationViewModel.trackAssistantOpened("today", "live_session")
                         navController.navigate(ASSISTANT_ROUTE) { launchSingleTop = true }
                     },
+                    onCheerMeOn = { cheerPickerVisible = true },
+                    cheerSelectedName = integration.connections.firstOrNull { it.id in selectedCheerIdSet }?.displayName,
+                    cheerSelectedCount = selectedCheerIdSet.size,
                     onSaved = { review: RecordedActivityReview, photoAlbumExport: ActivityPhotoAlbumExportResult? ->
                         val photoMessage = when (photoAlbumExport) {
                             ActivityPhotoAlbumExportResult.SAVED -> R.string.photo_album_saved
@@ -763,7 +929,9 @@ private fun SignedInApp(
                             scope.launch { snackbar.showSnackbar(resources.getString(message)) }
                         }
                         navController.navigate(TopLevelDestination.Me.route) {
-                            popUpTo(RECORDING_ROUTE) { inclusive = true }
+                            popUpTo(TopLevelDestination.Today.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
                         }
                     },
                     onExit = {
@@ -772,9 +940,13 @@ private fun SignedInApp(
                             popUpTo(RECORDING_ROUTE) { inclusive = true }
                         }
                     },
+                    groupRun=sharedLiveGroupRun?.toSharedLiveRun(),
+                    groupRunJoining=groupRunJoining,
+                    onToggleActivityLiveMap={recordingLaunch.activityEventId?.let(toggleActivityLiveMap)},
+                    onStopActivityLiveMap=stopActivityLiveMap,
                     sessionEffect = { snapshot ->
                         LiveCoachRecordingEffect(recordingLaunch, measurementUnitSystem)
-                        RecordingSafetyEffect(snapshot)
+                        RecordingSafetyEffect(snapshot, recordingLaunch.activityEventId)
                     },
                     saveActivityPhotosToAlbum = settingsState.preferences.saveActivityPhotosToAlbum,
                     onPhotoAlbumPermissionDenied = {
@@ -794,23 +966,44 @@ private fun SignedInApp(
                 )
             }
             composable(MUSIC_ROUTE) { MusicRoute(onClose = { navController.popBackStack() }) }
-            composable(PROGRESS_ROUTE) { ProgressRoute(requireNotNull(accountId), integration.progress) }
+            composable(PROGRESS_ROUTE) {
+                val progress = integration.progress.copy(
+                    unitSystem = if (measurementUnitSystem == MeasurementUnitSystem.metric) ProgressUnitSystem.METRIC else ProgressUnitSystem.IMPERIAL,
+                )
+                ProgressRoute(progress, onAnalyticsEvent = integrationViewModel::trackProgressEvent)
+            }
             dialog(COMMUNITY_ROUTES_ROUTE, dialogProperties = DialogProperties(usePlatformDefaultWidth = false)) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Column(Modifier.fillMaxSize()) {
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (!selectingRouteForToday) Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                             androidx.compose.material3.IconButton(onClick = { navController.popBackStack() }) {
                                 Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(com.plainstride.outbound.feature.community.R.string.routes_close))
                             }
                             Text(stringResource(com.plainstride.outbound.feature.community.R.string.routes_title), style = MaterialTheme.typography.titleLarge)
                         }
                         Box(Modifier.weight(1f)) {
-                            CommunityRouteScreen(integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search, { launch -> recordingLaunch=launch;navController.popBackStack();navController.navigate(RECORDING_ROUTE) }, integrationViewModel::bookmark,integrationViewModel::trackRouteImport,routeDetail=integration.selectedCommunityRoute,routeDetailLoading=integration.communityRouteLoading,onLoadDetail=integrationViewModel::loadCommunityRoute,onRemovePublished=integrationViewModel::removePublishedRoute,onClearDetail=integrationViewModel::clearCommunityRoute,unitSystem=measurementUnitSystem,searchQuery=integration.routeQuery)
+                            key(selectingRouteForToday) {
+                                CommunityRouteScreen(integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search, { launch -> recordingLaunch=launch;navController.popBackStack();navController.navigate(RECORDING_ROUTE) }, integrationViewModel::bookmark,integrationViewModel::trackRouteImport,routeDetail=integration.selectedCommunityRoute,routeDetailLoading=integration.communityRouteLoading,onLoadDetail=integrationViewModel::loadCommunityRoute,onRemovePublished=integrationViewModel::removePublishedRoute,onClearDetail=integrationViewModel::clearCommunityRoute,unitSystem=measurementUnitSystem,searchQuery=integration.routeQuery,selectionMode=selectingRouteForToday,initialSelection=todaySelectedRoute,initialSelectionReverse=todayRouteReversed,onSelectRoute={route,reverse->val removedRoute=todaySelectedRoute.takeIf{route==null};todaySelectedRoute=route;todayRouteReversed=reverse;selectingRouteForToday=false;integrationViewModel.clearCommunityRoute();navController.popBackStack();if(removedRoute!=null)integrationViewModel.trackTodayRouteRemoved(removedRoute) else route?.let{integrationViewModel.trackTodayRouteSelected(it)}},onDismissSelection={selectingRouteForToday=false;integrationViewModel.clearCommunityRoute();navController.popBackStack()})
+                            }
                         }
                     }
                 }
             }
             composable(SAFETY_ROUTE) { SafetyRoute(safetyTarget?.second, safetyTarget?.first ?: "group", integration.connections, accountId, measurementUnitSystem) }
+            composable(TRUSTED_CONTACTS_ROUTE) {
+                TrustedContactsSettingsScreen(
+                    connections = integration.connections,
+                    trustedContacts = trustedContacts,
+                    sharesWithTrustedContactsByDefault = sharesWithTrustedContactsByDefault,
+                    onTrustedChange = cheerPickerViewModel::setTrusted,
+                    onDefaultSharingChange = cheerPickerViewModel::setSharesWithTrustedContactsByDefault,
+                    onBack = { navController.popBackStack() },
+                    onOpenConnections = {
+                        socialTarget = SocialNavigationTarget("connections", entrySource = "trusted_contacts")
+                        navController.navigate(TopLevelDestination.Social.route) { launchSingleTop = true }
+                    },
+                )
+            }
             composable(HEALTH_ROUTE) { HealthDestination(healthPermissions, healthViewModel::refresh) { navController.popBackStack() } }
             composable(NOTIFICATIONS_ROUTE, deepLinks = listOf(navDeepLink { uriPattern = "plainstride://notification/{destination}?id={id}&notification={notification}" })) {
                 LaunchedEffect(Unit) { integrationViewModel.openInbox() }
@@ -832,8 +1025,25 @@ private fun SignedInApp(
             }
             composable(PLUS_ROUTE) { PlusRoute(onBack = { navController.popBackStack() }) }
         }
-    }
-    planBuilderSource?.let { source ->
+        }
+        if (cheerPickerVisible) {
+            CheerInvitationPickerDialog(
+                connections = integration.connections,
+                trustedContacts = trustedContacts,
+                currentSelection = selectedCheerIdSet,
+                onDismiss = { cheerPickerVisible = false },
+                onSetUpTrustedContacts = {
+                    cheerPickerVisible = false
+                    safetyTarget = null
+                    navController.navigate(TRUSTED_CONTACTS_ROUTE)
+                },
+                onDone = { ids ->
+                    cheerPickerViewModel.configureCheerRecipients(ids)
+                    cheerPickerVisible = false
+                },
+            )
+        }
+        planBuilderSource?.let { source ->
         Dialog(
             onDismissRequest = {},
             properties = DialogProperties(
@@ -868,12 +1078,14 @@ private fun SignedInApp(
                 )
             }
         }
-        if (currentDestination?.route != RECORDING_ROUTE) {
-            Box(Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.TopCenter) {
-                ConnectivityBanner(connectivityState)
-            }
         }
-        }
+    }
+    if (addShoeSheetVisible) {
+        AddShoeSheet(
+            units = if (measurementUnitSystem == MeasurementUnitSystem.metric) ProgressUnitSystem.METRIC else ProgressUnitSystem.IMPERIAL,
+            onDismiss = { addShoeSheetVisible = false },
+            onAdd = { shoe: NewShoe -> integrationViewModel.addGearShoe(shoe); addShoeSheetVisible = false },
+        )
     }
     if (authState.confirmDeletion) AlertDialog(
         onDismissRequest = authViewModel::cancelDeletion,
@@ -886,15 +1098,9 @@ private fun SignedInApp(
 
 @Composable
 private fun ConnectivityBanner(state: ConnectivityUiState, modifier: Modifier = Modifier) {
-    val message = when {
-        state.isOffline -> stringResource(R.string.connectivity_offline)
-        state.pendingSyncCount > 0 -> stringResource(R.string.connectivity_pending)
-        else -> return
-    }
-    val icon = if (state.isOffline) Icons.Default.CloudOff else Icons.Default.CloudSync
-    val accessibilityLabel = stringResource(
-        if (state.isOffline) R.string.connectivity_offline_accessibility else R.string.connectivity_pending_accessibility,
-    )
+    if (!state.isOffline) return
+    val message = stringResource(R.string.connectivity_offline)
+    val accessibilityLabel = stringResource(R.string.connectivity_offline_accessibility)
     Surface(
         modifier = modifier.semantics(mergeDescendants = true) { contentDescription = accessibilityLabel },
         shape = RoundedCornerShape(50),
@@ -907,7 +1113,7 @@ private fun ConnectivityBanner(state: ConnectivityUiState, modifier: Modifier = 
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(7.dp),
         ) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(16.dp))
+            Icon(Icons.Default.CloudOff, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(16.dp))
             Text(message, style = MaterialTheme.typography.labelMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
         }
     }
@@ -934,9 +1140,13 @@ private const val ASSISTANT_ROUTE = "assistant"
 private const val MY_QR_ROUTE = "my_qr"
 private const val MUSIC_ROUTE = "music"
 private const val ACTIVITY_HISTORY_ROUTE = "activity_history"
+private const val SOCIAL_ACTIVITY_DETAIL_ROUTE = "social_activity_detail"
+private const val SOCIAL_ACTIVITY_EVENT_ROUTE = "social_activity_event"
+private const val SOCIAL_PROFILE_ROUTE = "social_profile"
 private const val PROGRESS_ROUTE = "progress"
 private const val COMMUNITY_ROUTES_ROUTE = "community_routes"
 private const val SAFETY_ROUTE = "safety"
+private const val TRUSTED_CONTACTS_ROUTE = "trusted_contacts"
 private const val HEALTH_ROUTE = "health"
 private const val NOTIFICATIONS_ROUTE = "notifications"
 private const val NOTIFICATION_DETAIL_ROUTE = "notification_detail"
@@ -967,6 +1177,34 @@ private fun activityMessageResource(message: ActivityMessage): Int = when (messa
     ActivityMessage.DELETED -> com.plainstride.outbound.feature.activity.R.string.activity_deleted
     ActivityMessage.FAILED -> com.plainstride.outbound.feature.activity.R.string.activity_failed
     ActivityMessage.EXPORT_UNAVAILABLE -> com.plainstride.outbound.feature.activity.R.string.activity_export_unavailable
+}
+
+private fun RecordingLaunchConfiguration.withTodayRoute(
+    route: com.plainstride.outbound.feature.community.CommunityRoute?,
+    reverse: Boolean,
+): RecordingLaunchConfiguration {
+    if (route == null) return this
+    val routeLaunch = com.plainstride.outbound.feature.community.CommunityRecordingCoordinator.launch(route, reverse)
+    val preservesWorkoutStructure = activityKind == routeLaunch.activityKind
+    return copy(
+        activityKind = routeLaunch.activityKind,
+        title = route.name,
+        workoutSteps = workoutSteps.takeIf { preservesWorkoutStructure }.orEmpty(),
+        plannedWorkoutId = plannedWorkoutId.takeIf { preservesWorkoutStructure },
+        standaloneWorkoutId = standaloneWorkoutId.takeIf { preservesWorkoutStructure },
+        standaloneWorkoutCatalogVersion = standaloneWorkoutCatalogVersion.takeIf { preservesWorkoutStructure },
+        workoutDetail = workoutDetail.takeIf { preservesWorkoutStructure },
+        workoutGuideline = workoutGuideline.takeIf { preservesWorkoutStructure },
+        privateTrainingSignal = privateTrainingSignal.takeIf { preservesWorkoutStructure },
+        workoutPhase = workoutPhase.takeIf { preservesWorkoutStructure },
+        workoutTargetPaceSecondsPerKilometer = workoutTargetPaceSecondsPerKilometer.takeIf { preservesWorkoutStructure },
+        workoutFasterToleranceSeconds = workoutFasterToleranceSeconds.takeIf { preservesWorkoutStructure },
+        workoutSlowerToleranceSeconds = workoutSlowerToleranceSeconds.takeIf { preservesWorkoutStructure },
+        workoutRecognizesTargetLock = workoutRecognizesTargetLock && preservesWorkoutStructure,
+        raceIntent = raceIntent.takeIf { preservesWorkoutStructure },
+        followedRoute = routeLaunch.followedRoute,
+        startImmediately = true,
+    )
 }
 
 private fun WorkoutLaunchIntent.toRecordingLaunch(): RecordingLaunchConfiguration {

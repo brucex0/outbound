@@ -28,20 +28,23 @@
     <string name="route_import_preview_privacy">Imported routes stay private on this device until you complete and save your own activity.</string>
     <string name="route_import_preview_title">Preview Route</string>
     <string name="route_library_accessibility_saved">Saved to My Routes</string>
-    <string name="route_library_action_delete">Delete</string>
+    <string name="route_library_accessibility_selected">Selected route</string>
     <string name="route_library_action_clear_search">Clear search</string>
-    <string name="route_library_action_show_all">Show all routes</string>
-    <string name="route_library_filter_title">Filter routes</string>
-    <string name="route_library_filter_clear">Clear</string>
+    <string name="route_library_action_delete">Delete</string>
     <string name="route_library_action_find_nearby">Find routes near me</string>
     <string name="route_library_action_import">Import GPX or GeoJSON</string>
+    <string name="route_library_action_remove_selection">Remove Route</string>
+    <string name="route_library_action_show_all">Show all routes</string>
     <string name="route_library_action_start">Start Route Guidance</string>
+    <string name="route_library_action_use_selection">Use This Route</string>
     <string name="route_library_detail_creator_format">Created by %1$s</string>
     <string name="route_library_detail_retry">Try Again</string>
     <string name="route_library_detail_stats_format">Saves: %1$d · Completions: %2$d</string>
     <string name="route_library_detail_unavailable_title">Route unavailable</string>
     <string name="route_library_empty_community_description">Try another search or import a route to follow.</string>
     <string name="route_library_empty_community_title">No routes found</string>
+    <string name="route_library_filter_clear">Clear</string>
+    <string name="route_library_filter_title">Filter routes</string>
     <string name="route_library_imported_device_private">Private on this device</string>
     <string name="route_library_loading">Loading routes</string>
     <string name="route_library_remove_published_action">Remove Published Route</string>
@@ -53,4 +56,5 @@
     <string name="route_library_section_imported">Imported routes</string>
     <string name="route_library_test_badge">Test</string>
     <string name="route_library_test_badge_accessibility">Test route</string>
+    <string name="route_library_title_select">Select Route</string>
 </resources>

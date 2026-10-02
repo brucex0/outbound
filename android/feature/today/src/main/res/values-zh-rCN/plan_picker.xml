@@ -1,0 +1,23 @@
+<resources>
+    <string name="today_cancel">取消</string>
+    <string name="plan_picker_title">更多计划</string>
+    <string name="plan_picker_build">制定我的计划</string>
+    <string name="plan_picker_details">详情</string>
+    <string name="plan_picker_more">更多计划</string>
+    <string name="plan_picker_use">使用此计划</string>
+    <string name="plan_picker_empty">目前没有其他可用计划。</string>
+    <string name="plan_picker_load_error">无法加载计划，请重试。</string>
+    <string name="plan_picker_activation_error">无法更改计划，当前计划保持不变。</string>
+    <string name="plan_picker_stats">%1$d 周 · 每周 %2$d 次 · 每周 %3$d 分钟 · 长课 %4$d 分钟</string>
+    <string name="plan_picker_card_stats">%1$d 周 · 每周 %2$d 次 · 每周 %3$d 分钟</string>
+    <string name="plan_picker_replace_title">替换当前训练计划？</string>
+    <string name="plan_picker_replace_body">当前计划将结束，所选计划将开始。</string>
+    <string name="plan_picker_replace">替换计划</string>
+    <string name="plan_picker_focus_base">建立跑步基础</string>
+    <string name="plan_picker_focus_comeback">恢复跑步训练</string>
+    <string name="plan_picker_focus_5k">备战 5 公里</string>
+    <string name="plan_picker_focus_10k">备战 10 公里</string>
+    <string name="plan_picker_focus_10mile">备战 10 英里</string>
+    <string name="plan_picker_focus_half">备战半程马拉松</string>
+    <string name="plan_picker_focus_marathon">备战马拉松</string>
+</resources>

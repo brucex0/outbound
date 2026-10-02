@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.border
@@ -32,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -51,6 +53,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.plainstride.outbound.core.designsystem.*
 import com.plainstride.outbound.core.model.activity.MeasurementUnitSystem
+import com.plainstride.outbound.core.model.activity.SharedLiveRun
 import com.plainstride.outbound.core.model.activity.ActivityTrackPoint
 import com.plainstride.outbound.core.model.activity.ActivityType
 import com.plainstride.outbound.core.model.activity.SavedActivity
@@ -58,7 +61,7 @@ import com.plainstride.outbound.feature.activity.ActivityExport
 import com.plainstride.outbound.feature.activity.ActivityViewModel
 import com.plainstride.outbound.feature.activity.R as ActivityR
 
-@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,targetEntrySource:String="deep_link",inboxCount:Int=0,unitSystem:MeasurementUnitSystem=MeasurementUnitSystem.metric,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onTargetConsumed:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={},onRoutesTabSelected:()->Unit={},communityRoutesContent: @Composable (Int) -> Unit = {}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
+@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,targetEntrySource:String="deep_link",inboxCount:Int=0,unitSystem:MeasurementUnitSystem=MeasurementUnitSystem.metric,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onTargetConsumed:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={},onRoutesTabSelected:()->Unit={},onOpenSharedActivity:(String)->Unit={},onOpenSharedEvent:(String,String)->Unit={_,_->},onOpenSharedProfile:(SocialPerson)->Unit={},groupRun:SharedLiveRun?=null,groupRunJoining:Boolean=false,onToggleActivityLiveMap:(String)->Unit={},onStartGroupActivity:(SocialEvent)->Unit={},communityRoutesContent: @Composable (Int) -> Unit = {}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
     var selectedTab by rememberSaveable { mutableStateOf(SocialFeatureTab.FEED) }
     var hasSelectedSocialTab by rememberSaveable { mutableStateOf(false) }
     var routeImportRequest by rememberSaveable { mutableStateOf(0) }
@@ -112,7 +115,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
         }
         else if(!state.loading&&targetType=="group_invite"&&targetId!=null){viewModel.consumeGroupInvite(targetId);onGroupInviteConsumed()}
         else if(!state.loading&&targetType!=null&&targetId!=null){
-            viewModel.openTarget(targetType,targetId)
+            if (targetType == "event") onOpenSharedEvent(targetId, targetEntrySource) else viewModel.openTarget(targetType,targetId)
             onTargetConsumed()
         }
     }
@@ -135,7 +138,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             trackMembersOpened = viewModel::trackGroupMembersOpened,
             planActivity = { groupActivity = group },
             requestJoin = { viewModel.joinGroup(group) },
-            openActivity = { eventId -> viewModel.openTarget("event", eventId) },
+            openActivity = { eventId -> onOpenSharedEvent(eventId, "group_up_next") },
             publishNotice = { title, body, pinned -> viewModel.createGroupNotice(group, title, body, pinned) },
             markNoticesRead = { viewModel.markGroupNoticesRead(group) },
         )
@@ -146,7 +149,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             if (tab == SocialFeatureTab.ROUTES) onRoutesTabSelected()
             if (tab == SocialFeatureTab.GROUPS) { viewModel.refresh(); viewModel.refreshGroupDirectory() }
             viewModel.trackSocialTabSelected(tab.analyticsValue)
-        }, inboxCount, unitSystem, viewModel::refresh, viewModel::search, viewModel::openProfile, { connectionsOpen = true; viewModel.trackConnectionsOpened("social_home_preview") }, viewModel::openGroup, viewModel::openComments, viewModel::openActivityDetail, viewModel::openTarget, onConditions, onCommunity, onNotifications, { routeImportRequest += 1 }, viewModel::toggleCheer, { group ->
+        }, inboxCount, unitSystem, viewModel::refresh, viewModel::search, { person -> viewModel.trackProfileOpened(); onOpenSharedProfile(person) }, { connectionsOpen = true; viewModel.trackConnectionsOpened("social_home_preview") }, viewModel::openGroup, viewModel::openComments, { post -> viewModel.openActivityDetail(post); onOpenSharedActivity(post.id) }, { type, id -> if (type == "event") onOpenSharedEvent(id, "social_upcoming") else viewModel.openTarget(type, id) }, onConditions, onCommunity, onNotifications, { routeImportRequest += 1 }, viewModel::toggleCheer, { group ->
             viewModel.joinGroup(group)
         }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, communityRoutesContent, modifier, viewModel = viewModel, feedListState = feedListState, routeImportRequest = routeImportRequest)
     } else {
@@ -212,13 +215,182 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             },
         )
     }
-    state.selectedEvent?.let{event->SocialEventDialog(event,{viewModel.setEventRsvp(event,!event.joined);viewModel.closeEvent()},{inviteEvent=event},viewModel::closeEvent)}
+    state.selectedEvent?.let { event ->
+        BackHandler { viewModel.closeEvent() }
+        SocialEventDetailScreen(
+            event = event,
+            unitSystem = unitSystem,
+            close = viewModel::closeEvent,
+            rsvp = { going, mode -> viewModel.setEventRsvp(event, going, mode) },
+            invite = { inviteEvent = event },
+            refreshEvent = { viewModel.refreshEvent(event.id) },
+            groupRun = groupRun?.takeIf { it.activityEventId == event.id },
+            groupRunJoining = groupRunJoining,
+            onToggleActivityLiveMap = { onToggleActivityLiveMap(event.id) },
+            onStartActivity = { onStartGroupActivity(event) },
+        )
+    }
     if(createGroup)GroupCreateScreen(state.home.connections.filter{it.relationship in setOf("accepted","connected")},{createGroup=false},viewModel::trackGroupTemplateSelected){template,name,people->viewModel.createGroup(template,name,people,java.util.TimeZone.getDefault().id);createGroup=false}
     inviteGroup?.let{group->PersonPickerDialog(stringResource(R.string.social_invite),state.home.connections,{inviteGroup=null}){person->viewModel.inviteToGroup(group,listOf(person),java.util.UUID.randomUUID().toString());inviteGroup=null}}
     inviteEvent?.let{event->PersonPickerDialog(stringResource(R.string.social_invite),state.home.connections,{inviteEvent=null}){person->viewModel.inviteToEvent(event,person);inviteEvent=null}}
     groupActivity?.let { group -> GroupActivityComposer({ groupActivity = null }) { title, location -> viewModel.createGroupActivity(group, title, location); groupActivity = null } }
     state.selectedInvitation?.let{invitation->AlertDialog(onDismissRequest=viewModel::closeTarget,title={Text(invitation.title)},confirmButton={TextButton({viewModel.respondToInvitation(invitation,true)}){Text(stringResource(R.string.social_accept))}},dismissButton={TextButton({viewModel.respondToInvitation(invitation,false)}){Text(stringResource(R.string.social_decline))}})}
     state.selectedPost?.let { CommentsDialog(it, state.comments, viewModel::addComment, viewModel::deleteComment, viewModel::closeComments) }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+fun SocialActivityDetailDestination(
+    postId: String,
+    unitSystem: MeasurementUnitSystem,
+    viewModel: SocialViewModel,
+    activityViewModel: ActivityViewModel,
+    onOpenSharedProfile: (SocialPerson) -> Unit,
+    onBack: () -> Unit,
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    DisposableEffect(postId) { onDispose { viewModel.closeActivityDetail() } }
+    val post = state.selectedActivityPost?.takeIf { it.id == postId }
+        ?: state.home.posts.firstOrNull { it.id == postId }
+    if (post == null) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.social_activity_feed)) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.social_back))
+                        }
+                    },
+                )
+            },
+        ) { padding -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+        return
+    }
+    LaunchedEffect(postId) {
+        if (state.selectedActivityPost?.id != postId) viewModel.openActivityDetail(post)
+    }
+    SocialActivityDetail(
+        post = post,
+        unitSystem = unitSystem,
+        photos = state.activityDetailPhotos,
+        photosLoading = state.activityDetailPhotosLoading,
+        photoBytes = state.activityDetailPhotoBytes,
+        onBack = onBack,
+        openProfile = { person -> viewModel.trackProfileOpened(); onOpenSharedProfile(person) },
+        cheer = { viewModel.toggleCheer(post) },
+        comments = { viewModel.openComments(post) },
+        trackSplitsViewed = viewModel::trackActivitySplitsViewed,
+        createShareCard = { selected -> selected.activity?.toSavedActivity(selected)?.let { activityViewModel.shareCard(it, unitSystem, "social_feed") } },
+        trackShareAction = activityViewModel::trackSocialShareAction,
+        loadPhotoContent = viewModel::loadActivityPhotoContent,
+        trackPhotoPreview = viewModel::trackActivityPhotoPreviewed,
+    )
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+fun SocialActivityEventDestination(
+    eventId: String,
+    entrySource: String,
+    viewModel: SocialViewModel,
+    onBack: () -> Unit,
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    DisposableEffect(eventId) { onDispose { viewModel.closeEvent() } }
+    LaunchedEffect(eventId, entrySource) { viewModel.openTarget("event", eventId, entrySource) }
+    val event = state.selectedEvent
+    if (event == null) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.social_upcoming)) },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.closeEvent(); onBack() }) {
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.social_back))
+                        }
+                    },
+                )
+            },
+        ) { padding -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+        return
+    }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(event.name, maxLines = 1) },
+                navigationIcon = {
+                    IconButton(onClick = { viewModel.closeEvent(); onBack() }) {
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.social_back))
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        var isInvitePickerPresented by remember(event.id) { mutableStateOf(false) }
+        Column(Modifier.fillMaxSize().padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(event.name, style = MaterialTheme.typography.headlineSmall)
+            Text(event.startsAt, style = MaterialTheme.typography.bodyLarge)
+            event.endsAt?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            event.locationName?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            event.note?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            Text(stringResource(R.string.social_upcoming_attendees, event.attendeeCount), style = MaterialTheme.typography.bodyMedium)
+            Button(onClick = { viewModel.setEventRsvp(event, !event.joined) }) {
+                Text(stringResource(if (event.joined) R.string.social_leave else R.string.social_join))
+            }
+            OutlinedButton(onClick = { isInvitePickerPresented = true }) {
+                Text(stringResource(R.string.social_invite))
+            }
+        }
+        if (isInvitePickerPresented) {
+            PersonPickerDialog(
+                title = stringResource(R.string.social_invite),
+                people = state.home.connections,
+                close = { isInvitePickerPresented = false },
+            ) { person ->
+                viewModel.inviteToEvent(event, person)
+                isInvitePickerPresented = false
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+fun SocialProfileDestination(
+    person: SocialPerson?,
+    viewModel: SocialViewModel,
+    onOpenSharedActivity: (SocialPost) -> Unit,
+    onBack: () -> Unit,
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    if (person == null) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.social_profile)) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.social_back))
+                        }
+                    },
+                )
+            },
+        ) { padding -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+        return
+    }
+    ProfileScreen(
+        person = person,
+        posts = state.home.posts.filter { it.author.id == person.id },
+        close = onBack,
+        connect = { viewModel.connect(person) },
+        accept = { person.connectionId?.let(viewModel::acceptConnection) },
+        remove = { person.connectionId?.let(viewModel::removeConnection) },
+        isCurrentUser = false,
+        isProcessing = state.connectionRequestLoading,
+        useDialog = false,
+        openActivity = onOpenSharedActivity,
+    )
 }
 
 private enum class SocialFeatureTab(val analyticsValue: String, val label: Int) {
@@ -1481,10 +1653,11 @@ private fun ProfileScreen(
     remove: () -> Unit,
     isCurrentUser: Boolean = false,
     isProcessing: Boolean = false,
+    useDialog: Boolean = true,
     openActivity: (SocialPost) -> Unit,
 ) {
     var confirmsRemoval by remember { mutableStateOf(false) }
-    Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    val profileContent: @Composable () -> Unit = {
         Scaffold(
             contentWindowInsets = WindowInsets.safeDrawing,
             topBar = {
@@ -1561,6 +1734,13 @@ private fun ProfileScreen(
             }
         }
     }
+    if (useDialog) {
+        Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            profileContent()
+        }
+    } else {
+        profileContent()
+    }
     if (confirmsRemoval) AlertDialog(
         onDismissRequest = { confirmsRemoval = false },
         title = { Text(stringResource(R.string.social_remove_connection_confirmation_title)) },
@@ -1573,5 +1753,203 @@ private fun ProfileScreen(
 @Composable private fun relationshipLabel(value:String)=when(value){"accepted","connected"->stringResource(R.string.social_relationship_connected);"pending"->stringResource(R.string.social_relationship_pending);else->stringResource(R.string.social_relationship_none)}
 @Composable private fun badgeLabel(value:String)=stringResource(R.string.social_award_badge)
 @Composable private fun GroupDialog(group: GroupSummary, close: () -> Unit, cheer: (String, String) -> Unit,focus:()->Unit,archive:()->Unit,invite:()->Unit) = AlertDialog(onDismissRequest = close, title = { Text(group.name) }, text = { LazyColumn { item { Text(stringResource(R.string.social_group_progress, group.completed, group.target ?: 0)) }; items(group.members, key = { it.person.id }) { member -> Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { Text(member.person.displayName, Modifier.weight(1f)); IconButton({ cheer(member.person.id, "encouragement") }) { Icon(Icons.Outlined.FavoriteBorder, stringResource(R.string.social_cheer)) } } };item{TextButton(invite){Text(stringResource(R.string.social_invite))};Row{TextButton(focus){Text(stringResource(R.string.social_group_set_focus))};TextButton(archive){Text(stringResource(if(group.lifecycle=="archived")R.string.social_group_reactivate else R.string.social_group_archive))}}} } }, confirmButton = { TextButton(close) { Text(stringResource(R.string.social_done)) } })
-@Composable private fun SocialEventDialog(event:SocialEvent,rsvp:()->Unit,invite:()->Unit,close:()->Unit)=AlertDialog(onDismissRequest=close,title={Text(event.name)},confirmButton={Row{TextButton(rsvp){Text(stringResource(if(event.joined)R.string.social_leave else R.string.social_join))};TextButton(invite){Text(stringResource(R.string.social_invite))}}},dismissButton={TextButton(close){Text(stringResource(R.string.social_done))}})
+@Composable
+private fun SocialEventDetailScreen(
+    event: SocialEvent,
+    unitSystem: MeasurementUnitSystem,
+    close: () -> Unit,
+    rsvp: (Boolean, String) -> Unit,
+    invite: () -> Unit,
+    refreshEvent: () -> Unit,
+    groupRun: SharedLiveRun?,
+    groupRunJoining: Boolean,
+    onToggleActivityLiveMap: () -> Unit,
+    onStartActivity: () -> Unit,
+) {
+    var attendanceChoice by rememberSaveable(event.id) { mutableStateOf(false) }
+    val context = LocalContext.current
+    LaunchedEffect(event.id, event.status) {
+        if (event.group != null && event.status in setOf("scheduled", "active")) {
+            while (true) {
+                refreshEvent()
+                delay(12_000)
+            }
+        }
+    }
+    val start = remember(event.startsAt) { runCatching { java.time.OffsetDateTime.parse(event.startsAt).toInstant() }.getOrNull() }
+    val end = remember(event.endsAt) { event.endsAt?.let { runCatching { java.time.OffsetDateTime.parse(it).toInstant() }.getOrNull() } }
+    val canStartActivity = event.status == "active" ||
+        start?.atZone(java.time.ZoneId.systemDefault())?.toLocalDate() == java.time.LocalDate.now()
+    val dateTime = remember(start) {
+        start?.let { java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date.from(it)) }
+            ?: event.startsAt
+    }
+    Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Scaffold(
+                topBar = {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(close) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.social_back)) }
+                        Text(event.name, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
+                        if (event.currentUserRole == "owner" && event.status == "scheduled") {
+                            IconButton(invite) { Icon(Icons.Outlined.PersonAddAlt, stringResource(R.string.social_invite)) }
+                        }
+                    }
+                },
+                bottomBar = {
+                    if (event.currentUserRole != "owner" && event.status in setOf("scheduled", "active")) {
+                        Surface(tonalElevation = 3.dp) {
+                            Button(
+                                onClick = { if (event.joined) rsvp(false, "in_person") else attendanceChoice = true },
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                            ) {
+                                Text(stringResource(if (event.joined) R.string.social_leave else R.string.social_join))
+                            }
+                        }
+                    }
+                },
+            ) { insets ->
+                Column(
+                    Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                ) {
+                    ElevatedCard {
+                        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(event.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            event.group?.name?.let { Text(stringResource(R.string.group_event_from, it), color = MaterialTheme.colorScheme.primary) }
+                            HorizontalDivider()
+                            EventDetailRow(stringResource(R.string.group_event_created_by), event.creator?.displayName ?: stringResource(R.string.group_event_organizer))
+                            EventDetailRow(stringResource(R.string.group_event_when), dateTime)
+                            end?.let {
+                                EventDetailRow(stringResource(R.string.group_event_duration), durationText(start, it, context.resources))
+                                EventDetailRow(stringResource(R.string.group_event_scheduled_end), java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date.from(it)))
+                                EventDetailRow(stringResource(R.string.group_event_results_close), java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date.from(it.plusSeconds(4 * 60 * 60L))))
+                            }
+                            event.paceNote?.takeIf(String::isNotBlank)?.let { EventDetailRow(stringResource(R.string.group_event_pace_note), it) }
+                        }
+                    }
+                    event.locationName?.takeIf(String::isNotBlank)?.let { location ->
+                        ElevatedCard {
+                            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(stringResource(R.string.group_event_location), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(if (event.participationMode == "hybrid") R.string.group_event_hybrid_location else R.string.group_event_meet_location), style = MaterialTheme.typography.bodyMedium)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Icon(if (event.latitude != null && event.longitude != null) Icons.Outlined.LocationOn else Icons.Outlined.Place, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(location, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                    event.compatibility?.let { fit ->
+                        ElevatedCard {
+                            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(stringResource(R.string.group_event_fit), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                Text(fit.explanation, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                    if (event.group != null && event.currentUserRole != "owner" && event.joined && event.currentUserOutcome == null && event.status in setOf("scheduled", "active")) {
+                        val sharing = groupRun?.activityEventId == event.id && groupRun.participants.any {
+                            it.userId == groupRun.currentUserId && it.status in setOf("active", "stale")
+                        } == true
+                        val sharingAnotherEvent = groupRun?.let { run ->
+                            run.status == "active" && run.activityEventId != event.id && run.participants.any {
+                                it.userId == run.currentUserId && it.status in setOf("active", "stale")
+                            }
+                        } == true
+                        ElevatedCard {
+                            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text(
+                                    stringResource(if (sharing) R.string.group_event_live_map_sharing else R.string.group_event_live_map_title),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Text(
+                                    stringResource(R.string.group_event_live_map_consent),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                groupRun?.takeIf { it.activityEventId == event.id }?.let { run ->
+                                    Text(stringResource(R.string.group_event_live_map_runners, run.participants.count { it.status in setOf("active", "stale") }))
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    if (sharing) {
+                                        TextButton(onClick = onToggleActivityLiveMap) { Text(stringResource(R.string.group_event_live_map_stop)) }
+                                    } else {
+                                        OutlinedButton(
+                                            onClick = onToggleActivityLiveMap,
+                                            enabled = !groupRunJoining && !sharingAnotherEvent,
+                                        ) { Text(stringResource(R.string.group_event_live_map_opt_in)) }
+                                    }
+                                    Button(onClick = onStartActivity, enabled = canStartActivity && !groupRunJoining) {
+                                        Text(stringResource(R.string.group_event_live_map_start))
+                                    }
+                                }
+                                if (groupRunJoining) LinearProgressIndicator(Modifier.fillMaxWidth())
+                            }
+                        }
+                    }
+                    if (event.options.isNotEmpty()) ElevatedCard {
+                        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(stringResource(R.string.group_event_options), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            event.options.forEach { option ->
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Text(option.label, Modifier.weight(1f), fontWeight = FontWeight.Medium)
+                                    option.distanceMeters?.let { Text(formatDistance(it, unitSystem), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                }
+                            }
+                        }
+                    }
+                    ElevatedCard {
+                        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(stringResource(R.string.group_event_participants, event.attendeeCount), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            (event.participants.map(SocialEventParticipant::person).ifEmpty { event.attendeePreview }).forEach { person ->
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    SocialAvatar(person)
+                                    Text(person.displayName, style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
+                            if (event.participants.isEmpty() && event.attendeePreview.isEmpty()) Text(stringResource(R.string.group_event_no_participants), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (attendanceChoice) {
+        AlertDialog(
+            onDismissRequest = { attendanceChoice = false },
+            title = { Text(stringResource(R.string.group_event_attendance_title)) },
+            text = { Text(stringResource(R.string.group_event_attendance_prompt)) },
+            confirmButton = {
+            TextButton({ attendanceChoice = false; rsvp(true, "in_person") }) { Text(stringResource(R.string.group_event_attend_in_person)) }
+        },
+            dismissButton = {
+                Row {
+                    if (event.participationMode == "hybrid") TextButton({ attendanceChoice = false; rsvp(true, "virtual") }) { Text(stringResource(R.string.group_event_attend_virtual)) }
+                    TextButton({ attendanceChoice = false }) { Text(stringResource(R.string.social_cancel)) }
+                }
+            },
+        )
+    }
+}
+
+@Composable private fun EventDetailRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(label, Modifier.weight(.8f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, Modifier.weight(1.2f), fontWeight = FontWeight.Medium)
+    }
+}
+
+private fun durationText(start: java.time.Instant?, end: java.time.Instant, resources: android.content.res.Resources): String {
+    if (start == null) return ""
+    val totalMinutes = java.time.Duration.between(start, end).toMinutes().coerceAtLeast(0)
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return when {
+        hours == 0L -> resources.getString(R.string.group_event_duration_minutes, minutes.toInt())
+        minutes == 0L -> resources.getString(R.string.group_event_duration_hours, hours.toInt())
+        else -> resources.getString(R.string.group_event_duration_hours_minutes, hours.toInt(), minutes.toInt())
+    }
+}
 @Composable private fun PersonPickerDialog(title:String,people:List<SocialPerson>,close:()->Unit,confirm:(SocialPerson)->Unit){var selected by remember{mutableStateOf<SocialPerson?>(null)};AlertDialog(onDismissRequest=close,title={Text(title)},text={if(people.isEmpty())Text(stringResource(R.string.social_connections_empty))else LazyColumn{items(people,key=SocialPerson::id){person->Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){RadioButton(selected?.id==person.id,{selected=person});Text(person.displayName)}}}},confirmButton={TextButton({selected?.let(confirm)},enabled=selected!=null){Text(stringResource(R.string.social_invite))}},dismissButton={TextButton(close){Text(stringResource(R.string.social_done))}})}

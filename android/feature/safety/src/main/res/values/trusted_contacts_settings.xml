@@ -1,0 +1,11 @@
+<resources>
+    <string name="trusted_contacts_title">Trusted Contacts</string>
+    <string name="trusted_contacts_settings_body">Choose who can cheer you on during activities.</string>
+    <string name="trusted_contacts_back">Back</string>
+    <string name="trusted_contacts_default_share">Cheer me on by default</string>
+    <string name="trusted_contacts_default_share_detail">When enabled, your trusted contacts are invited automatically when you start an activity.</string>
+    <string name="trusted_contacts_section">Trusted contacts</string>
+    <string name="trusted_contacts_no_connections">No connections yet</string>
+    <string name="trusted_contacts_no_connections_detail">Connect with someone in Together, then return here to make them a trusted contact.</string>
+    <string name="trusted_contacts_open_connections">Open connections</string>
+</resources>

@@ -36,6 +36,8 @@ import com.plainstride.outbound.core.network.apiCall
   preferences.edit().putString(KEY,PlainstrideJson.encodeToString(ListSerializer,updated)).commit();Unit
  }
  override suspend fun remove(id:String)=withContext(Dispatchers.IO){preferences.edit().putString(KEY,PlainstrideJson.encodeToString(ListSerializer,decode().filterNot{it.id==id})).commit();Unit}
+ override suspend fun sharesWithTrustedContactsByDefault(accountId:String)=withContext(Dispatchers.IO){preferences.getBoolean(defaultShareKey(accountId),false)}
+ override suspend fun setSharesWithTrustedContactsByDefault(accountId:String,enabled:Boolean)=withContext(Dispatchers.IO){preferences.edit().putBoolean(defaultShareKey(accountId),enabled).commit();Unit}
 
  /**
   * One-time migration from the pre-server phone-book store: those rows held
@@ -66,6 +68,7 @@ import com.plainstride.outbound.core.network.apiCall
 
  private suspend fun<T:Any>authenticated(call:suspend(String)->ApiResult<T>):Result<T>{val token=tokens.validAccessToken()?:return Result.failure(IllegalStateException("signed_out"));return when(val value=call("Bearer $token")){is ApiResult.Success->Result.success(value.value);is ApiResult.Failure->Result.failure(IllegalStateException(value.error.code.name))}}
  private fun decode()=preferences.getString(KEY,null)?.let{runCatching{PlainstrideJson.decodeFromString(ListSerializer,it)}.getOrNull()}.orEmpty()
+ private fun defaultShareKey(accountId:String)="default_share_$accountId"
  private companion object{const val KEY="contacts";const val MIGRATED="server_backed_migrated_v1";const val CHANNEL_PUSH="push";val ListSerializer=kotlinx.serialization.builtins.ListSerializer(TrustedContact.serializer())}
 }
 

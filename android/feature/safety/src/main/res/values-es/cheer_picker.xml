@@ -1,0 +1,11 @@
+<resources>
+    <string name="cheer_picker_title">Anímame</string>
+    <string name="cheer_picker_cancel">Cancelar</string>
+    <string name="cheer_picker_done">Listo</string>
+    <string name="cheer_picker_trusted">Contactos de confianza</string>
+    <string name="cheer_picker_others">Otras conexiones</string>
+    <string name="cheer_picker_no_trusted">No hay contactos de confianza</string>
+    <string name="cheer_picker_trusted_hint">Elige contactos de confianza en los ajustes de Seguridad para mantenerlos arriba y seleccionarlos automáticamente.</string>
+    <string name="cheer_picker_setup_trusted">Configurar contactos de confianza</string>
+    <string name="cheer_picker_privacy">Verán tu ubicación precisa, ritmo, distancia y frecuencia cardíaca durante esta actividad, y podrán enviarte breves ánimos de voz en la app.</string>
+</resources>

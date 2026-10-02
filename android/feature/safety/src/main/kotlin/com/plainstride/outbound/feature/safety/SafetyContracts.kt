@@ -34,7 +34,7 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 @Serializable data class GroupRunParticipant(val id:String,val userId:String,val displayName:String,val status:String,val lastLocationAt:String?=null,val lastLocation:GroupRunPoint?=null,val lastActivitySnapshot:GroupRunProgress?=null)
 @Serializable data class GroupRunPoint(val latitude:Double,val longitude:Double,val altitudeM:Double?=null,val accuracyM:Double?=null)
 @Serializable data class GroupRunProgress(val elapsedSeconds:Int=0,val distanceM:Double=0.0,val paceSecondsPerKM:Double?=null)
-@Serializable data class GroupRun(val id:String,val status:String,val title:String?=null,val sport:String?=null,val creatorUserId:String,val currentUserId:String,val startedAt:String,val expiresAt:String,val inviteURL:String?=null,val participants:List<GroupRunParticipant> = emptyList())
+@Serializable data class GroupRun(val id:String,val status:String,val title:String?=null,val sport:String?=null,val creatorUserId:String,val currentUserId:String,val startedAt:String,val expiresAt:String,val inviteURL:String?=null,val participants:List<GroupRunParticipant> = emptyList(),val activityEventId:String?=null,val endedAt:String?=null)
 @Serializable data class CreateGroupRunRequest(val title:String?=null,val sport:String?=null,val expiresInSeconds:Int=14400)
 @Serializable data class JoinGroupRunRequest(val invite:String)
 @Serializable data class GroupLocationUpdate(val recordedAt:String,val latitude:Double,val longitude:Double,val altitudeM:Double?=null,val accuracyM:Double?=null,val elapsedSeconds:Int,val distanceM:Double,val paceSecondsPerKM:Double?=null)
@@ -57,6 +57,8 @@ interface SafetyApi {
  @GET("v1/social/notifications") suspend fun inbox(@Header("Authorization") auth:String):Response<InboxResponse>
  @POST("v1/social/notifications/read-all") suspend fun readAll(@Header("Authorization") auth:String):Response<Unit>
  @POST("v1/live/group-runs") suspend fun createGroupRun(@Header("Authorization") auth:String,@Body body:CreateGroupRunRequest):Response<GroupRun>
+ @POST("v1/live/group-runs/activity-events/{activityEventId}") suspend fun joinActivityGroupRun(@Header("Authorization") auth:String,@Path("activityEventId") activityEventId:String):Response<GroupRun>
+ @POST("v1/live/group-runs/{id}/end") suspend fun endGroupRun(@Header("Authorization") auth:String,@Path("id") id:String):Response<GroupRun>
  @POST("v1/live/group-runs/join") suspend fun joinGroupRun(@Header("Authorization") auth:String,@Body body:JoinGroupRunRequest):Response<GroupRun>
  @GET("v1/live/group-runs/{id}") suspend fun groupRun(@Header("Authorization") auth:String,@Path("id") id:String):Response<GroupRun>
  @PATCH("v1/live/group-runs/{id}/participants/me/location") suspend fun updateGroupLocation(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:GroupLocationUpdate):Response<GroupRun>

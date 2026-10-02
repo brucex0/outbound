@@ -10,7 +10,28 @@ enum class GearPurpose(
     DAILY_TRAINER(640_000.0, 480_000.0..800_000.0),
     RACE(320_000.0, 240_000.0..400_000.0),
     TRAIL(800_000.0, 640_000.0..965_606.4),
-    RECOVERY(640_000.0, 480_000.0..800_000.0),
+    RECOVERY(640_000.0, 480_000.0..800_000.0);
+
+    val nickname: String get() = when (this) {
+        DAILY_TRAINER -> "Daily trainer"
+        RACE -> "Race shoe"
+        TRAIL -> "Trail shoe"
+        RECOVERY -> "Recovery shoe"
+    }
+
+    val retirementHint: Int get() = when (this) {
+        DAILY_TRAINER -> R.string.progress_gear_hint_daily_trainer
+        RACE -> R.string.progress_gear_hint_race
+        TRAIL -> R.string.progress_gear_hint_trail
+        RECOVERY -> R.string.progress_gear_hint_recovery
+    }
+
+    val label: Int get() = when (this) {
+        DAILY_TRAINER -> R.string.progress_gear_purpose_daily_trainer
+        RACE -> R.string.progress_gear_purpose_race
+        TRAIL -> R.string.progress_gear_purpose_trail
+        RECOVERY -> R.string.progress_gear_purpose_recovery
+    }
 }
 
 data class GearItem(

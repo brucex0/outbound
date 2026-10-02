@@ -1,1 +1,32 @@
-<resources><string name="progress_add_gear">添加跑鞋</string><string name="progress_make_default">设为默认</string><string name="progress_retire">停用</string><string name="progress_gear_name">跑鞋名称</string><string name="progress_add">添加</string><string name="progress_cancel">取消</string></resources>
+<resources>
+    <string name="progress_add_gear">添加跑鞋</string>
+    <string name="progress_make_default">使用</string>
+    <string name="progress_retire">停用跑鞋</string>
+    <string name="progress_gear_name">跑鞋名称</string>
+    <string name="progress_add">添加</string>
+    <string name="progress_cancel">取消</string>
+    <string name="progress_gear_selected">已选：%1$s</string>
+    <string name="progress_gear_none_selected">未选择跑鞋</string>
+    <string name="progress_gear_active_count">%1$d 双在用</string>
+    <string name="progress_gear_empty_body">添加你现在穿的跑鞋，平步青云会默认将它用于新的跑步记录。</string>
+    <string name="progress_gear_status_retired">已于 %1$s 停用</string>
+    <string name="progress_gear_status_last_used">上次使用：%1$s</string>
+    <string name="progress_gear_status_unused">尚无已保存的跑步记录</string>
+    <string name="progress_gear_default">默认</string>
+    <string name="progress_gear_purpose">用途</string>
+    <string name="progress_gear_purpose_daily_trainer">日常训练</string>
+    <string name="progress_gear_purpose_race">竞速</string>
+    <string name="progress_gear_purpose_trail">越野</string>
+    <string name="progress_gear_purpose_recovery">恢复</string>
+    <string name="progress_gear_search">搜索品牌或型号</string>
+    <string name="progress_gear_retire_around">预计退役里程</string>
+    <string name="progress_gear_suggestion_use">使用</string>
+    <string name="progress_gear_hint_daily_trainer">大多数公路训练鞋的使用寿命约为 %1$s–%2$s %3$s。</string>
+    <string name="progress_gear_hint_race">竞速鞋通常在使用约 %1$s–%2$s %3$s 后性能最佳。</string>
+    <string name="progress_gear_hint_trail">越野鞋通常可使用约 %1$s–%2$s %3$s。</string>
+    <string name="progress_gear_hint_recovery">缓震恢复鞋通常可使用约 %1$s–%2$s %3$s。</string>
+    <string name="progress_gear_mileage_accessibility">跑鞋里程：%1$s / %2$s</string>
+    <string name="progress_gear_shoes_title">跑鞋</string>
+    <string name="progress_gear_expand_hint">展开跑鞋设置</string>
+    <string name="progress_gear_collapse_hint">收起跑鞋设置</string>
+</resources>

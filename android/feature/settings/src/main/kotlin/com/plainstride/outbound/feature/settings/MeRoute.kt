@@ -171,6 +171,7 @@ fun MeRoute(
     onMyQrCode: () -> Unit = {},
     onConnections: () -> Unit = {},
     onMyRoutes: () -> Unit = {},
+    onOpenProgressInsights: () -> Unit = {},
     onMeDestination: (String) -> Unit = {},
     benefitsContent: @Composable () -> Unit = {},
     activityContent: @Composable () -> Unit = {},
@@ -197,6 +198,7 @@ fun MeRoute(
             onMyQrCode = onMyQrCode,
             onConnections = { onMeDestination("connections"); onConnections() },
             onMyRoutes = { onMeDestination("my_routes"); onMyRoutes() },
+            onOpenProgressInsights = onOpenProgressInsights,
             inboxCount = inboxCount,
             onNotifications = onNotifications,
             onMilestones = { onMeDestination("milestones"); page = MePage.Milestones },
@@ -242,6 +244,7 @@ private fun MeOverview(
     onMyQrCode: () -> Unit,
     onConnections: () -> Unit,
     onMyRoutes: () -> Unit,
+    onOpenProgressInsights: () -> Unit,
     inboxCount: Int,
     onNotifications: () -> Unit,
     onMilestones: () -> Unit,
@@ -315,7 +318,25 @@ private fun MeOverview(
                     }
                 }
             }
-            item { SectionTitle(stringResource(R.string.this_week)) }
+            item {
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 20.dp, top = 10.dp, end = 20.dp, bottom = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        stringResource(R.string.this_week),
+                        Modifier.weight(1f).semantics { heading() },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    TextButton(onClick = onOpenProgressInsights, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
+                        Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Text(stringResource(R.string.view_insights), modifier = Modifier.padding(horizontal = 4.dp))
+                        Icon(Icons.Filled.ChevronRight, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
             item {
                 OutlinedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {

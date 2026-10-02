@@ -3,6 +3,14 @@
 <resources>
     <string name="recording_acquiring_location">Buscando ubicación…</string>
     <string name="recording_activity_in_progress">Actividad en curso</string>
+    <string name="recording_group_share">Compartir mi ubicación en directo con esta actividad del grupo</string>
+    <string name="recording_group_share_detail">Solo quienes confirmen asistencia y activen la opción podrán verse en el mapa en directo.</string>
+    <string name="recording_group_shared">Compartiendo ubicación en directo con esta actividad</string>
+    <string name="recording_group_stop_sharing">Dejar de compartir</string>
+    <string name="recording_group_active_elsewhere">Estás compartiendo otro mapa en directo del grupo. Detén ese uso compartido antes de unirte a este.</string>
+    <string name="recording_group_participants">Participantes en directo</string>
+    <string name="recording_group_waiting">Esperando ubicación</string>
+    <string name="recording_group_stale">Visto por última vez hace %1$s</string>
     <string name="recording_activity_photo">Foto de la actividad</string>
     <string name="recording_add_photo">Añadir foto de la actividad</string>
     <string name="recording_approximate_warning">La ubicación aproximada está activada. La distancia y el ritmo pueden ser menos precisos.</string>

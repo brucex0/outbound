@@ -11,7 +11,7 @@
 - Me presents profile identity, current focus, this-week progress, and recent activities in the same card hierarchy as iOS. Recent activities use one compact 20dp-radius card with the section label and Add, Health Connect import, and All actions in its header instead of separate section, activity, and history cards.
 - Profile identity renders the account avatar when available, with initials as an offline/error fallback. This-week totals fall back to the local activity repository while planning data is unavailable.
 - Profile editing, refresh, settings, and activity history remain reachable with cached content visible while refresh is in progress.
-- Settings groups account, reminders, safety, live guidance, appearance, units, health, gear/progress, integrations, photos, legal/help, debug replay, version, and deletion using Android-native destinations. Saving activity photos to the device's `Pictures/Plainstride` album is enabled by default and runs only after the activity is durably stored.
+- Settings groups account, reminders, safety, live guidance, appearance, units, health, Gear, integrations, photos, legal/help, debug replay, version, and deletion using Android-native destinations. Gear expands to a shoe manager with mileage, last-used/retired status, default selection, retirement, and an Add Shoe form matching iOS. Saving activity photos to the device's `Pictures/Plainstride` album is enabled by default and runs only after the activity is durably stored.
 - Appearance keeps the System/Light/Dark segmented control in Settings and opens a dedicated Appearance chooser from the Theme row. The chooser repeats the mode control and lists all eight themes with gradient previews and a selected marker, matching iOS `ThemeChooserView`; mode and theme changes apply and persist immediately.
 - Preference writes are local-first and report transient save or retry results through the app snackbar.
 - Sign-out and permanent account deletion require confirmation; deletion clears account-scoped local data after server success.
@@ -20,6 +20,7 @@
 
 - Visible strings are localized in English, Spanish, and Simplified Chinese.
 - Profile/settings controls retain 48dp targets, semantic button roles, headings, and non-color selection indicators.
+- Today's Shoes control lists active pairs with the selected shoe first, shows a selection mark, and offers New Shoe; with no active pair it opens Add Shoe directly. Shoe selection and New Shoe actions emit only the allowlisted `shoe_selected` selection type.
 - Refresh, preference, onboarding replay, legal, identity-link, sign-out, and deletion events use sanitized allowlisted values without profile or health content.
 
 ## Reference Scenarios

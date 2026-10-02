@@ -40,6 +40,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -53,6 +55,9 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Route
@@ -87,11 +92,13 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
+
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
@@ -115,6 +122,15 @@ import com.plainstride.outbound.core.designsystem.LocationEnableChip
 import com.plainstride.outbound.core.designsystem.LocationPermissionEducationDialog
 import com.plainstride.outbound.core.location.LocationPermissionAccess
 import com.plainstride.outbound.core.model.activity.PlannedCalorieEstimate
+
+data class TodayShoeOption(val id: String, val displayName: String)
+data class TodayRouteSelection(
+    val id: String,
+    val name: String,
+    val distanceLabel: String,
+    val points: List<com.plainstride.outbound.core.designsystem.MapCoordinate>,
+    val reverse: Boolean = false,
+)
 
 enum class TodayActivityChoice { PLANNED, RUN, WALK, HIKE, BIKE }
 enum class TodayGoalChoice { CURATED, FREE, DISTANCE, TIME, CALORIES }
@@ -150,11 +166,16 @@ fun TodayRoute(
     onSetUpPlan: () -> Unit,
     onBuildPlan: () -> Unit = onSetUpPlan,
     onStartManual: (TodayManualLaunch) -> Unit,
-    shoesConfigured: Boolean = false,
+    shoes: List<TodayShoeOption> = emptyList(),
+    selectedShoeId: String? = null,
+    onSelectShoe: (TodayShoeOption) -> Unit = {},
+    onAddShoe: () -> Unit,
     onOpenLiveTrack: () -> Unit,
-    onOpenShoes: () -> Unit,
     onOpenInbox: () -> Unit,
     onFindRoute: () -> Unit,
+    selectedRoute: TodayRouteSelection? = null,
+    onRemoveRoute: () -> Unit = {},
+    onRouteDirectionChanged: (Boolean) -> Unit = {},
     useFahrenheit: Boolean,
     inboxCount: Int,
     onMessage: suspend (TodayMessage) -> Unit,
@@ -213,16 +234,22 @@ fun TodayRoute(
         onSelectPlan = viewModel::selectPlanRecommendation,
         onUsePlan = { recommendation, replacing -> viewModel.confirmPlanRecommendation(recommendation, replacing) },
         onStartManual = { setup -> viewModel.trackManualWorkoutStarted(setup.activity, setup.goal); onStartManual(setup) },
-        shoesConfigured = shoesConfigured,
+        shoes = shoes,
+        selectedShoeId = selectedShoeId,
+        onSelectShoe = onSelectShoe,
+        onAddShoe = onAddShoe,
         onOpenLiveTrack = onOpenLiveTrack,
-        onOpenShoes = onOpenShoes,
         onOpenInbox = onOpenInbox,
         onFindRoute = onFindRoute,
+        selectedRoute = selectedRoute,
+        onRemoveRoute = onRemoveRoute,
+        onRouteDirectionChanged = onRouteDirectionChanged,
         useFahrenheit = useFahrenheit,
         inboxCount = inboxCount,
         onSubmitConstraint = viewModel::submitConstraint,
         onDecideAdjustment = viewModel::decideAdjustment,
         onCardDisplayChanged = viewModel::trackCardDisplayChanged,
+        onWorkoutDetailsOpened = viewModel::trackPlannedWorkoutDetailsOpened,
         onWeatherDetailsOpened = viewModel::trackWeatherDetailsOpened,
         onWeatherAttributionOpened = viewModel::trackWeatherAttributionOpened,
         onLaunchConfigurationChanged = viewModel::trackLaunchConfiguration,
@@ -269,16 +296,22 @@ fun TodayScreen(
     onSelectPlan: (com.plainstride.outbound.core.network.PlanRecommendation?) -> Unit = {},
     onUsePlan: (com.plainstride.outbound.core.network.PlanRecommendation, Boolean) -> Unit = { _, _ -> },
     onStartManual: (TodayManualLaunch) -> Unit = {},
-    shoesConfigured: Boolean = false,
+    shoes: List<TodayShoeOption> = emptyList(),
+    selectedShoeId: String? = null,
+    onSelectShoe: (TodayShoeOption) -> Unit = {},
+    onAddShoe: () -> Unit = {},
     onOpenLiveTrack: () -> Unit = {},
-    onOpenShoes: () -> Unit = {},
     onOpenInbox: () -> Unit = {},
     onFindRoute: () -> Unit = {},
+    selectedRoute: TodayRouteSelection? = null,
+    onRemoveRoute: () -> Unit = {},
+    onRouteDirectionChanged: (Boolean) -> Unit = {},
     useFahrenheit: Boolean = false,
     inboxCount: Int = 0,
     onSubmitConstraint: (TodayConstraint, String, String?) -> Unit,
     onDecideAdjustment: (String, Boolean) -> Unit,
     onCardDisplayChanged: (Boolean) -> Unit = {},
+    onWorkoutDetailsOpened: () -> Unit = {},
     onWeatherDetailsOpened: () -> Unit = {},
     onWeatherAttributionOpened: () -> Unit = {},
     onLaunchConfigurationChanged: (String, String) -> Unit = { _, _ -> },
@@ -347,7 +380,7 @@ fun TodayScreen(
     Column(modifier.fillMaxSize().padding(bottom = PrimaryBottomToolbarClearance)) {
         Box(Modifier.fillMaxWidth().weight(1f)) {
             PlainstrideRouteMap(
-                points = emptyList(),
+                points = selectedRoute?.let { if (it.reverse) it.points.reversed() else it.points }.orEmpty(),
                 modifier = Modifier.fillMaxSize(),
                 showUserLocation = locationGranted,
                 preciseLocationGranted = locationGranted,
@@ -368,11 +401,28 @@ fun TodayScreen(
                     }
                     DropdownMenu(overflowExpanded, { overflowExpanded = false }) {
                         DropdownMenuItem({ Text(stringResource(R.string.today_take_photo)) }, { overflowExpanded = false; photoLauncher.launch(null) }, leadingIcon = { Icon(Icons.Default.PhotoCamera, null) })
-                        DropdownMenuItem({ Text(stringResource(R.string.today_find_route)) }, { overflowExpanded = false; onFindRoute() }, leadingIcon = { Icon(Icons.Default.Route, null) })
+                        DropdownMenuItem(
+                            text = { Text(stringResource(if (selectedRoute == null) R.string.today_find_route else R.string.today_change_route)) },
+                            onClick = { overflowExpanded = false; onFindRoute() },
+                            leadingIcon = { Icon(Icons.Default.Route, null) },
+                        )
+                        if (selectedRoute != null) DropdownMenuItem(
+                            text = { Text(stringResource(R.string.today_remove_route)) },
+                            onClick = { overflowExpanded = false; onRemoveRoute() },
+                            leadingIcon = { Icon(Icons.Default.Route, null) },
+                        )
                     }
                 }
             }
             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).onSizeChanged { mapOverlayBottomPadding = with(density) { it.height.toDp() } }, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                selectedRoute?.let { route ->
+                    SelectedRouteCard(
+                        route = route,
+                        onChange = onFindRoute,
+                        onRemove = onRemoveRoute,
+                        onDirectionChanged = onRouteDirectionChanged,
+                    )
+                }
                 when {
                     state.suggestion is CachedResource.Loading && state.refreshError == null -> TodaySkeleton()
                     suggestion != null && activityChoice == TodayActivityChoice.PLANNED -> WorkoutRecommendationCard(
@@ -387,7 +437,7 @@ fun TodayScreen(
                             displayPreferences.edit().putBoolean("planned_workout_minimized", cardMinimized).apply()
                             onCardDisplayChanged(cardMinimized)
                         },
-                        onOpen = { showsDetail = true },
+                        onOpen = { onWorkoutDetailsOpened(); showsDetail = true },
                         onChange = onChangePlan,
                     )
                     state.hasNoCachedSuggestion -> NoSuggestionCard(
@@ -439,10 +489,12 @@ fun TodayScreen(
                     onLaunchConfigurationChanged("companion", if (enabled) "on" else "off")
                 },
                 onReturnToSession = onReturnToSession,
-                onOpenDetails = { showsDetail = true },
-                shoesConfigured = shoesConfigured,
+                onOpenDetails = { onWorkoutDetailsOpened(); showsDetail = true },
+                shoes = shoes,
+                selectedShoeId = selectedShoeId,
+                onSelectShoe = onSelectShoe,
+                onAddShoe = onAddShoe,
                 onOpenLiveTrack = onOpenLiveTrack,
-                onOpenShoes = onOpenShoes,
             )
     }
 
@@ -461,7 +513,7 @@ fun TodayScreen(
     if (showsDetail && suggestion != null) WorkoutDetailSheet(
         suggestion,
         onDismiss = { showsDetail = false },
-        onStart = { showsDetail = false; onStart(suggestion, "today_detail", TodayLaunchOptions(indoor, voiceGuideEnabled, companionType)) },
+        onChangeWorkout = { showsDetail = false; showsChange = true },
     )
     if (showsChange && suggestion != null) ChangeWorkoutSheet(
         original = suggestion,
@@ -654,6 +706,34 @@ private fun Context.openAppLocationSettings() {
 }
 
 @Composable
+private fun SelectedRouteCard(
+    route: TodayRouteSelection,
+    onChange: () -> Unit,
+    onRemove: () -> Unit,
+    onDirectionChanged: (Boolean) -> Unit,
+) {
+    val removeRouteLabel = stringResource(R.string.today_remove_route)
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .96f))) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Route, null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(route.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(route.distanceLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            TextButton(onClick = onChange) { Text(stringResource(R.string.today_change_route)) }
+            IconButton(onClick = onRemove, modifier = Modifier.size(44.dp).semantics { contentDescription = removeRouteLabel }) {
+                Icon(Icons.Default.Close, removeRouteLabel, tint = MaterialTheme.colorScheme.error)
+            }
+        }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = !route.reverse, onClick = { onDirectionChanged(false) }, label = { Text(stringResource(R.string.today_route_as_saved)) })
+            FilterChip(selected = route.reverse, onClick = { onDirectionChanged(true) }, label = { Text(stringResource(R.string.today_route_reverse)) })
+        }
+    }
+}
+
+@Composable
 private fun ManualGoalCard(activity: TodayActivityChoice, goal: TodayGoalChoice, curatedWorkout: StandaloneWorkout?, distanceMeters: Double, durationSeconds: Long, calories: Int, caloriePlan: PlannedCalorieEstimate?, onEdit: () -> Unit) {
     Card(onClick = onEdit, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .96f))) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -786,9 +866,11 @@ private fun ActivityLaunchDock(
     onCompanionChanged: (Boolean) -> Unit,
     onReturnToSession: () -> Unit,
     onOpenDetails: () -> Unit,
-    shoesConfigured: Boolean,
+    shoes: List<TodayShoeOption>,
+    selectedShoeId: String?,
+    onSelectShoe: (TodayShoeOption) -> Unit,
+    onAddShoe: () -> Unit,
     onOpenLiveTrack: () -> Unit,
-    onOpenShoes: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
@@ -816,7 +898,7 @@ private fun ActivityLaunchDock(
                     )
                 }
                 UtilityButton(stringResource(R.string.today_cheer), onClick = onOpenLiveTrack)
-                UtilityButton(stringResource(R.string.today_shoes), onClick = onOpenShoes, selected = shoesConfigured)
+                TodayShoePicker(shoes, selectedShoeId, onSelectShoe, onAddShoe)
                 UtilityButton(stringResource(if (indoor) R.string.today_indoor else R.string.today_outdoor), onClick = { onIndoorChanged(!indoor) }, selected = true)
             }
             when {
@@ -875,6 +957,50 @@ private fun UtilityButton(label: String, onClick: () -> Unit, selected: Boolean 
             style = MaterialTheme.typography.labelLarge,
             maxLines = 1,
         )
+    }
+}
+
+@Composable
+private fun TodayShoePicker(
+    shoes: List<TodayShoeOption>,
+    selectedShoeId: String?,
+    onSelectShoe: (TodayShoeOption) -> Unit,
+    onAddShoe: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selected = shoes.firstOrNull { it.id == selectedShoeId }
+    val selectedValue = selected?.displayName.orEmpty()
+    val orderedShoes = remember(shoes, selectedShoeId) { shoes.sortedByDescending { it.id == selectedShoeId } }
+    Box {
+        Surface(
+            modifier = Modifier.semantics { stateDescription = selectedValue },
+            onClick = { if (orderedShoes.isEmpty()) onAddShoe() else expanded = true },
+            shape = CircleShape,
+            color = if (selected != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+        ) {
+            Text(
+                stringResource(R.string.today_shoes),
+                Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                color = if (selected != null) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            orderedShoes.forEach { shoe ->
+                DropdownMenuItem(
+                    text = { Text(shoe.displayName) },
+                    leadingIcon = if (shoe.id == selectedShoeId) ({ Icon(Icons.Default.Check, null) }) else null,
+                    onClick = { onSelectShoe(shoe); expanded = false },
+                )
+            }
+            if (orderedShoes.isNotEmpty()) HorizontalDivider()
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.today_shoes_new)) },
+                leadingIcon = { Icon(Icons.Default.Add, null) },
+                onClick = { expanded = false; onAddShoe() },
+            )
+        }
     }
 }
 
@@ -955,24 +1081,46 @@ private fun TodaySkeleton() {
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun WorkoutDetailSheet(suggestion: ActivitySuggestion, onDismiss: () -> Unit, onStart: () -> Unit) {
+private fun WorkoutDetailSheet(suggestion: ActivitySuggestion, onDismiss: () -> Unit, onChangeWorkout: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(suggestion.title, Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            Text(stringResource(R.string.today_detail_summary, suggestion.durationMinutes, suggestion.effortLabel), style = MaterialTheme.typography.titleMedium)
-            Text(stringResource(R.string.today_phases), style = MaterialTheme.typography.titleMedium)
-            suggestion.steps.forEachIndexed { index, step ->
-                Row(verticalAlignment = Alignment.Top) {
-                    Text("${index + 1}", Modifier.size(32.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.primaryContainer).padding(7.dp), style = MaterialTheme.typography.labelMedium)
-                    Spacer(Modifier.width(12.dp)); Text(step, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                }
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.today_details), Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.today_done)) }
             }
-            HorizontalDivider()
-            Text(stringResource(R.string.today_purpose), style = MaterialTheme.typography.titleMedium)
-            Text(suggestion.why, style = MaterialTheme.typography.bodyLarge)
-            Button(onClick = onStart, Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(suggestion.startLabel) }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(suggestion.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.today_minutes, suggestion.durationMinutes), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            WorkoutDetailPhasePreview(suggestion.steps)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(stringResource(R.string.today_purpose), style = MaterialTheme.typography.titleMedium)
+                Text(suggestion.why, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            OutlinedButton(onClick = onChangeWorkout, Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.today_change_workout))
+            }
             Spacer(Modifier.height(20.dp))
         }
+    }
+}
+
+@Composable
+private fun WorkoutDetailPhasePreview(steps: List<String>) {
+    if (steps.isEmpty()) return
+    val phases = steps.take(3).map { step ->
+        val match = Regex("^\\s*([0-9]+(?:\\.[0-9]+)?)\\s*(?:min|mins|minute|minutes)\\s+(.+?)\\s*$", RegexOption.IGNORE_CASE).matchEntire(step)
+        if (match == null) null to step else "${match.groupValues[1]}m" to match.groupValues[2]
+    }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        phases.forEachIndexed { index, phase ->
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                phase.first?.let { Text(it, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold) }
+                Text(phase.second, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            if (index < phases.lastIndex) Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (steps.size > 3) Text("+${steps.size - 3}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

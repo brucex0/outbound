@@ -203,7 +203,9 @@ object FoundationModule {
         database: PlainstrideDatabase,
         api: ActivitiesApiService,
         accessTokens: AccessTokenProvider,
-    ): ActivityRepository = OfflineFirstActivityRepository(database, api, accessTokens)
+        mediaStore: ActivityMediaStore,
+        analytics: ProductAnalytics,
+    ): ActivityRepository = OfflineFirstActivityRepository(database, api, accessTokens, mediaStore, analytics)
 
     @Provides @Singleton fun weatherApi(client: OkHttpClient): WeatherApiService =
         createWeatherApi(BuildConfig.API_BASE_URL, client)

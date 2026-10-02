@@ -124,6 +124,10 @@ data class ActivityWithDetails(
 
 @Dao
 interface ActivityDao {
+    @Transaction
+    @Query("SELECT * FROM activities WHERE accountId = :accountId AND deletedAtEpochMs IS NULL ORDER BY startedAtEpochMs DESC")
+    fun observeAll(accountId: String): Flow<List<ActivityWithDetails>>
+
     @Query("SELECT * FROM activities WHERE accountId = :accountId AND deletedAtEpochMs IS NULL ORDER BY startedAtEpochMs DESC LIMIT :limit OFFSET :offset")
     fun observePage(accountId: String, limit: Int, offset: Int): Flow<List<ActivityEntity>>
 

@@ -99,11 +99,10 @@ class RecordingViewModel @Inject constructor(
         val isDebugHarvestLaunch = BuildConfig.DEBUG &&
             configuration.followedRoute?.id == HarvestRunSimulation.ROUTE_ID
         val restored=context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).getString(LAUNCH_KEY,null)?.let{runCatching{launchJson.decodeFromString<RecordingLaunchConfiguration>(it)}.getOrNull()}
-        // A direct launch carries an explicit activity, goal, and Voice Guide choice from Today.
-        // Reusing the last setup here can silently replace those choices (including disabling
-        // countdown speech) when the previous session used the same sport.
-        val base = if (configuration.startImmediately || isDebugHarvestLaunch) configuration
-        else restored?.takeIf { it.activityKind == configuration.activityKind } ?: configuration
+        // A direct or scheduled Group-event launch carries explicit activity choices; don't
+        // restore a stale launch over its event id or consent context.
+        val base = if (configuration.startImmediately || isDebugHarvestLaunch || configuration.activityEventId != null) configuration
+            else restored?.takeIf { it.activityKind == configuration.activityKind } ?: configuration
         val autoPauseEnabled = context.getSharedPreferences(LAUNCH_PREFERENCES, Context.MODE_PRIVATE)
             .getBoolean(autoPauseKey(base.activityKind), AutoPauseDefaults.enabled(base.activityKind))
         val effective = base.copy(
@@ -465,7 +464,7 @@ class RecordingViewModel @Inject constructor(
                     companionType = mutableState.value.launch.companionType,
                 ),
                 savedAt,
-            )
+            ).copy(activityEventId = mutableState.value.launch.activityEventId)
             val photos = sourcePhotos.map { file ->
                 val bytes = file.readBytes()
                 val persistedPhotoPath = media.write(accountId, sessionId, bytes)
@@ -623,9 +622,12 @@ class RecordingViewModel @Inject constructor(
         val exifCoordinate = FloatArray(2).let { out ->
             if (exif?.getLatLong(out) == true) out[0].toDouble() to out[1].toDouble() else null
         }
-        val attachedCoordinate = exifCoordinate?.takeIf { candidate ->
+        val embeddedCoordinate = exifCoordinate?.takeIf { candidate ->
             routeCoordinate != null && distanceMeters(candidate.first, candidate.second, routeCoordinate.first, routeCoordinate.second) <= 500.0
         }
+        // Camera photos often have no GPS EXIF. Their capture time still identifies a
+        // route sample, including the first sample for a pre-run photo.
+        val attachedCoordinate = embeddedCoordinate ?: routeCoordinate
         val captureContext = when {
             takenAt.isBefore(start) -> "pre_activity"
             !takenAt.isBefore(end) -> "paused"

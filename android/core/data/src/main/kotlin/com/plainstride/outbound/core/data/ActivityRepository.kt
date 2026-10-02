@@ -1,9 +1,11 @@
 package com.plainstride.outbound.core.data
 
+import android.util.Base64
 import androidx.room.withTransaction
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.builtins.ListSerializer
@@ -20,6 +22,9 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import com.plainstride.outbound.core.analytics.AnalyticsEvent
+import com.plainstride.outbound.core.analytics.AnalyticsProperty
+import com.plainstride.outbound.core.analytics.ProductAnalytics
 import com.plainstride.outbound.core.database.ActivityDao
 import com.plainstride.outbound.core.database.ActivityEntity
 import com.plainstride.outbound.core.database.ActivityPhotoEntity
@@ -39,6 +44,7 @@ import com.plainstride.outbound.core.model.activity.ActivityType
 import com.plainstride.outbound.core.model.activity.SavedActivity
 import com.plainstride.outbound.core.network.AccessTokenProvider
 import com.plainstride.outbound.core.network.ActivitiesApiService
+import com.plainstride.outbound.core.network.ActivityPhotoUploadRequest
 import com.plainstride.outbound.core.network.ActivityReflectionDto
 import com.plainstride.outbound.core.network.ActivityRouteDto
 import com.plainstride.outbound.core.network.ActivityRoutePointDto
@@ -49,6 +55,7 @@ import com.plainstride.outbound.core.network.RemoteActivityDto
 import com.plainstride.outbound.core.network.apiCall
 
 interface ActivityRepository {
+    fun observeAll(accountId: String): Flow<List<SavedActivity>>
     fun observePage(accountId: String, offset: Int = 0, limit: Int = 30): Flow<ActivityPage>
     fun observePendingSyncCount(accountId: String): Flow<Int>
     suspend fun activity(accountId: String, activityId: String): SavedActivity?
@@ -60,15 +67,25 @@ interface ActivityRepository {
 
 fun interface ActivitySyncScheduler { fun schedule(accountId: String) }
 
-data class ActivitySyncResult(val uploaded: Int, val downloaded: Int, val pending: Int, val failure: String? = null)
+data class ActivitySyncResult(
+    val uploaded: Int,
+    val downloaded: Int,
+    val pending: Int,
+    val failure: String? = null,
+    val photosUploaded: Int = 0,
+)
 
 class OfflineFirstActivityRepository(
     private val database: PlainstrideDatabase,
     private val api: ActivitiesApiService,
     private val accessTokens: AccessTokenProvider,
+    private val mediaStore: ActivityMediaStore,
+    private val analytics: ProductAnalytics,
     private val now: () -> Instant = Instant::now,
 ) : ActivityRepository {
     private val dao: ActivityDao get() = database.activityDao()
+
+    override fun observeAll(accountId: String): Flow<List<SavedActivity>> = dao.observeAll(accountId).map { rows -> rows.map { it.toDomain() } }
 
     override fun observePendingSyncCount(accountId: String): Flow<Int> =
         database.syncOutboxDao().observeCount(accountId)
@@ -99,11 +116,15 @@ class OfflineFirstActivityRepository(
         val token = accessTokens.validAccessToken() ?: return ActivitySyncResult(0, 0, pendingCount(accountId), "authentication_required")
         val authorization = "Bearer $token"
         var uploaded = 0
+        var photosUploaded = 0
         var failure: String? = null
         for (operation in database.syncOutboxDao().pending(accountId, now().toEpochMilli(), 100)) {
             if (database.syncOutboxDao().claim(accountId, operation.operationId) == 0) continue
             val result = when (operation.operationType) {
-                UPSERT -> apiCall { api.upload(authorization, PlainstrideJson.decodeFromString(operation.payloadJson)) }
+                UPSERT -> apiCall {
+                    val request = PlainstrideJson.decodeFromString<ActivityUploadRequest>(operation.payloadJson)
+                    api.upload(authorization, request.copy(followedRouteCompleted = request.followedRouteCompleted ?: false))
+                }
                 DELETE -> apiCall { api.delete(authorization, operation.aggregateId) }
                 else -> null
             }
@@ -114,6 +135,7 @@ class OfflineFirstActivityRepository(
                     val response = result.value
                     if (existing != null && response is com.plainstride.outbound.core.network.ActivityUploadResponse) {
                         persist(existing.copy(serverActivityId = response.id, serverUpdatedAt = response.serverUpdatedAt ?: response.uploadedAt), enqueue = false)
+                        trackActivitySync("activity_sync_completed", existing)
                     }
                 }
                 uploaded++
@@ -122,8 +144,24 @@ class OfflineFirstActivityRepository(
                 val delayMs = (30_000L * (1L shl minOf(attempt, 7))).coerceAtMost(3_600_000L)
                 database.syncOutboxDao().retry(accountId, operation.operationId, now().toEpochMilli() + delayMs)
                 failure = (result as? ApiResult.Failure)?.error?.code?.name ?: "invalid_outbox_operation"
+                if (operation.operationType == UPSERT) {
+                    dao.get(accountId, operation.aggregateId)?.toDomain()?.let { activity ->
+                        trackActivitySync("activity_sync_failed", activity, (result as? ApiResult.Failure)?.error?.code?.name ?: "unknown")
+                    }
+                }
             }
         }
+        // Photo uploads can retry independently after their activity has synced.
+        dao.observeAll(accountId).first().map { it.toDomain() }
+            .filter { it.serverActivityId != null && it.photos.any { photo -> photo.remotePhotoId == null } }
+            .forEach { activity ->
+                val result = syncPhotos(activity, authorization)
+                photosUploaded += result.uploaded
+                if (result.failed) {
+                    failure = failure ?: "activity_photo_upload_failed"
+                    trackActivitySync("activity_sync_failed", activity, "photo_upload")
+                }
+            }
         var downloaded = 0
         var offset = 0
         do {
@@ -135,7 +173,72 @@ class OfflineFirstActivityRepository(
             page.value.activities.forEach { remote -> if (mergeRemote(accountId, remote)) downloaded++ }
             offset += page.value.activities.size
         } while (page.value.hasMore && page.value.activities.isNotEmpty())
-        return ActivitySyncResult(uploaded, downloaded, pendingCount(accountId), failure)
+        return ActivitySyncResult(uploaded, downloaded, pendingCount(accountId), failure, photosUploaded)
+    }
+
+    private data class PhotoSyncResult(val uploaded: Int, val failed: Boolean)
+
+    private fun trackActivitySync(name: String, activity: SavedActivity, errorCategory: String? = null) {
+        val boundedSource = when (activity.source.kind) {
+            "outbound", "manual", "health_connect" -> activity.source.kind
+            else -> "other"
+        }
+        val properties = mutableMapOf<AnalyticsProperty, Any>(
+            AnalyticsProperty.SourceType to boundedSource,
+            AnalyticsProperty.RouteSelected to (activity.track.size > 1),
+        )
+        errorCategory?.let { properties[AnalyticsProperty.ErrorCategory] = it }
+        analytics.record(AnalyticsEvent(name, properties))
+    }
+
+    private suspend fun syncPhotos(activity: SavedActivity, authorization: String): PhotoSyncResult {
+        val serverActivityId = activity.serverActivityId ?: return PhotoSyncResult(0, activity.photos.isNotEmpty())
+        val synchronizedPhotos = activity.photos.toMutableList()
+        var uploaded = 0
+        var failed = false
+        for (index in synchronizedPhotos.indices) {
+            val photo = synchronizedPhotos[index]
+            if (photo.remotePhotoId != null) continue
+            val localPath = photo.localRelativePath
+            val bytes = localPath?.let { path -> runCatching { mediaStore.read(path) }.getOrNull() }
+            if (bytes == null) {
+                failed = true
+                continue
+            }
+            val result = apiCall {
+                api.uploadActivityPhoto(
+                    authorization,
+                    ActivityPhotoUploadRequest(
+                        activityId = serverActivityId,
+                        clientPhotoId = photo.id,
+                        base64 = Base64.encodeToString(bytes, Base64.NO_WRAP),
+                        takenAt = photo.takenAt,
+                        paceAtShot = photo.paceAtShot,
+                        hrAtShot = photo.heartRateAtShot,
+                        distAtShot = photo.distanceAtShotM,
+                        latitude = photo.latitude,
+                        longitude = photo.longitude,
+                        captureContext = photo.captureContext,
+                    ),
+                )
+            }
+            val remote = (result as? ApiResult.Success)?.value
+            if (remote == null) {
+                failed = true
+                continue
+            }
+            synchronizedPhotos[index] = photo.copy(
+                remotePhotoId = remote.id,
+                remoteUpdatedAt = remote.updatedAt,
+                byteSize = remote.byteSize ?: photo.byteSize,
+                sha256 = remote.sha256 ?: photo.sha256,
+            )
+            uploaded++
+        }
+        if (synchronizedPhotos != activity.photos) {
+            persist(activity.copy(photos = synchronizedPhotos), enqueue = false)
+        }
+        return PhotoSyncResult(uploaded, failed)
     }
 
     private suspend fun persistAndEnqueue(activity: SavedActivity) {
@@ -172,7 +275,13 @@ class OfflineFirstActivityRepository(
         }
         val snapshot = remote.clientData ?: JsonObject(emptyMap())
         val decoded = snapshot.toDomain(accountId, remote) ?: return false
-        persist(decoded, enqueue = false)
+        // Keep private local files attached when a server refresh supplies metadata only.
+        val localPhotos = local?.photos.orEmpty()
+        val remotePhotoIds = decoded.photos.mapTo(mutableSetOf()) { it.id }
+        val mergedPhotos = decoded.photos.map { remotePhoto ->
+            remotePhoto.copy(localRelativePath = localPhotos.firstOrNull { it.id == remotePhoto.id }?.localRelativePath)
+        } + localPhotos.filterNot { it.id in remotePhotoIds }
+        persist(decoded.copy(photos = mergedPhotos), enqueue = false)
         return true
     }
 
@@ -219,7 +328,7 @@ private fun SavedActivity.toUploadRequest(): ActivityUploadRequest {
         durationSecs = durationSecs, distanceM = distanceM, elevationM = elevationGainM,
         avgPace = averagePaceSecsPerKm, avgHeartRate = averageHeartRateBpm,
         energyKilocalories = energyKilocalories, activityEventId = activityEventId,
-        followedRouteId = followedRouteId, followedRouteCompleted = followedRouteCompleted.takeIf { it },
+        followedRouteId = followedRouteId, followedRouteCompleted = followedRouteCompleted,
         route = track.takeIf { it.size > 1 }?.let { points -> ActivityRouteDto(points.map { ActivityRoutePointDto(it.timestamp, it.latitude, it.longitude, it.altitude, it.verticalAccuracy, it.startsNewSegment) }) },
         splits = PlainstrideJson.encodeToJsonElement(ListSerializer(ActivitySplit.serializer()), splits),
         reflection = reflection?.let { ActivityReflectionDto(it.title, it.body, it.highlight, it.progressNote) },

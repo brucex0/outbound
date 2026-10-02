@@ -228,8 +228,12 @@ class LiveCoachViewModel @Inject constructor(
         }
 
         val coachSnapshot = snapshot.toCoachSnapshot(launch)
-        val policyUpdate = policy.ingest(coachSnapshot, prefs.contract)
-        policyUpdate.evaluatedCues.forEach { evaluated ->
+        val policyUpdate = if (launch.activityKind == ActivityKind.RUNNING) {
+            policy.ingest(coachSnapshot, prefs.contract)
+        } else {
+            null
+        }
+        policyUpdate?.evaluatedCues.orEmpty().forEach { evaluated ->
             analytics.record(
                 AnalyticsEvent(
                     "live_guidance_cue_evaluated",
@@ -248,7 +252,7 @@ class LiveCoachViewModel @Inject constructor(
             imperial = unitSystem == MeasurementUnitSystem.imperial,
         )
         scheduleUpdate.workoutCue?.let { enqueue(PendingCue(it.moment, it), priority = true, prefs.contract) }
-        policyUpdate.nextMoment?.let {
+        policyUpdate?.nextMoment?.let {
             val promptPaceCorrection = it.moment in setOf(
                 LiveCoachMoment.EarlyOverpace,
                 LiveCoachMoment.PaceAboveTarget,
@@ -373,6 +377,27 @@ class LiveCoachViewModel @Inject constructor(
         unitSystem: MeasurementUnitSystem,
         prefs: LiveCoachPreferences,
     ) {
+        if (launch.activityKind != ActivityKind.RUNNING) {
+            analytics.record(
+                AnalyticsEvent(
+                    "live_guidance_eligibility_resolved",
+                    mapOf(
+                        AnalyticsProperty.ActivityType to launch.activityKind.name.lowercase(Locale.ROOT),
+                        AnalyticsProperty.Result to "pacer_only",
+                    ),
+                ),
+            )
+            return
+        }
+        analytics.record(
+            AnalyticsEvent(
+                "live_guidance_eligibility_resolved",
+                mapOf(
+                    AnalyticsProperty.ActivityType to launch.activityKind.name.lowercase(Locale.ROOT),
+                    AnalyticsProperty.Result to "running_ai_eligible",
+                ),
+            ),
+        )
         val token = tokens.validAccessToken()
         if (token == null) {
             recordSessionStartFailure()

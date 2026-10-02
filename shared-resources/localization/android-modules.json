@@ -85,7 +85,16 @@
     },
     { "keyPrefix": "safety", "androidPrefix": "", "resourceRoot": "android/feature/safety/src/main/res", "file": "strings.xml" },
     { "keyPrefix": "settings", "androidPrefix": "", "resourceRoot": "android/feature/settings/src/main/res", "file": "strings.xml" },
-    { "keyPrefix": "social", "androidPrefix": "social_", "resourceRoot": "android/feature/social/src/main/res", "file": "strings.xml" },
+    {
+      "keyPrefix": "social",
+      "androidPrefix": "social_",
+      "sources": [
+        { "keyPrefix": "social", "androidPrefix": "social_" },
+        { "keyPrefix": "group", "androidPrefix": "group_" }
+      ],
+      "resourceRoot": "android/feature/social/src/main/res",
+      "file": "strings.xml"
+    },
     { "keyPrefix": "today", "androidPrefix": "today_", "resourceRoot": "android/feature/today/src/main/res", "file": "strings.xml" },
     { "keyPrefix": "wear", "androidPrefix": "", "resourceRoot": "android/wear/src/main/res", "file": "strings.xml" }
   ]

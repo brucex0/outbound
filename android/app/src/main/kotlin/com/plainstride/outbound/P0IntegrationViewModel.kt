@@ -33,14 +33,23 @@ import com.plainstride.outbound.reminders.PlannedWorkoutReminderCoordinator
 import com.plainstride.outbound.core.analytics.AnalyticsEvent
 import com.plainstride.outbound.core.analytics.AnalyticsProperty
 import com.plainstride.outbound.core.analytics.ProductAnalytics
+import com.plainstride.outbound.core.network.PlainstrideJson
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 data class P0IntegrationState(
     val routes: RouteLibrary = RouteLibrary(), val routeScope: RouteScope = RouteScope.DISCOVERY, val routeQuery: String = "",
     val selectedCommunityRoute: CommunityRoute? = null, val communityRouteLoading: Boolean = false,
     val notifications: List<InboxNotification> = emptyList(),
-    val progress: ProgressScreenState = ProgressScreenState(ProgressStatsEngine.snapshot(emptyList()), emptyList()),
+    val progress: ProgressScreenState = ProgressScreenState(ProgressStatsEngine.snapshot(emptyList())),
     val completedToday: Boolean = false,
     val defaultGearId: String? = null,
+    val gearShoes: List<GearItem> = emptyList(),
+    val gearMileage: List<GearMileageSummary> = emptyList(),
     val pushEnabled: Boolean = true,
     val connections: List<SocialPerson> = emptyList(),
     val recognitions: List<RecognitionAward> = emptyList(),
@@ -60,30 +69,82 @@ data class P0IntegrationState(
 ) : ViewModel() {
     private val mutable = MutableStateFlow(P0IntegrationState(pushEnabled=context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES,Context.MODE_PRIVATE).getBoolean(PUSH_ENABLED,true))); val state = mutable.asStateFlow()
     private var accountId: String? = null; private var locale = "en"; private var routeObservation: Job? = null
+    fun trackProgressEvent(event: ProgressAnalyticsEvent) {
+        val properties = buildMap {
+            event.properties["entry_source"]?.let { put(AnalyticsProperty.EntrySource, it) }
+            event.properties["count_bucket"]?.let { put(AnalyticsProperty.CountBucket, it) }
+            event.properties["source_type"]?.let { put(AnalyticsProperty.SourceType, it) }
+            event.properties["control"]?.let { put(AnalyticsProperty.Control, it) }
+            event.properties["selection_type"]?.let { put(AnalyticsProperty.SelectionType, it) }
+        }
+        analytics.record(AnalyticsEvent(event.name, properties))
+    }
     fun start(accountId: String, locale: String) {
         if (this.accountId == accountId && this.locale == locale) return
         this.accountId = accountId
         this.locale = locale
-        mutable.update { it.copy(weightKilograms = null) }
+        mutable.update { it.copy(weightKilograms = null, defaultGearId = null, gearShoes = emptyList(), gearMileage = emptyList()) }
         observeRoutes()
         reminderCoordinator.observe(viewModelScope, accountId, locale)
         viewModelScope.launch {
             gear.configure(accountId)
-            mutable.update { it.copy(defaultGearId = gear.collection().defaultShoe?.id?.toString()) }
+            refreshGearState()
         }
         viewModelScope.launch {
             today.trainingProfile().onSuccess { profile -> mutable.update { it.copy(weightKilograms = profile.weightKilograms) } }
         }
         viewModelScope.launch {
-            activities.observePage(accountId, limit = 200).collect { page ->
-                val items = page.activities.map { ProgressActivity(it.id, it.title, Instant.parse(it.startedAt), it.durationSecs, it.distanceM, it.elevationGainM, it.averageHeartRateBpm) }
+            activities.observeAll(accountId).collect { savedActivities ->
+                val items = savedActivities.mapNotNull { activity ->
+                    runCatching {
+                        val zones = activity.heartRateZonesJson?.let(PlainstrideJson::parseToJsonElement)?.jsonObject
+                            ?.get("zones")?.jsonArray?.mapNotNull { element ->
+                                val zone = element.jsonObject
+                                val index = zone["index"]?.jsonPrimitive?.intOrNull ?: return@mapNotNull null
+                                val seconds = zone["seconds"]?.jsonPrimitive?.intOrNull ?: return@mapNotNull null
+                                index to seconds
+                            }?.toMap().orEmpty()
+                        val goalCompleted = activity.goalJson?.let(PlainstrideJson::parseToJsonElement)?.jsonObject?.let { goal ->
+                            val kind = goal["kind"]?.jsonPrimitive?.contentOrNull
+                            val target = goal["value"]?.jsonPrimitive
+                            when (kind) {
+                                "distance" -> target?.doubleOrNull?.let { activity.distanceM >= it * 0.98 }
+                                "time" -> target?.intOrNull?.let { activity.durationSecs >= it * 0.98 }
+                                "calories" -> target?.intOrNull?.let { targetCalories -> activity.energyKilocalories?.let { it >= targetCalories * 0.98 } }
+                                else -> null
+                            }
+                        }
+                        var distance = 0.0
+                        var previous: com.plainstride.outbound.core.model.activity.ActivityTrackPoint? = null
+                        val route = activity.track.sortedBy { it.timestamp }.map { point ->
+                            previous?.let { distance += routeSegmentMeters(it.latitude, it.longitude, point.latitude, point.longitude) }
+                            previous = point
+                            ProgressRoutePoint(Instant.parse(point.timestamp), distance)
+                        }
+                        ProgressActivity(
+                            id = activity.id,
+                            title = activity.title,
+                            startedAt = Instant.parse(activity.startedAt),
+                            durationSeconds = activity.durationSecs,
+                            distanceMeters = activity.distanceM,
+                            elevationGainMeters = activity.elevationGainM,
+                            averageHeartRate = activity.averageHeartRateBpm,
+                            routePoints = route,
+                            activityType = activity.type.name,
+                            goalCompleted = goalCompleted,
+                            heartRateZoneSeconds = zones,
+                        )
+                    }.getOrNull()
+                }
                 mutable.update { state -> state.copy(
-                    progress = ProgressScreenState(ProgressStatsEngine.snapshot(items), emptyList()),
+                    progress = ProgressScreenState(ProgressStatsEngine.snapshot(items), activities = items),
                 ) }
+                refreshGearState()
             }
         }
         viewModelScope.launch(Dispatchers.IO) {
-            activities.synchronize(accountId)
+            val result = activities.synchronize(accountId)
+            if (result.uploaded > 0) social.refresh(accountId, locale)
         }
         viewModelScope.launch {
             today.observePersonalization(accountId, locale).collect { resource ->
@@ -110,6 +171,71 @@ data class P0IntegrationState(
         refreshInbox()
         registerPush()
     }
+
+    fun addGearShoe(shoe: NewShoe) = viewModelScope.launch {
+        val collection = gear.collection()
+        gear.replace(collection.adding(shoe.name, shoe.brand, shoe.model, shoe.purpose, shoe.distanceLimitMeters))
+        refreshGearState()
+    }
+
+    fun setDefaultGearShoe(item: GearItem) = viewModelScope.launch {
+        gear.replace(gear.collection().settingDefault(item.id))
+        refreshGearState()
+    }
+
+    fun retireGearShoe(item: GearItem) = viewModelScope.launch {
+        gear.replace(gear.collection().retiring(item.id))
+        refreshGearState()
+    }
+
+    fun trackShoeSelected(selectionType: String) {
+        analytics.record(AnalyticsEvent("shoe_selected", mapOf(AnalyticsProperty.SelectionType to selectionType)))
+    }
+
+    fun trackTodayRouteLibraryOpened() {
+        analytics.record(AnalyticsEvent("route_library_opened"))
+    }
+
+    fun trackTodayRouteSelected(route: CommunityRoute) {
+        analytics.record(AnalyticsEvent("route_selected", mapOf(
+            AnalyticsProperty.SourceType to if (route.id.startsWith("import:")) "imported" else "community",
+            AnalyticsProperty.DistanceBucket to routeDistanceBucket(route.distanceM),
+        )))
+    }
+
+    fun trackTodayRouteRemoved(route: CommunityRoute?) {
+        route ?: return
+        analytics.record(AnalyticsEvent("route_removed", mapOf(
+            AnalyticsProperty.SourceType to if (route.id.startsWith("import:")) "imported" else "community",
+        )))
+    }
+
+    fun trackTodayRouteDirection(reverse: Boolean) {
+        analytics.record(AnalyticsEvent("activity_configuration_changed", mapOf(
+            AnalyticsProperty.ChangeType to "route_direction",
+            AnalyticsProperty.SelectionType to if (reverse) "reverse" else "forward",
+        )))
+    }
+
+    private fun routeDistanceBucket(meters: Double): String = when (maxOf(0.0, meters)) {
+        in 0.0..<1_000.0 -> "under_1k"
+        in 1_000.0..<3_000.0 -> "1k_3k"
+        in 3_000.0..<5_000.0 -> "3k_5k"
+        in 5_000.0..<10_000.0 -> "5k_10k"
+        in 10_000.0..<21_097.5 -> "10k_half"
+        else -> "half_plus"
+    }
+
+    private suspend fun refreshGearState() {
+        val collection = gear.collection()
+        mutable.update { state ->
+            state.copy(
+                defaultGearId = collection.defaultShoe?.id?.toString(),
+                gearShoes = collection.shoes,
+                gearMileage = collection.mileage(gear.activityDistances()),
+            )
+        }
+    }
     private var routeRefreshJob: kotlinx.coroutines.Job? = null
     fun scope(value:RouteScope){mutable.update{it.copy(routeScope=value,routeQuery="")};observeRoutes();refreshRoutes()}
     fun search(value:String){
@@ -118,7 +244,14 @@ data class P0IntegrationState(
         if(oldScope!=RouteScope.DISCOVERY)observeRoutes()
         refreshRoutes()
     }
-    fun loadCommunityRoute(id:String){viewModelScope.launch(Dispatchers.IO){mutable.update{it.copy(selectedCommunityRoute=null,communityRouteLoading=true)};routes.detail(id).onSuccess{route->mutable.update{it.copy(selectedCommunityRoute=route,communityRouteLoading=false)}}.onFailure{mutable.update{it.copy(communityRouteLoading=false)}}}}
+    fun loadCommunityRoute(id:String) {
+        mutable.update { it.copy(selectedCommunityRoute = null, communityRouteLoading = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            routes.detail(id)
+                .onSuccess { route -> mutable.update { it.copy(selectedCommunityRoute = route, communityRouteLoading = false) } }
+                .onFailure { mutable.update { it.copy(communityRouteLoading = false) } }
+        }
+    }
     fun clearCommunityRoute(){mutable.update{it.copy(selectedCommunityRoute=null,communityRouteLoading=false)}}
     fun removePublishedRoute(id:String)=viewModelScope.launch{routes.remove(id).onSuccess{clearCommunityRoute();refreshRoutes()}}
     fun refreshRoutes():Job?{val id=accountId?:return null;val requestedScope=mutable.value.routeScope;val query=mutable.value.routeQuery;routeRefreshJob?.cancel();routeRefreshJob=viewModelScope.launch(Dispatchers.IO){
@@ -194,4 +327,14 @@ data class P0IntegrationState(
         else -> "10_plus"
     }
     private companion object{const val PUSH_ENABLED="push_enabled"}
+}
+
+private fun routeSegmentMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+    val earthRadius = 6_371_000.0
+    val latitudeDelta = Math.toRadians(lat2 - lat1)
+    val longitudeDelta = Math.toRadians(lon2 - lon1)
+    val a = kotlin.math.sin(latitudeDelta / 2).let { it * it } +
+        kotlin.math.cos(Math.toRadians(lat1)) * kotlin.math.cos(Math.toRadians(lat2)) *
+        kotlin.math.sin(longitudeDelta / 2).let { it * it }
+    return 2 * earthRadius * kotlin.math.asin(kotlin.math.sqrt(a.coerceIn(0.0, 1.0)))
 }

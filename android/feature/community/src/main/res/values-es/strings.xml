@@ -28,20 +28,23 @@
     <string name="route_import_preview_privacy">Las rutas importadas permanecen privadas en este dispositivo hasta que completes y guardes tu propia actividad.</string>
     <string name="route_import_preview_title">Vista previa de la ruta</string>
     <string name="route_library_accessibility_saved">Guardada en Mis rutas</string>
-    <string name="route_library_action_delete">Eliminar</string>
+    <string name="route_library_accessibility_selected">Ruta seleccionada</string>
     <string name="route_library_action_clear_search">Borrar búsqueda</string>
-    <string name="route_library_action_show_all">Ver todas las rutas</string>
-    <string name="route_library_filter_title">Filtrar rutas</string>
-    <string name="route_library_filter_clear">Quitar filtros</string>
+    <string name="route_library_action_delete">Eliminar</string>
     <string name="route_library_action_find_nearby">Buscar rutas cercanas</string>
     <string name="route_library_action_import">Importar GPX o GeoJSON</string>
+    <string name="route_library_action_remove_selection">Quitar ruta</string>
+    <string name="route_library_action_show_all">Ver todas las rutas</string>
     <string name="route_library_action_start">Iniciar guía de ruta</string>
+    <string name="route_library_action_use_selection">Usar esta ruta</string>
     <string name="route_library_detail_creator_format">Creada por %1$s</string>
     <string name="route_library_detail_retry">Intentar de nuevo</string>
     <string name="route_library_detail_stats_format">Veces guardada: %1$d · Veces completada: %2$d</string>
     <string name="route_library_detail_unavailable_title">Ruta no disponible</string>
     <string name="route_library_empty_community_description">Prueba con otra búsqueda o importa una ruta para seguirla.</string>
     <string name="route_library_empty_community_title">No se encontraron rutas</string>
+    <string name="route_library_filter_clear">Quitar filtros</string>
+    <string name="route_library_filter_title">Filtrar rutas</string>
     <string name="route_library_imported_device_private">Privada en este dispositivo</string>
     <string name="route_library_loading">Cargando rutas</string>
     <string name="route_library_remove_published_action">Eliminar ruta publicada</string>
@@ -53,4 +56,5 @@
     <string name="route_library_section_imported">Rutas importadas</string>
     <string name="route_library_test_badge">Prueba</string>
     <string name="route_library_test_badge_accessibility">Ruta de prueba</string>
+    <string name="route_library_title_select">Seleccionar ruta</string>
 </resources>

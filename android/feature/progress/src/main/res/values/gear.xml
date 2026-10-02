@@ -1,1 +1,32 @@
-<resources><string name="progress_add_gear">Add shoes</string><string name="progress_make_default">Use by default</string><string name="progress_retire">Retire</string><string name="progress_gear_name">Shoe name</string><string name="progress_add">Add</string><string name="progress_cancel">Cancel</string></resources>
+<resources>
+    <string name="progress_add_gear">Add Shoe</string>
+    <string name="progress_make_default">Use</string>
+    <string name="progress_retire">Retire shoe</string>
+    <string name="progress_gear_name">Shoe name</string>
+    <string name="progress_add">Add</string>
+    <string name="progress_cancel">Cancel</string>
+    <string name="progress_gear_selected">Selected: %1$s</string>
+    <string name="progress_gear_none_selected">No shoe selected</string>
+    <string name="progress_gear_active_count">%1$d active</string>
+    <string name="progress_gear_empty_body">Add your current pair and Plainstride will attach it to new runs by default.</string>
+    <string name="progress_gear_status_retired">Retired %1$s</string>
+    <string name="progress_gear_status_last_used">Last used %1$s</string>
+    <string name="progress_gear_status_unused">No saved runs yet</string>
+    <string name="progress_gear_default">Default</string>
+    <string name="progress_gear_purpose">Purpose</string>
+    <string name="progress_gear_purpose_daily_trainer">Daily trainer</string>
+    <string name="progress_gear_purpose_race">Race</string>
+    <string name="progress_gear_purpose_trail">Trail</string>
+    <string name="progress_gear_purpose_recovery">Recovery</string>
+    <string name="progress_gear_search">Search brand or model</string>
+    <string name="progress_gear_retire_around">Retire around</string>
+    <string name="progress_gear_suggestion_use">Use</string>
+    <string name="progress_gear_hint_daily_trainer">Most road trainers last about %1$s–%2$s %3$s.</string>
+    <string name="progress_gear_hint_race">Race shoes usually feel best for about %1$s–%2$s %3$s.</string>
+    <string name="progress_gear_hint_trail">Trail shoes often last about %1$s–%2$s %3$s.</string>
+    <string name="progress_gear_hint_recovery">Cushioned recovery shoes usually last about %1$s–%2$s %3$s.</string>
+    <string name="progress_gear_mileage_accessibility">Shoe mileage: %1$s / %2$s</string>
+    <string name="progress_gear_shoes_title">Shoes</string>
+    <string name="progress_gear_expand_hint">Expand shoe settings</string>
+    <string name="progress_gear_collapse_hint">Collapse shoe settings</string>
+</resources>

@@ -18,6 +18,7 @@ data class RecordedActivityDraft(
     val distanceM: Double,
     val elevationGainM: Double,
     val energyKilocalories: Int? = null,
+    val activityEventId: String? = null,
     val track: List<RecordedTrackPointDraft>,
     val companionType: ActivityCompanionType? = null,
 )
@@ -48,6 +49,7 @@ object RecordedActivityFactory {
             averagePaceSecsPerKm = draft.distanceM.takeIf { it > 0 }?.let { draft.durationSecs / (it / 1_000.0) },
             elevationGainM = draft.elevationGainM,
             energyKilocalories = draft.energyKilocalories,
+            activityEventId = draft.activityEventId,
             track = draft.track.map { point ->
                 ActivityTrackPoint(
                     timestamp = Instant.ofEpochMilli(point.timestampEpochMs).toString(),

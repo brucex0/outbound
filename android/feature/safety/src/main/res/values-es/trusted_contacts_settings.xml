@@ -1,0 +1,11 @@
+<resources>
+    <string name="trusted_contacts_title">Contactos de confianza</string>
+    <string name="trusted_contacts_settings_body">Elige quién puede animarte durante tus actividades.</string>
+    <string name="trusted_contacts_back">Volver</string>
+    <string name="trusted_contacts_default_share">Que me animen de forma predeterminada</string>
+    <string name="trusted_contacts_default_share_detail">Si lo activas, tus contactos de confianza recibirán una invitación automáticamente al iniciar una actividad.</string>
+    <string name="trusted_contacts_section">Contactos de confianza</string>
+    <string name="trusted_contacts_no_connections">Aún no tienes conexiones</string>
+    <string name="trusted_contacts_no_connections_detail">Conecta con alguien en Together y vuelve aquí para marcarlo como contacto de confianza.</string>
+    <string name="trusted_contacts_open_connections">Abrir conexiones</string>
+</resources>

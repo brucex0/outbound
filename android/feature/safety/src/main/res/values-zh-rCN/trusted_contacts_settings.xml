@@ -1,0 +1,11 @@
+<resources>
+    <string name="trusted_contacts_title">信任联系人</string>
+    <string name="trusted_contacts_settings_body">选择在活动期间为你加油的人。</string>
+    <string name="trusted_contacts_back">返回</string>
+    <string name="trusted_contacts_default_share">默认邀请好友为我加油</string>
+    <string name="trusted_contacts_default_share_detail">开启后，你开始活动时会自动邀请信任联系人。</string>
+    <string name="trusted_contacts_section">信任联系人</string>
+    <string name="trusted_contacts_no_connections">还没有好友</string>
+    <string name="trusted_contacts_no_connections_detail">先在 Together 中添加好友，再回来将其设为信任联系人。</string>
+    <string name="trusted_contacts_open_connections">打开好友列表</string>
+</resources>

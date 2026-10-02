@@ -1,1 +1,32 @@
-<resources><string name="progress_add_gear">Añadir zapatillas</string><string name="progress_make_default">Usar por defecto</string><string name="progress_retire">Retirar</string><string name="progress_gear_name">Nombre de las zapatillas</string><string name="progress_add">Añadir</string><string name="progress_cancel">Cancelar</string></resources>
+<resources>
+    <string name="progress_add_gear">Añadir zapatilla</string>
+    <string name="progress_make_default">Usar</string>
+    <string name="progress_retire">Retirar zapatilla</string>
+    <string name="progress_gear_name">Nombre de las zapatillas</string>
+    <string name="progress_add">Añadir</string>
+    <string name="progress_cancel">Cancelar</string>
+    <string name="progress_gear_selected">Seleccionada: %1$s</string>
+    <string name="progress_gear_none_selected">Ninguna zapatilla seleccionada</string>
+    <string name="progress_gear_active_count">%1$d activas</string>
+    <string name="progress_gear_empty_body">Añade tu par actual y Plainstride lo asociará por defecto a las carreras nuevas.</string>
+    <string name="progress_gear_status_retired">Retirada %1$s</string>
+    <string name="progress_gear_status_last_used">Último uso: %1$s</string>
+    <string name="progress_gear_status_unused">Aún no hay carreras guardadas</string>
+    <string name="progress_gear_default">Predeterminada</string>
+    <string name="progress_gear_purpose">Uso</string>
+    <string name="progress_gear_purpose_daily_trainer">Entrenamiento diario</string>
+    <string name="progress_gear_purpose_race">Competición</string>
+    <string name="progress_gear_purpose_trail">Trail</string>
+    <string name="progress_gear_purpose_recovery">Recuperación</string>
+    <string name="progress_gear_search">Buscar marca o modelo</string>
+    <string name="progress_gear_retire_around">Retirar aproximadamente a</string>
+    <string name="progress_gear_suggestion_use">Usar</string>
+    <string name="progress_gear_hint_daily_trainer">La mayoría de las zapatillas de asfalto duran unos %1$s–%2$s %3$s.</string>
+    <string name="progress_gear_hint_race">Las zapatillas de competición suelen rendir mejor durante unos %1$s–%2$s %3$s.</string>
+    <string name="progress_gear_hint_trail">Las zapatillas de trail suelen durar unos %1$s–%2$s %3$s.</string>
+    <string name="progress_gear_hint_recovery">Las zapatillas amortiguadas de recuperación suelen durar unos %1$s–%2$s %3$s.</string>
+    <string name="progress_gear_mileage_accessibility">Kilometraje: %1$s / %2$s</string>
+    <string name="progress_gear_shoes_title">Zapatillas</string>
+    <string name="progress_gear_expand_hint">Expandir ajustes de zapatillas</string>
+    <string name="progress_gear_collapse_hint">Contraer ajustes de zapatillas</string>
+</resources>

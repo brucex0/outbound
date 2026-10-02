@@ -105,10 +105,24 @@ import kotlinx.serialization.json.JsonElement
     val note: String? = null,
     val attendeeCount: Int = 0,
     val currentUserRole: String = "viewer",
+    val currentUserOutcome: String? = null,
     val currentUserAttendanceMode: String? = null,
     val source: SocialEventSource? = null,
+    val paceNote: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val creator: SocialPerson? = null,
+    val group: SocialGroup? = null,
+    val activityType: String? = null,
+    val attendeePreview: List<SocialPerson> = emptyList(),
+    val participants: List<SocialEventParticipant> = emptyList(),
+    val options: List<SocialEventOption> = emptyList(),
+    val compatibility: SocialEventCompatibility? = null,
 )
 @Serializable data class SocialEventSource(val kind: String)
+@Serializable data class SocialEventParticipant(val person: SocialPerson, val attendanceMode: String? = null, val status: String = "going")
+@Serializable data class SocialEventOption(val id: String, val label: String, val distanceMeters: Double? = null)
+@Serializable data class SocialEventCompatibility(val groupId: String, val explanation: String)
 @Serializable data class SocialInvitation(val id: String, val kind: String, val title: String, val sender: SocialPerson, val objectId: String? = null)
 @Serializable data class GroupCommitment(val targetCount: Int? = null, val skipped: Boolean = false)
 @Serializable data class GroupMember(

@@ -1,0 +1,7 @@
+<resources>
+    <string name="recording_cheer_on">Cheer me on</string>
+    <string name="recording_cheer_off">Off</string>
+    <string name="recording_cheer_selected">On · %1$s</string>
+    <string name="recording_cheer_generic">On</string>
+    <string name="recording_cheer_selected_count">On · %1$d people</string>
+</resources>

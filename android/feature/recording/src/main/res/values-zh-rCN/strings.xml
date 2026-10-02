@@ -3,6 +3,14 @@
 <resources>
     <string name="recording_acquiring_location">正在获取位置…</string>
     <string name="recording_activity_in_progress">活动进行中</string>
+    <string name="recording_group_share">与此小组活动分享我的实时位置</string>
+    <string name="recording_group_share_detail">只有已报名并主动选择分享的参与者才能在实时地图上看到彼此。</string>
+    <string name="recording_group_shared">正在与此活动分享实时位置</string>
+    <string name="recording_group_stop_sharing">停止分享</string>
+    <string name="recording_group_active_elsewhere">你正在分享另一个小组实时地图。请先停止那里的分享，再加入此活动。</string>
+    <string name="recording_group_participants">实时参与者</string>
+    <string name="recording_group_waiting">正在等待位置</string>
+    <string name="recording_group_stale">上次出现于 %1$s 前</string>
     <string name="recording_activity_photo">活动照片</string>
     <string name="recording_add_photo">添加活动照片</string>
     <string name="recording_approximate_warning">目前使用大致位置，距离和配速可能不够准确。</string>

@@ -1,0 +1,11 @@
+<resources>
+    <string name="cheer_picker_title">Cheer me on</string>
+    <string name="cheer_picker_cancel">Cancel</string>
+    <string name="cheer_picker_done">Done</string>
+    <string name="cheer_picker_trusted">Trusted contacts</string>
+    <string name="cheer_picker_others">Other connections</string>
+    <string name="cheer_picker_no_trusted">No trusted contacts</string>
+    <string name="cheer_picker_trusted_hint">Choose trusted contacts in Safety settings to keep them at the top and selected automatically.</string>
+    <string name="cheer_picker_setup_trusted">Set up trusted contacts</string>
+    <string name="cheer_picker_privacy">They’ll see your precise location, pace, distance, and heart rate for this activity, and can send short voice Cheers in the app.</string>
+</resources>

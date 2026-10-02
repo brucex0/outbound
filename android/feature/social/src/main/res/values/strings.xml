@@ -1,6 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
+    <string name="group_event_live_map_title">Group live map</string>
+    <string name="group_event_live_map_sharing">You’re sharing your live location</string>
+    <string name="group_event_live_map_consent">Going to this activity doesn’t share your location. Opt in to share with other attendees who also choose to share.</string>
+    <string name="group_event_live_map_opt_in">Share my live location</string>
+    <string name="group_event_live_map_stop">Stop sharing</string>
+    <string name="group_event_live_map_start">Start activity</string>
+    <string name="group_event_live_map_runners">%1$d attendees sharing live location</string>
+    <string name="group_event_attend_in_person">Meet in person</string>
+    <string name="group_event_attend_virtual">Join virtually</string>
+    <string name="group_event_attendance_prompt">How would you like to join?</string>
+    <string name="group_event_attendance_title">Choose attendance</string>
+    <string name="group_event_created_by">Created by</string>
+    <string name="group_event_duration">Duration</string>
+    <string name="group_event_duration_hours">%1$d hr</string>
+    <string name="group_event_duration_hours_minutes">%1$d hr %2$d min</string>
+    <string name="group_event_duration_minutes">%1$d min</string>
+    <string name="group_event_fit">Fit</string>
+    <string name="group_event_from">From %1$s</string>
+    <string name="group_event_hybrid_location">Join virtually or meet at:</string>
+    <string name="group_event_location">Location</string>
+    <string name="group_event_meet_location">Meet at:</string>
+    <string name="group_event_no_participants">No one is going yet.</string>
+    <string name="group_event_options">Options</string>
+    <string name="group_event_organizer">Organizer</string>
+    <string name="group_event_pace_note">Pace / note</string>
+    <string name="group_event_participants">Participants (%1$d)</string>
+    <string name="group_event_results_close">Results close</string>
+    <string name="group_event_scheduled_end">Scheduled end</string>
+    <string name="group_event_when">When</string>
     <string name="social_active_now_person">%1$s is active now</string>
     <string name="social_active_now_title">Active now</string>
     <string name="social_activity_feed">ACTIVITY FEED</string>

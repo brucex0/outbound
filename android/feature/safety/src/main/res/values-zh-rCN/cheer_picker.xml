@@ -1,0 +1,11 @@
+<resources>
+    <string name="cheer_picker_title">为我加油</string>
+    <string name="cheer_picker_cancel">取消</string>
+    <string name="cheer_picker_done">完成</string>
+    <string name="cheer_picker_trusted">信任联系人</string>
+    <string name="cheer_picker_others">其他好友</string>
+    <string name="cheer_picker_no_trusted">还没有信任联系人</string>
+    <string name="cheer_picker_trusted_hint">在安全设置中选择信任联系人，他们会置顶显示并自动选中。</string>
+    <string name="cheer_picker_setup_trusted">设置信任联系人</string>
+    <string name="cheer_picker_privacy">他们可以看到你本次活动的精确位置、配速、距离和心率，也可以在应用中发送简短的语音加油。</string>
+</resources>

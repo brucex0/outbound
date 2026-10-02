@@ -9,6 +9,7 @@ UPLOAD_API="https://androidpublisher.googleapis.com/upload/androidpublisher/v3/a
 TRACK="closed"
 VERSION_NAME="${PLAINSTRIDE_VERSION_NAME:-1.0}"
 RELEASE_NOTES="${PLAINSTRIDE_RELEASE_NOTES:-Closed testing build.}"
+RELEASE_STATUS="completed"
 PUBLISH=0
 VERSION_CODE="${PLAINSTRIDE_VERSION_CODE:-}"
 
@@ -23,14 +24,15 @@ Options:
   --version-name NAME                 User-facing version (default: 1.0)
   --version-code CODE                 Set the monotonically increasing Play code
   --release-notes TEXT                English release notes
+  --release-status draft|completed    Save a draft or publish the release (default: completed)
   --publish                           Upload and roll out to the selected track
   --help                              Show this help
 
 Without --publish, the script performs a signed bundle build only. Publishing
 uses the Android Publisher OAuth scope. Set
 `PLAINSTRIDE_PLAY_SERVICE_ACCOUNT_JSON` to a protected service-account JSON
-file, or use the active gcloud account. Signing credentials come from the
-`PLAINSTRIDE_ANDROID_*` environment variables or existing macOS Keychain items.
+file, or use the active gcloud account. Signing credentials come from the `PLAINSTRIDE_ANDROID_*` environment variables
+or the local credentials file at `~/.config/plainstride/android-upload.env`.
 EOF
 }
 
@@ -56,6 +58,11 @@ while (($#)); do
       RELEASE_NOTES="$2"
       shift 2
       ;;
+    --release-status)
+      [[ $# -ge 2 ]] || { echo "--release-status requires a value" >&2; exit 2; }
+      RELEASE_STATUS="$2"
+      shift 2
+      ;;
     --publish)
       PUBLISH=1
       shift
@@ -79,17 +86,27 @@ case "$TRACK" in
   *) echo "Unsupported track: ${TRACK}" >&2; exit 2 ;;
 esac
 
+case "$RELEASE_STATUS" in
+  draft|completed) ;;
+  *) echo "Unsupported release status: ${RELEASE_STATUS}" >&2; exit 2 ;;
+esac
+
 export PLAINSTRIDE_ANDROID_KEYSTORE_PATH="${PLAINSTRIDE_ANDROID_KEYSTORE_PATH:-${HOME}/.config/plainstride/android-upload.jks}"
 export PLAINSTRIDE_ANDROID_KEY_ALIAS="${PLAINSTRIDE_ANDROID_KEY_ALIAS:-plainstride-upload}"
 
-if [[ -z "${PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD:-}" ]]; then
-  PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD="$(security find-generic-password -a "${USER}" -s plainstride-android-upload-store -w 2>/dev/null || true)"
-  export PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD
+CREDENTIALS_FILE="${PLAINSTRIDE_ANDROID_CREDENTIALS_FILE:-${HOME}/.config/plainstride/android-upload.env}"
+EXPLICIT_STORE_PASSWORD="${PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD:-}"
+EXPLICIT_KEY_PASSWORD="${PLAINSTRIDE_ANDROID_KEY_PASSWORD:-}"
+if [[ -f "$CREDENTIALS_FILE" ]]; then
+  # This owner-managed file contains shell-compatible assignments and stays outside the repository.
+  set -a
+  # shellcheck source=/dev/null
+  source "$CREDENTIALS_FILE"
+  set +a
 fi
-if [[ -z "${PLAINSTRIDE_ANDROID_KEY_PASSWORD:-}" ]]; then
-  PLAINSTRIDE_ANDROID_KEY_PASSWORD="$(security find-generic-password -a "${USER}" -s plainstride-android-upload-key -w 2>/dev/null || true)"
-  export PLAINSTRIDE_ANDROID_KEY_PASSWORD
-fi
+PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD="${EXPLICIT_STORE_PASSWORD:-${PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD:-}}"
+PLAINSTRIDE_ANDROID_KEY_PASSWORD="${EXPLICIT_KEY_PASSWORD:-${PLAINSTRIDE_ANDROID_KEY_PASSWORD:-}}"
+export PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD PLAINSTRIDE_ANDROID_KEY_PASSWORD
 
 required_signing_variables=(
   PLAINSTRIDE_ANDROID_KEYSTORE_PATH
@@ -194,11 +211,17 @@ api_request() {
   local method="$1"
   local url="$2"
   local body_file="${3:-}"
-  local args=(--silent --show-error --fail --config "$AUTH_CONFIG" --request "$method" --header 'Content-Type: application/json')
+  local response
+  local args=(--silent --show-error --fail-with-body --config "$AUTH_CONFIG" --request "$method" --header 'Content-Type: application/json')
   if [[ -n "$body_file" ]]; then
     args+=(--data-binary "@${body_file}")
   fi
-  curl "${args[@]}" "$url"
+  if response="$(curl "${args[@]}" "$url")"; then
+    printf '%s' "$response"
+  else
+    printf 'Android Publisher %s request failed for %s: %s\n' "$method" "$url" "$response" >&2
+    return 1
+  fi
 }
 
 EMPTY_JSON="${TEMP_DIR}/empty.json"
@@ -213,11 +236,14 @@ cleanup_edit() {
 }
 trap 'cleanup_edit; rm -rf "$TEMP_DIR"' EXIT
 
-UPLOAD_JSON="$(curl --silent --show-error --fail --config "$AUTH_CONFIG" \
+if ! UPLOAD_JSON="$(curl --silent --show-error --fail-with-body --config "$AUTH_CONFIG" \
   --request POST \
   --header 'Content-Type: application/octet-stream' \
   --data-binary "@${BUNDLE_PATH}" \
-  "${UPLOAD_API}/edits/${EDIT_ID}/bundles?uploadType=media")"
+  "${UPLOAD_API}/edits/${EDIT_ID}/bundles?uploadType=media")"; then
+  echo "Android Publisher bundle upload failed: ${UPLOAD_JSON}" >&2
+  exit 1
+fi
 UPLOADED_VERSION="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["versionCode"])' <<<"$UPLOAD_JSON")"
 if [[ "$UPLOADED_VERSION" != "$VERSION_CODE" ]]; then
   echo "Play received version code ${UPLOADED_VERSION}; expected ${VERSION_CODE}." >&2
@@ -225,17 +251,17 @@ if [[ "$UPLOADED_VERSION" != "$VERSION_CODE" ]]; then
 fi
 
 TRACK_BODY="${TEMP_DIR}/track.json"
-python3 - "$API_TRACK" "$VERSION_CODE" "$VERSION_NAME" "$RELEASE_NOTES" "$TRACK_BODY" <<'PY'
+python3 - "$API_TRACK" "$VERSION_CODE" "$RELEASE_STATUS" "$VERSION_NAME" "$RELEASE_NOTES" "$TRACK_BODY" <<'PY'
 import json
 import sys
 
-track, version_code, version_name, notes, output = sys.argv[1:]
+track, version_code, status, version_name, notes, output = sys.argv[1:]
 body = {
     "track": track,
     "releases": [{
         "name": version_name,
         "versionCodes": [version_code],
-        "status": "completed",
+        "status": status,
         "releaseNotes": [{"language": "en-US", "text": notes}],
     }],
 }
@@ -247,4 +273,8 @@ api_request PUT "${PLAY_API}/edits/${EDIT_ID}/tracks/${API_TRACK}" "$TRACK_BODY"
 api_request POST "${PLAY_API}/edits/${EDIT_ID}:validate" >/dev/null
 api_request POST "${PLAY_API}/edits/${EDIT_ID}:commit" >/dev/null
 EDIT_ID=""
-echo "Published version ${VERSION_NAME} (${VERSION_CODE}) to the ${TRACK} track."
+if [[ "$RELEASE_STATUS" == "draft" ]]; then
+  echo "Saved version ${VERSION_NAME} (${VERSION_CODE}) as a draft on the ${TRACK} track. Submit it for review in Play Console."
+else
+  echo "Published version ${VERSION_NAME} (${VERSION_CODE}) to the ${TRACK} track."
+fi

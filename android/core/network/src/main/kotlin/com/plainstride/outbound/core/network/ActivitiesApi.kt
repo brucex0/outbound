@@ -1,6 +1,7 @@
 package com.plainstride.outbound.core.network
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonElement
 import okhttp3.MediaType.Companion.toMediaType
@@ -80,6 +81,36 @@ data class RemoteActivityPhotoDto(
 )
 
 @Serializable
+data class ActivityPhotoUploadRequest(
+    val activityId: String,
+    val clientPhotoId: String,
+    val base64: String,
+    val takenAt: String,
+    val paceAtShot: Double? = null,
+    val hrAtShot: Int? = null,
+    val distAtShot: Double? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val captureContext: String? = null,
+)
+
+@Serializable
+data class ActivityPhotoUploadResponse(
+    val id: String,
+    val clientPhotoId: String,
+    val takenAt: String,
+    val paceAtShot: Double? = null,
+    val hrAtShot: Int? = null,
+    val distAtShot: Double? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val captureContext: String? = null,
+    val byteSize: Long? = null,
+    val sha256: String? = null,
+    val updatedAt: String? = null,
+)
+
+@Serializable
 data class RemoteActivityDto(
     val id: String,
     val clientActivityId: String? = null,
@@ -106,6 +137,12 @@ data class RemoteActivityDto(
 @Serializable data class ActivityDeleteResponse(val status: String, val id: String? = null, val deletedAt: String? = null)
 
 interface ActivitiesApiService {
+    @POST("v1/media/activity-photos")
+    suspend fun uploadActivityPhoto(
+        @Header("Authorization") authorization: String,
+        @Body body: ActivityPhotoUploadRequest,
+    ): Response<ActivityPhotoUploadResponse>
+
     @GET("v1/activities")
     suspend fun activities(
         @Header("Authorization") authorization: String,
@@ -126,9 +163,14 @@ interface ActivitiesApiService {
     ): Response<ActivityDeleteResponse>
 }
 
+private val ActivityApiJson: Json = Json(PlainstrideJson) {
+    explicitNulls = false
+    encodeDefaults = false
+}
+
 fun createActivitiesApi(baseUrl: String, client: OkHttpClient): ActivitiesApiService = Retrofit.Builder()
     .baseUrl(if (baseUrl.endsWith('/')) baseUrl else "$baseUrl/")
     .client(client)
-    .addConverterFactory(PlainstrideJson.asConverterFactory("application/json".toMediaType()))
+    .addConverterFactory(ActivityApiJson.asConverterFactory("application/json".toMediaType()))
     .build()
     .create(ActivitiesApiService::class.java)

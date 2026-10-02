@@ -5,6 +5,27 @@ import kotlinx.serialization.Serializable
 @Serializable data class ActivitySource(val kind: String = "outbound", val displayName: String = "Plainstride", val deviceName: String? = null, val externalId: String? = null, val importedAt: String? = null)
 @Serializable data class ActivityReflection(val title: String, val body: String, val highlight: String, val progressNote: String? = null)
 @Serializable data class ActivityTrackPoint(val timestamp: String, val latitude: Double, val longitude: Double, val altitude: Double? = null, val verticalAccuracy: Double? = null, val startsNewSegment: Boolean = false)
+
+data class SharedLiveParticipant(
+    val id: String,
+    val userId: String,
+    val displayName: String,
+    val status: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val lastLocationAt: String? = null,
+    val elapsedSeconds: Int = 0,
+    val distanceMeters: Double = 0.0,
+    val paceSecondsPerKilometer: Double? = null,
+)
+
+data class SharedLiveRun(
+    val id: String,
+    val activityEventId: String? = null,
+    val status: String,
+    val currentUserId: String,
+    val participants: List<SharedLiveParticipant> = emptyList(),
+)
 @Serializable data class ActivitySplit(val index: Int, val distanceM: Double, val durationSecs: Int, val paceSecsPerKm: Double? = null, val elevationGainM: Double? = null, val averageHeartRateBpm: Int? = null)
 @Serializable data class ActivityPhoto(
     val id: String, val takenAt: String, val paceAtShot: Double? = null, val heartRateAtShot: Int? = null,

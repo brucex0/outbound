@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -33,6 +34,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import android.content.Intent
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
@@ -44,7 +46,16 @@ import kotlinx.serialization.json.put
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-@Composable fun CommunityRouteScreen(library: RouteLibrary, scope: RouteScope, onScope: (RouteScope)->Unit, onRefresh:()->Job?, onSearch:(String)->Unit, onFollow:(com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration)->Unit, onBookmark:(CommunityRoute)->Unit,onImport:(Boolean)->Unit={},bottomContentPadding:androidx.compose.ui.unit.Dp=0.dp,routeDetail:CommunityRoute?=null,routeDetailLoading:Boolean=false,onLoadDetail:(String)->Unit={},onRemovePublished:(String)->Unit={},onClearDetail:()->Unit={},unitSystem:com.plainstride.outbound.core.model.activity.MeasurementUnitSystem=com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric,onImportedDelete:()->Unit={},importRequest:Int=0,searchQuery:String="") {
+@Composable fun CommunityRouteScreen(
+ library:RouteLibrary, scope:RouteScope, onScope:(RouteScope)->Unit, onRefresh:()->Job?, onSearch:(String)->Unit,
+ onFollow:(com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration)->Unit, onBookmark:(CommunityRoute)->Unit,
+ onImport:(Boolean)->Unit={}, bottomContentPadding:androidx.compose.ui.unit.Dp=0.dp, routeDetail:CommunityRoute?=null,
+ routeDetailLoading:Boolean=false, onLoadDetail:(String)->Unit={}, onRemovePublished:(String)->Unit={}, onClearDetail:()->Unit={},
+ unitSystem:com.plainstride.outbound.core.model.activity.MeasurementUnitSystem=com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric,
+ onImportedDelete:()->Unit={}, importRequest:Int=0, searchQuery:String="", selectionMode:Boolean=false,
+ initialSelection:CommunityRoute?=null, initialSelectionReverse:Boolean=false,
+ onSelectRoute:(CommunityRoute?,Boolean)->Unit={_,_->}, onDismissSelection:()->Unit={},
+) {
  val debugRoute = if (BuildConfig.DEBUG && scope != RouteScope.MINE) {
   debugHarvestRoute(
    stringResource(com.plainstride.outbound.feature.recording.R.string.recording_simulation_route_name),
@@ -53,7 +64,7 @@ import kotlinx.coroutines.launch
  val visibleRoutes = if (debugRoute == null) library.routes else
   listOf(debugRoute) + library.routes.filterNot { it.id == HarvestRunSimulation.ROUTE_ID }
  val visibleLibrary = library.copy(routes = visibleRoutes)
- SharedCommunityRouteLibrary(visibleLibrary,scope,onScope,onRefresh,onSearch,onFollow,onBookmark,onImport,routeDetail,routeDetailLoading,onLoadDetail,onRemovePublished,onClearDetail,unitSystem,onImportedDelete,bottomContentPadding,importRequest,searchQuery)
+ SharedCommunityRouteLibrary(visibleLibrary,scope,onScope,onRefresh,onSearch,onFollow,onBookmark,onImport,routeDetail,routeDetailLoading,onLoadDetail,onRemovePublished,onClearDetail,unitSystem,onImportedDelete,bottomContentPadding,importRequest,searchQuery,selectionMode,initialSelection,initialSelectionReverse,onSelectRoute,onDismissSelection)
 }
 
 @Composable
@@ -75,8 +86,10 @@ private fun SharedCommunityRouteLibrary(
  onImportedDelete:()->Unit,
  bottomContentPadding:androidx.compose.ui.unit.Dp,
  importRequest:Int,
- searchQuery:String,
+ searchQuery:String, selectionMode:Boolean, initialSelection:CommunityRoute?, initialSelectionReverse:Boolean,
+ onSelectRoute:(CommunityRoute?,Boolean)->Unit, onDismissSelection:()->Unit,
 ) {
+ BackHandler(enabled=selectionMode,onBack=onDismissSelection)
  val context=LocalContext.current
  val keyboardController=LocalSoftwareKeyboardController.current
  val coroutineScope=rememberCoroutineScope()
@@ -84,9 +97,12 @@ private fun SharedCommunityRouteLibrary(
  var refreshing by remember { mutableStateOf(false) }
  var filterMenuExpanded by remember { mutableStateOf(false) }
  var selectedRoute by remember { mutableStateOf<CommunityRoute?>(null) }
+ var selectedForToday by remember(initialSelection?.id) { mutableStateOf(initialSelection) }
+ var pendingSelectionId by remember { mutableStateOf<String?>(null) }
+ var reverseForToday by rememberSaveable(initialSelection?.id) { mutableStateOf(initialSelectionReverse) }
  var selectedImportedRoute by remember { mutableStateOf<CommunityRoute?>(null) }
  var confirmDeleteImported by remember { mutableStateOf<CommunityRoute?>(null) }
- var importedRoutes by remember { mutableStateOf<List<CommunityRoute>>(emptyList()) }
+ var importedRoutes by remember(initialSelection?.id) { mutableStateOf(listOfNotNull(initialSelection?.takeIf { it.id.startsWith("import:") })) }
  var pendingNearby by remember { mutableStateOf(false) }
  var submittedQuery by remember { mutableStateOf(searchQuery.isNotBlank()) }
  val displayedRoutes = if(scope==RouteScope.MINE&&query.isNotBlank())library.routes.filter { it.name.contains(query.trim(),ignoreCase=true)||it.owner.displayName.contains(query.trim(),ignoreCase=true) } else library.routes
@@ -95,20 +111,59 @@ private fun SharedCommunityRouteLibrary(
  val importFile=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->
   uri ?: return@rememberLauncherForActivityResult
   val route=runCatching{context.contentResolver.openInputStream(uri)?.bufferedReader()?.use{reader->importRoute(reader.readText(),uri.lastPathSegment)}}.getOrNull()
-  if(route!=null){importedRoutes=listOf(route)+importedRoutes.filterNot{it.id==route.id};selectedRoute=route;onImport(true)}else onImport(false)
+  if(route!=null){
+   importedRoutes=listOf(route)+importedRoutes.filterNot{it.id==route.id}
+   if(selectionMode){selectedForToday=route;pendingSelectionId=null;reverseForToday=false}else selectedRoute=route
+   onImport(true)
+  }else onImport(false)
  }
  LaunchedEffect(searchQuery) { query=searchQuery;submittedQuery=searchQuery.isNotBlank() }
+ LaunchedEffect(selectionMode,initialSelection?.id,routeDetailLoading){
+  if(selectionMode){
+   selectedForToday=initialSelection
+   pendingSelectionId=initialSelection?.takeIf{it.guidancePoints().size<2&&routeDetailLoading}?.id
+   reverseForToday=initialSelectionReverse
+  }else{
+   pendingSelectionId=null
+  }
+ }
+
  LaunchedEffect(importRequest) { if (importRequest > handledImportRequest) { handledImportRequest = importRequest; importFile.launch(arrayOf("application/gpx+xml","application/geo+json","application/json","text/xml","text/plain")) } }
  PullToRefreshBox(isRefreshing=refreshing,onRefresh={refreshing=true;coroutineScope.launch { try { onRefresh()?.join() } finally { refreshing=false } }},modifier=Modifier.fillMaxSize()) {
  LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(bottom=16.dp+bottomContentPadding),verticalArrangement=Arrangement.spacedBy(0.dp)) {
   item {
+   if(selectionMode) Row(Modifier.fillMaxWidth().heightIn(min=56.dp).padding(horizontal=8.dp),verticalAlignment=Alignment.CenterVertically) {
+    androidx.compose.material3.IconButton(onClick=onDismissSelection){Icon(Icons.AutoMirrored.Outlined.ArrowBack,stringResource(R.string.routes_close))}
+    Text(stringResource(R.string.route_library_title_select),Modifier.weight(1f),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.SemiBold)
+    TextButton(onClick={onSelectRoute(selectedForToday,reverseForToday)},enabled=pendingSelectionId==null&&(selectedForToday!=null||initialSelection!=null)){
+     Text(stringResource(if(selectedForToday==null&&initialSelection!=null)R.string.route_library_action_remove_selection else R.string.route_library_action_use_selection))
+    }
+   }
    Row(Modifier.fillMaxWidth().heightIn(min=52.dp).padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
     TextField(query,{value->query=value;if(value.isBlank()&&submittedQuery){submittedQuery=false;if(scope!=RouteScope.MINE)onSearch("")}},Modifier.weight(1f),singleLine=true,shape=RoundedCornerShape(28.dp),placeholder={Text(stringResource(R.string.route_library_search_prompt))},leadingIcon={Icon(Icons.Outlined.Search,null)},keyboardOptions=androidx.compose.foundation.text.KeyboardOptions(imeAction=androidx.compose.ui.text.input.ImeAction.Search),keyboardActions=androidx.compose.foundation.text.KeyboardActions(onSearch={submittedQuery=query.isNotBlank();if(scope!=RouteScope.MINE)onSearch(query);keyboardController?.hide()}),trailingIcon={if(query.isNotEmpty())IconButton({query="";submittedQuery=false;if(scope!=RouteScope.MINE)onSearch("")}){Icon(Icons.Outlined.Close,stringResource(R.string.route_library_action_clear_search))}},colors=TextFieldDefaults.colors(focusedIndicatorColor=Color.Transparent,unfocusedIndicatorColor=Color.Transparent))
     Box {
      IconButton(onClick={filterMenuExpanded=true},modifier=Modifier.sizeIn(minWidth=44.dp,minHeight=44.dp)){Icon(Icons.Outlined.FilterList,stringResource(R.string.route_library_filter_title),tint=if(scope==RouteScope.MINE)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)}
-     DropdownMenu(expanded=filterMenuExpanded,onDismissRequest={filterMenuExpanded=false}) {
-      DropdownMenuItem(text={Text(stringResource(R.string.routes_mine))},onClick={filterMenuExpanded=false;query="";submittedQuery=false;if(scope!=RouteScope.MINE)onScope(RouteScope.MINE)},leadingIcon={if(scope==RouteScope.MINE)Icon(Icons.Outlined.Check,null)})
-      DropdownMenuItem(text={Text(stringResource(R.string.route_library_filter_clear))},onClick={filterMenuExpanded=false;query="";submittedQuery=false;onScope(RouteScope.DISCOVERY)})
+     DropdownMenu(
+      expanded=filterMenuExpanded,
+      onDismissRequest={filterMenuExpanded=false},
+      modifier=Modifier.width(224.dp),
+     ) {
+      DropdownMenuItem(
+       text={Text(stringResource(R.string.routes_mine),style=MaterialTheme.typography.bodyLarge)},
+       onClick={filterMenuExpanded=false;query="";submittedQuery=false;if(scope!=RouteScope.MINE)onScope(RouteScope.MINE)},
+       modifier=Modifier.heightIn(min=48.dp),
+       contentPadding=PaddingValues(horizontal=16.dp,vertical=0.dp),
+       leadingIcon={Icon(Icons.Outlined.Bookmark,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)},
+       trailingIcon={if(scope==RouteScope.MINE)Icon(Icons.Outlined.Check,null)},
+      )
+      DropdownMenuItem(
+       text={Text(stringResource(R.string.route_library_filter_clear),style=MaterialTheme.typography.bodyLarge)},
+       onClick={filterMenuExpanded=false;query="";submittedQuery=false;onScope(RouteScope.DISCOVERY)},
+       modifier=Modifier.heightIn(min=48.dp),
+       contentPadding=PaddingValues(horizontal=16.dp,vertical=0.dp),
+       leadingIcon={Icon(Icons.Outlined.Close,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)},
+       trailingIcon={if(scope!=RouteScope.MINE)Icon(Icons.Outlined.Check,null)},
+      )
      }
     }
    }
@@ -129,36 +184,62 @@ private fun SharedCommunityRouteLibrary(
   if(importedRoutes.isNotEmpty()) {
    item { RouteLibrarySectionLabel(stringResource(R.string.route_library_section_imported)) }
    items(importedRoutes,key=CommunityRoute::id){route->
-    Row(Modifier.fillMaxWidth().heightIn(min=64.dp).clickable{selectedImportedRoute=route}.padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+    Row(Modifier.fillMaxWidth().heightIn(min=64.dp).clickable{
+     if(selectionMode){if(selectedForToday?.id==route.id){selectedForToday=null;pendingSelectionId=null}else{selectedForToday=route;pendingSelectionId=null;reverseForToday=false}}
+     else selectedImportedRoute=route
+    }.padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
      RouteLibraryGlyph(Icons.Outlined.FileOpen)
      Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)) {Text(route.name,style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis);Text(stringResource(R.string.route_library_imported_device_private),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
-     IconButton({confirmDeleteImported=route},modifier=Modifier.sizeIn(minWidth=44.dp,minHeight=44.dp)){Icon(Icons.Outlined.Delete,stringResource(R.string.route_library_action_delete))}
+     if(selectionMode&&selectedForToday?.id==route.id)Icon(Icons.Outlined.Check,stringResource(R.string.route_library_accessibility_selected),tint=MaterialTheme.colorScheme.primary)
+     else if(!selectionMode)IconButton({confirmDeleteImported=route},modifier=Modifier.sizeIn(minWidth=44.dp,minHeight=44.dp)){Icon(Icons.Outlined.Delete,stringResource(R.string.route_library_action_delete))}
     }
     HorizontalDivider(Modifier.padding(start=62.dp))
    }
   }
   if(displayedRoutes.isEmpty()&&routeDetailLoading) item { Box(Modifier.fillMaxWidth().padding(vertical=28.dp),contentAlignment=Alignment.Center){CircularProgressIndicator(Modifier.size(28.dp));Text(stringResource(R.string.route_library_loading),Modifier.padding(top=44.dp),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)} }
-  else if(displayedRoutes.isEmpty()) item {
+  else if(displayedRoutes.isEmpty()&&!selectionMode) item {
    Column(Modifier.fillMaxWidth().padding(horizontal=32.dp,vertical=28.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(8.dp)) {
     Icon(Icons.Outlined.Map,null,Modifier.size(30.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
     Text(stringResource(R.string.route_library_empty_community_title),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold)
     Text(stringResource(R.string.route_library_empty_community_description),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
    }
   } else items(displayedRoutes,key=CommunityRoute::id){route->
-   Row(Modifier.fillMaxWidth().heightIn(min=68.dp).clickable{selectedRoute=route;if(!route.id.startsWith("import:")&&!isDebugHarvestRoute(route))onLoadDetail(route.id)}.padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+   Row(Modifier.fillMaxWidth().heightIn(min=68.dp).clickable{
+    if(selectionMode){
+     if(selectedForToday?.id==route.id){selectedForToday=null;pendingSelectionId=null}
+     else if(route.guidancePoints().size>=2){selectedForToday=route;pendingSelectionId=null;reverseForToday=false}
+     else{selectedForToday=null;pendingSelectionId=route.id;reverseForToday=false;onLoadDetail(route.id)}
+    }else{selectedRoute=route;if(!route.id.startsWith("import:")&&!isDebugHarvestRoute(route))onLoadDetail(route.id)}
+   }.padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
     RouteLibraryGlyph(if(route.routeShape=="loop")Icons.Outlined.Cached else Icons.Outlined.Timeline)
     Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)) {
      Text(route.name,style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis)
      Text(stringResource(R.string.route_library_row_summary_format,routeDistanceLabel(route.distanceM,unitSystem),route.owner.displayName),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.Ellipsis)
      if(isDebugHarvestRoute(route))DebugTestRouteBadge()
     }
-    if(route.isBookmarked&&!route.isOwner&&!isDebugHarvestRoute(route))Icon(Icons.Outlined.Bookmark,stringResource(R.string.route_library_accessibility_saved),tint=MaterialTheme.colorScheme.primary)
+    if(selectionMode&&pendingSelectionId==route.id)CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp)
+    else if(selectionMode&&selectedForToday?.id==route.id)Icon(Icons.Outlined.Check,stringResource(R.string.route_library_accessibility_selected),tint=MaterialTheme.colorScheme.primary)
+    else if(route.isBookmarked&&!route.isOwner&&!isDebugHarvestRoute(route))Icon(Icons.Outlined.Bookmark,stringResource(R.string.route_library_accessibility_saved),tint=MaterialTheme.colorScheme.primary)
    }
    HorizontalDivider(Modifier.padding(start=62.dp))
   }
  }
  }
  if(pendingNearby)AlertDialog(onDismissRequest={pendingNearby=false},title={Text(stringResource(R.string.routes_location_title))},text={Text(stringResource(R.string.routes_location_body))},confirmButton={TextButton({locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)}){Text(stringResource(R.string.routes_location_allow))}},dismissButton={TextButton({pendingNearby=false}){Text(stringResource(R.string.routes_close))}})
+ LaunchedEffect(selectionMode,routeDetail?.id,routeDetailLoading,pendingSelectionId){
+  if(!selectionMode||routeDetailLoading)return@LaunchedEffect
+  val pendingId=pendingSelectionId
+  if(routeDetail!=null&&pendingId==routeDetail.id){
+   selectedForToday=routeDetail
+   reverseForToday=false
+   pendingSelectionId=null
+  }else if(pendingId!=null&&routeDetail?.id!=pendingId){
+   if(initialSelection?.id==pendingId&&selectedForToday?.id==pendingId&&routeDetail==null)selectedForToday=null
+   pendingSelectionId=null
+  }else if(routeDetail!=null&&selectedForToday?.id==routeDetail.id){
+   selectedForToday=routeDetail
+  }
+ }
  selectedRoute?.let{selected->
   val detail=routeDetail?.takeIf{it.id==selected.id}?:selected
   EmbeddedCommunityRouteDetail(route=detail,loading=routeDetailLoading&&routeDetail?.id!=selected.id,unitSystem=unitSystem,onClose={selectedRoute=null;onClearDetail()},onRetry={if(!isDebugHarvestRoute(selected))onLoadDetail(selected.id)},onFollow={reverse->onFollow(CommunityRecordingCoordinator.launch(detail,reverse));selectedRoute=null;onClearDetail()},onBookmark={onBookmark(detail)},onRemovePublished={onRemovePublished(detail.id)})
@@ -180,7 +261,8 @@ private fun SharedCommunityRouteLibrary(
      val points=route.coordinates()
      if(points.size>1)PlainstrideRouteMap(points,Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(18.dp)))
      Column(horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(5.dp)) {Text(route.name,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text(stringResource(R.string.route_import_preview_privacy),style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant,textAlign=androidx.compose.ui.text.style.TextAlign.Center)}
-     Button(onUse,Modifier.fillMaxWidth().heightIn(min=48.dp)){Icon(Icons.Outlined.DirectionsRun,null);Spacer(Modifier.width(8.dp));Text(stringResource(R.string.route_import_action_use))}
+     Button(onUse,Modifier.fillMaxWidth().heightIn(min=48.dp)){Icon(Icons.AutoMirrored.Outlined.DirectionsRun,null);Spacer(Modifier.width(8.dp));Text(stringResource(R.string.route_import_action_use))}
+
      OutlinedButton(onDelete,Modifier.fillMaxWidth().heightIn(min=48.dp),colors=ButtonDefaults.outlinedButtonColors(contentColor=MaterialTheme.colorScheme.error)){Icon(Icons.Outlined.Delete,null);Spacer(Modifier.width(8.dp));Text(stringResource(R.string.route_import_action_delete))}
     }
    }
