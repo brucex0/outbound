@@ -10,13 +10,14 @@ This bridges Outbound's safety live tracking and future Social/Club features wit
 
 ## Product Scope
 
-V1 supports informal invite-link group runs:
+V1 supports informal invite-link group runs and an attendee-only mode for scheduled Group activities:
 
 1. A runner opens the activity start screen.
 2. They create or join a live group share.
 3. Creating a group produces a private invite link shared through the system Share Sheet.
 4. Joined runners who actively share their own location appear on each other's in-run map.
 5. The group share ends only when all participants have finished or left, the creator explicitly ends it, or the session expires.
+6. For a scheduled Group activity, each going attendee can instead opt into the event's shared live session from Run options; no invite link is needed.
 
 Runner-to-runner visibility is mutual. A runner must share their own active location to see the in-app group map. Spectators remain separate and should use the existing private safety-style viewer.
 
@@ -25,7 +26,7 @@ Runner-to-runner visibility is mutual. A runner must share their own active loca
 - Friend graph or always-on friend location.
 - Public group maps.
 - Route trails for other runners.
-- Club scheduling dependency.
+- Automatic location sharing based only on event attendance or RSVP.
 - Nearby discovery, QR joining, or short-code joining.
 - Rich chat, cheers, comments, or moderation surfaces.
 - Emergency escalation.

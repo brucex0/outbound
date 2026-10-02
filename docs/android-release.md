@@ -7,7 +7,7 @@ Open this for Play Console preparation, signed bundles, release policy, privacy 
 - `PLAINSTRIDE_VERSION_CODE` is a monotonically increasing positive integer assigned by CI for every Play upload.
 - `PLAINSTRIDE_VERSION_NAME` is the user-facing semantic version. A rollback build still receives a new version code.
 - Enroll in Play App Signing and protect the upload key separately. Never commit a keystore or password.
-- Supply `PLAINSTRIDE_ANDROID_KEYSTORE_PATH`, `PLAINSTRIDE_ANDROID_KEYSTORE_PASSWORD`, `PLAINSTRIDE_ANDROID_KEY_ALIAS`, and `PLAINSTRIDE_ANDROID_KEY_PASSWORD` only through the CI secret store or local environment.
+- Keep local upload passwords in `~/.config/plainstride/android-upload.env` (mode `600`) or pass them through the environment; the publishing script does not access macOS Keychain. Never commit this file or a keystore.
 - Supply `PLAINSTRIDE_MAPS_API_KEY` as a Gradle property from CI (`ORG_GRADLE_PROJECT_PLAINSTRIDE_MAPS_API_KEY`). Restrict it in Google Cloud to the release application ID and Play signing certificate. Missing keys render an accessible “Map unavailable” state and `verifyPlayReleaseConfiguration` fails closed.
 - Supply `PLAINSTRIDE_SPOTIFY_CLIENT_ID` as a Gradle property only for builds whose Spotify dashboard allows the exact `com.plainstride.outbound://spotify-callback` redirect. Without it, Spotify authorization and playback stay disabled with a user-visible configuration state; no client secret is embedded in the app.
 - Phone and Wear use the same CI-supplied version and upload-key variables, while remaining separate application IDs (`com.plainstride.outbound` and `com.plainstride.outbound.wear`). Ordinary `assembleRelease` remains unsigned when secrets are absent so source verification is reproducible. Each `bundleRelease` task depends on its fail-closed configuration check.
@@ -31,11 +31,17 @@ identity to have Play Console release access. Use the active `gcloud` account,
 or set `PLAINSTRIDE_PLAY_SERVICE_ACCOUNT_JSON` to a protected service-account
 key file. Service-account JSON is never stored in the repository; the script
 uses an isolated temporary `gcloud` config for it. The script reads upload-key
-passwords from the existing macOS Keychain entries or corresponding environment
+passwords from `~/.config/plainstride/android-upload.env` or explicit environment
 variables, builds and verifies the AAB, uploads it, validates the edit, and
 commits the release. `closed` targets the default `alpha` track; `internal` and
 `production` are also supported. Increase the version code for every upload.
 Without `--publish`, the script only builds the signed AAB.
+
+For an app that is still in Draft, Play only accepts a track release with
+`draft` status. Upload and save it for owner review with
+`--release-status draft`; then review and submit the release in Play Console.
+The default `completed` status is for an app that has already left Draft.
+The script prints Android Publisher error details when an API request fails.
 
 Configure track countries and testers in Play Console before publishing a
 closed-testing release. Play bundles also require the Maps, Google server

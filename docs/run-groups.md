@@ -164,11 +164,19 @@ Community detail has no general member activity feed. Completed Group activities
 ## Today Boundary And Post-Activity
 
 - Today never shows a Group container, weekly theme, Group progress, notice, or creation prompt.
-- Today remains focused on what the person may do today: an active recording, a Group or direct activity event they are participating in, their own planned workout, and the existing quick-start affordance.
+- Today remains focused on what the person may do today: an active recording, a Group or direct activity event they are participating in, their own planned workout, and the existing quick-start affordance. A selected route does not suppress the eligible Today card. A going attendee can open `Run options` on a Group activity card to opt into its live map.
 - A Group activity reaches Today only through the ordinary `ActivityEvent` contract after the viewer has joined or accepted the invitation. The card may show a share-safe `From <Group name>` source label.
 - Group invitations awaiting a decision, notices, weekly themes, and general Group state remain in Social and Notification Center.
 - A saved activity reconciles into every eligible trusted-private Group by activity start time. Community membership alone never links the activity.
 - Post-activity copy may say `You moved <Group name> forward` when exactly one Group received a contribution. For several Groups, show one aggregate acknowledgement such as `Counted toward 3 private Groups` without choosing a primary Group or stacking celebration screens.
+
+## Live Map During A Scheduled Activity
+
+- A runner who is going to a Group-owned activity can choose `Share live map with attendees` from Run options before recording. Attendance alone never shares location.
+- A going attendee can opt into live map sharing from `Run options` on the scheduled activity page. `Start activity` still begins recording immediately.
+- Other going attendees can opt in from the same scheduled activity. The event has one live session, so runners do not need to exchange a separate invite link.
+- The backend checks the user's going RSVP and the event's Group ownership before adding them. Live coordinates are visible only to attendees who have opted into that session. `Stop sharing` removes only that attendee and leaves the event session available for them to opt in again while the event remains joinable. Finishing the recording may close the session when no active attendees remain.
+- Unscheduled runs keep the existing invite-link flow.
 
 ## Membership And Administration
 

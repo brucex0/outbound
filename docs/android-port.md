@@ -74,6 +74,13 @@ Complete and commit the resulting catch-up work before moving the marker to the 
 
 ## Release Parity Contract
 
+### Navigation Ownership
+
+- Keep each primary tab's local history for tab-specific flows. Social group detail, group creation, and activity planning stay owned by Social; Today workout and plan setup stay owned by Today.
+- Put a destination on the app-level navigation stack when the same entity detail is reachable from more than one primary tab. Current shared destinations include completed activity detail, Social feed activity detail, runner profiles, and planned activity detail opened from Today or Social.
+- Preserve the selected tab and its local history beneath an app-level destination. Back returns to the exact originating screen and scroll position. Notification and deep-link entry points route to the same destination.
+- Use the same ownership rule on iOS and Android even when each platform uses its native navigation API.
+
 The following table is the release checklist. A row may use an Android-native replacement, but it may not be omitted without an explicit product decision recorded in this document.
 
 | Product area | iOS source of truth | Android implementation | Release requirement |
@@ -87,7 +94,7 @@ The following table is the release checklist. A row may use an Android-native re
 | Local activities | `LocalActivityStore`, `ActivityStore` | Room database plus private app media storage and sync coordinator | Offline create/read/update/delete, pagination, tombstones, routes, photos, and idempotent convergence |
 | Activity detail | Maps, elevation, splits, metadata, edit/export/share | Compose detail, Google Maps, Android share and document APIs | Equivalent metrics, segmentation, editing, GPX/GeoJSON, share card, and source attribution |
 | Progress and gear | `ProgressStatsEngine`, `ProgressView`, `GearStore` | Pure Kotlin engines and Room repositories | Shared fixtures produce equivalent weekly totals, records, predictions, momentum, and mileage |
-| Live coaching | Moment director, session planner, signed audio packs, planned cache, stream/fixed recorded-audio fallback | Pure Kotlin policy and scheduler, AudioTrack, verified recorded-audio packs, private planned-audio cache | Same semantic gates, target logic, priorities, locale/units, 1.5-second fallback, interruptions, and session access; do not substitute system TTS |
+| Live coaching | Moment director, session planner, signed audio packs, planned cache, stream/fixed recorded-audio fallback | Pure Kotlin policy and scheduler, AudioTrack, verified recorded-audio packs, private planned-audio cache | AI coaching moments and workout instructions are running-only on both platforms; all sports retain local time, distance, split, and pace announcements. The backend rejects non-running AI sessions. Preserve matching locale/units, priorities, 1.5-second fallback, interruptions, and session access; do not substitute system TTS |
 | Assistant and voice | Companion API, local fallback, speech recognition, App Intents | Companion API, Android speech APIs, App Actions/shortcuts where supported | Text and tap-to-talk assistant, activity preparation, live-session voice commands, and privacy boundaries |
 | Social and Groups | Connections, feed, Groups, invitations, events, Cheers, and shared activity detail | Compose surfaces against the unified Social Group API | Cross-platform interaction, privacy visibility, pagination, reporting, blocking, notification routing, and map-first activity details that load the complete photo gallery after opening while preserving the two-photo feed payload |
 | Recognition | Local presentation plus server reconciliation | Room cache plus the same recognition APIs | Idempotent awards and identical share-eligibility behavior |

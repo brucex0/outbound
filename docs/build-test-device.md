@@ -144,6 +144,12 @@ Add `--simulator` to run it in an iPhone Simulator. The launch flag preselects t
 
 Without the launch flag, the same simulator is available in a Debug build from the activity setup's More > Testing > Simulated Harvest Run toggle. Release builds do not compile the simulator or its controls. The supplied GPX contains one return-leg discontinuity (`47.7900`); the fixture corrects it to the matching outbound latitude (`47.6900`). The resulting supplied geometry is approximately 18.1 km, even though the source name describes a half marathon.
 
+### Debug Group Run Simulation
+
+In a Debug build, open activity setup > Group run > Start test group to add three local mock runners. Start a simulated run to move their pins alongside the local run location and try the runner strip, map focus, and stop controls. The fixture bypasses the live group API and is compiled out of Release builds.
+
+For a scheduled Group activity, the same setup also shows **Simulate attendees**. It seeds three nearby runners and one remote runner about 15 km away, linked to the event so the scheduled-attendee management UI is exercised. Start a simulated run, then select the remote runner in the strip to check distant-location focus. This fixture is local-only and bypasses the event live-map API.
+
 Run the automated local server E2E test with one seeded persona. The runner starts the local API and embedded PostgreSQL, resets deterministic seed data, obtains a first-party session from the debug-only endpoint, then verifies authenticated account, activity, and social API state:
 
 ```sh
