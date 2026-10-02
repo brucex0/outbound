@@ -27,13 +27,11 @@ struct CreateActivityEventView: View {
     @State private var isSubmitting = false
     @FocusState private var isLocationFieldFocused: Bool
     let sourceGroupID: String?
-    let additionalInvitees: [GroupPersonDTO]
     let editingActivity: ActivityEventDetailDTO?
     let onCompleted: () -> Void
 
-    init(sourceGroupID: String? = nil, preselectedConnectionIDs: Set<String> = [], additionalInvitees: [GroupPersonDTO] = [], editingActivity: ActivityEventDetailDTO? = nil, onCompleted: @escaping () -> Void = {}) {
+    init(sourceGroupID: String? = nil, editingActivity: ActivityEventDetailDTO? = nil, onCompleted: @escaping () -> Void = {}) {
         self.sourceGroupID = sourceGroupID
-        self.additionalInvitees = additionalInvitees
         self.editingActivity = editingActivity
         self.onCompleted = onCompleted
         _title = State(initialValue: editingActivity?.title ?? "")
@@ -47,7 +45,7 @@ struct CreateActivityEventView: View {
         _selectedLocationCoordinate = State(initialValue: editingActivity?.meetupCoordinate)
         _note = State(initialValue: editingActivity?.paceNote ?? "")
         _joinVirtually = State(initialValue: editingActivity?.participationMode != "in_person")
-        _selectedConnectionIDs = State(initialValue: preselectedConnectionIDs)
+        _selectedConnectionIDs = State(initialValue: [])
     }
 
     var body: some View {
@@ -71,10 +69,12 @@ struct CreateActivityEventView: View {
             await analyticsManager?.track(.init(.featureExposed, properties: [
                 .feature: .string("activity_event_location_picker"),
             ]))
-            if socialStore.connections.isEmpty {
+            if sourceGroupID == nil, socialStore.connections.isEmpty {
                 await socialStore.refreshConnections()
             }
-            await socialStore.loadRemainingConnections()
+            if sourceGroupID == nil {
+                await socialStore.loadRemainingConnections()
+            }
         }
         .sheet(isPresented: $showsMapPicker) {
             ActivityEventMapPicker(
@@ -210,7 +210,16 @@ struct CreateActivityEventView: View {
                 } label: {
                     HStack {
                         Spacer()
-                        if isSubmitting { ProgressView() } else { Text(editingActivity == nil ? String(localized: "social.event.create_and_invite", defaultValue: "Create and invite") : "Save changes").fontWeight(.semibold) }
+                        if isSubmitting {
+                            ProgressView()
+                        } else if editingActivity != nil {
+                            Text("Save changes").fontWeight(.semibold)
+                        } else {
+                            Text(sourceGroupID == nil
+                                 ? String(localized: "social.event.create_and_invite", defaultValue: "Create and invite")
+                                 : String(localized: "group.event.create", defaultValue: "Create activity"))
+                                .fontWeight(.semibold)
+                        }
                         Spacer()
                     }
                 }
@@ -262,20 +271,6 @@ struct CreateActivityEventView: View {
                             Image(systemName: selectedConnectionIDs.contains(connection.person.id) ? "checkmark.circle.fill" : "circle")
                                 .font(.title3)
                                 .foregroundStyle(selectedConnectionIDs.contains(connection.person.id) ? OutboundPalette.companion : .secondary)
-                        }
-                    }
-                }
-                ForEach(additionalInvitees.filter { person in
-                    !socialStore.connections.contains { $0.status == "accepted" && $0.person.id == person.id }
-                }) { person in
-                    Button { toggleInvitee(person.id) } label: {
-                        HStack(spacing: 12) {
-                            SocialAvatar(name: person.displayName, avatarURL: person.avatarUrl)
-                            Text(person.displayName).foregroundStyle(.primary)
-                            Spacer()
-                            Image(systemName: selectedConnectionIDs.contains(person.id) ? "checkmark.circle.fill" : "circle")
-                                .font(.title3)
-                                .foregroundStyle(selectedConnectionIDs.contains(person.id) ? OutboundPalette.companion : .secondary)
                         }
                     }
                 }
@@ -357,6 +352,10 @@ struct CreateActivityEventView: View {
             groupId: sourceGroupID,
             participationMode: joinVirtually ? "hybrid" : "in_person"
         ))
+        if created != nil, sourceGroupID != nil {
+            onCompleted()
+            dismiss()
+        }
     }
 
     private var planningTitle: String {
@@ -402,9 +401,7 @@ struct CreateActivityEventView: View {
     }
 
     private var inviteFriendsLabel: String {
-        sourceGroupID == nil
-            ? String(localized: "social.event.invite_friends", defaultValue: "Invite running friends")
-            : String(localized: "group.event.invite", defaultValue: "Invite your Group")
+        String(localized: "social.event.invite_friends", defaultValue: "Invite running friends")
     }
 
     private func select(_ completion: MKLocalSearchCompletion) async {
@@ -414,10 +411,6 @@ struct CreateActivityEventView: View {
         guard resolveToken == locationResolveToken else { return }
         isResolvingLocation = false
         apply(place, source: "autocomplete")
-    }
-
-    private func toggleInvitee(_ id: String) {
-        if selectedConnectionIDs.contains(id) { selectedConnectionIDs.remove(id) } else { selectedConnectionIDs.insert(id) }
     }
 
     private func apply(_ place: ActivityEventPlace, source: String) {

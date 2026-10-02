@@ -5339,6 +5339,28 @@
         }
       }
     },
+    "group.event.create": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create activity"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crear actividad"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "创建活动"
+          }
+        }
+      }
+    },
     "group.event.invite": {
       "localizations": {
         "en": {

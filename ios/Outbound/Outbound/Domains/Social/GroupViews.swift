@@ -507,7 +507,12 @@ private struct GroupCreatedView: View {
                     Text(String(localized: "group.created.community_detail", defaultValue: "This community Group keeps member workouts private. Share updates and plan activities together."))
                         .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
                     VStack(spacing: 10) {
-                        NavigationLink { CreateActivityEventView(sourceGroupID: current.id).environmentObject(socialStore) } label: {
+                        NavigationLink {
+                            CreateActivityEventView(sourceGroupID: current.id) {
+                                Task { await groupStore.refreshGroup(id: current.id) }
+                            }
+                            .environmentObject(socialStore)
+                        } label: {
                             Text(String(localized: "group.created.plan_activity", defaultValue: "Plan an activity")).frame(maxWidth: .infinity, minHeight: 44)
                         }.buttonStyle(.borderedProminent).tint(OutboundPalette.companion)
                         NavigationLink { GroupDetailView(group: current) } label: {
@@ -569,7 +574,6 @@ struct GroupDetailView: View {
     @State private var memberPendingRemoval: GroupMemberDTO?
 
     private var current: GroupDTO { groupStore.groups.first(where: { $0.id == group.id }) ?? group }
-    private var invitees: [GroupPersonDTO] { current.members.filter { !$0.isCurrentUser }.map(\.user) }
     private var orderedMembers: [GroupMemberDTO] {
         current.members.enumerated().sorted {
             let leftPriority = groupMemberPriority($0.element.role)
@@ -608,11 +612,9 @@ struct GroupDetailView: View {
         }
         .sheet(isPresented: $showsPlanActivity, onDismiss: refreshAfterPlanning) {
             CreateActivityEventView(
-                sourceGroupID: current.id,
-                preselectedConnectionIDs: Set(invitees.map(\.id)),
-                additionalInvitees: invitees
+                sourceGroupID: current.id
             ) {
-                track(.groupPlanActivityCompleted, [.participantCountBucket: .string(ProductAnalyticsBucket.count(invitees.count + 1)), .result: .string("success")])
+                track(.groupPlanActivityCompleted, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount)), .result: .string("success")])
             }
             .environmentObject(socialStore)
         }
