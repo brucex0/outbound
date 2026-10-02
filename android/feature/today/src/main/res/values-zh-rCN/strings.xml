@@ -78,6 +78,7 @@
     <string name="today_soreness">肌肉酸痛</string>
     <string name="today_start">开始</string>
     <string name="today_start_workout">开始%1$s</string>
+    <string name="today_stop_at_goal">达到目标时暂停</string>
     <string name="today_take_photo">拍照</string>
     <string name="today_time">时间</string>
     <string name="today_time_format">%1$d 分钟</string>

@@ -1264,6 +1264,7 @@ private fun TodayManualLaunch.toRecordingLaunch(defaultGearId: String?): Recordi
         entrySource = "today_manual",
         standaloneWorkoutId = curatedWorkout?.id,
         standaloneWorkoutCatalogVersion = curatedWorkoutCatalogVersion,
+        autoStopAtGoal = autoStopAtGoal && goal in setOf(TodayGoalChoice.DISTANCE, TodayGoalChoice.TIME, TodayGoalChoice.CALORIES),
         workoutPhase = curatedWorkout?.coachingTarget?.phase,
         workoutTargetPaceSecondsPerKilometer = curatedWorkout?.coachingTarget?.pace?.targetSecondsPerKilometer,
         workoutFasterToleranceSeconds = curatedWorkout?.coachingTarget?.pace?.fasterToleranceSeconds,

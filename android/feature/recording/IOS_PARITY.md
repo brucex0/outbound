@@ -17,6 +17,7 @@
 - The map and camera share compact and expanded dashboard state. Tap or vertical drag changes state without dismissing the activity.
 - The compact dashboard mirrors iOS's glanceable time / primary action / optional Finish / distance row; the expanded dashboard owns the title and status, goal hero, progress, metric cards, current workout step, route name, and labeled controls.
 - The primary live metric follows the selected distance, time, calorie, structured-workout, or freestyle goal.
+- Sessions launched with `Stop at goal` enabled finish automatically at the distance, elapsed-time, or estimated-calorie target and move directly to review. Recovery retains the choice; paused sessions do not auto-finish.
 - Live distance, pace, elevation, target progress, and calorie estimates honor the runner's persisted measurement and weight preferences, matching the iOS formatter and estimator contracts.
 - Auto Pause is configurable from setup for run, bike, walk, and hike; each sport keeps its own choice. Run and bike default on, while walk and hike default off. Automatic pauses freeze the activity clock but keep a brief location probe active for confirmed movement and resume; average pace follows the same active-time clock as activity duration.
 - Capturing a photo keeps the live camera preview running and moves the result into a private thumbnail instead of replacing the workout surface.

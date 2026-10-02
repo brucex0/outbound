@@ -90,6 +90,10 @@ class RecordingService : Service() {
                 )
                 ACTION_RECOVER -> coordinator.recover(intent.requireStringExtra(EXTRA_ACCOUNT_ID), commandId)
                 ACTION_PAUSE -> coordinator.pause(commandId)
+                ACTION_PAUSE_AT_GOAL -> coordinator.pauseAtGoal(
+                    commandId,
+                    intent.getDoubleExtra(EXTRA_DISTANCE_GOAL_METERS, Double.NaN).takeIf { it.isFinite() },
+                )
                 ACTION_RESUME -> coordinator.resume(commandId)
                 ACTION_FINISH -> coordinator.finish(commandId)
                 ACTION_SAVED -> {
@@ -200,9 +204,11 @@ class RecordingService : Service() {
         private const val EXTRA_COMPANION_TYPE = "recording.companion_type"
         private const val EXTRA_SIMULATED_RUN = "recording.simulated_run"
         private const val EXTRA_SIMULATED_ROUTE = "recording.simulated_route"
+        private const val EXTRA_DISTANCE_GOAL_METERS = "recording.distance_goal_meters"
         private const val ACTION_START = "com.plainstride.outbound.recording.START"
         private const val ACTION_RECOVER = "com.plainstride.outbound.recording.RECOVER"
         private const val ACTION_PAUSE = "com.plainstride.outbound.recording.PAUSE"
+        private const val ACTION_PAUSE_AT_GOAL = "com.plainstride.outbound.recording.PAUSE_AT_GOAL"
         private const val ACTION_RESUME = "com.plainstride.outbound.recording.RESUME"
         private const val ACTION_FINISH = "com.plainstride.outbound.recording.FINISH"
         private const val ACTION_SAVED = "com.plainstride.outbound.recording.SAVED"
@@ -247,6 +253,11 @@ class RecordingService : Service() {
 
         fun pause(context: Context, commandId: String = UUID.randomUUID().toString()) =
             dispatch(context, ACTION_PAUSE, commandId)
+
+        fun pauseAtGoal(context: Context, distanceGoalMeters: Double?, commandId: String = UUID.randomUUID().toString()) =
+            dispatch(context, ACTION_PAUSE_AT_GOAL, commandId) {
+                distanceGoalMeters?.let { putExtra(EXTRA_DISTANCE_GOAL_METERS, it) }
+            }
 
         fun resume(context: Context, commandId: String = UUID.randomUUID().toString()) =
             dispatch(context, ACTION_RESUME, commandId)

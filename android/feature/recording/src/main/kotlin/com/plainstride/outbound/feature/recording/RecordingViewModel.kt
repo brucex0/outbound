@@ -87,6 +87,7 @@ class RecordingViewModel @Inject constructor(
     )
     private var recoveryAccountId: String? = null
     private var preparingCountdown = false
+    private var didAutoPauseAtGoal = false
     private var routeBeforeSimulation: FollowedRouteConfiguration? = null
     private var presentationUnitSystem = MeasurementUnitSystem.metric
     val voiceListening: StateFlow<Boolean> = voice.listening
@@ -107,6 +108,7 @@ class RecordingViewModel @Inject constructor(
             .getBoolean(autoPauseKey(base.activityKind), AutoPauseDefaults.enabled(base.activityKind))
         val effective = base.copy(
             autoPauseEnabled = autoPauseEnabled,
+            autoStopAtGoal = configuration.autoStopAtGoal ?: base.autoStopAtGoal,
             // This is a navigation-time decision from Today, not a persisted setup preference.
             startImmediately = configuration.startImmediately,
             simulatedRunEnabled = isDebugHarvestLaunch || (BuildConfig.DEBUG && base.simulatedRunEnabled),
@@ -167,6 +169,7 @@ class RecordingViewModel @Inject constructor(
 
     fun start(accountId: String, permission: LocationPermissionState) {
         val launch = mutableState.value.launch
+        didAutoPauseAtGoal = false
         mutableState.value = mutableState.value.copy(startRequested = true, countdown = null, countdownVoiceReady = false)
         context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).edit().putString(LAUNCH_KEY,launchJson.encodeToString(launch)).apply()
         client.start(
@@ -186,6 +189,7 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.Permission to permission.name.lowercase(),
             AnalyticsProperty.VoiceGuideEnabled to launch.voiceGuideEnabled,
             AnalyticsProperty.AutoPauseEnabled to (launch.autoPauseEnabled ?: AutoPauseDefaults.enabled(launch.activityKind)),
+            AnalyticsProperty.AutoStopAtGoal to (launch.autoStopAtGoal ?: false),
             AnalyticsProperty.DogCompanionEnabled to (launch.companionType != null),
             AnalyticsProperty.UnitSystem to presentationUnitSystem.name,
         )))
@@ -212,6 +216,11 @@ class RecordingViewModel @Inject constructor(
     fun pause() = client.pause(newCommandId())
     fun resume() = client.resume(newCommandId())
     fun requestFinish() { mutableState.value = mutableState.value.copy(showFinishConfirmation = true) }
+    fun pauseAtGoal(distanceGoalMeters: Double?) {
+        if (didAutoPauseAtGoal || mutableState.value.launch.autoStopAtGoal != true || snapshot.value.status != RecordingStatus.ACTIVE) return
+        didAutoPauseAtGoal = true
+        client.pauseAtGoal(distanceGoalMeters, newCommandId())
+    }
     fun cancelFinish() { mutableState.value = mutableState.value.copy(showFinishConfirmation = false) }
     fun finish() {
         mutableState.value = mutableState.value.copy(showFinishConfirmation = false)

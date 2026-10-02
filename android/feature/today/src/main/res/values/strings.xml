@@ -78,6 +78,7 @@
     <string name="today_soreness">Soreness</string>
     <string name="today_start">Start</string>
     <string name="today_start_workout">Start %1$s</string>
+    <string name="today_stop_at_goal">Pause at goal</string>
     <string name="today_take_photo">Take photo</string>
     <string name="today_time">Time</string>
     <string name="today_time_format">%1$d min</string>

@@ -22,6 +22,7 @@
 - Outdoor Today shows the same localized “Enable location” chip as iOS when location is unavailable. Tapping it or the weather pill opens the shared location explanation; Enable requests location the first time and opens app settings after a prior denial. Returning from settings refreshes weather when access was granted. Indoor activity hides the location chip.
 - Existing workout-start and assistant-launch analytics cover the contextual actions; no coordinates or place names enter analytics.
 - Manual calorie goals show estimated distance and duration when the training profile has enough data, using the shared calorie estimator and learned run pace.
+- Distance, Time, and Calories goal dialogs replace their title with the localized `Stop at goal` checkmark option. The off-by-default choice travels with the session and auto-finishes into review when the selected target is reached; Freestyle, Curated, Planned, and paused sessions do not auto-finish.
 - Embedded Today sport choices are 52-point circular icon-only controls with accessible sport names. Setup options (Voice Guide, With dog, Cheer, Shoes, and Indoor/Outdoor) are text-only pills. The Music pill is temporarily hidden while Android music UX is evaluated; the existing music destination remains available from Settings.
 - With dog is available for eligible manual sports and eligible planned run, walk, or bike workouts; its context is passed into recording for both launch paths.
 

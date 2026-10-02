@@ -78,6 +78,7 @@
     <string name="today_soreness">Molestias musculares</string>
     <string name="today_start">Empezar</string>
     <string name="today_start_workout">Iniciar %1$s</string>
+    <string name="today_stop_at_goal">Pausar al alcanzar la meta</string>
     <string name="today_take_photo">Hacer foto</string>
     <string name="today_time">Tiempo</string>
     <string name="today_time_format">%1$d min</string>

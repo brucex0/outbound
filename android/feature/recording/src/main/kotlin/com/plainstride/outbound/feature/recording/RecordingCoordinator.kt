@@ -213,6 +213,14 @@ class RecordingCoordinator internal constructor(
         applyPause(autoTriggered = false, commandId = commandId)
     }
 
+    suspend fun pauseAtGoal(commandId: String, distanceGoalMeters: Double?) = serialized(commandId) {
+        if (_snapshot.value.status != RecordingStatus.ACTIVE) {
+            ignored(commandId, "session_not_active")
+            return@serialized
+        }
+        applyPause(autoTriggered = false, commandId = commandId, distanceGoalMeters = distanceGoalMeters)
+    }
+
     suspend fun resume(commandId: String) = serialized(commandId) {
         if (_snapshot.value.status != RecordingStatus.PAUSED) {
             ignored(commandId, "session_not_paused")
@@ -440,13 +448,23 @@ class RecordingCoordinator internal constructor(
         return latestReliableSpeedMetersPerSecond
     }
 
-    private suspend fun applyPause(autoTriggered: Boolean, commandId: String? = null) {
+    private suspend fun applyPause(
+        autoTriggered: Boolean,
+        commandId: String? = null,
+        distanceGoalMeters: Double? = null,
+    ) {
         freezeElapsed()
         stopSimulationClock()
         activeSegmentStartedElapsedNanos = null
         autoPauseCandidateStartedAtNanos = null
         autoResumeCandidateStartedAtNanos = null
-        _snapshot.value = nextSnapshot(status = RecordingStatus.PAUSED, autoPaused = autoTriggered)
+        val currentDistance = _snapshot.value.distanceMeters
+        val snappedDistance = distanceGoalMeters?.takeIf { it > 0 && currentDistance >= it } ?: currentDistance
+        _snapshot.value = nextSnapshot(
+            status = RecordingStatus.PAUSED,
+            autoPaused = autoTriggered,
+            distanceMeters = snappedDistance,
+        )
         resetAutoPauseProbe()
         if (autoTriggered) autoPauseProbeFilter = LocationTrackFilter(_snapshot.value.activityKind)
         if (!autoTriggered) stopCollection()

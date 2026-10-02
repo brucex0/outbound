@@ -3,6 +3,7 @@ package com.plainstride.outbound.feature.today
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,6 +43,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Checkbox
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -57,6 +59,7 @@ import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -146,6 +149,7 @@ data class TodayManualLaunch(
     val curatedWorkout: StandaloneWorkout? = null,
     val curatedWorkoutCatalogVersion: Int? = null,
     val companionType: com.plainstride.outbound.core.model.activity.ActivityCompanionType? = null,
+    val autoStopAtGoal: Boolean = false,
 )
 data class TodayLaunchOptions(
     val indoor: Boolean,
@@ -341,6 +345,7 @@ fun TodayScreen(
     var calories by rememberSaveable { mutableStateOf(300) }
     var caloriePlan by remember { mutableStateOf<PlannedCalorieEstimate?>(null) }
     var editingGoal by rememberSaveable { mutableStateOf(false) }
+    var autoStopAtGoal by rememberSaveable { mutableStateOf(displayPreferences.getBoolean("auto_stop_at_goal", false)) }
     var overflowExpanded by rememberSaveable { mutableStateOf(false) }
     var handledStartRequest by rememberSaveable { mutableStateOf(startRequest) }
     var mapOverlayBottomPadding by remember { mutableStateOf(0.dp) }
@@ -363,7 +368,7 @@ fun TodayScreen(
                 ?: onStartFreestyle(TodayLaunchOptions(indoor, voiceGuideEnabled, companionType))
         } else {
             val catalogVersion = (state.catalog as? CachedResource.Available)?.value?.version
-            onStartManual(TodayManualLaunch(activityChoice, goalChoice, distanceMeters, durationSeconds, calories, indoor, voiceGuideEnabled, curatedWorkout, catalogVersion, companionType))
+            onStartManual(TodayManualLaunch(activityChoice, goalChoice, distanceMeters, durationSeconds, calories, indoor, voiceGuideEnabled, curatedWorkout, catalogVersion, companionType, autoStopAtGoal))
         }
     }
     LaunchedEffect(startRequest) {
@@ -448,7 +453,7 @@ fun TodayScreen(
                     )
                 }
                 if (activityChoice != TodayActivityChoice.PLANNED && goalChoice != TodayGoalChoice.FREE) {
-                    ManualGoalCard(activityChoice, goalChoice, curatedWorkout, distanceMeters, durationSeconds, calories,caloriePlan) {
+                    ManualGoalCard(goalChoice, curatedWorkout, distanceMeters, durationSeconds, calories,caloriePlan, autoStopAtGoal) {
                         if (goalChoice == TodayGoalChoice.CURATED) showsCatalog = true else editingGoal = true
                     }
                 }
@@ -555,7 +560,12 @@ fun TodayScreen(
             onLaunchConfigurationChanged("curated_workout", "selected")
         },
     )
-    if (editingGoal) GoalValueDialog(goalChoice, distanceMeters, durationSeconds, calories, { editingGoal = false },
+    if (editingGoal) GoalValueDialog(goalChoice, distanceMeters, durationSeconds, calories, autoStopAtGoal, { editingGoal = false },
+        { enabled ->
+            autoStopAtGoal = enabled
+            displayPreferences.edit().putBoolean("auto_stop_at_goal", enabled).apply()
+            onLaunchConfigurationChanged("auto_stop_at_goal", if (enabled) "enabled" else "disabled")
+        },
         { distanceMeters = it; editingGoal = false; onLaunchConfigurationChanged("goal_value", "preset") },
         { durationSeconds = it; editingGoal = false; onLaunchConfigurationChanged("goal_value", "preset") },
         { calories = it; editingGoal = false; onLaunchConfigurationChanged("goal_value", "preset") })
@@ -734,11 +744,10 @@ private fun SelectedRouteCard(
 }
 
 @Composable
-private fun ManualGoalCard(activity: TodayActivityChoice, goal: TodayGoalChoice, curatedWorkout: StandaloneWorkout?, distanceMeters: Double, durationSeconds: Long, calories: Int, caloriePlan: PlannedCalorieEstimate?, onEdit: () -> Unit) {
+private fun ManualGoalCard(goal: TodayGoalChoice, curatedWorkout: StandaloneWorkout?, distanceMeters: Double, durationSeconds: Long, calories: Int, caloriePlan: PlannedCalorieEstimate?, autoStopAtGoal: Boolean, onEdit: () -> Unit) {
     Card(onClick = onEdit, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .96f))) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(stringResource(activity.labelResource()), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             Text(when (goal) {
                 TodayGoalChoice.CURATED -> curatedWorkout?.title ?: stringResource(goal.valueResource())
                 TodayGoalChoice.DISTANCE -> stringResource(R.string.today_distance_format, distanceMeters / 1_000)
@@ -746,12 +755,21 @@ private fun ManualGoalCard(activity: TodayActivityChoice, goal: TodayGoalChoice,
                 TodayGoalChoice.CALORIES -> stringResource(R.string.today_calories_format, calories)
                 TodayGoalChoice.FREE -> stringResource(goal.valueResource())
             }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            val editHint = if (goal == TodayGoalChoice.CALORIES && caloriePlan != null) {
+            val pauseAtGoalEligible = autoStopAtGoal && goal in setOf(TodayGoalChoice.DISTANCE, TodayGoalChoice.TIME, TodayGoalChoice.CALORIES)
+            val editHint = if (goal == TodayGoalChoice.CALORIES && caloriePlan != null && !pauseAtGoalEligible) {
                 "${stringResource(R.string.today_distance_format, caloriePlan.distanceMeters / 1_000)} · ${stringResource(R.string.today_time_format, caloriePlan.durationSeconds / 60)}"
             } else {
-                stringResource(R.string.today_goal_edit_hint)
+                ""
             }
-            Text(editHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (pauseAtGoalEligible) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Pause, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(4.dp))
+                    Text(stringResource(R.string.today_stop_at_goal), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                }
+            } else if (editHint.isNotEmpty()) {
+                Text(editHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         Icon(Icons.Default.ChevronRight, null)
         }
@@ -759,9 +777,21 @@ private fun ManualGoalCard(activity: TodayActivityChoice, goal: TodayGoalChoice,
 }
 
 @Composable
-private fun GoalValueDialog(goal: TodayGoalChoice, distanceMeters: Double, durationSeconds: Long, calories: Int, onDismiss: () -> Unit, onDistance: (Double) -> Unit, onTime: (Long) -> Unit, onCalories: (Int) -> Unit) {
+private fun GoalValueDialog(goal: TodayGoalChoice, distanceMeters: Double, durationSeconds: Long, calories: Int, autoStopAtGoal: Boolean, onDismiss: () -> Unit, onAutoStopAtGoalChanged: (Boolean) -> Unit, onDistance: (Double) -> Unit, onTime: (Long) -> Unit, onCalories: (Int) -> Unit) {
     var customValue by rememberSaveable(goal) { mutableStateOf("") }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.today_change_goal)) }, text = {
+    AlertDialog(onDismissRequest = onDismiss, title = {
+        Row(
+            Modifier.fillMaxWidth().toggleable(
+                value = autoStopAtGoal,
+                role = Role.Checkbox,
+                onValueChange = onAutoStopAtGoalChanged,
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(R.string.today_stop_at_goal), modifier = Modifier.weight(1f))
+            Checkbox(checked = autoStopAtGoal, onCheckedChange = null)
+        }
+    }, text = {
         Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 when (goal) {

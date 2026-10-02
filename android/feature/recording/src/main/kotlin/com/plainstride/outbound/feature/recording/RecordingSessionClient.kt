@@ -73,6 +73,7 @@ class RecordingSessionClient(context: Context) : AutoCloseable {
     }
 
     fun pause(commandId: String) = RecordingService.pause(appContext, commandId)
+    fun pauseAtGoal(distanceGoalMeters: Double?, commandId: String) = RecordingService.pauseAtGoal(appContext, distanceGoalMeters, commandId)
     fun resume(commandId: String) = RecordingService.resume(appContext, commandId)
     fun finish(commandId: String) = RecordingService.finish(appContext, commandId)
     fun discard(commandId: String) = RecordingService.discard(appContext, commandId)

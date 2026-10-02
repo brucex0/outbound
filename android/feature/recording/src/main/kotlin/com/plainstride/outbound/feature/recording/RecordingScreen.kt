@@ -466,6 +466,37 @@ fun RecordingRoute(
         }
     }
 
+    LaunchedEffect(
+        snapshot.status,
+        snapshot.elapsedSeconds,
+        snapshot.distanceMeters,
+        snapshot.elevationGainMeters,
+        ui.launch.autoStopAtGoal,
+        ui.launch.goal,
+        weightKilograms,
+    ) {
+        if (ui.launch.autoStopAtGoal != true || snapshot.status != RecordingStatus.ACTIVE) return@LaunchedEffect
+        val goal = ui.launch.goal
+        val reached = when (goal.type) {
+            RecordingGoalType.DISTANCE -> goal.targetDistanceMeters?.let { snapshot.distanceMeters >= it } == true
+            RecordingGoalType.TIME -> goal.targetDurationSeconds?.let { snapshot.elapsedSeconds >= it } == true
+            RecordingGoalType.CALORIES -> goal.targetCalories?.let { target ->
+                WorkoutCalorieEstimator.liveEnergyKilocalories(
+                    activityType = snapshot.activityKind.toActivityType(),
+                    distanceMeters = snapshot.distanceMeters,
+                    durationSeconds = snapshot.elapsedSeconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                    elevationGainMeters = snapshot.elevationGainMeters,
+                    weightKilograms = weightKilograms,
+                )?.let { it >= target } == true
+            } == true
+            RecordingGoalType.FREESTYLE, RecordingGoalType.WORKOUT -> false
+        }
+        if (reached) {
+            val distanceGoal = goal.targetDistanceMeters.takeIf { goal.type == RecordingGoalType.DISTANCE }
+            viewModel.pauseAtGoal(distanceGoal)
+        }
+    }
+
     BackHandler(enabled = !ui.showFinishConfirmation && !ui.showDiscardConfirmation) {
         when (snapshot.status) {
             RecordingStatus.ACTIVE, RecordingStatus.PAUSED -> viewModel.requestFinish()
