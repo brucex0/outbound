@@ -50,6 +50,13 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "你的下一步" } }
       }
     },
+    "widget.debug.preview" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preview widget setup" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ver guía del widget" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "预览小组件设置指南" } }
+      }
+    },
     "widget.gallery.description" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "A fox and your next activity, right on your Home Screen." } },

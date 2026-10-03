@@ -336,7 +336,30 @@ struct SimplifiedAppShell: View {
     @State private var connectionProfilePresentation: ConnectionProfilePresentation?
     @State private var appShellPresentation: SimplifiedAppShellPresentation?
     @State private var showsHomeWidgetOnboarding = false
+    @State private var homeWidgetOnboardingEntrySource = "settings"
     @AppStorage("home_widget_onboarding_seen_v1") private var hasSeenHomeWidgetOnboarding = false
+
+    private var completedOutboundWorkoutCount: Int {
+        activityStore.activities.filter { $0.source.kind == .outbound }.count
+    }
+
+    private var homeWidgetOnboardingTaskID: String {
+        let sessionState: String = switch activitySessionState {
+        case .idle: "idle"
+        case .active: "active"
+        case .paused: "paused"
+        }
+        return "\(completedOutboundWorkoutCount)-\(sessionState)-\(isActivityFullscreenVisible)"
+    }
+
+    private var canPresentHomeWidgetOnboarding: Bool {
+        !hasSeenHomeWidgetOnboarding
+            && completedOutboundWorkoutCount >= homeWidgetOnboardingWorkoutThreshold
+            && activitySessionState == .idle
+            && !isActivityFullscreenVisible
+    }
+
+    private let homeWidgetOnboardingWorkoutThreshold = 3
 
     var body: some View {
         TabView(selection: $selection) {
@@ -455,7 +478,7 @@ struct SimplifiedAppShell: View {
             guard !Task.isCancelled else { return }
             activityStore.clearPhotoAlbumNotice()
         }
-        .task {
+        .task(id: homeWidgetOnboardingTaskID) {
             await presentHomeWidgetOnboardingIfNeeded()
         }
         .fullScreenCover(item: $connectionProfilePresentation) { presentation in
@@ -488,7 +511,7 @@ struct SimplifiedAppShell: View {
         }) {
             HomeWidgetOnboardingView(
                 snapshot: HomeWorkoutWidgetStore.read() ?? HomeWidgetOnboardingView.exampleSnapshot,
-                entrySource: "first_launch"
+                entrySource: homeWidgetOnboardingEntrySource
             ) {
                 showsHomeWidgetOnboarding = false
             }
@@ -817,16 +840,17 @@ struct SimplifiedAppShell: View {
 
     @MainActor
     private func presentHomeWidgetOnboardingIfNeeded() async {
-        guard !hasSeenHomeWidgetOnboarding else { return }
+        guard canPresentHomeWidgetOnboarding else { return }
         do {
             try await Task.sleep(for: .milliseconds(900))
         } catch {
             return
         }
-        guard !Task.isCancelled, !hasSeenHomeWidgetOnboarding else { return }
+        guard !Task.isCancelled, canPresentHomeWidgetOnboarding else { return }
 
         if let configurations = try? await WidgetCenter.shared.currentConfigurations(),
            configurations.contains(where: { $0.kind == HomeWorkoutWidgetStore.widgetKind }) {
+            guard !Task.isCancelled, canPresentHomeWidgetOnboarding else { return }
             hasSeenHomeWidgetOnboarding = true
             await analyticsManager?.track(.init(.homeWidgetAlreadyPresent, properties: [
                 .result: .string("present")
@@ -834,6 +858,8 @@ struct SimplifiedAppShell: View {
             return
         }
 
+        guard !Task.isCancelled, canPresentHomeWidgetOnboarding else { return }
+        homeWidgetOnboardingEntrySource = "after_workouts"
         showsHomeWidgetOnboarding = true
     }
 
@@ -3510,6 +3536,7 @@ private struct SimplifiedSettingsView: View {
     @State private var confirmsSignOut = false
     @State private var confirmsAccountDeletion = false
     @State private var showsHomeWidgetOnboarding = false
+    @State private var homeWidgetOnboardingEntrySource = "settings"
     @AppStorage(ActivityPhotoAlbumPreferences.savesPhotosKey) private var savesActivityPhotos = true
 
     var body: some View {
@@ -3541,6 +3568,7 @@ private struct SimplifiedSettingsView: View {
             }
             Section(String(localized: "widget.settings.section", table: "HomeWidget")) {
                 Button {
+                    homeWidgetOnboardingEntrySource = "settings"
                     showsHomeWidgetOnboarding = true
                 } label: {
                     Label(
@@ -3681,6 +3709,15 @@ private struct SimplifiedSettingsView: View {
                 Text("Presents the new-user flow again without signing out.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Button {
+                    homeWidgetOnboardingEntrySource = "debug"
+                    showsHomeWidgetOnboarding = true
+                } label: {
+                    Label(
+                        String(localized: "widget.debug.preview", table: "HomeWidget"),
+                        systemImage: "square.grid.2x2"
+                    )
+                }
             }
             #endif
             Section {
@@ -3701,7 +3738,7 @@ private struct SimplifiedSettingsView: View {
         .sheet(isPresented: $showsHomeWidgetOnboarding) {
             HomeWidgetOnboardingView(
                 snapshot: HomeWorkoutWidgetStore.read() ?? HomeWidgetOnboardingView.exampleSnapshot,
-                entrySource: "settings",
+                entrySource: homeWidgetOnboardingEntrySource,
                 onFinish: { showsHomeWidgetOnboarding = false }
             )
         }
