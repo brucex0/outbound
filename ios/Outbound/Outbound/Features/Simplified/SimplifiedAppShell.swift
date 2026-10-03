@@ -59,6 +59,7 @@ private struct AssistantLauncherButton: View {
     static let diameter: CGFloat = 44
 
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.analyticsManager) private var analyticsManager
     let accentColor: Color
     let analyticsDestination: String
@@ -84,9 +85,7 @@ private struct AssistantLauncherButton: View {
                     .scaleEffect(ringScale)
                     .opacity(ringOpacity)
 
-                Image(systemName: "sparkles")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(.white)
+                FoxAssistantMark()
                     .rotationEffect(.degrees(rotation))
 
                 Image(systemName: "sparkles")
@@ -107,7 +106,7 @@ private struct AssistantLauncherButton: View {
         .buttonStyle(.plain)
         .accessibilityLabel(String(localized: "Open assistant"))
         .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
-        .task(id: scenePhase) {
+        .task(id: "\(scenePhase)-\(reduceMotion)") {
             await runAnimationLoop()
         }
     }
@@ -117,7 +116,7 @@ private struct AssistantLauncherButton: View {
         let entrySource = hasEvaluatedInitialScene ? "foreground" : "app_shell"
         hasEvaluatedInitialScene = true
 
-        guard scenePhase == .active else {
+        guard scenePhase == .active, !reduceMotion else {
             hasTrackedForeground = false
             hasTrackedAnimation = false
             resetVisualState()
@@ -199,6 +198,74 @@ private struct AssistantLauncherButton: View {
             .entrySource: .string(entrySource)
         ])
         Task { await analyticsManager?.track(event) }
+    }
+}
+
+private struct FoxAssistantMark: View {
+    private let orange = Color(red: 0.98, green: 0.43, blue: 0.15)
+    private let dark = Color(red: 0.30, green: 0.16, blue: 0.12)
+    private let cream = Color(red: 1.0, green: 0.88, blue: 0.67)
+
+    var body: some View {
+        ZStack {
+            Triangle()
+                .fill(dark)
+                .frame(width: 13, height: 19)
+                .rotationEffect(.degrees(-8))
+                .offset(x: -7, y: -4)
+            Triangle()
+                .fill(dark)
+                .frame(width: 13, height: 19)
+                .rotationEffect(.degrees(8))
+                .offset(x: 7, y: -4)
+            Triangle()
+                .fill(cream)
+                .frame(width: 6, height: 10)
+                .rotationEffect(.degrees(-8))
+                .offset(x: -7, y: -3)
+            Triangle()
+                .fill(cream)
+                .frame(width: 6, height: 10)
+                .rotationEffect(.degrees(8))
+                .offset(x: 7, y: -3)
+
+            Ellipse()
+                .fill(dark)
+                .frame(width: 27, height: 24)
+                .offset(y: 3)
+            Ellipse()
+                .fill(orange)
+                .frame(width: 24, height: 22)
+                .offset(y: 3)
+
+            HStack(spacing: 8) {
+                Capsule().fill(dark).frame(width: 2.4, height: 4)
+                Capsule().fill(dark).frame(width: 2.4, height: 4)
+            }
+            .offset(y: 1)
+
+            Ellipse()
+                .fill(cream)
+                .frame(width: 16, height: 9)
+                .offset(y: 10)
+            Ellipse()
+                .fill(dark)
+                .frame(width: 4, height: 3)
+                .offset(y: 8)
+        }
+        .frame(width: 30, height: 30)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path { path in
+            path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+            path.closeSubpath()
+        }
     }
 }
 
