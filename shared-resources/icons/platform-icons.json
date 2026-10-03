@@ -7,8 +7,13 @@
     {
       "source": "source/fox-launcher.png",
       "outputs": [
-        "ios/Outbound/Outbound/Assets.xcassets/AppIcon.appiconset/OutboundFoxAppIcon.png",
-        "android/app/src/main/res/drawable-nodpi/plainstride_app_icon.png"
+        "ios/Outbound/Outbound/Assets.xcassets/AppIcon.appiconset/OutboundFoxAppIcon.png"
+      ]
+    },
+    {
+      "source": "source/fox-launcher-android-foreground.png",
+      "outputs": [
+        "android/app/src/main/res/drawable-nodpi/plainstride_fox_launcher_art.png"
       ]
     },
     {

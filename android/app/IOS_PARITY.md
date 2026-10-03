@@ -28,7 +28,7 @@
 ## Shared Resources
 
 - Tab and assistant labels are generated from the canonical XCStrings catalog.
-- Tab symbols remain native semantic icons; the persistent assistant uses the shared fox-head image, and the launcher uses the shared running-fox artwork from `shared-resources/icons/source`.
+- Tab symbols remain native semantic icons; the persistent assistant uses the shared fox-head image. The Android launcher uses the shared running fox as a transparent, inset adaptive-icon foreground over its solid evergreen background.
 
 ## Analytics And Accessibility
 
