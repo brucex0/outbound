@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 enum class PlainstrideFloatingActionStyle { Hero, Accent }
@@ -26,6 +27,7 @@ fun PlainstrideFloatingAction(
     modifier: Modifier = Modifier,
     selected: Boolean = false,
     style: PlainstrideFloatingActionStyle = PlainstrideFloatingActionStyle.Hero,
+    actionSize: Dp = 48.dp,
     content: @Composable () -> Unit,
 ) {
     val theme = LocalPlainstrideThemeColors.current
@@ -53,7 +55,7 @@ fun PlainstrideFloatingAction(
     ) {
         Box(
             Modifier
-                .size(48.dp)
+                .size(actionSize)
                 .background(background)
                 .then(
                     if (accentStyle) {

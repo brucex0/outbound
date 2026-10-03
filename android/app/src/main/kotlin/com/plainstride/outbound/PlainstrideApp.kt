@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
@@ -476,11 +477,15 @@ private fun SignedInApp(
                     }
                 }
                 Row(
-                    Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 6.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .offset(y = 8.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
                         Canvas(
                             Modifier
                                 .fillMaxSize()
@@ -502,26 +507,32 @@ private fun SignedInApp(
                                 scaleY = launcherScale.value
                             },
                             style = PlainstrideFloatingActionStyle.Accent,
+                            actionSize = 56.dp,
                             onClick = {
                                 assistantEntryDestination = primaryDestination.route
                                 integrationViewModel.trackAssistantOpened(primaryDestination.route)
                                 navController.navigate(ASSISTANT_ROUTE) { launchSingleTop = true }
                             },
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    Icons.Default.AutoAwesome,
-                                    stringResource(R.string.tab_assistant),
-                                    Modifier.size(22.dp).graphicsLayer { rotationZ = launcherRotation.value },
+                            Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
+                                Image(
+                                    painter = painterResource(R.drawable.plainstride_fox_assistant_head),
+                                    contentDescription = stringResource(R.string.tab_assistant),
+                                    modifier = Modifier.size(50.dp).graphicsLayer { rotationZ = launcherRotation.value },
                                 )
                                 Icon(
                                     Icons.Default.AutoAwesome,
                                     null,
-                                    Modifier.size(22.dp).blur(0.8.dp).graphicsLayer {
-                                        scaleX = 1.28f
-                                        scaleY = 1.28f
-                                        alpha = launcherShimmer.value
-                                    },
+                                    Modifier
+                                        .align(Alignment.TopEnd)
+                                        .offset(x = (-4).dp, y = 4.dp)
+                                        .size(13.dp)
+                                        .blur(0.8.dp)
+                                        .graphicsLayer {
+                                            scaleX = 1.12f
+                                            scaleY = 1.12f
+                                            alpha = launcherShimmer.value
+                                        },
                                 )
                             }
                         }
@@ -529,7 +540,7 @@ private fun SignedInApp(
                     Spacer(Modifier.width(10.dp))
                     val contextualStart = primaryDestination == TopLevelDestination.Today && !hasActiveSession
                     NavigationBar(
-                        modifier = Modifier.width(220.dp).height(56.dp).clip(RoundedCornerShape(28.dp)),
+                        modifier = Modifier.widthIn(max = 252.dp).fillMaxWidth().height(64.dp).clip(RoundedCornerShape(32.dp)),
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f),
                         tonalElevation = 0.dp,
                     ) {
@@ -566,7 +577,7 @@ private fun SignedInApp(
                                             if (isContextualStart) TodayR.string.today_start else destination.label,
                                         ),
                                         tint = iconTint,
-                                        modifier = Modifier.size(if (isContextualStart) 36.dp else 28.dp),
+                                        modifier = Modifier.size(if (isContextualStart) 40.dp else 32.dp),
                                     )
                                 },
                                 label = null,

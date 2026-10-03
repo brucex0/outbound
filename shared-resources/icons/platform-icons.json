@@ -3,6 +3,20 @@
     {
       "source": "source/launch-mark.png",
       "outputs": ["ios/Outbound/Outbound/Assets.xcassets/LaunchMark.imageset/LaunchMark.png"]
+    },
+    {
+      "source": "source/fox-launcher.png",
+      "outputs": [
+        "ios/Outbound/Outbound/Assets.xcassets/AppIcon.appiconset/OutboundFoxAppIcon.png",
+        "android/app/src/main/res/drawable-nodpi/plainstride_app_icon.png"
+      ]
+    },
+    {
+      "source": "source/fox-assistant-head.png",
+      "outputs": [
+        "ios/Outbound/Outbound/Assets.xcassets/FoxAssistantHead.imageset/FoxAssistantHead.png",
+        "android/app/src/main/res/drawable-nodpi/plainstride_fox_assistant_head.png"
+      ]
     }
   ]
 }

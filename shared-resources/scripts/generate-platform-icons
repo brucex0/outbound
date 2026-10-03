@@ -1,11 +1,4 @@
 #!/bin/sh
 set -eu
-root="$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)"
-check=false
-if [ "${1:-}" = "--check" ]; then check=true; fi
-source_file="$root/shared-resources/icons/source/launch-mark.png"
-output_file="$root/ios/Outbound/Outbound/Assets.xcassets/LaunchMark.imageset/LaunchMark.png"
-if cmp -s "$source_file" "$output_file"; then exit 0; fi
-if [ "$check" = true ]; then echo "stale: $output_file" >&2; exit 1; fi
-cp "$source_file" "$output_file"
-echo "updated: $output_file" >&2
+script_dir="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
+node "$script_dir/generate-platform-icons.mjs" "$@"

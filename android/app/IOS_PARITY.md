@@ -28,7 +28,7 @@
 ## Shared Resources
 
 - Tab and assistant labels are generated from the canonical XCStrings catalog.
-- Navigation and assistant symbols are native semantic icons; the shell owns no duplicate bitmap/vector assets.
+- Tab symbols remain native semantic icons; the persistent assistant uses the shared fox-head image, and the launcher uses the shared running-fox artwork from `shared-resources/icons/source`.
 
 ## Analytics And Accessibility
 
