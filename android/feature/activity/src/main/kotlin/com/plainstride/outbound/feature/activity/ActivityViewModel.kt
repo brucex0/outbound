@@ -2,9 +2,11 @@ package com.plainstride.outbound.feature.activity
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import androidx.core.content.FileProvider
@@ -181,7 +183,15 @@ class ActivityViewModel @Inject constructor(
         drawRouteBackdrop(canvas, activity)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
         paint.textSize = 42f
-        canvas.drawText("PLAINSTRIDE", 72f, 90f, paint)
+        val foxMark = BitmapFactory.decodeResource(context.resources, R.drawable.plainstride_fox_assistant_head)
+        canvas.drawBitmap(
+            foxMark,
+            null,
+            RectF(72f, 26f, 138f, 92f),
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { isFilterBitmap = true },
+        )
+        foxMark.recycle()
+        canvas.drawText("PLAINSTRIDE", 154f, 90f, paint)
         paint.isFakeBoldText = true
         paint.textSize = 70f
         canvas.drawText(activity.title.take(24), 72f, 1240f, paint)

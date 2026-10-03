@@ -2,5 +2,6 @@
 <resources>
     <style name="Theme.Plainstride.Starting" parent="Theme.Plainstride">
         <item name="android:windowSplashScreenBackground">@color/plainstride_splash_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/plainstride_fox_launcher_foreground</item>
     </style>
 </resources>

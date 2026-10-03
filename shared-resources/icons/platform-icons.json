@@ -20,7 +20,8 @@
       "source": "source/fox-assistant-head.png",
       "outputs": [
         "ios/Outbound/Outbound/Assets.xcassets/FoxAssistantHead.imageset/FoxAssistantHead.png",
-        "android/app/src/main/res/drawable-nodpi/plainstride_fox_assistant_head.png"
+        "android/app/src/main/res/drawable-nodpi/plainstride_fox_assistant_head.png",
+        "android/feature/activity/src/main/res/drawable-nodpi/plainstride_fox_assistant_head.png"
       ]
     }
   ]
