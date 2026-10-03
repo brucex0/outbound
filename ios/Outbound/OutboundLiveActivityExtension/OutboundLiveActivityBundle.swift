@@ -6,6 +6,7 @@ import WidgetKit
 struct OutboundLiveActivityBundle: WidgetBundle {
     var body: some Widget {
         OutboundSessionLiveActivityWidget()
+        HomeWorkoutWidget()
     }
 }
 

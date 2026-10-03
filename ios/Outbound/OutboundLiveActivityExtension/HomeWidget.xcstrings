@@ -1,0 +1,48 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "widget.action.open" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Plainstride" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Abrir Plainstride" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开 Plainstride" } }
+      }
+    },
+    "widget.fallback.detail" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Plainstride to see today's plan." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Abre Plainstride para ver el plan de hoy." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开 Plainstride 查看今天的计划。" } }
+      }
+    },
+    "widget.fallback.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your next move" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tu próximo paso" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "你的下一步" } }
+      }
+    },
+    "widget.gallery.description" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "A fox and your next activity, right on your Home Screen." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Un zorro y tu próxima actividad en la pantalla de inicio." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在主屏幕上查看小狐狸和下一次活动。" } }
+      }
+    },
+    "widget.gallery.name" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Today's Workout" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Entrenamiento de hoy" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "今日训练" } }
+      }
+    },
+    "widget.label.today" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "TODAY" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "HOY" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "今天" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

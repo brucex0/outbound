@@ -1,0 +1,174 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "widget.action.open" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Plainstride" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Abrir Plainstride" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开 Plainstride" } }
+      }
+    },
+    "widget.button.add" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add Widget" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Añadir widget" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "添加小组件" } }
+      }
+    },
+    "widget.button.continue" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Continue" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Continuar" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "继续" } }
+      }
+    },
+    "widget.button.done" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Got it" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Entendido" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "知道了" } }
+      }
+    },
+    "widget.button.skip" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Maybe later" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Quizá más tarde" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "以后再说" } }
+      }
+    },
+    "widget.fallback.detail" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Plainstride to see today's plan." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Abre Plainstride para ver el plan de hoy." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开 Plainstride 查看今天的计划。" } }
+      }
+    },
+    "widget.fallback.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your next move" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tu próximo paso" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "你的下一步" } }
+      }
+    },
+    "widget.gallery.description" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "A fox and your next activity, right on your Home Screen." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Un zorro y tu próxima actividad en la pantalla de inicio." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在主屏幕上查看小狐狸和下一次活动。" } }
+      }
+    },
+    "widget.gallery.name" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Today's Workout" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Entrenamiento de hoy" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "今日训练" } }
+      }
+    },
+    "widget.guide.step1.count" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "1 of 3" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "1 de 3" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "第 1 步，共 3 步" } }
+      }
+    },
+    "widget.guide.step1.detail" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose an open space where your fox can cheer you on." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige un espacio libre para que el zorro te anime." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "找一块空白区域，让小狐狸为你加油。" } }
+      }
+    },
+    "widget.guide.step1.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Press and hold on your Home Screen." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Mantén pulsado un espacio de la pantalla de inicio." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "按住主屏幕上的空白处。" } }
+      }
+    },
+    "widget.guide.step2.count" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "2 of 3" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "2 de 3" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "第 2 步，共 3 步" } }
+      }
+    },
+    "widget.guide.step2.detail" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The widget picker will show the Plainstride options." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El selector mostrará las opciones de Plainstride." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "小组件选择器会显示 Plainstride 的选项。" } }
+      }
+    },
+    "widget.guide.step2.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tap Edit, then Add Widget." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Toca Editar y luego Añadir widget." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "轻点“编辑”，再轻点“添加小组件”。" } }
+      }
+    },
+    "widget.guide.step3.count" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "3 of 3" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "3 de 3" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "第 3 步，共 3 步" } }
+      }
+    },
+    "widget.guide.step3.detail" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose the small or medium widget, then tap Add Widget." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige el widget pequeño o mediano y toca Añadir widget." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选择小号或中号小组件，再轻点“添加小组件”。" } }
+      }
+    },
+    "widget.guide.step3.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Search for Plainstride." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Busca Plainstride." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "搜索 Plainstride。" } }
+      }
+    },
+    "widget.intro.description" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "See your next workout at a glance. Tap it whenever you're ready to move." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Consulta tu próximo entrenamiento de un vistazo. Tócalo cuando quieras empezar." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "一眼查看下一次训练，准备好活动时轻点即可。" } }
+      }
+    },
+    "widget.intro.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "A little fox, right on your Home Screen." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Un zorrito en tu pantalla de inicio." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "把小狐狸放到主屏幕上。" } }
+      }
+    },
+    "widget.label.today" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "TODAY" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "HOY" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "今天" } }
+      }
+    },
+    "widget.settings.detail" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add or review your Plainstride widget." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Añade o consulta el widget de Plainstride." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "添加或查看 Plainstride 小组件。" } }
+      }
+    },
+    "widget.settings.section" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Home Screen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Pantalla de inicio" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "主屏幕" } }
+      }
+    },
+    "widget.settings.title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Home Screen Widget" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Widget de la pantalla de inicio" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "主屏幕小组件" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

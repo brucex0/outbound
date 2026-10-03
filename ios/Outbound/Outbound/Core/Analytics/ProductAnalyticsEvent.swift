@@ -133,6 +133,11 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case assistantLauncherAnimationShown = "assistant_launcher_animation_shown"
     case assistantLauncherOpened = "assistant_launcher_opened"
     case assistantMeaningfulEngagement = "assistant_meaningful_engagement"
+    case homeWidgetOnboardingViewed = "home_widget_onboarding_viewed"
+    case homeWidgetSetupActionSelected = "home_widget_setup_action_selected"
+    case homeWidgetSetupStepViewed = "home_widget_setup_step_viewed"
+    case homeWidgetSetupGuideCompleted = "home_widget_setup_guide_completed"
+    case homeWidgetAlreadyPresent = "home_widget_already_present"
     case todayCardDisplayChanged = "today_card_display_changed"
     case todayAdjustmentDecided = "today_adjustment_decided"
     case planningSurfaceOpened = "planning_surface_opened"
@@ -460,6 +465,11 @@ enum ProductAnalyticsSchema {
         .assistantLauncherAnimationShown: [.destination, .entrySource],
         .assistantLauncherOpened: [.destination, .entrySource],
         .assistantMeaningfulEngagement: [.destination, .entrySource],
+        .homeWidgetOnboardingViewed: [.entrySource],
+        .homeWidgetSetupActionSelected: [.entrySource, .selectionType],
+        .homeWidgetSetupStepViewed: [.entrySource, .stepName],
+        .homeWidgetSetupGuideCompleted: [.entrySource],
+        .homeWidgetAlreadyPresent: [.result],
         .todayCardDisplayChanged: [.sourceType, .selectionType],
         .planningSurfaceOpened: [.sourceType, .entrySource, .countBucket],
         .trainingPlanEnded: [.entrySource],

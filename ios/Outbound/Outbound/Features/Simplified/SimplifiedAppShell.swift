@@ -2,6 +2,7 @@ import SwiftUI
 import PhotosUI
 import UIKit
 import Combine
+import WidgetKit
 
 enum SimplifiedAppTab: Hashable {
     case social
@@ -334,6 +335,8 @@ struct SimplifiedAppShell: View {
     @State private var connectionFeedback: ConnectionLinkFeedback?
     @State private var connectionProfilePresentation: ConnectionProfilePresentation?
     @State private var appShellPresentation: SimplifiedAppShellPresentation?
+    @State private var showsHomeWidgetOnboarding = false
+    @AppStorage("home_widget_onboarding_seen_v1") private var hasSeenHomeWidgetOnboarding = false
 
     var body: some View {
         TabView(selection: $selection) {
@@ -452,6 +455,9 @@ struct SimplifiedAppShell: View {
             guard !Task.isCancelled else { return }
             activityStore.clearPhotoAlbumNotice()
         }
+        .task {
+            await presentHomeWidgetOnboardingIfNeeded()
+        }
         .fullScreenCover(item: $connectionProfilePresentation) { presentation in
             switch presentation {
             case .loading:
@@ -475,6 +481,18 @@ struct SimplifiedAppShell: View {
                 analyticsDestination: assistantAnalyticsDestination
             )
             .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showsHomeWidgetOnboarding, onDismiss: {
+            hasSeenHomeWidgetOnboarding = true
+        }) {
+            HomeWidgetOnboardingView(
+                snapshot: HomeWorkoutWidgetStore.read() ?? HomeWidgetOnboardingView.exampleSnapshot,
+                entrySource: "first_launch"
+            ) {
+                showsHomeWidgetOnboarding = false
+            }
+            .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showsPlanDetails) {
@@ -795,6 +813,28 @@ struct SimplifiedAppShell: View {
         withTransaction(transaction) {
             selection = tab
         }
+    }
+
+    @MainActor
+    private func presentHomeWidgetOnboardingIfNeeded() async {
+        guard !hasSeenHomeWidgetOnboarding else { return }
+        do {
+            try await Task.sleep(for: .milliseconds(900))
+        } catch {
+            return
+        }
+        guard !Task.isCancelled, !hasSeenHomeWidgetOnboarding else { return }
+
+        if let configurations = try? await WidgetCenter.shared.currentConfigurations(),
+           configurations.contains(where: { $0.kind == HomeWorkoutWidgetStore.widgetKind }) {
+            hasSeenHomeWidgetOnboarding = true
+            await analyticsManager?.track(.init(.homeWidgetAlreadyPresent, properties: [
+                .result: .string("present")
+            ]))
+            return
+        }
+
+        showsHomeWidgetOnboarding = true
     }
 
     private func openPlanManagement(from entrySource: String) {
@@ -3469,6 +3509,7 @@ private struct SimplifiedSettingsView: View {
     @Binding var trainingProfileSex: TrainingProfileSex?
     @State private var confirmsSignOut = false
     @State private var confirmsAccountDeletion = false
+    @State private var showsHomeWidgetOnboarding = false
     @AppStorage(ActivityPhotoAlbumPreferences.savesPhotosKey) private var savesActivityPhotos = true
 
     var body: some View {
@@ -3496,6 +3537,16 @@ private struct SimplifiedSettingsView: View {
                     WorkoutReminderSettingsView()
                 } label: {
                     Label(String(localized: "workout.reminders.title", defaultValue: "Workout reminders"), systemImage: "bell.badge")
+                }
+            }
+            Section(String(localized: "widget.settings.section", table: "HomeWidget")) {
+                Button {
+                    showsHomeWidgetOnboarding = true
+                } label: {
+                    Label(
+                        String(localized: "widget.settings.title", table: "HomeWidget"),
+                        systemImage: "square.grid.2x2"
+                    )
                 }
             }
             Section(String(localized: "settings.photos.section", defaultValue: "Photos")) {
@@ -3647,6 +3698,13 @@ private struct SimplifiedSettingsView: View {
             }
         }
         .navigationTitle("Settings")
+        .sheet(isPresented: $showsHomeWidgetOnboarding) {
+            HomeWidgetOnboardingView(
+                snapshot: HomeWorkoutWidgetStore.read() ?? HomeWidgetOnboardingView.exampleSnapshot,
+                entrySource: "settings",
+                onFinish: { showsHomeWidgetOnboarding = false }
+            )
+        }
         .confirmationDialog("Sign out of Plainstride?", isPresented: $confirmsSignOut, titleVisibility: .visible) {
             Button("Sign out", role: .destructive) { authStore.signOut() }
             Button("Cancel", role: .cancel) {}

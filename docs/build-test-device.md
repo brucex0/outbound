@@ -11,6 +11,7 @@ Open this when validating changes, installing on device, editing signing setting
 - Version 1 targets iPhone only (`TARGETED_DEVICE_FAMILY = 1`) and supports portrait orientation only. Revisit iPad orientation and multitasking behavior separately if iPad support is added.
 - Debug device builds use `ios/Outbound/SupportFiles/OutboundDebug.entitlements`, and Release builds use `ios/Outbound/SupportFiles/Outbound.entitlements`.
 - Both configurations include Sign in with Apple, HealthKit, and WeatherKit for the paid Plainstride Labs team.
+- The app and `OutboundLiveActivityExtension` share the `group.ai.plainstride.shared` App Group so the Home Screen widget can read the app-published workout suggestion. Keep this capability enabled in both app entitlements and the extension provisioning profile.
 - Use a paid Apple Developer team before validating Apple provider sign-in on device or shipping.
 - Do not add `aps-environment`, HealthKit clinical-record access, or HealthKit background delivery unless the matching capability and implementation are required.
 - Device installs still require an Apple Development identity and development provisioning profiles for `plainstride.outbound`, `plainstride.outbound.liveactivity`, and `plainstride.outbound.watchkitapp`.

@@ -774,6 +774,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = SupportFiles/OutboundLiveActivityExtension.entitlements;
 				CURRENT_PROJECT_VERSION = 48;
 				DEVELOPMENT_TEAM = WT54K7D7VH;
 				ENABLE_PREVIEWS = YES;
@@ -804,6 +805,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_ENTITLEMENTS = SupportFiles/OutboundLiveActivityExtension.entitlements;
 				CURRENT_PROJECT_VERSION = 48;
 				DEVELOPMENT_TEAM = WT54K7D7VH;
 				ENABLE_PREVIEWS = YES;

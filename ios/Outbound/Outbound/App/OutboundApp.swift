@@ -83,6 +83,9 @@ struct OutboundApp: App {
                     groupStore.activate(userID: authStore.isAuthenticated ? (userID ?? authStore.localSessionLabel) : nil)
                 }
                 .onChange(of: authStore.isAuthenticated, initial: true) { _, isAuthenticated in
+                    if !isAuthenticated {
+                        HomeWorkoutWidgetStore.clear()
+                    }
                     togetherStore.activate(
                         userID: isAuthenticated
                             ? (authStore.user?.id ?? authStore.localSessionLabel)
@@ -1313,6 +1316,13 @@ final class TrainingPlanStore: ObservableObject {
         } else {
             defaults.removeObject(forKey: activePlanKey)
         }
+
+        let intent = todaySuggestion?.suggestedSession.intent
+        HomeWorkoutWidgetStore.publish(HomeWorkoutWidgetSnapshot(
+            title: intent?.title ?? String(localized: "widget.fallback.title", table: "HomeWidget"),
+            detail: intent?.detail ?? String(localized: "widget.fallback.detail", table: "HomeWidget"),
+            systemImageName: intent?.systemImage ?? "figure.run"
+        ))
     }
 
     private func persistDismissedWeek() {
