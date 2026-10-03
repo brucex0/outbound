@@ -54,7 +54,7 @@ Configure launch options from the dock:
 
 ## Start and Live Recording
 
-The contextual center Start action immediately enters a cancelable countdown, then live recording. The countdown and live status must reflect Indoor/Outdoor and Live Track choices.
+The contextual center Start action immediately enters a cancelable countdown, then live recording, except Walk and Hike start recording immediately after the normal location preflight. The countdown and live status must reflect Indoor/Outdoor and Live Track choices.
 
 When Voice Guide is enabled, initialize local speech before displaying the countdown so `3`, `2`, `1`, and the localized `Go` cue stay synchronized with the countdown instead of spilling into the live screen. Canceling the countdown stops queued speech and returns to Today. During an active or paused activity, system Back must use the same finish-confirmation flow as the visible Finish control; it must never reveal a retained countdown or setup screen.
 
@@ -62,7 +62,7 @@ Android records `activity_countdown_voice_prepared` with only a bounded `success
 
 The live map represents the current athlete with a theme-colored, activity-specific companion for running, cycling, hiking, walking, or swimming instead of a generic location dot. Run, walk, and hike companions use an articulated figure whose arms and legs move with activity-specific cadence and stride; other sports retain their activity symbol. The companion follows valid GPS course, moves only while recording, and remains still when paused or Reduce Motion is enabled. Its exposure uses the privacy-safe `feature_exposed` event without location or pace data.
 
-Outdoor GPS acquisition starts with the countdown rather than after it. The countdown shows a compact localized `GPS ready`, `Improving GPS signal`, `Acquiring GPS`, or `Precise Location is off` status without blocking Start indefinitely. A fresh good-quality countdown fix becomes the recording baseline; canceling the countdown stops the temporary high-accuracy acquisition. If iOS has granted only approximate location, the workout purpose may request temporary precise access using the localized bundle explanation.
+Outdoor GPS acquisition starts with the countdown rather than after it for activities with a countdown; Walk and Hike complete location preflight before starting immediately. The countdown shows a compact localized `GPS ready`, `Improving GPS signal`, `Acquiring GPS`, or `Precise Location is off` status without blocking Start indefinitely. A fresh good-quality countdown fix becomes the recording baseline; canceling the countdown stops the temporary high-accuracy acquisition. If iOS has granted only approximate location, the workout purpose may request temporary precise access using the localized bundle explanation.
 
 Debug builds also expose a manual run simulator under More > Testing. Enabling it preselects the supplied Redmond Harvest route and replaces live Core Location fixes with progressive synthetic locations after the normal countdown. The live overlay can adjust running speed, pause/play simulated time at 1×, 10×, or 60×, and jump forward by one or five minutes. Synthetic fixes continue through `ActivityRecorder`, Route Guidance, `LiveMapView`, and `VirtualGuide`; the simulator does not use the static metric overrides from the seeded 10K UI fixture and does not write an interrupted-session recovery journal. The source GPX return-leg latitude `47.7900` is treated as an obvious discontinuity and corrected to `47.6900`, matching the outbound point.
 
@@ -124,6 +124,7 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - Goal and utility dock buttons display no secondary value line.
 - Photo is available for Planned and every manual sport, returns to the same retained setup after capture, and exposes preview, Retake, and Remove after a photo is added.
 - Setup choices carry into countdown and live status.
+- Walk and Hike start recording without a countdown after the normal outdoor location preflight; other activities retain the existing cancelable countdown.
 - Countdown starts high-accuracy acquisition, communicates GPS quality without delaying `Go`, and reuses a fresh suitable fix as the zero-distance baseline.
 - Switching among Distance, Time, and Calories restores each mode's current draft value, including values edited before any activity starts.
 - Countdown cancel preserves setup; only entry into live recording persists targets and advances default learning.

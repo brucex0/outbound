@@ -1325,6 +1325,10 @@ struct RecordView: View {
         countdownTask?.cancel()
         launchCoordinator.beginCountdown()
         sessionController.beginCountdown()
+        guard !ActivityLaunchPreflight.skipsCountdown(for: activeIntent?.sport) else {
+            completeStartCountdown()
+            return
+        }
         guide.announceStartCountdown(ActivityStartCountdownStep.sequence.map(\.spokenText))
         countdownTask = Task { @MainActor in
             for step in ActivityStartCountdownStep.sequence {

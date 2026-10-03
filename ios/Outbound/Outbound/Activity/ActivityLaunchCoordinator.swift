@@ -7,6 +7,10 @@ enum ActivityLaunchDecision: Equatable {
 }
 
 enum ActivityLaunchPreflight {
+    static func skipsCountdown(for sport: SportType?) -> Bool {
+        sport == .walk || sport == .hike
+    }
+
     static func decision(
         isIndoor: Bool,
         permissionGranted: Bool,

@@ -3,6 +3,17 @@ import Testing
 @testable import Outbound
 
 struct ActivityLaunchPreflightTests {
+    @Test func walkAndHikeSkipStartCountdown() {
+        #expect(ActivityLaunchPreflight.skipsCountdown(for: .walk))
+        #expect(ActivityLaunchPreflight.skipsCountdown(for: .hike))
+    }
+
+    @Test func otherSportsKeepStartCountdown() {
+        #expect(!ActivityLaunchPreflight.skipsCountdown(for: .run))
+        #expect(!ActivityLaunchPreflight.skipsCountdown(for: .bike))
+        #expect(!ActivityLaunchPreflight.skipsCountdown(for: nil))
+    }
+
     @Test func indoorSessionStartsWithoutLocationPermission() {
         #expect(
             ActivityLaunchPreflight.decision(
