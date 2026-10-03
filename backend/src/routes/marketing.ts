@@ -7,6 +7,8 @@ import { getPrismaClient } from "../services/prisma.js";
 
 const router = new Hono<AppEnv>();
 const IOS_APP_STORE_URL = "https://apps.apple.com/us/app/plainstride/id6800191455";
+const ANDROID_CLOSED_TESTING_URL = process.env.ANDROID_BETA_URL?.trim()
+  || "https://play.google.com/store/apps/details?id=com.plainstride.outbound";
 const androidWaitlistSchema = z.object({
   email: z.string().trim().email().max(254),
   companyWebsite: z.string().trim().max(200).optional().default(""),
@@ -192,8 +194,8 @@ router.get("/", (c) => c.html(pageShell({
         <p class="eyebrow">Run the day you're in</p>
         <h1>A guide that keeps pace with real life.</h1>
         <p class="lede">Plainstride turns your goals, readiness, recent training, and available time into one clear answer: what should I do today?</p>
-        <div class="actions"><a class="button" href="#how-it-works">See how it works</a><a class="button secondary" href="${IOS_APP_STORE_URL}" target="_blank" rel="noopener noreferrer">Download for iPhone</a><a class="button secondary" href="#android-waitlist">Join the Android waitlist</a></div>
-        <div class="hero-note"><span class="pulse" aria-hidden="true"></span>Available for iPhone · Android waitlist open</div>
+        <div class="actions"><a class="button" href="#how-it-works">See how it works</a><a class="button secondary" href="${IOS_APP_STORE_URL}" target="_blank" rel="noopener noreferrer">Download for iPhone</a><a class="button secondary" href="${ANDROID_CLOSED_TESTING_URL}" target="_blank" rel="noopener noreferrer">Join Android closed testing</a></div>
+        <div class="hero-note"><span class="pulse" aria-hidden="true"></span>Available for iPhone · Android closed testing open</div>
       </div>
     </section>
     <section class="moment wrap" id="how-it-works">
@@ -234,7 +236,7 @@ router.get("/", (c) => c.html(pageShell({
       <div class="download-card">
         <p class="eyebrow">Choose your platform</p>
         <h2>Your next run starts here.</h2>
-        <p class="download-intro">Get one clear, adaptive answer for what to do today—on iPhone now, with Android coming next.</p>
+        <p class="download-intro">Get one clear, adaptive answer for what to do today—on iPhone and in Android closed testing.</p>
         <div class="platform-grid">
           <section class="platform-card" aria-labelledby="iphone-title">
             <span class="platform-label">Available now</span>
@@ -242,71 +244,16 @@ router.get("/", (c) => c.html(pageShell({
             <p>Download the full running companion today from the App Store.</p>
             <a class="button" href="${IOS_APP_STORE_URL}" target="_blank" rel="noopener noreferrer">Download on the App Store</a>
           </section>
-          <section class="platform-card" id="android-waitlist" aria-labelledby="android-title">
-            <span class="platform-label">Coming next</span>
+          <section class="platform-card" aria-labelledby="android-title">
+            <span class="platform-label">Android closed testing</span>
             <h3 id="android-title">Plainstride for Android</h3>
-            <p>Join the waitlist and we'll email you when Android early access is ready.</p>
-            <form class="waitlist-form" id="android-waitlist-form" action="/waitlist/android" method="post">
-              <label class="honeypot" for="company-website" aria-hidden="true" hidden>Company website</label>
-              <input class="honeypot" id="company-website" name="companyWebsite" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" hidden>
-              <label class="honeypot" for="android-email">Email address</label>
-              <div class="waitlist-fields">
-                <input id="android-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="254" placeholder="you@example.com" aria-label="Email address" required>
-                <button class="button" type="submit">Join waitlist</button>
-              </div>
-              <p class="form-note">Android launch updates only. See our <a href="/privacy">Privacy Policy</a>.</p>
-            </form>
+            <p>Join the Google Play closed test to install Plainstride on your Android device.</p>
+            <a class="button" href="${ANDROID_CLOSED_TESTING_URL}" target="_blank" rel="noopener noreferrer">Join closed testing</a>
           </section>
         </div>
       </div>
     </section>
-    <div class="toast" id="waitlist-toast" role="status" aria-live="polite" hidden></div>
-    <script>
-      (function () {
-        var form = document.getElementById("android-waitlist-form");
-        var toast = document.getElementById("waitlist-toast");
-        if (!form || !toast) return;
-
-        var button = form.querySelector("button[type=submit]");
-        var hideTimer;
-        function showToast(message, isError) {
-          window.clearTimeout(hideTimer);
-          toast.textContent = message;
-          toast.classList.toggle("error", isError);
-          toast.hidden = false;
-          hideTimer = window.setTimeout(function () { toast.hidden = true; }, 5000);
-        }
-
-        form.addEventListener("submit", async function (event) {
-          event.preventDefault();
-          if (!form.reportValidity()) return;
-          var formData = new FormData(form);
-          button.disabled = true;
-          button.textContent = "Joining…";
-          form.setAttribute("aria-busy", "true");
-
-          try {
-            var response = await fetch(form.action, {
-              method: "POST",
-              headers: { "Accept": "application/json", "Content-Type": "application/json" },
-              body: JSON.stringify({
-                email: formData.get("email"),
-                companyWebsite: formData.get("companyWebsite")
-              })
-            });
-            if (!response.ok) throw new Error("waitlist_request_failed");
-            form.reset();
-            showToast("You're on the Android waitlist. We'll be in touch.", false);
-          } catch (error) {
-            showToast("We couldn't save your spot. Please try again.", true);
-          } finally {
-            button.disabled = false;
-            button.textContent = "Join waitlist";
-            form.removeAttribute("aria-busy");
-          }
-        });
-      })();
-    </script>`,
+    `,
 })));
 
 router.post("/waitlist/android", async (c) => {
@@ -349,15 +296,15 @@ router.get("/support", (c) => c.html(pageShell({
     <article class="legal wrap">
       <p class="eyebrow">Support</p>
       <h1>We're here for the run.</h1>
-      <p class="lede">Plainstride is available on the App Store, with an Android version in the works. Your feedback helps us make every part of the experience clearer and more dependable.</p>
-      <div class="legal-card"><h3>Report a bug or suggestion</h3><p>When no activity is recording, shake your iPhone twice to open <strong>Send feedback</strong>. Describe what happened, optionally annotate the captured screenshot, then submit the report. You can also open <strong>Me → Settings → Send feedback</strong>.</p></div>
-      <div class="legal-card"><h3>Web and waitlist support</h3><p>Email <a href="mailto:info@plainstride.com">info@plainstride.com</a> for website help or to update or remove your Android waitlist email.</p></div>
+      <p class="lede">Plainstride is available for iPhone and through Google Play closed testing for Android. Your feedback helps us make every part of the experience clearer and more dependable.</p>
+      <div class="legal-card"><h3>Report a bug or suggestion on iPhone</h3><p>When no activity is recording, shake your iPhone twice to open <strong>Send feedback</strong>. Describe what happened, optionally annotate the captured screenshot, then submit the report. You can also open <strong>Me → Settings → Send feedback</strong>.</p></div>
+      <div class="legal-card"><h3>Website and Android support</h3><p>Email <a href="mailto:info@plainstride.com">info@plainstride.com</a> for website help, Android installation or closed-testing assistance, or account and privacy requests.</p></div>
       <h2>Common questions</h2>
-      <h3>How do I install Plainstride?</h3><p><a href="${IOS_APP_STORE_URL}" target="_blank" rel="noopener noreferrer">Download Plainstride directly from the App Store</a> on your iPhone.</p>
-      <h3>Why is a permission requested?</h3><p>Location records an outdoor activity and can provide local running conditions. Apple Health import and workout saving, camera photos, voice commands, Apple Music, and live sharing are optional and requested only when you use the related feature.</p>
+      <h3>How do I install Plainstride?</h3><p><a href="${IOS_APP_STORE_URL}" target="_blank" rel="noopener noreferrer">Download Plainstride from the App Store</a> for iPhone, or <a href="${ANDROID_CLOSED_TESTING_URL}" target="_blank" rel="noopener noreferrer">join the Google Play closed test</a> to install it on Android.</p>
+      <h3>Why is a permission requested?</h3><p>Location supports user-started outdoor recording and local running conditions. Apple Health on iPhone and Health Connect on Android can optionally import fitness data and save completed workouts. Camera and photo access, microphone and speech features, music integrations, notifications, and live sharing are requested only when you use their related features. You can manage permissions in iOS or Android settings.</p>
       <h3>How do I delete my account?</h3><p>Open <strong>Me → Settings → Delete Account</strong>. Plainstride may ask you to confirm your Apple or Google identity, then deletes your server account data, clears local Plainstride data, and signs you out.</p>
       <h3>Is Plainstride medical advice?</h3><p>No. Plainstride provides general fitness guidance and is not a medical service. Stop exercising and seek appropriate professional care if you feel unwell or unsafe.</p>
-      <h2>TestFlight feedback</h2><p>You can also submit a screenshot and comment directly from the TestFlight app. Crash reports and tester feedback appear privately to the Plainstride team in App Store Connect.</p>
+      <h2>iPhone beta feedback</h2><p>TestFlight users can also submit a screenshot and comment directly from the TestFlight app. Crash reports and tester feedback appear privately to the Plainstride team in App Store Connect.</p>
     </article>`,
 })));
 
@@ -369,14 +316,14 @@ router.get("/terms", (c) => c.html(pageShell({
     <article class="legal wrap">
       <p class="eyebrow">Terms of service</p>
       <h1>Move well. Treat people well.</h1>
-      <p class="lede">These Terms govern your use of the Plainstride iPhone app and related services operated by Plainstride Labs Inc. Effective ${CURRENT_TERMS_EFFECTIVE_DATE}. Version ${CURRENT_TERMS_VERSION}.</p>
+      <p class="lede">These Terms govern your use of the Plainstride iPhone and Android apps and related services operated by Plainstride Labs Inc. Effective ${CURRENT_TERMS_EFFECTIVE_DATE}. Version ${CURRENT_TERMS_VERSION}.</p>
       <div class="legal-card"><strong>Plainstride provides general fitness information and tools. It does not provide medical care, diagnosis, or emergency services.</strong></div>
 
       <h2>1. Agreement and eligibility</h2>
       <p>By creating an account, signing in, or using Plainstride, you agree to these Terms and acknowledge our <a href="/privacy">Privacy Policy</a>. You must be at least 13 years old to use Plainstride. If you are under the age of legal majority where you live, a parent or legal guardian must authorize your use.</p>
 
       <h2>2. The service</h2>
-      <p>Plainstride offers activity recording, training plans, personalized and AI-assisted fitness guidance, progress tools, social features, live-location sharing, and integrations with Apple and other services. Features may be added, changed, suspended, or removed as the service evolves, particularly during a beta.</p>
+      <p>Plainstride offers activity recording, training plans, personalized and AI-assisted fitness guidance, progress tools, social features, live-location sharing, and integrations with Apple, Google, and other services. The apps are available for iPhone and Android; Android access is currently through Google Play closed testing. Features may vary by platform and release channel and may be added, changed, suspended, or removed as the service evolves.</p>
 
       <h2>3. Fitness, health, and outdoor safety</h2>
       <p>Training suggestions, readiness adjustments, race predictions, generated guidance, and spoken cues are informational and may be incomplete, delayed, or inaccurate. They are not a substitute for your judgment or advice from a qualified health professional. You are responsible for deciding whether an activity is appropriate for you.</p>
@@ -398,7 +345,7 @@ router.get("/terms", (c) => c.html(pageShell({
       <p>Plainstride, its software, design, branding, and service content are owned by Plainstride Labs Inc. or its licensors. These Terms give you a personal, limited, revocable, non-transferable right to use the service. They do not permit you to copy, sell, reverse engineer, or create derivative services except where applicable law expressly allows it.</p>
 
       <h2>8. Third-party services</h2>
-      <p>Features may depend on Apple, Google, mapping, weather, music, health, AI, transcription, notification, or other third-party services. Your use of those services may be governed by separate terms. Plainstride is not responsible for third-party availability, content, or actions, but remains responsible for its own obligations under applicable law and the Privacy Policy.</p>
+      <p>Features may depend on Apple services, Google Play, Google Sign-In, Health Connect, mapping, weather, music, health, AI, speech, notification, or other third-party services. Your use of those services may be governed by separate terms. Plainstride is not responsible for third-party availability, content, or actions, but remains responsible for its own obligations under applicable law and the Privacy Policy.</p>
 
       <h2>9. Availability and beta changes</h2>
       <p>Plainstride is provided on an “as available” basis. To the extent permitted by law, we do not promise uninterrupted availability or that every prediction, route, plan, sync, notification, or generated response will be accurate or error-free. Beta data or features may be reset when necessary to maintain or improve the service.</p>
@@ -413,7 +360,7 @@ router.get("/terms", (c) => c.html(pageShell({
       <p>We may update these Terms as the service changes. We will update the effective date and version above. If a change materially affects your rights or responsibilities, Plainstride will provide additional notice and ask you to accept the updated Terms before continuing to use the authenticated service.</p>
 
       <h2>13. Contact</h2>
-      <p>Questions about these Terms can be sent through <a href="/support">Plainstride Support</a> or the feedback contact included in your TestFlight invitation.</p>
+      <p>Questions about these Terms can be sent through <a href="/support">Plainstride Support</a>.</p>
     </article>`,
 })));
 
@@ -425,24 +372,25 @@ router.get("/privacy", (c) => c.html(pageShell({
     <article class="legal wrap">
       <p class="eyebrow">Privacy policy</p>
       <h1>Your run is personal.</h1>
-      <p class="lede">This policy explains how Plainstride Labs Inc. handles information in the Plainstride iPhone app and related web services during the beta. Last updated September 2, 2026.</p>
+      <p class="lede">This policy explains how Plainstride Labs Inc. handles information in the Plainstride iPhone and Android apps and related web services during the beta, including Android closed testing. Last updated October 2, 2026.</p>
       <div class="legal-card"><strong>Plainstride does not sell personal information or use it for third-party advertising.</strong></div>
       <h2>Information we handle</h2>
       <h3>Account information</h3><p>When you sign in with Apple or Google, we receive an account identifier and, when the provider makes it available, your name and email address. We also retain the version and time of your most recent Terms acceptance. We use this information to authenticate you, maintain your Plainstride account, and document the agreement governing the service.</p>
-      <h3>Android waitlist</h3><p>If you join the Android waitlist, we retain the email address you submit so we can send Android launch and early-access updates. Waitlist addresses are not added to unrelated marketing lists.</p>
+      <h3>Earlier Android waitlist signups</h3><p>If you previously joined the Android waitlist, we retain the email address you submitted for Android launch or early-access updates until those updates are complete or you ask us to remove it. We do not add waitlist addresses to unrelated marketing lists. New Android closed-testing enrollment is handled by Google Play.</p>
       <h3>Runner and fitness information</h3><p>Plainstride may process information you provide about goals, experience, availability, readiness, workout feedback, training plans, and completed activities to provide and personalize app functionality.</p>
       <h3>Location and activity routes</h3><p>Precise location is used while recording an outdoor activity. If you explicitly start private live sharing or a live group run, current location updates are sent to our service for that feature. Approximate or one-shot location may be used to provide local weather context. Plainstride does not continuously collect location when these features are not active.</p>
-      <h3>Apple Health</h3><p>With your permission, Plainstride can read relevant workout and fitness information from Apple Health and save completed workouts there. Health information stays under Apple's Health permissions and is not used for advertising. You can change access in iOS Settings or the Health app.</p>
-      <h3>Photos, voice, and music</h3><p>Activity photos are stored on your device unless you explicitly use a sharing or upload feature. Voice commands may be processed on-device or sent for transcription when a remote transcription feature is used. Apple Music access is used only for the playback features you choose.</p>
-      <h3>Feedback and diagnostics</h3><p>If you submit feedback, we receive your report text, authenticated account ID and email, current app page, and the screenshot you choose to share. Optional diagnostics include the app version, specific device model, iOS version, and a short, size-limited tail of recent Plainstride app logs. Log collection is restricted to Plainstride-owned diagnostic categories, preserves Apple log privacy redaction, and applies additional token, email, and precise-location filtering before upload. The in-app report does not include health or precise location data. Apple may separately provide TestFlight crash and usage diagnostics under your Apple settings.</p>
+      <h3>Apple Health and Health Connect</h3><p>With your permission, the iPhone app can read and write supported workout and fitness records through Apple Health. The Android app can read exercise sessions, distance, calories, and heart rate and can write completed workouts, distance, calories, heart rate, and workout routes through Health Connect. Imported health information may be used for training and personalization and synchronized with your Plainstride account. These permissions are optional, controlled through Apple Health or Health Connect, and health information is not used for advertising.</p>
+      <h3>Photos, voice, and music</h3><p>Activity photos are saved on your device and, when activity syncing is available, may be uploaded with the activity to restore it across your signed-in devices. Associated capture time and activity context may include pace, heart rate, distance, capture type, and precise coordinates. Voice input is used when you invoke speech features and may be processed by the operating system or a speech provider. Voice cheers you choose to send are uploaded and shared with the intended runner. Music integrations are used only for playback features you choose.</p>
+      <h3>Usage, device, notification, and subscription information</h3><p>After you sign in, Firebase Analytics receives limited, allowlisted product-usage events from the iPhone and Android apps, linked to your Plainstride account identifier. Events use bounded properties such as platform, app section, feature, and result; they exclude precise coordinates, health facts, voice transcripts, prompts, and user-entered text. The analytics SDK may also provide app version, build, operating-system version, language, and standard device information. If you enable notifications, we process a push token, platform, app identifier, and locale. Apple, Google Play, and RevenueCat may process purchase or subscription information and entitlement status to manage access to paid features. We use this information to operate, understand, secure, and improve Plainstride, not for third-party advertising.</p>
+      <h3>Feedback and diagnostics</h3><p>If you submit feedback from the iPhone app, we receive your report text, authenticated account ID and email, current app page, and any screenshot you leave attached. Optional iPhone diagnostics include app version, device model, iOS version, and a short, size-limited tail of recent Plainstride logs, with token, email, and precise-location filtering. Your report or screenshot may contain visible health or location information, so review it before sending. Apple may separately provide TestFlight crash and usage diagnostics under your Apple settings. Google Play may provide testing, crash, and diagnostic information according to your Google account and Play settings.</p>
       <h2>How we use information</h2><ul><li>Provide authentication, activity recording, training guidance, progress, sharing, and support.</li><li>Personalize workouts and explain relevant adjustments.</li><li>Maintain security, prevent abuse, diagnose failures, and improve the beta.</li><li>Meet legal obligations and enforce our agreements.</li></ul>
-      <h2>Service providers</h2><p>Plainstride relies on service providers including Apple services, Google Firebase and Google Cloud infrastructure, and AI or transcription providers for features you invoke. These providers process information on our behalf under their applicable terms and safeguards.</p>
+      <h2>Service providers</h2><p>Plainstride relies on Apple services; Google Play, Google Sign-In, Health Connect, Firebase, and Google Cloud; RevenueCat for subscription management; email delivery services; and mapping, weather, music, AI, speech, or transcription providers for features you invoke. They receive information reasonably needed to provide their services and process it under their applicable terms and safeguards.</p>
       <h2>Sharing and visibility</h2><p>Your private plan, health context, and readiness reasons are not shown to other runners. Live location or group-run information is shared only when you explicitly start that feature and with people who receive or join the relevant private link. Avoid forwarding private links to people you do not trust.</p>
-      <h2>Retention and deletion</h2><p>We retain account and server-backed app information while your account is active and as reasonably needed to operate and secure the service. Feature-specific temporary data, such as active live-location updates, may be retained for a shorter operational period. Android waitlist email addresses are kept until the related launch updates are complete or you ask us to remove yours. You can delete your account in <strong>Me → Settings → Delete Account</strong>; this deletes associated server account data and clears local Plainstride data, subject to limited retention required for security, legal compliance, or resolving disputes.</p>
-      <h2>Your choices</h2><p>You can decline optional permissions, stop live sharing, remove locally saved activities, change Apple Health access, sign out, or delete your account. Some features will not work without their related permission. To update or remove an Android waitlist address, email <a href="mailto:info@plainstride.com">info@plainstride.com</a>.</p>
+      <h2>Retention and deletion</h2><p>We retain account and server-backed app information while your account is active and as reasonably needed to operate and secure the service. Feature-specific temporary data, such as active live-location updates, may be retained for a shorter operational period. Earlier Android waitlist addresses are kept until the related updates are complete or you ask us to remove yours. You can delete your account in <strong>Me → Settings → Delete Account</strong>; this deletes associated server account data and clears Plainstride app data on your device, subject to limited retention required for security, legal compliance, backups, or resolving disputes. Account deletion does not delete copies saved to your Apple Photos library, Google Photos, Apple Health, Health Connect, or other third-party services; manage those copies in the applicable service.</p>
+      <h2>Your choices</h2><p>You can decline optional permissions, stop live sharing, choose the audience for social content, remove activities or photos in Plainstride, change Apple Health or Health Connect permissions, manage Android location, camera, microphone, and notification access in Android settings, sign out, or delete your account. Some features will not work without their related permission. To remove an earlier Android waitlist address, email <a href="mailto:info@plainstride.com">info@plainstride.com</a>.</p>
       <h2>Children</h2><p>Plainstride is not directed to children under 13, and we do not knowingly collect personal information from children under 13.</p>
       <h2>Changes</h2><p>We may update this policy as the beta evolves. We will update the date above and provide additional notice when a change is material.</p>
-      <h2>Contact</h2><p>For privacy or support questions during the beta, use <a href="/support">Plainstride Support</a> or the feedback contact included in your TestFlight invitation.</p>
+      <h2>Contact</h2><p>For privacy or support questions, visit <a href="/support">Plainstride Support</a> or email <a href="mailto:info@plainstride.com">info@plainstride.com</a>.</p>
     </article>`,
 })));
 
