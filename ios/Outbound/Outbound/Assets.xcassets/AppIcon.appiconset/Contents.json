@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "OutboundAppIcon.png",
+      "filename" : "OutboundFoxAppIcon.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
