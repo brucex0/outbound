@@ -56,7 +56,7 @@ private struct ConnectionLinkProfileLoadingView: View {
 }
 
 private struct AssistantLauncherButton: View {
-    static let diameter: CGFloat = 44
+    static let diameter: CGFloat = 56
 
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -89,11 +89,12 @@ private struct AssistantLauncherButton: View {
                     .rotationEffect(.degrees(rotation))
 
                 Image(systemName: "sparkles")
-                    .font(.headline.weight(.bold))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(.white)
-                    .scaleEffect(1.28)
+                    .scaleEffect(1.12)
                     .opacity(shimmerOpacity)
                     .blur(radius: 0.8)
+                    .offset(x: 14, y: -14)
             }
             .frame(width: Self.diameter, height: Self.diameter)
             .background(accentColor.gradient, in: Circle())
@@ -202,78 +203,21 @@ private struct AssistantLauncherButton: View {
 }
 
 private struct FoxAssistantMark: View {
-    private let orange = Color(red: 0.98, green: 0.43, blue: 0.15)
-    private let dark = Color(red: 0.30, green: 0.16, blue: 0.12)
-    private let cream = Color(red: 1.0, green: 0.88, blue: 0.67)
-
     var body: some View {
-        ZStack {
-            Triangle()
-                .fill(dark)
-                .frame(width: 13, height: 19)
-                .rotationEffect(.degrees(-8))
-                .offset(x: -7, y: -4)
-            Triangle()
-                .fill(dark)
-                .frame(width: 13, height: 19)
-                .rotationEffect(.degrees(8))
-                .offset(x: 7, y: -4)
-            Triangle()
-                .fill(cream)
-                .frame(width: 6, height: 10)
-                .rotationEffect(.degrees(-8))
-                .offset(x: -7, y: -3)
-            Triangle()
-                .fill(cream)
-                .frame(width: 6, height: 10)
-                .rotationEffect(.degrees(8))
-                .offset(x: 7, y: -3)
-
-            Ellipse()
-                .fill(dark)
-                .frame(width: 27, height: 24)
-                .offset(y: 3)
-            Ellipse()
-                .fill(orange)
-                .frame(width: 24, height: 22)
-                .offset(y: 3)
-
-            HStack(spacing: 8) {
-                Capsule().fill(dark).frame(width: 2.4, height: 4)
-                Capsule().fill(dark).frame(width: 2.4, height: 4)
-            }
-            .offset(y: 1)
-
-            Ellipse()
-                .fill(cream)
-                .frame(width: 16, height: 9)
-                .offset(y: 10)
-            Ellipse()
-                .fill(dark)
-                .frame(width: 4, height: 3)
-                .offset(y: 8)
-        }
-        .frame(width: 30, height: 30)
-        .accessibilityHidden(true)
-    }
-}
-
-private struct Triangle: Shape {
-    func path(in rect: CGRect) -> Path {
-        Path { path in
-            path.move(to: CGPoint(x: rect.midX, y: rect.minY))
-            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
-            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
-            path.closeSubpath()
-        }
+        Image("FoxAssistantHead")
+            .resizable()
+            .scaledToFit()
+            .frame(width: 50, height: 50)
+            .accessibilityHidden(true)
     }
 }
 
 enum FixedTabBarLayout {
-    static let navigationWidth: CGFloat = 176
-    static let navigationHeight: CGFloat = 54
-    static let selectedIconDiameter: CGFloat = 38
-    static let dockTopPadding: CGFloat = 8
+    static let navigationWidth: CGFloat = 204
+    static let navigationHeight: CGFloat = 64
+    static let selectedIconDiameter: CGFloat = 46
+    static let dockTopPadding: CGFloat = 6
+    static let dockBottomOffset: CGFloat = 8
     static let dockHeight = navigationHeight + dockTopPadding
     static let embeddedSetupBottomInset: CGFloat = 0
 }
@@ -328,7 +272,7 @@ private struct CompactNavigationBar: View {
             }
         } label: {
             Image(systemName: symbol)
-                .font(.system(size: isStart ? 19 : 20, weight: .semibold))
+                .font(.system(size: isStart ? 23 : 24, weight: .semibold))
                 .foregroundStyle(isStart ? actionColor : isSelected ? accentColor : .primary)
                 .frame(width: FixedTabBarLayout.selectedIconDiameter, height: FixedTabBarLayout.selectedIconDiameter)
                 .background {
@@ -815,6 +759,7 @@ struct SimplifiedAppShell: View {
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 12)
         .padding(.top, FixedTabBarLayout.dockTopPadding)
+        .offset(y: FixedTabBarLayout.dockBottomOffset)
         .background {
             if selection == .today {
                 Rectangle()
