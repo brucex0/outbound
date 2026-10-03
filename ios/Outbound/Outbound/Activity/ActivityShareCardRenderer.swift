@@ -231,8 +231,8 @@ private struct ActivityShareCardView: View {
                                 Image(uiImage: appLogoImage)
                                     .resizable()
                                     .scaledToFit()
-                                    .frame(width: 58, height: 58)
-                                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                                    .frame(width: 76, height: 76)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             }
 
                             Text("Plainstride")

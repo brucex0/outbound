@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "LaunchMark.svg",
+      "filename" : "LaunchMark.png",
       "idiom" : "universal"
     }
   ],
@@ -9,7 +9,5 @@
     "author" : "xcode",
     "version" : 1
   },
-  "properties" : {
-    "preserves-vector-representation" : true
-  }
+  "properties" : { }
 }
