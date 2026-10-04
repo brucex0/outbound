@@ -8,7 +8,7 @@ When user ask questions or brain storm, always answer in concise bullet points
 
 ## Completion And Commits
 
-- For every code change, create and work in a Git worktree. After basic verification succeeds, merge the worktree branch back into main branch, then remove the worktree and delete its branch.
+- For every code change, create and work in a Git worktree. After basic verification succeeds, squash and merge the worktree branch back into main branch, then remove the worktree and delete its branch.
 - After completing repository changes, run a basic verification appropriate to the affected scope without running the test suite unless the user explicitly requested tests.
 - If the basic verification succeeds, commit the completed changes before handing the task back to the user.
 - Keep unrelated user files, generated artifacts, temporary directories, and agent metadata out of the commit.

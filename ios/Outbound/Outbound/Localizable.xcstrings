@@ -5855,7 +5855,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "线上参加或在此集合："
+            "value": "云参与或在此集合："
           }
         }
       }
@@ -6016,7 +6016,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "线上参加"
+            "value": "云参与"
           }
         }
       }
@@ -6038,7 +6038,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "活动已完成"
+            "value": "已结束"
           }
         }
       }
@@ -6148,7 +6148,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "和群组一起开始"
+            "value": "和群友一起开始"
           }
         }
       }
@@ -6192,7 +6192,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "开始活动"
+            "value": "开始"
           }
         }
       }
@@ -6236,7 +6236,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已搭配 %@ · %@"
+            "value": "匹配 %@ · %@"
           }
         }
       }
@@ -6324,7 +6324,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "一起安排运动"
+            "value": "计划一个群活动"
           }
         }
       }
@@ -6456,7 +6456,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "送上鼓励"
+            "value": "发送加油"
           }
         }
       }
@@ -6478,7 +6478,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "为你庆祝"
+            "value": "庆祝一下"
           }
         }
       }
@@ -6588,7 +6588,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "我的运动承诺"
+            "value": "我的承诺"
           }
         }
       }
@@ -6698,7 +6698,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你为群组增添了动力。"
+            "value": "你为群组增添了动力"
           }
         }
       }
