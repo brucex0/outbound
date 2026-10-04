@@ -247,6 +247,7 @@ private struct CompactNavigationBar: View {
     private func tabButton(_ tab: SimplifiedAppTab) -> some View {
         let isSelected = selection == tab
         let isStart = tab == .today && showsStart
+        let iconSize: CGFloat = tab == .me ? 27 : isStart ? 23 : 24
         let symbol: String = switch tab {
         case .social: "person.2.fill"
         case .today: isStart ? "play.fill" : "sparkles"
@@ -273,7 +274,7 @@ private struct CompactNavigationBar: View {
             }
         } label: {
             Image(systemName: symbol)
-                .font(.system(size: isStart ? 23 : 24, weight: .semibold))
+                .font(.system(size: iconSize, weight: .semibold))
                 .foregroundStyle(isStart ? actionColor : isSelected ? accentColor : .primary)
                 .frame(width: FixedTabBarLayout.selectedIconDiameter, height: FixedTabBarLayout.selectedIconDiameter)
                 .background {
