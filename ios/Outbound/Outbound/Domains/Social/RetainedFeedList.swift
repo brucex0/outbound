@@ -112,7 +112,16 @@ struct RetainedFeedList<Row: Identifiable & Equatable, Content: View>: UIViewCon
             snapshot.appendSections([0])
             snapshot.appendItems(ids)
             snapshot.reconfigureItems(changed)
-            dataSource.apply(snapshot, animatingDifferences: false)
+            dataSource.apply(snapshot, animatingDifferences: false) { [weak self] in
+                // UIHostingConfiguration can still be settling its SwiftUI
+                // measurement when the diffable snapshot first lays out. Ask
+                // the flow layout to measure the hosted rows again after the
+                // snapshot has installed their content, so the header and
+                // card separators don't overlap until the next scroll.
+                guard let self, self.collectionView.bounds.width > 0 else { return }
+                self.collectionView.collectionViewLayout.invalidateLayout()
+                self.collectionView.layoutIfNeeded()
+            }
         }
 
         @objc private func refreshRequested() {
