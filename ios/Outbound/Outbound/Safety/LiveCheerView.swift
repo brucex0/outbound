@@ -1,4 +1,5 @@
 import AVFoundation
+import Ably
 import Combine
 import MapKit
 import SwiftUI
@@ -16,6 +17,8 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
     private var recordingStartedAt: Date?
     private let usesFixture: Bool
     private let api = APIClient.shared
+    private var realtime: AblySessionTransport?
+    private var realtimeSessionID: String?
 
     init(initialSession: InvitedLiveShareDTO? = nil) {
         session = initialSession
@@ -38,8 +41,42 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
             session = value
             latestCheer = value.latestCheer
             sessionLoadFailed = false
+            if value.status == "active" { connectRealtime(id: id) }
         } catch {
             if session == nil { sessionLoadFailed = true }
+        }
+    }
+
+    func stopRealtime() {
+        realtime?.close()
+        realtime = nil
+        realtimeSessionID = nil
+    }
+
+    private func connectRealtime(id: String) {
+        guard !usesFixture, realtimeSessionID != id else { return }
+        realtime?.close()
+        realtimeSessionID = id
+        realtime = AblySessionTransport(kind: "live_share", sessionID: id, api: api) { [weak self] message in
+            guard message.name == "location" || message.name == "cheer.available" else { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if message.name == "location", var value = self.session,
+                   let payload = message.data as? [String: Any],
+                   let latitude = (payload["latitude"] as? NSNumber)?.doubleValue,
+                   let longitude = (payload["longitude"] as? NSNumber)?.doubleValue {
+                    let recordedAt = (payload["recordedAt"] as? String).flatMap { ISO8601DateFormatter().date(from: $0) } ?? Date()
+                    value.lastLocation = LiveSharePointDTO(recordedAt: recordedAt, latitude: latitude, longitude: longitude)
+                    value.lastLocationAt = recordedAt
+                    value.elapsedSeconds = (payload["elapsedSeconds"] as? NSNumber)?.intValue ?? value.elapsedSeconds
+                    value.distanceM = (payload["distanceM"] as? NSNumber)?.doubleValue ?? value.distanceM
+                    value.currentPaceSecsPerKm = (payload["currentPaceSecsPerKm"] as? NSNumber)?.doubleValue
+                    value.heartRate = (payload["heartRate"] as? NSNumber)?.intValue
+                    self.session = value
+                } else {
+                    await self.refresh(id: id)
+                }
+            }
         }
     }
 
@@ -216,12 +253,8 @@ struct LiveCheerView: View {
                 .entrySource: .string(entrySource),
                 .selectionType: .string(store.session?.status == "active" ? "current_pace" : "average_pace")
             ]))
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(5))
-                guard store.session != nil else { continue }
-                await store.refresh(id: sessionID)
-            }
         }
+        .onDisappear { store.stopRealtime() }
         .onChange(of: store.statusMessage) { _, feedback in
             guard let feedback else { return }
             toast = feedback

@@ -877,6 +877,10 @@ final class APIClient {
         try await post("/safety/live-shares/\(shareID)/cheers/\(cheerID)/acknowledge", body: EmptyBody())
     }
 
+    func issueRealtimeToken(kind: String, sessionID: String) async throws -> RealtimeTokenDTO {
+        try await post("/realtime/token", body: RealtimeTokenRequestDTO(kind: kind, sessionId: sessionID))
+    }
+
     func createLiveGroupRun(_ request: LiveGroupCreateRequest) async throws -> LiveGroupSessionResponse {
         try await post("/live/group-runs", body: request)
     }
@@ -2456,13 +2460,15 @@ struct LiveSharePointDTO: Decodable, Identifiable {
     let recordedAt: Date; let latitude: Double; let longitude: Double
 }
 struct InvitedLiveShareDTO: Decodable, Identifiable {
-    let id: String; let status: String; let runner: LiveShareRunnerDTO; let sport: String; let title: String
-    let voiceCheerEnabled: Bool; let startedAt: Date; let expiresAt: Date; let endedAt: Date?; let lastLocationAt: Date?
-    let lastLocation: LiveSharePointDTO?; let routePreview: [LiveSharePointDTO]
-    let elapsedSeconds: Int; let distanceM: Double; let currentPaceSecsPerKm: Double?; let heartRate: Int?
-    let latestCheer: VoiceCheerReceiptDTO?
+    var id: String; var status: String; var runner: LiveShareRunnerDTO; var sport: String; var title: String
+    var voiceCheerEnabled: Bool; var startedAt: Date; var expiresAt: Date; var endedAt: Date?; var lastLocationAt: Date?
+    var lastLocation: LiveSharePointDTO?; var routePreview: [LiveSharePointDTO]
+    var elapsedSeconds: Int; var distanceM: Double; var currentPaceSecsPerKm: Double?; var heartRate: Int?
+    var latestCheer: VoiceCheerReceiptDTO?
 }
 private struct VoiceCheerUploadRequest: Encodable { let audioBase64: String; let contentType: String; let durationMs: Int }
+private struct RealtimeTokenRequestDTO: Encodable { let kind: String; let sessionId: String }
+struct RealtimeTokenDTO: Decodable { let token: String; let expiresAt: Int64; let channel: String; let clientId: String }
 struct VoiceCheerReceiptDTO: Decodable, Identifiable {
     let id: String
     let createdAt: Date

@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import Ably
 
 struct LiveShareSession: Identifiable, Hashable {
     let id: String
@@ -31,12 +32,16 @@ final class LiveShareStore: ObservableObject {
     @Published private(set) var isUpdating = false
     @Published var selectedConnections: [SocialConnectionDTO] = []
     @Published private(set) var mostRecentlyHeardCheer: HeardVoiceCheer?
+    @Published private(set) var cheerSignalCount = 0
 
     private let api: APIClient
     private var lastSentAt: Date?
     private var lastSentDistanceM: Double?
     private var updateTask: Task<Void, Never>?
     private var lastCheerFetchAt: Date?
+    private var realtime: AblySessionTransport?
+    private var lastCheckpointAt: Date?
+    private var hasPendingCheer = false
 
     init(api: APIClient? = nil) {
         self.api = api ?? APIClient.shared
@@ -87,12 +92,21 @@ final class LiveShareStore: ObservableObject {
                 status: response.status,
                 voiceCheerEnabled: response.voiceCheerEnabled
             )
+            hasPendingCheer = true // Recover a cheer sent while this device was reconnecting.
+            realtime = AblySessionTransport(kind: "live_share", sessionID: response.id, api: api) { [weak self] message in
+                guard message.name == "cheer.available" else { return }
+                Task { @MainActor [weak self] in
+                    self?.hasPendingCheer = true
+                    self?.cheerSignalCount += 1
+                }
+            }
             isArmedForNextActivity = false
             lastSuccessMessage = response.voiceCheerEnabled
                 ? String(localized: "record.cheer.invited_toast", defaultValue: "Contacts invited to cheer you on")
                 : String(localized: "rewards.live_share_basic_toast", table: "Rewards")
             lastSentAt = nil
             lastSentDistanceM = nil
+            lastCheckpointAt = nil
         } catch {
             lastErrorMessage = "Live sharing unavailable: \(error.localizedDescription)"
             isArmedForNextActivity = false
@@ -107,6 +121,19 @@ final class LiveShareStore: ObservableObject {
 
         lastSentAt = snapshot.recordedAt
         lastSentDistanceM = snapshot.distanceMeters
+        realtime?.publishLocation([
+            "recordedAt": ISO8601DateFormatter().string(from: snapshot.recordedAt),
+            "latitude": request.latitude,
+            "longitude": request.longitude,
+            "altitudeM": request.altitudeM as Any? ?? NSNull(),
+            "accuracyM": request.accuracyM as Any? ?? NSNull(),
+            "elapsedSeconds": request.elapsedSeconds,
+            "distanceM": request.distanceM,
+            "currentPaceSecsPerKm": request.currentPaceSecsPerKm as Any? ?? NSNull(),
+            "heartRate": request.heartRate as Any? ?? NSNull(),
+        ])
+        guard lastCheckpointAt.map({ snapshot.recordedAt.timeIntervalSince($0) >= 60 }) ?? true else { return }
+        lastCheckpointAt = snapshot.recordedAt
         updateTask?.cancel()
         updateTask = Task { [api] in
             do {
@@ -137,6 +164,8 @@ final class LiveShareStore: ObservableObject {
         }
         activeSession?.endedAt = now
         activeSession?.status = "ended"
+        realtime?.close()
+        realtime = nil
         activeSession = nil
         isArmedForNextActivity = false
         lastSentAt = nil
@@ -161,10 +190,13 @@ final class LiveShareStore: ObservableObject {
 
     func takePendingVoiceCheer(now: Date = Date()) async -> VoiceCheerDTO? {
         guard let session = activeSession, session.isActive else { return nil }
+        guard hasPendingCheer else { return nil }
         if let lastCheerFetchAt, now.timeIntervalSince(lastCheerFetchAt) < 4 { return nil }
         lastCheerFetchAt = now
         do {
-            return try await api.fetchVoiceCheers(shareID: session.id).cheers.first
+            let cheer = try await api.fetchVoiceCheers(shareID: session.id).cheers.first
+            if cheer != nil { hasPendingCheer = false }
+            return cheer
         } catch {
             return nil
         }

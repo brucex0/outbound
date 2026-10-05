@@ -12,6 +12,7 @@
 		C10000012F9EE18E00F9B729 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = C10000032F9EE18E00F9B729 /* RevenueCat */; };
 		C10000022F9EE18E00F9B729 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = C10000042F9EE18E00F9B729 /* RevenueCatUI */; };
 		DB3A923F2F9EE6DA00F9B729 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000022F9EE18E00F9B729 /* FirebaseCore */; };
+		A90000012F9EE6DA00F9B729 /* Ably in Frameworks */ = {isa = PBXBuildFile; productRef = A90000022F9EE6DA00F9B729 /* Ably */; };
 		E10000000000000000000004 /* OutboundLiveActivityExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = E10000000000000000000001 /* OutboundLiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		W20000000000000000000004 /* Plainstride Watch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = W20000000000000000000001 /* Plainstride Watch.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -128,6 +129,7 @@
 				C10000012F9EE18E00F9B729 /* RevenueCat in Frameworks */,
 				C10000022F9EE18E00F9B729 /* RevenueCatUI in Frameworks */,
 				DB3A923F2F9EE6DA00F9B729 /* FirebaseCore in Frameworks */,
+				A90000012F9EE6DA00F9B729 /* Ably in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -219,6 +221,7 @@
 				AB0000042F9EE18E00F9B729 /* FirebaseMessaging */,
 				C10000032F9EE18E00F9B729 /* RevenueCat */,
 				C10000042F9EE18E00F9B729 /* RevenueCatUI */,
+				A90000022F9EE6DA00F9B729 /* Ably */,
 			);
 			productName = Outbound;
 			productReference = DB3A91492F9EE18E00F9B729 /* Outbound.app */;
@@ -369,6 +372,7 @@
 			packageReferences = (
 				AB0000012F9EE18E00F9B729 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				C10000002F9EE18E00F9B729 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
+				A90000032F9EE6DA00F9B729 /* XCRemoteSwiftPackageReference "ably-cocoa" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DB3A914A2F9EE18E00F9B729 /* Products */;
@@ -971,6 +975,11 @@
 				minimumVersion = 5.82.0;
 			};
 		};
+		A90000032F9EE6DA00F9B729 /* XCRemoteSwiftPackageReference "ably-cocoa" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ably/ably-cocoa";
+			requirement = { kind = upToNextMajorVersion; minimumVersion = 1.2.61; };
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -998,6 +1007,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = C10000002F9EE18E00F9B729 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
 			productName = RevenueCatUI;
+		};
+		A90000022F9EE6DA00F9B729 /* Ably */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A90000032F9EE6DA00F9B729 /* XCRemoteSwiftPackageReference "ably-cocoa" */;
+			productName = Ably;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

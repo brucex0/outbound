@@ -1,6 +1,7 @@
 import Combine
 import CoreLocation
 import Foundation
+import Ably
 
 struct LiveGroupSession: Identifiable, Hashable {
     let id: String
@@ -139,6 +140,9 @@ final class LiveGroupStore: ObservableObject {
     private var lastSentDistanceM: Double?
     private var updateTask: Task<Void, Never>?
     private var pollingTask: Task<Void, Never>?
+    private var realtime: AblySessionTransport?
+    private var realtimeSessionID: String?
+    private var lastCheckpointAt: Date?
 #if DEBUG
     private var isDebugTestGroupRun = false
 #endif
@@ -205,7 +209,7 @@ final class LiveGroupStore: ObservableObject {
                 )
             )
             apply(response)
-            startPolling()
+            connectRealtime(sessionID: response.id)
             guard let inviteURL = response.inviteURL else { return nil }
             return LiveGroupStartPresentation(
                 url: inviteURL,
@@ -236,7 +240,7 @@ final class LiveGroupStore: ObservableObject {
         do {
             let response = try await api.joinLiveGroupRun(LiveGroupJoinRequest(invite: trimmed))
             apply(response)
-            startPolling()
+            connectRealtime(sessionID: response.id)
         } catch {
             lastErrorMessage = "Could not join group: \(error.localizedDescription)"
         }
@@ -251,7 +255,7 @@ final class LiveGroupStore: ObservableObject {
         do {
             let response = try await api.joinLiveGroupRun(activityEventID: activityEventID)
             apply(response)
-            startPolling()
+            connectRealtime(sessionID: response.id)
         } catch {
             lastErrorMessage = "Could not join the event live map: \(error.localizedDescription)"
         }
@@ -275,6 +279,18 @@ final class LiveGroupStore: ObservableObject {
 
         lastSentAt = snapshot.recordedAt
         lastSentDistanceM = snapshot.distanceMeters
+        realtime?.publishLocation([
+            "recordedAt": ISO8601DateFormatter().string(from: snapshot.recordedAt),
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+            "altitudeM": location.altitudeMeters.isFinite ? location.altitudeMeters : NSNull(),
+            "accuracyM": location.horizontalAccuracyMeters.isFinite ? location.horizontalAccuracyMeters : NSNull(),
+            "elapsedSeconds": snapshot.elapsedSeconds,
+            "distanceM": snapshot.distanceMeters,
+            "paceSecondsPerKM": snapshot.currentPaceSecsPerKm as Any? ?? NSNull(),
+        ])
+        guard lastCheckpointAt.map({ snapshot.recordedAt.timeIntervalSince($0) >= 60 }) ?? true else { return }
+        lastCheckpointAt = snapshot.recordedAt
         isUpdating = true
         updateTask?.cancel()
         updateTask = Task { [api] in
@@ -327,9 +343,16 @@ final class LiveGroupStore: ObservableObject {
                 await MainActor.run {
                     apply(response)
                     if activeSession?.isActive == true {
-                        startPolling()
+                        if response.participants.first(where: { $0.userId == response.currentUserId })?.status == "active" {
+                            connectRealtime(sessionID: sessionID)
+                        } else {
+                            realtime?.close()
+                            realtime = nil
+                            realtimeSessionID = nil
+                        }
                     } else {
-                        pollingTask?.cancel()
+                        realtime?.close()
+                        realtime = nil
                     }
                     lastErrorMessage = nil
                 }
@@ -380,32 +403,50 @@ final class LiveGroupStore: ObservableObject {
         }
     }
 
-    private func startPolling() {
-        pollingTask?.cancel()
-        guard let sessionID = activeSession?.id else { return }
-        pollingTask = Task { [api] in
-            while !Task.isCancelled {
-                do {
-                    try await Task.sleep(nanoseconds: 12_000_000_000)
-                    let response = try await api.fetchLiveGroupRun(sessionID: sessionID)
-                    await MainActor.run {
-                        apply(response)
-                        lastErrorMessage = nil
-                    }
-                } catch is CancellationError {
-                    return
-                } catch {
-                    await MainActor.run {
-                        lastErrorMessage = "Group locations are stale."
-                    }
+    private func connectRealtime(sessionID: String) {
+        guard realtimeSessionID != sessionID else { return }
+        realtime?.close()
+        realtimeSessionID = sessionID
+        lastCheckpointAt = nil
+        lastSentAt = nil
+        lastSentDistanceM = nil
+        realtime = AblySessionTransport(kind: "group_run", sessionID: sessionID, api: api) { [weak self] message in
+            guard message.name == "location" || message.name == "participant.changed" else { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if message.name == "location", let senderID = message.clientId, let payload = message.data as? [String: Any] {
+                    self.applyRealtimeLocation(senderID: senderID, payload: payload)
+                } else if let response = try? await self.api.fetchLiveGroupRun(sessionID: sessionID) {
+                    self.apply(response)
                 }
             }
         }
     }
 
+    private func applyRealtimeLocation(senderID: String, payload: [String: Any]) {
+        guard let index = participants.firstIndex(where: { $0.userId == senderID }),
+              let latitude = (payload["latitude"] as? NSNumber)?.doubleValue,
+              let longitude = (payload["longitude"] as? NSNumber)?.doubleValue else { return }
+        let old = participants[index]
+        let recordedAt = (payload["recordedAt"] as? String).flatMap(ISO8601DateFormatter().date(from:)) ?? Date()
+        participants[index] = LiveGroupParticipant(
+            id: old.id, userId: old.userId, displayName: old.displayName, status: "active",
+            joinedAt: old.joinedAt, leftAt: nil,
+            lastLocationAt: recordedAt,
+            coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+            distanceM: (payload["distanceM"] as? NSNumber)?.doubleValue,
+            paceSecondsPerKM: (payload["paceSecondsPerKM"] as? NSNumber)?.doubleValue,
+            isCurrentUser: old.isCurrentUser
+        )
+        lastErrorMessage = nil
+    }
+
     private func stopLocalState(markEnded: Bool) {
         updateTask?.cancel()
         pollingTask?.cancel()
+        realtime?.close()
+        realtime = nil
+        realtimeSessionID = nil
         updateTask = nil
         pollingTask = nil
 
