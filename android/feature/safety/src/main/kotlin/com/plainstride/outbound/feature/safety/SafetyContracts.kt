@@ -16,7 +16,7 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 @Serializable data class PutTrustedContactsResponse(val contractVersion:Int=1,val contactUserIds:List<String>,val defaultContactUserId:String?=null,val updatedAt:String?=null)
 @Serializable data class CreateLiveShareRequest(val activityId:String?=null,val recipientUserIds:List<String> = emptyList(),val sport:String?=null,val title:String?=null,val expiresInSeconds:Int=14400)
 @Serializable data class LiveShare(val id:String,val shareURL:String?=null,val status:String,val startedAt:String,val expiresAt:String,val stale:Boolean=false)
-@Serializable data class LiveLocation(val recordedAt:String,val latitude:Double,val longitude:Double,val altitudeM:Double?=null,val accuracyM:Double?=null,val elapsedSeconds:Int,val distanceM:Double)
+@Serializable data class LiveLocation(val recordedAt:String,val latitude:Double,val longitude:Double,val altitudeM:Double?=null,val accuracyM:Double?=null,val elapsedSeconds:Int,val distanceM:Double,val currentPaceSecsPerKm:Double?=null,val heartRate:Int?=null)
 @Serializable data class LiveRunner(val id:String,val displayName:String,val username:String?=null,val avatarUrl:String?=null)
 @Serializable data class LiveRoutePoint(val recordedAt:String?=null,val latitude:Double,val longitude:Double)
 @Serializable data class VoiceCheerReceipt(val id:String,val createdAt:String,val deliveredAt:String?=null,val playedAt:String?=null,val acknowledgedAt:String?=null)
@@ -38,8 +38,11 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 @Serializable data class CreateGroupRunRequest(val title:String?=null,val sport:String?=null,val expiresInSeconds:Int=14400)
 @Serializable data class JoinGroupRunRequest(val invite:String)
 @Serializable data class GroupLocationUpdate(val recordedAt:String,val latitude:Double,val longitude:Double,val altitudeM:Double?=null,val accuracyM:Double?=null,val elapsedSeconds:Int,val distanceM:Double,val paceSecondsPerKM:Double?=null)
+@Serializable data class RealtimeTokenRequest(val kind:String,val sessionId:String)
+@Serializable data class RealtimeToken(val token:String,val expiresAt:Long,val channel:String,val clientId:String)
 
 interface SafetyApi {
+ @POST("v1/realtime/token") suspend fun realtimeToken(@Header("Authorization") auth:String,@Body body:RealtimeTokenRequest):Response<RealtimeToken>
  @GET("v1/safety/trusted-contacts") suspend fun trustedContacts(@Header("Authorization") auth:String):Response<SyncedTrustedContacts>
  @PUT("v1/safety/trusted-contacts") suspend fun putTrustedContacts(@Header("Authorization") auth:String,@Body body:PutTrustedContactsRequest):Response<PutTrustedContactsResponse>
  @POST("v1/safety/live-shares") suspend fun create(@Header("Authorization") auth:String,@Body body:CreateLiveShareRequest):Response<LiveShare>

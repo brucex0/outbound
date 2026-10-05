@@ -47,8 +47,8 @@ data class HeardLiveCheer(val shareId:String,val cheerId:String,val senderName:S
    analytics.record(com.plainstride.outbound.core.analytics.AnalyticsEvent("live_voice_cheer_played",mapOf(com.plainstride.outbound.core.analytics.AnalyticsProperty.CountBucket to "1")))
   }
  }
- fun acknowledge(){val current=mutableHeard.value?:return;viewModelScope.launch{val ok=coordinator.acknowledgeVoiceCheer(current.shareId,current.cheerId).isSuccess;analytics.record(com.plainstride.outbound.core.analytics.AnalyticsEvent("live_voice_cheer_acknowledged",mapOf(com.plainstride.outbound.core.analytics.AnalyticsProperty.Result to if(ok)"success" else "failure")));if(ok&&mutableHeard.value==current)mutableHeard.value=null}}
- fun dismiss(){mutableHeard.value=null}
+ fun acknowledge(){val current=mutableHeard.value?:return;viewModelScope.launch{val ok=coordinator.acknowledgeVoiceCheer(current.shareId,current.cheerId).isSuccess;analytics.record(com.plainstride.outbound.core.analytics.AnalyticsEvent("live_voice_cheer_acknowledged",mapOf(com.plainstride.outbound.core.analytics.AnalyticsProperty.Result to if(ok)"success" else "failure")));if(ok&&mutableHeard.value==current){mutableHeard.value=null;receivePendingCheer()}}}
+ fun dismiss(){mutableHeard.value=null;viewModelScope.launch{receivePendingCheer()}}
 }
 
 @Composable
@@ -64,14 +64,6 @@ fun RecordingSafetyEffect(
    onGroupRunState(group?.takeIf { activityEventId != null && it.activityEventId == activityEventId }?.toSharedLiveRun())
   }
  }
- LaunchedEffect(activityEventId, snapshot.status) {
-  if (activityEventId == null || snapshot.status != RecordingStatus.ACTIVE) return@LaunchedEffect
-  while (true) {
-   val run = coordinator.group.value?.takeIf { it.activityEventId == activityEventId } ?: break
-   coordinator.refreshGroup(run.id)
-   delay(12_000)
-  }
- }
  LaunchedEffect(snapshot.status,snapshot.sessionId,activityEventId){
   val previous=prior.value;prior.value=snapshot.status
   when(snapshot.status){
@@ -80,11 +72,15 @@ fun RecordingSafetyEffect(
    RecordingStatus.IDLE->if(previous!=null&&previous!=RecordingStatus.IDLE){coordinator.recordingEnded();coordinator.finishRecordingGroupRun(activityEventId)}
    else->Unit
   }
-  while(snapshot.status==RecordingStatus.ACTIVE){viewModel.receivePendingCheer();delay(4_000)}
+ if(snapshot.status==RecordingStatus.ACTIVE)viewModel.receivePendingCheer()
+ }
+ LaunchedEffect(snapshot.status,snapshot.sessionId){
+  if(snapshot.status!=RecordingStatus.ACTIVE)return@LaunchedEffect
+  coordinator.cheerSignals.collect{viewModel.receivePendingCheer()}
  }
  LaunchedEffect(snapshot.latestLocation?.capturedAtEpochMilliseconds,activityEventId){
   val p=snapshot.latestLocation?:return@LaunchedEffect
-  if(snapshot.status==RecordingStatus.ACTIVE)coordinator.updateRecording(LiveLocation(Instant.ofEpochMilli(p.capturedAtEpochMilliseconds).toString(),p.latitude,p.longitude,p.altitudeMeters,p.horizontalAccuracyMeters,snapshot.elapsedSeconds.toInt(),snapshot.distanceMeters),snapshot.currentPaceSecondsPerKilometer,activityEventId)
+  if(snapshot.status==RecordingStatus.ACTIVE)coordinator.updateRecording(LiveLocation(Instant.ofEpochMilli(p.capturedAtEpochMilliseconds).toString(),p.latitude,p.longitude,p.altitudeMeters,p.horizontalAccuracyMeters,snapshot.elapsedSeconds.toInt(),snapshot.distanceMeters,snapshot.currentPaceSecondsPerKilometer),snapshot.currentPaceSecondsPerKilometer,activityEventId)
  }
  if(snapshot.status==RecordingStatus.ACTIVE&&heard!=null)Box(Modifier.fillMaxSize().padding(horizontal=16.dp, vertical=54.dp),contentAlignment=Alignment.TopCenter){Surface(color=MaterialTheme.colorScheme.surface,shape=RoundedCornerShape(18.dp),shadowElevation=8.dp,modifier=Modifier.fillMaxWidth()){Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){Text(stringResource(R.string.cheer_runner_heard_from,heard.senderName),Modifier.weight(1f),style=MaterialTheme.typography.bodyMedium);TextButton(onClick=viewModel::acknowledge){Text(stringResource(R.string.cheer_runner_acknowledge))};TextButton(onClick=viewModel::dismiss){Text(stringResource(R.string.cheer_runner_dismiss))}}}}
 }

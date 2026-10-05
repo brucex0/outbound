@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +36,7 @@ fun SafetyRoute(
     val followerLoading by viewModel.followerLoading.collectAsStateWithLifecycle()
     val followerMessage by viewModel.followerMessage.collectAsStateWithLifecycle()
     LaunchedEffect(targetId, targetKind) { targetId?.takeIf(String::isNotBlank)?.let { if(targetKind=="live") viewModel.openLiveShare(it) else viewModel.openGroup(it) } }
+    DisposableEffect(targetKind,targetId){onDispose{if(targetKind=="live")viewModel.stopWatchingLiveShare()}}
     LaunchedEffect(accountId) { viewModel.onAccountActivated(accountId) }
     LaunchedEffect(connections) { viewModel.onConnectionsUpdated(connections) }
     val permissionPrefs=remember{context.getSharedPreferences("notification_permission",android.content.Context.MODE_PRIVATE)}
