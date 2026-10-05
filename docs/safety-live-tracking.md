@@ -153,7 +153,10 @@ Do not put networking directly in `ActivityRecorder`; keep recording stable even
 - Tapping a live-cheer push opens the authenticated follower screen directly using the share ID in the push payload; tapping the same item in the Social inbox opens the same destination.
 - Social shows active invitations in app; the follower screen provides the live map and a hold-to-record voice control.
 - A failed initial follower lookup shows an unavailable state with retry instead of an indefinite loading indicator. Microphone, recording, audio-preparation, and send outcomes use brief toast feedback.
-- The runner polls for pending recordings and plays the unmodified audio through the live guide audio player.
+- The runner receives an Ably wake-up event for a new recording, then fetches and plays the unmodified audio through the live guide audio player.
+- Active runner location and group-run locations publish over Ably Pub/Sub. Invited viewers subscribe to the one session channel; group runners publish and subscribe to the one group channel. REST remains responsible for session authorization, initial snapshots, one-minute recovery checkpoints, and voice audio. Cheer uploads publish only a `cheer.available` wake-up event; audio remains authenticated REST data.
+- The backend issues two-minute Ably tokens bound to the authenticated Plainstride user and exact active session channel. The SDK renews them while the session remains authorized. Group participants receive publish/subscribe; a live-share owner receives publish/subscribe; invited cheerers receive subscribe only. Never place `ABLY_API_KEY` in either app.
+- Configure the Ably channel namespace without message history/persistence. Live location is ephemeral and clients fetch an authenticated REST snapshot when opening or recovering a session.
 - Fetching a voice cheer records delivery only. The app records `playedAt` after successful audio playback, so the follower sees a truthful `Sent → Delivered → Heard` progression.
 - After playback, the runner sees a compact, dismissible banner and can send one explicit `❤️ Heard you` acknowledgment. The follower's persistent cheer-status indicator updates when that acknowledgment arrives.
 - Cheer receipts store `deliveredAt`, `playedAt`, and `acknowledgedAt`; the follower APIs expose only the current follower's latest cheer receipt.

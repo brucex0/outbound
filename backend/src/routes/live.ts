@@ -7,6 +7,7 @@ import { requireDatabase } from "../services/database.js";
 import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import { getPrismaClient } from "../services/prisma.js";
 import type { AppEnv } from "../types/hono.js";
+import { ablyChannel, publishAbly } from "../services/ably.js";
 
 const router = new Hono<AppEnv>();
 
@@ -123,6 +124,7 @@ router.post("/group-runs/activity-events/:activityEventId", async (c) => {
     where: { id: activeSession.id },
     include: { participants: true },
   });
+  void publishAbly(ablyChannel("group_run", activeSession.id), "participant.changed", {}).catch(() => false);
   return c.json(groupRunPayload(updated, user.id));
 });
 
@@ -168,6 +170,7 @@ router.post("/group-runs", zValidator("json", createGroupRunSchema), async (c) =
     include: { participants: true },
   });
 
+  void publishAbly(ablyChannel("group_run", session.id), "participant.changed", {}).catch(() => false);
   return c.json(groupRunPayload(session, user.id, token, groupRunInviteURL(c.req.url, token)), 201);
 });
 
@@ -210,6 +213,7 @@ router.post("/group-runs/join", zValidator("json", joinGroupRunSchema), async (c
     include: { participants: true },
   });
 
+  void publishAbly(ablyChannel("group_run", session.id), "participant.changed", {}).catch(() => false);
   return c.json(groupRunPayload(updated, user.id, token, groupRunInviteURL(c.req.url, token)));
 });
 
@@ -304,6 +308,7 @@ router.post("/group-runs/:id/participants/me/leave", async (c) => {
     ? (await refreshSessionStatus(session.id)) ?? session
     : await closeIfNoActiveParticipants(session.id);
 
+  void publishAbly(ablyChannel("group_run", session.id), "participant.changed", {}).catch(() => false);
   return c.json(groupRunPayload(updated, user.id));
 });
 
@@ -327,6 +332,7 @@ router.post("/group-runs/:id/participants/me/finish", async (c) => {
 
   const updated = await closeIfNoActiveParticipants(session.id);
 
+  void publishAbly(ablyChannel("group_run", session.id), "participant.changed", {}).catch(() => false);
   return c.json(groupRunPayload(updated, user.id));
 });
 
@@ -359,6 +365,7 @@ router.post("/group-runs/:id/end", async (c) => {
     include: { participants: true },
   });
 
+  void publishAbly(ablyChannel("group_run", session.id), "participant.changed", {}).catch(() => false);
   return c.json(groupRunPayload(updated, user.id));
 });
 

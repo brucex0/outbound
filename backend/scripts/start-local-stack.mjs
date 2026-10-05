@@ -2,6 +2,7 @@ import { generateKeyPairSync } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import path from "node:path";
+import { homedir } from "node:os";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
@@ -18,6 +19,7 @@ const databaseUrl =
   process.env.DATABASE_URL ??
   `postgresql://${dbUser}:${dbPassword}@127.0.0.1:${dbPort}/${dbName}?schema=public`;
 
+loadEnvFileIfPresent(path.join(homedir(), ".config", "plainstride", "ably.env"));
 loadEnvFileIfPresent(path.join(backendDir, ".env"));
 loadEnvFileIfPresent(path.join(backendDir, ".env.local"));
 

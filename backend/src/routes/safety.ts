@@ -8,6 +8,7 @@ import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import { getPrismaClient } from "../services/prisma.js";
 import { deliverPushNotification } from "../services/pushNotifications.js";
 import type { AppEnv } from "../types/hono.js";
+import { ablyChannel, publishAbly } from "../services/ably.js";
 import { hasActiveCapability } from "../services/entitlements.js";
 import { compactPerson } from "../services/apiAssetURLs.js";
 
@@ -251,6 +252,9 @@ router.post("/live-shares/invited/:id/cheers", zValidator("json", cheerSchema), 
   const audio = Buffer.from(body.audioBase64, "base64");
   if (audio.length === 0 || audio.length > 1_000_000) return c.json({ error: "Voice cheer is too large." }, 413);
   const cheer = await prisma.safetyLiveShareCheer.create({ data: { shareId: share.id, senderId: user.id, audio, contentType: body.contentType, durationMs: body.durationMs } });
+  // The channel event is only a wake-up signal; the authenticated REST endpoint
+  // remains the source of truth for the audio payload and delivery receipt.
+  await publishAbly(ablyChannel("live_share", share.id), "cheer.available", { cheerId: cheer.id }).catch(() => false);
   return c.json(cheerReceiptPayload(cheer), 201);
 });
 
