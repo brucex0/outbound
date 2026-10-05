@@ -1,5 +1,12 @@
 # Social QA
 
+## 2026-10-04 feed layout follow-up
+
+- The retained collection view still showed its section header and cards overlapping before a scroll despite post-snapshot layout invalidation.
+- Replaced the hosted collection cells with a retained SwiftUI `ScrollView` and `LazyVStack`; visited feature tabs stay mounted to preserve the feed position across detail navigation.
+- Constrained the app launch mark to its splash frame and clipped it to prevent the source image from escaping the page bounds.
+- Build-only validation succeeds; visual verification on device remains outstanding.
+
 ## 2026-09-27 iOS feed crash review
 
 - Retrieved two matching `Outbound` crash reports from Bruce main (4:05 PM and 4:07 PM): both were main-thread `SIGTRAP` crashes in repeated `UICollectionView` visible-cell/layout updates, not jetsam terminations.

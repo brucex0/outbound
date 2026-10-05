@@ -8,7 +8,6 @@ struct SocialHomeView: View {
     private static let feedPageSize = 12
 
     @Environment(\.analyticsManager) private var analyticsManager
-    @Environment(\.outboundTheme) private var feedTheme
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var groupStore: GroupStore
@@ -347,7 +346,7 @@ struct SocialHomeView: View {
         _ tab: SocialFeatureTab,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        // Retain visited tabs, including the native feed list and its viewport.
+        // Retain visited tabs, including the SwiftUI feed scroll view.
         // Unvisited tabs should not start requests or lay out hidden lists/maps.
         if selectedFeatureTab == tab || visitedFeatureTabs.contains(tab) {
             content()
@@ -358,19 +357,26 @@ struct SocialHomeView: View {
     }
 
     private var feedTab: some View {
-        RetainedFeedList(
-            rows: feedRows,
-            renderVersion: feedRenderVersion,
-            refresh: { await refreshFeed(clearUnseenBadge: true, resetFeed: true) }
-        ) { row in
-            switch row {
-            case .header:
-                feedHeader
-            case .post(let post):
-                feedCard(post)
-            case .pagination:
-                feedPagination
+        ScrollView(showsIndicators: false) {
+            LazyVStack(alignment: .leading, spacing: 12) {
+                ForEach(feedRows) { row in
+                    Group {
+                        switch row {
+                        case .header:
+                            feedHeader
+                        case .post(let post):
+                            feedCard(post)
+                        case .pagination:
+                            feedPagination
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
+            .padding(.vertical, 12)
+        }
+        .refreshable {
+            await refreshFeed(clearUnseenBadge: true, resetFeed: true)
         }
     }
 
@@ -387,15 +393,6 @@ struct SocialHomeView: View {
             rows.append(.pagination(cursor, socialStore.isLoading))
         }
         return rows
-    }
-
-    private var feedRenderVersion: String {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .sortedKeys
-        let recognitions = (try? encoder.encode(recognitionStore.awards)) ?? Data()
-        let socialRecognitions = (try? encoder.encode(socialRecognitionStore.awards)) ?? Data()
-        return "\(feedTheme.rawValue)|\(measurementPreferences.unitSystem.rawValue)|\(socialStore.isSocialMutationPending)|\(hasInitializedFeatureTab)|\(selectedFeatureTab.rawValue)|"
-            + recognitions.base64EncodedString() + socialRecognitions.base64EncodedString()
     }
 
     private var groupsTab: some View {

@@ -519,6 +519,7 @@ private struct AppLaunchView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 112, height: 112)
+                .clipped()
 
             Text(String(localized: "Plainstride"))
                 .font(.system(.headline, design: .rounded, weight: .semibold))
@@ -526,6 +527,8 @@ private struct AppLaunchView: View {
                 .foregroundStyle(.primary)
                 .offset(y: 80)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
         .accessibilityElement(children: .combine)
     }
 }
