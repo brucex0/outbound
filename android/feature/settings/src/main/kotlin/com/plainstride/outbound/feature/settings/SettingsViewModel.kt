@@ -13,6 +13,8 @@ import kotlinx.coroutines.launch
 import com.plainstride.outbound.core.analytics.AnalyticsEvent
 import com.plainstride.outbound.core.analytics.AnalyticsProperty
 import com.plainstride.outbound.core.analytics.ProductAnalytics
+import com.plainstride.outbound.core.auth.SessionCoordinator
+import com.plainstride.outbound.core.auth.SessionState
 import com.plainstride.outbound.core.designsystem.PlainstrideThemeId
 import com.plainstride.outbound.core.network.AccountDto
 
@@ -30,23 +32,57 @@ enum class SettingsMessage { Refreshed, Saved, SaveFailed, RefreshFailed }
 class SettingsViewModel @Inject constructor(
     private val repository: SettingsRepository,
     private val analytics: ProductAnalytics,
+    private val sessions: SessionCoordinator,
 ) : ViewModel() {
     private val account = MutableStateFlow<AccountDto?>(null)
     private val summary = MutableStateFlow<MeSummary?>(null)
     private val loading = MutableStateFlow(true)
     private val saving = MutableStateFlow(false)
+    private var activeAccountId: String? = null
     val messages = MutableSharedFlow<SettingsMessage>(extraBufferCapacity = 2)
 
     val state = combine(repository.preferences, account, summary, loading, saving, ::SettingsUiState)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
-    init { refresh(showSuccess = false) }
+    init {
+        viewModelScope.launch {
+            sessions.state.collect { session ->
+                val accountId = when (session) {
+                    is SessionState.SignedIn -> session.accountId
+                    is SessionState.Refreshing -> session.accountId
+                    SessionState.Loading -> return@collect
+                    SessionState.SignedOut -> null
+                }
+                if (accountId == activeAccountId) return@collect
+
+                activeAccountId = accountId
+                account.value = null
+                summary.value = null
+                if (accountId == null) {
+                    loading.value = false
+                } else {
+                    refresh(accountId, showSuccess = false)
+                }
+            }
+        }
+    }
 
     fun refresh(showSuccess: Boolean = true) {
+        activeAccountId?.let { refresh(it, showSuccess) }
+    }
+
+    private fun refresh(expectedAccountId: String, showSuccess: Boolean) {
         viewModelScope.launch {
             loading.value = true
-            repository.refresh().fold(
+            val result = repository.refresh()
+            // A request started for the previous session must never repopulate Me
+            // after the user has signed out or switched accounts.
+            if (activeAccountId != expectedAccountId || sessions.state.value.accountId() != expectedAccountId) {
+                return@launch
+            }
+            result.fold(
                 onSuccess = {
+                    if (it.first.id != expectedAccountId) return@fold
                     account.value = it.first
                     summary.value = it.second
                     if (showSuccess) messages.emit(SettingsMessage.Refreshed)
@@ -111,5 +147,11 @@ class SettingsViewModel @Inject constructor(
             messages.emit(if (result.isSuccess) SettingsMessage.Saved else SettingsMessage.SaveFailed)
             saving.value = false
         }
+    }
+
+    private fun SessionState.accountId(): String? = when (this) {
+        is SessionState.SignedIn -> accountId
+        is SessionState.Refreshing -> accountId
+        SessionState.Loading, SessionState.SignedOut -> null
     }
 }

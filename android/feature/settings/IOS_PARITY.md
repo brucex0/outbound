@@ -15,6 +15,7 @@
 - Appearance keeps the System/Light/Dark segmented control in Settings and opens a dedicated Appearance chooser from the Theme row. The chooser repeats the mode control and lists all eight themes with gradient previews and a selected marker, matching iOS `ThemeChooserView`; mode and theme changes apply and persist immediately.
 - Preference writes are local-first and report transient save or retry results through the app snackbar.
 - Sign-out and permanent account deletion require confirmation; deletion clears account-scoped local data after server success.
+- Me clears the account identity on sign-out and refreshes it when a different account signs in; late refresh responses from the previous session are ignored.
 
 ## Resources, Analytics, And Accessibility
 
@@ -25,7 +26,7 @@
 
 ## Reference Scenarios
 
-- New account with no plan or activities; cached/offline account; active plan with weekly progress; long activity history.
+- New account with no plan or activities; cached/offline account; active plan with weekly progress; long activity history; sign out and sign into a different account, then confirm Me and Settings show only the new account's name, avatar, and email.
 - Metric and imperial units, every appearance theme, increased font scale, and all supported locales.
 - Sign-out cancellation, Google linking, profile validation, preference retry, and account deletion confirmation.
 

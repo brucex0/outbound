@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import com.plainstride.outbound.core.auth.SessionCoordinator
+import com.plainstride.outbound.core.auth.SessionState
 import com.plainstride.outbound.core.designsystem.PlainstrideThemeId
 import com.plainstride.outbound.core.model.PlanningState
 import com.plainstride.outbound.core.network.AccountApiService
@@ -64,6 +65,7 @@ class DefaultSettingsRepository @Inject constructor(
     private val syncMutex = Mutex()
     private var serverSnapshot: UserPreferencesDto? = null
     private var cachedAccount: AccountDto? = null
+    private var cachedAccountId: String? = null
 
     override val preferences: Flow<SettingsPreferences> = dataStore.data.map { values ->
         SettingsPreferences(
@@ -76,6 +78,12 @@ class DefaultSettingsRepository @Inject constructor(
     }
 
     override suspend fun refresh(): Result<Pair<AccountDto, MeSummary?>> {
+        val accountId = sessions.state.value.accountId() ?: return Result.failure(SettingsException.SignedOut)
+        if (cachedAccountId != accountId) {
+            cachedAccountId = accountId
+            cachedAccount = null
+            serverSnapshot = null
+        }
         val token = sessions.validAccessToken() ?: return Result.failure(SettingsException.SignedOut)
         val account = apiCall { accountApi.currentAccount("Bearer $token") }
         val remotePreferences = apiCall { accountApi.preferences("Bearer $token") }
@@ -93,6 +101,9 @@ class DefaultSettingsRepository @Inject constructor(
         }
         return when (account) {
             is ApiResult.Success -> {
+                if (sessions.state.value.accountId() != accountId || account.value.id != accountId) {
+                    return Result.failure(SettingsException.SignedOut)
+                }
                 cachedAccount = account.value
                 Result.success(account.value to (planning as? ApiResult.Success)?.value?.toSummary())
             }
@@ -101,6 +112,12 @@ class DefaultSettingsRepository @Inject constructor(
     }
 
     override suspend fun updateProfile(displayName: String, username: String?, contactEmail: String?): Result<AccountDto> {
+        val accountId = sessions.state.value.accountId() ?: return Result.failure(SettingsException.SignedOut)
+        if (cachedAccountId != accountId) {
+            cachedAccountId = accountId
+            cachedAccount = null
+            serverSnapshot = null
+        }
         val token = sessions.validAccessToken() ?: return Result.failure(SettingsException.SignedOut)
         val request = UpdateAccountRequest(
             username = username?.trim()?.takeIf(String::isNotEmpty),
@@ -111,6 +128,9 @@ class DefaultSettingsRepository @Inject constructor(
         )
         return when (val result = apiCall { accountApi.updateAccount("Bearer $token", request) }) {
             is ApiResult.Success -> {
+                if (sessions.state.value.accountId() != accountId || result.value.id != accountId) {
+                    return Result.failure(SettingsException.SignedOut)
+                }
                 cachedAccount = result.value
                 Result.success(result.value)
             }
@@ -172,6 +192,12 @@ class DefaultSettingsRepository @Inject constructor(
 
     private fun deviceMeasurement() = if (Locale.getDefault().country in setOf("US", "LR", "MM")) MeasurementSystem.Imperial else MeasurementSystem.Metric
     private fun deviceTemperature() = if (Locale.getDefault().country in setOf("US", "BS", "BZ", "KY", "PW")) TemperatureUnit.Fahrenheit else TemperatureUnit.Celsius
+
+    private fun SessionState.accountId(): String? = when (this) {
+        is SessionState.SignedIn -> accountId
+        is SessionState.Refreshing -> accountId
+        SessionState.Loading, SessionState.SignedOut -> null
+    }
 
     private companion object {
         val MeasurementKey = stringPreferencesKey("measurement_unit_system_v1")
