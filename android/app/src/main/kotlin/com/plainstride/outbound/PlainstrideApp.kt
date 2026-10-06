@@ -332,6 +332,15 @@ private fun SignedInApp(
     val rewardsState by rewardsViewModel.state.collectAsStateWithLifecycle()
     val reminderViewModel: ReminderViewModel = hiltViewModel()
     val integration by integrationViewModel.state.collectAsStateWithLifecycle()
+    val reminderEnabled by reminderViewModel.enabled.collectAsStateWithLifecycle()
+    val notificationPermissionPreferences = remember(context) {
+        context.getSharedPreferences("notification_permission", android.content.Context.MODE_PRIVATE)
+    }
+    var notificationPermissionRequested by remember {
+        mutableStateOf(notificationPermissionPreferences.getBoolean("requested", false))
+    }
+    var pendingPushPermission by remember { mutableStateOf<Boolean?>(null) }
+    var pendingReminderPermission by remember { mutableStateOf<Boolean?>(null) }
     var pushPermissionGranted by remember {
         mutableStateOf(
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -340,8 +349,30 @@ private fun SignedInApp(
     }
     val pushPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         pushPermissionGranted = granted
-        integrationViewModel.setPushEnabled(granted)
+        notificationPermissionRequested = true
+        notificationPermissionPreferences.edit().putBoolean("requested", true).apply()
+        pendingPushPermission?.let { integrationViewModel.setPushEnabled(granted && it) }
+        pendingPushPermission = null
+        pendingReminderPermission?.let { reminderViewModel.setEnabled(granted && it) }
+        pendingReminderPermission = null
         integrationViewModel.trackPushPermissionResult(granted)
+        reminderViewModel.trackPermissionResult(granted)
+    }
+    fun requestNotificationPermission(forPush: Boolean, forReminder: Boolean) {
+        val permission = android.Manifest.permission.POST_NOTIFICATIONS
+        val rationaleAvailable = context.findActivity()?.shouldShowRequestPermissionRationale(permission) == true
+        if (notificationPermissionRequested && !rationaleAvailable) {
+            context.startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${context.packageName}"))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+            return
+        }
+        notificationPermissionRequested = true
+        notificationPermissionPreferences.edit().putBoolean("requested", true).apply()
+        pendingPushPermission = forPush.takeIf { it }
+        pendingReminderPermission = forReminder.takeIf { it }
+        pushPermissionLauncher.launch(permission)
     }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, context) {
@@ -349,6 +380,7 @@ private fun SignedInApp(
             if (event == Lifecycle.Event.ON_RESUME) {
                 pushPermissionGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
                     context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                notificationPermissionRequested = notificationPermissionPreferences.getBoolean("requested", false)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -396,6 +428,20 @@ private fun SignedInApp(
         }
     }
     LaunchedEffect(accountId) { accountId?.let { integrationViewModel.start(it, resources.configuration.locales[0].toLanguageTag());cycleViewModel.start(it);healthViewModel.start(it) } }
+    LaunchedEffect(accountId, pushPermissionGranted, notificationPermissionRequested, reminderEnabled) {
+        if (
+            accountId != null &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            !notificationPermissionRequested
+        ) {
+            if (pushPermissionGranted) {
+                notificationPermissionRequested = true
+                notificationPermissionPreferences.edit().putBoolean("requested", true).apply()
+            } else {
+                requestNotificationPermission(forPush = false, forReminder = reminderEnabled)
+            }
+        }
+    }
     LaunchedEffect(accountId) { cheerPickerViewModel.onAccountActivated(accountId) }
     LaunchedEffect(integration.connections) { cheerPickerViewModel.onConnectionsUpdated(integration.connections) }
     LaunchedEffect(accountId) { accountId?.let(connectivityViewModel::start) }
@@ -806,7 +852,14 @@ private fun SignedInApp(
                             },
                             settingsContent = {
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_planned_workouts))
-                                ReminderSettingsRow(reminderViewModel, BuildConfig.DEBUG)
+                                ReminderSettingsRow(
+                                    viewModel = reminderViewModel,
+                                    debugToolsEnabled = BuildConfig.DEBUG,
+                                    notificationsAllowed = pushPermissionGranted,
+                                    onRequestNotificationPermission = {
+                                        requestNotificationPermission(forPush = false, forReminder = true)
+                                    },
+                                )
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_safety))
                                 ListItem(
                                     headlineContent = { Text(stringResource(com.plainstride.outbound.feature.safety.R.string.trusted_contacts_title)) },
@@ -846,7 +899,7 @@ private fun SignedInApp(
                                                 if (!enabled) {
                                                     integrationViewModel.setPushEnabled(false)
                                                 } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !pushPermissionGranted) {
-                                                    pushPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                                    requestNotificationPermission(forPush = true, forReminder = reminderEnabled)
                                                 } else {
                                                     integrationViewModel.setPushEnabled(true)
                                                 }
@@ -1541,4 +1594,10 @@ private fun settingsMessageResource(message: SettingsMessage) = when (message) {
     SettingsMessage.Saved -> com.plainstride.outbound.feature.settings.R.string.settings_saved
     SettingsMessage.SaveFailed -> com.plainstride.outbound.feature.settings.R.string.settings_save_failed
     SettingsMessage.RefreshFailed -> com.plainstride.outbound.feature.settings.R.string.settings_refresh_failed
+}
+
+private tailrec fun android.content.Context.findActivity(): android.app.Activity? = when (this) {
+    is android.app.Activity -> this
+    is android.content.ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

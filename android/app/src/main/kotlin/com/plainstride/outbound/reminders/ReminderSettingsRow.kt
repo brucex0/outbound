@@ -19,7 +19,12 @@ import java.time.format.FormatStyle
 import com.plainstride.outbound.R
 
 @Composable
-fun ReminderSettingsRow(viewModel: ReminderViewModel, debugToolsEnabled: Boolean = false) {
+fun ReminderSettingsRow(
+    viewModel: ReminderViewModel,
+    debugToolsEnabled: Boolean = false,
+    notificationsAllowed: Boolean = true,
+    onRequestNotificationPermission: () -> Unit = {},
+) {
     val context = LocalContext.current
     val enabled by viewModel.enabled.collectAsStateWithLifecycle()
     val time by viewModel.time.collectAsStateWithLifecycle()
@@ -28,7 +33,15 @@ fun ReminderSettingsRow(viewModel: ReminderViewModel, debugToolsEnabled: Boolean
         ListItem(
             headlineContent = { Text(stringResource(R.string.reminder_setting)) },
             supportingContent = { Text(stringResource(R.string.reminder_setting_body, formatted)) },
-            trailingContent = { Switch(enabled, viewModel::setEnabled) },
+            trailingContent = {
+                Switch(
+                    checked = enabled && notificationsAllowed,
+                    onCheckedChange = { requested ->
+                        if (requested && !notificationsAllowed) onRequestNotificationPermission()
+                        else viewModel.setEnabled(requested)
+                    },
+                )
+            },
             modifier = Modifier.clickable {
                 TimePickerDialog(context, { _, hour, minute -> viewModel.setTime(hour, minute) }, time.first, time.second, false).show()
             },

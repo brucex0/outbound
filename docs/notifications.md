@@ -76,7 +76,7 @@ Delivery logs contain only platform, a stable category (`invalid_token`, `creden
 
 - The app creates the `social` notification channel before token registration and uses notification importance appropriate for invitations and responses.
 - FCM token refresh registers the replacement token after authentication. Sign-out removes the current token when connectivity permits; server ownership also moves idempotently if the same token later registers to another account.
-- Permission denial never removes the durable in-app inbox. Android 13 and later request `POST_NOTIFICATIONS` when the runner enables Social notifications in Settings; the switch reflects the OS permission and refreshes when returning from system settings. Permission results emit `push_notification_permission_completed` with only the permission category and granted/denied result.
+- Permission denial never removes the durable in-app inbox. Android 13 and later request `POST_NOTIFICATIONS` once on the first authenticated app entry, matching iOS's initial workout-reminder authorization; later requests happen when the runner enables Social notifications or workout reminders. Those controls reflect OS permission state and refresh after returning from system settings. App-shell permission results emit `push_notification_permission_completed` with only the permission category and granted/denied result. Denial disables workout reminders while leaving the in-app inbox available.
 - Taps use the same bounded `type`, `objectId`, and `destination` routing contract as iOS. Push payloads never contain health, plan, readiness, location, route, or cycle data.
 
 ## iOS Contract

@@ -19,6 +19,9 @@ class ReminderViewModel @Inject constructor(@ApplicationContext context: Context
     val enabled = mutableEnabled.asStateFlow()
     private val mutableTime = MutableStateFlow(preferences.getInt(WorkoutReminderScheduler.HOUR,7) to preferences.getInt(WorkoutReminderScheduler.MINUTE,0));val time=mutableTime.asStateFlow()
     fun setEnabled(enabled: Boolean) { if (enabled) scheduler.schedule(mutableTime.value.first,mutableTime.value.second) else scheduler.cancel(); mutableEnabled.value = enabled; analytics.record(AnalyticsEvent("workout_reminder_changed", mapOf(AnalyticsProperty.Enabled to enabled))) }
+    fun trackPermissionResult(granted: Boolean) = analytics.record(AnalyticsEvent("workout_reminder_permission_result", mapOf(
+        AnalyticsProperty.Result to if (granted) "authorized" else "denied",
+    )))
     fun setTime(hour:Int,minute:Int){mutableTime.value=hour to minute;if(mutableEnabled.value)scheduler.schedule(hour,minute);analytics.record(AnalyticsEvent("workout_reminder_time_changed"))}
     fun sendDebugTest() { scheduler.scheduleDebugTest(); analytics.record(AnalyticsEvent("workout_reminder_debug_test")) }
 }

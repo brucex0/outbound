@@ -7,7 +7,8 @@ import android.os.Build
 import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Mic
@@ -17,7 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +44,8 @@ fun LiveCheerFollowerScreen(
     var startedAt by remember { mutableLongStateOf(0L) }
     var recording by remember { mutableStateOf(false) }
     var permissionMessage by remember { mutableStateOf<Int?>(null) }
+    val microphoneInteraction = remember { MutableInteractionSource() }
+    val microphonePressed by microphoneInteraction.collectIsPressedAsState()
     val startRecording = {
         val file = File.createTempFile("plainstride-cheer-", ".m4a", context.cacheDir)
         val value = if (Build.VERSION.SDK_INT >= 31) MediaRecorder(context) else @Suppress("DEPRECATION") MediaRecorder()
@@ -65,10 +67,11 @@ fun LiveCheerFollowerScreen(
             value.release()
             file.delete()
             recording = false
+            permissionMessage = R.string.cheer_record_failed
         }
     }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (!granted) permissionMessage = R.string.cheer_microphone_required
+        permissionMessage = if (granted) R.string.cheer_microphone_ready else R.string.cheer_microphone_required
     }
     fun finish() {
         val value = recorder ?: return
@@ -85,6 +88,18 @@ fun LiveCheerFollowerScreen(
     }
     val startRecordingLatest = rememberUpdatedState(startRecording)
     val finishRecordingLatest = rememberUpdatedState(::finish)
+    LaunchedEffect(microphonePressed, recording, session?.id, session?.status, session?.voiceCheerEnabled) {
+        if (session?.status != "active" || session.voiceCheerEnabled != true) return@LaunchedEffect
+        if (microphonePressed && !recording) {
+            if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                startRecordingLatest.value()
+            } else {
+                permission.launch(Manifest.permission.RECORD_AUDIO)
+            }
+        } else if (!microphonePressed && recording) {
+            finishRecordingLatest.value()
+        }
+    }
     DisposableEffect(Unit) {
         onDispose { runCatching { recorder?.stop() }; recorder?.release(); recordingFile?.delete() }
     }
@@ -137,14 +152,8 @@ fun LiveCheerFollowerScreen(
             if (session.status == "active" && session.voiceCheerEnabled) {
                 FilledIconButton(
                     onClick = {},
-                    modifier = Modifier.size(80.dp).pointerInput(session.id) {
-                        detectTapGestures(onPress = {
-                            if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) startRecordingLatest.value()
-                            else permission.launch(Manifest.permission.RECORD_AUDIO)
-                            tryAwaitRelease()
-                            finishRecordingLatest.value()
-                        })
-                    },
+                    interactionSource = microphoneInteraction,
+                    modifier = Modifier.size(80.dp),
                     colors = IconButtonDefaults.filledIconButtonColors(containerColor = if (recording) Color(0xFFD32F2F) else MaterialTheme.colorScheme.primary),
                 ) {
                     Icon(if (recording) Icons.Outlined.StopCircle else Icons.Outlined.Mic, stringResource(if (recording) R.string.cheer_release_to_send else R.string.cheer_hold_to_send), Modifier.size(44.dp))
