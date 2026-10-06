@@ -387,12 +387,39 @@ struct LiveMapView: View {
     }
 
     private var currentMapLocation: LiveSessionMapLocation? {
-        guard let currentCoordinate else { return nil }
+        if recorder.state == .active,
+           let coordinate = trailCoordinateSegments.last?.last,
+           let location = locationManager.trackPoints.last {
+            return LiveSessionMapLocation(
+                coordinate: coordinate,
+                course: recordedTrackCourse,
+                updatedAt: location.timestamp
+            )
+        }
+        guard let location = locationManager.location else { return nil }
         return LiveSessionMapLocation(
-            coordinate: currentCoordinate,
-            course: locationManager.location?.course,
-            updatedAt: locationManager.location?.timestamp ?? recorder.liveSnapshot.recordedAt
+            coordinate: location.coordinate,
+            course: location.course,
+            updatedAt: location.timestamp
         )
+    }
+
+    private var recordedTrackCourse: CLLocationDirection? {
+        guard let segment = locationManager.trackCoordinateSegments.last,
+              let end = segment.last
+        else { return nil }
+        let endLocation = CLLocation(latitude: end.latitude, longitude: end.longitude)
+        guard let start = segment.dropLast().reversed().first(where: { coordinate in
+            endLocation.distance(from: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)) >= 3
+        }) else { return nil }
+
+        let startLatitude = start.latitude * .pi / 180
+        let endLatitude = end.latitude * .pi / 180
+        let longitudeDelta = (end.longitude - start.longitude) * .pi / 180
+        let y = sin(longitudeDelta) * cos(endLatitude)
+        let x = cos(startLatitude) * sin(endLatitude)
+            - sin(startLatitude) * cos(endLatitude) * cos(longitudeDelta)
+        return (atan2(y, x) * 180 / .pi + 360).truncatingRemainder(dividingBy: 360)
     }
 
     private func trackActivityAvatarDisplayIfNeeded() {

@@ -21,7 +21,11 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
     private var realtimeSessionID: String?
 
     init(initialSession: InvitedLiveShareDTO? = nil) {
-        session = initialSession
+        session = initialSession.map { value in
+            var normalized = value
+            normalized.routePreview = Self.routePreview(adding: value.lastLocation, to: value.routePreview)
+            return normalized
+        }
         isLoadingSession = initialSession == nil
         latestCheer = initialSession?.latestCheer
         usesFixture = initialSession != nil
@@ -37,7 +41,8 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
         }
         defer { isLoadingSession = false }
         do {
-            let value = try await api.fetchInvitedLiveShare(id: id)
+            var value = try await api.fetchInvitedLiveShare(id: id)
+            value.routePreview = Self.routePreview(adding: value.lastLocation, to: value.routePreview)
             session = value
             latestCheer = value.latestCheer
             sessionLoadFailed = false
@@ -66,13 +71,17 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
                    let latitude = (payload["latitude"] as? NSNumber)?.doubleValue,
                    let longitude = (payload["longitude"] as? NSNumber)?.doubleValue {
                     let recordedAt = (payload["recordedAt"] as? String).flatMap { ISO8601DateFormatter().date(from: $0) } ?? Date()
+                    guard value.lastLocation.map({ recordedAt >= $0.recordedAt }) ?? true else { return }
+                    value.routePreview = Self.routePreview(adding: value.lastLocation, to: value.routePreview)
                     let courseDegrees = (payload["courseDegrees"] as? NSNumber)?.doubleValue
-                    value.lastLocation = LiveSharePointDTO(
+                    let latestLocation = LiveSharePointDTO(
                         recordedAt: recordedAt,
                         latitude: latitude,
                         longitude: longitude,
                         courseDegrees: courseDegrees
                     )
+                    value.lastLocation = latestLocation
+                    value.routePreview = Self.routePreview(adding: latestLocation, to: value.routePreview)
                     value.lastLocationAt = recordedAt
                     value.elapsedSeconds = (payload["elapsedSeconds"] as? NSNumber)?.intValue ?? value.elapsedSeconds
                     value.distanceM = (payload["distanceM"] as? NSNumber)?.doubleValue ?? value.distanceM
@@ -84,6 +93,22 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
                 }
             }
         }
+    }
+
+    private static func routePreview(
+        adding latest: LiveSharePointDTO?,
+        to routePreview: [LiveSharePointDTO]
+    ) -> [LiveSharePointDTO] {
+        guard let latest else { return routePreview }
+        var route = routePreview
+        if let routeTail = route.last {
+            guard latest.recordedAt > routeTail.recordedAt else { return route }
+        }
+        route.append(latest)
+        if route.count > 720 {
+            route.removeFirst(route.count - 720)
+        }
+        return route
     }
 
     func beginRecording() {

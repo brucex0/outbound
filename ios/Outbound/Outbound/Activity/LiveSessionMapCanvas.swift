@@ -79,7 +79,7 @@ struct LiveSessionMapCanvas<AdditionalContent: MapContent>: View {
         }
         .onChange(of: location?.updatedAt, initial: true) { _, _ in
             guard followsLocation, let location else { return }
-            withAnimation(.easeInOut(duration: 0.6)) {
+            withAnimation(.easeInOut(duration: 0.9)) {
                 position = .camera(LiveSessionMapCamera.camera(for: location))
             }
         }
