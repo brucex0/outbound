@@ -2,6 +2,7 @@ package com.plainstride.outbound.feature.safety
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.util.Log
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import com.plainstride.outbound.feature.social.SocialPerson
+import com.google.gson.JsonElement
 import org.json.JSONObject
 import java.time.Instant
 
@@ -26,11 +28,13 @@ import java.time.Instant
  val groupJoining=liveShare.groupJoining
  val selectedRecipientIds=liveShare.selectedRecipientIds
  private val mutableFollower=MutableStateFlow<InvitedLiveShare?>(null);val follower=mutableFollower.asStateFlow()
+ private val mutableFollowerTrack=MutableStateFlow<List<LiveRoutePoint>>(emptyList());val followerTrack=mutableFollowerTrack.asStateFlow()
  private val mutableFollowerLoading=MutableStateFlow(false);val followerLoading=mutableFollowerLoading.asStateFlow()
  private val mutableFollowerMessage=MutableStateFlow<String?>(null);val followerMessage=mutableFollowerMessage.asStateFlow()
  private var connectionNames:Map<String,String> = emptyMap()
  private var activeAccountId:String?=null
  private var followerRefreshJob:Job?=null
+ private var followerTrackShareId:String?=null
 
  init{reload()}
 
@@ -88,6 +92,8 @@ import java.time.Instant
  fun hasDifferentActiveGroup(activityEventId:String)=liveShare.hasDifferentActiveGroup(activityEventId)
  fun stopGroupSharing()=viewModelScope.launch{liveShare.leaveGroupRun(false)}
  fun openLiveShare(id:String) {
+  if(BuildConfig.DEBUG) Log.d(REALTIME_TAG,"follower_open_requested")
+  if(followerTrackShareId!=id){followerTrackShareId=id;mutableFollowerTrack.value=emptyList()}
   followerRefreshJob?.cancel()
   followerRefreshJob=null
   viewModelScope.launch {
@@ -96,6 +102,8 @@ import java.time.Instant
    mutableFollowerLoading.value=mutableFollower.value?.id!=id
    liveShare.invitedShare(id).onSuccess { initial ->
     mutableFollower.value=initial
+    seedFollowerTrack(initial)
+    if(BuildConfig.DEBUG) Log.d(REALTIME_TAG,"follower_snapshot_loaded active=${initial.status=="active"} has_location=${initial.lastLocation!=null}")
     if(initial.status=="active") {
      liveShare.watchFollower(
       id=id,
@@ -118,6 +126,7 @@ import java.time.Instant
      liveShare.stopWatchingFollower()
     }
    }.onFailure {
+    if(BuildConfig.DEBUG) Log.e(REALTIME_TAG,"follower_snapshot_load_failed error=${it.javaClass.simpleName}")
     if(mutableFollower.value?.id!=id) mutableFollowerMessage.value="load_failed"
    }
    mutableFollowerLoading.value=false
@@ -134,12 +143,15 @@ import java.time.Instant
   liveShare.invitedShare(id).onSuccess { refreshed ->
    val current=mutableFollower.value
    if(current?.id!=id) return@onSuccess
+   val newerOrEqual=isAtLeastAsRecent(refreshed.lastLocationAt,current.lastLocationAt)
+   if(BuildConfig.DEBUG) Log.d(REALTIME_TAG,"follower_snapshot_received active=${refreshed.status=="active"} has_location=${refreshed.lastLocation!=null} location_is_at_least_as_recent=$newerOrEqual")
    if(refreshed.status!="active"||current.status!="active"||
-    isAtLeastAsRecent(refreshed.lastLocationAt,current.lastLocationAt)) {
+    newerOrEqual) {
     mutableFollower.value=refreshed
+    refreshed.lastLocation?.let(::appendFollowerTrack)
     if(refreshed.status!="active") liveShare.stopWatchingFollower()
    }
-  }
+  }.onFailure { if(BuildConfig.DEBUG) Log.e(REALTIME_TAG,"follower_snapshot_refresh_failed error=${it.javaClass.simpleName}") }
  }
 
  private fun applyFollowerLocation(value:Any?) {
@@ -147,8 +159,9 @@ import java.time.Instant
    is Map<*,*> -> value
    is JSONObject -> value
    is String -> runCatching { JSONObject(value) }.getOrNull()
+   is JsonElement -> value.takeIf { it.isJsonObject }?.let { runCatching { JSONObject(it.toString()) }.getOrNull() }
    else -> null
-  } ?: return
+  } ?: run { if(BuildConfig.DEBUG) Log.w(REALTIME_TAG,"follower_location_rejected reason=unsupported_payload type=${value?.javaClass?.simpleName ?: "null"}");return }
   fun field(name:String):Any?=when(payload) {
    is Map<*,*> -> payload[name]
    is JSONObject -> payload.opt(name)
@@ -160,9 +173,13 @@ import java.time.Instant
    else -> null
   }
   val old=mutableFollower.value?:return
-  val latitude=number("latitude")?:return
-  val longitude=number("longitude")?:return
-  val recordedAt=field("recordedAt") as? String?:return
+  val latitude=number("latitude")?:run { if(BuildConfig.DEBUG) Log.w(REALTIME_TAG,"follower_location_rejected reason=missing_latitude");return }
+  val longitude=number("longitude")?:run { if(BuildConfig.DEBUG) Log.w(REALTIME_TAG,"follower_location_rejected reason=missing_longitude");return }
+  val recordedAt=field("recordedAt") as? String?:run { if(BuildConfig.DEBUG) Log.w(REALTIME_TAG,"follower_location_rejected reason=missing_recorded_at");return }
+  if(!isAtLeastAsRecent(recordedAt,old.lastLocationAt)) {
+   if(BuildConfig.DEBUG) Log.d(REALTIME_TAG,"follower_location_ignored reason=older_than_current")
+   return
+  }
   mutableFollower.value=old.copy(
    lastLocation=LiveRoutePoint(recordedAt,latitude,longitude),
    lastLocationAt=recordedAt,
@@ -171,6 +188,21 @@ import java.time.Instant
    currentPaceSecsPerKm=number("currentPaceSecsPerKm"),
    heartRate=number("heartRate")?.toInt(),
   )
+  appendFollowerTrack(LiveRoutePoint(recordedAt,latitude,longitude))
+  if(BuildConfig.DEBUG) Log.d(REALTIME_TAG,"follower_location_applied route_points=${mutableFollowerTrack.value.size}")
+ }
+
+ private fun seedFollowerTrack(share:InvitedLiveShare) {
+  val current=mutableFollowerTrack.value
+  if(current.isEmpty()) mutableFollowerTrack.value=share.routePreview.takeLast(MAX_FOLLOWER_ROUTE_POINTS)
+  share.lastLocation?.let(::appendFollowerTrack)
+ }
+
+ private fun appendFollowerTrack(point:LiveRoutePoint) {
+  val current=mutableFollowerTrack.value
+  val last=current.lastOrNull()
+  if(last!=null&&last.recordedAt==point.recordedAt&&last.latitude==point.latitude&&last.longitude==point.longitude)return
+  mutableFollowerTrack.value=(current+point).takeLast(MAX_FOLLOWER_ROUTE_POINTS)
  }
 
  private fun isAtLeastAsRecent(candidate:String?,current:String?):Boolean {
@@ -184,5 +216,5 @@ import java.time.Instant
  fun leaveGroup()=viewModelScope.launch{liveShare.group.value?.let{liveShare.leaveGroupRun(it.id,false)}}
  private fun reload()=viewModelScope.launch{mutableContacts.value=contacts.contacts().map{contact->connectionNames[contact.id]?.takeIf(String::isNotBlank)?.let{contact.copy(displayName=it)}?:contact}}
 
- private companion object { const val FOLLOWER_REFRESH_INTERVAL_MS=5_000L }
+ private companion object { const val FOLLOWER_REFRESH_INTERVAL_MS=5_000L;const val MAX_FOLLOWER_ROUTE_POINTS=3_000;const val REALTIME_TAG="PlainstrideRealtime" }
 }

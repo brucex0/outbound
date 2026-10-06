@@ -4,6 +4,7 @@
     <string name="route_finish">终点</string>
     <string name="route_map_description">路线地图</string>
     <string name="route_map_unavailable">地图不可用</string>
+    <string name="route_map_runner">跑者</string>
     <string name="route_start">起点</string>
     <string name="location_chip_accessibility">开启位置访问权限</string>
     <string name="location_chip_accessibility_hint">打开位置访问设置选项</string>

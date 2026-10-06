@@ -23,8 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.plainstride.outbound.core.designsystem.MapCoordinate
-import com.plainstride.outbound.core.designsystem.MapRouteMarker
-import com.plainstride.outbound.core.designsystem.PlainstrideRouteMap
+import com.plainstride.outbound.core.designsystem.PlainstrideLiveRouteMap
 import com.plainstride.outbound.core.model.activity.MeasurementUnitSystem
 import java.io.File
 import java.util.Locale
@@ -32,6 +31,7 @@ import java.util.Locale
 @Composable
 fun LiveCheerFollowerScreen(
     session: InvitedLiveShare?,
+    liveTrack: List<LiveRoutePoint>,
     loading: Boolean,
     message: String?,
     unitSystem: MeasurementUnitSystem,
@@ -113,17 +113,14 @@ fun LiveCheerFollowerScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(stringResource(R.string.cheer_title, session.runner.displayName), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            val route = session.routePreview.map { MapCoordinate(it.latitude, it.longitude) }
             val runnerPosition = session.lastLocation?.let { MapCoordinate(it.latitude, it.longitude) }
-            PlainstrideRouteMap(
-                points = route.ifEmpty { listOfNotNull(runnerPosition) },
+            PlainstrideLiveRouteMap(
+                recordedRoute = liveTrack.map { MapCoordinate(it.latitude, it.longitude) },
+                runnerLocation = runnerPosition,
                 modifier = Modifier.fillMaxWidth().weight(1f),
-                showEndpointMarkers = false,
-                fitRouteOnChange = false,
-                markers = runnerPosition?.let {
-                    listOf(MapRouteMarker("runner", it, session.runner.displayName, selected = true))
-                }.orEmpty(),
-                followCoordinate = runnerPosition ?: route.lastOrNull(),
+                followRunner = true,
+                rotateWithRunner = true,
+                showRunnerMascot = true,
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 Metric(distance(session.distanceM, unitSystem), stringResource(R.string.cheer_distance))

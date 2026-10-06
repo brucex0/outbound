@@ -140,6 +140,7 @@ import com.plainstride.outbound.core.designsystem.LocationEnableChip
 import com.plainstride.outbound.core.designsystem.LocationPermissionEducationDialog
 import com.plainstride.outbound.core.location.LocationPermissionAccess
 import com.plainstride.outbound.core.designsystem.MapRouteSegment
+import com.plainstride.outbound.core.designsystem.PlainstrideLiveRouteMap
 import com.plainstride.outbound.core.designsystem.PlainstrideRouteMap
 import com.plainstride.outbound.core.model.activity.ActivityType
 import com.plainstride.outbound.core.model.activity.DistanceUnit
@@ -912,7 +913,7 @@ private fun CountdownScreen(
     val progress = (4 - value.coerceIn(0, 3)) / 4f
     val label = if (value == 0) stringResource(R.string.recording_go) else value.toString()
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        TrackMap(snapshot, configuration, locationPermission, runSimulation, Modifier.fillMaxSize())
+        TrackMap(snapshot, configuration, Modifier.fillMaxSize())
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.42f)))
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Box(Modifier.size(188.dp), contentAlignment = Alignment.Center) {
@@ -1003,7 +1004,7 @@ private fun LiveRecordingScreen(
             if (amount > 18 && mode == RecordingSurfaceMode.MAP) onMode(RecordingSurfaceMode.CAMERA)
         }
     }) {
-        if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot, configuration, locationPermission, runSimulation, Modifier.fillMaxSize())
+        if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot, configuration, Modifier.fillMaxSize())
         else CameraSurface(photoPath, onPhotoCaptured, onTakePhoto,onPhotoPending, Modifier.fillMaxSize())
 
         if (!dashboardExpanded) Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1135,13 +1136,10 @@ private fun RunSimulationControls(
 private fun TrackMap(
     snapshot: RecordingSnapshot,
     configuration: RecordingLaunchConfiguration,
-    locationPermission: LocationPermissionState,
-    runSimulation: RunSimulationState?,
     modifier: Modifier = Modifier,
 ) {
     val recorded = snapshot.track.map { MapCoordinate(it.latitude, it.longitude) }
     val planned = configuration.followedRoute?.points.orEmpty().map { MapCoordinate(it.latitude, it.longitude) }
-    val framingPoints = planned.takeIf { it.size > 1 } ?: recorded
     val recordedSegments = buildList {
         val starts = (snapshot.trackSegmentStartIndices + 0).filter { it in recorded.indices }.sorted()
         starts.forEachIndexed { index, start ->
@@ -1149,31 +1147,15 @@ private fun TrackMap(
             if (end - start > 1) add(MapRouteSegment(recorded.subList(start, end), MaterialTheme.colorScheme.primary))
         }
     }
-    val routeSegments = buildList {
-        if (planned.size > 1) add(MapRouteSegment(planned, Color(0xFFFF5200)))
-        addAll(recordedSegments)
-    }
-    PlainstrideRouteMap(
-        points = framingPoints,
+    PlainstrideLiveRouteMap(
+        recordedRoute = recorded,
+        plannedRoute = planned,
+        recordedRouteSegments = recordedSegments,
+        runnerLocation = snapshot.latestLocation?.let { MapCoordinate(it.latitude, it.longitude) },
         modifier = modifier,
-        showUserLocation = runSimulation == null,
-        preciseLocationGranted = locationPermission == LocationPermissionState.PRECISE || locationPermission == LocationPermissionState.APPROXIMATE,
-        focusOnUser = runSimulation == null,
+        showRunnerMascot = true,
         showEndpointMarkers = planned.size > 1,
-        routeSegments = routeSegments,
-        markers = listOfNotNull(snapshot.latestLocation?.takeIf { runSimulation != null }?.let { location ->
-            com.plainstride.outbound.core.designsystem.MapRouteMarker(
-                id = "simulated-location",
-                coordinate = MapCoordinate(location.latitude, location.longitude),
-                title = stringResource(R.string.recording_simulation_location),
-                selected = true,
-            )
-        }),
         bottomContentPadding = 128.dp,
-        fitRouteOnChange = true,
-        followCoordinate = snapshot.latestLocation?.takeIf { (runSimulation?.elapsedSeconds ?: 0) > 0 }?.let {
-            MapCoordinate(it.latitude, it.longitude)
-        },
     )
     Box(modifier, contentAlignment = Alignment.Center) {
         if (snapshot.latestLocation == null) Column(horizontalAlignment = Alignment.CenterHorizontally) {

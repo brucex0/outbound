@@ -13,6 +13,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import android.os.SystemClock
 import android.content.Context
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.plainstride.outbound.core.network.PlainstrideJson
 import com.plainstride.outbound.core.network.*
@@ -154,6 +155,7 @@ class LiveShareCoordinator @Inject constructor(
  private fun saveActive(value:LiveShare){mutableActive.value=value;preferences.edit().putString(ACTIVE,PlainstrideJson.encodeToString(value)).apply();connectShareRealtime(value.id)}
  private fun connectShareRealtime(id:String){if(shareRealtimeId==id)return;shareRealtime?.close();shareRealtimeId=id;shareRealtime=AblySessionTransport.connect(channelName="plainstride:live_share:$id",tokenProvider={issueRealtimeToken("live_share",id)},onMessage={name,_,_->if(name=="cheer.available")mutableCheerSignals.tryEmit(Unit)})}
  fun watchFollower(id:String,onEvent:(String,Any?)->Unit,onChannelAttached:()->Unit={}) {
+  if(BuildConfig.DEBUG) Log.d(REALTIME_TAG,"follower_socket_start_requested")
   followerRealtime?.close()
   followerRealtime=runCatching {
    AblySessionTransport.connect(
@@ -162,7 +164,8 @@ class LiveShareCoordinator @Inject constructor(
     onMessage={name,_,data->onEvent(name,data)},
     onChannelAttached=onChannelAttached,
    )
-  }.getOrNull()
+  }.onFailure { if(BuildConfig.DEBUG) Log.e(REALTIME_TAG,"follower_socket_start_failed error=${it.javaClass.simpleName}") }.getOrNull()
+  if(BuildConfig.DEBUG) Log.d(REALTIME_TAG,"follower_socket_transport_created=${followerRealtime!=null}")
  }
  fun stopWatchingFollower(){followerRealtime?.close();followerRealtime=null}
  private fun clearGroup(){groupRealtime?.close();groupRealtime=null;groupRealtimeId=null;mutableGroup.value=null;lastGroupPoint=null;lastGroupSentAt=0;preferences.edit().remove(GROUP).apply()}
@@ -185,5 +188,5 @@ class LiveShareCoordinator @Inject constructor(
  }
  private suspend fun<T:Any>authenticated(call:suspend(String)->ApiResult<T>):Result<T>{val token=tokens.validAccessToken()?:return Result.failure(IllegalStateException("signed_out"));return when(val value=call("Bearer $token")){is ApiResult.Success->Result.success(value.value);is ApiResult.Failure->Result.failure(IllegalStateException(value.error.code.name))}}
  private fun haversine(a:LiveLocation,b:LiveLocation):Double{val p1=Math.toRadians(a.latitude);val p2=Math.toRadians(b.latitude);val dp=p2-p1;val dl=Math.toRadians(b.longitude-a.longitude);val h=kotlin.math.sin(dp/2)*kotlin.math.sin(dp/2)+kotlin.math.cos(p1)*kotlin.math.cos(p2)*kotlin.math.sin(dl/2)*kotlin.math.sin(dl/2);return 6371000*2*kotlin.math.atan2(kotlin.math.sqrt(h),kotlin.math.sqrt(1-h))}
- private companion object{const val ACTIVE="active";const val ARMED="armed";const val GROUP="group"}
+ private companion object{const val ACTIVE="active";const val ARMED="armed";const val GROUP="group";const val REALTIME_TAG="PlainstrideRealtime"}
 }

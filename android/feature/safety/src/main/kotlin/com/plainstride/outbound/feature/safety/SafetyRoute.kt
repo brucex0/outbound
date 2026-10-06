@@ -33,6 +33,7 @@ fun SafetyRoute(
     val activeShare by viewModel.activeShare.collectAsStateWithLifecycle()
     val groupRun by viewModel.groupRun.collectAsStateWithLifecycle()
     val follower by viewModel.follower.collectAsStateWithLifecycle()
+    val followerTrack by viewModel.followerTrack.collectAsStateWithLifecycle()
     val followerLoading by viewModel.followerLoading.collectAsStateWithLifecycle()
     val followerMessage by viewModel.followerMessage.collectAsStateWithLifecycle()
     LaunchedEffect(targetId, targetKind) { targetId?.takeIf(String::isNotBlank)?.let { if(targetKind=="live") viewModel.openLiveShare(it) else viewModel.openGroup(it) } }
@@ -58,7 +59,7 @@ fun SafetyRoute(
             confirm = { contact -> pickingConnection = false; viewModel.add(contact) },
         )
     }
-    if(targetKind=="live"&&targetId!=null){LiveCheerFollowerScreen(follower,followerLoading,followerMessage,unitSystem,viewModel::sendVoiceCheer);return}
+    if(targetKind=="live"&&targetId!=null){LiveCheerFollowerScreen(follower,followerTrack,followerLoading,followerMessage,unitSystem,viewModel::sendVoiceCheer);return}
     SafetySettingsScreen(
         contacts = contacts,
         permission = permission,

@@ -4,6 +4,7 @@
     <string name="route_finish">Finish</string>
     <string name="route_map_description">Route map</string>
     <string name="route_map_unavailable">Map unavailable</string>
+    <string name="route_map_runner">Runner</string>
     <string name="route_start">Start</string>
     <string name="location_chip_accessibility">Enable location access</string>
     <string name="location_chip_accessibility_hint">Opens options to turn location access on</string>
