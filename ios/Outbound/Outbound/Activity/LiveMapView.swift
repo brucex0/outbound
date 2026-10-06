@@ -518,7 +518,7 @@ struct LiveMapView: View {
     }
 }
 
-private struct LiveActivityAvatar: View {
+struct LiveActivityAvatar: View {
     let activityType: ActivityType
     let tint: Color
     let course: CLLocationDirection?

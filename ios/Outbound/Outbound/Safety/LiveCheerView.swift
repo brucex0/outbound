@@ -147,6 +147,9 @@ struct LiveCheerView: View {
     @Environment(\.analyticsManager) private var analyticsManager
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var mapPosition: MapCameraPosition = .automatic
+    @State private var didTrackRunnerMarkerExposure = false
 
     init(sessionID: String, entrySource: String = "social", initialSession: InvitedLiveShareDTO? = nil) {
         self.sessionID = sessionID
@@ -158,13 +161,39 @@ struct LiveCheerView: View {
         Group {
             if let session = store.session {
                 VStack(spacing: 16) {
-                    if !session.routePreview.isEmpty {
-                        Map {
+                    Map(position: $mapPosition, interactionModes: [.pan, .zoom, .rotate]) {
+                        if !session.routePreview.isEmpty {
                             MapPolyline(coordinates: session.routePreview.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) })
                                 .stroke(.orange, lineWidth: 5)
-                            if let point = session.lastLocation { Marker(session.runner.displayName, coordinate: .init(latitude: point.latitude, longitude: point.longitude)) }
                         }
-                        .frame(maxHeight: .infinity)
+                        if let point = session.lastLocation {
+                            Annotation("", coordinate: .init(latitude: point.latitude, longitude: point.longitude)) {
+                                LiveActivityAvatar(
+                                    activityType: ActivityType(rawValue: session.sport) ?? .running,
+                                    tint: .orange,
+                                    course: nil,
+                                    isMoving: session.status == "active",
+                                    reduceMotion: reduceMotion
+                                )
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel(String(localized: "map.annotation.current_activity", defaultValue: "Current activity position"))
+                            }
+                        }
+                    }
+                    .frame(maxHeight: .infinity)
+                    .onChange(of: session.lastLocationAt, initial: true) { _, _ in
+                        guard let point = store.session?.lastLocation else { return }
+                        let coordinate = CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)
+                        withAnimation(.easeInOut(duration: 0.6)) {
+                            mapPosition = .camera(MapCamera(centerCoordinate: coordinate, distance: 1_200))
+                        }
+                        guard !didTrackRunnerMarkerExposure else { return }
+                        didTrackRunnerMarkerExposure = true
+                        Task {
+                            await analyticsManager?.track(.init(.featureExposed, properties: [
+                                .feature: .string("live_cheer_runner_avatar")
+                            ]))
+                        }
                     }
                     HStack {
                         metric(
