@@ -10,7 +10,11 @@ nonisolated struct HomeWorkoutWidgetSnapshot: Codable, Equatable, Sendable {
 @MainActor
 enum HomeWorkoutWidgetStore {
     static let appGroupIdentifier = "group.ai.plainstride.shared"
-    static let widgetKind = "PlainstrideHomeWorkoutWidget"
+#if DEBUG
+    static let widgetKind = "PlainstrideHomeWorkoutWidgetDebugV7"
+#else
+    static let widgetKind = "PlainstrideHomeWorkoutWidgetV2"
+#endif
     private static let snapshotKey = "home_workout_widget_snapshot_v1"
 
     static func read() -> HomeWorkoutWidgetSnapshot? {
