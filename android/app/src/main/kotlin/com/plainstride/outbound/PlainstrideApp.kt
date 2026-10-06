@@ -101,6 +101,8 @@ import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.outlined.PeopleAlt
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import android.content.pm.PackageManager
+import android.os.Build
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -330,6 +332,28 @@ private fun SignedInApp(
     val rewardsState by rewardsViewModel.state.collectAsStateWithLifecycle()
     val reminderViewModel: ReminderViewModel = hiltViewModel()
     val integration by integrationViewModel.state.collectAsStateWithLifecycle()
+    var pushPermissionGranted by remember {
+        mutableStateOf(
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED,
+        )
+    }
+    val pushPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        pushPermissionGranted = granted
+        integrationViewModel.setPushEnabled(granted)
+        integrationViewModel.trackPushPermissionResult(granted)
+    }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                pushPermissionGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                    context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     var todaySelectedRoute by remember(accountId) { mutableStateOf<com.plainstride.outbound.feature.community.CommunityRoute?>(null) }
     var todayRouteReversed by rememberSaveable(accountId) { mutableStateOf(false) }
     var selectedTodayShoeId by remember(accountId) { mutableStateOf<String?>(null) }
@@ -812,7 +836,24 @@ private fun SignedInApp(
                                 ListItem(headlineContent = { Text(stringResource(R.string.routes_destination)) }, modifier = Modifier.clickable { navController.navigate(COMMUNITY_ROUTES_ROUTE) })
                                 ListItem(headlineContent = { Text(stringResource(R.string.health_destination)) }, modifier = Modifier.clickable { navController.navigate(HEALTH_ROUTE) })
                                 ListItem(headlineContent = { Text(stringResource(R.string.notifications_destination)) }, modifier = Modifier.clickable { navController.navigate(NOTIFICATIONS_ROUTE) })
-                                ListItem(headlineContent={Text(stringResource(R.string.push_notifications_setting))},supportingContent={Text(stringResource(R.string.push_notifications_body))},trailingContent={Switch(integration.pushEnabled,integrationViewModel::setPushEnabled)})
+                                ListItem(
+                                    headlineContent = { Text(stringResource(R.string.push_notifications_setting)) },
+                                    supportingContent = { Text(stringResource(R.string.push_notifications_body)) },
+                                    trailingContent = {
+                                        Switch(
+                                            checked = integration.pushEnabled && pushPermissionGranted,
+                                            onCheckedChange = { enabled ->
+                                                if (!enabled) {
+                                                    integrationViewModel.setPushEnabled(false)
+                                                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !pushPermissionGranted) {
+                                                    pushPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                                } else {
+                                                    integrationViewModel.setPushEnabled(true)
+                                                }
+                                            },
+                                        )
+                                    },
+                                )
                             },
                             onMessage = { message -> snackbar.showSnackbar(resources.getString(settingsMessageResource(message))) },
                         )
