@@ -28,6 +28,7 @@ export async function issueAblyToken(input: {
       // Short expiry bounds access after leave/revoke; the SDK renews while the
       // session remains active and the authenticated user remains authorized.
       ttl: 2 * 60 * 1000,
+      timestamp: Date.now(),
     }),
   });
   if (!response.ok) {
