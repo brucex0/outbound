@@ -161,7 +161,7 @@ Do not put networking directly in `ActivityRecorder`; keep recording stable even
 - After playback, the runner sees a compact, dismissible banner and can send one explicit `❤️ Heard you` acknowledgment. The follower's persistent cheer-status indicator updates when that acknowledgment arrives.
 - Cheer receipts store `deliveredAt`, `playedAt`, and `acknowledgedAt`; the follower APIs expose only the current follower's latest cheer receipt.
 - Analytics records voice-cheer playback and acknowledgment outcomes without audio content, sender identity, or location.
-- `LiveShareStore` sends throttled location updates from `ActiveSessionSnapshot`, currently every 10 seconds or 25 meters.
+- `LiveShareStore` publishes each distinct `ActiveSessionSnapshot` location to Ably with a one-second minimum interval. It sends REST recovery checkpoints once per minute. Follower and runner maps share route styling, marker, 400-meter camera framing, and heading; the realtime payload carries course for follower rotation.
 - Finishing sends the reconciled final snapshot before ending the share. Followers see elapsed time and current pace while the share is active, then average pace calculated from final elapsed time and distance after it ends.
 - Finish, discard, and the live HUD stop-sharing control call the backend end endpoint.
 - If create or update fails, recording continues and the runner sees local stale/unavailable copy.

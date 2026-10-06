@@ -2457,7 +2457,14 @@ struct InvitedLiveSharesResponse: Decodable { let sessions: [InvitedLiveShareDTO
 struct LiveShareRunnerDTO: Decodable { let id: String; let displayName: String; let username: String; let avatarUrl: URL? }
 struct LiveSharePointDTO: Decodable, Identifiable {
     var id: String { "\(recordedAt.timeIntervalSince1970)-\(latitude)-\(longitude)" }
-    let recordedAt: Date; let latitude: Double; let longitude: Double
+    let recordedAt: Date; let latitude: Double; let longitude: Double; let courseDegrees: Double?
+
+    init(recordedAt: Date, latitude: Double, longitude: Double, courseDegrees: Double? = nil) {
+        self.recordedAt = recordedAt
+        self.latitude = latitude
+        self.longitude = longitude
+        self.courseDegrees = courseDegrees
+    }
 }
 struct InvitedLiveShareDTO: Decodable, Identifiable {
     var id: String; var status: String; var runner: LiveShareRunnerDTO; var sport: String; var title: String

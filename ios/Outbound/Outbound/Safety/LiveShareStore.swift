@@ -36,7 +36,6 @@ final class LiveShareStore: ObservableObject {
 
     private let api: APIClient
     private var lastSentAt: Date?
-    private var lastSentDistanceM: Double?
     private var updateTask: Task<Void, Never>?
     private var lastCheerFetchAt: Date?
     private var realtime: AblySessionTransport?
@@ -105,7 +104,6 @@ final class LiveShareStore: ObservableObject {
                 ? String(localized: "record.cheer.invited_toast", defaultValue: "Contacts invited to cheer you on")
                 : String(localized: "rewards.live_share_basic_toast", table: "Rewards")
             lastSentAt = nil
-            lastSentDistanceM = nil
             lastCheckpointAt = nil
         } catch {
             lastErrorMessage = "Live sharing unavailable: \(error.localizedDescription)"
@@ -120,11 +118,11 @@ final class LiveShareStore: ObservableObject {
         guard shouldSend(snapshot: snapshot) else { return }
 
         lastSentAt = snapshot.recordedAt
-        lastSentDistanceM = snapshot.distanceMeters
         realtime?.publishLocation([
             "recordedAt": ISO8601DateFormatter().string(from: snapshot.recordedAt),
             "latitude": request.latitude,
             "longitude": request.longitude,
+            "courseDegrees": snapshot.location?.courseDegrees as Any? ?? NSNull(),
             "altitudeM": request.altitudeM as Any? ?? NSNull(),
             "accuracyM": request.accuracyM as Any? ?? NSNull(),
             "elapsedSeconds": request.elapsedSeconds,
@@ -169,7 +167,6 @@ final class LiveShareStore: ObservableObject {
         activeSession = nil
         isArmedForNextActivity = false
         lastSentAt = nil
-        lastSentDistanceM = nil
         lastCheerFetchAt = nil
         mostRecentlyHeardCheer = nil
 
@@ -237,10 +234,8 @@ final class LiveShareStore: ObservableObject {
     }
 
     private func shouldSend(snapshot: ActiveSessionSnapshot) -> Bool {
-        guard let lastSentAt, let lastSentDistanceM else { return true }
-        let timeDelta = snapshot.recordedAt.timeIntervalSince(lastSentAt)
-        let distanceDelta = abs(snapshot.distanceMeters - lastSentDistanceM)
-        return timeDelta >= 10 || distanceDelta >= 25
+        guard let lastSentAt else { return true }
+        return snapshot.recordedAt.timeIntervalSince(lastSentAt) >= 1
     }
 
     private func apply(_ response: LiveShareStatusResponse) {

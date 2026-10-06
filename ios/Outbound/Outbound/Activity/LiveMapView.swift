@@ -52,8 +52,6 @@ struct LiveMapView: View {
                 trackActivityAvatarDisplayIfNeeded()
                 if recorder.state == .idle, !plannedRouteCoordinates.isEmpty {
                     framePlannedRoute(including: loc.coordinate)
-                } else if isFollowingUser {
-                    updateMapCamera(for: loc, animated: true)
                 }
             }
             .onAppear {
@@ -83,89 +81,65 @@ struct LiveMapView: View {
 
     private var mapSurface: some View {
         ActivityMapSurface(safeZone: ActivityMapSafeZone(bottomInset: bottomOverlayHeight + 8)) {
-            Map(position: $mapPosition, interactionModes: [.pan, .zoom, .rotate]) {
-            if plannedRouteCoordinates.count > 1 {
-                MapPolyline(coordinates: plannedRouteCoordinates)
-                    .stroke(.white.opacity(0.9), style: selectedRouteHaloStyle)
-                MapPolyline(coordinates: plannedRouteCoordinates)
-                    .stroke(selectedRouteColor, style: selectedRouteStyle)
-            }
-            if let routeStartCoordinate {
-                Annotation(
-                    routeEndpointsOverlap
-                        ? String(localized: "route.guidance.map.start_finish", defaultValue: "Route start and finish")
-                        : String(localized: "route.guidance.map.start", defaultValue: "Route start"),
-                    coordinate: routeStartCoordinate
-                ) {
-                    RouteEndpointPin(
-                        systemImage: routeEndpointsOverlap ? "flag.checkered" : "flag.fill",
-                        color: routeEndpointsOverlap ? .orange : .green
-                    )
+            LiveSessionMapCanvas(
+                position: $mapPosition,
+                isFollowingLocation: $isFollowingUser,
+                location: currentMapLocation,
+                routeSegments: trailCoordinateSegments,
+                activityType: activityType,
+                tint: theme.accentColor,
+                isMoving: recorder.state == .active,
+                reduceMotion: reduceMotion,
+                followsLocation: isFollowingUser && !(recorder.state == .idle && !plannedRouteCoordinates.isEmpty)
+            ) {
+                if plannedRouteCoordinates.count > 1 {
+                    MapPolyline(coordinates: plannedRouteCoordinates)
+                        .stroke(.white.opacity(0.9), style: selectedRouteHaloStyle)
+                    MapPolyline(coordinates: plannedRouteCoordinates)
+                        .stroke(selectedRouteColor, style: selectedRouteStyle)
                 }
-            }
-            if !routeEndpointsOverlap, let routeFinishCoordinate {
-                Annotation(
-                    String(localized: "route.guidance.map.finish", defaultValue: "Route finish"),
-                    coordinate: routeFinishCoordinate
-                ) {
-                    RouteEndpointPin(systemImage: "flag.checkered", color: .orange)
-                }
-            }
-            if plannedRouteCoordinates.isEmpty, let startCoordinate {
-                Annotation("Trail Start", coordinate: startCoordinate) {
-                    Circle()
-                        .fill(.green)
-                        .frame(width: 14, height: 14)
-                        .overlay {
-                            Circle()
-                                .stroke(.white, lineWidth: 3)
-                        }
-                        .shadow(radius: 4)
-                }
-            }
-            ForEach(Array(trailCoordinateSegments.enumerated()), id: \.offset) { _, segment in
-                if segment.count > 1 {
-                    MapPolyline(coordinates: segment)
-                        .stroke(.black.opacity(0.2), lineWidth: 8)
-                    MapPolyline(coordinates: segment)
-                        .stroke(.orange, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
-                }
-            }
-            if let currentCoordinate {
-                Annotation(
-                    "",
-                    coordinate: currentCoordinate
-                ) {
-                    LiveActivityAvatar(
-                        activityType: activityType,
-                        tint: theme.accentColor,
-                        course: locationManager.location?.course,
-                        isMoving: recorder.state == .active,
-                        reduceMotion: reduceMotion
-                    )
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(
-                        String(localized: "map.annotation.current_activity", defaultValue: "Current activity position")
-                    )
-                }
-            }
-            ForEach(liveGroupStore.visibleParticipants) { participant in
-                if let coordinate = participant.coordinate {
-                    Annotation(participant.displayName, coordinate: coordinate) {
-                        LiveGroupParticipantPin(participant: participant)
-                            .onTapGesture {
-                                focusedParticipantID = participant.id
-                                isFollowingUser = false
-                                updateMapCamera(for: coordinate, animated: true)
-                            }
+                if let routeStartCoordinate {
+                    Annotation(
+                        routeEndpointsOverlap
+                            ? String(localized: "route.guidance.map.start_finish", defaultValue: "Route start and finish")
+                            : String(localized: "route.guidance.map.start", defaultValue: "Route start"),
+                        coordinate: routeStartCoordinate
+                    ) {
+                        RouteEndpointPin(
+                            systemImage: routeEndpointsOverlap ? "flag.checkered" : "flag.fill",
+                            color: routeEndpointsOverlap ? .orange : .green
+                        )
                     }
                 }
-            }
-            }
-        }
-        .onMapCameraChange(frequency: .onEnd) { _ in
-            if mapPosition.positionedByUser {
-                isFollowingUser = false
+                if !routeEndpointsOverlap, let routeFinishCoordinate {
+                    Annotation(
+                        String(localized: "route.guidance.map.finish", defaultValue: "Route finish"),
+                        coordinate: routeFinishCoordinate
+                    ) {
+                        RouteEndpointPin(systemImage: "flag.checkered", color: .orange)
+                    }
+                }
+                if plannedRouteCoordinates.isEmpty, let startCoordinate {
+                    Annotation("Trail Start", coordinate: startCoordinate) {
+                        Circle()
+                            .fill(.green)
+                            .frame(width: 14, height: 14)
+                            .overlay { Circle().stroke(.white, lineWidth: 3) }
+                            .shadow(radius: 4)
+                    }
+                }
+                ForEach(liveGroupStore.visibleParticipants) { participant in
+                    if let coordinate = participant.coordinate {
+                        Annotation(participant.displayName, coordinate: coordinate) {
+                            LiveGroupParticipantPin(participant: participant)
+                                .onTapGesture {
+                                    focusedParticipantID = participant.id
+                                    isFollowingUser = false
+                                    updateMapCamera(for: coordinate, animated: true)
+                                }
+                        }
+                    }
+                }
             }
         }
         .ignoresSafeArea()
@@ -412,6 +386,15 @@ struct LiveMapView: View {
         intent?.resolvedActivityType ?? .running
     }
 
+    private var currentMapLocation: LiveSessionMapLocation? {
+        guard let currentCoordinate else { return nil }
+        return LiveSessionMapLocation(
+            coordinate: currentCoordinate,
+            course: locationManager.location?.course,
+            updatedAt: locationManager.location?.timestamp ?? recorder.liveSnapshot.recordedAt
+        )
+    }
+
     private func trackActivityAvatarDisplayIfNeeded() {
         guard !hasTrackedActivityAvatarDisplay,
               recorder.state != .idle,
@@ -495,12 +478,11 @@ struct LiveMapView: View {
 
     private func updateMapCamera(for location: CLLocation, animated: Bool) {
         let update = {
-            mapPosition = .camera(MapCamera(
-                centerCoordinate: location.coordinate,
-                distance: 400,
-                heading: location.course >= 0 ? location.course : 0,
-                pitch: 0
-            ))
+            mapPosition = .camera(LiveSessionMapCamera.camera(for: LiveSessionMapLocation(
+                coordinate: location.coordinate,
+                course: location.course,
+                updatedAt: location.timestamp
+            )))
         }
 
         if animated {
@@ -515,123 +497,6 @@ struct LiveMapView: View {
     private func updateMapCamera(for coordinate: CLLocationCoordinate2D, animated: Bool) {
         let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
         updateMapCamera(for: location, animated: animated)
-    }
-}
-
-struct LiveActivityAvatar: View {
-    let activityType: ActivityType
-    let tint: Color
-    let course: CLLocationDirection?
-    let isMoving: Bool
-    let reduceMotion: Bool
-
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 15.0, paused: !isMoving || reduceMotion)) { context in
-            let phase = context.date.timeIntervalSinceReferenceDate * animationFrequency
-            let stride = reduceMotion || !isMoving ? 0 : sin(phase * .pi * 2)
-
-            avatarContent(stride: stride)
-                .rotationEffect(.degrees(validCourse))
-                .offset(y: abs(stride) * -animationAmplitude)
-                .frame(width: 30, height: 30)
-                .shadow(color: .white.opacity(0.9), radius: 1.5)
-                .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
-        }
-    }
-
-    @ViewBuilder
-    private func avatarContent(stride: Double) -> some View {
-        switch activityType {
-        case .running, .walking, .hiking:
-            ArticulatedActivityFigure(
-                tint: tint,
-                stride: stride,
-                strideAngle: strideAngle
-            )
-        case .cycling, .swimming, .strengthTraining, .mobility:
-            Image(systemName: systemImage)
-                .font(.system(size: 19, weight: .bold))
-                .symbolRenderingMode(.monochrome)
-                .foregroundStyle(tint)
-        }
-    }
-
-    private var systemImage: String {
-        switch activityType {
-        case .running: "figure.run"
-        case .cycling: "bicycle"
-        case .hiking: "figure.hiking"
-        case .walking: "figure.walk"
-        case .swimming: "figure.open.water.swim"
-        case .strengthTraining: "dumbbell.fill"
-        case .mobility: "figure.flexibility"
-        }
-    }
-
-    private var validCourse: Double {
-        guard let course, course >= 0, course.isFinite else { return 0 }
-        return course
-    }
-
-    private var animationFrequency: Double {
-        activityType == .cycling ? 2.2 : 1.65
-    }
-
-    private var animationAmplitude: Double {
-        activityType == .cycling ? 0.8 : 1.5
-    }
-
-    private var strideAngle: Double {
-        switch activityType {
-        case .running: 38
-        case .walking: 24
-        case .hiking: 28
-        case .cycling, .swimming, .strengthTraining, .mobility: 0
-        }
-    }
-}
-
-private struct ArticulatedActivityFigure: View {
-    let tint: Color
-    let stride: Double
-    let strideAngle: Double
-
-    var body: some View {
-        ZStack {
-            limb(length: 9, width: 3, color: .primary.opacity(0.82))
-                .rotationEffect(.degrees(-stride * strideAngle), anchor: .top)
-                .offset(x: -2.2, y: 8)
-
-            limb(length: 9, width: 3, color: .primary.opacity(0.82))
-                .rotationEffect(.degrees(stride * strideAngle), anchor: .top)
-                .offset(x: 2.2, y: 8)
-
-            limb(length: 8, width: 2.5, color: .primary.opacity(0.78))
-                .rotationEffect(.degrees(stride * strideAngle * 0.9), anchor: .top)
-                .offset(x: -4, y: -1)
-
-            limb(length: 8, width: 2.5, color: .primary.opacity(0.78))
-                .rotationEffect(.degrees(-stride * strideAngle * 0.9), anchor: .top)
-                .offset(x: 4, y: -1)
-
-            Capsule(style: .continuous)
-                .fill(tint)
-                .frame(width: 8, height: 12)
-                .offset(y: 1.5)
-
-            Circle()
-                .fill(Color.primary.opacity(0.88))
-                .frame(width: 7, height: 7)
-                .offset(y: -8)
-        }
-        .frame(width: 24, height: 28)
-    }
-
-    private func limb(length: CGFloat, width: CGFloat, color: Color) -> some View {
-        Capsule(style: .continuous)
-            .fill(color)
-            .frame(width: width, height: length)
-            .frame(width: width, height: length, alignment: .top)
     }
 }
 

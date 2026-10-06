@@ -66,7 +66,13 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
                    let latitude = (payload["latitude"] as? NSNumber)?.doubleValue,
                    let longitude = (payload["longitude"] as? NSNumber)?.doubleValue {
                     let recordedAt = (payload["recordedAt"] as? String).flatMap { ISO8601DateFormatter().date(from: $0) } ?? Date()
-                    value.lastLocation = LiveSharePointDTO(recordedAt: recordedAt, latitude: latitude, longitude: longitude)
+                    let courseDegrees = (payload["courseDegrees"] as? NSNumber)?.doubleValue
+                    value.lastLocation = LiveSharePointDTO(
+                        recordedAt: recordedAt,
+                        latitude: latitude,
+                        longitude: longitude,
+                        courseDegrees: courseDegrees
+                    )
                     value.lastLocationAt = recordedAt
                     value.elapsedSeconds = (payload["elapsedSeconds"] as? NSNumber)?.intValue ?? value.elapsedSeconds
                     value.distanceM = (payload["distanceM"] as? NSNumber)?.doubleValue ?? value.distanceM
@@ -148,7 +154,9 @@ struct LiveCheerView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.outboundTheme) private var theme
     @State private var mapPosition: MapCameraPosition = .automatic
+    @State private var isFollowingRunner = true
     @State private var didTrackRunnerMarkerExposure = false
 
     init(sessionID: String, entrySource: String = "social", initialSession: InvitedLiveShareDTO? = nil) {
@@ -161,32 +169,39 @@ struct LiveCheerView: View {
         Group {
             if let session = store.session {
                 VStack(spacing: 16) {
-                    Map(position: $mapPosition, interactionModes: [.pan, .zoom, .rotate]) {
-                        if !session.routePreview.isEmpty {
-                            MapPolyline(coordinates: session.routePreview.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) })
-                                .stroke(.orange, lineWidth: 5)
-                        }
-                        if let point = session.lastLocation {
-                            Annotation("", coordinate: .init(latitude: point.latitude, longitude: point.longitude)) {
-                                LiveActivityAvatar(
-                                    activityType: ActivityType(rawValue: session.sport) ?? .running,
-                                    tint: .orange,
-                                    course: nil,
-                                    isMoving: session.status == "active",
-                                    reduceMotion: reduceMotion
-                                )
-                                .accessibilityElement(children: .ignore)
-                                .accessibilityLabel(String(localized: "map.annotation.current_activity", defaultValue: "Current activity position"))
-                            }
-                        }
-                    }
+                    LiveSessionMapCanvas(
+                        position: $mapPosition,
+                        isFollowingLocation: $isFollowingRunner,
+                        location: liveMapLocation(for: session),
+                        routeSegments: [session.routePreview.map {
+                            CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+                        }],
+                        activityType: ActivityType(rawValue: session.sport) ?? .running,
+                        tint: theme.accentColor,
+                        isMoving: session.status == "active",
+                        reduceMotion: reduceMotion,
+                        followsLocation: isFollowingRunner
+                    ) {}
                     .frame(maxHeight: .infinity)
-                    .onChange(of: session.lastLocationAt, initial: true) { _, _ in
-                        guard let point = store.session?.lastLocation else { return }
-                        let coordinate = CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude)
-                        withAnimation(.easeInOut(duration: 0.6)) {
-                            mapPosition = .camera(MapCamera(centerCoordinate: coordinate, distance: 1_200))
+                    .overlay(alignment: .topTrailing) {
+                        Button {
+                            guard let location = liveMapLocation(for: session) else { return }
+                            isFollowingRunner = true
+                            withAnimation(.easeInOut(duration: 0.6)) {
+                                mapPosition = .camera(LiveSessionMapCamera.camera(for: location))
+                            }
+                        } label: {
+                            Image(systemName: "location.fill")
+                                .font(.title3)
+                                .foregroundStyle(.white)
+                                .frame(width: 48, height: 48)
+                                .background(Circle().fill(.black.opacity(0.42)))
                         }
+                        .accessibilityLabel(String(localized: "map.action.recenter", defaultValue: "Recenter Map"))
+                        .padding(16)
+                    }
+                    .onChange(of: session.lastLocationAt, initial: true) { _, _ in
+                        guard store.session?.lastLocation != nil else { return }
                         guard !didTrackRunnerMarkerExposure else { return }
                         didTrackRunnerMarkerExposure = true
                         Task {
@@ -306,6 +321,15 @@ struct LiveCheerView: View {
             guard toast?.id == toastID else { return }
             withAnimation(.snappy) { toast = nil }
         }
+    }
+
+    private func liveMapLocation(for session: InvitedLiveShareDTO) -> LiveSessionMapLocation? {
+        guard let point = session.lastLocation else { return nil }
+        return LiveSessionMapLocation(
+            coordinate: CLLocationCoordinate2D(latitude: point.latitude, longitude: point.longitude),
+            course: point.courseDegrees,
+            updatedAt: point.recordedAt
+        )
     }
 
     private func metric(_ value: String, _ label: String) -> some View { VStack { Text(value).font(.headline); Text(label).font(.caption).foregroundStyle(.secondary) }.frame(maxWidth: .infinity) }
