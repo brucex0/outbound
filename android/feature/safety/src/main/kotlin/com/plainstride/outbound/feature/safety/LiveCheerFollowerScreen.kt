@@ -113,16 +113,18 @@ fun LiveCheerFollowerScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(stringResource(R.string.cheer_title, session.runner.displayName), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            session.routePreview.map { MapCoordinate(it.latitude, it.longitude) }.takeIf { it.size > 1 }
-                ?.let { route ->
-                    val runnerPosition = session.lastLocation?.let { MapCoordinate(it.latitude, it.longitude) }
-                    PlainstrideRouteMap(
-                        route,
-                        Modifier.fillMaxWidth().weight(1f),
-                        markers = runnerPosition?.let { listOf(MapRouteMarker("runner", it, session.runner.displayName, selected = true)) }.orEmpty(),
-                        followCoordinate = runnerPosition,
-                    )
-                }
+            val route = session.routePreview.map { MapCoordinate(it.latitude, it.longitude) }
+            val runnerPosition = session.lastLocation?.let { MapCoordinate(it.latitude, it.longitude) }
+            PlainstrideRouteMap(
+                points = route.ifEmpty { listOfNotNull(runnerPosition) },
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                showEndpointMarkers = false,
+                fitRouteOnChange = false,
+                markers = runnerPosition?.let {
+                    listOf(MapRouteMarker("runner", it, session.runner.displayName, selected = true))
+                }.orEmpty(),
+                followCoordinate = runnerPosition ?: route.lastOrNull(),
+            )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 Metric(distance(session.distanceM, unitSystem), stringResource(R.string.cheer_distance))
                 Metric(elapsedTime(session.elapsedSeconds), stringResource(R.string.cheer_time))

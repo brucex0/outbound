@@ -8,7 +8,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import com.plainstride.outbound.feature.social.SocialPerson
+import org.json.JSONObject
+import java.time.Instant
 
 @HiltViewModel class SafetySettingsViewModel @Inject constructor(
  private val contacts:TrustedContactStore,
@@ -26,6 +30,7 @@ import com.plainstride.outbound.feature.social.SocialPerson
  private val mutableFollowerMessage=MutableStateFlow<String?>(null);val followerMessage=mutableFollowerMessage.asStateFlow()
  private var connectionNames:Map<String,String> = emptyMap()
  private var activeAccountId:String?=null
+ private var followerRefreshJob:Job?=null
 
  init{reload()}
 
@@ -82,10 +87,98 @@ import com.plainstride.outbound.feature.social.SocialPerson
  fun isSharingEvent(activityEventId:String)=liveShare.isSharingEvent(activityEventId)
  fun hasDifferentActiveGroup(activityEventId:String)=liveShare.hasDifferentActiveGroup(activityEventId)
  fun stopGroupSharing()=viewModelScope.launch{liveShare.leaveGroupRun(false)}
- fun openLiveShare(id:String)=viewModelScope.launch{analytics.record(com.plainstride.outbound.core.analytics.AnalyticsEvent("live_cheer_follower_opened",mapOf(com.plainstride.outbound.core.analytics.AnalyticsProperty.Source to "notification")));mutableFollowerLoading.value=mutableFollower.value==null;liveShare.invitedShare(id).onSuccess{mutableFollower.value=it;if(it.status=="active")liveShare.watchFollower(id){name,data->if(name=="location")applyFollowerLocation(data)else if(name=="cheer.available")viewModelScope.launch{liveShare.invitedShare(id).onSuccess{mutableFollower.value=it}}}}.onFailure{mutableFollowerMessage.value="load_failed"};mutableFollowerLoading.value=false}
- fun stopWatchingLiveShare(){liveShare.stopWatchingFollower()}
- private fun applyFollowerLocation(value:Any?){val map=value as? Map<*,*>?:return;val old=mutableFollower.value?:return;val lat=(map["latitude"] as? Number)?.toDouble()?:return;val lon=(map["longitude"] as? Number)?.toDouble()?:return;val recordedAt=map["recordedAt"] as? String?:return;mutableFollower.value=old.copy(lastLocation=LiveRoutePoint(recordedAt,lat,lon),lastLocationAt=recordedAt,elapsedSeconds=(map["elapsedSeconds"] as? Number)?.toInt()?:old.elapsedSeconds,distanceM=(map["distanceM"] as? Number)?.toDouble()?:old.distanceM,currentPaceSecsPerKm=(map["currentPaceSecsPerKm"] as? Number)?.toDouble(),heartRate=(map["heartRate"] as? Number)?.toInt())}
+ fun openLiveShare(id:String) {
+  followerRefreshJob?.cancel()
+  followerRefreshJob=null
+  viewModelScope.launch {
+   analytics.record(com.plainstride.outbound.core.analytics.AnalyticsEvent("live_cheer_follower_opened",mapOf(com.plainstride.outbound.core.analytics.AnalyticsProperty.Source to "notification")))
+   mutableFollowerMessage.value=null
+   mutableFollowerLoading.value=mutableFollower.value?.id!=id
+   liveShare.invitedShare(id).onSuccess { initial ->
+    mutableFollower.value=initial
+    if(initial.status=="active") {
+     liveShare.watchFollower(id) { name,data ->
+      when(name) {
+       "location" -> applyFollowerLocation(data)
+       "cheer.available" -> viewModelScope.launch { refreshFollowerSnapshot(id) }
+      }
+     }
+     followerRefreshJob=viewModelScope.launch {
+      while(mutableFollower.value?.id==id&&mutableFollower.value?.status=="active") {
+       delay(FOLLOWER_REFRESH_INTERVAL_MS)
+       if(mutableFollower.value?.id!=id||mutableFollower.value?.status!="active") break
+       refreshFollowerSnapshot(id)
+      }
+     }
+    } else {
+     liveShare.stopWatchingFollower()
+    }
+   }.onFailure {
+    if(mutableFollower.value?.id!=id) mutableFollowerMessage.value="load_failed"
+   }
+   mutableFollowerLoading.value=false
+  }
+ }
+
+ fun stopWatchingLiveShare() {
+  followerRefreshJob?.cancel()
+  followerRefreshJob=null
+  liveShare.stopWatchingFollower()
+ }
+
+ private suspend fun refreshFollowerSnapshot(id:String) {
+  liveShare.invitedShare(id).onSuccess { refreshed ->
+   val current=mutableFollower.value
+   if(current?.id!=id) return@onSuccess
+   if(refreshed.status!="active"||current.status!="active"||
+    isAtLeastAsRecent(refreshed.lastLocationAt,current.lastLocationAt)) {
+    mutableFollower.value=refreshed
+    if(refreshed.status!="active") liveShare.stopWatchingFollower()
+   }
+  }
+ }
+
+ private fun applyFollowerLocation(value:Any?) {
+  val payload=when(value) {
+   is Map<*,*> -> value
+   is JSONObject -> value
+   is String -> runCatching { JSONObject(value) }.getOrNull()
+   else -> null
+  } ?: return
+  fun field(name:String):Any?=when(payload) {
+   is Map<*,*> -> payload[name]
+   is JSONObject -> payload.opt(name)
+   else -> null
+  }
+  fun number(name:String):Double?=when(val field=field(name)) {
+   is Number -> field.toDouble()
+   is String -> field.toDoubleOrNull()
+   else -> null
+  }
+  val old=mutableFollower.value?:return
+  val latitude=number("latitude")?:return
+  val longitude=number("longitude")?:return
+  val recordedAt=field("recordedAt") as? String?:return
+  mutableFollower.value=old.copy(
+   lastLocation=LiveRoutePoint(recordedAt,latitude,longitude),
+   lastLocationAt=recordedAt,
+   elapsedSeconds=number("elapsedSeconds")?.toInt()?:old.elapsedSeconds,
+   distanceM=number("distanceM")?:old.distanceM,
+   currentPaceSecsPerKm=number("currentPaceSecsPerKm"),
+   heartRate=number("heartRate")?.toInt(),
+  )
+ }
+
+ private fun isAtLeastAsRecent(candidate:String?,current:String?):Boolean {
+  if(candidate==null) return false
+  if(current==null) return true
+  val candidateInstant=runCatching { Instant.parse(candidate) }.getOrNull()?:return candidate>=current
+  val currentInstant=runCatching { Instant.parse(current) }.getOrNull()?:return candidate>=current
+  return !candidateInstant.isBefore(currentInstant)
+ }
  fun sendVoiceCheer(audioBase64:String,durationMs:Int)=viewModelScope.launch{val id=mutableFollower.value?.id?:return@launch;mutableFollowerMessage.value=null;liveShare.sendVoiceCheer(id,audioBase64,durationMs).onSuccess{mutableFollowerMessage.value="sent"}.onFailure{mutableFollowerMessage.value="send_failed"}}
  fun leaveGroup()=viewModelScope.launch{liveShare.group.value?.let{liveShare.leaveGroupRun(it.id,false)}}
  private fun reload()=viewModelScope.launch{mutableContacts.value=contacts.contacts().map{contact->connectionNames[contact.id]?.takeIf(String::isNotBlank)?.let{contact.copy(displayName=it)}?:contact}}
+
+ private companion object { const val FOLLOWER_REFRESH_INTERVAL_MS=5_000L }
 }
