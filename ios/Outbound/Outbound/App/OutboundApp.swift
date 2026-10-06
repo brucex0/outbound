@@ -263,6 +263,7 @@ struct OutboundApp: App {
                 await pushNotifications.activate()
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                HomeWorkoutWidgetStore.refreshTimeline()
                 Task {
                     await userPreferencesSyncStore.refresh()
                     await activityStore.syncPendingActivitiesIfNeeded()

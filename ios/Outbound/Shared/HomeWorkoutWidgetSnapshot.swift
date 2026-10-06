@@ -35,4 +35,8 @@ enum HomeWorkoutWidgetStore {
         defaults.removeObject(forKey: snapshotKey)
         WidgetCenter.shared.reloadTimelines(ofKind: widgetKind)
     }
+
+    static func refreshTimeline() {
+        WidgetCenter.shared.reloadTimelines(ofKind: widgetKind)
+    }
 }
