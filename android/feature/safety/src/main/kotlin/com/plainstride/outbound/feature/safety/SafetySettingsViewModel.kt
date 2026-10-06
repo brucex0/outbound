@@ -97,12 +97,16 @@ import java.time.Instant
    liveShare.invitedShare(id).onSuccess { initial ->
     mutableFollower.value=initial
     if(initial.status=="active") {
-     liveShare.watchFollower(id) { name,data ->
-      when(name) {
-       "location" -> applyFollowerLocation(data)
-       "cheer.available" -> viewModelScope.launch { refreshFollowerSnapshot(id) }
-      }
-     }
+     liveShare.watchFollower(
+      id=id,
+      onEvent={name,data ->
+       when(name) {
+        "location" -> applyFollowerLocation(data)
+        "cheer.available" -> viewModelScope.launch { refreshFollowerSnapshot(id) }
+       }
+      },
+      onChannelAttached={viewModelScope.launch { refreshFollowerSnapshot(id) }},
+     )
      followerRefreshJob=viewModelScope.launch {
       while(mutableFollower.value?.id==id&&mutableFollower.value?.status=="active") {
        delay(FOLLOWER_REFRESH_INTERVAL_MS)

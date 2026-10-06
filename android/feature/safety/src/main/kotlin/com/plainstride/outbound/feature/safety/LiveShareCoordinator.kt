@@ -152,18 +152,28 @@ class LiveShareCoordinator @Inject constructor(
   }
  }
  private fun saveActive(value:LiveShare){mutableActive.value=value;preferences.edit().putString(ACTIVE,PlainstrideJson.encodeToString(value)).apply();connectShareRealtime(value.id)}
- private fun connectShareRealtime(id:String){if(shareRealtimeId==id)return;shareRealtime?.close();shareRealtimeId=id;shareRealtime=AblySessionTransport.connect("plainstride:live_share:$id",{issueRealtimeToken("live_share",id)}){name,_,_->if(name=="cheer.available")mutableCheerSignals.tryEmit(Unit)}}
- fun watchFollower(id:String,onEvent:(String,Any?)->Unit){followerRealtime?.close();followerRealtime=AblySessionTransport.connect("plainstride:live_share:$id",{issueRealtimeToken("live_share",id)}){name,_,data->onEvent(name,data)}}
+ private fun connectShareRealtime(id:String){if(shareRealtimeId==id)return;shareRealtime?.close();shareRealtimeId=id;shareRealtime=AblySessionTransport.connect(channelName="plainstride:live_share:$id",tokenProvider={issueRealtimeToken("live_share",id)},onMessage={name,_,_->if(name=="cheer.available")mutableCheerSignals.tryEmit(Unit)})}
+ fun watchFollower(id:String,onEvent:(String,Any?)->Unit,onChannelAttached:()->Unit={}) {
+  followerRealtime?.close()
+  followerRealtime=runCatching {
+   AblySessionTransport.connect(
+    channelName="plainstride:live_share:$id",
+    tokenProvider={issueRealtimeToken("live_share",id)},
+    onMessage={name,_,data->onEvent(name,data)},
+    onChannelAttached=onChannelAttached,
+   )
+  }.getOrNull()
+ }
  fun stopWatchingFollower(){followerRealtime?.close();followerRealtime=null}
  private fun clearGroup(){groupRealtime?.close();groupRealtime=null;groupRealtimeId=null;mutableGroup.value=null;lastGroupPoint=null;lastGroupSentAt=0;preferences.edit().remove(GROUP).apply()}
  private fun connectGroupRealtime(id:String){
   if(groupRealtimeId==id)return
   groupRealtime?.close();groupRealtimeId=id
   lastGroupCheckpointAt=0;lastGroupSentAt=0;lastGroupPoint=null
-  groupRealtime=AblySessionTransport.connect("plainstride:group_run:$id",{issueRealtimeToken("group_run",id)}){name,clientId,data->
+  groupRealtime=AblySessionTransport.connect(channelName="plainstride:group_run:$id",tokenProvider={issueRealtimeToken("group_run",id)},onMessage={name,clientId,data->
    if(name=="location"&&clientId!=null)applyGroupLocation(clientId,data)
    else if(name=="participant.changed")realtimeScope.launch{groupRun(id)}
-  }
+  })
  }
  private suspend fun issueRealtimeToken(kind:String,id:String):RealtimeToken = authenticated{auth->apiCall{api.realtimeToken(auth,RealtimeTokenRequest(kind,id))}}.getOrThrow()
  private fun applyGroupLocation(senderId:String,value:Any?){
