@@ -1154,6 +1154,7 @@ private fun TrackMap(
         runnerLocation = snapshot.latestLocation?.let { MapCoordinate(it.latitude, it.longitude) },
         modifier = modifier,
         showRunnerMascot = true,
+        runnerMoving = snapshot.status == RecordingStatus.ACTIVE,
         showEndpointMarkers = planned.size > 1,
         bottomContentPadding = 128.dp,
     )

@@ -14,6 +14,8 @@ import kotlinx.coroutines.launch
 import android.os.SystemClock
 import android.content.Context
 import android.util.Log
+import java.time.Duration
+import java.time.Instant
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.plainstride.outbound.core.network.PlainstrideJson
 import com.plainstride.outbound.core.network.*
@@ -44,6 +46,7 @@ class LiveShareCoordinator @Inject constructor(
     val selectedRecipientIds = mutableSelectedRecipients.asStateFlow()
     private var armed: CreateLiveShareRequest? = mutableArmed.value
     private var lastSentAt = 0L
+    private var lastSentRecordedAt: Instant? = null
     private var lastPoint: LiveLocation? = null
     private var lastShareCheckpointAt = 0L
     private var shareRealtime: AblySessionTransport? = null
@@ -82,11 +85,25 @@ class LiveShareCoordinator @Inject constructor(
   }else saveArmed(CreateLiveShareRequest(recipientUserIds=recipients))
  }
  suspend fun recordingStarted(activityId:String?=null):Result<LiveShare?>{if(mutableActive.value!=null)return Result.success(mutableActive.value);val request=armed?:return Result.success(null);armed=null;mutableArmed.value=null;preferences.edit().remove(ARMED).apply();return start(request.copy(activityId=activityId)).map{it}}
- suspend fun start(request:CreateLiveShareRequest):Result<LiveShare> = authenticated{apiCall{api.create(it,request)}}.onSuccess{lastShareCheckpointAt=0;lastPoint=null;lastSentAt=0;saveActive(it)}.also{result->analytics.record(AnalyticsEvent("live_share_started",mapOf(AnalyticsProperty.Result to if(result.isSuccess)"success" else "failure")))}
- suspend fun update(point:LiveLocation):Result<LiveShare?> = lock.withLock { val share=mutableActive.value?:return Result.success(null);val now=SystemClock.elapsedRealtime();val prior=lastPoint;if(now-lastSentAt<10_000&&prior!=null&&haversine(prior,point)<25)return Result.success(share);shareRealtime?.publishLocation(mapOf("recordedAt" to point.recordedAt,"latitude" to point.latitude,"longitude" to point.longitude,"altitudeM" to point.altitudeM,"accuracyM" to point.accuracyM,"elapsedSeconds" to point.elapsedSeconds,"distanceM" to point.distanceM,"currentPaceSecsPerKm" to point.currentPaceSecsPerKm,"heartRate" to point.heartRate));lastPoint=point;lastSentAt=now;if(lastShareCheckpointAt==0L||now-lastShareCheckpointAt>=60_000){authenticated{apiCall{api.update(it,share.id,point)}}.onSuccess{mutableActive.value=it;lastShareCheckpointAt=now}};Result.success(share) }
+ suspend fun start(request:CreateLiveShareRequest):Result<LiveShare> = authenticated{apiCall{api.create(it,request)}}.onSuccess{lastShareCheckpointAt=0;lastPoint=null;lastSentAt=0;lastSentRecordedAt=null;saveActive(it)}.also{result->analytics.record(AnalyticsEvent("live_share_started",mapOf(AnalyticsProperty.Result to if(result.isSuccess)"success" else "failure")))}
+ suspend fun update(point:LiveLocation):Result<LiveShare?> = lock.withLock {
+  val share=mutableActive.value?:return Result.success(null)
+  val now=SystemClock.elapsedRealtime()
+  val recordedAt=runCatching{Instant.parse(point.recordedAt)}.getOrNull()
+  val priorRecordedAt=lastSentRecordedAt
+  val recordedAtDeltaMs=if(recordedAt!=null&&priorRecordedAt!=null)runCatching{Duration.between(priorRecordedAt,recordedAt).toMillis()}.getOrNull()else null
+  val tooSoon=recordedAtDeltaMs?.let{it<1_000L}?: (lastSentAt!=0L&&now-lastSentAt<1_000L)
+  if(point.recordedAt==lastPoint?.recordedAt||tooSoon)return Result.success(share)
+  shareRealtime?.publishLocation(mapOf("recordedAt" to point.recordedAt,"latitude" to point.latitude,"longitude" to point.longitude,"altitudeM" to point.altitudeM,"accuracyM" to point.accuracyM,"elapsedSeconds" to point.elapsedSeconds,"distanceM" to point.distanceM,"currentPaceSecsPerKm" to point.currentPaceSecsPerKm,"heartRate" to point.heartRate))
+  lastPoint=point
+  lastSentAt=now
+  if(recordedAt!=null)lastSentRecordedAt=recordedAt
+  if(lastShareCheckpointAt==0L||now-lastShareCheckpointAt>=60_000){authenticated{apiCall{api.update(it,share.id,point)}}.onSuccess{mutableActive.value=it;lastShareCheckpointAt=now}}
+  Result.success(share)
+ }
  suspend fun recordingEnded()=end()
  suspend fun end():Result<Unit>{val share=mutableActive.value?:return Result.success(Unit);return authenticated{apiCall{api.end(it,share.id)}}.map{clear();Unit}.also{result->analytics.record(AnalyticsEvent("live_share_ended",mapOf(AnalyticsProperty.Result to if(result.isSuccess)"success" else "failure")))}}
- fun clear(){shareRealtime?.close();shareRealtime=null;shareRealtimeId=null;followerRealtime?.close();followerRealtime=null;armed=null;mutableArmed.value=null;mutableActive.value=null;lastPoint=null;lastShareCheckpointAt=0;lastSentAt=0;preferences.edit().clear().apply()}
+ fun clear(){shareRealtime?.close();shareRealtime=null;shareRealtimeId=null;followerRealtime?.close();followerRealtime=null;armed=null;mutableArmed.value=null;mutableActive.value=null;lastPoint=null;lastShareCheckpointAt=0;lastSentAt=0;lastSentRecordedAt=null;preferences.edit().clear().apply()}
  suspend fun registerToken(token:String,bundle:String,locale:String)=authenticated{apiCall{api.register(it,PushDeviceRequest(token,appBundle=bundle,locale=locale))}}.map{Unit}
  suspend fun unregisterToken(token:String)=authenticated{apiCall{api.unregister(it,token)}}.map{Unit}
  suspend fun inbox()=authenticated{apiCall{api.inbox(it)}}

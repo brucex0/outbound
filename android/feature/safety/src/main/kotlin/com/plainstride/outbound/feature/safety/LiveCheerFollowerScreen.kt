@@ -121,6 +121,7 @@ fun LiveCheerFollowerScreen(
                 followRunner = true,
                 rotateWithRunner = true,
                 showRunnerMascot = true,
+                runnerMoving = session.status == "active",
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 Metric(distance(session.distanceM, unitSystem), stringResource(R.string.cheer_distance))
