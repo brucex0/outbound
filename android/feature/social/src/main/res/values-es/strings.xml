@@ -1,13 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
-    <string name="group_event_live_map_title">Mapa en directo del grupo</string>
-    <string name="group_event_live_map_sharing">Estás compartiendo tu ubicación en directo</string>
-    <string name="group_event_live_map_consent">Asistir a esta actividad no comparte tu ubicación. Activa la opción para compartirla con quienes también decidan hacerlo.</string>
-    <string name="group_event_live_map_opt_in">Compartir mi ubicación en directo</string>
-    <string name="group_event_live_map_stop">Dejar de compartir</string>
-    <string name="group_event_live_map_start">Iniciar actividad</string>
-    <string name="group_event_live_map_runners">%1$d asistentes comparten su ubicación</string>
+    <string name="group_creation_failed">No se pudo crear el grupo. Inténtalo de nuevo.</string>
     <string name="group_event_attend_in_person">Quedar en persona</string>
     <string name="group_event_attend_virtual">Unirme virtualmente</string>
     <string name="group_event_attendance_prompt">¿Cómo quieres participar?</string>
@@ -20,6 +14,13 @@
     <string name="group_event_fit">Afinidad</string>
     <string name="group_event_from">De %1$s</string>
     <string name="group_event_hybrid_location">Únete virtualmente o queda en:</string>
+    <string name="group_event_live_map_consent">Asistir a esta actividad no comparte tu ubicación. Activa la opción para compartirla con quienes también decidan hacerlo.</string>
+    <string name="group_event_live_map_opt_in">Compartir mi ubicación en directo</string>
+    <string name="group_event_live_map_runners">%1$d asistentes comparten su ubicación</string>
+    <string name="group_event_live_map_sharing">Estás compartiendo tu ubicación en directo</string>
+    <string name="group_event_live_map_start">Iniciar actividad</string>
+    <string name="group_event_live_map_stop">Dejar de compartir</string>
+    <string name="group_event_live_map_title">Mapa en directo del grupo</string>
     <string name="group_event_location">Lugar</string>
     <string name="group_event_meet_location">Queda en:</string>
     <string name="group_event_no_participants">Aún no hay participantes.</string>
@@ -30,6 +31,7 @@
     <string name="group_event_results_close">Cierre de resultados</string>
     <string name="group_event_scheduled_end">Hora de fin</string>
     <string name="group_event_when">Cuándo</string>
+    <string name="group_toast_created">Grupo creado. Invitaciones enviadas.</string>
     <string name="social_active_now_person">%1$s está entrenando ahora</string>
     <string name="social_active_now_title">En actividad</string>
     <string name="social_activity_feed">ACTIVIDAD</string>

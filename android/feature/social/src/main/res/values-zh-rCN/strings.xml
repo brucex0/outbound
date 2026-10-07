@@ -1,15 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
-    <string name="group_event_live_map_title">小组实时地图</string>
-    <string name="group_event_live_map_sharing">你正在分享实时位置</string>
-    <string name="group_event_live_map_consent">报名参加不会分享你的位置。主动选择分享后，其他同样选择分享的参与者才能看到你。</string>
-    <string name="group_event_live_map_opt_in">分享我的实时位置</string>
-    <string name="group_event_live_map_stop">停止分享</string>
-    <string name="group_event_live_map_start">开始活动</string>
-    <string name="group_event_live_map_runners">%1$d 位参与者正在分享位置</string>
+    <string name="group_creation_failed">无法创建群组，请重试。</string>
     <string name="group_event_attend_in_person">线下集合</string>
-    <string name="group_event_attend_virtual">线上参加</string>
+    <string name="group_event_attend_virtual">云参与</string>
     <string name="group_event_attendance_prompt">你想如何参加？</string>
     <string name="group_event_attendance_title">选择参加方式</string>
     <string name="group_event_created_by">发起人</string>
@@ -19,7 +13,14 @@
     <string name="group_event_duration_minutes">%1$d 分钟</string>
     <string name="group_event_fit">匹配度</string>
     <string name="group_event_from">来自%1$s</string>
-    <string name="group_event_hybrid_location">线上参加或在此集合：</string>
+    <string name="group_event_hybrid_location">云参与或在此集合：</string>
+    <string name="group_event_live_map_consent">报名参加不会分享你的位置。主动选择分享后，其他同样选择分享的参与者才能看到你。</string>
+    <string name="group_event_live_map_opt_in">分享我的实时位置</string>
+    <string name="group_event_live_map_runners">%1$d 位参与者正在分享位置</string>
+    <string name="group_event_live_map_sharing">你正在分享实时位置</string>
+    <string name="group_event_live_map_start">开始活动</string>
+    <string name="group_event_live_map_stop">停止分享</string>
+    <string name="group_event_live_map_title">小组实时地图</string>
     <string name="group_event_location">地点</string>
     <string name="group_event_meet_location">集合地点：</string>
     <string name="group_event_no_participants">还没有人参加。</string>
@@ -30,6 +31,7 @@
     <string name="group_event_results_close">结果截止时间</string>
     <string name="group_event_scheduled_end">计划结束时间</string>
     <string name="group_event_when">时间</string>
+    <string name="group_toast_created">群组已创建，邀请已发送。</string>
     <string name="social_active_now_person">%1$s 正在运动</string>
     <string name="social_active_now_title">正在运动</string>
     <string name="social_activity_feed">活动动态</string>

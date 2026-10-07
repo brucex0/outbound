@@ -98,6 +98,16 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             }
         }
     }
+    LaunchedEffect(viewModel) {
+        viewModel.messages.collect { message ->
+            val text = when (message) {
+                SocialMessage.GROUP_CREATED -> resources.getString(R.string.group_toast_created)
+                SocialMessage.GROUP_CREATION_FAILED -> resources.getString(R.string.group_creation_failed)
+                else -> null
+            }
+            text?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+        }
+    }
     LaunchedEffect(scannerFeedback) {
         if (scannerFeedback == null) return@LaunchedEffect
         kotlinx.coroutines.delay(2_000)
@@ -230,7 +240,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             onStartActivity = { onStartGroupActivity(event) },
         )
     }
-    if(createGroup)GroupCreateScreen(state.home.connections.filter{it.relationship in setOf("accepted","connected")},{createGroup=false},viewModel::trackGroupTemplateSelected){template,name,people->viewModel.createGroup(template,name,people,java.util.TimeZone.getDefault().id);createGroup=false}
+    if(createGroup)GroupCreateScreen(state.home.connections.filter{it.relationship in setOf("accepted","connected")},{createGroup=false},viewModel::trackGroupTemplateSelected){template,name,people,onComplete->viewModel.createGroup(template,name,people,java.util.TimeZone.getDefault().id,onComplete)}
     inviteGroup?.let{group->PersonPickerDialog(stringResource(R.string.social_invite),state.home.connections,{inviteGroup=null}){person->viewModel.inviteToGroup(group,listOf(person),java.util.UUID.randomUUID().toString());inviteGroup=null}}
     inviteEvent?.let{event->PersonPickerDialog(stringResource(R.string.social_invite),state.home.connections,{inviteEvent=null}){person->viewModel.inviteToEvent(event,person);inviteEvent=null}}
     groupActivity?.let { group -> GroupActivityComposer({ groupActivity = null }) { title, location -> viewModel.createGroupActivity(group, title, location); groupActivity = null } }

@@ -31,7 +31,7 @@ data class SocialUiState(
     val connectionProfileLoading: Boolean = false, val connectionProfileCode: String? = null,
     val connectionProfileIsSelf: Boolean = false,
 )
-enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED }
+enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED, GROUP_CREATED, GROUP_CREATION_FAILED }
 enum class ConnectionFeedback { REQUESTED, ALREADY_PENDING, INCOMING_PENDING, ALREADY_CONNECTED, SELF, UPDATED, REQUEST_FAILED, PROFILE_LOAD_FAILED, INVITE_LINK_FAILED }
 sealed interface ConnectionEffect {
     data class Feedback(val value: ConnectionFeedback, val closeScanner: Boolean) : ConnectionEffect
@@ -385,7 +385,33 @@ sealed interface ConnectionEffect {
             )
         }
     }
-    fun createGroup(template:String,name:String?,members:List<SocialPerson>,timeZone:String?)=mutate("group_created"){repository.createGroup(template,name,members.map{it.id},timeZone).getOrThrow().let{created->mutableState.update{it.copy(selectedGroupDetail=created)}};refresh()}
+    fun createGroup(template:String,name:String?,members:List<SocialPerson>,timeZone:String?,onComplete:(Boolean)->Unit={})=viewModelScope.launch {
+        repository.createGroup(template,name,members.map{it.id},timeZone).fold(
+            onSuccess = { created ->
+                mutableState.update { it.copy(selectedGroupDetail=created) }
+                refresh()
+                if (template == "motivation") messages.emit(SocialMessage.GROUP_CREATED)
+                analytics.record(AnalyticsEvent("group_creation_completed", mapOf(
+                    AnalyticsProperty.EntrySource to "social",
+                    AnalyticsProperty.ParticipantCountBucket to countBucket(members.size + 1),
+                )))
+                if (members.isNotEmpty()) analytics.record(AnalyticsEvent("group_invitation_sent", mapOf(
+                    AnalyticsProperty.EntrySource to "creation",
+                    AnalyticsProperty.ParticipantCountBucket to countBucket(members.size),
+                    AnalyticsProperty.Result to "success",
+                )))
+                onComplete(true)
+            },
+            onFailure = {
+                messages.emit(SocialMessage.GROUP_CREATION_FAILED)
+                analytics.record(AnalyticsEvent("group_creation_failed", mapOf(
+                    AnalyticsProperty.EntrySource to "social",
+                    AnalyticsProperty.ErrorCategory to "api_unavailable",
+                )))
+                onComplete(false)
+            },
+        )
+    }
     fun trackGroupTemplateSelected(template:String) = analytics.record(AnalyticsEvent("group_template_selected", mapOf(AnalyticsProperty.SelectionType to template)))
     fun inviteToGroup(group:GroupSummary,members:List<SocialPerson>,idempotencyKey:String)=mutate("group_invitation_sent"){repository.inviteToGroup(group.id,members.map{it.id},idempotencyKey).getOrThrow();openGroup(group)}
     fun setGroupFocus(group:GroupSummary,mode:String,target:Int?,nextWeek:Boolean)=mutate("group_focus_changed"){repository.setGroupFocus(group.id,mode,target,nextWeek).getOrThrow();openGroup(group)}

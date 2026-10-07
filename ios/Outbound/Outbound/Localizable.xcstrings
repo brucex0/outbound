@@ -5837,6 +5837,62 @@
         }
       }
     },
+    "group.event.live_map.title": {
+      "comment": "[android:social] Generated Android name: group_event_live_map_title.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Group live map" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Mapa en directo del grupo" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "小组实时地图" } }
+      }
+    },
+    "group.event.live_map.sharing": {
+      "comment": "[android:social] Generated Android name: group_event_live_map_sharing.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "You’re sharing your live location" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Estás compartiendo tu ubicación en directo" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "你正在分享实时位置" } }
+      }
+    },
+    "group.event.live_map.consent": {
+      "comment": "[android:social] Generated Android name: group_event_live_map_consent.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Going to this activity doesn’t share your location. Opt in to share with other attendees who also choose to share." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Asistir a esta actividad no comparte tu ubicación. Activa la opción para compartirla con quienes también decidan hacerlo." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "报名参加不会分享你的位置。主动选择分享后，其他同样选择分享的参与者才能看到你。" } }
+      }
+    },
+    "group.event.live_map.opt_in": {
+      "comment": "[android:social] Generated Android name: group_event_live_map_opt_in.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Share my live location" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Compartir mi ubicación en directo" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "分享我的实时位置" } }
+      }
+    },
+    "group.event.live_map.stop": {
+      "comment": "[android:social] Generated Android name: group_event_live_map_stop.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Stop sharing" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Dejar de compartir" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "停止分享" } }
+      }
+    },
+    "group.event.live_map.start": {
+      "comment": "[android:social] Generated Android name: group_event_live_map_start.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Start activity" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Iniciar actividad" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "开始活动" } }
+      }
+    },
+    "group.event.live_map.runners": {
+      "comment": "[android:social] Generated Android name: group_event_live_map_runners.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "%1$d attendees sharing live location" } },
+        "es": { "stringUnit": { "state": "translated", "value": "%1$d asistentes comparten su ubicación" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "%1$d 位参与者正在分享位置" } }
+      }
+    },
     "group.event.hybrid_location": {
       "comment": "[android:social] Location hint for events with in-person and virtual participation.",
       "localizations": {
@@ -9588,6 +9644,7 @@
       }
     },
     "group.toast.created": {
+      "comment": "[android:social] Generated Android name: group_toast_created.",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -9605,6 +9662,29 @@
           "stringUnit": {
             "state": "translated",
             "value": "群组已创建，邀请已发送。"
+          }
+        }
+      }
+    },
+    "group.creation.failed": {
+      "comment": "[android:social] Generated Android name: group_creation_failed.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not create the Group. Try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo crear el grupo. Inténtalo de nuevo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法创建群组，请重试。"
           }
         }
       }

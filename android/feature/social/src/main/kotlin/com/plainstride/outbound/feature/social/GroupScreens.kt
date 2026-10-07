@@ -27,8 +27,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.lazy.LazyListScope
 
-@Composable fun GroupCreateScreen(connections:List<SocialPerson>,close:()->Unit,selectTemplate:(String)->Unit,create:(String,String?,List<SocialPerson>)->Unit)=Dialog(onDismissRequest=close){
- var template by rememberSaveable{mutableStateOf<String?>(null)}
+@Composable fun GroupCreateScreen(connections:List<SocialPerson>,close:()->Unit,selectTemplate:(String)->Unit,create:(String,String?,List<SocialPerson>,(Boolean)->Unit)->Unit)=Dialog(onDismissRequest=close){
+ var template by rememberSaveable{mutableStateOf<String?>(null)};var creating by rememberSaveable{mutableStateOf(false)}
  var name by rememberSaveable{mutableStateOf("")};var selected by remember{mutableStateOf(setOf<String>())}
  Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background){
   if(template==null) GroupTemplateChooser(close){selectTemplate(it);template=it} else Column {
@@ -42,7 +42,7 @@ import androidx.compose.foundation.lazy.LazyListScope
     item{OutlinedTextField(name,{name=it.take(80)},Modifier.fillMaxWidth(),label={Text(stringResource(R.string.group_create_name))},supportingText={Text(if(template=="activities")stringResource(R.string.group_create_community_name_help) else stringResource(R.string.group_create_name_help))})}
     if(template=="activities") item{Text(stringResource(R.string.social_groups_create_community_access),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
    }
-   Button({create(template!!,name.trim().ifEmpty{null},connections.filter{it.id in selected})},Modifier.fillMaxWidth().padding(16.dp).heightIn(min=50.dp),enabled=template=="activities"&&name.isNotBlank()||template=="motivation"&&selected.isNotEmpty()){Text(stringResource(R.string.group_create_action))}
+   Button({if(!creating){creating=true;create(template!!,name.trim().ifEmpty{null},connections.filter{it.id in selected}){created->creating=false;if(created)close()}}},Modifier.fillMaxWidth().padding(16.dp).heightIn(min=50.dp),enabled=!creating&&(template=="activities"&&name.isNotBlank()||template=="motivation"&&selected.isNotEmpty())){if(creating)CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp)else Text(stringResource(R.string.group_create_action))}
   }
  }
 }
