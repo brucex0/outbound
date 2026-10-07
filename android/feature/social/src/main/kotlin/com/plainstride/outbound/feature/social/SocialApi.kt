@@ -1,6 +1,8 @@
 package com.plainstride.outbound.feature.social
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.ResponseBody
@@ -25,7 +27,8 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 @Serializable data class CommentBody(val body:String)
 @Serializable data class AttendanceBody(val attendanceMode:String="in_person")
 @Serializable data class EventInviteBody(val recipientUserId:String?=null)
-@Serializable data class CreateGroupBody(val template:String="motivation",val name:String?=null,val description:String?=null,val city:String?=null,val activityInterests:List<String> = emptyList(),val memberUserIds:List<String> = emptyList(),val timeZone:String?=null,val resetWeekday:Int?=null,val idempotencyKey:String?=null)
+@OptIn(ExperimentalSerializationApi::class)
+@Serializable data class CreateGroupBody(val template:String="motivation",val name:String?=null,val description:String?=null,val city:String?=null,val activityInterests:List<String> = emptyList(),val memberUserIds:List<String> = emptyList(),@EncodeDefault(EncodeDefault.Mode.NEVER) val timeZone:String?=null,@EncodeDefault(EncodeDefault.Mode.NEVER) val resetWeekday:Int?=null,@EncodeDefault(EncodeDefault.Mode.NEVER) val idempotencyKey:String?=null)
 @Serializable data class GroupInviteBody(val recipientUserIds:List<String>,val idempotencyKey:String?=null)
 @Serializable data class GroupFocusBody(val mode:String,val sharedTarget:Int?=null,val apply:String="now")
 @Serializable data class RenameGroupBody(val name:String)
