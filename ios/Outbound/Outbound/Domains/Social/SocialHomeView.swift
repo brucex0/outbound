@@ -2446,10 +2446,13 @@ struct SocialNotificationsView: View {
         .toolbar {
             if showsDismissButton {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(String(localized: "common.done", defaultValue: "Done")) {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
                     }
-                    .accessibilityIdentifier("NotificationCenterDoneButton")
+                    .accessibilityLabel(String(localized: "common.close", defaultValue: "Close"))
+                    .accessibilityIdentifier("NotificationCenterCloseButton")
                 }
             }
         }
