@@ -167,6 +167,7 @@ import com.plainstride.outbound.feature.social.SocialActivityDetailDestination
 import com.plainstride.outbound.feature.social.SocialActivityEventDestination
 import com.plainstride.outbound.feature.social.SocialProfileDestination
 import com.plainstride.outbound.feature.social.SocialPerson
+import com.plainstride.outbound.feature.social.R as SocialR
 import com.plainstride.outbound.feature.today.WorkoutLaunchIntent
 import com.plainstride.outbound.feature.today.TodayManualLaunch
 import com.plainstride.outbound.feature.today.TodayActivityChoice
@@ -340,6 +341,7 @@ private fun SignedInApp(
     var notificationPermissionRequested by remember {
         mutableStateOf(notificationPermissionPreferences.getBoolean("requested", false))
     }
+    var showNotificationPermissionPrimer by rememberSaveable { mutableStateOf(false) }
     var pendingPushPermission by remember { mutableStateOf<Boolean?>(null) }
     var pendingReminderPermission by remember { mutableStateOf<Boolean?>(null) }
     var pushPermissionGranted by remember {
@@ -434,6 +436,11 @@ private fun SignedInApp(
             }
         }
     }
+    LaunchedEffect(currentDestination?.route, pushPermissionGranted) {
+        if (currentDestination?.route == TopLevelDestination.Social.route && !pushPermissionGranted) {
+            integrationViewModel.trackPushPermissionPromptExposed("social")
+        }
+    }
     LaunchedEffect(accountId) { accountId?.let { integrationViewModel.start(it, resources.configuration.locales[0].toLanguageTag());cycleViewModel.start(it);healthViewModel.start(it) } }
     LaunchedEffect(accountId, pushPermissionGranted, notificationPermissionRequested, reminderEnabled) {
         if (
@@ -445,7 +452,11 @@ private fun SignedInApp(
                 notificationPermissionRequested = true
                 notificationPermissionPreferences.edit().putBoolean("requested", true).apply()
             } else {
-                requestNotificationPermission(forPush = false, forReminder = reminderEnabled)
+                if (!notificationPermissionPreferences.getBoolean("primer_shown", false)) {
+                    notificationPermissionPreferences.edit().putBoolean("primer_shown", true).apply()
+                    showNotificationPermissionPrimer = true
+                    integrationViewModel.trackPushPermissionPromptExposed("authenticated_entry")
+                }
             }
         }
     }
@@ -858,6 +869,11 @@ private fun SignedInApp(
                                 }
                             },
                             settingsContent = {
+                                LaunchedEffect(pushPermissionGranted) {
+                                    if (!pushPermissionGranted) {
+                                        integrationViewModel.trackPushPermissionPromptExposed("settings")
+                                    }
+                                }
                                 SettingsGroupTitle(stringResource(SettingsR.string.settings_planned_workouts))
                                 ReminderSettingsRow(
                                     viewModel = reminderViewModel,
@@ -898,14 +914,26 @@ private fun SignedInApp(
                                 ListItem(headlineContent = { Text(stringResource(R.string.notifications_destination)) }, modifier = Modifier.clickable { navController.navigate(NOTIFICATIONS_ROUTE) })
                                 ListItem(
                                     headlineContent = { Text(stringResource(R.string.push_notifications_setting)) },
-                                    supportingContent = { Text(stringResource(R.string.push_notifications_body)) },
+                                    supportingContent = {
+                                        Column {
+                                            Text(stringResource(R.string.push_notifications_body))
+                                            if (!pushPermissionGranted) {
+                                                TextButton(onClick = {
+                                                    integrationViewModel.trackPushPermissionPromptAction("settings", "enable")
+                                                    requestNotificationPermission(forPush = true, forReminder = reminderEnabled)
+                                                }) {
+                                                    Text(stringResource(SocialR.string.social_notifications_permission_enable))
+                                                }
+                                            }
+                                        }
+                                    },
                                     trailingContent = {
                                         Switch(
                                             checked = integration.pushEnabled && pushPermissionGranted,
                                             onCheckedChange = { enabled ->
                                                 if (!enabled) {
                                                     integrationViewModel.setPushEnabled(false)
-                                                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !pushPermissionGranted) {
+                                                } else if (!pushPermissionGranted) {
                                                     requestNotificationPermission(forPush = true, forReminder = reminderEnabled)
                                                 } else {
                                                     integrationViewModel.setPushEnabled(true)
@@ -918,7 +946,7 @@ private fun SignedInApp(
                             onMessage = { message -> snackbar.showSnackbar(resources.getString(settingsMessageResource(message))) },
                         )
                     } else if (destination == TopLevelDestination.Social && accountId != null) {
-                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.type,socialTarget?.id,targetEntrySource=socialTarget?.entrySource ?: "deep_link",inboxCount=NotificationPresentationPolicy.actionableAttentionCount(integration.notifications),unitSystem=measurementUnitSystem,onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE) { launchSingleTop = true }},onActivity={id->activityTarget=id;navController.navigate(ACTIVITY_HISTORY_ROUTE)},onMyInvite={navController.navigate(MY_QR_ROUTE){launchSingleTop=true}},onTargetConsumed={socialTarget=null},onConnectionLinkConsumed={socialTarget=null;onConnectionCodeConsumed()},onGroupInviteConsumed={socialTarget=null},onRoutesTabSelected={if(integration.routeScope!=RouteScope.DISCOVERY)integrationViewModel.scope(RouteScope.DISCOVERY)},onOpenSharedActivity={id->navController.navigate("$SOCIAL_ACTIVITY_DETAIL_ROUTE/$id")},onOpenSharedEvent={id,source->navController.navigate("$SOCIAL_ACTIVITY_EVENT_ROUTE/$id?source=$source")},onOpenSharedProfile={person->sharedSocialProfile=person;navController.navigate("$SOCIAL_PROFILE_ROUTE/${person.id}")},groupRun=sharedLiveGroupRun?.toSharedLiveRun(),groupRunJoining=groupRunJoining,onToggleActivityLiveMap=toggleActivityLiveMap,onStartGroupActivity={event->recordingLaunch=RecordingLaunchConfiguration(activityKind=when(event.activityType?.lowercase()){"walking"->ActivityKind.WALKING;"hiking"->ActivityKind.HIKING;"cycling"->ActivityKind.CYCLING;"swimming"->ActivityKind.SWIMMING;else->ActivityKind.RUNNING},title=event.name,entrySource="group_event",activityEventId=event.id,startImmediately=false);navController.navigate(RECORDING_ROUTE){launchSingleTop=true}},communityRoutesContent={ routeImportRequest -> CommunityRouteScreen(integration.routes,integration.routeScope,integrationViewModel::scope,integrationViewModel::refreshRoutes,integrationViewModel::search,{launch->recordingLaunch=launch;navController.navigate(RECORDING_ROUTE)},integrationViewModel::bookmark,integrationViewModel::trackRouteImport,bottomContentPadding=PrimaryBottomToolbarClearance,routeDetail=integration.selectedCommunityRoute,routeDetailLoading=integration.communityRouteLoading,onLoadDetail=integrationViewModel::loadCommunityRoute,onRemovePublished=integrationViewModel::removePublishedRoute,onClearDetail=integrationViewModel::clearCommunityRoute,unitSystem=measurementUnitSystem,onImportedDelete=integrationViewModel::trackImportedRouteDeleted,importRequest=routeImportRequest,searchQuery=integration.routeQuery)})
+                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.type,socialTarget?.id,targetEntrySource=socialTarget?.entrySource ?: "deep_link",inboxCount=NotificationPresentationPolicy.actionableAttentionCount(integration.notifications),unitSystem=measurementUnitSystem,onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE) { launchSingleTop = true }},onActivity={id->activityTarget=id;navController.navigate(ACTIVITY_HISTORY_ROUTE)},onMyInvite={navController.navigate(MY_QR_ROUTE){launchSingleTop=true}},onTargetConsumed={socialTarget=null},onConnectionLinkConsumed={socialTarget=null;onConnectionCodeConsumed()},onGroupInviteConsumed={socialTarget=null},onRoutesTabSelected={if(integration.routeScope!=RouteScope.DISCOVERY)integrationViewModel.scope(RouteScope.DISCOVERY)},onOpenSharedActivity={id->navController.navigate("$SOCIAL_ACTIVITY_DETAIL_ROUTE/$id")},onOpenSharedEvent={id,source->navController.navigate("$SOCIAL_ACTIVITY_EVENT_ROUTE/$id?source=$source")},onOpenSharedProfile={person->sharedSocialProfile=person;navController.navigate("$SOCIAL_PROFILE_ROUTE/${person.id}")},groupRun=sharedLiveGroupRun?.toSharedLiveRun(),groupRunJoining=groupRunJoining,onToggleActivityLiveMap=toggleActivityLiveMap,onStartGroupActivity={event->recordingLaunch=RecordingLaunchConfiguration(activityKind=when(event.activityType?.lowercase()){"walking"->ActivityKind.WALKING;"hiking"->ActivityKind.HIKING;"cycling"->ActivityKind.CYCLING;"swimming"->ActivityKind.SWIMMING;else->ActivityKind.RUNNING},title=event.name,entrySource="group_event",activityEventId=event.id,startImmediately=false);navController.navigate(RECORDING_ROUTE){launchSingleTop=true}},communityRoutesContent={ routeImportRequest -> CommunityRouteScreen(integration.routes,integration.routeScope,integrationViewModel::scope,integrationViewModel::refreshRoutes,integrationViewModel::search,{launch->recordingLaunch=launch;navController.navigate(RECORDING_ROUTE)},integrationViewModel::bookmark,integrationViewModel::trackRouteImport,bottomContentPadding=PrimaryBottomToolbarClearance,routeDetail=integration.selectedCommunityRoute,routeDetailLoading=integration.communityRouteLoading,onLoadDetail=integrationViewModel::loadCommunityRoute,onRemovePublished=integrationViewModel::removePublishedRoute,onClearDetail=integrationViewModel::clearCommunityRoute,unitSystem=measurementUnitSystem,onImportedDelete=integrationViewModel::trackImportedRouteDeleted,importRequest=routeImportRequest,searchQuery=integration.routeQuery)},notificationAccessAvailable=pushPermissionGranted,onEnableNotifications={integrationViewModel.trackPushPermissionPromptAction("social","enable");requestNotificationPermission(forPush=true,forReminder=reminderEnabled)})
                     } else {
                         FoundationScreen(destination, authState, authViewModel)
                     }
@@ -1199,6 +1227,27 @@ private fun SignedInApp(
             onAdd = { shoe: NewShoe -> integrationViewModel.addGearShoe(shoe); addShoeSheetVisible = false },
         )
     }
+    if (showNotificationPermissionPrimer) AlertDialog(
+        onDismissRequest = {
+            integrationViewModel.trackPushPermissionPromptAction("authenticated_entry", "not_now")
+            showNotificationPermissionPrimer = false
+        },
+        title = { Text(stringResource(SocialR.string.social_notifications_permission_primer_title)) },
+        text = { Text(stringResource(SocialR.string.social_notifications_permission_body)) },
+        confirmButton = {
+            TextButton(onClick = {
+                integrationViewModel.trackPushPermissionPromptAction("authenticated_entry", "enable")
+                showNotificationPermissionPrimer = false
+                requestNotificationPermission(forPush = true, forReminder = reminderEnabled)
+            }) { Text(stringResource(SocialR.string.social_notifications_permission_enable)) }
+        },
+        dismissButton = {
+            TextButton(onClick = {
+                integrationViewModel.trackPushPermissionPromptAction("authenticated_entry", "not_now")
+                showNotificationPermissionPrimer = false
+            }) { Text(stringResource(SocialR.string.social_notifications_permission_not_now)) }
+        },
+    )
     if (authState.confirmDeletion) AlertDialog(
         onDismissRequest = authViewModel::cancelDeletion,
         title = { Text(stringResource(R.string.delete_account_title)) },

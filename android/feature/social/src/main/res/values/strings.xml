@@ -110,6 +110,10 @@
     <string name="social_no_shared_activities">No shared activities yet.</string>
     <string name="social_not_connection_code">Not a Plainstride connection code</string>
     <string name="social_notifications">Notification Center</string>
+    <string name="social_notifications_permission_body">Get connection requests, Group invitations, Cheers, comments, and activity updates as they happen.</string>
+    <string name="social_notifications_permission_enable">Turn on notifications</string>
+    <string name="social_notifications_permission_not_now">Not now</string>
+    <string name="social_notifications_permission_primer_title">Stay in the loop</string>
     <string name="social_offline">Showing saved Social activity</string>
     <string name="social_open">Open</string>
     <string name="social_open_settings">Open Settings</string>

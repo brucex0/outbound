@@ -61,7 +61,7 @@ import com.plainstride.outbound.feature.activity.ActivityExport
 import com.plainstride.outbound.feature.activity.ActivityViewModel
 import com.plainstride.outbound.feature.activity.R as ActivityR
 
-@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,targetEntrySource:String="deep_link",inboxCount:Int=0,unitSystem:MeasurementUnitSystem=MeasurementUnitSystem.metric,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onTargetConsumed:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={},onRoutesTabSelected:()->Unit={},onOpenSharedActivity:(String)->Unit={},onOpenSharedEvent:(String,String)->Unit={_,_->},onOpenSharedProfile:(SocialPerson)->Unit={},groupRun:SharedLiveRun?=null,groupRunJoining:Boolean=false,onToggleActivityLiveMap:(String)->Unit={},onStartGroupActivity:(SocialEvent)->Unit={},communityRoutesContent: @Composable (Int) -> Unit = {}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel()) {
+@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,targetEntrySource:String="deep_link",inboxCount:Int=0,unitSystem:MeasurementUnitSystem=MeasurementUnitSystem.metric,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onTargetConsumed:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={},onRoutesTabSelected:()->Unit={},onOpenSharedActivity:(String)->Unit={},onOpenSharedEvent:(String,String)->Unit={_,_->},onOpenSharedProfile:(SocialPerson)->Unit={},groupRun:SharedLiveRun?=null,groupRunJoining:Boolean=false,onToggleActivityLiveMap:(String)->Unit={},onStartGroupActivity:(SocialEvent)->Unit={},communityRoutesContent: @Composable (Int) -> Unit = {}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel(), notificationAccessAvailable: Boolean = true, onEnableNotifications: () -> Unit = {}) {
     var selectedTab by rememberSaveable { mutableStateOf(SocialFeatureTab.FEED) }
     var hasSelectedSocialTab by rememberSaveable { mutableStateOf(false) }
     var routeImportRequest by rememberSaveable { mutableStateOf(0) }
@@ -161,7 +161,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             viewModel.trackSocialTabSelected(tab.analyticsValue)
         }, inboxCount, unitSystem, viewModel::refresh, viewModel::search, { person -> viewModel.trackProfileOpened(); onOpenSharedProfile(person) }, { connectionsOpen = true; viewModel.trackConnectionsOpened("social_home_preview") }, viewModel::openGroup, viewModel::openComments, { post -> viewModel.openActivityDetail(post); onOpenSharedActivity(post.id) }, { type, id -> if (type == "event") onOpenSharedEvent(id, "social_upcoming") else viewModel.openTarget(type, id) }, onConditions, onCommunity, onNotifications, { routeImportRequest += 1 }, viewModel::toggleCheer, { group ->
             viewModel.joinGroup(group)
-        }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, communityRoutesContent, modifier, viewModel = viewModel, feedListState = feedListState, routeImportRequest = routeImportRequest)
+        }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, communityRoutesContent, modifier, viewModel = viewModel, feedListState = feedListState, routeImportRequest = routeImportRequest, notificationAccessAvailable = notificationAccessAvailable, onEnableNotifications = onEnableNotifications)
     } else {
         BackHandler { viewModel.closeActivityDetail() }
         SocialActivityDetail(
@@ -435,7 +435,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable private fun SocialScreen(state: SocialUiState, selectedTab: SocialFeatureTab, selectTab: (SocialFeatureTab) -> Unit, inboxCount: Int, unitSystem: MeasurementUnitSystem, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, requestRouteImport:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, communityRoutesContent: @Composable (Int) -> Unit, modifier: Modifier, viewModel: SocialViewModel, feedListState: LazyListState, routeImportRequest:Int) {
+@Composable private fun SocialScreen(state: SocialUiState, selectedTab: SocialFeatureTab, selectTab: (SocialFeatureTab) -> Unit, inboxCount: Int, unitSystem: MeasurementUnitSystem, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, requestRouteImport:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, communityRoutesContent: @Composable (Int) -> Unit, modifier: Modifier, viewModel: SocialViewModel, feedListState: LazyListState, routeImportRequest:Int, notificationAccessAvailable: Boolean, onEnableNotifications: () -> Unit) {
     var safetyPost by remember { mutableStateOf<SocialPost?>(null) }
     var blockConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
     var deletionConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
@@ -527,6 +527,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                 }
             }
         }
+        if (!notificationAccessAvailable) SocialNotificationPermissionPrompt(onEnableNotifications)
         if (state.offline) AssistChip({}, { Text(stringResource(R.string.social_offline)) }, Modifier.padding(horizontal = 16.dp), leadingIcon = { Icon(Icons.Outlined.CloudOff, null) })
         when (selectedTab) {
             SocialFeatureTab.FEED -> PullToRefreshBox(
@@ -639,6 +640,31 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
     safetyPost?.takeUnless(SocialPost::isCurrentUser)?.let { post -> var reason by remember { mutableStateOf(ReportReason.OTHER) }; AlertDialog(onDismissRequest = { safetyPost = null }, title = { Text(stringResource(R.string.social_safety_title)) }, text = { Column { Text(stringResource(R.string.social_safety_body)); ReportReason.entries.forEach { option -> Row(verticalAlignment=Alignment.CenterVertically){RadioButton(reason==option,{reason=option});Text(reportReasonLabel(option))} } } }, confirmButton = { TextButton({ report(post, reason.wireValue); safetyPost = null }) { Text(stringResource(R.string.social_report)) } }, dismissButton = { TextButton({ blockConfirmationPost = post; safetyPost = null }) { Text(stringResource(R.string.social_block)) } }) }
     blockConfirmationPost?.let { post -> AlertDialog(onDismissRequest = { blockConfirmationPost = null }, title = { Text(stringResource(R.string.social_block_confirmation_title)) }, text = { Text(stringResource(R.string.social_block_confirmation_message)) }, confirmButton = { TextButton({ block(post); blockConfirmationPost = null }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.social_block)) } }, dismissButton = { TextButton({ blockConfirmationPost = null }) { Text(stringResource(R.string.social_cancel)) } }) }
     deletionConfirmationPost?.let { post -> AlertDialog(onDismissRequest = { deletionConfirmationPost = null; skipFutureDeletionConfirmations = false }, title = { Text(stringResource(R.string.social_delete_post_confirmation_title)) }, text = { Column { Text(stringResource(R.string.social_delete_post_confirmation_message)); Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(skipFutureDeletionConfirmations, { skipFutureDeletionConfirmations = it }); Text(stringResource(R.string.social_dont_ask_again)) } } }, confirmButton = { TextButton({ if (skipFutureDeletionConfirmations) { skipDeletionConfirmation = true; deletionPreferences.edit().putBoolean("skip_post_deletion_confirmation", true).apply() }; deletePost(post); deletionConfirmationPost = null }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.social_delete_post)) } }, dismissButton = { TextButton({ deletionConfirmationPost = null; skipFutureDeletionConfirmations = false }) { Text(stringResource(R.string.social_cancel)) } }) }
+}
+
+@Composable
+private fun SocialNotificationPermissionPrompt(onEnable: () -> Unit) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.social_notifications_permission_primer_title),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+                text = stringResource(R.string.social_notifications_permission_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(onClick = onEnable, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.social_notifications_permission_enable))
+            }
+        }
+    }
 }
 
 @Composable private fun SectionHeader(text: String, action: String? = null, onAction: () -> Unit = {}) = Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Text(text.uppercase(), Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant); action?.let { TextButton(onAction) { Text(it, fontWeight = FontWeight.SemiBold) } } }

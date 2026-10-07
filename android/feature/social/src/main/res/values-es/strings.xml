@@ -110,6 +110,10 @@
     <string name="social_no_shared_activities">Todavía no hay actividades compartidas.</string>
     <string name="social_not_connection_code">No es un código de contacto de Plainstride</string>
     <string name="social_notifications">Centro de notificaciones</string>
+    <string name="social_notifications_permission_body">Recibe avisos de solicitudes de conexión, invitaciones a Grupos, ánimos, comentarios y novedades de actividad.</string>
+    <string name="social_notifications_permission_enable">Activar notificaciones</string>
+    <string name="social_notifications_permission_not_now">Ahora no</string>
+    <string name="social_notifications_permission_primer_title">No te pierdas las novedades</string>
     <string name="social_offline">Mostrando la actividad social guardada</string>
     <string name="social_open">Abrir</string>
     <string name="social_open_settings">Abrir Ajustes</string>

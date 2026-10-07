@@ -304,6 +304,13 @@ data class P0IntegrationState(
         AnalyticsProperty.Permission to "notifications",
         AnalyticsProperty.Result to if (granted) "granted" else "denied",
     )))
+    fun trackPushPermissionPromptExposed(entrySource: String) = analytics.record(AnalyticsEvent("push_notification_prompt_exposed", mapOf(
+        AnalyticsProperty.EntrySource to entrySource,
+    )))
+    fun trackPushPermissionPromptAction(entrySource: String, selection: String) = analytics.record(AnalyticsEvent("push_notification_prompt_action_selected", mapOf(
+        AnalyticsProperty.EntrySource to entrySource,
+        AnalyticsProperty.SelectionType to selection,
+    )))
     fun trackAssistantOpened(destination: String, entrySource: String = "persistent_launcher") = analytics.record(AnalyticsEvent("assistant_launcher_opened", mapOf(
         AnalyticsProperty.Destination to destination,
         AnalyticsProperty.EntrySource to entrySource,

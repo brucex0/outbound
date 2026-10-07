@@ -54090,6 +54090,38 @@
         }
       }
     },
+    "social.notifications.permission_primer_title": {
+      "comment": "[android:social] Generated Android name: social_notifications_permission_primer_title.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Stay in the loop" } },
+        "es": { "stringUnit": { "state": "translated", "value": "No te pierdas las novedades" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "及时了解动态" } }
+      }
+    },
+    "social.notifications.permission_body": {
+      "comment": "[android:social] Generated Android name: social_notifications_permission_body.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Get connection requests, Group invitations, Cheers, comments, and activity updates as they happen." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Recibe avisos de solicitudes de conexión, invitaciones a Grupos, ánimos, comentarios y novedades de actividad." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "及时收到好友请求、群组邀请、鼓励、评论和活动动态通知。" } }
+      }
+    },
+    "social.notifications.permission_enable": {
+      "comment": "[android:social] Generated Android name: social_notifications_permission_enable.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Turn on notifications" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Activar notificaciones" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "开启通知" } }
+      }
+    },
+    "social.notifications.permission_not_now": {
+      "comment": "[android:social] Generated Android name: social_notifications_permission_not_now.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Not now" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Ahora no" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "暂不" } }
+      }
+    },
     "social.offline": {
       "comment": "Shared with Android social; generated Android name: social_offline. [android:social] Generated Android name: social_offline.",
       "localizations": {

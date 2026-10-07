@@ -110,6 +110,10 @@
     <string name="social_no_shared_activities">还没有分享过活动。</string>
     <string name="social_not_connection_code">这不是平步青云跑友码</string>
     <string name="social_notifications">通知中心</string>
+    <string name="social_notifications_permission_body">及时收到好友请求、群组邀请、鼓励、评论和活动动态通知。</string>
+    <string name="social_notifications_permission_enable">开启通知</string>
+    <string name="social_notifications_permission_not_now">暂不</string>
+    <string name="social_notifications_permission_primer_title">及时了解动态</string>
     <string name="social_offline">正在显示已保存的动态</string>
     <string name="social_open">打开</string>
     <string name="social_open_settings">打开设置</string>
