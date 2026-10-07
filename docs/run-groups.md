@@ -183,7 +183,7 @@ Community detail has no general member activity feed. Completed Group activities
 - Roles are `owner`, `admin`, and `member`.
 - User-created Groups always have exactly one active owner. System-curated Groups use an explicit `managementMode = system` instead of a fake owner.
 - Owners may edit settings, manage capabilities, approve requests, invite/remove members, promote/demote admins, transfer ownership, archive, and reactivate.
-- Admins may manage members, notices, and activities but cannot transfer ownership or change trust policy.
+- Admins may manage members, notices, and activities but cannot transfer ownership or change trust policy. Only owners and admins can create, edit, or delete notices; original authors have no separate authorization from their current Group role.
 - Members may leave, mute optional notifications, report the Group or content, and block another member.
 - Owners cannot leave until they transfer ownership or archive the Group.
 - New Groups use the server-configured member capacity, which defaults to `500` and can be adjusted with `GROUP_MEMBER_LIMIT` (valid range `2`–`5000`). The configured value is returned to clients and stored on each Group at creation.
@@ -197,7 +197,7 @@ A notice is an owner/admin broadcast for schedule changes, meetup information, c
 
 - Notices have bounded optional title and body, one optional structured activity-event reference, pin state, publish/edit/delete timestamps, and no replies or attachments in the MVP.
 - One `GroupNoticeRead(groupId, userId, lastSeenNoticeId)` watermark per active member drives unread state.
-- Opening a community Group advances the viewer's watermark after the latest notices load; `Mark notices read` remains available as an explicit retry/action. Publishing a notice also advances the publisher's own watermark so their update is not marked unread for them.
+- Opening a community Group advances the viewer's watermark after the latest notices load. Active members, including owners and admins, can use `Mark notices read` while unread notices remain; the action is hidden after the watermark advances. Publishing a notice also advances the publisher's own watermark so their update is not marked unread for them.
 - The member-only Groups list includes each Group's unread notice state so its card can show the unread badge and the Groups tab can aggregate it with other pending attention. Discovery results never expose member unread state.
 - Do not create one `SocialNotification` row per member for informational notices.
 - Optional notice push delivery queries eligible, unmuted device tokens directly and routes to Group detail; it does not create a durable inbox record.

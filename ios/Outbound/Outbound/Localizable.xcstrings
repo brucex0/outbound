@@ -54122,6 +54122,14 @@
         "zh-Hans": { "stringUnit": { "state": "translated", "value": "暂不" } }
       }
     },
+    "social.notifications.settings_title": {
+      "comment": "Settings section title for notification access.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Notifications" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Notificaciones" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "通知" } }
+      }
+    },
     "social.offline": {
       "comment": "Shared with Android social; generated Android name: social_offline. [android:social] Generated Android name: social_offline.",
       "localizations": {

@@ -207,6 +207,9 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case liveGuidanceVoiceSelected = "live_guidance_voice_selected"
     case liveGuidanceEligibilityResolved = "live_guidance_eligibility_resolved"
     case pushNotificationOpened = "push_notification_opened"
+    case pushNotificationPromptExposed = "push_notification_prompt_exposed"
+    case pushNotificationPromptActionSelected = "push_notification_prompt_action_selected"
+    case pushNotificationPermissionCompleted = "push_notification_permission_completed"
     case workoutReminderSettingChanged = "workout_reminder_setting_changed"
     case workoutReminderPermissionResult = "workout_reminder_permission_result"
     case workoutReminderScheduleChanged = "workout_reminder_schedule_changed"
@@ -289,6 +292,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case goalCompletionBucket = "goal_completion_bucket"
     case control
     case result
+    case permission
     case errorCategory = "error_category"
     case momentType = "moment_type"
     case coachingContract = "coaching_contract"
@@ -525,6 +529,9 @@ enum ProductAnalyticsSchema {
         .liveGuidanceVoiceSelected: [.selectionType, .sourceType],
         .liveGuidanceEligibilityResolved: [.activityType, .result],
         .pushNotificationOpened: [.sourceType, .selectionType],
+        .pushNotificationPromptExposed: [.entrySource],
+        .pushNotificationPromptActionSelected: [.entrySource, .selectionType],
+        .pushNotificationPermissionCompleted: [.permission, .result],
         .workoutReminderSettingChanged: [.selectionType],
         .workoutReminderPermissionResult: [.result],
         .workoutReminderScheduleChanged: [.result, .sourceType],

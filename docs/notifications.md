@@ -83,13 +83,14 @@ Delivery logs contain only platform, a stable category (`invalid_token`, `creden
 
 - `PushNotificationCoordinator` owns authorization, APNs/FCM registration, backend synchronization, and pending tap state.
 - `AppDelegate` bridges APNs and Firebase Messaging callbacks and presents system banners in the foreground.
+- On a fresh install, the authenticated app experience shows a one-time localized explainer before requesting notification access. Choosing “Not now” does not trigger repeated automatic prompts. While access is unavailable, Social and Settings keep an enable action visible; it requests authorization while status is undetermined and opens app notification settings after denial. Authorization state refreshes on foreground activation.
 - Registration occurs after authentication and retries on foreground activation.
 - The app icon badge is preserved when the app becomes active and is cleared after Notification Center marks durable Social notifications read.
 - A notification tap records its durable ID and type. The app selects Social and routes connection requests directly to Connections. Live Cheer invitations open the standalone follower screen; other types open Notification Center, refresh its durable items, and route to the matching detail when present.
 - The in-app bell counts unresolved actionable durable notifications, whether read or unread, plus one actionable item when Apple Health imports await review. Cheers and informational updates do not inflate it.
 - Group inbox rows render localized client copy from the semantic type and actor rather than displaying server-authored English. The Group MVP is complete without push; optional Group push delivery remains governed by the existing notification rollout.
 - `push_notification_opened` records the share-safe notification type and selected destination (`connections`, `live_cheer`, or `notifications`).
-- User-facing permission text is provided by the system. Any future custom permission primer must use localized strings.
+- Prompt exposure and action analytics use bounded entry sources and choices; permission completion records only notification access and granted/denied. No device or notification identifiers are included.
 
 ## Notification Center Presentation Policy
 

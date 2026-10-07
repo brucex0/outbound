@@ -738,8 +738,13 @@ struct GroupDetailView: View {
                             }
                         }
                     }
-                    Button(String(localized: "group.notices.mark_read", defaultValue: "Mark notices read")) { Task { _ = await groupStore.markNoticesRead(in: current) } }
+                    if current.unreadNoticeCount > 0,
+                       current.role != nil || current.members.contains(where: \.isCurrentUser) {
+                        Button(String(localized: "group.notices.mark_read", defaultValue: "Mark notices read")) {
+                            Task { _ = await groupStore.markNoticesRead(in: current) }
+                        }
                         .font(.caption)
+                    }
                 }
             }
             if !current.upcomingActivities.isEmpty { upcomingActivitiesSection }

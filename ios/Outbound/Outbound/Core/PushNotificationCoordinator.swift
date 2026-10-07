@@ -18,13 +18,63 @@ final class PushNotificationCoordinator: NSObject, ObservableObject {
     @Published private(set) var pendingNotificationID: String?
     @Published private(set) var pendingNotificationType: String?
     @Published private(set) var pendingObjectID: String?
+    @Published private(set) var authorizationStatus: UNAuthorizationStatus = .notDetermined
+    @Published private(set) var notificationsEnabled = false
+    @Published private(set) var hasResolvedAuthorization = false
     private var latestToken: String?
 
     func activate() async {
-        let settings = await UNUserNotificationCenter.current().notificationSettings()
-        guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return }
+        guard await refreshAuthorizationStatus() else { return }
         UIApplication.shared.registerForRemoteNotifications()
         if let token = Messaging.messaging().fcmToken { await register(token: token) }
+    }
+
+    @discardableResult
+    func refreshAuthorizationStatus() async -> Bool {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        authorizationStatus = settings.authorizationStatus
+        let enabled = settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
+        notificationsEnabled = enabled
+        hasResolvedAuthorization = true
+        return enabled
+    }
+
+    @discardableResult
+    func requestAuthorization() async -> Bool {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        authorizationStatus = settings.authorizationStatus
+        if settings.authorizationStatus == .notDetermined {
+            _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+        }
+        let enabled = await refreshAuthorizationStatus()
+        if enabled {
+            UIApplication.shared.registerForRemoteNotifications()
+            if let token = Messaging.messaging().fcmToken { await register(token: token) }
+        }
+        return enabled
+    }
+
+    func openNotificationSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+
+    func enableFromPrompt(entrySource: String, analyticsManager: AnalyticsManager?) async {
+        await analyticsManager?.track(.init(.pushNotificationPromptActionSelected, properties: [
+            .entrySource: .string(entrySource),
+            .selectionType: .string("enable"),
+        ]))
+        let enabled = await refreshAuthorizationStatus()
+        guard !enabled else { return }
+        guard authorizationStatus == .notDetermined else {
+            openNotificationSettings()
+            return
+        }
+        let granted = await requestAuthorization()
+        await analyticsManager?.track(.init(.pushNotificationPermissionCompleted, properties: [
+            .permission: .string("notifications"),
+            .result: .string(granted ? "granted" : "denied"),
+        ]))
     }
 
     func receivedMessagingToken(_ token: String?) {

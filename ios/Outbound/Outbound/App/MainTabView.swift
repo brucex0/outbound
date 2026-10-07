@@ -45,6 +45,7 @@ struct MainTabView: View {
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             currentContent
+            NotificationPermissionPrimerHost()
         }
         .environmentObject(locationManager)
         .background(Color(.systemGroupedBackground))
@@ -107,15 +108,6 @@ struct MainTabView: View {
                 localized: "record.location.permission.message",
                 defaultValue: "Outdoor activities need location to map your route and record pace. Grant access to start, or turn it on in Settings if it was denied before."
             ))
-        }
-        .task {
-            guard workoutReminderPreferences.needsInitialAuthorization else { return }
-            _ = await workoutNotificationScheduler.requestPermissionAndEnable(
-                preferences: workoutReminderPreferences,
-                activities: activityStore.activities,
-                workouts: trainingPlanStore.scheduledWorkouts
-            )
-            workoutReminderPreferences.markInitialAuthorizationHandled()
         }
         .onChange(of: selectedAppTab) { _, tab in
             guard tab == SimplifiedAppTab.today else { return }
@@ -465,6 +457,85 @@ struct MainTabView: View {
             startLabel: String(localized: "common.resume", defaultValue: "Resume"),
             activityTypeOverride: activityType
         )
+    }
+}
+
+@MainActor
+private struct NotificationPermissionPrimerHost: View {
+    @Environment(\.analyticsManager) private var analyticsManager
+    @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
+    @EnvironmentObject private var workoutNotificationScheduler: WorkoutNotificationScheduler
+    @EnvironmentObject private var workoutReminderPreferences: WorkoutReminderPreferences
+    @EnvironmentObject private var activityStore: ActivityStore
+    @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
+    @AppStorage("push_notification_permission_primer_seen_v1") private var hasSeenPrimer = false
+    @State private var isPrimerPresented = false
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .alert(
+                String(localized: "social.notifications.permission_primer_title", defaultValue: "Stay in the loop"),
+                isPresented: $isPrimerPresented
+            ) {
+                Button(String(localized: "social.notifications.permission_enable", defaultValue: "Turn on notifications")) {
+                    Task { await enableNotifications() }
+                }
+                Button(String(localized: "social.notifications.permission_not_now", defaultValue: "Not now"), role: .cancel) {
+                    trackAction("not_now")
+                }
+            } message: {
+                Text(String(localized: "social.notifications.permission_body", defaultValue: "Get connection requests, Group invitations, Cheers, comments, and activity updates as they happen."))
+            }
+            .task {
+                let enabled = await pushNotifications.refreshAuthorizationStatus()
+                if enabled, workoutReminderPreferences.needsInitialAuthorization {
+                    _ = await enableWorkoutRemindersIfConfigured()
+                    workoutReminderPreferences.markInitialAuthorizationHandled()
+                    return
+                }
+                guard !enabled else { return }
+                guard pushNotifications.authorizationStatus == .notDetermined,
+                      !hasSeenPrimer
+                else { return }
+
+                hasSeenPrimer = true
+                isPrimerPresented = true
+                await analyticsManager?.track(.init(.pushNotificationPromptExposed, properties: [
+                    .entrySource: .string("authenticated_entry"),
+                ]))
+            }
+    }
+
+    private func enableNotifications() async {
+        trackAction("enable")
+        let pushEnabled = await pushNotifications.requestAuthorization()
+        await analyticsManager?.track(.init(.pushNotificationPermissionCompleted, properties: [
+            .permission: .string("notifications"),
+            .result: .string(pushEnabled ? "granted" : "denied"),
+        ]))
+        if workoutReminderPreferences.isEnabled {
+            _ = await enableWorkoutRemindersIfConfigured()
+            workoutReminderPreferences.markInitialAuthorizationHandled()
+        }
+    }
+
+    private func enableWorkoutRemindersIfConfigured() async -> Bool {
+        guard workoutReminderPreferences.isEnabled else { return false }
+        return await workoutNotificationScheduler.requestPermissionAndEnable(
+            preferences: workoutReminderPreferences,
+            activities: activityStore.activities,
+            workouts: trainingPlanStore.scheduledWorkouts
+        )
+    }
+
+    private func trackAction(_ selection: String) {
+        Task {
+            await analyticsManager?.track(.init(.pushNotificationPromptActionSelected, properties: [
+                .entrySource: .string("authenticated_entry"),
+                .selectionType: .string(selection),
+            ]))
+        }
     }
 }
 

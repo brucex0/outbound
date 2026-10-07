@@ -6,6 +6,11 @@ import UIKit
 
 struct SocialHomeView: View {
     private static let feedPageSize = 12
+    let isSelected: Bool
+
+    init(isSelected: Bool = true) {
+        self.isSelected = isSelected
+    }
 
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
@@ -40,6 +45,7 @@ struct SocialHomeView: View {
     @State private var hasTrackedActiveNowExposure = false
     @State private var hasTrackedUpcomingExposure = false
     @State private var hasTrackedFirstFeedCard = false
+    @State private var hasTrackedNotificationPromptExposure = false
     @AppStorage("social.skipPostDeletionConfirmation") private var skipsPostDeletionConfirmation = false
     @StateObject private var liveCheerStore = LiveCheerStore()
 
@@ -83,6 +89,9 @@ struct SocialHomeView: View {
                     badges: tabBadges,
                     onSelect: { selectFeatureTab($0) }
                 )
+                if isSelected, pushNotifications.hasResolvedAuthorization, !pushNotifications.notificationsEnabled {
+                    notificationPermissionPrompt
+                }
                 socialTabContent
             }
             .background(OutboundPalette.background)
@@ -159,6 +168,12 @@ struct SocialHomeView: View {
                 guard tab == .feed else { return }
                 trackFeedModuleExposuresIfNeeded()
             }
+            .task(id: notificationPromptExposureKey) {
+                if !isSelected || pushNotifications.notificationsEnabled {
+                    hasTrackedNotificationPromptExposure = false
+                }
+                trackNotificationPromptExposureIfNeeded()
+            }
             .onChange(of: badgeAnalyticsSignature, initial: true) { _, _ in
                 trackNewBadgeExposures()
             }
@@ -186,7 +201,7 @@ struct SocialHomeView: View {
                 }
             }
             .task(id: syncedActivityIDs) {
-                let ids = syncedActivityIDs
+                let ids: [String] = syncedActivityIDs
                 guard lastRefreshedActivityIDs != ids else { return }
                 let revision = socialStore.homeRefreshRevision
                 await socialStore.refresh()
@@ -759,6 +774,46 @@ struct SocialHomeView: View {
 
     private var notificationCenterBadgeCount: Int {
         socialStore.actionableNotificationCount + (healthImportStore.importCandidates.isEmpty ? 0 : 1)
+    }
+
+    private var notificationPromptExposureKey: String {
+        "\(isSelected)-\(pushNotifications.hasResolvedAuthorization)-\(pushNotifications.notificationsEnabled)"
+    }
+
+    private var notificationPermissionPrompt: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text(String(localized: "social.notifications.permission_primer_title", defaultValue: "Stay in the loop"))
+                .font(.headline)
+            Text(String(localized: "social.notifications.permission_body", defaultValue: "Get connection requests, Group invitations, Cheers, comments, and activity updates as they happen."))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Button {
+                Task { await pushNotifications.enableFromPrompt(entrySource: "social", analyticsManager: analyticsManager) }
+            } label: {
+                Text(String(localized: "social.notifications.permission_enable", defaultValue: "Turn on notifications"))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    private func trackNotificationPromptExposureIfNeeded() {
+        guard isSelected,
+              pushNotifications.hasResolvedAuthorization,
+              !pushNotifications.notificationsEnabled,
+              !hasTrackedNotificationPromptExposure
+        else { return }
+        hasTrackedNotificationPromptExposure = true
+        Task {
+            await analyticsManager?.track(.init(.pushNotificationPromptExposed, properties: [
+                .entrySource: .string("social"),
+            ]))
+        }
     }
 
     private func incomingRequestCard(_ connection: SocialConnectionDTO) -> some View {

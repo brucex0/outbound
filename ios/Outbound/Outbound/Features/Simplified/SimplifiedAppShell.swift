@@ -365,7 +365,7 @@ struct SimplifiedAppShell: View {
     var body: some View {
         TabView(selection: $selection) {
             tabRoot {
-                SocialHomeView()
+                SocialHomeView(isSelected: selection == .social)
             }
             .tag(SimplifiedAppTab.social)
             .tabItem {
@@ -3528,6 +3528,7 @@ private struct SimplifiedSettingsView: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var appearancePreferences: AppearancePreferences
     @EnvironmentObject private var authStore: AuthStore
+    @EnvironmentObject private var pushNotifications: PushNotificationCoordinator
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
     @EnvironmentObject private var cycleAwareStore: CycleAwareStore
@@ -3537,6 +3538,7 @@ private struct SimplifiedSettingsView: View {
     @State private var confirmsAccountDeletion = false
     @State private var showsHomeWidgetOnboarding = false
     @State private var homeWidgetOnboardingEntrySource = "settings"
+    @State private var hasTrackedNotificationPromptExposure = false
     @AppStorage(ActivityPhotoAlbumPreferences.savesPhotosKey) private var savesActivityPhotos = true
 
     var body: some View {
@@ -3557,6 +3559,21 @@ private struct SimplifiedSettingsView: View {
                     AccountTransferView()
                 } label: {
                     Label(String(localized: "account_transfer.settings_title", table: "AccountTransfer"), systemImage: "iphone.and.arrow.forward")
+                }
+            }
+            Section(String(localized: "social.notifications.settings_title", defaultValue: "Notifications")) {
+                Text(String(localized: "social.notifications.permission_body", defaultValue: "Get connection requests, Group invitations, Cheers, comments, and activity updates as they happen."))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if pushNotifications.hasResolvedAuthorization, !pushNotifications.notificationsEnabled {
+                    Button {
+                        Task { await pushNotifications.enableFromPrompt(entrySource: "settings", analyticsManager: analyticsManager) }
+                    } label: {
+                        Label(
+                            String(localized: "social.notifications.permission_enable", defaultValue: "Turn on notifications"),
+                            systemImage: "bell.badge"
+                        )
+                    }
                 }
             }
             Section(String(localized: "workout.reminders.section", defaultValue: "Planned workouts")) {
@@ -3735,6 +3752,14 @@ private struct SimplifiedSettingsView: View {
             }
         }
         .navigationTitle("Settings")
+        .task {
+            _ = await pushNotifications.refreshAuthorizationStatus()
+            trackNotificationPromptExposureIfNeeded()
+        }
+        .onChange(of: pushNotifications.notificationsEnabled) { _, enabled in
+            if enabled { hasTrackedNotificationPromptExposure = false }
+            trackNotificationPromptExposureIfNeeded()
+        }
         .sheet(isPresented: $showsHomeWidgetOnboarding) {
             HomeWidgetOnboardingView(
                 snapshot: HomeWorkoutWidgetStore.read() ?? HomeWidgetOnboardingView.exampleSnapshot,
@@ -3757,6 +3782,19 @@ private struct SimplifiedSettingsView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This permanently deletes your Plainstride account, synced activities, plans, profile, social data, and locally stored Plainstride data. This cannot be undone.")
+        }
+    }
+
+    private func trackNotificationPromptExposureIfNeeded() {
+        guard pushNotifications.hasResolvedAuthorization,
+              !pushNotifications.notificationsEnabled,
+              !hasTrackedNotificationPromptExposure
+        else { return }
+        hasTrackedNotificationPromptExposure = true
+        Task {
+            await analyticsManager?.track(.init(.pushNotificationPromptExposed, properties: [
+                .entrySource: .string("settings"),
+            ]))
         }
     }
 
