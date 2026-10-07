@@ -102,6 +102,7 @@ import androidx.compose.material.icons.outlined.PeopleAlt
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
@@ -343,29 +344,34 @@ private fun SignedInApp(
     var pendingReminderPermission by remember { mutableStateOf<Boolean?>(null) }
     var pushPermissionGranted by remember {
         mutableStateOf(
-            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED,
+            notificationAccessAvailable(context),
         )
     }
     val pushPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        pushPermissionGranted = granted
+        val accessAvailable = granted && notificationAccessAvailable(context)
+        pushPermissionGranted = accessAvailable
         notificationPermissionRequested = true
         notificationPermissionPreferences.edit().putBoolean("requested", true).apply()
-        pendingPushPermission?.let { integrationViewModel.setPushEnabled(granted && it) }
+        pendingPushPermission?.let { integrationViewModel.setPushEnabled(accessAvailable && it) }
         pendingPushPermission = null
-        pendingReminderPermission?.let { reminderViewModel.setEnabled(granted && it) }
+        pendingReminderPermission?.let { reminderViewModel.setEnabled(accessAvailable && it) }
         pendingReminderPermission = null
-        integrationViewModel.trackPushPermissionResult(granted)
-        reminderViewModel.trackPermissionResult(granted)
+        integrationViewModel.trackPushPermissionResult(accessAvailable)
+        reminderViewModel.trackPermissionResult(accessAvailable)
     }
     fun requestNotificationPermission(forPush: Boolean, forReminder: Boolean) {
         val permission = android.Manifest.permission.POST_NOTIFICATIONS
+        val runtimePermissionGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+        if (runtimePermissionGranted && !NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+            notificationPermissionRequested = true
+            notificationPermissionPreferences.edit().putBoolean("requested", true).apply()
+            openAppNotificationSettings(context)
+            return
+        }
         val rationaleAvailable = context.findActivity()?.shouldShowRequestPermissionRationale(permission) == true
         if (notificationPermissionRequested && !rationaleAvailable) {
-            context.startActivity(
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${context.packageName}"))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            )
+            openAppNotificationSettings(context)
             return
         }
         notificationPermissionRequested = true
@@ -378,8 +384,9 @@ private fun SignedInApp(
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                pushPermissionGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                    context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                val accessAvailable = notificationAccessAvailable(context)
+                if (accessAvailable != pushPermissionGranted) integrationViewModel.trackPushPermissionResult(accessAvailable)
+                pushPermissionGranted = accessAvailable
                 notificationPermissionRequested = notificationPermissionPreferences.getBoolean("requested", false)
             }
         }
@@ -1264,6 +1271,24 @@ private fun recordingLocationPermission(context: android.content.Context): Locat
     context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED -> LocationPermissionState.PRECISE
     context.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED -> LocationPermissionState.APPROXIMATE
     else -> LocationPermissionState.DENIED
+}
+
+private fun notificationAccessAvailable(context: android.content.Context): Boolean =
+    (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) &&
+        NotificationManagerCompat.from(context).areNotificationsEnabled()
+
+private fun openAppNotificationSettings(context: android.content.Context) {
+    val notificationSettings = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+        .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(notificationSettings) }
+        .getOrElse {
+            context.startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${context.packageName}"))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
 }
 
 @Composable private fun HealthDestination(snapshot: HealthPermissionSnapshot?, refresh:()->Unit, dismiss:()->Unit) {
