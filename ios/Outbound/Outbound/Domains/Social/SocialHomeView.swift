@@ -2398,6 +2398,9 @@ private struct PastActivityEventRow: View {
 }
 
 struct SocialNotificationsView: View {
+    var showsDismissButton = false
+
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var socialStore: TogetherStore
@@ -2440,6 +2443,16 @@ struct SocialNotificationsView: View {
             }
         }
         .navigationTitle(String(localized: "app.notifications.destination", defaultValue: "Notification Center"))
+        .toolbar {
+            if showsDismissButton {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(String(localized: "common.done", defaultValue: "Done")) {
+                        dismiss()
+                    }
+                    .accessibilityIdentifier("NotificationCenterDoneButton")
+                }
+            }
+        }
         .navigationDestination(item: $selectedNotification) { notification in
             notificationDestination(notification)
         }

@@ -441,7 +441,7 @@ struct SimplifiedAppShell: View {
             NavigationStack {
                 switch presentation {
                 case .notifications:
-                    SocialNotificationsView()
+                    SocialNotificationsView(showsDismissButton: true)
                 case .liveCheer(let request):
                     LiveCheerView(sessionID: request.sessionID, entrySource: request.entrySource)
                 }
