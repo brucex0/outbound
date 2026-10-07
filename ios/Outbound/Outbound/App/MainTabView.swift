@@ -1,7 +1,10 @@
 import SwiftUI
+import CoreLocation
+import UIKit
 
 struct MainTabView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var assistantStore: AssistantStore
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
@@ -19,6 +22,7 @@ struct MainTabView: View {
     @EnvironmentObject private var workoutNotificationScheduler: WorkoutNotificationScheduler
     @EnvironmentObject private var workoutReminderPreferences: WorkoutReminderPreferences
     @EnvironmentObject private var phoneWorkoutCoordinator: PhoneWorkoutSessionCoordinator
+    @StateObject private var locationManager = LocationManager()
     @State private var activeLaunch: RecordLaunch?
     @State private var isActivityVisible = false
     @State private var activitySessionState: ActivitySessionPortalState = .idle
@@ -35,11 +39,14 @@ struct MainTabView: View {
     @State private var launchGoalMode: SessionGoalMode = .freestyle
     @State private var customizedTodayIntent: SessionIntent?
     @State private var isActivityFullscreenVisible = false
+    @State private var isLocationSettingsPromptPresented = false
+    @State private var didPresentLocationSettingsPromptThisSession = false
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             currentContent
         }
+        .environmentObject(locationManager)
         .background(Color(.systemGroupedBackground))
         .feedbackReporter(
             isShakeDisabled: activitySessionState != .idle || isActivityFullscreenVisible,
@@ -84,6 +91,22 @@ struct MainTabView: View {
             consumeStoredPreparedActivityIfNeeded()
             prepareTodayLaunchIfNeeded()
             handlePendingWorkoutReminder()
+            requestAppLocationAccessIfNeeded()
+        }
+        .alert(
+            String(localized: "record.location.permission.title", defaultValue: "Enable location"),
+            isPresented: $isLocationSettingsPromptPresented
+        ) {
+            Button(String(localized: "record.location.permission.enable", defaultValue: "Enable location")) {
+                guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+                UIApplication.shared.open(url)
+            }
+            Button(String(localized: "common.close", defaultValue: "Close"), role: .cancel) {}
+        } message: {
+            Text(String(
+                localized: "record.location.permission.message",
+                defaultValue: "Outdoor activities need location to map your route and record pace. Grant access to start, or turn it on in Settings if it was denied before."
+            ))
         }
         .task {
             guard workoutReminderPreferences.needsInitialAuthorization else { return }
@@ -111,6 +134,9 @@ struct MainTabView: View {
             isActivityVisible = true
         }
         .onChange(of: onboardingStore.isPresented) { wasPresented, isPresented in
+            if wasPresented, !isPresented {
+                requestAppLocationAccessIfNeeded()
+            }
             guard wasPresented, !isPresented else { return }
             checkForHealthWorkouts(presentWhenFound: false)
         }
@@ -144,6 +170,9 @@ struct MainTabView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
+            locationManager.refreshForForeground()
+            locationManager.requestForegroundLocationRefresh()
+            presentLocationSettingsPromptIfNeeded()
             consumeStoredPreparedActivityIfNeeded()
             if activityStore.hasLoadedActivities, !onboardingStore.isPresented {
                 checkForHealthWorkouts(presentWhenFound: false)
@@ -157,6 +186,31 @@ struct MainTabView: View {
             guard let session else { return }
             selectedAppTab = .today
             presentActivity(intent: watchInitiatedIntent(session.identity))
+        }
+        .onReceive(locationManager.$authorizationStatus) { _ in
+            presentLocationSettingsPromptIfNeeded()
+        }
+    }
+
+    private func requestAppLocationAccessIfNeeded() {
+        guard !onboardingStore.isPresented else { return }
+        locationManager.refreshForForeground()
+        locationManager.requestCurrentLocation()
+        presentLocationSettingsPromptIfNeeded()
+    }
+
+    private func presentLocationSettingsPromptIfNeeded() {
+        guard !onboardingStore.isPresented,
+              !didPresentLocationSettingsPromptThisSession,
+              locationManager.authorizationStatus == .denied
+                || locationManager.authorizationStatus == .restricted
+        else { return }
+        didPresentLocationSettingsPromptThisSession = true
+        isLocationSettingsPromptPresented = true
+        Task {
+            await analyticsManager?.track(.init(.featureExposed, properties: [
+                .feature: .string("app_location_permission_prompt")
+            ]))
         }
     }
 

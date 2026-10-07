@@ -985,7 +985,7 @@ private struct SimplifiedTodayView: View {
     let onOpenPlan: () -> Void
     let onChangePlan: () -> Void
     let onStartRun: (SessionIntent?) -> Void
-    @StateObject private var launchLocationManager = LocationManager()
+    @EnvironmentObject private var launchLocationManager: LocationManager
     @State private var showsChangeSheet = false
     @State private var showsPlannedWorkoutDetails = false
     @State private var companionTodayMessage: String?
@@ -1083,7 +1083,6 @@ private struct SimplifiedTodayView: View {
                 }
             }
             .onAppear {
-                launchLocationManager.requestCurrentLocation()
                 presentPendingAdjustmentIfNeeded(personalizationStore.snapshot.pendingAdjustment?.id)
             }
             .onChange(of: personalizationStore.snapshot.pendingAdjustment?.id, initial: true) { _, adjustmentID in

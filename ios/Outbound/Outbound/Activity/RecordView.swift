@@ -717,9 +717,9 @@ struct RecordView: View {
     private var showsEmbeddedLiveSurface: Bool {
         guard isEmbeddedInToday, isVisible else { return false }
         switch sessionController.phase {
-        case .countdown, .recording, .review, .saving, .postSave:
+        case .preflighting, .countdown, .recording, .review, .saving, .postSave:
             return true
-        case .setup, .preflighting:
+        case .setup:
             return false
         }
     }
@@ -1001,6 +1001,10 @@ struct RecordView: View {
         isWaitingForLocation = true
         launchCoordinator.beginPreflight()
         sessionController.beginPreflight()
+        // Move to the activity map/camera surface as soon as the runner starts
+        // waiting. Keeping the setup page visible here makes a planned start
+        // look like it failed while GPS is acquiring a fix.
+        presentLiveSurface()
         recorder.locationManager.prepareForRecording(
             activityType: activeIntent?.resolvedActivityType ?? plannedIntent?.resolvedActivityType ?? .running
         )
