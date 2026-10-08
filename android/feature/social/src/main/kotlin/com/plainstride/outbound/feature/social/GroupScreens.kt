@@ -96,11 +96,13 @@ fun GroupDetailScreen(
     focus: (String, Int?, Boolean) -> Unit,
     archive: () -> Unit,
     invite: () -> Unit,
-    rename: (String) -> Unit,
+    saveSettings: (String, String, Int, String, String, Boolean, Boolean) -> Unit,
     commitment: (Int?, Boolean) -> Unit,
-    mute: (Boolean) -> Unit,
     leave: () -> Unit,
     remove: (String) -> Unit,
+    cancelInvitation: (String) -> Unit,
+    changeRole: (String, String) -> Unit,
+    transferOwnership: (String) -> Unit,
     trackMembersOpened: (Int) -> Unit,
     planActivity: () -> Unit,
     requestJoin: () -> Unit,
@@ -190,14 +192,13 @@ fun GroupDetailScreen(
                         }
                     }
                     upcomingActivityItems(group, dateFormatter, openActivity)
-                    if (isMember) memberSection(group, orderedMembers, showMembers = { showMembers = true; trackMembersOpened(group.memberCount.takeIf { it > 0 } ?: group.members.size) })
+                    if (isMember) memberSection(group, orderedMembers, canInviteMore, invite, showMembers = { showMembers = true; trackMembersOpened(group.memberCount.takeIf { it > 0 } ?: group.members.size) })
                     if (canManage && group.capabilities.notices) item { OutlinedButton({ showNoticeComposer = true }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_post_update)) } }
-                    if (canInviteMore) item { OutlinedButton(invite, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_invite_connections)) } }
                     item { Button(planActivity, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_plan_activity)) } }
                 } else {
                     upcomingActivityItems(group, dateFormatter, openActivity)
                     item { privateFocusCard(group, focusOpen = { focusOpen = true }) }
-                    memberSection(group, orderedMembers, showMembers = { showMembers = true; trackMembersOpened(group.memberCount.takeIf { it > 0 } ?: group.members.size) })
+                    memberSection(group, orderedMembers, canInviteMore, invite, showMembers = { showMembers = true; trackMembersOpened(group.memberCount.takeIf { it > 0 } ?: group.members.size) })
                     if (group.invitations.isNotEmpty()) items(group.invitations.filter { it.status == "pending" }, key = GroupInvitationSnapshot::id) { invitation ->
                         ElevatedCard { Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             SocialAvatar(invitation.recipient ?: SocialPerson(id = invitation.id, displayName = stringResource(R.string.group_invited_person)))
@@ -205,7 +206,6 @@ fun GroupDetailScreen(
                             Text(stringResource(R.string.group_invited_status), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } }
                     }
-                    if (canInviteMore) item { OutlinedButton(invite, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_invite_connections)) } }
                     item { Button(planActivity, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_plan_activity)) } }
                     if (group.recentMoments.isNotEmpty()) item { momentsCard(group, dateFormatter) }
                     group.history?.takeIf { it.isNotEmpty() }?.let { history -> item { historyCard(history) } }
@@ -214,7 +214,19 @@ fun GroupDetailScreen(
         }
     }
     if (focusOpen) GroupFocusDialog(group, { focusOpen = false }, focus, commitment)
-    if (settings) GroupSettingsDialog(group, { settings = false }, rename, mute, archive, leave, remove)
+    if (settings) GroupSettingsDialog(
+        group = group,
+        close = { settings = false },
+        save = saveSettings,
+        invite = invite,
+        openFocus = { focusOpen = true },
+        archive = archive,
+        leave = leave,
+        remove = remove,
+        cancelInvitation = cancelInvitation,
+        changeRole = changeRole,
+        transferOwnership = transferOwnership,
+    )
     if (showNoticeComposer) AlertDialog(
         onDismissRequest = { showNoticeComposer = false },
         title = { Text(stringResource(R.string.group_post_update)) },
@@ -233,7 +245,7 @@ fun GroupDetailScreen(
                     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconButton({ showMembers = false }) { Icon(Icons.Outlined.ArrowBack, stringResource(R.string.social_done)) }
                         Text(stringResource(R.string.group_members_manage), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        if (canInviteMore) TextButton({ showMembers = false; invite() }) { Text(stringResource(R.string.social_invite)) }
+                        if (canInviteMore) IconButton(invite) { Icon(Icons.Outlined.PersonAdd, stringResource(R.string.group_invite_connections)) }
                     }
                     LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         items(orderedMembers, key = { it.person.id }) { member ->
@@ -312,10 +324,13 @@ private fun LazyListScope.upcomingActivityItems(group: GroupSummary, dateFormat:
     }
 }
 
-private fun LazyListScope.memberSection(group: GroupSummary, members: List<GroupMember>, showMembers: () -> Unit) {
+private fun LazyListScope.memberSection(group: GroupSummary, members: List<GroupMember>, canInviteMore: Boolean, invite: () -> Unit, showMembers: () -> Unit) {
     item {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.group_members_heading), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.group_members_heading), Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (canInviteMore) IconButton(invite) { Icon(Icons.Outlined.PersonAdd, stringResource(R.string.group_invite_connections)) }
+            }
             ElevatedCard {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -411,4 +426,120 @@ private fun LazyListScope.memberSection(group: GroupSummary, members: List<Group
 
 @Composable private fun GroupFocusDialog(group:GroupSummary,close:()->Unit,focus:(String,Int?,Boolean)->Unit,commitment:(Int?,Boolean)->Unit){var mode by remember{mutableStateOf(group.focusMode)};var target by remember{mutableIntStateOf(group.target?:3)};var next by remember{mutableStateOf(false)};AlertDialog(onDismissRequest=close,title={Text(stringResource(R.string.group_weekly_focus))},text={Column{listOf("personal_targets" to R.string.group_focus_personal,"shared_target" to R.string.group_focus_shared,"none" to R.string.group_focus_none).forEach{(value,label)->Row(verticalAlignment=Alignment.CenterVertically){RadioButton(mode==value,{mode=value});Text(stringResource(label))}};if(mode!="none")Row(verticalAlignment=Alignment.CenterVertically){IconButton({target=(target-1).coerceAtLeast(1)}){Icon(Icons.Outlined.Remove,null)};Text(target.toString());IconButton({target=(target+1).coerceAtMost(14)}){Icon(Icons.Outlined.Add,null)}};Row(verticalAlignment=Alignment.CenterVertically){Checkbox(next,{next=it});Text(stringResource(R.string.group_apply_next_week))};if(mode=="personal_targets")TextButton({commitment(null,true);close()}){Text(stringResource(R.string.group_skip_week))}}},confirmButton={TextButton({if(mode=="personal_targets")commitment(target,false) else focus(mode,target.takeIf{mode=="shared_target"},next);close()}){Text(stringResource(R.string.social_done))}},dismissButton={TextButton(close){Text(stringResource(R.string.social_decline))}})}
 
-@Composable private fun GroupSettingsDialog(group:GroupSummary,close:()->Unit,rename:(String)->Unit,mute:(Boolean)->Unit,archive:()->Unit,leave:()->Unit,remove:(String)->Unit){var name by remember{mutableStateOf(group.name)};AlertDialog(onDismissRequest=close,title={Text(stringResource(R.string.group_manage))},text={LazyColumn{item{OutlinedTextField(name,{name=it.take(80)},label={Text(stringResource(R.string.group_create_name))});TextButton({rename(name)}){Text(stringResource(R.string.group_rename))};Row(verticalAlignment=Alignment.CenterVertically){Text(stringResource(R.string.group_mute),Modifier.weight(1f));Switch(group.currentUserMuted,{mute(it)})}};if(group.role=="owner")items(group.members.filter{!it.isCurrentUser},key={it.person.id}){member->TextButton({remove(member.person.id)}){Text(stringResource(R.string.group_remove_member,member.person.displayName))}};item{TextButton(archive){Text(stringResource(if(group.lifecycle=="archived")R.string.social_group_reactivate else R.string.social_group_archive))};if(group.currentUserRole=="member")TextButton(leave){Text(stringResource(R.string.group_leave))}}}},confirmButton={TextButton(close){Text(stringResource(R.string.social_done))}})}
+@Composable private fun GroupSettingsDialog(
+    group: GroupSummary,
+    close: () -> Unit,
+    save: (String, String, Int, String, String, Boolean, Boolean) -> Unit,
+    invite: () -> Unit,
+    openFocus: () -> Unit,
+    archive: () -> Unit,
+    leave: () -> Unit,
+    remove: (String) -> Unit,
+    cancelInvitation: (String) -> Unit,
+    changeRole: (String, String) -> Unit,
+    transferOwnership: (String) -> Unit,
+) {
+    var name by remember(group.id) { mutableStateOf(group.name) }
+    var city by remember(group.id) { mutableStateOf(group.city.orEmpty()) }
+    var resetWeekday by remember(group.id) { mutableIntStateOf(group.resetWeekday.coerceIn(1, 7)) }
+    var timeZone by remember(group.id) { mutableStateOf(group.timeZone.ifBlank { java.util.TimeZone.getDefault().id }) }
+    var calendarApply by remember(group.id) { mutableStateOf("next_week") }
+    var savedCalendarApply by remember(group.id) { mutableStateOf("next_week") }
+    var notificationsMuted by remember(group.id) { mutableStateOf(group.currentUserMuted) }
+    var weekdayMenu by remember { mutableStateOf(false) }
+    val hasUnsavedChanges = name.trim() != group.name || city.trim() != group.city.orEmpty() ||
+        resetWeekday != group.resetWeekday || timeZone.trim() != group.timeZone ||
+        calendarApply != savedCalendarApply || notificationsMuted != group.currentUserMuted
+    val canManage = group.currentUserRole in setOf("owner", "admin")
+    val canInvite = canManage && group.lifecycle != "archived"
+    val weekdays = java.text.DateFormatSymbols.getInstance().weekdays
+
+    Dialog(onDismissRequest = { if (!hasUnsavedChanges) close() }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(close) { Icon(Icons.Outlined.ArrowBack, stringResource(R.string.social_done)) }
+                    Text(stringResource(R.string.group_manage), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    TextButton({
+                        save(name, city, resetWeekday, timeZone, calendarApply, notificationsMuted, calendarApply != savedCalendarApply)
+                        savedCalendarApply = calendarApply
+                    }, enabled = hasUnsavedChanges) {
+                        Text(stringResource(R.string.group_settings_save))
+                    }
+                }
+                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (group.currentUserRole == "owner" || (group.week.focusConfigured && group.focusMode in setOf("theme", "personal_targets"))) {
+                                OutlinedButton(openFocus, Modifier.fillMaxWidth()) { Text(stringResource(if (group.currentUserRole == "owner") R.string.group_weekly_theme else R.string.group_my_commitment)) }
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(stringResource(R.string.group_mute), Modifier.weight(1f))
+                                Switch(notificationsMuted, { notificationsMuted = it })
+                            }
+                        }
+                    }
+                    if (canManage) {
+                        item {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(stringResource(R.string.group_owner_controls), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                OutlinedTextField(name, { name = it.take(80) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.group_create_name)) }, singleLine = true)
+                                OutlinedTextField(city, { city = it.take(120) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.group_base_location)) }, singleLine = true)
+                                if (canInvite) OutlinedButton(invite, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_invite_connections)) }
+                            }
+                        }
+                        if (group.invitations.isNotEmpty()) {
+                            item { Text(stringResource(R.string.group_pending_invitations), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
+                            items(group.invitations, key = GroupInvitationSnapshot::id) { invitation ->
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(invitation.recipient?.displayName ?: stringResource(R.string.group_invited_person), Modifier.weight(1f))
+                                    TextButton({ cancelInvitation(invitation.id) }) { Text(stringResource(R.string.group_invitation_cancel)) }
+                                }
+                            }
+                        }
+                        item {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(stringResource(R.string.group_week_settings), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                Box {
+                                    TextButton({ weekdayMenu = true }) { Text("${stringResource(R.string.group_reset_day)} · ${weekdays[(resetWeekday % 7) + 1]}") }
+                                    DropdownMenu(weekdayMenu, { weekdayMenu = false }) {
+                                        (1..7).forEach { day -> DropdownMenuItem(text = { Text(weekdays[(day % 7) + 1]) }, onClick = { resetWeekday = day; weekdayMenu = false }) }
+                                    }
+                                }
+                                OutlinedTextField(timeZone, { timeZone = it.take(80) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.group_timezone)) }, singleLine = true)
+                                Text(stringResource(R.string.group_calendar_apply), style = MaterialTheme.typography.labelLarge)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    FilterChip(calendarApply == "now", { calendarApply = "now" }, label = { Text(stringResource(R.string.group_apply_now)) })
+                                    FilterChip(calendarApply == "next_week", { calendarApply = "next_week" }, label = { Text(stringResource(R.string.group_apply_next)) })
+                                }
+                            }
+                        }
+                        if (group.members.any { !it.isCurrentUser }) {
+                            item { Text(stringResource(R.string.group_members_manage), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
+                            items(group.members.filter { !it.isCurrentUser }, key = { it.person.id }) { member ->
+                                Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                    Text(member.person.displayName, style = MaterialTheme.typography.bodyLarge)
+                                    Text(member.role.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        if (group.currentUserRole == "owner" && member.role != "owner") {
+                                            TextButton({ changeRole(member.person.id, if (member.role == "admin") "member" else "admin") }) { Text(stringResource(if (member.role == "admin") R.string.group_make_member else R.string.group_make_admin)) }
+                                            TextButton({ transferOwnership(member.person.id) }) { Text(stringResource(R.string.group_transfer_ownership)) }
+                                        }
+                                        if (member.role != "owner" && (group.currentUserRole == "owner" || (group.currentUserRole == "admin" && member.role == "member"))) {
+                                            TextButton({ remove(member.person.id) }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.group_remove_member, member.person.displayName)) }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        item {
+                            TextButton(archive) { Text(stringResource(if (group.lifecycle == "archived") R.string.social_group_reactivate else R.string.social_group_archive)) }
+                        }
+                    } else if (group.currentUserRole == "member") {
+                        item { TextButton(leave, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.group_leave)) } }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -32,6 +32,8 @@
     <string name="group_event_scheduled_end">Hora de fin</string>
     <string name="group_event_when">Cuándo</string>
     <string name="group_toast_created">Grupo creado. Invitaciones enviadas.</string>
+    <string name="group_toast_saved">Se guardó la configuración del grupo.</string>
+    <string name="group_toast_save_failed">No se pudo guardar la configuración del grupo. Inténtalo de nuevo.</string>
     <string name="social_active_now_person">%1$s está entrenando ahora</string>
     <string name="social_active_now_title">En actividad</string>
     <string name="social_activity_feed">ACTIVIDAD</string>

@@ -158,6 +158,8 @@ import kotlinx.serialization.json.JsonElement
     val joinPolicy: String? = null,
     val description: String? = null,
     val city: String? = null,
+    val resetWeekday: Int = 1,
+    val timeZone: String = "",
     val memberLimit: Int = 500,
     val memberCount: Int = 0,
     val owner: SocialPerson? = null,

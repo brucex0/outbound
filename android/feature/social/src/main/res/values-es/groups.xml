@@ -1,4 +1,19 @@
 <resources>
+    <string name="group_base_location">Ubicación base</string>
+    <string name="group_owner_controls">Controles del propietario</string>
+    <string name="group_pending_invitations">Invitaciones pendientes</string>
+    <string name="group_invitation_cancel">Cancelar</string>
+    <string name="group_week_settings">Semana del grupo</string>
+    <string name="group_reset_day">Día de reinicio</string>
+    <string name="group_timezone">Zona horaria</string>
+    <string name="group_calendar_apply">Aplicar cambios</string>
+    <string name="group_apply_now">Ahora</string>
+    <string name="group_apply_next">La próxima semana</string>
+    <string name="group_make_member">Hacer miembro</string>
+    <string name="group_make_admin">Hacer administrador</string>
+    <string name="group_transfer_ownership">Transferir propiedad</string>
+    <string name="group_settings_save">Guardar</string>
+    <string name="group_my_commitment">Mi compromiso</string>
     <string name="group_create_title">Crea tu grupo</string>
     <string name="group_create_name">Ponle nombre al grupo · Opcional</string>
     <string name="group_create_name_help">Déjalo en blanco y Plainstride sugerirá un nombre.</string>

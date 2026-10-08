@@ -48,6 +48,11 @@ interface SocialRepository {
     suspend fun markGroupNoticesRead(groupId:String):Result<GroupSummary>
     suspend fun cheerGroup(id: String, recipientId: String, preset: String): Result<Unit>
     suspend fun renameGroup(id:String,name:String):Result<GroupSummary>
+    suspend fun updateGroupDetails(id:String,name:String,city:String):Result<GroupSummary>
+    suspend fun updateGroupCalendar(id:String,resetWeekday:Int,timeZone:String,apply:String):Result<GroupSummary>
+    suspend fun updateGroupMemberRole(id:String,userId:String,role:String):Result<GroupSummary>
+    suspend fun transferGroupOwnership(id:String,userId:String):Result<GroupSummary>
+    suspend fun cancelGroupInvitation(id:String,invitationId:String):Result<GroupSummary>
     suspend fun setGroupCommitment(id:String,target:Int?,skipped:Boolean):Result<GroupSummary>
     suspend fun muteGroup(id:String,muted:Boolean):Result<GroupSummary>
     suspend fun leaveGroup(id:String):Result<Unit>
@@ -154,7 +159,12 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun createGroupNotice(groupId:String,title:String?,body:String,pinned:Boolean)=authenticated{apiCall{api.createGroupNotice(it,groupId,GroupNoticeBody(title?.trim()?.takeIf(String::isNotEmpty),body.trim(),pinned=pinned))}}.map{it.group}
     override suspend fun markGroupNoticesRead(groupId:String)=authenticated{apiCall{api.markGroupNoticesRead(it,groupId)}}.map{it.group}
     override suspend fun cheerGroup(id: String, recipientId: String, preset: String) = authenticated { apiCall { api.groupCheer(it, id, CheerBody(recipientId, preset)) } }
-    override suspend fun renameGroup(id:String,name:String)=authenticated{apiCall{api.renameGroup(it,id,RenameGroupBody(name.trim()))}}
+    override suspend fun renameGroup(id:String,name:String)=authenticated{apiCall{api.renameGroup(it,id,RenameGroupBody(name=name.trim()))}}
+    override suspend fun updateGroupDetails(id:String,name:String,city:String)=authenticated{apiCall{api.renameGroup(it,id,RenameGroupBody(name=name.trim().ifEmpty{null},city=city.trim()))}}
+    override suspend fun updateGroupCalendar(id:String,resetWeekday:Int,timeZone:String,apply:String)=authenticated{apiCall{api.updateGroupCalendar(it,id,GroupCalendarBody(resetWeekday,timeZone,apply))}}
+    override suspend fun updateGroupMemberRole(id:String,userId:String,role:String)=authenticated{apiCall{api.updateGroupMemberRole(it,id,userId,GroupRoleBody(role))}}
+    override suspend fun transferGroupOwnership(id:String,userId:String)=authenticated{apiCall{api.transferGroupOwnership(it,id,GroupTransferBody(userId))}}
+    override suspend fun cancelGroupInvitation(id:String,invitationId:String)=authenticated{apiCall{api.cancelGroupInvitation(it,id,invitationId)}}.map{it.group}
     override suspend fun setGroupCommitment(id:String,target:Int?,skipped:Boolean)=authenticated{apiCall{api.groupCommitment(it,id,GroupCommitmentBody(target,skipped))}}
     override suspend fun muteGroup(id:String,muted:Boolean)=authenticated{apiCall{api.muteGroup(it,id,GroupMuteBody(muted))}}
     override suspend fun leaveGroup(id:String)=authenticated{apiCall{api.leaveGroup(it,id)}}

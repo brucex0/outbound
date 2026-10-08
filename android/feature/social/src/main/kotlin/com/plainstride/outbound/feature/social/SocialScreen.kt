@@ -103,6 +103,8 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             val text = when (message) {
                 SocialMessage.GROUP_CREATED -> resources.getString(R.string.group_toast_created)
                 SocialMessage.GROUP_CREATION_FAILED -> resources.getString(R.string.group_creation_failed)
+                SocialMessage.GROUP_SETTINGS_SAVED -> resources.getString(R.string.group_toast_saved)
+                SocialMessage.GROUP_SETTINGS_FAILED -> resources.getString(R.string.group_toast_save_failed)
                 else -> null
             }
             text?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
@@ -140,11 +142,13 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             focus = { mode, target, next -> viewModel.setGroupFocus(group, mode, target, next) },
             archive = { viewModel.setGroupArchived(group, group.lifecycle != "archived") },
             invite = { inviteGroup = group },
-            rename = { name -> viewModel.renameGroup(group, name) },
+            saveSettings = { name, city, day, zone, apply, muted, applyChanged -> viewModel.saveGroupSettings(group, name, city, day, zone, apply, muted, applyChanged) },
             commitment = { target, skipped -> viewModel.setGroupCommitment(group, target, skipped) },
-            mute = { muted -> viewModel.muteGroup(group, muted) },
             leave = { viewModel.leaveGroup(group) },
             remove = { userId -> viewModel.removeGroupMember(group, userId) },
+            cancelInvitation = { invitationId -> viewModel.cancelGroupInvitation(group, invitationId) },
+            changeRole = { userId, role -> viewModel.updateGroupMemberRole(group, userId, role) },
+            transferOwnership = { userId -> viewModel.transferGroupOwnership(group, userId) },
             trackMembersOpened = viewModel::trackGroupMembersOpened,
             planActivity = { groupActivity = group },
             requestJoin = { viewModel.joinGroup(group) },
@@ -187,6 +191,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
         search = viewModel::search,
         openProfile = viewModel::openProfile,
         reviewInvitation = { invitation -> viewModel.openTarget("invitation", invitation.id) },
+        openGroupInvitation = { groupId -> viewModel.openTarget("group", groupId, "invitation") },
         scanQr = { scannerFeedback = null; scannerOpen = true },
         showQr = { connectionsOpen = false; onMyInvite() },
         inviteByLink = viewModel::inviteByLink,
@@ -599,7 +604,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                 items(acceptedConnections.take(8), key = SocialPerson::id) { person -> PersonRow(person) { openProfile(person) } }
             }
             SocialFeatureTab.GROUPS -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + PrimaryBottomToolbarClearance), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (groupInvitations.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_invite)) }; items(groupInvitations, key = SocialInvitation::id) { InvitationCard(it) { invitation -> openTarget("invitation", invitation.id) } } }
+                if (groupInvitations.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_invite)) }; items(groupInvitations, key = SocialInvitation::id) { invitation -> InvitationCard(invitation, { openTarget("invitation", invitation.id) }) { invitation.objectId?.let { viewModel.openTarget("group", it, "invitation") } } } }
                 item { SectionHeader(stringResource(R.string.social_groups), action = stringResource(R.string.social_group_create), onAction = createGroup) }
                 if (state.home.groups.isEmpty() && !state.loading) item { CompanionCard(onClick = createGroup) { Text(stringResource(R.string.social_group_empty), fontWeight = FontWeight.SemiBold); Spacer(Modifier.height(10.dp)); Text(stringResource(R.string.social_group_create), fontWeight = FontWeight.Bold) } }
                 items(state.home.groups, key = GroupSummary::id) { item -> GroupCard(item, groupDisplayName(item, state.home.groups), { openGroup(item) }) { group(item) } }
@@ -735,6 +740,7 @@ private fun ConnectionsDialog(
     search: (String) -> Unit,
     openProfile: (SocialPerson) -> Unit,
     reviewInvitation: (SocialInvitation) -> Unit,
+    openGroupInvitation: (String) -> Unit,
     scanQr: () -> Unit,
     showQr: () -> Unit,
     inviteByLink: () -> Unit,
@@ -778,7 +784,7 @@ private fun ConnectionsDialog(
                 if (state.searchResults.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_search_people)) }; items(state.searchResults, key = SocialPerson::id) { PersonRow(it) { openProfile(it) } } }
                 val incoming = state.home.connections.filter { it.relationship == "pending" && it.connectionDirection == "incoming" }
                 if (incoming.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_requests)) }; items(incoming, key = SocialPerson::id) { person -> RequesterCard(person, { openProfile(person) }, { acceptRequest(person) }, { declineRequest(person) }) } }
-                if (state.home.invitations.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_invite)) }; items(state.home.invitations, key = SocialInvitation::id) { invitation -> InvitationCard(invitation, reviewInvitation) } }
+                if (state.home.invitations.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_invite)) }; items(state.home.invitations, key = SocialInvitation::id) { invitation -> InvitationCard(invitation, { reviewInvitation(invitation) }) { if (invitation.kind == "group" && invitation.objectId != null) openGroupInvitation(invitation.objectId) else reviewInvitation(invitation) } } }
                 val accepted = state.home.connections.filter { it.relationship in setOf("accepted", "connected") }
                 if (accepted.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_connections)) }; items(accepted, key = SocialPerson::id) { PersonRow(it) { openProfile(it) } } }
                 val outgoing = state.home.connections.filter { it.relationship == "pending" && it.connectionDirection == "outgoing" }
@@ -806,7 +812,13 @@ private fun ConnectionsDialog(
         }
     }
 }
-@Composable private fun InvitationCard(invitation: SocialInvitation, review:(SocialInvitation)->Unit) = SocialCard { Text(invitation.title, fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.social_invited_by, invitation.sender.displayName), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Button({review(invitation)}, Modifier.padding(top = 8.dp)) { Text(stringResource(R.string.social_review)) } }
+@Composable private fun InvitationCard(invitation: SocialInvitation, review:(SocialInvitation)->Unit, open:()->Unit) = ElevatedCard(onClick = open) {
+    Column(Modifier.fillMaxWidth().padding(14.dp)) {
+        Text(invitation.title, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.social_invited_by, invitation.sender.displayName), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Button({ review(invitation) }, Modifier.padding(top = 8.dp)) { Text(stringResource(R.string.social_review)) }
+    }
+}
 private fun prioritizeUpcomingEvents(events: List<SocialEvent>): List<SocialEvent> = events.sortedWith(
     compareBy<SocialEvent> {
         when {

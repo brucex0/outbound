@@ -32,6 +32,8 @@
     <string name="group_event_scheduled_end">Scheduled end</string>
     <string name="group_event_when">When</string>
     <string name="group_toast_created">Group created. Invitations sent.</string>
+    <string name="group_toast_saved">Group settings saved.</string>
+    <string name="group_toast_save_failed">Could not save Group settings. Try again.</string>
     <string name="social_active_now_person">%1$s is active now</string>
     <string name="social_active_now_title">Active now</string>
     <string name="social_activity_feed">ACTIVITY FEED</string>

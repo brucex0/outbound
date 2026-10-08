@@ -31,7 +31,10 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 @Serializable data class CreateGroupBody(val template:String="motivation",val name:String?=null,val description:String?=null,val city:String?=null,val activityInterests:List<String> = emptyList(),val memberUserIds:List<String> = emptyList(),@EncodeDefault(EncodeDefault.Mode.NEVER) val timeZone:String?=null,@EncodeDefault(EncodeDefault.Mode.NEVER) val resetWeekday:Int?=null,@EncodeDefault(EncodeDefault.Mode.NEVER) val idempotencyKey:String?=null)
 @Serializable data class GroupInviteBody(val recipientUserIds:List<String>,val idempotencyKey:String?=null)
 @Serializable data class GroupFocusBody(val mode:String,val sharedTarget:Int?=null,val apply:String="now")
-@Serializable data class RenameGroupBody(val name:String)
+@Serializable data class RenameGroupBody(val name:String? = null, val city:String? = null)
+@Serializable data class GroupCalendarBody(val resetWeekday:Int,val timeZone:String,val apply:String)
+@Serializable data class GroupRoleBody(val role:String)
+@Serializable data class GroupTransferBody(val recipientUserId:String)
 @Serializable data class GroupCommitmentBody(val targetCount:Int?=null,val skipped:Boolean=false)
 @Serializable data class GroupMuteBody(val muted:Boolean)
 @Serializable data class GroupNoticeBody(val title:String?=null,val body:String,val activityEventId:String?=null,val pinned:Boolean=false)
@@ -95,9 +98,13 @@ interface SocialApiService {
     @POST("v1/social/groups/{id}/notices") suspend fun createGroupNotice(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:GroupNoticeBody):Response<GroupMutationResponse>
     @POST("v1/social/groups/{id}/notices/read") suspend fun markGroupNoticesRead(@Header("Authorization") auth:String,@Path("id") id:String):Response<GroupMutationResponse>
     @PATCH("v1/social/groups/{id}") suspend fun renameGroup(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:RenameGroupBody):Response<GroupSummary>
+    @PUT("v1/social/groups/{id}/calendar") suspend fun updateGroupCalendar(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:GroupCalendarBody):Response<GroupSummary>
     @PUT("v1/social/groups/{id}/commitment") suspend fun groupCommitment(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:GroupCommitmentBody):Response<GroupSummary>
     @PUT("v1/social/groups/{id}/notifications") suspend fun muteGroup(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:GroupMuteBody):Response<GroupSummary>
     @DELETE("v1/social/groups/{id}/members/{userId}") suspend fun removeGroupMember(@Header("Authorization") auth:String,@Path("id") id:String,@Path("userId") userId:String):Response<GroupSummary>
+    @PATCH("v1/social/groups/{id}/members/{userId}/role") suspend fun updateGroupMemberRole(@Header("Authorization") auth:String,@Path("id") id:String,@Path("userId") userId:String,@Body body:GroupRoleBody):Response<GroupSummary>
+    @POST("v1/social/groups/{id}/transfer") suspend fun transferGroupOwnership(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:GroupTransferBody):Response<GroupSummary>
+    @POST("v1/social/groups/{id}/invitations/{invitationId}/cancel") suspend fun cancelGroupInvitation(@Header("Authorization") auth:String,@Path("id") id:String,@Path("invitationId") invitationId:String):Response<GroupMutationResponse>
     @POST("v1/social/groups/{id}/cheers") suspend fun groupCheer(@Header("Authorization") auth: String, @Path("id") id: String, @Body body: CheerBody): Response<Unit>
     @POST("v1/social/groups") suspend fun createGroup(@Header("Authorization") auth:String,@Body body:CreateGroupBody):Response<GroupSummary>
     @POST("v1/social/groups/{id}/invitations") suspend fun inviteGroup(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:GroupInviteBody):Response<GroupMutationResponse>

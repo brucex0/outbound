@@ -1,4 +1,19 @@
 <resources>
+    <string name="group_base_location">所在地区</string>
+    <string name="group_owner_controls">群主设置</string>
+    <string name="group_pending_invitations">待处理邀请</string>
+    <string name="group_invitation_cancel">取消</string>
+    <string name="group_week_settings">群组周设置</string>
+    <string name="group_reset_day">重置日</string>
+    <string name="group_timezone">时区</string>
+    <string name="group_calendar_apply">应用更改</string>
+    <string name="group_apply_now">立即</string>
+    <string name="group_apply_next">下周</string>
+    <string name="group_make_member">设为成员</string>
+    <string name="group_make_admin">设为管理员</string>
+    <string name="group_transfer_ownership">转让群主</string>
+    <string name="group_settings_save">保存</string>
+    <string name="group_my_commitment">我的承诺</string>
     <string name="group_create_title">创建群组</string>
     <string name="group_create_name">群组名称 · 可选</string>
     <string name="group_create_name_help">留空后，Plainstride 会推荐一个名称。</string>

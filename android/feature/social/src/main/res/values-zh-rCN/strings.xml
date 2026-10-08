@@ -32,6 +32,8 @@
     <string name="group_event_scheduled_end">计划结束时间</string>
     <string name="group_event_when">时间</string>
     <string name="group_toast_created">群组已创建，邀请已发送。</string>
+    <string name="group_toast_saved">群组设置已保存。</string>
+    <string name="group_toast_save_failed">无法保存群组设置，请重试。</string>
     <string name="social_active_now_person">%1$s 正在运动</string>
     <string name="social_active_now_title">正在运动</string>
     <string name="social_activity_feed">活动动态</string>

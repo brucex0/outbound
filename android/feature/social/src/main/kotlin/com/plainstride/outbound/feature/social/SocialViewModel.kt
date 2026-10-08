@@ -1,5 +1,6 @@
 package com.plainstride.outbound.feature.social
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,7 +33,7 @@ data class SocialUiState(
     val connectionProfileLoading: Boolean = false, val connectionProfileCode: String? = null,
     val connectionProfileIsSelf: Boolean = false,
 )
-enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED, GROUP_CREATED, GROUP_CREATION_FAILED }
+enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED, GROUP_CREATED, GROUP_CREATION_FAILED, GROUP_SETTINGS_SAVED, GROUP_SETTINGS_FAILED }
 enum class ConnectionFeedback { REQUESTED, ALREADY_PENDING, INCOMING_PENDING, ALREADY_CONNECTED, SELF, UPDATED, REQUEST_FAILED, PROFILE_LOAD_FAILED, INVITE_LINK_FAILED }
 sealed interface ConnectionEffect {
     data class Feedback(val value: ConnectionFeedback, val closeScanner: Boolean) : ConnectionEffect
@@ -304,7 +305,7 @@ sealed interface ConnectionEffect {
     fun trackProfileOpened() = analytics.record(AnalyticsEvent("social_profile_opened", mapOf(AnalyticsProperty.Source to "social")))
     fun openProfile(person: SocialPerson) { mutableState.update { it.copy(selectedProfile = person, connectionProfileCode = null, connectionProfileIsSelf = false) }; trackProfileOpened() }
     fun closeProfile() = mutableState.update { it.copy(selectedProfile = null, connectionProfileCode = null, connectionProfileIsSelf = false) }
-    fun openTarget(type:String,id:String,entrySource:String="deep_link"){when(type){"activity","post"->viewModelScope.launch{var post=mutableState.value.home.posts.firstOrNull{it.id==id||it.activity?.id==id};var cursor=mutableState.value.home.nextCursor;repeat(5){if(post!=null||cursor==null)return@repeat;repository.loadFeed(cursor).onSuccess{page->post=page.items.firstOrNull{it.id==id||it.activity?.id==id};cursor=page.nextCursor}};post?.let(::openComments)};"event"->viewModelScope.launch{repository.event(id).onSuccess{event->mutableState.update{it.copy(selectedEvent=event)};analytics.record(AnalyticsEvent("activity_event_detail_opened",mapOf(AnalyticsProperty.EntrySource to entrySource)))}};"group"->viewModelScope.launch{repository.group(id).onSuccess{group->mutableState.update{it.copy(selectedGroupDetail=group)}}};"invitation"->mutableState.update{state->state.copy(selectedInvitation=state.home.invitations.firstOrNull{it.id==id||it.objectId==id})}}}
+    fun openTarget(type:String,id:String,entrySource:String="deep_link"){when(type){"activity","post"->viewModelScope.launch{var post=mutableState.value.home.posts.firstOrNull{it.id==id||it.activity?.id==id};var cursor=mutableState.value.home.nextCursor;repeat(5){if(post!=null||cursor==null)return@repeat;repository.loadFeed(cursor).onSuccess{page->post=page.items.firstOrNull{it.id==id||it.activity?.id==id};cursor=page.nextCursor}};post?.let(::openComments)};"event"->viewModelScope.launch{repository.event(id).onSuccess{event->mutableState.update{it.copy(selectedEvent=event)};analytics.record(AnalyticsEvent("activity_event_detail_opened",mapOf(AnalyticsProperty.EntrySource to entrySource)))}};"group"->viewModelScope.launch{repository.group(id).onSuccess{group->mutableState.update{it.copy(selectedGroupDetail=group)};analytics.record(AnalyticsEvent("group_opened",mapOf(AnalyticsProperty.EntrySource to entrySource,AnalyticsProperty.SelectionType to if(entrySource=="invitation")"invited" else "group")))}};"invitation"->mutableState.update{state->state.copy(selectedInvitation=state.home.invitations.firstOrNull{it.id==id||it.objectId==id})}}}
     fun closeTarget()=mutableState.update{it.copy(selectedEvent=null,selectedGroupDetail=null,selectedInvitation=null)}
     fun closeEvent()=mutableState.update{it.copy(selectedEvent=null)}
     fun openGroup(group: GroupSummary) = viewModelScope.launch {
@@ -433,8 +434,39 @@ sealed interface ConnectionEffect {
         repository.createEvent(CreateEventBody(title = title.trim(), startsAt = startsAt, locationName = location?.trim()?.takeIf { it.isNotEmpty() }, groupId = group.id)).getOrThrow()
         openGroup(group)
     }
-    fun setGroupArchived(group:GroupSummary,archived:Boolean)=mutate("group_lifecycle_changed"){repository.setGroupArchived(group.id,archived).getOrThrow();closeGroup();refresh()}
+    fun setGroupArchived(group:GroupSummary,archived:Boolean)=mutate("group_lifecycle_changed"){repository.setGroupArchived(group.id,archived).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
     fun renameGroup(group:GroupSummary,name:String)=mutate("group_renamed"){repository.renameGroup(group.id,name).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
+    fun saveGroupSettings(group:GroupSummary,name:String,city:String,resetWeekday:Int,timeZone:String,apply:String,muted:Boolean,applyChanged:Boolean)=viewModelScope.launch {
+        runCatching {
+            var updated = group
+            if (name.trim() != group.name || city.trim() != group.city.orEmpty()) {
+                updated = repository.updateGroupDetails(group.id, name, city).getOrThrow()
+                if (name.trim() != group.name) analytics.record(AnalyticsEvent("group_name_changed"))
+                if (city.trim() != group.city.orEmpty()) analytics.record(AnalyticsEvent("group_location_changed"))
+            }
+            if (resetWeekday != group.resetWeekday || timeZone.trim() != group.timeZone || applyChanged) {
+                updated = repository.updateGroupCalendar(group.id, resetWeekday, timeZone.trim(), apply).getOrThrow()
+                analytics.record(AnalyticsEvent("group_calendar_changed", mapOf(AnalyticsProperty.SourceType to apply)))
+            }
+            if (muted != group.currentUserMuted) {
+                updated = repository.muteGroup(group.id, muted).getOrThrow()
+                analytics.record(AnalyticsEvent("group_notifications_changed", mapOf(AnalyticsProperty.SelectionType to if (muted) "muted" else "unmuted")))
+            }
+            mutableState.update { it.copy(selectedGroupDetail = updated) }
+            refresh()
+        }.onSuccess { messages.emit(SocialMessage.GROUP_SETTINGS_SAVED) }
+            .onFailure {
+                Log.w("SocialViewModel", "Group settings save failed (${it.javaClass.simpleName})")
+                analytics.record(AnalyticsEvent("group_operation_failed", mapOf(
+                    AnalyticsProperty.SourceType to "group_settings",
+                    AnalyticsProperty.ErrorCategory to "api_unavailable",
+                )))
+                messages.emit(SocialMessage.GROUP_SETTINGS_FAILED)
+            }
+    }
+    fun cancelGroupInvitation(group:GroupSummary,invitationId:String)=mutate("group_invitation_cancelled"){repository.cancelGroupInvitation(group.id,invitationId).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
+    fun updateGroupMemberRole(group:GroupSummary,userId:String,role:String)=mutate("group_member_role_changed"){repository.updateGroupMemberRole(group.id,userId,role).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
+    fun transferGroupOwnership(group:GroupSummary,userId:String)=mutate("group_ownership_transferred"){repository.transferGroupOwnership(group.id,userId).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
     fun createGroupNotice(group:GroupSummary,title:String?,body:String,pinned:Boolean)=mutate("group_notice_published"){repository.createGroupNotice(group.id,title,body,pinned).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}}}
     fun markGroupNoticesRead(group:GroupSummary)=mutate("group_notices_read"){repository.markGroupNoticesRead(group.id).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}}}
     fun setGroupCommitment(group:GroupSummary,target:Int?,skipped:Boolean)=mutate("group_personal_target_changed"){repository.setGroupCommitment(group.id,target,skipped).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
@@ -448,7 +480,7 @@ sealed interface ConnectionEffect {
         },
     )))
     fun respondToInvitation(invitation:SocialInvitation,accept:Boolean)=mutate("social_invitation_responded"){repository.respondToInvitation(invitation,accept).getOrThrow();closeTarget();refresh()}
-    private fun mutate(event: String, success: SocialMessage = SocialMessage.ACTION_COMPLETE, block: suspend () -> Unit) = viewModelScope.launch { runCatching { block() }.onSuccess { messages.emit(success); analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "success"))) }.onFailure { messages.emit(SocialMessage.ACTION_FAILED); analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "failure"))) } }
+    private fun mutate(event: String, success: SocialMessage = SocialMessage.ACTION_COMPLETE, block: suspend () -> Unit) = viewModelScope.launch { runCatching { block() }.onSuccess { messages.emit(success); analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "success"))) }.onFailure { Log.w("SocialViewModel", "$event failed (${it.javaClass.simpleName})"); messages.emit(SocialMessage.ACTION_FAILED); analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "failure"))) } }
 
     private companion object {
         val CONNECTION_RESULTS = setOf("requested", "already_pending", "incoming_pending", "already_connected", "self")
