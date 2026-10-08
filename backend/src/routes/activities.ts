@@ -1,3 +1,4 @@
+import { eligibleActivityEvent, startEventParticipation } from "../services/activityEventParticipation.js";
 import { Hono } from "hono";
 import { rebuildGuideProfile } from "../services/guideProfile.js";
 import { analyzeActivity } from "../services/ai.js";
@@ -472,24 +473,26 @@ router.post("/", zValidator("json", createSchema), async (c) => {
     });
   }
 
-  if (body.activityEventId) {
+  if (body.activityEventId && await eligibleActivityEvent(resolvedUserId, body.activityEventId)) {
+    const existing = await prisma.activityEventParticipant.findUnique({ where: { activityEventId_userId: { activityEventId: body.activityEventId, userId: resolvedUserId } } });
+    if (!existing?.startedAt) await startEventParticipation(resolvedUserId, body.activityEventId, activity.startedAt);
     await prisma.$transaction(async (transaction) => {
       await transaction.activityEventParticipant.updateMany({
-        where: { activityEventId: body.activityEventId, userId: resolvedUserId, status: "going" },
+        where: { activityEventId: body.activityEventId, userId: resolvedUserId, startedAt: { not: null } },
         data: { recordedActivityId: activity.id, outcome: "completed", resolvedAt: new Date() },
       });
 
       const [goingCount, unresolvedCount] = await Promise.all([
         transaction.activityEventParticipant.count({
-          where: { activityEventId: body.activityEventId, status: "going" },
+          where: { activityEventId: body.activityEventId, startedAt: { not: null } },
         }),
         transaction.activityEventParticipant.count({
-          where: { activityEventId: body.activityEventId, status: "going", outcome: null },
+          where: { activityEventId: body.activityEventId, startedAt: { not: null }, outcome: null },
         }),
       ]);
       if (goingCount > 0 && unresolvedCount === 0) {
         await transaction.activityEvent.updateMany({
-          where: { id: body.activityEventId, status: { notIn: ["completed", "cancelled"] } },
+          where: { id: body.activityEventId, endsAt: { lte: new Date() }, status: { notIn: ["completed", "cancelled"] } },
           data: { status: "completed" },
         });
       }

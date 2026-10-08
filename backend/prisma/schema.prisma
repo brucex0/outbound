@@ -1640,6 +1640,7 @@ model ActivityEventParticipant {
   status             String        @default("going")
   outcome            String?
   attendanceMode     String?
+  startedAt          DateTime?
   recordedActivityId String?       @unique
   recordedActivity   Activity?     @relation(fields: [recordedActivityId], references: [id], onDelete: SetNull)
   joinedAt           DateTime      @default(now())

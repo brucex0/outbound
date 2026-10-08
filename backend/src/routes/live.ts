@@ -9,6 +9,8 @@ import { getPrismaClient } from "../services/prisma.js";
 import type { AppEnv } from "../types/hono.js";
 import { ablyChannel, publishAbly } from "../services/ably.js";
 
+import { eligibleActivityEvent } from "../services/activityEventParticipation.js";
+
 const router = new Hono<AppEnv>();
 
 const createGroupRunSchema = z.object({
@@ -30,16 +32,10 @@ router.post("/group-runs/activity-events/:activityEventId", async (c) => {
 
   const prisma = getPrismaClient();
   const activityEventId = c.req.param("activityEventId");
-  const attendance = await prisma.activityEventParticipant.findFirst({
-    where: {
-      activityEventId,
-      userId: user.id,
-      status: "going",
-      activityEvent: { groupId: { not: null }, status: { in: ["scheduled", "active"] } },
-    },
-    include: { activityEvent: true },
-  });
-  if (!attendance) return c.json({ error: "Join this Group activity before sharing its live map." }, 403);
+  const event = await eligibleActivityEvent(user.id, activityEventId);
+  if (!event || !["scheduled", "active"].includes(event.status)) {
+    return c.json({ error: "Activity live map is unavailable." }, 403);
+  }
 
   let session = await prisma.liveGroupSession.findUnique({
     where: { activityEventId },
@@ -53,8 +49,8 @@ router.post("/group-runs/activity-events/:activityEventId", async (c) => {
           activityEventId,
           creatorUserId: user.id,
           inviteTokenHash: hashToken(randomToken()),
-          title: attendance.activityEvent.title,
-          sport: attendance.activityEvent.activityType,
+          title: event.title,
+          sport: event.activityType,
           startedAt: now,
           expiresAt: new Date(now.getTime() + 4 * 60 * 60 * 1000),
           participants: {

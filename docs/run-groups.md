@@ -173,10 +173,10 @@ Community detail has no general member activity feed. Completed Group activities
 
 ## Live Map During A Scheduled Activity
 
-- A runner who is going to a Group-owned activity can choose `Share live map with attendees` from Run options before recording. Attendance alone never shares location.
-- A going attendee can opt into live map sharing from `Run options` on the scheduled activity page. `Start activity` still begins recording immediately.
-- Other going attendees can opt in from the same scheduled activity. The event has one live session, so runners do not need to exchange a separate invite link.
-- The backend checks the user's going RSVP and the event's Group ownership before adding them. Live coordinates are visible only to attendees who have opted into that session. `Stop sharing` removes only that attendee and leaves the event session available for them to opt in again while the event remains joinable. Finishing the recording may close the session when no active attendees remain.
+- A member opening a Group-owned activity can choose `Share live map with attendees` from Run options before recording. Attendance alone never shares location.
+- An eligible member can opt into live map sharing from `Run options` on the scheduled activity page. `Start activity` still begins recording immediately.
+- Other eligible participants can opt in from the same scheduled activity. The event has one live session, so runners do not need to exchange a separate invite link.
+- The backend checks active Group membership (or direct-event invitation/connection eligibility), independently of RSVP before adding them. Live coordinates are visible only to attendees who have opted into that session. `Stop sharing` removes only that attendee and leaves the event session available for them to opt in again while the event remains joinable. Finishing the recording may close the session when no active attendees remain.
 - Unscheduled runs keep the existing invite-link flow.
 
 ## Membership And Administration
@@ -379,3 +379,15 @@ Verification is build-only for this release: backend TypeScript, iOS phone and W
 - Acceptance replaces the preview with full Group detail in place; declining returns to the previous screen. iOS holds previews separately from its membership/detail cache so previewing does not add a Group to the viewer's joined Groups.
 - All preview copy is localized in English, Spanish, and Simplified Chinese. Both clients emit `feature_exposed` with `feature = group_invitation_preview`; decision events retain `group_invitation_accepted` / `group_invitation_declined` with `entry_source = group_invitation_preview` and only a coarse member-count bucket on acceptance. Failed decisions use `group_operation_failed` with the bounded source and `api_unavailable` category. No Group, invitation, person identifiers, names, descriptions, or invitation contents enter analytics.
 - No schema migration or database rebuild is required. Deploy the backend change before distributing either updated client.
+
+## Recording Participation And Attribution
+
+- RSVP is planning intent. Eligible members can start a scheduled activity on its day or while active without an RSVP; direct events retain invitation/connection authorization. Public discovery alone grants no participation rights.
+- `POST /v1/social/activity-events/:id/start` records idempotent actual participation using `ActivityEventParticipant.startedAt`. A non-RSVP starter has `status = participating`; existing RSVP intent remains unchanged.
+- Starting never opts into location sharing. All event live maps and invite-link sessions use the existing iOS runner strip and map pins. Explicitly departed participants have no pin.
+- Event rosters distinguish not started, recording, and finished. Results and companion attribution use actual starters, including finished recordings that were discarded. Events do not complete early before their scheduled end, preserving late starts.
+- Offline starts and discarded-recording outcomes use an account-scoped durable iOS queue, retried on foreground and Social refresh. Offline saved-activity upload also reconciles authorized participation and its personal activity link. RSVP changes preserve recorded participation and results.
+- iOS feed and saved details show a Group activity indicator, authorized Group/event name, and sport-specific companion wording. Unknown/remote attendance uses neutral participation wording. Offline detail falls back to the local Group activity indicator. Attribution opens the shared event.
+- Existing activity-start/save analytics count event-linked recordings as group activity even without location sharing. No names, event IDs, or coordinates are added to analytics.
+- Schema rollout: from `backend/`, run `npm run db:generate`, `npm run build`, then `npm run db:push` before deploying the server. Existing events have no actual-start timestamp until a new start or saved upload reconciles them; no historical backfill is required.
+- This UX update is implemented in iOS and the shared backend; Android UI parity remains separate work.

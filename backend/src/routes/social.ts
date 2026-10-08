@@ -28,6 +28,8 @@ import {
   RewardCodeError,
 } from "../services/entitlements.js";
 
+import { eligibleActivityEvent, startEventParticipation } from "../services/activityEventParticipation.js";
+
 const router = new Hono<AppEnv>();
 const activityEventReconciliationWindowMs = 4 * 60 * 60 * 1000;
 const socialFeedPageSize = 12;
@@ -747,6 +749,8 @@ router.get("/activity-events/:id", async (c) => {
   const activity = await visibleActivityEvent(user.id, connections, c.req.param("id"));
   if (!activity) return c.json({ error: "Activity event not found." }, 404);
   await refreshActivityEventStatus(activity);
+  const blocked = await blockedUserIDs(user.id);
+  activity.participants = activity.participants.filter((p: any) => !blocked.includes(p.userId));
   return c.json(activityEventPayload(activity, user.id, connections, true));
 });
 
@@ -763,7 +767,7 @@ router.post("/activity-events/:id/rsvp", zValidator("json", attendanceModeSchema
   const participant = await getPrismaClient().activityEventParticipant.upsert({
     where: { activityEventId_userId: { activityEventId: activity.id, userId: user.id } },
     create: { activityEventId: activity.id, userId: user.id, status: "going", attendanceMode },
-    update: { status: "going", attendanceMode, outcome: null, resolvedAt: null },
+    update: { status: "going", attendanceMode },
   });
   if (activity.creatorId !== user.id) {
     await createSocialNotification(activity.creatorId, user.id, "activityEventJoined", activity.id, `${user.displayName} joined ${activity.title}.`);
@@ -782,7 +786,7 @@ router.delete("/activity-events/:id/rsvp", async (c) => {
   if (!activity || activity.creatorId === user.id) return c.json({ error: "The creator cannot leave this activity." }, 422);
   await getPrismaClient().activityEventParticipant.updateMany({
     where: { activityEventId: activity.id, userId: user.id },
-    data: { status: "left", outcome: null, recordedActivityId: null, resolvedAt: new Date() },
+    data: { status: "left" },
   });
   return c.json({ ok: true });
 });
@@ -888,7 +892,7 @@ router.post("/invitations/:id/decline", async (c) => {
   if (!invitation?.activityEventId) return c.json({ error: "Invitation not found." }, 404);
   await getPrismaClient().$transaction([
     getPrismaClient().invitation.update({ where: { id: invitation.id }, data: { status: "declined" } }),
-    getPrismaClient().activityEventParticipant.updateMany({ where: { activityEventId: invitation.activityEventId, userId: user.id }, data: { status: "left", outcome: null, recordedActivityId: null, resolvedAt: new Date() } }),
+    getPrismaClient().activityEventParticipant.updateMany({ where: { activityEventId: invitation.activityEventId, userId: user.id }, data: { status: "left" } }),
     getPrismaClient().socialNotification.deleteMany({ where: { recipientId: user.id, type: "runInvitation", objectId: invitation.id } }),
   ]);
   return c.json({ status: "declined", activityEventId: invitation.activityEventId });
@@ -931,11 +935,27 @@ router.post("/activity-events/:id/link-activity", zValidator("json", linkActivit
   return c.json({ ok: true });
 });
 
+router.post("/activity-events/:id/start", zValidator("json", z.object({ startedAt: z.string().datetime().optional() })), async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const event = await eligibleActivityEvent(user.id, c.req.param("id"));
+  const suppliedStart = c.req.valid("json").startedAt;
+  const startedAt = suppliedStart ? new Date(suppliedStart) : new Date();
+  const validOfflineStart = event && suppliedStart && startedAt.getTime() <= Date.now()
+    && startedAt.getTime() >= event.startsAt.getTime() - 24 * 60 * 60 * 1000
+    && startedAt <= event.endsAt;
+  if (!event || event.status === "cancelled") return c.json({ error: "Activity unavailable." }, 403);
+  const existing = await getPrismaClient().activityEventParticipant.findUnique({ where: { activityEventId_userId: { activityEventId: event.id, userId: user.id } } });
+  if (!existing?.startedAt && !validOfflineStart && !["scheduled", "active"].includes(event.status)) return c.json({ error: "Activity unavailable." }, 403);
+  if (!existing?.startedAt) await startEventParticipation(user.id, event.id, startedAt);
+  return c.json({ ok: true });
+});
+
 router.post("/activity-events/:id/no-recording", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
   const result = await getPrismaClient().activityEventParticipant.updateMany({
-    where: { activityEventId: c.req.param("id"), userId: user.id, status: "going" },
+    where: { activityEventId: c.req.param("id"), userId: user.id, startedAt: { not: null } },
     data: { outcome: "no_recording", recordedActivityId: null, resolvedAt: new Date() },
   });
   if (!result.count) return c.json({ error: "Participation not found." }, 404);
@@ -1336,6 +1356,21 @@ async function postPayload(
         clientActivityId: post.activity.clientActivityId,
       }], currentUserId)).get(activityRecognitionKey(post.userId, post.activity.clientActivityId)) ?? []
     : []);
+  let eventAttribution: Record<string, unknown> | null = null;
+  if (post.activity) {
+    const participation = await getPrismaClient().activityEventParticipant.findUnique({ where: { recordedActivityId: post.activity.id } });
+    if (participation) {
+      const connections = await acceptedConnectionIDs(currentUserId);
+      const event = await visibleActivityEvent(currentUserId, connections, participation.activityEventId);
+      if (event && await eligibleActivityEvent(currentUserId, event.id)) {
+        const blocked = await blockedUserIDs(currentUserId);
+        eventAttribution = { id: event.id, title: event.title, groupName: event.group?.name ?? null,
+          participants: event.participants.filter((p: any) => p.startedAt && p.userId !== post.userId && !blocked.includes(p.userId)).map((p: any) => ({ person: compactPerson(p.user), attendanceMode: p.attendanceMode })) };
+      } else {
+        eventAttribution = { id: null, title: null, groupName: null, participants: [] };
+      }
+    }
+  }
   const activity = post.activity
     ? {
         ...post.activity,
@@ -1348,6 +1383,7 @@ async function postPayload(
           post.activity._count?.photos ?? post.activity.photos.length,
         ),
         recognitions: resolvedRecognitions,
+        eventAttribution,
       }
     : null;
   return {
@@ -1513,12 +1549,12 @@ async function visiblePost(postId: string, userId: string) {
 
 function activityEventInclude(_currentUserId: string) {
   return {
-    group: { select: { id: true, name: true, trustPolicy: true } },
+    group: { select: { id: true, name: true, trustPolicy: true, members: { where: { userId: _currentUserId, status: "active" }, select: { userId: true } } } },
     creator: { select: socialPersonSelect },
     options: { orderBy: { sortOrder: "asc" as const } },
     participants: {
       include: {
-        user: { select: socialPersonSelect },
+        user: { select: { ...socialPersonSelect, activeWorkoutPresence: { select: { expiresAt: true } } } },
         recordedActivity: { select: socialActivitySelect },
       },
       orderBy: { joinedAt: "asc" as const },
@@ -1552,9 +1588,11 @@ async function visibleActivityEvent(userId: string, connectionIds: string[], id:
 
 function activityEventPayload(activity: any, currentUserId: string, connectionIds: string[], includeParticipants = false) {
   const going = activity.participants.filter((participant: any) => participant.status === "going");
+  const actual = activity.participants.filter((participant: any) => participant.startedAt);
+  const roster = activity.participants.filter((participant: any) => participant.status === "going" || participant.startedAt);
   const currentParticipant = activity.participants.find((participant: any) => participant.userId === currentUserId);
   const directInvitation = activity.invitations.find((invitation: any) => invitation.recipientId === currentUserId && invitation.status === "pending");
-  const participantView = Boolean(currentParticipant?.status === "going" || directInvitation || activity.creatorId === currentUserId);
+  const participantView = Boolean(currentParticipant?.status === "going" || currentParticipant?.startedAt || directInvitation || activity.creatorId === currentUserId || activity.group?.members?.some((member: any) => member.userId === currentUserId));
   const communityPublicView = activity.group?.trustPolicy === "community" && !participantView;
   const restrictedGroupMemberView = Boolean(activity.group && !participantView);
   const source = activity.creatorId === currentUserId
@@ -1589,16 +1627,18 @@ function activityEventPayload(activity: any, currentUserId: string, connectionId
     options: activity.options,
     source,
     attendeeCount: going.length,
+    startedCount: actual.length,
+    canParticipate: activity.group ? Boolean(activity.group.members?.some((member: any) => member.userId === currentUserId)) : Boolean(activity.creatorId === currentUserId || currentParticipant || directInvitation || connectionIds.includes(activity.creatorId)),
     attendeePreview: communityPublicView ? [] : going.slice(0, 3).map((participant: any) => compactPerson(participant.user)),
     currentUserGoing: currentParticipant?.status === "going",
     currentUserOutcome: currentParticipant?.outcome ?? null,
     currentUserAttendanceMode: currentParticipant?.attendanceMode ?? null,
-    currentUserRole: activity.creatorId === currentUserId ? "owner" : currentParticipant?.status === "going" ? "participant" : "viewer",
+    currentUserRole: activity.creatorId === currentUserId ? "owner" : currentParticipant?.status === "going" || currentParticipant?.startedAt ? "participant" : "viewer",
     compatibility: shareSafeCompatibility(activity.options),
   };
   if (includeParticipants) {
     const goingUserIds = new Set(going.map((participant: any) => participant.userId));
-    if (!communityPublicView) payload.participants = going.map((participant: any) => ({ person: compactPerson(participant.user), status: participant.status, outcome: participant.outcome, attendanceMode: participant.attendanceMode }));
+    if (!communityPublicView) payload.participants = roster.map((participant: any) => ({ person: compactPerson(participant.user), status: participant.status, outcome: participant.outcome, attendanceMode: participant.attendanceMode, startedAt: participant.startedAt, isRecording: Boolean(participant.startedAt && !participant.outcome && participant.user.activeWorkoutPresence?.expiresAt > new Date()) }));
     if (activity.creatorId === currentUserId) {
       payload.invitedUserIds = activity.invitations
         .filter((invitation: any) => invitation.recipientId && ["pending", "accepted"].includes(invitation.status))
@@ -1612,7 +1652,7 @@ function activityEventPayload(activity: any, currentUserId: string, connectionId
 }
 
 function activityEventResultsPayload(activity: any, currentUserId: string, connectionIds: string[], status = activity.status) {
-  const participants = activity.participants.filter((participant: any) => participant.status === "going");
+  const participants = activity.participants.filter((participant: any) => participant.startedAt);
   const canSeeDetails = (participant: any) => participant.userId === currentUserId || connectionIds.includes(participant.userId);
   const visibleRecorded = participants.filter((participant: any) => participant.recordedActivity && canSeeDetails(participant));
   const resolvedCount = participants.filter((participant: any) => participant.outcome).length;
@@ -1656,8 +1696,8 @@ async function refreshActivityEventStatus(activity: any) {
   const now = Date.now();
   const startsAt = new Date(activity.startsAt).getTime();
   const endsAt = new Date(activity.endsAt).getTime();
-  const going = activity.participants.filter((participant: any) => participant.status === "going");
-  const allResolved = going.length > 0 && going.every((participant: any) => participant.outcome);
+  const started = activity.participants.filter((participant: any) => participant.startedAt);
+  const allResolved = now >= endsAt && started.length > 0 && started.every((participant: any) => participant.outcome);
   const nextStatus = allResolved || now >= endsAt + activityEventReconciliationWindowMs
     ? "completed"
     : now >= endsAt
@@ -1679,7 +1719,7 @@ async function linkRecordedActivity(userId: string, activityEventId: string, act
   });
   if (!recordedActivity) return null;
   const result = await getPrismaClient().activityEventParticipant.updateMany({
-    where: { activityEventId, userId, status: "going" },
+    where: { activityEventId, userId, startedAt: { not: null } },
     data: { recordedActivityId: recordedActivity.id, outcome: "completed", resolvedAt: new Date() },
   });
   return result.count ? recordedActivity : null;
