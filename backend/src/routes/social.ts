@@ -1555,7 +1555,10 @@ function activityEventInclude(_currentUserId: string) {
     participants: {
       include: {
         user: { select: { ...socialPersonSelect, activeWorkoutPresence: { select: { expiresAt: true } } } },
-        recordedActivity: { select: socialActivitySelect },
+        recordedActivity: { select: {
+          ...socialPostActivitySelect,
+          posts: { where: { deletedAt: null, visibility: { in: ["public", "connections"] as string[] } }, select: { id: true }, take: 1 },
+        } },
       },
       orderBy: { joinedAt: "asc" as const },
     },
@@ -1666,7 +1669,18 @@ function activityEventResultsPayload(activity: any, currentUserId: string, conne
     participants: participants.map((participant: any) => ({
       person: compactPerson(participant.user),
       outcome: participant.outcome,
-      result: participant.recordedActivity && canSeeDetails(participant) ? participant.recordedActivity : null,
+      result: participant.recordedActivity && canSeeDetails(participant) ? {
+        ...participant.recordedActivity,
+        routeBlob: undefined,
+        routeMetadata: undefined,
+        _count: undefined,
+        posts: undefined,
+        // Photos require explicit post sharing, even when connection-visible stats are available.
+        ...socialFeedPhotoMetadata(
+          participant.userId === currentUserId || participant.recordedActivity.posts.length > 0 ? participant.recordedActivity.photos : [],
+          participant.userId === currentUserId || participant.recordedActivity.posts.length > 0 ? participant.recordedActivity._count.photos : 0,
+        ),
+      } : null,
     })),
   };
 }
