@@ -151,7 +151,7 @@ Trusted-private detail leads with:
 1. Current weekly theme and the viewer's optional commitment.
 2. Member progress, recent authorized workout context, and preset Cheer.
 3. `Plan an activity` and upcoming activity events.
-4. Recent supportive moments and settings.
+4. Recent supportive moments and settings. On iOS, each recent moment opens details with its timestamp and available Cheer or weekly-theme context.
 
 Community detail leads with:
 

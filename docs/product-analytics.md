@@ -317,3 +317,5 @@ Historical dashboards do not migrate automatically just because the client adapt
 6. Validate Firebase DebugView and initial dashboards with internal activity sessions.
 7. Review data after two to four weeks; delete unused events before expanding.
 8. Re-evaluate PostHog or another provider only against concrete unanswered questions.
+
+`group_moment_opened` records iOS recent-moment detail opens with only `entry_source=group_detail` and bounded `selection_type` (`cheer`, `completed_activity`, `weekly_completion`, or `other`). IDs, names, dates, and content are excluded.

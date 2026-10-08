@@ -1238,7 +1238,65 @@ struct GroupDetailView: View {
     private var momentsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(String(localized: "group.moments", defaultValue: "RECENT MOMENTS")).socialSectionLabel()
-            OutboundCard { ForEach(current.recentMoments) { moment in HStack { Image(systemName: moment.type == "cheer" ? "heart.fill" : moment.type == "completed_activity" ? "checkmark.group.fill" : "sparkles").foregroundStyle(OutboundPalette.companion); Text(momentText(moment)).font(.subheadline); Spacer(); Text(moment.createdAt, style: .relative).font(.caption).foregroundStyle(.secondary) }.frame(minHeight: 44) } }
+            OutboundCard {
+                ForEach(current.recentMoments) { moment in
+                    NavigationLink {
+                        momentDetails(moment)
+                    } label: {
+                        HStack {
+                            Image(systemName: moment.type == "cheer" ? "heart.fill" : moment.type == "completed_activity" ? "checkmark.group.fill" : "sparkles")
+                                .foregroundStyle(OutboundPalette.companion)
+                            Text(momentText(moment)).font(.subheadline).foregroundStyle(.primary)
+                            Spacer()
+                            Text(moment.createdAt, style: .relative).font(.caption).foregroundStyle(.secondary)
+                            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+                        }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private func momentDetails(_ moment: GroupMomentDTO) -> some View {
+        ScrollView {
+            OutboundCard {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(momentText(moment)).font(.title2.bold())
+                    Text(current.name).font(.headline)
+                    Text(moment.createdAt.formatted(date: .complete, time: .shortened))
+                        .font(.subheadline).foregroundStyle(.secondary)
+                    if moment.type == "cheer" {
+                        Text(cheerTitle(moment.title ?? "encouragement")).font(.headline)
+                        if let cheer = current.cheers.first(where: { "cheer:\($0.id)" == moment.id }),
+                           let sender = current.members.first(where: { $0.user.id == cheer.senderUserId }),
+                           let recipient = current.members.first(where: { $0.user.id == cheer.recipientUserId }) {
+                            HStack {
+                                Text(sender.user.displayName)
+                                Image(systemName: "arrow.right")
+                                Text(recipient.user.displayName)
+                            }
+                            .font(.subheadline)
+                        }
+                    } else if moment.type == "weekly_completion",
+                              moment.id == "completion:\(current.week.id)",
+                              let title = GroupThemeCatalog.displayTitle(key: current.week.themeKey, customTitle: current.week.themeTitle) {
+                        Text(title).font(.headline)
+                        if let note = current.week.themeNote, !note.isEmpty { Text(note) }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(OutboundSpacing.screen)
+        }
+        .background(OutboundPalette.background)
+        .navigationTitle(String(localized: "group.moment.details", defaultValue: "Moment details"))
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            let type = ["cheer", "completed_activity", "weekly_completion"].contains(moment.type) ? moment.type : "other"
+            track(.groupMomentOpened, [.entrySource: .string("group_detail"), .selectionType: .string(type)])
         }
     }
 
