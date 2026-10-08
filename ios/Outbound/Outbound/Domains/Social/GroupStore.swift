@@ -119,17 +119,22 @@ final class GroupStore: ObservableObject {
         }
     }
 
-    func refreshGroup(id: String) async {
-        if isUITestSeedData { upsert(Self.uiTestGroup(themeKey: uiTestThemeKey)); errorMessage = nil; return }
+    @discardableResult
+    func refreshGroup(id: String) async -> Bool {
+        if isUITestSeedData { upsert(Self.uiTestGroup(themeKey: uiTestThemeKey)); errorMessage = nil; return true }
         let generation = authGeneration
-        guard activeUserID != nil else { return }
+        guard activeUserID != nil else { return false }
         do {
             let group = try await api.fetchGroup(id: id)
-            guard generation == authGeneration else { return }
+            guard generation == authGeneration else { return false }
             upsert(group)
+            guard group.isDetailedPayload else { return false }
+            errorMessage = nil
+            return true
         } catch {
-            guard generation == authGeneration else { return }
+            guard generation == authGeneration else { return false }
             errorMessage = String(localized: "group.error.operation", defaultValue: "That Group update didn’t go through. Try again.")
+            return false
         }
     }
 
@@ -297,7 +302,9 @@ final class GroupStore: ObservableObject {
         do {
             _ = try await api.joinSocialGroup(id: group.id)
             await refreshGroup(id: group.id)
-            toastMessage = String(localized: "group.toast.requested", defaultValue: "Join request sent.")
+            toastMessage = group.joinPolicy == "open"
+                ? String(localized: "group.toast.joined", defaultValue: "You joined the Group.")
+                : String(localized: "group.toast.requested", defaultValue: "Join request sent.")
             return true
         } catch { _ = fail(error); return false }
     }

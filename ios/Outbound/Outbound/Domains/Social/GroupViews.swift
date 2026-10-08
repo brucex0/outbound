@@ -18,16 +18,42 @@ private func groupMemberPriority(_ role: String) -> Int {
 struct GroupDirectoryDetailView: View {
     @EnvironmentObject private var groupStore: GroupStore
     let groupID: String
+    @State private var loadFailed = false
+
     var body: some View {
         Group {
             if let group = groupStore.groups.first(where: { $0.id == groupID && $0.isDetailedPayload }) {
                 GroupDetailView(group: group)
+            } else if loadFailed {
+                VStack(spacing: OutboundSpacing.standard) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                    Text(String(localized: "group.loading.failed.title", defaultValue: "This Group couldn’t load"))
+                        .font(.headline)
+                    Text(String(localized: "group.loading.failed.detail", defaultValue: "Check your connection, then try again."))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                    Button(String(localized: "group.loading.retry", defaultValue: "Try again")) {
+                        Task { await loadGroup() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(OutboundSpacing.screen)
             } else {
                 ProgressView(String(localized: "group.loading", defaultValue: "Loading Group…"))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .task { await groupStore.refreshGroup(id: groupID) }
+        .task { await loadGroup() }
+    }
+
+    @MainActor
+    private func loadGroup() async {
+        loadFailed = false
+        loadFailed = !(await groupStore.refreshGroup(id: groupID))
     }
 }
 
@@ -703,15 +729,32 @@ struct GroupDetailView: View {
 
     private var communityOverview: some View {
         VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
-            if current.role == nil && !current.members.contains(where: \.isCurrentUser) {
+            if current.role == nil,
+               !current.members.contains(where: \.isCurrentUser),
+               current.joinPolicy != "invite_only" {
                 Button {
-                    Task { _ = await groupStore.requestMembership(in: current) }
+                    Task {
+                        let joining = current.joinPolicy == "open"
+                        let succeeded = await groupStore.requestMembership(in: current)
+                        track(.groupMembershipChanged, [
+                            .entrySource: .string("group_detail"),
+                            .selectionType: .string(joining ? "join" : "request"),
+                            .result: .string(succeeded ? "success" : "failure"),
+                            .participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount)),
+                        ])
+                    }
                 } label: {
-                    Label(current.pendingRequest?.status == "pending" ? String(localized: "group.join.pending", defaultValue: "Request pending") : String(localized: "group.join", defaultValue: "Request to join"), systemImage: "person.badge.plus")
+                    let isPending = current.joinPolicy == "request" && current.pendingRequest?.status == "pending"
+                    let title = isPending
+                        ? String(localized: "group.join.pending", defaultValue: "Request pending")
+                        : current.joinPolicy == "open"
+                            ? String(localized: "group.join.open", defaultValue: "Join Group")
+                            : String(localized: "group.join.request", defaultValue: "Request to join")
+                    Label(title, systemImage: "person.badge.plus")
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(current.pendingRequest?.status == "pending")
+                .disabled(current.joinPolicy == "request" && current.pendingRequest?.status == "pending")
             }
             if let description = current.description, !description.isEmpty {
                 OutboundCard {
@@ -912,6 +955,13 @@ struct GroupDetailView: View {
                     .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 Text(current.description ?? String(localized: "group.detail.inspiration", defaultValue: "Building a positive life, one activity at a time."))
                     .font(.headline)
+                if current.trustPolicy == "community",
+                   let city = current.city?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !city.isEmpty {
+                    Label(city, systemImage: "mappin.and.ellipse")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
                 Text(groupMemberCountLabel(current.memberCount)).font(.subheadline).foregroundStyle(.secondary)
             }
         }

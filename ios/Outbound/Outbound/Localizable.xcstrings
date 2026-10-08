@@ -8432,6 +8432,48 @@
         }
       }
     },
+    "group.loading.failed.title": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "This Group couldn’t load" } },
+        "es": { "stringUnit": { "state": "translated", "value": "No se pudo cargar este grupo" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "无法加载此群组" } }
+      }
+    },
+    "group.loading.failed.detail": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Check your connection, then try again." } },
+        "es": { "stringUnit": { "state": "translated", "value": "Comprueba tu conexión e inténtalo de nuevo." } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "检查网络连接后重试。" } }
+      }
+    },
+    "group.loading.retry": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Try again" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Intentar de nuevo" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "重试" } }
+      }
+    },
+    "group.join.open": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Join Group" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Unirse al grupo" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "加入群组" } }
+      }
+    },
+    "group.join.pending": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Request pending" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Solicitud pendiente" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "申请处理中" } }
+      }
+    },
+    "group.join.request": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Request to join" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Solicitar unirse" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "申请加入" } }
+      }
+    },
     "group.invitation.title": {
       "localizations": {
         "en": {
