@@ -43,6 +43,33 @@ xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme Outbound -des
 xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme 'Plainstride Watch' -destination 'generic/platform=watchOS' CODE_SIGNING_ALLOWED=NO build
 ```
 
+### Recovering Build Environment Failures
+
+- If backend build reports `sh: tsc: command not found`, the backend dependencies are missing. From the repository root, install the locked dependencies and retry the compile:
+
+  ```sh
+  cd backend
+  npm ci
+  npm run build
+  ```
+
+  This is a local dependency-install issue; do not change `package.json` or the lockfile to work around it.
+- If Xcode fails package resolution because it cannot write `~/Library/Caches/org.swift.swiftpm/manifests/ManifestLoading/*.dia`, the failure is the host sandbox denying SwiftPM's manifest diagnostic cache writes. Moving DerivedData, cloned packages, and package cache to `/tmp` alone does not redirect this cache. In the restricted shell, forcing `HOME`/`CFFIXED_USER_HOME` to `/tmp` changed the error to `sandbox-exec: sandbox_apply: Operation not permitted`.
+- The working recovery was to run the normal `xcodebuild` with host cache/build-service access, while keeping generated build/package data in `/tmp`:
+
+  ```sh
+  xcodebuild -quiet \
+    -project ios/Outbound/Outbound.xcodeproj \
+    -scheme Outbound \
+    -destination 'generic/platform=iOS Simulator' \
+    -derivedDataPath /tmp/outbound-groups-derived \
+    -clonedSourcePackagesDirPath /tmp/outbound-groups-source-packages \
+    -packageCachePath /tmp/outbound-package-cache \
+    CODE_SIGNING_ALLOWED=NO build
+  ```
+
+  If the execution sandbox still denies host cache writes, request the needed elevated execution access instead of repeating cache-path overrides. CoreSimulator connection warnings can appear in this environment; the generic simulator build still completed successfully after package resolution.
+
 The Watch scheme requires the matching watchOS platform component in Xcode. If the host has SDK headers but reports that watchOS is not installed, install the watchOS device platform in Xcode Settings > Components before relying on the scheme build. A compiler-only fallback can type-check the Watch and shared Swift sources against the installed SDK, but it does not validate embedding or signing.
 
 ## Apple Watch Paired-Device Validation
