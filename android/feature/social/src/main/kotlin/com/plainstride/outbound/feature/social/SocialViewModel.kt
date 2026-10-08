@@ -508,6 +508,9 @@ sealed interface ConnectionEffect {
         )
     }
     fun trackGroupTemplateSelected(template:String) = analytics.record(AnalyticsEvent("group_template_selected", mapOf(AnalyticsProperty.SelectionType to template)))
+    fun trackGroupInvitePickerOpened() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(
+        AnalyticsProperty.Feature to "group_invite_picker",
+    )))
     fun inviteToGroup(group:GroupSummary,members:List<SocialPerson>,idempotencyKey:String)=mutate("group_invitation_sent"){repository.inviteToGroup(group.id,members.map{it.id},idempotencyKey).getOrThrow();openGroup(group)}
     fun setGroupFocus(group:GroupSummary,mode:String,target:Int?,nextWeek:Boolean)=mutate("group_focus_changed"){repository.setGroupFocus(group.id,mode,target,nextWeek).getOrThrow();openGroup(group)}
     fun createGroupActivity(group: GroupSummary, title: String, location: String?) = mutate("group_activity_created") {

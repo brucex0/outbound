@@ -83,3 +83,5 @@
 ## Group Reference Scenarios
 
 - No Group with accepted connections, creation loading/success/failure with one or several invitees, generated or custom name, awaiting-members state, active progress with and without a numeric focus, personal skip, shared focus now/next week, owner/member management, archived/reactivated lifecycle, and transient mutation failure.
+
+- Group member invitations exclude existing members and recipients with pending invitations, using the latest open Group detail. Opening the picker emits feature_exposed with only feature = group_invite_picker; invitation outcomes retain group_invitation_sent. No identities or picker contents are recorded.

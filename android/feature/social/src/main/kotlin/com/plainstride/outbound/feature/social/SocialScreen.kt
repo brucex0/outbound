@@ -156,7 +156,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             cheer = { recipient, preset -> viewModel.cheerGroup(group, recipient, preset) },
             focus = { mode, target, next -> viewModel.setGroupFocus(group, mode, target, next) },
             archive = { viewModel.setGroupArchived(group, group.lifecycle != "archived") },
-            invite = { inviteGroup = group },
+            invite = { viewModel.trackGroupInvitePickerOpened(); inviteGroup = group },
             saveSettings = { name, city, day, zone, apply, muted, applyChanged -> viewModel.saveGroupSettings(group, name, city, day, zone, apply, muted, applyChanged) },
             commitment = { target, skipped -> viewModel.setGroupCommitment(group, target, skipped) },
             leave = { viewModel.leaveGroup(group) },
@@ -265,7 +265,16 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
         )
     }
     if(createGroup)GroupCreateScreen(state.home.connections.filter{it.relationship in setOf("accepted","connected")},{createGroup=false},viewModel::trackGroupTemplateSelected){template,name,city,people,onComplete->viewModel.createGroup(template,name,city,people,java.util.TimeZone.getDefault().id,onComplete)}
-    inviteGroup?.let{group->PersonPickerDialog(stringResource(R.string.social_invite),state.home.connections,{inviteGroup=null}){person->viewModel.inviteToGroup(group,listOf(person),java.util.UUID.randomUUID().toString());inviteGroup=null}}
+    inviteGroup?.let { group ->
+        val currentGroup = state.selectedGroupDetail?.takeIf { it.id == group.id } ?: group
+        val excludedIds = currentGroup.members.map { it.person.id }.toSet() +
+            currentGroup.invitations.filter { it.status == "pending" }.mapNotNull { it.recipient?.id }
+        val eligibleConnections = state.home.connections.filterNot { it.id in excludedIds }
+        PersonPickerDialog(stringResource(R.string.social_invite), eligibleConnections, { inviteGroup = null }) { person ->
+            viewModel.inviteToGroup(currentGroup, listOf(person), java.util.UUID.randomUUID().toString())
+            inviteGroup = null
+        }
+    }
     inviteEvent?.let{event->PersonPickerDialog(stringResource(R.string.social_invite),state.home.connections,{inviteEvent=null}){person->viewModel.inviteToEvent(event,person);inviteEvent=null}}
     groupActivity?.let { group -> GroupActivityComposer({ groupActivity = null }) { title, location -> viewModel.createGroupActivity(group, title, location); groupActivity = null } }
     state.selectedInvitation?.let{invitation->AlertDialog(onDismissRequest=viewModel::closeTarget,title={Text(invitation.title)},confirmButton={TextButton({viewModel.respondToInvitation(invitation,true)}){Text(stringResource(R.string.social_accept))}},dismissButton={TextButton({viewModel.respondToInvitation(invitation,false)}){Text(stringResource(R.string.social_decline))}})}
