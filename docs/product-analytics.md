@@ -319,3 +319,5 @@ Historical dashboards do not migrate automatically just because the client adapt
 8. Re-evaluate PostHog or another provider only against concrete unanswered questions.
 
 `group_moment_opened` records iOS recent-moment detail opens with only `entry_source=group_detail` and bounded `selection_type` (`cheer`, `completed_activity`, `weekly_completion`, or `other`). IDs, names, dates, and content are excluded.
+
+`group_moment_results_loaded` records success/failure and, on success, a coarse participant count bucket. It excludes event/person IDs, names, outcomes, stats, and photos.

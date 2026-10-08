@@ -1268,6 +1268,9 @@ struct GroupDetailView: View {
                     Text(current.name).font(.headline)
                     Text(moment.createdAt.formatted(date: .complete, time: .shortened))
                         .font(.subheadline).foregroundStyle(.secondary)
+                    if moment.type == "completed_activity", moment.id.hasPrefix("event:") {
+                        GroupMomentResultsView(eventID: String(moment.id.dropFirst("event:".count)))
+                    }
                     if moment.type == "cheer" {
                         Text(cheerTitle(moment.title ?? "encouragement")).font(.headline)
                         if let cheer = current.cheers.first(where: { "cheer:\($0.id)" == moment.id }),

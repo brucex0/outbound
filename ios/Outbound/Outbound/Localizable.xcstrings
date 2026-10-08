@@ -1,6 +1,96 @@
 {
   "sourceLanguage": "en",
   "strings": {
+
+  "group.moment.results": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Participation results"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Resultados de participación"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "参与结果"
+        }
+      }
+    }
+  },
+  "group.moment.results.failed": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Could not load participation results."
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "No se pudieron cargar los resultados de participación."
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "无法加载参与结果。"
+        }
+      }
+    }
+  },
+  "group.moment.results.retry": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Try again"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Reintentar"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "重试"
+        }
+      }
+    }
+  },
+  "group.moment.results.empty": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "No participation results yet."
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Aún no hay resultados de participación."
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "暂无参与结果。"
+        }
+      }
+    }
+  }
+,
     "group.moment.details": {
   "localizations": {
     "en": {

@@ -151,7 +151,7 @@ Trusted-private detail leads with:
 1. Current weekly theme and the viewer's optional commitment.
 2. Member progress, recent authorized workout context, and preset Cheer.
 3. `Plan an activity` and upcoming activity events.
-4. Recent supportive moments and settings. On iOS, each recent moment opens details with its timestamp and available Cheer or weekly-theme context.
+4. Recent supportive moments and settings. On iOS, each recent moment opens details with its timestamp and available Cheer or weekly-theme context. Completed activity moments also load participant outcomes and authorized saved-activity distance/duration from the event results API, plus up to two photo previews per visible saved activity. Stats follow the existing self/accepted-connection permission boundary; other participants’ photos additionally require an explicitly shared, non-deleted post, matching media access.
 
 Community detail leads with:
 
