@@ -178,6 +178,12 @@ final class GroupStore: ObservableObject {
         await mutate(success: String(localized: "group.toast.saved", defaultValue: "Group updated."), operationName: "update group name") { try await api.updateGroupName(id: group.id, name: name) }
     }
 
+    func updateDetails(group: GroupDTO, name: String?, city: String??) async -> GroupDTO? {
+        await mutate(success: String(localized: "group.toast.saved", defaultValue: "Group updated."), operationName: "update group details") {
+            try await api.updateGroupDetails(id: group.id, name: name, city: city)
+        }
+    }
+
     func updateFocus(group: GroupDTO, themeKey: String, customTitle: String?, customNote: String?, apply: String = "now") async -> GroupDTO? {
         if isUITestSeedData {
             uiTestThemeKey = themeKey

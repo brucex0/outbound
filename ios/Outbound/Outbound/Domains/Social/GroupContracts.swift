@@ -457,6 +457,11 @@ struct GroupCalendarRequestDTO: Encodable, Sendable {
     let apply: String
 }
 
+struct GroupDetailsRequestDTO: Encodable, Sendable {
+    let name: String?
+    let city: String??
+}
+
 struct GroupContributionDTO: Codable, Sendable {
     let groupId: String
     let groupName: String

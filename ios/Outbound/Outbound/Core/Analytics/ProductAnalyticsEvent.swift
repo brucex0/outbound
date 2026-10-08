@@ -117,6 +117,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case groupWeeklyFocusCompleted = "group_weekly_focus_completed"
     case groupNotificationsChanged = "group_notifications_changed"
     case groupNameChanged = "group_name_changed"
+    case groupLocationChanged = "group_location_changed"
     case groupCalendarChanged = "group_calendar_changed"
     case groupOwnershipTransferred = "group_ownership_transferred"
     case groupMemberLeft = "group_member_left"
@@ -453,6 +454,7 @@ enum ProductAnalyticsSchema {
         .groupWeeklyFocusCompleted: [.selectionType, .participantCountBucket],
         .groupNotificationsChanged: [.selectionType],
         .groupNameChanged: [],
+        .groupLocationChanged: [],
         .groupCalendarChanged: [.sourceType],
         .groupOwnershipTransferred: [.participantCountBucket],
         .groupMemberLeft: [.participantCountBucket],

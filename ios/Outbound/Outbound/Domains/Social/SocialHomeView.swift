@@ -1711,14 +1711,30 @@ private struct SocialGroupsView: View {
     private func invitationCard(_ invitation: GroupInvitationDTO) -> some View {
         OutboundCard(style: .companion, contentPadding: 16) {
             VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
-                Text(String(localized: "group.invitation.title", defaultValue: "You’re invited to a Group"))
-                    .font(.headline)
-                Text(String(
-                    format: String(localized: "group.invitation.from", defaultValue: "%@ invited you to %@"),
-                    invitation.sender.displayName,
-                    invitation.group.name
-                ))
-                    .font(.subheadline)
+                NavigationLink {
+                    GroupDirectoryDetailView(groupID: invitation.groupId)
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(String(localized: "group.invitation.title", defaultValue: "You’re invited to a Group"))
+                            .font(.headline)
+                        Text(String(
+                            format: String(localized: "group.invitation.from", defaultValue: "%@ invited you to %@"),
+                            invitation.sender.displayName,
+                            invitation.group.name
+                        ))
+                            .font(.subheadline)
+                    }
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .simultaneousGesture(TapGesture().onEnded {
+                    Task { await analyticsManager?.track(.init(.groupOpened, properties: [
+                        .entrySource: .string("invitation"),
+                        .selectionType: .string("invited"),
+                    ])) }
+                })
                 HStack {
                     Button(String(localized: "group.invitation.accept", defaultValue: "Accept")) {
                         Task {

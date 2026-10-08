@@ -619,7 +619,6 @@ struct GroupDetailView: View {
                     focusCard
                     membersSection
                     if !current.invitations.isEmpty { pendingInvitationsSection }
-                    if canInviteMembers { inviteMembersButton }
                     planActivityButton
                     if !current.recentMoments.isEmpty { momentsSection }
                     if let history = current.history, !history.isEmpty { historySection(history) }
@@ -713,13 +712,14 @@ struct GroupDetailView: View {
         (current.role == "owner" || current.role == "admin") && current.lifecycle != "archived"
     }
 
-    private var inviteMembersButton: some View {
+    private var inviteMembersIconButton: some View {
         Button { showsInvite = true } label: {
-            Label(String(localized: "group.invite.more", defaultValue: "Invite connections"), systemImage: "person.badge.plus")
-                .font(.headline)
-                .frame(maxWidth: .infinity, minHeight: 44)
+            Image(systemName: "person.badge.plus")
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(.plain)
+        .accessibilityLabel(String(localized: "group.invite.more", defaultValue: "Invite connections"))
         .accessibilityIdentifier("group.invite.members")
         .disabled(current.memberCount + current.invitations.count >= current.memberLimit)
         .sheet(isPresented: $showsInvite) {
@@ -798,14 +798,17 @@ struct GroupDetailView: View {
                 Button { showsNoticeComposer = true } label: { Label(String(localized: "group.notice.publish", defaultValue: "Post an update"), systemImage: "megaphone") }
                     .buttonStyle(.bordered)
             }
-            if canInviteMembers { inviteMembersButton }
             planActivityButton
         }
     }
 
     private var communityMembersSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(String(localized: "group.members", defaultValue: "MEMBERS")).socialSectionLabel()
+            HStack {
+                Text(String(localized: "group.members", defaultValue: "MEMBERS")).socialSectionLabel()
+                Spacer()
+                if canInviteMembers { inviteMembersIconButton }
+            }
             memberSummaryCard
         }
     }
@@ -887,7 +890,10 @@ struct GroupDetailView: View {
             .toolbar {
                 if canInviteMembers {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button(String(localized: "group.invite.more", defaultValue: "Invite connections")) { showsMemberInvite = true }
+                        Button { showsMemberInvite = true } label: {
+                            Image(systemName: "person.badge.plus").frame(width: 44, height: 44)
+                        }
+                        .accessibilityLabel(String(localized: "group.invite.more", defaultValue: "Invite connections"))
                             .disabled(current.memberCount + current.invitations.count >= current.memberLimit)
                     }
                 }
@@ -1044,7 +1050,11 @@ struct GroupDetailView: View {
 
     private var membersSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(String(localized: "group.members", defaultValue: "MEMBERS")).socialSectionLabel()
+            HStack {
+                Text(String(localized: "group.members", defaultValue: "MEMBERS")).socialSectionLabel()
+                Spacer()
+                if canInviteMembers { inviteMembersIconButton }
+            }
             memberSummaryCard
         }
     }
@@ -1484,12 +1494,14 @@ struct GroupManagementView: View {
     @Environment(\.dismiss) private var dismiss
     let group: GroupDTO
     @State private var name: String
+    @State private var city: String
     @State private var resetWeekday: Int
     @State private var timeZone: String
     @State private var calendarApply = "next_week"
     @State private var notificationMuted: Bool
     @State private var showsInvite = false
     @State private var savedName: String
+    @State private var savedCity: String
     @State private var savedResetWeekday: Int
     @State private var savedTimeZone: String
     @State private var savedCalendarApply = "next_week"
@@ -1499,10 +1511,12 @@ struct GroupManagementView: View {
     init(group: GroupDTO) {
         self.group = group
         _name = State(initialValue: group.name)
+        _city = State(initialValue: group.city ?? "")
         _resetWeekday = State(initialValue: group.resetWeekday)
         _timeZone = State(initialValue: group.timeZone)
         _notificationMuted = State(initialValue: group.currentUserMuted)
         _savedName = State(initialValue: group.name)
+        _savedCity = State(initialValue: group.city ?? "")
         _savedResetWeekday = State(initialValue: group.resetWeekday)
         _savedTimeZone = State(initialValue: group.timeZone)
         _savedNotificationMuted = State(initialValue: group.currentUserMuted)
@@ -1521,7 +1535,11 @@ struct GroupManagementView: View {
             }
 
             if current.role == "owner" || current.role == "admin" {
-                Section(String(localized: "group.management.owner", defaultValue: "Owner controls")) { TextField(String(localized: "group.create.name", defaultValue: "Name"), text: $name); if current.lifecycle != "archived" { Button(String(localized: "group.invite.more", defaultValue: "Invite connections")) { showsInvite = true } } }
+                Section(String(localized: "group.management.owner", defaultValue: "Owner controls")) {
+                    TextField(String(localized: "group.create.name", defaultValue: "Name"), text: $name)
+                    TextField(String(localized: "group.base_location", defaultValue: "Base location"), text: $city)
+                    if current.lifecycle != "archived" { Button(String(localized: "group.invite.more", defaultValue: "Invite connections")) { showsInvite = true } }
+                }
                 if !current.invitations.isEmpty {
                     Section(String(localized: "group.invitations.pending", defaultValue: "Pending invitations")) {
                         ForEach(current.invitations) { invitation in
@@ -1561,6 +1579,7 @@ struct GroupManagementView: View {
 
     private var hasUnsavedChanges: Bool {
         name.trimmingCharacters(in: .whitespacesAndNewlines) != savedName ||
+            city.trimmingCharacters(in: .whitespacesAndNewlines) != savedCity ||
             resetWeekday != savedResetWeekday ||
             timeZone.trimmingCharacters(in: .whitespacesAndNewlines) != savedTimeZone ||
             calendarApply != savedCalendarApply ||
@@ -1570,21 +1589,29 @@ struct GroupManagementView: View {
     @MainActor
     private func saveDraftIfNeeded() async {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedCity = city.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedTimeZone = timeZone.trimmingCharacters(in: .whitespacesAndNewlines)
         let draftResetWeekday = resetWeekday
         let draftCalendarApply = calendarApply
         let draftNotificationMuted = notificationMuted
         let nameChanged = trimmedName != savedName
+        let cityChanged = trimmedCity != savedCity
         let calendarChanged = draftResetWeekday != savedResetWeekday || trimmedTimeZone != savedTimeZone || draftCalendarApply != savedCalendarApply
         let notificationsChanged = draftNotificationMuted != savedNotificationMuted
-        guard nameChanged || calendarChanged || notificationsChanged, !isSaving else { return }
+        guard nameChanged || cityChanged || calendarChanged || notificationsChanged, !isSaving else { return }
 
         let groupSnapshot = current
         isSaving = true
         defer { isSaving = false }
-        if nameChanged, await groupStore.updateName(group: groupSnapshot, name: trimmedName) != nil {
-            savedName = trimmedName
-            await analyticsManager?.track(.init(.groupNameChanged))
+        if (nameChanged || cityChanged), await groupStore.updateDetails(group: groupSnapshot, name: nameChanged ? trimmedName : nil, city: cityChanged ? .some(trimmedCity) : nil) != nil {
+            if cityChanged {
+                savedCity = trimmedCity
+                await analyticsManager?.track(.init(.groupLocationChanged))
+            }
+            if nameChanged {
+                savedName = trimmedName
+                await analyticsManager?.track(.init(.groupNameChanged))
+            }
         }
         if calendarChanged, await groupStore.updateCalendar(group: groupSnapshot, resetWeekday: draftResetWeekday, timeZone: trimmedTimeZone, apply: draftCalendarApply) != nil {
             savedResetWeekday = draftResetWeekday

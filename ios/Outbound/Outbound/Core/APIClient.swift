@@ -468,6 +468,10 @@ final class APIClient {
         try await patch("/social/groups/\(id)", body: ["name": name])
     }
 
+    func updateGroupDetails(id: String, name: String?, city: String??) async throws -> GroupDTO {
+        try await patch("/social/groups/\(id)", body: GroupDetailsRequestDTO(name: name, city: city))
+    }
+
     func createGroupNotice(id: String, request: GroupNoticeRequestDTO) async throws -> GroupDTO {
         let response: GroupNoticeMutationResponseDTO = try await post("/social/groups/\(id)/notices", body: request)
         return response.group

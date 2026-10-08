@@ -6913,6 +6913,13 @@
         }
       }
     },
+    "group.base_location": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Base location" } },
+        "es": { "stringUnit": { "state": "translated", "value": "Ubicación base" } },
+        "zh-Hans": { "stringUnit": { "state": "translated", "value": "所在地区" } }
+      }
+    },
     "group.create.name_help": {
       "localizations": {
         "en": {
