@@ -1,6 +1,116 @@
 {
   "sourceLanguage": "en",
   "strings": {
+  "social.profile.disconnect": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Disconnect"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Desconectar"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "解除好友关系"
+        }
+      }
+    }
+  },
+  "social.profile.report": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Report"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Reportar"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "举报"
+        }
+      }
+    }
+  },
+  "social.profile.report.reason": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Why are you reporting this person?"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "¿Por qué quieres reportar a esta persona?"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "你为什么要举报此人？"
+        }
+      }
+    }
+  },
+  "social.profile.report.sent": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Report submitted"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Reporte enviado"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "举报已提交"
+        }
+      }
+    }
+  },
+  "social.profile.action.failed": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Could not complete the action. Try again."
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "No se pudo completar la acción. Inténtalo de nuevo."
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "操作未完成，请重试。"
+        }
+      }
+    }
+  },
     "activity.post_save.accessibility": {
       "comment": "[android:activity] [android:recording_post_save] Accessibility label for the brief animation after an activity is saved.",
       "localizations": {

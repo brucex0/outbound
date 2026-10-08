@@ -787,6 +787,8 @@ final class TogetherStore: ObservableObject {
             await refresh()
             return true
         } catch {
+            if error is CancellationError || (error as? URLError)?.code == .cancelled { return false }
+            Self.logger.error("Social connection removal failed (\(Self.networkErrorCode(error), privacy: .public))")
             errorMessage = error.localizedDescription
             return false
         }
@@ -989,6 +991,17 @@ final class TogetherStore: ObservableObject {
             await refreshNotifications()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func reportPerson(id: String, reason: String) async -> Bool {
+        do {
+            _ = try await api.reportSocialContent(SocialReportRequestDTO(targetType: "user", targetId: id, reason: reason, details: nil))
+            return true
+        } catch {
+            if error is CancellationError || (error as? URLError)?.code == .cancelled { return false }
+            Self.logger.error("Social profile report failed (\(Self.networkErrorCode(error), privacy: .public))")
+            return false
         }
     }
 

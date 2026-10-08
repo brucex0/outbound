@@ -1355,7 +1355,7 @@ struct SocialHomeView: View {
     }
 }
 
-private enum SocialPostReportReason: String, CaseIterable, Identifiable {
+enum SocialPostReportReason: String, CaseIterable, Identifiable {
     case harassment, hate, spam, sexual, violence, privacy, other
 
     var id: String { rawValue }

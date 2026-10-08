@@ -72,6 +72,8 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case progressInsightsExposed = "progress_insights_exposed"
     case connectionsOpened = "connections_opened"
     case connectionsSearchCompleted = "connections_search_completed"
+    case socialContentReported = "social_content_reported"
+    case socialConnectionRemoved = "social_connection_removed"
     case socialProfileOpened = "social_profile_opened"
     case socialInboxOpened = "social_inbox_opened"
     case socialTabExposed = "social_tab_exposed"
@@ -397,6 +399,8 @@ enum ProductAnalyticsSchema {
         .progressInsightsExposed: [.countBucket, .sourceType],
         .connectionsOpened: [.entrySource],
         .connectionsSearchCompleted: [.sourceType, .inputScript, .queryLengthBucket, .countBucket, .matchMode, .result],
+        .socialContentReported: [.result],
+        .socialConnectionRemoved: [.result],
         .socialProfileOpened: [.entrySource],
         .socialInboxOpened: [.entrySource],
         .socialTabExposed: [.selectionType, .entrySource],
