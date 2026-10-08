@@ -143,7 +143,7 @@ Every detail screen shares:
 3. Enabled capability modules.
 4. Members and management/reporting entry points.
 
-Group settings and weekly themes use an explicit Save action. Keep editors open when saving fails or when unsaved changes remain; show a distinct next-week theme when it differs from the current week.
+Group settings and weekly themes use an explicit Save action. Group managers can edit the Group's base location alongside its name and group-week settings. Keep editors open when saving fails or when unsaved changes remain; show a distinct next-week theme when it differs from the current week. Location analytics record only that the location changed, never the location text.
 Owners and admins can invite connections directly from Group detail; keep member management available in settings as well.
 
 Trusted-private detail leads with:
