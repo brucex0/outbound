@@ -177,6 +177,8 @@ import kotlinx.serialization.json.JsonElement
     val notices: List<GroupNotice> = emptyList(),
     val unreadNoticeCount: Int = 0,
     val pendingRequest: GroupPendingRequest? = null,
+    val invitationPreview: Boolean = false,
+    val pendingInvitation: GroupInvitationDto? = null,
     val featured: Boolean = false,
     val organizationVerificationState: String = "unverified",
 ) {
@@ -203,7 +205,7 @@ import kotlinx.serialization.json.JsonElement
 enum class ReportReason(val wireValue:String){ HARASSMENT("harassment"),HATE("hate"),SPAM("spam"),SEXUAL("sexual"),VIOLENCE("violence"),PRIVACY("privacy"),OTHER("other") }
 
 enum class SocialError { SIGNED_OUT, OFFLINE, FORBIDDEN, NOT_FOUND, CONFLICT, RATE_LIMITED, SERVER, INVALID_RESPONSE, UNEXPECTED }
-class SocialException(val reason: SocialError) : Exception(reason.name)
+class SocialException(val reason: SocialError, val httpStatus: Int? = null) : Exception(reason.name)
 
 @Serializable data class BlockedAccount(val person: SocialPerson, val blockedAt: String? = null)
 @Serializable data class ConnectionLink(val code: String, val url: String)

@@ -104,6 +104,9 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { message ->
             val text = when (message) {
+                SocialMessage.GROUP_JOINED -> resources.getString(R.string.group_toast_joined)
+                SocialMessage.GROUP_DECLINED -> resources.getString(R.string.group_toast_declined)
+                SocialMessage.GROUP_INVITATION_FAILED -> resources.getString(R.string.group_invitation_action_failed)
                 SocialMessage.GROUP_CREATED -> resources.getString(R.string.group_toast_created)
                 SocialMessage.GROUP_CREATION_FAILED -> resources.getString(R.string.group_creation_failed)
                 SocialMessage.GROUP_SETTINGS_SAVED -> resources.getString(R.string.group_toast_saved)
@@ -136,7 +139,15 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
         }
     }
     val selectedActivityPost = state.selectedActivityPost?.let { selected -> state.home.posts.firstOrNull { it.id == selected.id } ?: selected }
-    if (state.selectedGroupDetail != null) {
+    if (state.selectedGroupId != null && (state.groupLoading || state.groupLoadFailed)) {
+        BackHandler { viewModel.closeGroup() }
+        GroupLoadingScreen(state.groupLoading, state.groupUnavailable, viewModel::retryGroup, viewModel::closeGroup)
+    } else if (state.selectedGroupDetail?.invitationPreview == true) {
+        BackHandler { viewModel.closeGroup() }
+        GroupInvitationPreviewScreen(state.selectedGroupDetail!!, state.groupInvitationResponding, viewModel::closeGroup) { accept ->
+            viewModel.respondToGroupPreview(state.selectedGroupDetail!!, accept)
+        }
+    } else if (state.selectedGroupDetail != null) {
         val group = state.selectedGroupDetail!!
         BackHandler { viewModel.closeGroup() }
         GroupDetailScreen(

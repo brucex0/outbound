@@ -1,0 +1,16 @@
+<resources>
+    <string name="group_loading">Cargando grupo…</string>
+    <string name="group_invitation_organizer">Organizado por %s</string>
+    <string name="group_invitation_preview_detail">Acepta para unirte a este grupo y ver la información disponible para sus miembros.</string>
+    <string name="group_invitation_unavailable_title">Invitación al grupo no disponible</string>
+    <string name="group_invitation_unavailable_detail">Puede que esta invitación haya caducado o se haya cancelado, o que ya no tengas acceso.</string>
+    <string name="group_loading_failed_title">No se pudo cargar este grupo</string>
+    <string name="group_loading_failed_detail">Comprueba tu conexión e inténtalo de nuevo.</string>
+    <string name="group_loading_retry">Intentar de nuevo</string>
+    <string name="group_invitation_title">Te invitaron a un grupo</string>
+    <string name="group_invitation_from">%1$s te invitó a %2$s</string>
+    <string name="group_toast_joined">Te uniste al grupo.</string>
+    <string name="group_toast_declined">Invitación rechazada.</string>
+    <string name="group_invitation_one_member">1 miembro</string>
+    <string name="group_invitation_action_failed">No se pudo actualizar el grupo. Inténtalo de nuevo.</string>
+</resources>

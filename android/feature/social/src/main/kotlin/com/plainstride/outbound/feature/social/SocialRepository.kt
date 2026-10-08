@@ -43,7 +43,8 @@ interface SocialRepository {
     suspend fun consumeConnectionLink(code: String): Result<ConnectionLinkResult>
     suspend fun groups(): Result<List<GroupSummary>>
     suspend fun discoverGroups(query: String?, cursor: String? = null): Result<GroupsResponse>
-    suspend fun group(id: String): Result<GroupSummary>
+    suspend fun group(id: String, invitationId: String? = null): Result<GroupSummary>
+    suspend fun acceptGroupInvitation(id: String): Result<GroupSummary>
     suspend fun createGroupNotice(groupId:String,title:String?,body:String,pinned:Boolean):Result<GroupSummary>
     suspend fun markGroupNoticesRead(groupId:String):Result<GroupSummary>
     suspend fun cheerGroup(id: String, recipientId: String, preset: String): Result<Unit>
@@ -155,7 +156,7 @@ class OfflineFirstSocialRepository @Inject constructor(
         .map { response -> response.copy(person = response.person.withRelationship(response.relationship)) }
     override suspend fun groups() = authenticated { apiCall { api.groups(it) } }.map { it.groups }
     override suspend fun discoverGroups(query: String?, cursor: String?) = authenticated { apiCall { api.groups(it, scope = "discover", query = query?.trim()?.takeIf(String::isNotEmpty), cursor = cursor) } }
-    override suspend fun group(id: String) = authenticated { apiCall { api.group(it, id) } }
+    override suspend fun group(id: String, invitationId: String?) = authenticated { apiCall { api.group(it, id, invitationId) } }
     override suspend fun createGroupNotice(groupId:String,title:String?,body:String,pinned:Boolean)=authenticated{apiCall{api.createGroupNotice(it,groupId,GroupNoticeBody(title?.trim()?.takeIf(String::isNotEmpty),body.trim(),pinned=pinned))}}.map{it.group}
     override suspend fun markGroupNoticesRead(groupId:String)=authenticated{apiCall{api.markGroupNoticesRead(it,groupId)}}.map{it.group}
     override suspend fun cheerGroup(id: String, recipientId: String, preset: String) = authenticated { apiCall { api.groupCheer(it, id, CheerBody(recipientId, preset)) } }
@@ -186,6 +187,7 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun linkActivity(eventId:String,activityId:String)=authenticated{apiCall{api.linkActivity(it,eventId,LinkActivityBody(activityId))}}
     override suspend fun markEventWithoutRecording(eventId:String)=authenticated{apiCall{api.noRecording(it,eventId)}}
     override suspend fun setWorkoutPresence(clientSessionId:String,active:Boolean)=authenticated{auth->apiCall{if(active)api.setPresence(auth,PresenceBody(clientSessionId))else api.clearPresence(auth,clientSessionId)}}
+    override suspend fun acceptGroupInvitation(id: String) = authenticated { auth -> apiCall { api.acceptGroupInvitation(auth, id) } }
     override suspend fun respondToInvitation(invitation:SocialInvitation,accept:Boolean)=authenticated{auth->when{
         invitation.kind=="group"&&accept->apiCall{api.acceptGroupInvitation(auth,invitation.id)}.map{Unit}
         invitation.kind=="group"->apiCall{api.declineGroupInvitation(auth,invitation.id)}
@@ -197,7 +199,7 @@ class OfflineFirstSocialRepository @Inject constructor(
         val token = tokens.validAccessToken() ?: return Result.failure(SocialException(SocialError.SIGNED_OUT))
         return when (val response = call("Bearer $token")) {
             is ApiResult.Success -> Result.success(response.value)
-            is ApiResult.Failure -> Result.failure(SocialException(response.error.toSocialError()))
+            is ApiResult.Failure -> Result.failure(SocialException(if (response.error.httpStatus == 410) SocialError.NOT_FOUND else response.error.toSocialError(), response.error.httpStatus))
         }
     }
 

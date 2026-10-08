@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.text.Normalizer
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -19,6 +20,9 @@ data class SocialUiState(
     val groupDirectoryNextCursor: String? = null,
     val groupDirectoryLoading: Boolean = false, val groupDirectoryFailed: Boolean = false,
     val selectedProfile: SocialPerson? = null, val selectedGroupDetail: GroupSummary? = null,
+    val selectedGroupId: String? = null, val selectedGroupInvitationId: String? = null, val groupLoading: Boolean = false,
+    val groupLoadFailed: Boolean = false, val groupUnavailable: Boolean = false,
+    val groupInvitationResponding: Boolean = false,
     val selectedPost:SocialPost?=null,val comments:List<SocialComment> = emptyList(),
     val selectedActivityPost: SocialPost? = null,
     val activityDetailPhotos: List<ActivityPhoto> = emptyList(),
@@ -33,7 +37,7 @@ data class SocialUiState(
     val connectionProfileLoading: Boolean = false, val connectionProfileCode: String? = null,
     val connectionProfileIsSelf: Boolean = false,
 )
-enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED, GROUP_CREATED, GROUP_CREATION_FAILED, GROUP_SETTINGS_SAVED, GROUP_SETTINGS_FAILED }
+enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED, GROUP_CREATED, GROUP_CREATION_FAILED, GROUP_SETTINGS_SAVED, GROUP_SETTINGS_FAILED, GROUP_JOINED, GROUP_DECLINED, GROUP_INVITATION_FAILED }
 enum class ConnectionFeedback { REQUESTED, ALREADY_PENDING, INCOMING_PENDING, ALREADY_CONNECTED, SELF, UPDATED, REQUEST_FAILED, PROFILE_LOAD_FAILED, INVITE_LINK_FAILED }
 sealed interface ConnectionEffect {
     data class Feedback(val value: ConnectionFeedback, val closeScanner: Boolean) : ConnectionEffect
@@ -52,6 +56,7 @@ sealed interface ConnectionEffect {
     private var localeTag = "en"
     private var searchJob: Job? = null
     private var groupDirectoryJob: Job? = null
+    private var groupLoadJob: Job? = null
     private var activityPhotoJob: Job? = null
     private var activityFeedLoadTracked = false
     private var feedPagesLoaded = 1
@@ -60,6 +65,8 @@ sealed interface ConnectionEffect {
     fun start(accountId: String, localeTag: String) {
         if (this.accountId == accountId && this.localeTag == localeTag) return
         this.accountId = accountId; this.localeTag = localeTag
+        groupLoadJob?.cancel()
+        mutableState.update { it.copy(selectedGroupId = null, selectedGroupDetail = null, groupLoading = false, groupLoadFailed = false, groupUnavailable = false, groupInvitationResponding = false) }
         groupDirectoryJob?.cancel()
         mutableState.update { it.copy(groupDirectory = emptyList(), groupDirectoryQuery = "", groupDirectoryNextCursor = null, groupDirectoryLoading = false, groupDirectoryFailed = false) }
         activityFeedLoadTracked = false
@@ -305,19 +312,79 @@ sealed interface ConnectionEffect {
     fun trackProfileOpened() = analytics.record(AnalyticsEvent("social_profile_opened", mapOf(AnalyticsProperty.Source to "social")))
     fun openProfile(person: SocialPerson) { mutableState.update { it.copy(selectedProfile = person, connectionProfileCode = null, connectionProfileIsSelf = false) }; trackProfileOpened() }
     fun closeProfile() = mutableState.update { it.copy(selectedProfile = null, connectionProfileCode = null, connectionProfileIsSelf = false) }
-    fun openTarget(type:String,id:String,entrySource:String="deep_link"){when(type){"activity","post"->viewModelScope.launch{var post=mutableState.value.home.posts.firstOrNull{it.id==id||it.activity?.id==id};var cursor=mutableState.value.home.nextCursor;repeat(5){if(post!=null||cursor==null)return@repeat;repository.loadFeed(cursor).onSuccess{page->post=page.items.firstOrNull{it.id==id||it.activity?.id==id};cursor=page.nextCursor}};post?.let(::openComments)};"event"->viewModelScope.launch{repository.event(id).onSuccess{event->mutableState.update{it.copy(selectedEvent=event)};analytics.record(AnalyticsEvent("activity_event_detail_opened",mapOf(AnalyticsProperty.EntrySource to entrySource)))}};"group"->viewModelScope.launch{repository.group(id).onSuccess{group->mutableState.update{it.copy(selectedGroupDetail=group)};analytics.record(AnalyticsEvent("group_opened",mapOf(AnalyticsProperty.EntrySource to entrySource,AnalyticsProperty.SelectionType to if(entrySource=="invitation")"invited" else "group")))}};"invitation"->mutableState.update{state->state.copy(selectedInvitation=state.home.invitations.firstOrNull{it.id==id||it.objectId==id})}}}
-    fun closeTarget()=mutableState.update{it.copy(selectedEvent=null,selectedGroupDetail=null,selectedInvitation=null)}
+    fun openTarget(type:String,id:String,entrySource:String="deep_link"){when(type){"activity","post"->viewModelScope.launch{var post=mutableState.value.home.posts.firstOrNull{it.id==id||it.activity?.id==id};var cursor=mutableState.value.home.nextCursor;repeat(5){if(post!=null||cursor==null)return@repeat;repository.loadFeed(cursor).onSuccess{page->post=page.items.firstOrNull{it.id==id||it.activity?.id==id};cursor=page.nextCursor}};post?.let(::openComments)};"event"->viewModelScope.launch{repository.event(id).onSuccess{event->mutableState.update{it.copy(selectedEvent=event)};analytics.record(AnalyticsEvent("activity_event_detail_opened",mapOf(AnalyticsProperty.EntrySource to entrySource)))}};"group"->loadGroup(id,entrySource);"invitation"->{val invitation=mutableState.value.home.invitations.firstOrNull{it.id==id||it.objectId==id};if(invitation?.kind=="group"&&invitation.objectId!=null)loadGroup(invitation.objectId,"invitation",invitation.id)else mutableState.update{it.copy(selectedInvitation=invitation)}}}}
+    fun closeTarget() { closeGroup(); mutableState.update { it.copy(selectedEvent = null, selectedInvitation = null) } }
     fun closeEvent()=mutableState.update{it.copy(selectedEvent=null)}
-    fun openGroup(group: GroupSummary) = viewModelScope.launch {
-        repository.group(group.id).onSuccess { value -> mutableState.update { it.copy(selectedGroupDetail = value) } }
-        analytics.record(AnalyticsEvent("group_opened", mapOf(
-            AnalyticsProperty.EntrySource to "groups",
-            AnalyticsProperty.SelectionType to if (group.trustPolicy == "community") "community" else "private",
-            AnalyticsProperty.ParticipantCountBucket to countBucket(group.memberCount),
-        )))
+    fun openGroup(group: GroupSummary) = loadGroup(group.id, "groups")
+
+    fun retryGroup() { mutableState.value.selectedGroupId?.let { loadGroup(it, "group_retry", mutableState.value.selectedGroupInvitationId) } }
+
+    private fun loadGroup(id: String, entrySource: String, invitationId: String? = null) {
+        val targetInvitationId = invitationId ?: if (entrySource == "invitation") mutableState.value.home.invitations.firstOrNull { it.kind == "group" && it.objectId == id }?.id else null
+        groupLoadJob?.cancel()
+        mutableState.update { it.copy(selectedGroupId = id, selectedGroupInvitationId = targetInvitationId, selectedGroupDetail = null, groupLoading = true, groupLoadFailed = false, groupUnavailable = false) }
+        groupLoadJob = viewModelScope.launch {
+            repository.group(id, targetInvitationId).onSuccess { group ->
+                if (mutableState.value.selectedGroupId != id) return@onSuccess
+                mutableState.update { it.copy(selectedGroupDetail = group, groupLoading = false) }
+                analytics.record(AnalyticsEvent("group_opened", mapOf(
+                    AnalyticsProperty.EntrySource to entrySource,
+                    AnalyticsProperty.SelectionType to if (group.invitationPreview) "invited" else "group",
+                )))
+                if (group.invitationPreview) analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "group_invitation_preview")))
+            }.onFailure { error ->
+                if (error is CancellationException) throw error
+                if (mutableState.value.selectedGroupId != id) return@onFailure
+                logGroupFailure("load group detail", error)
+                val unavailable = (error as? SocialException)?.reason in setOf(SocialError.FORBIDDEN, SocialError.NOT_FOUND, SocialError.CONFLICT)
+                mutableState.update { it.copy(groupLoading = false, groupLoadFailed = true, groupUnavailable = unavailable) }
+            }
+        }
+    }
+
+    fun respondToGroupPreview(group: GroupSummary, accept: Boolean) {
+        val invitation = group.pendingInvitation ?: return
+        if (mutableState.value.groupInvitationResponding) return
+        val account = accountId
+        mutableState.update { it.copy(groupInvitationResponding = true) }
+        viewModelScope.launch {
+            val result = if (accept) repository.acceptGroupInvitation(invitation.id) else
+                repository.respondToInvitation(SocialInvitation(invitation.id, "group", group.name, invitation.sender, group.id), false).map { null }
+            if (accountId != account) return@launch
+            mutableState.update { it.copy(groupInvitationResponding = false) }
+            result.onSuccess { joined ->
+                mutableState.update { state -> state.copy(home = state.home.copy(invitations = state.home.invitations.filterNot { it.id == invitation.id })) }
+                if (mutableState.value.selectedGroupId == group.id) {
+                    if (accept && joined != null) mutableState.update { it.copy(selectedGroupDetail = joined) }
+                    else closeGroup()
+                }
+                val properties = mutableMapOf<AnalyticsProperty, Any>(AnalyticsProperty.EntrySource to "group_invitation_preview")
+                if (accept) properties[AnalyticsProperty.ParticipantCountBucket] = countBucket(joined?.memberCount ?: group.memberCount)
+                analytics.record(AnalyticsEvent(if (accept) "group_invitation_accepted" else "group_invitation_declined", properties))
+                messages.emit(if (accept) SocialMessage.GROUP_JOINED else SocialMessage.GROUP_DECLINED)
+                refresh()
+            }.onFailure { error ->
+                if (error is CancellationException) throw error
+                logGroupFailure(if (accept) "accept group invitation" else "decline group invitation", error)
+                analytics.record(AnalyticsEvent("group_operation_failed", mapOf(
+                    AnalyticsProperty.SourceType to "group_invitation_preview", AnalyticsProperty.ErrorCategory to "api_unavailable",
+                )))
+                messages.emit(SocialMessage.GROUP_INVITATION_FAILED)
+                // Revalidate after failure so a revoked/expired invitation loses its actions.
+                if (mutableState.value.selectedGroupId == group.id) loadGroup(group.id, "group_retry", invitation.id)
+            }
+        }
+    }
+
+    private fun logGroupFailure(operation: String, error: Throwable) {
+        val apiError = error as? SocialException
+        Log.w("SocialViewModel", "$operation failed status=${apiError?.httpStatus} category=${apiError?.reason ?: error.javaClass.simpleName}")
     }
     fun consumeGroupInvite(token: String) = mutate("group_invite_link_consumed") { repository.consumeGroupInvite(token).getOrThrow().let { group -> mutableState.update { it.copy(selectedGroupDetail = group) } }; refresh() }
-    fun closeGroup() = mutableState.update { it.copy(selectedGroupDetail = null) }
+    fun closeGroup() {
+        groupLoadJob?.cancel()
+        mutableState.update { it.copy(selectedGroupId = null, selectedGroupInvitationId = null, selectedGroupDetail = null, groupLoading = false, groupLoadFailed = false, groupUnavailable = false) }
+    }
     fun joinGroup(group: GroupSummary) = mutate("social_group_membership_changed") { repository.setGroupMembership(group.id, group.role == null).getOrThrow(); refresh(); refreshGroupDirectory() }
     fun report(post: SocialPost, reason: String) = mutate("social_content_reported", SocialMessage.REPORTED) { repository.reportPost(post.id, ReportReason.entries.firstOrNull { it.wireValue == reason } ?: ReportReason.OTHER).getOrThrow() }
     fun deletePost(post: SocialPost) = mutate("social_post_deleted") { repository.deletePost(post.id).getOrThrow(); refresh() }

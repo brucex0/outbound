@@ -94,7 +94,7 @@ interface SocialApiService {
     @POST("v1/social/invitations/{id}/accept") suspend fun acceptEventInvitation(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:AttendanceBody=AttendanceBody()):Response<Unit>
     @POST("v1/social/invitations/{id}/decline") suspend fun declineEventInvitation(@Header("Authorization") auth:String,@Path("id") id:String):Response<Unit>
     @GET("v1/social/groups") suspend fun groups(@Header("Authorization") auth: String, @Query("scope") scope: String = "mine", @Query("query") query: String? = null, @Query("city") city: String? = null, @Query("cursor") cursor: String? = null): Response<GroupsResponse>
-    @GET("v1/social/groups/{id}") suspend fun group(@Header("Authorization") auth: String, @Path("id") id: String): Response<GroupSummary>
+    @GET("v1/social/groups/{id}") suspend fun group(@Header("Authorization") auth: String, @Path("id") id: String, @Query("invitationId") invitationId: String? = null): Response<GroupSummary>
     @POST("v1/social/groups/{id}/notices") suspend fun createGroupNotice(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:GroupNoticeBody):Response<GroupMutationResponse>
     @POST("v1/social/groups/{id}/notices/read") suspend fun markGroupNoticesRead(@Header("Authorization") auth:String,@Path("id") id:String):Response<GroupMutationResponse>
     @PATCH("v1/social/groups/{id}") suspend fun renameGroup(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:RenameGroupBody):Response<GroupSummary>

@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.outlined.*
@@ -537,6 +538,73 @@ private fun LazyListScope.memberSection(group: GroupSummary, members: List<Group
                         }
                     } else if (group.currentUserRole == "member") {
                         item { TextButton(leave, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.group_leave)) } }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GroupLoadingScreen(loading: Boolean, unavailable: Boolean, retry: () -> Unit, close: () -> Unit) {
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Column {
+            IconButton(close) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.social_done)) }
+            Column(Modifier.weight(1f).fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                if (loading) {
+                    CircularProgressIndicator()
+                    Spacer(Modifier.height(12.dp))
+                    Text(stringResource(R.string.group_loading))
+                } else {
+                    Icon(Icons.Outlined.WarningAmber, null)
+                    Spacer(Modifier.height(12.dp))
+                    Text(stringResource(if (unavailable) R.string.group_invitation_unavailable_title else R.string.group_loading_failed_title), style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Text(stringResource(if (unavailable) R.string.group_invitation_unavailable_detail else R.string.group_loading_failed_detail), textAlign = androidx.compose.ui.text.style.TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(16.dp))
+                    Button(retry) { Text(stringResource(R.string.group_loading_retry)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GroupInvitationPreviewScreen(group: GroupSummary, responding: Boolean, close: () -> Unit, respond: (Boolean) -> Unit) {
+    val invitation = group.pendingInvitation ?: return
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Column {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(close) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.social_done)) }
+                Text(group.name, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            }
+            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                item {
+                    ElevatedCard {
+                        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(stringResource(if (group.trustPolicy == "community") R.string.group_community_badge else R.string.group_private_badge), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(group.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            Text(if (group.memberCount == 1) stringResource(R.string.group_invitation_one_member) else stringResource(R.string.social_members, group.memberCount), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(R.string.group_invitation_organizer, group.owner?.displayName.orEmpty()), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                if (!group.description.isNullOrEmpty()) item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(stringResource(R.string.group_about), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(group.description)
+                    }
+                }
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Text(stringResource(R.string.group_invitation_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.group_invitation_from, invitation.sender.displayName, group.name))
+                        Text(stringResource(R.string.group_invitation_preview_detail), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Button({ respond(true) }, enabled = !responding) { Text(stringResource(R.string.social_accept)) }
+                            OutlinedButton({ respond(false) }, enabled = !responding) { Text(stringResource(R.string.social_decline)) }
+                            if (responding) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        }
                     }
                 }
             }

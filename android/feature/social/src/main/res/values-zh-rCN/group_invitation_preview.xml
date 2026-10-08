@@ -1,0 +1,16 @@
+<resources>
+    <string name="group_loading">正在加载群组…</string>
+    <string name="group_invitation_organizer">组织者：%s</string>
+    <string name="group_invitation_preview_detail">接受邀请加入群组后，即可查看向成员开放的详细信息。</string>
+    <string name="group_invitation_unavailable_title">群组邀请不可用</string>
+    <string name="group_invitation_unavailable_detail">此邀请可能已过期或被取消，或者你已无权访问。</string>
+    <string name="group_loading_failed_title">无法加载此群组</string>
+    <string name="group_loading_failed_detail">检查网络连接后重试。</string>
+    <string name="group_loading_retry">重试</string>
+    <string name="group_invitation_title">你收到了一份群组邀请</string>
+    <string name="group_invitation_from">%1$s 邀请你加入 %2$s</string>
+    <string name="group_toast_joined">你已加入群组。</string>
+    <string name="group_toast_declined">已婉拒邀请。</string>
+    <string name="group_invitation_one_member">1 位成员</string>
+    <string name="group_invitation_action_failed">群组更新未成功，请重试。</string>
+</resources>

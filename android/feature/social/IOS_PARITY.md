@@ -67,6 +67,12 @@
 - Android uses full-screen Compose dialogs for the personal QR and scanner destinations for the same navigation-ownership reason. CameraX plus ZXing replaces VisionKit while preserving the accepted payload and submission contract.
 - Remaining Social differences and manual reference checks remain tracked by `docs/android-social-parity-prompt.md`; the top-level selector remains text-only and all four tabs switch content in place. Group detail spacing, theme variants, and accessibility traversal still need manual device comparison.
 
+## Group Invitation Preview
+
+- `GroupInvitationPreviewScreen` follows `GroupInvitationPreviewView` for the content order, localized copy, disabled actions during submission, in-place acceptance, dismissal on decline, transient feedback, and revalidation after failure. The server preview and access rules are defined in `docs/run-groups.md`.
+- Invite entry points carry the invitation ID when fetching Group detail. Both clients distinguish unavailable invitations from retryable loading failures and emit the same preview exposure, accepted/declined, and failure events.
+- Build verification: backend TypeScript compile, iOS simulator build, Android debug app assembly. No test suite was run. Manual device comparison remains required to validate rendering and navigation in a live invitation.
+
 ## Group Reference Scenarios
 
 - No Group with accepted connections, creation loading/success/failure with one or several invitees, generated or custom name, awaiting-members state, active progress with and without a numeric focus, personal skip, shared focus now/next week, owner/member management, archived/reactivated lifecycle, and transient mutation failure.
