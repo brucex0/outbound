@@ -3116,7 +3116,9 @@ private struct SimplifiedMeView: View {
             .background(OutboundPalette.background)
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(isPresented: $showsConnections) { SocialConnectionsView() }
-            .navigationDestination(isPresented: $showsAddConnection) { SocialConnectionsView(startsAdding: true) }
+            .sheet(isPresented: $showsAddConnection) {
+                AddConnectionSheet()
+            }
             .navigationDestination(isPresented: $showsSocialInbox) { SocialNotificationsView() }
             .navigationDestination(isPresented: $showsQRCode) {
                 InvitationCodeView(entrySource: "me_profile_card")

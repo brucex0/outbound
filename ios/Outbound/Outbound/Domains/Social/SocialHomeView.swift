@@ -31,13 +31,12 @@ struct SocialHomeView: View {
     @State private var hasInitializedFeatureTab = false
     @State private var hasInteractedWithFeatureTabs = false
     @State private var exposedBadgeSignatures: Set<String> = []
-    @State private var peopleFocusRequestID = 0
     @State private var routeImportRequestID = 0
     @State private var isCreateActivityEventPresented = false
     @State private var isGroupCreationPresented = false
     @State private var showsNotifications = false
     @State private var showsConnections = false
-    @State private var showsAddConnection = false
+    @State private var showsAddConnectionSheet = false
     @State private var toastMessage: String?
     @State private var postPendingReport: TogetherPostDTO?
     @State private var postPendingBlock: TogetherPostDTO?
@@ -109,8 +108,7 @@ struct SocialHomeView: View {
                         }
 
                         Button {
-                            selectFeatureTab(.people, entrySource: "create_menu")
-                            peopleFocusRequestID += 1
+                            openAddConnection(entrySource: "social_create_menu")
                         } label: {
                             Label(String(localized: "social.create.person", defaultValue: "Add connection"), systemImage: "person.badge.plus")
                         }
@@ -214,8 +212,8 @@ struct SocialHomeView: View {
             .navigationDestination(isPresented: $showsConnections) {
                 SocialConnectionsView()
             }
-            .navigationDestination(isPresented: $showsAddConnection) {
-                SocialConnectionsView(startsAdding: true)
+            .sheet(isPresented: $showsAddConnectionSheet) {
+                AddConnectionSheet()
             }
             .navigationDestination(isPresented: $isGroupCreationPresented) {
                 GroupCreateView()
@@ -342,8 +340,7 @@ struct SocialHomeView: View {
             tabLayer(.feed) { feedTab }
             tabLayer(.people) {
                 SocialConnectionsView(
-                    embedded: true,
-                    focusRequestID: peopleFocusRequestID
+                    embedded: true
                 )
             }
             tabLayer(.groups) { groupsTab }
@@ -872,11 +869,11 @@ struct SocialHomeView: View {
         }
     }
 
-    private func openAddConnection() {
-        showsAddConnection = true
+    private func openAddConnection(entrySource: String = "social_home_add") {
+        showsAddConnectionSheet = true
         Task {
             await analyticsManager?.track(.init(.connectionsOpened, properties: [
-                .entrySource: .string("social_home_add"),
+                .entrySource: .string(entrySource),
             ]))
         }
     }
@@ -2952,7 +2949,6 @@ struct SocialConnectionsView: View {
     @Environment(\.analyticsManager) private var analyticsManager
     let startsAdding: Bool
     let embedded: Bool
-    let focusRequestID: Int
     @State private var searchQuery = ""
     @State private var paginationToast: String?
     @State private var searchToast: String?
@@ -2968,12 +2964,10 @@ struct SocialConnectionsView: View {
 
     init(
         startsAdding: Bool = false,
-        embedded: Bool = false,
-        focusRequestID: Int = 0
+        embedded: Bool = false
     ) {
         self.startsAdding = startsAdding
         self.embedded = embedded
-        self.focusRequestID = focusRequestID
     }
 
     private static let pageSize = 20
@@ -3004,7 +2998,9 @@ struct SocialConnectionsView: View {
                 }
             }
         }
-        .navigationTitle(embedded ? "" : String(localized: "Connections"))
+        .navigationTitle(embedded ? "" : startsAdding
+            ? String(localized: "social.create.person", defaultValue: "Add connection")
+            : String(localized: "Connections"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if !embedded {
@@ -3035,14 +3031,12 @@ struct SocialConnectionsView: View {
             }
         }
         .task {
-            await socialStore.refreshConnections()
-            await socialStore.refreshBlocks()
             if startsAdding {
+                await Task.yield()
                 isSearchFocused = true
             }
-        }
-        .onChange(of: focusRequestID) { _, _ in
-            isSearchFocused = true
+            await socialStore.refreshConnections()
+            await socialStore.refreshBlocks()
         }
         .navigationDestination(isPresented: $showsQRCode) {
             SocialConnectionQRCodeView()
@@ -3442,6 +3436,28 @@ struct SocialConnectionsView: View {
         ])
     }
 
+}
+
+struct AddConnectionSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            SocialConnectionsView(startsAdding: true)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark")
+                        }
+                        .accessibilityLabel(String(localized: "Close"))
+                    }
+                }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+    }
 }
 
 private struct SocialPeopleSearchResultsView: View {
