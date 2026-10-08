@@ -259,7 +259,7 @@ final class LiveGroupStore: ObservableObject {
             connectRealtime(sessionID: response.id)
         } catch {
             ActivityDiagnosticLog.error(.persistence, "Event live map join failed error=\(ActivityDiagnosticLog.errorCategory(error))")
-            lastErrorMessage = String(localized: "group.activity.live_error")
+            lastErrorMessage = String(localized: "group.activity.live_error", table: "GroupActivity")
         }
     }
 

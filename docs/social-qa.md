@@ -1,5 +1,14 @@
 # Social QA
 
+## 2026-10-08 planned activity regression
+
+- Restored Start activity and Share live map eligibility for known organizers and joined participants when a response lacks `canParticipate`; an explicit server denial remains authoritative. Both controls use the same eligibility rule.
+- Group activity labels explicitly use the `GroupActivity` localization table, including participant counts, results, companion attribution, and live-map failures.
+- Camera and map recording pages expose an expandable event participant panel independently of optional live-location sharing. It refreshes every 15 seconds and includes participants who have not started.
+- Saved recordings take their event ID from the session intent rather than a second transient store value. Today and Me recent cards show the group marker; saved detail retains actual-participant companion attribution. Unlinked Quick Run recordings are not retroactively assigned to an event.
+- `group_activity_presence_viewed` records only a participant-count bucket, once per mounted participant panel; no event IDs or names are collected.
+- Verification: Simulator build and compiled English/Spanish/Simplified Chinese catalog entries; no test suite or physical-device UI pass.
+
 ## 2026-10-04 feed layout follow-up
 
 - The retained collection view still showed its section header and cards overlapping before a scroll despite post-snapshot layout invalidation.

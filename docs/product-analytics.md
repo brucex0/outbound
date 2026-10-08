@@ -321,3 +321,5 @@ Historical dashboards do not migrate automatically just because the client adapt
 `group_moment_opened` records iOS recent-moment detail opens with only `entry_source=group_detail` and bounded `selection_type` (`cheer`, `completed_activity`, `weekly_completion`, or `other`). IDs, names, dates, and content are excluded.
 
 `group_moment_results_loaded` records success/failure and, on success, a coarse participant count bucket. It excludes event/person IDs, names, outcomes, stats, and photos.
+
+`group_activity_presence_viewed` records the first successful participant-panel load per mounted panel (setup or live recording), with only a coarse `participant_count_bucket`. It excludes event/person IDs, names, attendance modes, outcomes, and location.

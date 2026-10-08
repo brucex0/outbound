@@ -27,7 +27,7 @@ struct GroupActivityAttributionView: View {
         var names = people.prefix(2).map(\.person.displayName).joined(separator: ", ")
         if people.count > 2 { names += " +\(people.count - 2)" }
         if people.contains(where: { $0.attendanceMode != "in_person" }) {
-            return String(format: String(localized: "group.activity.joined_with"), names)
+            return String(format: String(localized: "group.activity.joined_with", table: "GroupActivity"), names)
         }
         let key: String.LocalizationValue = switch activityType {
         case "running", "trail_running": "group.activity.ran_with"
@@ -37,14 +37,14 @@ struct GroupActivityAttributionView: View {
         case "swimming": "group.activity.swam_with"
         default: "group.activity.worked_out_with"
         }
-        return String(format: String(localized: key), names)
+        return String(format: String(localized: key, table: "GroupActivity"), names)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Label {
-                Text(context?.groupName.map { String(format: String(localized: "group.activity.named"), $0) }
-                     ?? String(localized: "group.activity.label"))
+                Text(context?.groupName.map { String(format: String(localized: "group.activity.named", table: "GroupActivity"), $0) }
+                     ?? String(localized: "group.activity.label", table: "GroupActivity"))
             } icon: { Image(systemName: "person.2.fill") }
             .font(.caption.weight(.semibold))
             if let title = context?.title { Text(title).font(.caption) }
@@ -54,7 +54,7 @@ struct GroupActivityAttributionView: View {
         .accessibilityAddTraits(context?.id != nil || eventID != nil ? .isButton : [])
         .overlay(alignment: .bottom) {
             if navigationFailed {
-                Text(String(localized: "group.activity.open_error"))
+                Text(String(localized: "group.activity.open_error", table: "GroupActivity"))
                     .font(.caption).padding(10)
                     .background(.regularMaterial, in: Capsule())
             }
@@ -98,20 +98,36 @@ struct GroupActivityAttributionView: View {
 }
 
 struct GroupActivityPresenceView: View {
+    @Environment(\.analyticsManager) private var analyticsManager
     let eventID: String
+    var title: String? = nil
     @State private var participants: [ActivityEventParticipantDTO] = []
+    @State private var isExpanded = false
+    @State private var hasTrackedPresence = false
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(String(format: String(localized: "group.activity.started_count"), participants.filter { $0.startedAt != nil }.count))
-                .font(.subheadline.weight(.semibold))
-            ForEach(participants.filter { $0.startedAt != nil }) { participant in
-                HStack {
-                    SocialAvatar(name: participant.person.displayName, avatarURL: participant.person.avatarUrl)
-                    Text(participant.person.displayName)
-                    Spacer()
-                    Text(participant.outcome != nil ? String(localized: "group.activity.finished") : participant.isRecording == true ? String(localized: "group.activity.recording") : String(localized: "group.activity.started"))
-                        .foregroundStyle(.secondary)
-                }.font(.caption)
+        DisclosureGroup(isExpanded: $isExpanded) {
+            ScrollView {
+                VStack(spacing: 8) {
+                    ForEach(participants) { participant in
+                        HStack {
+                            SocialAvatar(name: participant.person.displayName, avatarURL: participant.person.avatarUrl)
+                            Text(participant.person.displayName)
+                            Spacer()
+                            Text(status(participant)).foregroundStyle(.secondary)
+                        }.font(.caption)
+                    }
+                }
+            }
+            .frame(maxHeight: 180)
+        } label: {
+            VStack(alignment: .leading, spacing: 3) {
+                Label(title ?? String(localized: "group.activity.label", table: "GroupActivity"), systemImage: "person.2.fill")
+                    .font(.subheadline.weight(.semibold))
+                Text(String(format: String(localized: "group.activity.counts", table: "GroupActivity"),
+                            participants.filter { $0.status == "going" }.count, participants.filter { $0.startedAt != nil }.count,
+                            participants.filter { $0.outcome == "completed" || $0.outcome == "no_recording" }.count))
+                    .font(.caption).foregroundStyle(.secondary)
             }
         }
         .task(id: eventID) {
@@ -119,12 +135,28 @@ struct GroupActivityPresenceView: View {
                 do {
                     let detail = try await APIClient.shared.fetchActivityEvent(id: eventID)
                     participants = detail.participants ?? []
+                    if !hasTrackedPresence {
+                        hasTrackedPresence = true
+                        await analyticsManager?.track(.init(.groupActivityPresenceViewed, properties: [
+                            .participantCountBucket: .string(ProductAnalyticsBucket.count(participants.count))
+                        ]))
+                    }
                 } catch {
-                    if Task.isCancelled { return }
-                    ActivityDiagnosticLog.error(.persistence, "Group activity presence fetch failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                    if Task.isCancelled || (error as NSError).code == NSURLErrorCancelled { return }
+                    ActivityDiagnosticLog.error(.persistence, "Group activity presence fetch failed error=\(ActivityDiagnosticLog.errorCategory(error)) code=\((error as NSError).code)")
                 }
                 do { try await Task.sleep(for: .seconds(15)) } catch { return }
             }
         }
+    }
+
+    private func status(_ participant: ActivityEventParticipantDTO) -> String {
+        if participant.outcome == "completed" || participant.outcome == "no_recording" {
+            return String(localized: "group.activity.finished", table: "GroupActivity")
+        }
+        if participant.isRecording == true { return String(localized: "group.activity.recording", table: "GroupActivity") }
+        return participant.startedAt != nil
+            ? String(localized: "group.activity.started", table: "GroupActivity")
+            : String(localized: "group.activity.not_started", table: "GroupActivity")
     }
 }

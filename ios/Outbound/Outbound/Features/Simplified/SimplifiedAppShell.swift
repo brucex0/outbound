@@ -1690,6 +1690,11 @@ private struct SimplifiedTodayView: View {
                                 Text(activity.title)
                                     .font(.headline)
                                     .foregroundStyle(.primary)
+                                if activity.activityEventID != nil {
+                                    Label(String(localized: "group.activity.label", table: "GroupActivity"), systemImage: "person.2.fill")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(OutboundPalette.companion)
+                                }
                                 Text(activity.startedAt.formatted(date: .abbreviated, time: .shortened))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -3097,6 +3102,11 @@ private struct SimplifiedMeView: View {
                                         HStack {
                                             VStack(alignment: .leading) {
                                                 Text(activity.title).font(.subheadline.weight(.semibold))
+                                                if activity.activityEventID != nil {
+                                                    Label(String(localized: "group.activity.label", table: "GroupActivity"), systemImage: "person.2.fill")
+                                                        .font(.caption.weight(.semibold))
+                                                        .foregroundStyle(OutboundPalette.companion)
+                                                }
                                                 Text(activity.startedAt.formatted(date: .abbreviated, time: .omitted)).font(.caption).foregroundStyle(.secondary)
                                                 Text(completedWorkoutStatLine(for: activity))
                                                     .font(.caption.monospacedDigit())

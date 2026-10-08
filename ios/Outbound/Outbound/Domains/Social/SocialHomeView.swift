@@ -1932,7 +1932,7 @@ struct ActivityEventDetailView: View {
                     }
                 } header: {
                     HStack {
-                        Text(String(format: String(localized: "group.activity.counts"), detail?.attendeeCount ?? 0, detail?.startedCount ?? 0, participants.filter { $0.outcome == "completed" || $0.outcome == "no_recording" }.count))
+                        Text(String(format: String(localized: "group.activity.counts", table: "GroupActivity"), detail?.attendeeCount ?? 0, detail?.startedCount ?? 0, participants.filter { $0.outcome == "completed" || $0.outcome == "no_recording" }.count))
                         Spacer()
                         if participants.count > 3 {
                             Button(showAllParticipants ? "Less" : "More") {
@@ -2119,6 +2119,7 @@ struct ActivityEventDetailView: View {
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(15)) } catch { return }
                 if let updated = await socialStore.activityEventDetail(id: run.id) { detail = updated }
+                if run.startsAt <= Date() { await socialStore.loadActivityEventResults(id: run.id) }
             }
         }
         .sheet(isPresented: $isConnectionPickerPresented) {
@@ -2180,9 +2181,17 @@ struct ActivityEventDetailView: View {
         }
     }
 
+    private var canParticipateInActivity: Bool {
+        // Explicit server authorization wins. Older/cached payloads still carry
+        // authoritative owner/RSVP state; missing capability is not a denial.
+        if let allowed = detail?.canParticipate ?? run.canParticipate { return allowed }
+        return isCreator || run.creator.id == AuthStore.currentUserId
+            || (detail?.currentUserGoing ?? run.currentUserGoing ?? false)
+    }
+
     private var canManageActivityLiveMap: Bool {
         let status = detail?.status ?? run.status ?? "scheduled"
-        let eligible = detail?.canParticipate ?? run.canParticipate ?? false
+        let eligible = canParticipateInActivity
         return eligible
             && ["scheduled", "active"].contains(status)
     }
@@ -2214,7 +2223,7 @@ struct ActivityEventDetailView: View {
     }
 
     private var canStartActivity: Bool {
-        guard detail?.canParticipate ?? run.canParticipate ?? false else { return false }
+        guard canParticipateInActivity else { return false }
         let status = detail?.status ?? run.status ?? "scheduled"
         return ["scheduled", "active"].contains(status)
             && (Calendar.current.isDateInToday(run.startsAt) || status == "active")
@@ -2259,8 +2268,8 @@ struct ActivityEventDetailView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(participant.person.displayName)
                 Text(participant.outcome == "completed" || participant.outcome == "no_recording"
-                     ? String(localized: "group.activity.finished")
-                     : participant.isRecording == true ? String(localized: "group.activity.recording") : participant.startedAt != nil ? String(localized: "group.activity.started") : String(localized: "group.activity.not_started"))
+                     ? String(localized: "group.activity.finished", table: "GroupActivity")
+                     : participant.isRecording == true ? String(localized: "group.activity.recording", table: "GroupActivity") : participant.startedAt != nil ? String(localized: "group.activity.started", table: "GroupActivity") : String(localized: "group.activity.not_started", table: "GroupActivity"))
                     .font(.caption).foregroundStyle(.secondary)
                 if let result = results?.participants.first(where: { $0.person.id == participant.person.id }) {
                     Text(resultLabel(result))

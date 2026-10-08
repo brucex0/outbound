@@ -912,6 +912,17 @@ struct RecordView: View {
             }
         }
         .overlay(alignment: .top) {
+            if countdownStep == nil, !isLiveWorkoutPanelExpanded,
+               liveShareStore.mostRecentlyHeardCheer == nil,
+               let event = (activeIntent ?? plannedIntent)?.activityEvent {
+                GroupActivityPresenceView(eventID: event.id, title: event.title)
+                    .padding(12)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                    .padding(.horizontal, 16)
+                    .padding(.top, 62)
+            }
+        }
+        .overlay(alignment: .top) {
             if countdownStep == nil, let cheer = liveShareStore.mostRecentlyHeardCheer {
                 HeardVoiceCheerBanner(
                     senderDisplayName: cheer.senderDisplayName,
@@ -1770,9 +1781,8 @@ struct RecordView: View {
                 indoor: isIndoorSession ? ActivityIndoorMetadata(isIndoor: true, mode: "treadmill") : nil,
                 heartRateZones: resolvedActivity.summary.heartRateZones,
                 recordingSession: resolvedRecordingSession(for: resolvedActivity.summary),
-                activityEventID: activeIntent?.activityEvent?.id == socialStore.recordingActivityEventID
-                    ? socialStore.recordingActivityEventID
-                    : nil,
+                // The recording session owns attribution; unrelated Social state may change.
+                activityEventID: activeIntent?.activityEvent?.id,
                 followedRoute: followedRoute,
                 recognitionBadgeIDs: resolvedActivity.recognitionPreviews.map(\.badgeID),
                 companionType: isCompanionContextEligible ? companionType : nil

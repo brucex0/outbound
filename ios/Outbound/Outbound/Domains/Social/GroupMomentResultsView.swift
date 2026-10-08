@@ -73,10 +73,10 @@ struct GroupMomentResultsView: View {
             if let distance = result.distanceM {
                 return String(localized: "Completed · \(measurementPreferences.unitSystem.distanceString(meters: distance, fractionDigits: 1))")
             }
-            return String(localized: "group.activity.finished")
+            return String(localized: "group.activity.finished", table: "GroupActivity")
         }
         switch participant.outcome {
-        case "completed": return String(localized: "group.activity.finished")
+        case "completed": return String(localized: "group.activity.finished", table: "GroupActivity")
         case "no_recording": return String(localized: "Finished · No activity saved")
         case "did_not_participate": return String(localized: "Couldn't participate")
         default: return String(localized: "Waiting for result")
