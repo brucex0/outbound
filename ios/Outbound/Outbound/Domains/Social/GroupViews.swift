@@ -18,20 +18,30 @@ private func groupMemberPriority(_ role: String) -> Int {
 struct GroupDirectoryDetailView: View {
     @EnvironmentObject private var groupStore: GroupStore
     let groupID: String
+    var invitationID: String? = nil
     @State private var loadFailed = false
+    @State private var isLoading = true
+    @State private var feedback: String?
+
+    private var loadedGroup: GroupDTO? { groupStore.invitationPreviews[groupID] ?? groupStore.groups.first(where: { $0.id == groupID && $0.isDetailedPayload }) }
 
     var body: some View {
         Group {
-            if let group = groupStore.groups.first(where: { $0.id == groupID && $0.isDetailedPayload }) {
-                GroupDetailView(group: group)
+            if isLoading {
+                ProgressView(String(localized: "group.loading", defaultValue: "Loading Group…"))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if loadFailed {
                 VStack(spacing: OutboundSpacing.standard) {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.title2)
                         .foregroundStyle(.secondary)
-                    Text(String(localized: "group.loading.failed.title", defaultValue: "This Group couldn’t load"))
+                    Text(groupStore.unavailableGroupIDs.contains(groupID)
+                        ? String(localized: "group.invitation.unavailable.title", defaultValue: "Group invitation unavailable")
+                        : String(localized: "group.loading.failed.title", defaultValue: "This Group couldn’t load"))
                         .font(.headline)
-                    Text(String(localized: "group.loading.failed.detail", defaultValue: "Check your connection, then try again."))
+                    Text(groupStore.unavailableGroupIDs.contains(groupID)
+                        ? String(localized: "group.invitation.unavailable.detail", defaultValue: "This invitation may have expired or been cancelled, or you may no longer have access.")
+                        : String(localized: "group.loading.failed.detail", defaultValue: "Check your connection, then try again."))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -42,18 +52,129 @@ struct GroupDirectoryDetailView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(OutboundSpacing.screen)
-            } else {
-                ProgressView(String(localized: "group.loading", defaultValue: "Loading Group…"))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let group = loadedGroup {
+                if group.invitationPreview, let invitation = group.pendingInvitation {
+                    GroupInvitationPreviewView(group: group, invitation: invitation, reload: loadGroup, showFeedback: { feedback = $0 })
+                } else {
+                    GroupDetailView(group: group)
+                }
             }
         }
         .task { await loadGroup() }
+        .overlay(alignment: .top) {
+            if let feedback {
+                Text(feedback)
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 14).padding(.vertical, 10)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(8)
+                    .allowsHitTesting(false)
+            }
+        }
+        .task(id: feedback) {
+            guard feedback != nil else { return }
+            // Cancellation is expected when feedback changes or this destination closes.
+            try? await Task.sleep(for: .seconds(2.2))
+            guard !Task.isCancelled else { return }
+            feedback = nil
+        }
     }
 
     @MainActor
     private func loadGroup() async {
+        isLoading = true
         loadFailed = false
-        loadFailed = !(await groupStore.refreshGroup(id: groupID))
+        loadFailed = !(await groupStore.refreshGroup(id: groupID, invitationID: invitationID))
+        isLoading = false
+    }
+}
+
+private struct GroupInvitationPreviewView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.analyticsManager) private var analyticsManager
+    @EnvironmentObject private var groupStore: GroupStore
+    let group: GroupDTO
+    let invitation: GroupInvitationDTO
+    let reload: @MainActor () async -> Void
+    let showFeedback: (String) -> Void
+    @State private var responding = false
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: OutboundSpacing.standard) {
+                OutboundCard(style: .companion) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(group.trustPolicy == "community"
+                            ? String(localized: "group.community", defaultValue: "Community Group")
+                            : String(localized: "group.private", defaultValue: "Private Group"))
+                            .font(.caption).foregroundStyle(.secondary)
+                        Text(group.name).font(.title2.bold())
+                        Text(groupMemberCountLabel(group.memberCount)).foregroundStyle(.secondary)
+                        Text(String(format: String(localized: "group.invitation.organizer", defaultValue: "Organized by %@"), group.owner.displayName))
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                if let description = group.description, !description.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(String(localized: "group.about", defaultValue: "About")).font(.headline)
+                        Text(description)
+                    }
+                }
+                Text(String(localized: "group.invitation.title", defaultValue: "You’re invited to a Group")).font(.headline)
+                Text(String(format: String(localized: "group.invitation.from", defaultValue: "%@ invited you to %@"), invitation.sender.displayName, group.name))
+                Text(String(localized: "group.invitation.preview.detail", defaultValue: "Accept to join this Group and see the details available to members."))
+                    .font(.subheadline).foregroundStyle(.secondary)
+                HStack {
+                    Button(String(localized: "group.invitation.accept", defaultValue: "Accept")) { respond(accept: true) }
+                        .buttonStyle(.borderedProminent)
+                        .accessibilityIdentifier("group.invitation.preview.accept")
+                    Button(String(localized: "group.invitation.decline", defaultValue: "Decline")) { respond(accept: false) }
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("group.invitation.preview.decline")
+                    if responding { ProgressView() }
+                }
+                .disabled(responding)
+            }
+            .padding(OutboundSpacing.screen)
+        }
+        .background(OutboundPalette.background)
+        .navigationTitle(group.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await analyticsManager?.track(.init(.featureExposed, properties: [.feature: .string("group_invitation_preview")]))
+        }
+    }
+
+    private func respond(accept: Bool) {
+        guard !responding else { return }
+        responding = true
+        Task { @MainActor in
+            let succeeded = accept ? await groupStore.accept(invitation) : await groupStore.decline(invitation)
+            responding = false
+            if succeeded {
+                showFeedback(accept
+                    ? String(localized: "group.toast.joined", defaultValue: "You joined the Group.")
+                    : String(localized: "group.toast.declined", defaultValue: "Invitation declined."))
+                if accept {
+                    let count = groupStore.groups.first(where: { $0.id == group.id })?.memberCount ?? group.memberCount
+                    await analyticsManager?.track(.init(.groupInvitationAccepted, properties: [
+                        .entrySource: .string("group_invitation_preview"),
+                        .participantCountBucket: .string(ProductAnalyticsBucket.count(count))
+                    ]))
+                } else {
+                    await analyticsManager?.track(.init(.groupInvitationDeclined, properties: [.entrySource: .string("group_invitation_preview")]))
+                    dismiss()
+                }
+            } else {
+                await analyticsManager?.track(.init(.groupOperationFailed, properties: [
+                    .sourceType: .string("group_invitation_preview"), .errorCategory: .string("api_unavailable")
+                ]))
+                showFeedback(String(localized: "group.error.operation", defaultValue: "That Group update didn’t go through. Try again."))
+                // Revalidate after a failed decision so revoked/expired invitations lose their actions.
+                await reload()
+            }
+        }
     }
 }
 

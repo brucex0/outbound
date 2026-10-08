@@ -44,6 +44,8 @@ struct GroupDTO: Codable, Identifiable, Sendable {
     var notices: [GroupNoticeDTO] = []
     var unreadNoticeCount: Int = 0
     var pendingRequest: GroupPendingRequestDTO? = nil
+    var invitationPreview: Bool = false
+    var pendingInvitation: GroupInvitationDTO? = nil
     var loadedDetailPayload = false
 }
 
@@ -73,7 +75,7 @@ extension GroupDTO {
         case upcomingActivities
         case recentMoments
         case history
-        case normalizedName, description, city, activityInterests, trustPolicy, visibility, joinPolicy, featured, organizationVerificationState, capabilities, notices, unreadNoticeCount, pendingRequest, loadedDetailPayload
+        case normalizedName, description, city, activityInterests, trustPolicy, visibility, joinPolicy, featured, organizationVerificationState, capabilities, notices, unreadNoticeCount, pendingRequest, invitationPreview, pendingInvitation, loadedDetailPayload
     }
 
     init(from decoder: Decoder) throws {
@@ -114,6 +116,8 @@ extension GroupDTO {
         notices = try container.decodeIfPresent([GroupNoticeDTO].self, forKey: .notices) ?? []
         unreadNoticeCount = try container.decodeIfPresent(Int.self, forKey: .unreadNoticeCount) ?? 0
         pendingRequest = try container.decodeIfPresent(GroupPendingRequestDTO.self, forKey: .pendingRequest)
+        invitationPreview = try container.decodeIfPresent(Bool.self, forKey: .invitationPreview) ?? false
+        pendingInvitation = try container.decodeIfPresent(GroupInvitationDTO.self, forKey: .pendingInvitation)
         // Detail responses include currentUserMuted even when community privacy
         // rules correctly omit members for a non-member. Directory summaries do not.
         loadedDetailPayload = try container.decodeIfPresent(Bool.self, forKey: .loadedDetailPayload)

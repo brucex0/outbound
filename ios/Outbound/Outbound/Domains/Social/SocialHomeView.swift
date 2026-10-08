@@ -1709,7 +1709,7 @@ private struct SocialGroupsView: View {
         OutboundCard(style: .companion, contentPadding: 16) {
             VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
                 NavigationLink {
-                    GroupDirectoryDetailView(groupID: invitation.groupId)
+                    GroupDirectoryDetailView(groupID: invitation.groupId, invitationID: invitation.id)
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(String(localized: "group.invitation.title", defaultValue: "You’re invited to a Group"))
@@ -2663,46 +2663,29 @@ struct SocialNotificationsView: View {
 
 private struct GroupNotificationInvitationView: View {
     @EnvironmentObject private var groupStore: GroupStore
-    @Environment(\.analyticsManager) private var analyticsManager
-    @Environment(\.dismiss) private var dismiss
     let notification: SocialNotificationDTO
-
-    private var invitation: GroupInvitationDTO? { groupStore.invitations.first { $0.id == notification.objectId } }
+    @State private var resolvedInvitation: GroupInvitationDTO?
+    @State private var isLoading = true
 
     var body: some View {
-        List {
-            Label {
-                Text(localizedGroupNotificationMessage(notification))
-            } icon: {
-                GroupMark()
-                    .frame(width: 18, height: 18)
-            }
-            if let invitation {
-                Button(String(localized: "group.invitation.accept", defaultValue: "Accept")) {
-                    Task {
-                        if await groupStore.accept(invitation),
-                           let joined = groupStore.groups.first(where: { $0.id == invitation.groupId }) {
-                            await analyticsManager?.track(.init(.groupInvitationAccepted, properties: [
-                                .entrySource: .string("notification_inbox"),
-                                .participantCountBucket: .string(ProductAnalyticsBucket.count(joined.memberCount))
-                            ]))
-                            if joined.lifecycle == "active" {
-                                await analyticsManager?.track(.init(.groupActivated, properties: [
-                                    .participantCountBucket: .string(ProductAnalyticsBucket.count(joined.memberCount))
-                                ]))
-                            }
-                            dismiss()
-                        }
-                    }
-                }
-                Button(String(localized: "group.invitation.decline", defaultValue: "Decline"), role: .destructive) { Task { if await groupStore.decline(invitation) { dismiss() } } }
+        Group {
+            if let invitation = resolvedInvitation {
+                GroupDirectoryDetailView(groupID: invitation.groupId, invitationID: invitation.id)
+            } else if isLoading {
+                ProgressView(String(localized: "group.loading", defaultValue: "Loading Group…"))
             } else {
-                Text(String(localized: "group.invitation.handled", defaultValue: "This invitation is no longer available."))
-                    .foregroundStyle(.secondary)
+                ContentUnavailableView(
+                    String(localized: "group.invitation.unavailable.title", defaultValue: "Group invitation unavailable"),
+                    systemImage: "envelope.badge",
+                    description: Text(String(localized: "group.invitation.unavailable.detail", defaultValue: "This invitation may have expired or been cancelled, or you may no longer have access."))
+                )
             }
         }
-        .navigationTitle(String(localized: "group.invitation.navigation", defaultValue: "Group invitation"))
-        .task { await groupStore.refreshInvitations() }
+        .task {
+            await groupStore.refreshInvitations()
+            resolvedInvitation = groupStore.invitations.first { $0.id == notification.objectId }
+            isLoading = false
+        }
     }
 }
 

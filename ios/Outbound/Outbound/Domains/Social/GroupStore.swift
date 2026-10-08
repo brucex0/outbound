@@ -19,6 +19,8 @@ final class GroupStore: ObservableObject {
 
     @Published private(set) var groups: [GroupDTO] = []
     @Published private(set) var invitations: [GroupInvitationDTO] = []
+    @Published private(set) var unavailableGroupIDs: Set<String> = []
+    @Published private(set) var invitationPreviews: [String: GroupDTO] = [:]
     @Published private(set) var memberLimit = 500
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
@@ -58,6 +60,8 @@ final class GroupStore: ObservableObject {
         activeUserID = userID
         groups = []
         invitations = []
+        unavailableGroupIDs = []
+        invitationPreviews = [:]
         memberLimit = 500
         errorMessage = nil
         toastMessage = nil
@@ -125,20 +129,33 @@ final class GroupStore: ObservableObject {
     }
 
     @discardableResult
-    func refreshGroup(id: String) async -> Bool {
+    func refreshGroup(id: String, invitationID: String? = nil) async -> Bool {
+        unavailableGroupIDs.remove(id)
         if isUITestSeedData { upsert(Self.uiTestGroup(themeKey: uiTestThemeKey)); errorMessage = nil; return true }
         let generation = authGeneration
         guard activeUserID != nil else { return false }
         do {
-            let group = try await api.fetchGroup(id: id)
+            let group = try await api.fetchGroup(id: id, invitationID: invitationID)
             guard generation == authGeneration else { return false }
-            upsert(group)
+            unavailableGroupIDs.remove(id)
+            if group.invitationPreview {
+                invitationPreviews[id] = group
+            } else {
+                invitationPreviews.removeValue(forKey: id)
+                upsert(group)
+            }
             guard group.isDetailedPayload else { return false }
             errorMessage = nil
             return true
         } catch {
             guard generation == authGeneration else { return false }
             Self.logFailure(error, operation: "refresh group detail")
+            if case APIError.http(let status, _, _) = error, [403, 404, 409, 410].contains(status) {
+                unavailableGroupIDs.insert(id)
+                invitationPreviews.removeValue(forKey: id)
+                groups.removeAll { $0.id == id }
+                persistCurrentState()
+            }
             errorMessage = String(localized: "group.error.operation", defaultValue: "That Group update didn’t go through. Try again.")
             return false
         }
@@ -158,6 +175,7 @@ final class GroupStore: ObservableObject {
     func accept(_ invitation: GroupInvitationDTO) async -> Bool {
         do {
             let group = try await api.acceptGroupInvitation(id: invitation.id)
+            invitationPreviews.removeValue(forKey: invitation.groupId)
             invitations.removeAll { $0.id == invitation.id }
             upsert(group)
             toastMessage = String(localized: "group.toast.joined", defaultValue: "You joined the Group.")
@@ -169,6 +187,7 @@ final class GroupStore: ObservableObject {
         do {
             _ = try await api.declineGroupInvitation(id: invitation.id)
             invitations.removeAll { $0.id == invitation.id }
+            invitationPreviews.removeValue(forKey: invitation.groupId)
             toastMessage = String(localized: "group.toast.declined", defaultValue: "Invitation declined.")
             return true
         } catch { _ = fail(error, operation: "decline group invitation"); return false }

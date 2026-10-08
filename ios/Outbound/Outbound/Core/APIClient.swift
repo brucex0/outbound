@@ -440,8 +440,9 @@ final class APIClient {
         try await get("/social/groups", queryItems: [URLQueryItem(name: "scope", value: "mine")])
     }
 
-    func fetchGroup(id: String) async throws -> GroupDTO {
-        try await get("/social/groups/\(id)")
+    func fetchGroup(id: String, invitationID: String? = nil) async throws -> GroupDTO {
+        let query = invitationID.map { [URLQueryItem(name: "invitationId", value: $0)] } ?? []
+        return try await get("/social/groups/\(id)", queryItems: query)
     }
 
     func createGroup(_ request: GroupCreateRequestDTO) async throws -> GroupDTO {
