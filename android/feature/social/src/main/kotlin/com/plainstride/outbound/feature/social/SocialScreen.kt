@@ -153,7 +153,6 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
         GroupDetailScreen(
             group = group,
             close = viewModel::closeGroup,
-            cheer = { recipient, preset -> viewModel.cheerGroup(group, recipient, preset) },
             focus = { mode, target, next -> viewModel.setGroupFocus(group, mode, target, next) },
             archive = { viewModel.setGroupArchived(group, group.lifecycle != "archived") },
             invite = { viewModel.trackGroupInvitePickerOpened(); inviteGroup = group },

@@ -80,6 +80,11 @@
 - Invite entry points carry the invitation ID when fetching Group detail. Both clients distinguish unavailable invitations from retryable loading failures and emit the same preview exposure, accepted/declined, and failure events.
 - Build verification: backend TypeScript compile, iOS simulator build, Android debug app assembly. No test suite was run. Manual device comparison remains required to validate rendering and navigation in a live invitation.
 
+## Group Member Actions
+
+- Android member rows omit the heart/encouragement action. Member management retains its existing permission checks.
+- Removed the member-cheer handler and its `group_cheer_sent` instrumentation; opening Members still emits `group_members_opened`. Existing cheer moments remain visible in Group history.
+
 ## Group Reference Scenarios
 
 - No Group with accepted connections, creation loading/success/failure with one or several invitees, generated or custom name, awaiting-members state, active progress with and without a numeric focus, personal skip, shared focus now/next week, owner/member management, archived/reactivated lifecycle, and transient mutation failure.

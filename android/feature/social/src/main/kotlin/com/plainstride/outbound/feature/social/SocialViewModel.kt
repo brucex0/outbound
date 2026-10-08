@@ -390,7 +390,6 @@ sealed interface ConnectionEffect {
     fun report(post: SocialPost, reason: String) = mutate("social_content_reported", SocialMessage.REPORTED) { repository.reportPost(post.id, ReportReason.entries.firstOrNull { it.wireValue == reason } ?: ReportReason.OTHER).getOrThrow() }
     fun deletePost(post: SocialPost) = mutate("social_post_deleted") { repository.deletePost(post.id).getOrThrow(); refresh() }
     fun block(post: SocialPost) = mutate("social_person_blocked", SocialMessage.BLOCKED) { repository.block(post.author.id).getOrThrow(); refresh() }
-    fun cheerGroup(group: GroupSummary, recipientId: String, preset: String) = mutate("group_cheer_sent") { repository.cheerGroup(group.id, recipientId, preset).getOrThrow() }
     fun openComments(post:SocialPost)=viewModelScope.launch{repository.comments(post.id).onSuccess{comments->mutableState.update{it.copy(selectedPost=post,comments=comments)}};analytics.record(AnalyticsEvent("social_comments_opened"))}
     fun closeComments()=mutableState.update{it.copy(selectedPost=null,comments=emptyList())}
     fun addComment(body:String){

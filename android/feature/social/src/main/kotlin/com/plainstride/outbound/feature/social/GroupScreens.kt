@@ -93,7 +93,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 fun GroupDetailScreen(
     group: GroupSummary,
     close: () -> Unit,
-    cheer: (String, String) -> Unit,
     focus: (String, Int?, Boolean) -> Unit,
     archive: () -> Unit,
     invite: () -> Unit,
@@ -267,9 +266,6 @@ fun GroupDetailScreen(
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
-                                        }
-                                        if (group.trustPolicy != "community" && !member.isCurrentUser) {
-                                            IconButton({ cheer(member.person.id, "encouragement") }) { Icon(Icons.Outlined.FavoriteBorder, stringResource(R.string.social_cheer)) }
                                         }
                                         if (memberCanBeRemoved(member)) {
                                             IconButton({ pendingRemoval = member }) {
