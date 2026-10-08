@@ -6,6 +6,7 @@
     <string name="group_create_selected">%1$d selected</string>
     <string name="group_create_name">Name your Group · Optional</string>
     <string name="group_create_name_help">Leave it blank and Plainstride will suggest a name.</string>
+    <string name="group_create_city">Base city (optional)</string>
     <string name="group_create_action">Create your Group</string>
     <string name="group_manage">Manage Group</string>
     <string name="group_relationship">A private place to keep moving together.</string>
@@ -28,6 +29,7 @@
     <string name="group_member_remove_confirm_title">Remove this member?</string>
     <string name="group_discover_title">Discover</string>
     <string name="group_discover_search">Search Groups by name or city</string>
+    <string name="group_discover_load_more">Load more public Groups</string>
     <string name="group_discover_empty_title">No public Groups nearby yet</string>
     <string name="group_discover_empty_detail">Check back as more activity Groups become available.</string>
     <string name="group_leave">Leave Group</string>

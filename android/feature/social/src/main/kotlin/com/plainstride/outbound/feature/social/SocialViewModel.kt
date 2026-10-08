@@ -15,6 +15,7 @@ data class SocialUiState(
     val home: SocialHome = SocialHome(), val loading: Boolean = true, val refreshing: Boolean = false,
     val offline: Boolean = false, val search: String = "", val searchResults: List<SocialPerson> = emptyList(),
     val groupDirectory: List<GroupSummary> = emptyList(), val groupDirectoryQuery: String = "",
+    val groupDirectoryNextCursor: String? = null,
     val groupDirectoryLoading: Boolean = false, val groupDirectoryFailed: Boolean = false,
     val selectedProfile: SocialPerson? = null, val selectedGroupDetail: GroupSummary? = null,
     val selectedPost:SocialPost?=null,val comments:List<SocialComment> = emptyList(),
@@ -59,7 +60,7 @@ sealed interface ConnectionEffect {
         if (this.accountId == accountId && this.localeTag == localeTag) return
         this.accountId = accountId; this.localeTag = localeTag
         groupDirectoryJob?.cancel()
-        mutableState.update { it.copy(groupDirectory = emptyList(), groupDirectoryQuery = "", groupDirectoryLoading = false, groupDirectoryFailed = false) }
+        mutableState.update { it.copy(groupDirectory = emptyList(), groupDirectoryQuery = "", groupDirectoryNextCursor = null, groupDirectoryLoading = false, groupDirectoryFailed = false) }
         activityFeedLoadTracked = false
         feedPagesLoaded = 1
         connectionPagesLoaded = 1
@@ -93,7 +94,7 @@ sealed interface ConnectionEffect {
         searchJob = viewModelScope.launch { delay(300); repository.searchPeople(normalized).onSuccess { people -> mutableState.update { it.copy(searchResults = people) } } }
     }
     fun searchGroupDirectory(query: String) {
-        mutableState.update { it.copy(groupDirectoryQuery = query) }
+        mutableState.update { it.copy(groupDirectoryQuery = query, groupDirectory = emptyList(), groupDirectoryNextCursor = null) }
         groupDirectoryJob?.cancel()
         groupDirectoryJob = viewModelScope.launch {
             delay(300)
@@ -102,12 +103,24 @@ sealed interface ConnectionEffect {
     }
     fun refreshGroupDirectory() {
         groupDirectoryJob?.cancel()
-        groupDirectoryJob = viewModelScope.launch { loadGroupDirectory(mutableState.value.groupDirectoryQuery) }
+        groupDirectoryJob = viewModelScope.launch { loadGroupDirectory(mutableState.value.groupDirectoryQuery, cursor = null) }
     }
-    private suspend fun loadGroupDirectory(query: String) {
+    fun loadMoreGroupDirectory() {
+        val state = mutableState.value
+        val cursor = state.groupDirectoryNextCursor ?: return
+        if (state.groupDirectoryLoading) return
+        groupDirectoryJob?.cancel()
+        groupDirectoryJob = viewModelScope.launch { loadGroupDirectory(state.groupDirectoryQuery, cursor) }
+    }
+    private suspend fun loadGroupDirectory(query: String, cursor: String? = null) {
         mutableState.update { it.copy(groupDirectoryLoading = true, groupDirectoryFailed = false) }
-        repository.discoverGroups(query).onSuccess { groups ->
-            mutableState.update { it.copy(groupDirectory = groups.filter { group -> group.currentUserRole == null }, groupDirectoryLoading = false) }
+        repository.discoverGroups(query, cursor).onSuccess { response ->
+            val groups = response.groups.filter { group -> group.currentUserRole == null }
+            mutableState.update { state -> state.copy(
+                groupDirectory = if (cursor == null) groups else (state.groupDirectory + groups).distinctBy(GroupSummary::id),
+                groupDirectoryNextCursor = response.nextCursor,
+                groupDirectoryLoading = false,
+            ) }
             if (query.isNotBlank()) analytics.record(AnalyticsEvent("group_discovery_searched", mapOf(
                 AnalyticsProperty.EntrySource to "groups",
                 AnalyticsProperty.CountBucket to countBucket(groups.size),
@@ -385,8 +398,8 @@ sealed interface ConnectionEffect {
             )
         }
     }
-    fun createGroup(template:String,name:String?,members:List<SocialPerson>,timeZone:String?,onComplete:(Boolean)->Unit={})=viewModelScope.launch {
-        repository.createGroup(template,name,members.map{it.id},timeZone).fold(
+    fun createGroup(template:String,name:String?,city:String?,members:List<SocialPerson>,timeZone:String?,onComplete:(Boolean)->Unit={})=viewModelScope.launch {
+        repository.createGroup(template,name,city,members.map{it.id},timeZone).fold(
             onSuccess = { created ->
                 mutableState.update { it.copy(selectedGroupDetail=created) }
                 refresh()

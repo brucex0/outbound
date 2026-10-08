@@ -240,7 +240,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             onStartActivity = { onStartGroupActivity(event) },
         )
     }
-    if(createGroup)GroupCreateScreen(state.home.connections.filter{it.relationship in setOf("accepted","connected")},{createGroup=false},viewModel::trackGroupTemplateSelected){template,name,people,onComplete->viewModel.createGroup(template,name,people,java.util.TimeZone.getDefault().id,onComplete)}
+    if(createGroup)GroupCreateScreen(state.home.connections.filter{it.relationship in setOf("accepted","connected")},{createGroup=false},viewModel::trackGroupTemplateSelected){template,name,city,people,onComplete->viewModel.createGroup(template,name,city,people,java.util.TimeZone.getDefault().id,onComplete)}
     inviteGroup?.let{group->PersonPickerDialog(stringResource(R.string.social_invite),state.home.connections,{inviteGroup=null}){person->viewModel.inviteToGroup(group,listOf(person),java.util.UUID.randomUUID().toString());inviteGroup=null}}
     inviteEvent?.let{event->PersonPickerDialog(stringResource(R.string.social_invite),state.home.connections,{inviteEvent=null}){person->viewModel.inviteToEvent(event,person);inviteEvent=null}}
     groupActivity?.let { group -> GroupActivityComposer({ groupActivity = null }) { title, location -> viewModel.createGroupActivity(group, title, location); groupActivity = null } }
@@ -631,6 +631,9 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                 } else {
                     items(discoverGroups, key = GroupSummary::id) { item -> GroupCard(item, groupDisplayName(item, discoverGroups), { openGroup(item) }) { group(item) } }
                 }
+                if (state.groupDirectoryNextCursor != null && !state.groupDirectoryLoading) {
+                    item { TextButton(viewModel::loadMoreGroupDirectory, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_discover_load_more)) } }
+                }
                 if (state.groupDirectoryFailed) item { TextButton(viewModel::refreshGroupDirectory, Modifier.fillMaxWidth()) { Text(stringResource(R.string.social_feed_load_more_failed)) } }
                 if (state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             }
@@ -854,9 +857,12 @@ private fun groupDisplayName(group: GroupSummary, all: List<GroupSummary>): Stri
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(displayName, fontWeight = FontWeight.SemiBold)
+            if (group.trustPolicy == "community" && !group.city.isNullOrBlank()) {
+                Text(group.city, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Text(stringResource(R.string.social_members, group.memberCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (group.currentUserRole == null && group.trustPolicy == "community") {
+        if (group.currentUserRole == null && group.trustPolicy == "community" && group.joinPolicy != "invite_only") {
             TextButton(joinGroup) { Text(stringResource(if (group.joinPolicy == "request") R.string.group_request_to_join else R.string.social_join)) }
         }
     }

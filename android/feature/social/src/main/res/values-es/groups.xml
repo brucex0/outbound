@@ -2,6 +2,7 @@
     <string name="group_create_title">Crea tu grupo</string>
     <string name="group_create_name">Ponle nombre al grupo · Opcional</string>
     <string name="group_create_name_help">Déjalo en blanco y Plainstride sugerirá un nombre.</string>
+    <string name="group_create_city">Ciudad base (opcional)</string>
     <string name="group_create_community_name_help">El nombre del grupo comunitario es obligatorio.</string>
     <string name="group_create_people">¿Quién te ayuda a seguir en movimiento?</string>
     <string name="group_create_selected">%1$d seleccionados</string>
@@ -15,6 +16,7 @@
     <string name="group_member_remove_confirm_title">¿Eliminar a esta persona del grupo?</string>
     <string name="group_discover_title">Descubrir</string>
     <string name="group_discover_search">Buscar Grupos por nombre o ciudad</string>
+    <string name="group_discover_load_more">Cargar más Grupos públicos</string>
     <string name="group_discover_empty_title">Aún no hay Grupos públicos cerca</string>
     <string name="group_discover_empty_detail">Vuelve más tarde para descubrir nuevos Grupos de actividades.</string>
     <string name="group_open_join">Cualquiera puede unirse</string>

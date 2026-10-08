@@ -27,9 +27,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.lazy.LazyListScope
 
-@Composable fun GroupCreateScreen(connections:List<SocialPerson>,close:()->Unit,selectTemplate:(String)->Unit,create:(String,String?,List<SocialPerson>,(Boolean)->Unit)->Unit)=Dialog(onDismissRequest=close){
+@Composable fun GroupCreateScreen(connections:List<SocialPerson>,close:()->Unit,selectTemplate:(String)->Unit,create:(String,String?,String?,List<SocialPerson>,(Boolean)->Unit)->Unit)=Dialog(onDismissRequest=close){
  var template by rememberSaveable{mutableStateOf<String?>(null)};var creating by rememberSaveable{mutableStateOf(false)}
- var name by rememberSaveable{mutableStateOf("")};var selected by remember{mutableStateOf(setOf<String>())}
+ var name by rememberSaveable{mutableStateOf("")};var city by rememberSaveable{mutableStateOf("")};var selected by remember{mutableStateOf(setOf<String>())}
  Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background){
   if(template==null) GroupTemplateChooser(close){selectTemplate(it);template=it} else Column {
    Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){IconButton(close){Icon(Icons.Outlined.Close,stringResource(R.string.social_done))};Text(stringResource(R.string.group_create_title),Modifier.weight(1f),style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}
@@ -40,9 +40,10 @@ import androidx.compose.foundation.lazy.LazyListScope
      items(connections,key=SocialPerson::id){person->val checked=person.id in selected;Card(onClick={selected=if(checked)selected-person.id else selected+person.id}){Row(Modifier.fillMaxWidth().padding(12.dp),verticalAlignment=Alignment.CenterVertically){SocialAvatar(person);Spacer(Modifier.width(12.dp));Text(person.displayName,Modifier.weight(1f));Checkbox(checked,{selected=if(checked)selected-person.id else selected+person.id})}}}
     }
     item{OutlinedTextField(name,{name=it.take(80)},Modifier.fillMaxWidth(),label={Text(stringResource(R.string.group_create_name))},supportingText={Text(if(template=="activities")stringResource(R.string.group_create_community_name_help) else stringResource(R.string.group_create_name_help))})}
+    if(template=="activities") item{OutlinedTextField(city,{city=it.take(120)},Modifier.fillMaxWidth(),label={Text(stringResource(R.string.group_create_city))},singleLine=true)}
     if(template=="activities") item{Text(stringResource(R.string.social_groups_create_community_access),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
    }
-   Button({if(!creating){creating=true;create(template!!,name.trim().ifEmpty{null},connections.filter{it.id in selected}){created->creating=false;if(created)close()}}},Modifier.fillMaxWidth().padding(16.dp).heightIn(min=50.dp),enabled=!creating&&(template=="activities"&&name.isNotBlank()||template=="motivation"&&selected.isNotEmpty())){if(creating)CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp)else Text(stringResource(R.string.group_create_action))}
+   Button({if(!creating){creating=true;create(template!!,name.trim().ifEmpty{null},city.trim().ifEmpty{null},connections.filter{it.id in selected}){created->creating=false;if(created)close()}}},Modifier.fillMaxWidth().padding(16.dp).heightIn(min=50.dp),enabled=!creating&&(template=="activities"&&name.isNotBlank()||template=="motivation"&&selected.isNotEmpty())){if(creating)CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp)else Text(stringResource(R.string.group_create_action))}
   }
  }
 }
@@ -149,13 +150,22 @@ fun GroupDetailScreen(
                                 if (group.organizationVerificationState == "verified") Text(stringResource(R.string.group_verified_badge), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                             }
                             Text(group.description ?: stringResource(R.string.group_detail_inspiration), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Text(stringResource(R.string.social_members, group.memberCount.takeIf { it > 0 } ?: group.members.size), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (isCommunity && !group.city.isNullOrBlank()) {
+                                Text(group.city, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text(stringResource(R.string.social_members, group.memberCount), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
                 if (isCommunity) {
-                    if (group.currentUserRole == null && !isMember) item {
-                        Button(requestJoin, Modifier.fillMaxWidth(), enabled = group.pendingRequest?.status != "pending") { Text(stringResource(if (group.pendingRequest?.status == "pending") R.string.group_request_pending else R.string.group_request_to_join)) }
+                    if (group.currentUserRole == null && !isMember && group.joinPolicy != "invite_only") item {
+                        Button(requestJoin, Modifier.fillMaxWidth(), enabled = group.joinPolicy != "request" || group.pendingRequest?.status != "pending") {
+                            Text(stringResource(when {
+                                group.joinPolicy == "request" && group.pendingRequest?.status == "pending" -> R.string.group_request_pending
+                                group.joinPolicy == "request" -> R.string.group_request_to_join
+                                else -> R.string.group_open_join
+                            }))
+                        }
                     }
                     if (!group.description.isNullOrBlank()) item {
                         ElevatedCard { Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
