@@ -60,6 +60,7 @@ struct LiveGroupParticipant: Identifiable, Hashable {
     var isVisibleOnMap: Bool {
         guard !isCurrentUser else { return false }
         guard coordinate != nil else { return false }
+        if status == "left" { return false }
         if status == "active" || status == "stale" { return true }
         guard let lastLocationAt else { return false }
         return Date().timeIntervalSince(lastLocationAt) < 5 * 60
@@ -257,7 +258,8 @@ final class LiveGroupStore: ObservableObject {
             apply(response)
             connectRealtime(sessionID: response.id)
         } catch {
-            lastErrorMessage = "Could not join the event live map: \(error.localizedDescription)"
+            ActivityDiagnosticLog.error(.persistence, "Event live map join failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+            lastErrorMessage = String(localized: "group.activity.live_error")
         }
     }
 

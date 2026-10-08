@@ -1323,7 +1323,7 @@ private struct SimplifiedTodayView: View {
 
     private var activityEventToday: ActivityEventDTO? {
         socialStore.state.upcomingRuns.first {
-            guard $0.currentUserGoing == true else { return false }
+            guard $0.currentUserGoing == true || $0.canParticipate == true else { return false }
             return Calendar.current.isDateInToday($0.startsAt) || $0.status == "active"
         }
     }
@@ -1388,7 +1388,7 @@ private struct SimplifiedTodayView: View {
             .buttonStyle(.plain)
             .accessibilityHint(String(localized: "social.event.open_details", defaultValue: "Opens activity details"))
 
-            if event.group != nil, event.currentUserGoing == true {
+            if event.canParticipate == true {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(String(localized: "record.setup.run_options", defaultValue: "Run options"))
                         .font(.caption.weight(.semibold))

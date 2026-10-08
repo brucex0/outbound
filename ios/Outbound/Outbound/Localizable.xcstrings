@@ -33782,19 +33782,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Only people going to this Group activity can join its live map. Each runner chooses to share."
+            "value": "Members can join this activity’s live map without an RSVP. Each participant chooses whether to share."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Solo quienes asistirán a esta actividad del grupo pueden unirse al mapa en vivo. Cada corredor decide si compartir su ubicación."
+            "value": "Los miembros pueden acceder al mapa en vivo sin confirmar asistencia. Cada participante decide si comparte su ubicación."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "只有将参加此群组活动的人才能加入实时地图。每位跑者都可以自行选择是否共享位置。"
+            "value": "成员无需提前报名即可加入活动的实时地图。每位参与者可自行选择是否共享位置。"
           }
         }
       }

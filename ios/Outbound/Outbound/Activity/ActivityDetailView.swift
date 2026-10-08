@@ -9,6 +9,7 @@ import UIKit
 
 struct ActivityDetailView: View {
     let activity: SavedActivity
+    private let eventAttribution: GroupActivityAttribution?
     private let usesStoredActivity: Bool
     private let showsShareControl: Bool
     private let showsEditControl: Bool
@@ -47,6 +48,7 @@ struct ActivityDetailView: View {
 
     init(
         activity: SavedActivity,
+        eventAttribution: GroupActivityAttribution? = nil,
         usesStoredActivity: Bool = true,
         showsShareControl: Bool = true,
         showsEditControl: Bool = true,
@@ -57,6 +59,7 @@ struct ActivityDetailView: View {
         photoPlaceholderCount: Int = 0
     ) {
         self.activity = activity
+        self.eventAttribution = eventAttribution
         self.usesStoredActivity = usesStoredActivity
         self.showsShareControl = showsShareControl
         self.showsEditControl = showsEditControl
@@ -427,7 +430,7 @@ struct ActivityDetailView: View {
                                 .padding(.top, 14)
                         }
                         statsHeroSection
-                        if currentActivity.activityEventID != nil { sharedActivitySection }
+                        if currentActivity.activityEventID != nil || eventAttribution != nil { sharedActivitySection }
                         if showsPrivateDetails, showsMetadataSection { metadataSection }
                         elevationProfileSection
                         if !splits.isEmpty { splitsSection }
@@ -453,19 +456,11 @@ struct ActivityDetailView: View {
     }
 
     private var sharedActivitySection: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "person.2.fill")
-                .foregroundStyle(OutboundPalette.companion)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(String(localized: "activity.shared.title", defaultValue: "Shared activity")).font(.headline)
-                Text(String(localized: "activity.shared.detail", defaultValue: "This is your personal recording from an activity event. Shared participant results remain in Social."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 12)
+        GroupActivityAttributionView(eventID: currentActivity.activityEventID,
+                                     activityType: currentActivity.activityType.rawValue,
+                                     attribution: eventAttribution)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
     }
 
     private var sheetGrabber: some View {

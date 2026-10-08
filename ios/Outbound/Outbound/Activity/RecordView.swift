@@ -440,6 +440,7 @@ struct RecordView: View {
                 guideCatalog.refreshInstalledVoices()
                 workoutPresence.sync(with: recorder.state)
                 refreshLocationForForeground()
+                Task { await ActivityEventParticipationSync.shared.flush() }
             }
             guard newPhase == .active, recorder.state == .active else { return }
             Task { await musicStore.retryPendingWorkoutPlaybackIfNeeded() }
@@ -1401,6 +1402,11 @@ struct RecordView: View {
         }
         startRecorder(routeGuidance: routeGuidance)
         sessionController.beginRecording()
+        if let eventID = activeIntent?.activityEvent?.id {
+            ActivityEventParticipationSync.shared.enqueueStart(eventID: eventID)
+            Task { await ActivityEventParticipationSync.shared.flush() }
+        }
+
         recordStartedGoalMode()
         if let route = activeIntent?.preparedRoute {
             track(.init(.routeNavigationStarted, properties: [
@@ -1410,7 +1416,7 @@ struct RecordView: View {
             ]))
         }
         reachedGoalThresholds = []
-        activityStartedWithGroupRun = liveGroupStore.isSharing
+        activityStartedWithGroupRun = liveGroupStore.isSharing || activeIntent?.activityEvent != nil
         track(.init(.activityStarted, properties: activityConfigurationProperties))
         if activeIntent?.startedFromWorkoutReminder == true {
             track(.init(.workoutStartedFromReminder, properties: [
@@ -3564,7 +3570,7 @@ struct RecordView: View {
             .routeSelected: .boolean(activeIntent?.preparedRoute != nil),
             .shoeSelected: .boolean(selectedSessionShoe != nil),
             .preRunPhotoAdded: .boolean(preActivityPhoto != nil),
-            .groupRunEnabled: .boolean(liveGroupStore.isSharing),
+            .groupRunEnabled: .boolean(liveGroupStore.isSharing || activeIntent?.activityEvent != nil),
             .liveShareEnabled: .boolean(liveShareStore.isArmedForNextActivity),
             .indoor: .boolean(isIndoorSession),
             .voiceGuideEnabled: .boolean(voiceGuideSpeechEnabled),
@@ -3930,7 +3936,7 @@ struct RecordView: View {
                 if plannedIntent?.activityEvent?.id != nil {
                     Text(String(
                         localized: "record.group.event.detail",
-                        defaultValue: "Only people going to this Group activity can join its live map. Each runner chooses to share."
+                        defaultValue: "Members can join this activity’s live map without an RSVP. Each participant chooses whether to share."
                     ))
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -3941,6 +3947,9 @@ struct RecordView: View {
 
     private var liveGroupSetup: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if let eventID = plannedIntent?.activityEvent?.id {
+                GroupActivityPresenceView(eventID: eventID)
+            }
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Label(String(localized: "record.group.people", defaultValue: "Runners with you"), systemImage: "person.2.fill")

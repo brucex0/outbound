@@ -1108,6 +1108,10 @@ struct SocialHomeView: View {
                     .foregroundStyle(.primary)
                     .padding(.horizontal, OutboundSpacing.screen)
                 if let activity = post.activity {
+                    if let attribution = activity.eventAttribution {
+                        GroupActivityAttributionView(activityType: activity.type ?? "running", attribution: attribution)
+                            .padding(.horizontal, OutboundSpacing.screen)
+                    }
                     SquarePreviewLayout {
                         ZStack(alignment: .bottom) {
                             SocialRoutePreviewImage(activity: activity)
@@ -1904,14 +1908,14 @@ struct ActivityEventDetailView: View {
                         participantRow(participant)
                     }
                     if let results, results.status != "scheduled",
-                       detail?.currentUserGoing == true, detail?.currentUserOutcome == nil {
+                       detail?.participants?.contains(where: { $0.startedAt != nil && $0.person.id == AuthStore.currentUserId }) == true, detail?.currentUserOutcome == nil {
                         Button("I joined without recording") {
                             Task { _ = await socialStore.markActivityEventWithoutRecording(id: run.id) }
                         }
                     }
                 } header: {
                     HStack {
-                        Text("Participants (\(detail?.attendeeCount ?? participants.count))")
+                        Text(String(format: String(localized: "group.activity.counts"), detail?.attendeeCount ?? 0, detail?.startedCount ?? 0, participants.filter { $0.outcome == "completed" || $0.outcome == "no_recording" }.count))
                         Spacer()
                         if participants.count > 3 {
                             Button(showAllParticipants ? "Less" : "More") {
@@ -2095,6 +2099,10 @@ struct ActivityEventDetailView: View {
             ]))
             detail = await socialStore.activityEventDetail(id: run.id)
             if run.startsAt <= Date() { await socialStore.loadActivityEventResults(id: run.id) }
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(15)) } catch { return }
+                if let updated = await socialStore.activityEventDetail(id: run.id) { detail = updated }
+            }
         }
         .sheet(isPresented: $isConnectionPickerPresented) {
             NavigationStack {
@@ -2157,9 +2165,8 @@ struct ActivityEventDetailView: View {
 
     private var canManageActivityLiveMap: Bool {
         let status = detail?.status ?? run.status ?? "scheduled"
-        let isGoing = detail?.currentUserGoing ?? run.currentUserGoing ?? false
-        return (detail?.group ?? run.group) != nil
-            && isGoing
+        let eligible = detail?.canParticipate ?? run.canParticipate ?? false
+        return eligible
             && ["scheduled", "active"].contains(status)
     }
 
@@ -2190,7 +2197,7 @@ struct ActivityEventDetailView: View {
     }
 
     private var canStartActivity: Bool {
-        guard detail?.currentUserGoing ?? run.currentUserGoing ?? false else { return false }
+        guard detail?.canParticipate ?? run.canParticipate ?? false else { return false }
         let status = detail?.status ?? run.status ?? "scheduled"
         return ["scheduled", "active"].contains(status)
             && (Calendar.current.isDateInToday(run.startsAt) || status == "active")
@@ -2234,6 +2241,10 @@ struct ActivityEventDetailView: View {
             SocialAvatar(name: participant.person.displayName, avatarURL: participant.person.avatarUrl)
             VStack(alignment: .leading, spacing: 2) {
                 Text(participant.person.displayName)
+                Text(participant.outcome == "completed" || participant.outcome == "no_recording"
+                     ? String(localized: "group.activity.finished")
+                     : participant.isRecording == true ? String(localized: "group.activity.recording") : participant.startedAt != nil ? String(localized: "group.activity.started") : String(localized: "group.activity.not_started"))
+                    .font(.caption).foregroundStyle(.secondary)
                 if let result = results?.participants.first(where: { $0.person.id == participant.person.id }) {
                     Text(resultLabel(result))
                         .font(.caption)
@@ -2715,6 +2726,9 @@ private struct SocialNotificationActivityView: View {
 
                         Text(post.activity?.title ?? String(localized: "Run")).font(.headline)
                         if let activity = post.activity {
+                            if let attribution = activity.eventAttribution {
+                                GroupActivityAttributionView(activityType: activity.type ?? "running", attribution: attribution)
+                            }
                             SquarePreviewLayout {
                                 ZStack(alignment: .bottom) {
                                     SocialRoutePreviewImage(activity: activity)
@@ -3826,6 +3840,7 @@ struct SocialActivityDetailView: View {
                     postCreatedAt: currentPost.createdAt,
                     photosOverride: fullPhotoMetadata
                 ),
+                eventAttribution: activity.eventAttribution,
                 usesStoredActivity: false,
                 showsShareControl: currentPost.isCurrentUser,
                 showsEditControl: false,

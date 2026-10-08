@@ -191,6 +191,8 @@ struct ActivityEventDTO: Codable, Identifiable, Sendable {
     var source: ActivityEventSourceDTO? = nil
     var attendeeCount: Int? = nil
     var attendeePreview: [TogetherPersonDTO]? = nil
+    var canParticipate: Bool? = nil
+    var startedCount: Int? = nil
     var currentUserGoing: Bool? = nil
     var status: String? = nil
     var participationMode: String? = nil
@@ -265,6 +267,8 @@ struct ActivityEventDetailDTO: Codable, Identifiable, Sendable {
     let creator: TogetherPersonDTO
     let groups: [TogetherRunGroupDTO]
     let attendeeCount: Int
+    var canParticipate: Bool? = nil
+    var startedCount: Int? = nil
     let currentUserGoing: Bool
     let compatibility: TogetherCompatibilityDTO?
     var source: ActivityEventSourceDTO? = nil
@@ -296,6 +300,8 @@ struct ActivityEventParticipantDTO: Codable, Identifiable, Sendable {
     let status: String
     let outcome: String?
     var attendanceMode: String? = nil
+    var startedAt: Date? = nil
+    var isRecording: Bool? = nil
 }
 
 struct ActivityEventAttendanceRequestDTO: Codable, Sendable {
@@ -387,6 +393,7 @@ struct TogetherActivityDTO: Codable, Sendable, Equatable {
     let route: TogetherActivityRouteDTO?
     let photos: [TogetherActivityPhotoDTO]?
     var photoCount: Int? = nil
+    var eventAttribution: GroupActivityAttribution? = nil
     var recognitions: [TogetherActivityRecognitionDTO]? = nil
 
     var totalPhotoCount: Int { photoCount ?? photos?.count ?? 0 }

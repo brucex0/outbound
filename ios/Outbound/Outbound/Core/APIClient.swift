@@ -636,6 +636,10 @@ final class APIClient {
         try await post("/social/activity-events/\(id)/link-activity", body: LinkActivityEventRequestDTO(activityId: activityID))
     }
 
+    func startActivityEvent(id: String, startedAt: Date = Date()) async throws -> SocialConnectionMutationDTO {
+        try await post("/social/activity-events/\(id)/start", body: ["startedAt": ISO8601DateFormatter().string(from: startedAt)])
+    }
+
     func markActivityEventWithoutRecording(id: String) async throws -> SocialConnectionMutationDTO {
         try await post("/social/activity-events/\(id)/no-recording", body: EmptyBody())
     }

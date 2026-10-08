@@ -115,6 +115,7 @@ final class TogetherStore: ObservableObject {
     }
 
     func refresh(resetFeed: Bool = false) async {
+        await ActivityEventParticipationSync.shared.flush()
         guard isUITestSeedData || activeUserID != nil else { return }
         let generation = authGeneration
         if isUITestSeedData {
@@ -365,6 +366,8 @@ final class TogetherStore: ObservableObject {
     }
 
     func markActivityEventWithoutRecording(id: String) async -> Bool {
+        ActivityEventParticipationSync.shared.enqueueFinishWithoutRecording(eventID: id)
+        await ActivityEventParticipationSync.shared.flush()
         do {
             _ = try await api.markActivityEventWithoutRecording(id: id)
             await loadActivityEventResults(id: id)
