@@ -386,6 +386,7 @@ sealed interface ConnectionEffect {
         mutableState.update { it.copy(selectedGroupId = null, selectedGroupInvitationId = null, selectedGroupDetail = null, groupLoading = false, groupLoadFailed = false, groupUnavailable = false) }
     }
     fun joinGroup(group: GroupSummary) = mutate("social_group_membership_changed") { repository.setGroupMembership(group.id, group.role == null).getOrThrow(); refresh(); refreshGroupDirectory() }
+    fun reportPerson(person: SocialPerson, reason: ReportReason, feedback: (Boolean) -> Unit) = mutate("social_content_reported", SocialMessage.REPORTED, feedback) { repository.reportPerson(person.id, reason).getOrThrow() }
     fun report(post: SocialPost, reason: String) = mutate("social_content_reported", SocialMessage.REPORTED) { repository.reportPost(post.id, ReportReason.entries.firstOrNull { it.wireValue == reason } ?: ReportReason.OTHER).getOrThrow() }
     fun deletePost(post: SocialPost) = mutate("social_post_deleted") { repository.deletePost(post.id).getOrThrow(); refresh() }
     fun block(post: SocialPost) = mutate("social_person_blocked", SocialMessage.BLOCKED) { repository.block(post.author.id).getOrThrow(); refresh() }
@@ -410,7 +411,20 @@ sealed interface ConnectionEffect {
     fun inviteToEvent(event:SocialEvent,person:SocialPerson?)=mutate("social_event_invitation_sent"){repository.inviteToEvent(event.id,person?.id).getOrThrow()}
     fun connect(person:SocialPerson)=mutate("social_connection_requested"){repository.connect(person.id).getOrThrow();refresh()}
     fun acceptConnection(connectionId:String)=mutate("social_connection_accepted"){repository.accept(connectionId).getOrThrow();refresh()}
-    fun removeConnection(connectionId:String)=mutate("social_connection_removed"){repository.removeConnection(connectionId).getOrThrow();refresh()}
+    fun removeConnection(connectionId: String) = mutate("social_connection_removed") {
+        removeConnectionAndRefresh(connectionId)
+    }
+    fun disconnectProfile(connectionId: String, onRemoved: () -> Unit, feedback: (Boolean) -> Unit) = mutate("social_connection_removed", feedback = feedback) {
+        removeConnectionAndRefresh(connectionId)
+        onRemoved()
+    }
+    private suspend fun removeConnectionAndRefresh(connectionId: String) {
+        repository.removeConnection(connectionId).getOrThrow()
+        mutableState.update { state -> state.copy(
+            home = state.home.copy(connections = state.home.connections.filterNot { it.connectionId == connectionId }),
+        ) }
+        refresh()
+    }
     fun scannerOpened() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "connection_qr_scanner")))
     fun inviteByLink() = viewModelScope.launch {
         repository.referralLink().fold(
@@ -547,7 +561,25 @@ sealed interface ConnectionEffect {
         },
     )))
     fun respondToInvitation(invitation:SocialInvitation,accept:Boolean)=mutate("social_invitation_responded"){repository.respondToInvitation(invitation,accept).getOrThrow();closeTarget();refresh()}
-    private fun mutate(event: String, success: SocialMessage = SocialMessage.ACTION_COMPLETE, block: suspend () -> Unit) = viewModelScope.launch { runCatching { block() }.onSuccess { messages.emit(success); analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "success"))) }.onFailure { Log.w("SocialViewModel", "$event failed (${it.javaClass.simpleName})"); messages.emit(SocialMessage.ACTION_FAILED); analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "failure"))) } }
+    private fun mutate(
+        event: String,
+        success: SocialMessage = SocialMessage.ACTION_COMPLETE,
+        feedback: ((Boolean) -> Unit)? = null,
+        block: suspend () -> Unit,
+    ) = viewModelScope.launch {
+        runCatching { block() }.onSuccess {
+            feedback?.invoke(true)
+            messages.emit(success)
+            analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "success")))
+        }.onFailure { error ->
+            if (error is CancellationException) throw error
+            val socialError = error as? SocialException
+            Log.w("SocialViewModel", "$event failed (type=${error.javaClass.simpleName}, status=${socialError?.httpStatus}, reason=${socialError?.reason})")
+            feedback?.invoke(false)
+            messages.emit(SocialMessage.ACTION_FAILED)
+            analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "failure")))
+        }
+    }
 
     private companion object {
         val CONNECTION_RESULTS = setOf("requested", "already_pending", "incoming_pending", "already_connected", "self")

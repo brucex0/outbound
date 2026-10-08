@@ -33,6 +33,7 @@ interface SocialRepository {
     suspend fun accept(connectionId: String): Result<Unit>
     suspend fun removeConnection(connectionId: String): Result<Unit>
     suspend fun setGroupMembership(groupId: String, joined: Boolean): Result<Unit>
+    suspend fun reportPerson(personId: String, reason: ReportReason): Result<Unit>
     suspend fun reportPost(postId: String, reason: ReportReason): Result<Unit>
     suspend fun deletePost(postId: String): Result<Unit>
     suspend fun block(personId: String): Result<Unit>
@@ -144,6 +145,7 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun accept(connectionId: String) = authenticated { apiCall { api.accept(it, connectionId) } }
     override suspend fun removeConnection(connectionId: String) = authenticated { apiCall { api.removeConnection(it, connectionId) } }
     override suspend fun setGroupMembership(groupId: String, joined: Boolean) = authenticated { auth -> apiCall { if (joined) api.joinGroup(auth, groupId) else api.leaveGroup(auth, groupId) } }
+    override suspend fun reportPerson(personId: String, reason: ReportReason) = authenticated { apiCall { api.reportPost(it, ReportBody("user", personId, reason.wireValue)) } }
     override suspend fun reportPost(postId: String, reason: ReportReason) = authenticated { apiCall { api.reportPost(it, ReportBody("post", postId, reason.wireValue)) } }
     override suspend fun deletePost(postId: String) = authenticated { apiCall { api.deletePost(it, postId) } }
     override suspend fun block(personId: String) = authenticated { apiCall { api.block(it, personId) } }

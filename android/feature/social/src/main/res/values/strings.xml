@@ -164,4 +164,8 @@
     <string name="social_upcoming_attendees">%1$d going</string>
     <string name="social_upcoming_empty">No upcoming activities yet.</string>
     <string name="social_upcoming_meetup">Meet up or join anywhere</string>
+    <string name="social_disconnect">Disconnect</string>
+    <string name="social_report_person">Report</string>
+    <string name="social_profile_action_complete">Done</string>
+    <string name="social_profile_action_failed">Could not complete the action. Try again.</string>
 </resources>

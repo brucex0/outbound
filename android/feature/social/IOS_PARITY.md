@@ -9,6 +9,13 @@
 - Android connection QR flow: `src/main/kotlin/com/plainstride/outbound/feature/social/ConnectionQrScreens.kt`
 - Android avatar loading: `src/main/kotlin/com/plainstride/outbound/feature/social/SocialAvatar.kt`
 
+## Profile Connection Actions
+
+- Profiles opened from feeds, groups, connections, or QR codes resolve relationship metadata against the loaded connections list instead of treating a share-safe author without metadata as unconnected.
+- Accepted connections show visible Disconnect and Report actions. Disconnect requires confirmation and closes the profile only after success; Report requires a reason and submits a `user` report through the existing safety endpoint. Results use transient feedback.
+- Actions reuse `social_connection_removed` and `social_content_reported` with only success/failure; person IDs and report reasons stay out of analytics.
+- Manual reference checks: open the same accepted person from a feed, group member list, connections, and QR code; confirm no Connect action; cancel/confirm disconnect; submit a report and verify transient feedback; keep incoming accept/decline and unconnected Connect behavior.
+
 ## Home Surface
 
 - Social uses a persistent, text-only Feed, People, Groups, and Routes selector at the top of the page, matching iOS placement. The 44 dp row includes selected-state color, accessible labels, action badges, and parity tab analytics. A runner without accepted connections lands on People; otherwise Social opens Feed. An explicit tab choice remains selected while the task stays alive.

@@ -164,4 +164,8 @@
     <string name="social_upcoming_attendees">参加：%1$d 人</string>
     <string name="social_upcoming_empty">暂时没有即将开始的活动。</string>
     <string name="social_upcoming_meetup">见面或随地参与</string>
+    <string name="social_disconnect">解除好友关系</string>
+    <string name="social_report_person">举报</string>
+    <string name="social_profile_action_complete">操作已完成</string>
+    <string name="social_profile_action_failed">操作未完成，请重试。</string>
 </resources>

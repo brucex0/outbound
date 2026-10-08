@@ -164,4 +164,8 @@
     <string name="social_upcoming_attendees">Asistentes: %1$d</string>
     <string name="social_upcoming_empty">Aún no hay actividades próximas.</string>
     <string name="social_upcoming_meetup">Queda o únete desde donde quieras</string>
+    <string name="social_disconnect">Desconectar</string>
+    <string name="social_report_person">Reportar</string>
+    <string name="social_profile_action_complete">Listo</string>
+    <string name="social_profile_action_failed">No se pudo completar la acción. Inténtalo de nuevo.</string>
 </resources>

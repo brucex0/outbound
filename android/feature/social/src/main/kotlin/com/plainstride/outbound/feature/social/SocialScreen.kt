@@ -230,14 +230,17 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
         onClose = { scannerOpen = false },
     )
     if (state.connectionProfileLoading) ConnectionProfileLoadingScreen()
-    state.selectedProfile?.let { person ->
+    state.selectedProfile?.let { selected ->
+        val person = selected.withConnection(state.home.connections)
+        val feedback = profileActionFeedback()
         ProfileScreen(
             person = person,
+            report = { viewModel.reportPerson(person, it, feedback) },
             posts = state.home.posts.filter { it.author.id == person.id },
             close = viewModel::closeProfile,
             connect = { if (state.connectionProfileCode != null) viewModel.connectFromConnectionCode() else viewModel.connect(person) },
             accept = { person.connectionId?.let(viewModel::acceptConnection) },
-            remove = { person.connectionId?.let(viewModel::removeConnection) },
+            remove = { person.connectionId?.let { viewModel.disconnectProfile(it, viewModel::closeProfile, feedback) } },
             isCurrentUser = state.connectionProfileIsSelf,
             isProcessing = state.connectionRequestLoading,
             openActivity = { post ->
@@ -410,13 +413,16 @@ fun SocialProfileDestination(
         ) { padding -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
         return
     }
+    val resolvedPerson = person.withConnection(state.home.connections)
+    val feedback = profileActionFeedback()
     ProfileScreen(
-        person = person,
+        person = resolvedPerson,
+        report = { viewModel.reportPerson(resolvedPerson, it, feedback) },
         posts = state.home.posts.filter { it.author.id == person.id },
         close = onBack,
         connect = { viewModel.connect(person) },
-        accept = { person.connectionId?.let(viewModel::acceptConnection) },
-        remove = { person.connectionId?.let(viewModel::removeConnection) },
+        accept = { resolvedPerson.connectionId?.let(viewModel::acceptConnection) },
+        remove = { resolvedPerson.connectionId?.let { viewModel.disconnectProfile(it, onBack, feedback) } },
         isCurrentUser = false,
         isProcessing = state.connectionRequestLoading,
         useDialog = false,
@@ -1726,6 +1732,7 @@ internal fun JsonElement?.routeCoordinates(): List<MapCoordinate> {
 @Composable
 private fun ProfileScreen(
     person: SocialPerson,
+    report: (ReportReason) -> Unit,
     posts: List<SocialPost>,
     close: () -> Unit,
     connect: () -> Unit,
@@ -1736,7 +1743,9 @@ private fun ProfileScreen(
     useDialog: Boolean = true,
     openActivity: (SocialPost) -> Unit,
 ) {
-    var confirmsRemoval by remember { mutableStateOf(false) }
+    var confirmsRemoval by remember(person.id) { mutableStateOf(false) }
+    var showsReport by remember(person.id) { mutableStateOf(false) }
+    var reportReason by remember(person.id) { mutableStateOf(ReportReason.OTHER) }
     val profileContent: @Composable () -> Unit = {
         Scaffold(
             contentWindowInsets = WindowInsets.safeDrawing,
@@ -1756,8 +1765,9 @@ private fun ProfileScreen(
                                 TextButton(remove, enabled = !isProcessing) { Text(stringResource(R.string.social_decline)) }
                                 TextButton(accept, enabled = !isProcessing) { Text(stringResource(R.string.social_accept)) }
                             }
-                            person.relationship in setOf("accepted", "connected") -> IconButton({ confirmsRemoval = true }) {
-                                Icon(Icons.Outlined.MoreVert, stringResource(R.string.social_profile_actions))
+                            person.relationship in setOf("accepted", "connected") -> {
+                                TextButton({ confirmsRemoval = true }, enabled = !isProcessing) { Text(stringResource(R.string.social_disconnect)) }
+                                TextButton({ showsReport = true }, enabled = !isProcessing) { Text(stringResource(R.string.social_report_person)) }
                             }
                         }
                     },
@@ -1821,6 +1831,18 @@ private fun ProfileScreen(
     } else {
         profileContent()
     }
+    if (showsReport) AlertDialog(
+        onDismissRequest = { showsReport = false },
+        title = { Text(stringResource(R.string.social_report_person)) },
+        text = { Column { ReportReason.entries.forEach { option ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(reportReason == option, { reportReason = option })
+                Text(reportReasonLabel(option))
+            }
+        } } },
+        confirmButton = { TextButton({ report(reportReason); showsReport = false }) { Text(stringResource(R.string.social_report_person)) } },
+        dismissButton = { TextButton({ showsReport = false }) { Text(stringResource(R.string.social_cancel)) } },
+    )
     if (confirmsRemoval) AlertDialog(
         onDismissRequest = { confirmsRemoval = false },
         title = { Text(stringResource(R.string.social_remove_connection_confirmation_title)) },
@@ -2033,3 +2055,22 @@ private fun durationText(start: java.time.Instant?, end: java.time.Instant, reso
     }
 }
 @Composable private fun PersonPickerDialog(title:String,people:List<SocialPerson>,close:()->Unit,confirm:(SocialPerson)->Unit){var selected by remember{mutableStateOf<SocialPerson?>(null)};AlertDialog(onDismissRequest=close,title={Text(title)},text={if(people.isEmpty())Text(stringResource(R.string.social_connections_empty))else LazyColumn{items(people,key=SocialPerson::id){person->Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){RadioButton(selected?.id==person.id,{selected=person});Text(person.displayName)}}}},confirmButton={TextButton({selected?.let(confirm)},enabled=selected!=null){Text(stringResource(R.string.social_invite))}},dismissButton={TextButton(close){Text(stringResource(R.string.social_done))}})}
+
+// Feed/group authors may omit relationship metadata; the connections list owns it.
+private fun SocialPerson.withConnection(connections: List<SocialPerson>): SocialPerson {
+    val connection = connections.firstOrNull { it.id == id } ?: this
+    return copy(
+        relationshipDetails = connection.relationshipDetails,
+        relationship = connection.relationshipDetails?.status ?: connection.relationship,
+        connectionId = connection.relationshipDetails?.id ?: connection.connectionId,
+        connectionDirection = connection.relationshipDetails?.direction ?: connection.connectionDirection,
+    )
+}
+
+@Composable
+private fun profileActionFeedback(): (Boolean) -> Unit {
+    val context = LocalContext.current
+    return { success ->
+        Toast.makeText(context, if (success) R.string.social_profile_action_complete else R.string.social_profile_action_failed, Toast.LENGTH_SHORT).show()
+    }
+}
