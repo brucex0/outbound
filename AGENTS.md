@@ -22,6 +22,12 @@ Outbound has shipped publicly but with very few users. Do not spend implementati
 
 - Show transient API results, such as save success or failure, with temporary toast-style feedback instead of inserting status text into the page layout. Use inline status only when the result must remain visible or requires an action from the user.
 
+## Error Diagnostics
+
+- When adding or changing error handling, emit a useful diagnostic for each handled failure. Include the operation and safe technical context such as HTTP status, network error code, or decoding path so device logs can identify the failure.
+- Do not log credentials, tokens, request or response bodies, personal data, or user-entered content. Keep expected cancellation and other normal control flow out of error logs.
+- Do not silently swallow unexpected errors; if an error is intentionally ignored, document why it is expected.
+
 ## Analytics Instrumentation
 
 - For every new feature or behavior change, add or update the appropriate analytics instrumentation in the same change. Verify that event names, properties, and privacy handling remain consistent with the product analytics contract.
