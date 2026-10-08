@@ -106,6 +106,7 @@ Social has four destinations after consolidation:
 - Groups opens to `Your groups`, with pending invitations and join requests requiring the viewer's action first.
 - A compact `Discover` section follows for public community Groups; search by name and city expands into a paginated directory.
 - `Your groups` orders unresolved actions first, then recent Group activity; there is no primary Group concept.
+- iOS and Android Group list cards show the enclosed private Group mark for trusted-private Groups and the people mark for community Groups.
 - Cards use plain badges such as `Private`, `Featured`, or `Verified`; never infer authority from those badges.
 - One Create/Add action says `Create Group` everywhere in Social.
 - The Groups badge combines unresolved invitations, owner/admin join requests, and unread notices. It does not mirror the chronological notification inbox.

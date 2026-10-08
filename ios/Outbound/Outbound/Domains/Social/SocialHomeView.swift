@@ -1650,6 +1650,9 @@ private struct SocialGroupsView: View {
                 OutboundCard { groupSummary(group, trailing: "chevron.right") }
             }
             .buttonStyle(.plain)
+            .simultaneousGesture(TapGesture().onEnded {
+                Task { await analyticsManager?.track(.init(.groupOpened, properties: [.entrySource: .string("groups"), .selectionType: .string(group.trustPolicy == "community" ? "community" : "private"), .participantCountBucket: .string(ProductAnalyticsBucket.count(group.memberCount))])) }
+            })
         } else {
             NavigationLink { GroupDirectoryDetailView(groupID: group.id) } label: {
                 OutboundCard {
@@ -1665,11 +1668,25 @@ private struct SocialGroupsView: View {
                 }
             }
             .buttonStyle(.plain)
+            .simultaneousGesture(TapGesture().onEnded {
+                Task { await analyticsManager?.track(.init(.groupOpened, properties: [.entrySource: .string("groups"), .selectionType: .string(group.trustPolicy == "community" ? "community" : "private"), .participantCountBucket: .string(ProductAnalyticsBucket.count(group.memberCount))])) }
+            })
         }
     }
 
     private func groupSummary(_ group: SocialGroupDTO, trailing: String? = nil) -> some View {
-        HStack {
+        HStack(spacing: 12) {
+            Group {
+                if group.trustPolicy == "community" {
+                    CommunityGroupMark()
+                } else {
+                    GroupMark()
+                }
+            }
+            .frame(width: 24, height: 24)
+            .foregroundStyle(OutboundPalette.companion)
+            .accessibilityHidden(true)
+
             VStack(alignment: .leading, spacing: 3) {
                 Text(groupDisplayName(group)).font(.headline)
                 Text([group.groupType == "private" ? String(localized: "Private") : group.city, String(localized: "\(group.memberCount) members")].compactMap { $0 }.joined(separator: " · "))
