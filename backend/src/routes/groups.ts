@@ -15,6 +15,7 @@ import {
   assertNoBlockedPair,
   assertNoBlockedGroupMember,
   groupPayload,
+  groupInvitationPreview,
   groupWeekInterval,
   createGroup,
   GroupDomainError,
@@ -181,9 +182,15 @@ router.get("/:id", async (c) => {
     const group = await getPrismaClient().socialGroup.findUnique({ where: { id: c.req.param("id") }, select: { trustPolicy: true, visibility: true, lifecycle: true, joinPolicy: true } });
     if (!group || group.lifecycle === "archived") return c.json({ error: "Group not found." }, 404);
     const member = await getPrismaClient().groupMember.findUnique({ where: { groupId_userId: { groupId: c.req.param("id"), userId: user.id } }, select: { status: true } });
-    const invitation = await getPrismaClient().groupInvitation.findFirst({ where: { groupId: c.req.param("id"), recipientId: user.id, status: "pending" }, select: { id: true } });
-    if (group.trustPolicy === "trusted_private" && member?.status !== "active") return c.json({ error: "Group not found." }, 404);
-    if (group.visibility === "unlisted" && member?.status !== "active" && !invitation) return c.json({ error: "Group not found." }, 404);
+    if (member?.status !== "active") {
+      const invitationId = c.req.query("invitationId");
+      const preview = await groupInvitationPreview(c.req.param("id"), user.id, invitationId);
+      if (preview) return c.json(preview);
+      if (invitationId || group.trustPolicy === "trusted_private" || group.visibility === "unlisted") {
+        console.warn("[socialGroup] detail unavailable", { operation: "load invitation preview", status: 404 });
+        return c.json({ error: "This Group invitation is unavailable.", code: "invitation_unavailable" }, 404);
+      }
+    }
     await assertNoBlockedGroupMember(c.req.param("id"), user.id);
     const payload = await groupPayload(c.req.param("id"), user.id, true);
     return payload ? c.json(payload) : c.json({ error: "Group not found." }, 404);
@@ -338,7 +345,10 @@ router.post("/invitations/:invitationId/accept", async (c) => {
       await prisma.socialNotification.deleteMany({ where: { recipientId: user.id, type: "groupInvitation", objectId: invitation.id } });
       return c.json(await groupPayload(invitation.groupId, user.id, true));
     }
-    if (invitation.status !== "pending") return c.json({ error: "This Group invitation is no longer active." }, 409);
+    if (invitation.status !== "pending" || invitation.group.lifecycle === "archived") {
+      console.warn("[socialGroup] invitation unavailable", { operation: "accept group invitation", status: 409 });
+      return c.json({ error: "This Group invitation is no longer active." }, 409);
+    }
     if (invitation.group.trustPolicy === "trusted_private") await assertAcceptedConnection(invitation.senderId, user.id);
     else await assertNoBlockedPair(invitation.senderId, user.id);
     if (invitation.expiresAt && invitation.expiresAt <= new Date()) {
@@ -654,8 +664,12 @@ async function requireGroupUser(c: Context<AppEnv>) {
 }
 
 function groupError(c: Context<AppEnv>, error: unknown) {
-  if (error instanceof GroupDomainError) return c.json({ error: error.message, code: error.code }, error.code === "not_a_member" ? 403 : 409);
-  console.error("[socialGroup] request failed", error);
+  if (error instanceof GroupDomainError) {
+    const status = error.code === "not_a_member" ? 403 : 409;
+    console.warn("[socialGroup] request rejected", { operation: `${c.req.method} ${c.req.routePath}`, status, code: error.code });
+    return c.json({ error: error.message, code: error.code }, status);
+  }
+  console.error("[socialGroup] request failed", { operation: `${c.req.method} ${c.req.routePath}`, status: 500, errorType: error instanceof Error ? error.name : "unknown" });
   return c.json({ error: "Group operation failed." }, 500);
 }
 

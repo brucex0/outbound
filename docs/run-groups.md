@@ -369,3 +369,13 @@ Verification is build-only for this release: backend TypeScript, iOS phone and W
 - Organization verification operations, waiver capture, affiliation lookup, and liability records.
 - Automated moderation classification and a full operator console.
 - Ownerless self-service recovery.
+
+## Invitation Preview Before Joining
+
+- Both iOS and Android open an invitation card or its inbox review action into the same preview: Group name, Private/Community badge, active member count, organizer, optional About text, inviter, and Accept/Decline actions.
+- `GET /v1/social/groups/:id` returns `invitationPreview: true` and the viewer's `pendingInvitation` for an eligible non-member with a pending, unexpired direct invitation. Invitation entry points send `invitationId` as a query parameter so revoked public-Group invitations cannot fall through to ordinary public detail. An already-active member receives full detail.
+- The preview has a separate explicit database selection. It never queries or returns the member directory, workouts, commitments, weekly progress, Cheers, history, notices, or scheduled activities. Sender eligibility and Group block checks still apply. Archived Groups cannot be previewed or joined through an invitation.
+- Both clients show a loading state while validating access. Network failures offer Try again; expired, cancelled, blocked, disconnected, or otherwise inaccessible invitations show the localized unavailable state. Accept/Decline are disabled while responding. A failed decision gives transient feedback and revalidates access.
+- Acceptance replaces the preview with full Group detail in place; declining returns to the previous screen. iOS holds previews separately from its membership/detail cache so previewing does not add a Group to the viewer's joined Groups.
+- All preview copy is localized in English, Spanish, and Simplified Chinese. Both clients emit `feature_exposed` with `feature = group_invitation_preview`; decision events retain `group_invitation_accepted` / `group_invitation_declined` with `entry_source = group_invitation_preview` and only a coarse member-count bucket on acceptance. Failed decisions use `group_operation_failed` with the bounded source and `api_unavailable` category. No Group, invitation, person identifiers, names, descriptions, or invitation contents enter analytics.
+- No schema migration or database rebuild is required. Deploy the backend change before distributing either updated client.

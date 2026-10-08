@@ -261,6 +261,40 @@ export async function refreshWeekState(tx: Prisma.TransactionClient, weekId: str
   return week;
 }
 
+// Invitation previews deliberately select only Group identity and aggregate membership.
+// Never reuse the trusted-private projection: accepting is the workout-sharing boundary.
+export async function groupInvitationPreview(groupId: string, viewerId: string, invitationId?: string) {
+  const prisma = getPrismaClient();
+  const invitation = await prisma.groupInvitation.findFirst({
+    where: { id: invitationId, groupId, recipientId: viewerId, status: "pending", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+    select: {
+      id: true, groupId: true, status: true, createdAt: true, expiresAt: true,
+      senderId: true, sender: { select: shareSafeMemberSelect },
+      group: { select: {
+        id: true, name: true, description: true, trustPolicy: true, visibility: true,
+        joinPolicy: true, lifecycle: true, owner: { select: shareSafeMemberSelect },
+        _count: { select: { members: { where: { status: "active" } } } },
+      } },
+    },
+  });
+  if (!invitation || invitation.group.lifecycle === "archived") return null;
+  if (invitation.group.trustPolicy === "trusted_private") await assertAcceptedConnection(invitation.senderId, viewerId);
+  else await assertNoBlockedPair(invitation.senderId, viewerId);
+  await assertNoBlockedGroupMember(groupId, viewerId);
+  const group = invitation.group;
+  return {
+    id: group.id, name: group.name, description: group.description,
+    trustPolicy: group.trustPolicy, visibility: group.visibility, joinPolicy: group.joinPolicy,
+    lifecycle: group.lifecycle, owner: group.owner ? compactPerson(group.owner) : null,
+    memberCount: group._count.members, invitationPreview: true, loadedDetailPayload: true,
+    pendingInvitation: {
+      id: invitation.id, groupId, group: { id: group.id, name: group.name },
+      sender: compactPerson(invitation.sender), status: invitation.status,
+      createdAt: invitation.createdAt, expiresAt: invitation.expiresAt,
+    },
+  };
+}
+
 export async function groupPayload(groupId: string, viewerId: string, includeHistory = false) {
   const prisma = getPrismaClient();
   const socialGroup = await prisma.socialGroup.findUnique({ where: { id: groupId }, include: { owner: { select: shareSafeMemberSelect }, members: { where: { status: "active" }, include: { user: { select: shareSafeMemberSelect } }, orderBy: { joinedAt: "asc" } } } });
