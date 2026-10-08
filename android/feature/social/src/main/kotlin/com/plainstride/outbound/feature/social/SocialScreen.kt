@@ -32,6 +32,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.Brush
@@ -44,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -65,7 +68,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
     var selectedTab by rememberSaveable { mutableStateOf(SocialFeatureTab.FEED) }
     var hasSelectedSocialTab by rememberSaveable { mutableStateOf(false) }
     var routeImportRequest by rememberSaveable { mutableStateOf(0) }
-    var createGroup by rememberSaveable { mutableStateOf(false) };var inviteGroup by remember { mutableStateOf<GroupSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var groupActivity by remember { mutableStateOf<GroupSummary?>(null) };var connectionsOpen by remember { mutableStateOf(false) }
+    var createGroup by rememberSaveable { mutableStateOf(false) };var inviteGroup by remember { mutableStateOf<GroupSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var groupActivity by remember { mutableStateOf<GroupSummary?>(null) };var connectionsOpen by remember { mutableStateOf(false) };var addConnectionFlow by rememberSaveable { mutableStateOf(false) }
     var scannerOpen by rememberSaveable { mutableStateOf(false) }
     var scannerFeedback by remember { mutableStateOf<String?>(null) }
     val feedListState = rememberLazyListState()
@@ -118,6 +121,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
     LaunchedEffect(targetType,targetId,targetEntrySource,state.loading){
         if (!state.loading && targetType == "connections") {
             connectionsOpen = true
+            addConnectionFlow = false
             viewModel.trackConnectionsOpened(targetEntrySource)
             onTargetConsumed()
         }
@@ -163,7 +167,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             if (tab == SocialFeatureTab.ROUTES) onRoutesTabSelected()
             if (tab == SocialFeatureTab.GROUPS) { viewModel.refresh(); viewModel.refreshGroupDirectory() }
             viewModel.trackSocialTabSelected(tab.analyticsValue)
-        }, inboxCount, unitSystem, viewModel::refresh, viewModel::search, { person -> viewModel.trackProfileOpened(); onOpenSharedProfile(person) }, { connectionsOpen = true; viewModel.trackConnectionsOpened("social_home_preview") }, viewModel::openGroup, viewModel::openComments, { post -> viewModel.openActivityDetail(post); onOpenSharedActivity(post.id) }, { type, id -> if (type == "event") onOpenSharedEvent(id, "social_upcoming") else viewModel.openTarget(type, id) }, onConditions, onCommunity, onNotifications, { routeImportRequest += 1 }, viewModel::toggleCheer, { group ->
+        }, inboxCount, unitSystem, viewModel::refresh, viewModel::search, { person -> viewModel.trackProfileOpened(); onOpenSharedProfile(person) }, { connectionsOpen = true; addConnectionFlow = false; viewModel.trackConnectionsOpened("social_home_preview") }, { connectionsOpen = true; addConnectionFlow = true; viewModel.search(""); viewModel.trackConnectionsOpened("social_create_menu") }, viewModel::openGroup, viewModel::openComments, { post -> viewModel.openActivityDetail(post); onOpenSharedActivity(post.id) }, { type, id -> if (type == "event") onOpenSharedEvent(id, "social_upcoming") else viewModel.openTarget(type, id) }, onConditions, onCommunity, onNotifications, { routeImportRequest += 1 }, viewModel::toggleCheer, { group ->
             viewModel.joinGroup(group)
         }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, communityRoutesContent, modifier, viewModel = viewModel, feedListState = feedListState, routeImportRequest = routeImportRequest, notificationAccessAvailable = notificationAccessAvailable, onEnableNotifications = onEnableNotifications)
     } else {
@@ -188,18 +192,19 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
     }
     if (connectionsOpen) ConnectionsDialog(
         state = state,
+        startsAdding = addConnectionFlow,
         search = viewModel::search,
         openProfile = viewModel::openProfile,
         reviewInvitation = { invitation -> viewModel.openTarget("invitation", invitation.id) },
         openGroupInvitation = { groupId -> viewModel.openTarget("group", groupId, "invitation") },
         scanQr = { scannerFeedback = null; scannerOpen = true },
-        showQr = { connectionsOpen = false; onMyInvite() },
+        showQr = { connectionsOpen = false; addConnectionFlow = false; onMyInvite() },
         inviteByLink = viewModel::inviteByLink,
         acceptRequest = { person -> person.connectionId?.let(viewModel::acceptConnection) },
         declineRequest = { person -> person.connectionId?.let(viewModel::removeConnection) },
         cancelRequest = { person -> person.connectionId?.let(viewModel::removeConnection) },
         loadMoreConnections = viewModel::loadMoreConnections,
-        close = { connectionsOpen = false },
+        close = { connectionsOpen = false; addConnectionFlow = false; viewModel.search("") },
     )
     if (scannerOpen) ConnectionQrScannerScreen(
         isProcessing = state.connectionProfileLoading,
@@ -440,7 +445,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable private fun SocialScreen(state: SocialUiState, selectedTab: SocialFeatureTab, selectTab: (SocialFeatureTab) -> Unit, inboxCount: Int, unitSystem: MeasurementUnitSystem, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, requestRouteImport:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, communityRoutesContent: @Composable (Int) -> Unit, modifier: Modifier, viewModel: SocialViewModel, feedListState: LazyListState, routeImportRequest:Int, notificationAccessAvailable: Boolean, onEnableNotifications: () -> Unit) {
+@Composable private fun SocialScreen(state: SocialUiState, selectedTab: SocialFeatureTab, selectTab: (SocialFeatureTab) -> Unit, inboxCount: Int, unitSystem: MeasurementUnitSystem, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, addConnection: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, requestRouteImport:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, communityRoutesContent: @Composable (Int) -> Unit, modifier: Modifier, viewModel: SocialViewModel, feedListState: LazyListState, routeImportRequest:Int, notificationAccessAvailable: Boolean, onEnableNotifications: () -> Unit) {
     var safetyPost by remember { mutableStateOf<SocialPost?>(null) }
     var blockConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
     var deletionConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
@@ -484,7 +489,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.social_add_connection)) },
                         leadingIcon = { Icon(Icons.Outlined.PersonAdd, null) },
-                        onClick = { createMenuExpanded = false; selectTab(SocialFeatureTab.PEOPLE) },
+                        onClick = { createMenuExpanded = false; addConnection() },
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.social_group_create)) },
@@ -737,6 +742,7 @@ fun SocialConnectionsPreview(
 @Composable
 private fun ConnectionsDialog(
     state: SocialUiState,
+    startsAdding: Boolean,
     search: (String) -> Unit,
     openProfile: (SocialPerson) -> Unit,
     reviewInvitation: (SocialInvitation) -> Unit,
@@ -751,10 +757,19 @@ private fun ConnectionsDialog(
     close: () -> Unit,
 ) = Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
     var addMenuExpanded by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    LaunchedEffect(startsAdding) {
+        if (startsAdding) {
+            withFrameNanos { }
+            focusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.social_connections), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(stringResource(if (startsAdding) R.string.social_add_connection else R.string.social_connections), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Box {
                     IconButton({ addMenuExpanded = true }, Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)) {
                         Icon(Icons.Outlined.Add, stringResource(R.string.social_add_connection))
@@ -779,7 +794,7 @@ private fun ConnectionsDialog(
                 }
                 TextButton(close) { Text(stringResource(R.string.social_done)) }
             }
-            OutlinedTextField(state.search, search, Modifier.fillMaxWidth(), singleLine = true, label = { Text(stringResource(R.string.social_search_people)) }, leadingIcon = { Icon(Icons.Outlined.Search, null) })
+            OutlinedTextField(state.search, search, Modifier.fillMaxWidth().focusRequester(focusRequester), singleLine = true, label = { Text(stringResource(R.string.social_search_people)) }, leadingIcon = { Icon(Icons.Outlined.Search, null) })
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (state.searchResults.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_search_people)) }; items(state.searchResults, key = SocialPerson::id) { PersonRow(it) { openProfile(it) } } }
                 val incoming = state.home.connections.filter { it.relationship == "pending" && it.connectionDirection == "incoming" }
