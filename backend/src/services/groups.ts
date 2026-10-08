@@ -452,7 +452,9 @@ async function communityGroupPayload(group: any, viewerId: string) {
       notices: group.noticesEnabled,
       scheduledActivities: group.scheduledActivitiesEnabled,
     },
-    role: viewerMember?.role ?? null,
+    // The owner is authoritative even if a stale/malformed membership row is
+    // missing from the active-member projection.
+    role: viewerMember?.role ?? (group.ownerId === viewerId ? "owner" : null),
     owner: group.owner ? compactPerson(group.owner) : null,
     memberCount: group.members.length,
     memberLimit: group.memberLimit,

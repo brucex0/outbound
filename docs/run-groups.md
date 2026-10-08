@@ -64,6 +64,7 @@ One entity does not mean one data-access policy. Every Group has a server-owned 
 | Joining | Invitation only | Invitation, request, or open |
 | Member eligibility | Accepted connections, block-free | Any eligible account, block-free |
 | Ordinary workout detail | Visible to active members | Never returned |
+| Member directory | Visible to active members | Names and member details are hidden from non-members; aggregate member count remains visible |
 | Weekly theme and contributions | Allowed | Disabled |
 | Directory discovery | Never | Optional |
 | Notices and scheduled activities | Optional | Optional |
