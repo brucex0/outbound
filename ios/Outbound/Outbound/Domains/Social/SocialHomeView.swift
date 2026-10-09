@@ -1809,6 +1809,7 @@ struct ActivityEventDetailView: View {
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     @EnvironmentObject private var liveGroupStore: LiveGroupStore
+    @EnvironmentObject private var groupStore: GroupStore
     let run: ActivityEventDTO
     var entrySource = "social_upcoming"
     @State private var detail: ActivityEventDetailDTO?
@@ -1822,6 +1823,9 @@ struct ActivityEventDetailView: View {
     @State private var isLocationPermissionPromptPresented = false
     @State private var isActivityStartPendingPermission = false
     @State private var isEditPresented = false
+    @State private var isCancelConfirmationPresented = false
+    @State private var isCancelling = false
+    @State private var cancellationToast: String?
     @StateObject private var startLocationManager = LocationManager()
     @State private var showAllParticipants = false
     private var results: ActivityEventResultDTO? { socialStore.resultsByActivityEventID[run.id] }
@@ -1838,8 +1842,21 @@ struct ActivityEventDetailView: View {
     }
     private var eventEndsAt: Date? { detail?.endsAt ?? run.endsAt }
 
+    private var isCancelled: Bool { (detail?.status ?? run.status) == "cancelled" }
+    private var canCancelActivity: Bool {
+        isCreator && (detail?.status ?? run.status) == "scheduled"
+            && (detail?.startsAt ?? run.startsAt) > Date()
+    }
+
     var body: some View {
         List {
+            if isCancelled {
+                Section {
+                    Label(String(localized: "social.event.cancelled", table: "ActivityCancellation"), systemImage: "calendar.badge.minus")
+                    Text(String(localized: "social.event.cancelled.detail", table: "ActivityCancellation"))
+                        .foregroundStyle(.secondary)
+                }
+            }
             Section {
                 LabeledContent("Created by", value: run.creator.displayName)
                 LabeledContent("When", value: run.startsAt.formatted(date: .abbreviated, time: .shortened))
@@ -1924,7 +1941,7 @@ struct ActivityEventDetailView: View {
                     ForEach(showAllParticipants ? participants : Array(participants.prefix(3))) { participant in
                         participantRow(participant)
                     }
-                    if let results, results.status != "scheduled",
+                    if !isCancelled, let results, results.status != "scheduled",
                        detail?.participants?.contains(where: { $0.startedAt != nil && $0.person.id == AuthStore.currentUserId }) == true, detail?.currentUserOutcome == nil {
                         Button("I joined without recording") {
                             Task { _ = await socialStore.markActivityEventWithoutRecording(id: run.id) }
@@ -1943,7 +1960,7 @@ struct ActivityEventDetailView: View {
                     }
                 }
             }
-            if isCreator, !visiblePendingInvitations.isEmpty {
+            if !isCancelled, isCreator, !visiblePendingInvitations.isEmpty {
                 Section("Pending invitations") {
                     ForEach(visiblePendingInvitations) { invitation in
                         HStack(spacing: 12) {
@@ -1991,7 +2008,7 @@ struct ActivityEventDetailView: View {
                     .disabled(detail == nil)
                 }
 
-                if isCreator && (detail?.status ?? run.status) == "scheduled" {
+                if canCancelActivity {
                     Button {
                         selectedConnectionIDs.removeAll()
                         isConnectionPickerPresented = true
@@ -1999,16 +2016,48 @@ struct ActivityEventDetailView: View {
                         Label("Invite connections", systemImage: "person.badge.plus")
                     }
                 }
-                if let invitationURL = socialStore.latestInvitationURL {
+                if !isCancelled, let invitationURL = socialStore.latestInvitationURL {
                     ShareLink(item: String(localized: "Join me for a run on Plainstride: \(invitationURL.absoluteString)")) {
                         Label("Share invitation", systemImage: "square.and.arrow.up")
                     }
                 }
             }
+            if canCancelActivity {
+                Section {
+                    Button(role: .destructive) {
+                        isCancelConfirmationPresented = true
+                    } label: {
+                        Label(String(localized: "social.event.cancel", table: "ActivityCancellation"), systemImage: "calendar.badge.minus")
+                    }
+                    .disabled(isCancelling || detail == nil)
+                }
+            }
         }
         .navigationTitle(run.title)
+        .overlay(alignment: .top) {
+            if let cancellationToast {
+                Text(cancellationToast)
+                    .font(.subheadline.weight(.semibold))
+                    .padding(12)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.top, 8)
+            }
+        }
+        .task(id: cancellationToast) {
+            guard cancellationToast != nil else { return }
+            do { try await Task.sleep(for: .seconds(3)) } catch { return }
+            cancellationToast = nil
+        }
+        .alert(String(localized: "social.event.cancel.title", table: "ActivityCancellation"), isPresented: $isCancelConfirmationPresented) {
+            Button(String(localized: "social.event.cancel", table: "ActivityCancellation"), role: .destructive) {
+                cancelActivity()
+            }
+            Button(String(localized: "social.event.keep", table: "ActivityCancellation"), role: .cancel) {}
+        } message: {
+            Text(String(localized: "social.event.cancel.message", table: "ActivityCancellation"))
+        }
         .toolbar {
-            if isCreator && (detail?.status ?? run.status) == "scheduled" {
+            if canCancelActivity {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         isEditPresented = true
@@ -2315,6 +2364,28 @@ struct ActivityEventDetailView: View {
         }
     }
 
+    private func cancelActivity() {
+        guard !isCancelling else { return }
+        isCancelling = true
+        Task {
+            let updated = await socialStore.cancelActivityEvent(id: run.id)
+            await analyticsManager?.track(.init(.activityEventCancellationResult, properties: [
+                .entrySource: .string(entrySource),
+                .groupRunEnabled: .boolean(run.group != nil),
+                .result: .string(updated == nil ? "failure" : "success"),
+            ]))
+            if let updated {
+                detail = updated
+                cancellationToast = String(localized: "social.event.cancel.success", table: "ActivityCancellation")
+                await groupStore.refresh()
+            } else {
+                cancellationToast = String(localized: "social.event.cancel.failure", table: "ActivityCancellation")
+                if let current = await socialStore.activityEventDetail(id: run.id) { detail = current }
+            }
+            isCancelling = false
+        }
+    }
+
     private func deleteInvitation(_ invitation: ActivityEventPendingInvitationDTO) {
         deletingInvitationIDs.insert(invitation.id)
         Task {
@@ -2436,7 +2507,7 @@ private struct PastActivityEventRow: View {
                         ActivityEventContextIndicators(event: event)
                         Text(event.startsAt.formatted(date: .abbreviated, time: .shortened))
                             .font(.caption).foregroundStyle(.secondary)
-                        Text(event.status == "reconciling" ? String(localized: "Collecting participant results") : String(localized: "View shared results"))
+                        Text(event.status == "cancelled" ? String(localized: "social.event.cancelled", table: "ActivityCancellation") : event.status == "reconciling" ? String(localized: "Collecting participant results") : String(localized: "View shared results"))
                             .font(.caption.weight(.semibold)).foregroundStyle(OutboundPalette.companion)
                     }
                     Spacer()
@@ -2663,7 +2734,7 @@ struct SocialNotificationsView: View {
             SocialRunInvitationActionView(notification: notification)
         case .activityEvent:
             if let runID = notification.objectId,
-               let run = socialStore.state.upcomingRuns.first(where: { $0.id == runID }) {
+               let run = (socialStore.state.upcomingRuns + socialStore.state.pastEvents).first(where: { $0.id == runID }) {
                 ActivityEventDetailView(run: run)
             } else {
                 SocialNotificationDetailView(notification: notification)

@@ -98,7 +98,7 @@ enum NotificationPresentationPolicy {
             update(.connections)
         case "comment":
             update(.post)
-        case "invitationAccepted", "activityEventJoined":
+        case "invitationAccepted", "activityEventJoined", "activityEventCancelled":
             update(.activityEvent)
         case "groupInvitationAccepted", "groupOwnershipTransferred", "groupJoinRequestApproved", "groupJoinRequestDenied":
             update(.group)

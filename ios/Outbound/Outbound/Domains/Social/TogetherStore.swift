@@ -1079,6 +1079,29 @@ final class TogetherStore: ObservableObject {
         }
     }
 
+    func cancelActivityEvent(id: String) async -> ActivityEventDetailDTO? {
+        let generation = authGeneration
+        do {
+            let updated = try await api.cancelActivityEvent(id: id)
+            guard generation == authGeneration, activeUserID != nil else { return nil }
+            var pastEvents = state.pastEvents.filter { $0.id != id }
+            if var event = state.upcomingRuns.first(where: { $0.id == id }) {
+                event.status = "cancelled"
+                event.canParticipate = false
+                pastEvents.insert(event, at: 0)
+            }
+            state = TogetherResponseDTO(upcomingRuns: state.upcomingRuns.filter { $0.id != id }, pastEvents: pastEvents, groups: state.groups, posts: state.posts, nextFeedCursor: state.nextFeedCursor)
+            persist()
+            await refresh()
+            await refreshNotifications()
+            return updated
+        } catch {
+            guard !Self.isCancellation(error), generation == authGeneration else { return nil }
+            Self.logger.error("Social activity cancellation failed (\(Self.networkErrorCode(error), privacy: .public))")
+            return nil
+        }
+    }
+
     func updateActivityEvent(id: String, request: UpdateActivityEventRequestDTO) async -> ActivityEventDetailDTO? {
         if isUITestSeedData {
             return await activityEventDetail(id: id)

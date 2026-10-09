@@ -130,6 +130,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case groupArchived = "group_archived"
     case groupReactivated = "group_reactivated"
     case groupOperationFailed = "group_operation_failed"
+    case activityEventCancellationResult = "activity_event_cancellation_result"
     case activityEventDetailOpened = "activity_event_detail_opened"
     case activityEventLocationSelected = "activity_event_location_selected"
     case goalProgressReached = "goal_progress_reached"
@@ -473,6 +474,7 @@ enum ProductAnalyticsSchema {
         .groupArchived: [.participantCountBucket],
         .groupReactivated: [.participantCountBucket],
         .groupOperationFailed: [.sourceType, .errorCategory],
+        .activityEventCancellationResult: [.entrySource, .groupRunEnabled, .result],
         .activityEventDetailOpened: [.entrySource],
         .activityEventLocationSelected: [.sourceType],
         .goalProgressReached: [.activityType, .goalType, .progressPercent],

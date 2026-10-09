@@ -613,6 +613,10 @@ final class APIClient {
         try await post("/social/activity-events", body: request)
     }
 
+    func cancelActivityEvent(id: String) async throws -> ActivityEventDetailDTO {
+        try await post("/social/activity-events/\(id)/cancel", body: [String: String]())
+    }
+
     func updateActivityEvent(id: String, _ request: UpdateActivityEventRequestDTO) async throws -> ActivityEventDetailDTO {
         try await patch("/social/activity-events/\(id)", body: request)
     }

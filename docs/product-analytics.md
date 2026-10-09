@@ -113,6 +113,8 @@ Goal pause changes use `activity_configuration_changed` with `change_type=auto_s
 
 `activity_saved` may add coarse duration, distance, goal-completion, and photo-count buckets. Keep exact activity facts in the activity record, not general product analytics.
 
+Activity cancellation records `activity_event_cancellation_result` with bounded `entry_source`, `group_run_enabled`, and `result` (`success` or `failure`). Never include event IDs, titles, dates, invitee identities, or cancellation text.
+
 ### Feature Funnels
 
 | Feature | Recommended sequence |
