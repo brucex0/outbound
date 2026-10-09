@@ -19,6 +19,7 @@ struct ActiveSessionJournal {
     let activityEvent: ActivityEventLaunchContext?
     let liveGroupSessionID: String?
     let goalDistanceAdjustmentMeters: Double?
+    let runSimulation: RunSimulationState?
     let trackPoints: [JournalTrackPoint]
 
     init(
@@ -38,6 +39,7 @@ struct ActiveSessionJournal {
         activityEvent: ActivityEventLaunchContext? = nil,
         liveGroupSessionID: String? = nil,
         goalDistanceAdjustmentMeters: Double? = nil,
+        runSimulation: RunSimulationState? = nil,
         trackPoints: [JournalTrackPoint] = []
     ) {
         self.startedAt = startedAt
@@ -56,6 +58,7 @@ struct ActiveSessionJournal {
         self.activityEvent = activityEvent
         self.liveGroupSessionID = liveGroupSessionID
         self.goalDistanceAdjustmentMeters = goalDistanceAdjustmentMeters
+        self.runSimulation = runSimulation
         self.trackPoints = trackPoints
     }
 
@@ -81,6 +84,7 @@ struct ActiveSessionJournal {
                 activityEvent: metadata.activityEvent,
                 liveGroupSessionID: metadata.liveGroupSessionID,
                 goalDistanceAdjustmentMeters: metadata.goalDistanceAdjustmentMeters,
+                runSimulation: metadata.runSimulation,
                 trackPoints: ActiveSessionTrackJournal.load()
             )
         } catch {
@@ -111,7 +115,8 @@ struct ActiveSessionJournal {
                 recoveryStage: recoveryStage,
                 activityEvent: activityEvent,
                 liveGroupSessionID: liveGroupSessionID,
-                goalDistanceAdjustmentMeters: goalDistanceAdjustmentMeters
+                goalDistanceAdjustmentMeters: goalDistanceAdjustmentMeters,
+                runSimulation: runSimulation
             )
             let data = try JSONEncoder().encode(metadata)
             let directory = Self.fileURL.deletingLastPathComponent()
@@ -168,6 +173,7 @@ struct ActiveSessionJournal {
         let activityEvent: ActivityEventLaunchContext?
         let liveGroupSessionID: String?
         let goalDistanceAdjustmentMeters: Double?
+        let runSimulation: RunSimulationState?
     }
 }
 

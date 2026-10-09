@@ -778,6 +778,14 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
 #if DEBUG
+    /// Retain the recovered trail while keeping physical GPS out of a test run.
+    func restoreSimulatedTracking() {
+        manager.stopUpdatingLocation()
+        isSimulatingLocations = true
+        simulatedSpeedMetersPerSecond = nil
+        signalQuality = .excellent
+    }
+
     func startSimulatedTracking(activityType: ActivityType = .running) {
         manager.stopUpdatingLocation()
         clearTestOverrides()

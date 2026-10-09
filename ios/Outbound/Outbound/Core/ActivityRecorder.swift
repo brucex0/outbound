@@ -352,7 +352,9 @@ final class ActivityRecorder: ObservableObject {
         activityType: ActivityType = .running,
         routeGuidance: ActiveRouteGuidanceJournal,
         route: PreparedRoute,
-        speedKilometersPerHour: Double = 10
+        speedKilometersPerHour: Double = 10,
+        activityEvent: ActivityEventLaunchContext? = nil,
+        liveGroupSessionID: String? = nil
     ) {
         guard let sampler = RunSimulationRouteSampler(route: route) else { return }
 
@@ -370,6 +372,10 @@ final class ActivityRecorder: ObservableObject {
         accumulatedActiveDuration = 0
         self.activityType = activityType
         self.routeGuidance = routeGuidance
+        routeGuidance.saveRouteSnapshot()
+        recordingActivityEvent = activityEvent
+        recordingLiveGroupSessionID = liveGroupSessionID
+        recoveredAwaitingSave = false
         routeGuidanceEngine = RouteGuidanceEngine(
             route: routeGuidance.route,
             recoverySeed: routeGuidance.recoverySeed
@@ -409,6 +415,7 @@ final class ActivityRecorder: ObservableObject {
         } else {
             liveSnapshot = makeSnapshot()
         }
+        persistJournal(force: true)
     }
 
     func toggleRunSimulationClock() {
@@ -436,6 +443,7 @@ final class ActivityRecorder: ObservableObject {
         if wasRunning {
             startRunSimulationClock(rate: rate)
         }
+        persistJournal(force: true)
     }
 
     func adjustRunSimulationSpeed(byKilometersPerHour delta: Double) {
@@ -445,6 +453,7 @@ final class ActivityRecorder: ObservableObject {
             min(24, simulation.speedKilometersPerHour + delta)
         )
         runSimulationState = simulation
+        persistJournal(force: true)
     }
 
     func advanceRunSimulation(by seconds: Int) {
@@ -480,6 +489,7 @@ final class ActivityRecorder: ObservableObject {
         if simulation.isComplete {
             stopRunSimulationClock()
         }
+        persistJournal()
     }
 
     private func startRunSimulationClock(rate: Int) {
@@ -741,6 +751,16 @@ final class ActivityRecorder: ObservableObject {
             RouteGuidanceEngine(route: $0.route, recoverySeed: $0.recoverySeed)
         }
         routeGuidanceSnapshot = routeGuidanceEngine?.currentSnapshot
+#if DEBUG
+        if var simulation = journal.runSimulation, let route = routeGuidance?.route,
+           let sampler = RunSimulationRouteSampler(route: route) {
+            simulation.isClockRunning = false
+            runSimulationState = simulation
+            runSimulationSampler = sampler
+            locationManager.restoreSimulatedTracking()
+            ActivityDiagnosticLog.notice(.recovery, "Run simulation recovered clock=stopped")
+        }
+#endif
         sessionMetadata = journal.sessionMetadata
         recoveredWatchLifecycle = journal.lastWatchLifecycle
         recoveredWatchMessageSequence = journal.lastWatchMessageSequence
@@ -788,7 +808,9 @@ final class ActivityRecorder: ObservableObject {
         recoveryStage: ActiveSessionRecoveryStage = .recording
     ) {
 #if DEBUG
-        guard runSimulationState == nil else { return }
+        let simulation = runSimulationState
+#else
+        let simulation: RunSimulationState? = nil
 #endif
         guard state != .idle, let startDate else { return }
         let now = Date()
@@ -821,7 +843,8 @@ final class ActivityRecorder: ObservableObject {
             recoveryStage: recoveryStage,
             activityEvent: recordingActivityEvent,
             liveGroupSessionID: recordingLiveGroupSessionID,
-            goalDistanceAdjustmentMeters: goalDistanceAdjustmentMeters
+            goalDistanceAdjustmentMeters: goalDistanceAdjustmentMeters,
+            runSimulation: simulation
         ).save()
         if force {
             let stateName = switch state {

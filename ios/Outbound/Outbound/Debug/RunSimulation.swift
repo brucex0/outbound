@@ -1,9 +1,8 @@
-#if DEBUG
 import CoreLocation
 import Foundation
 import SwiftUI
 
-struct RunSimulationState: Equatable {
+struct RunSimulationState: Codable, Equatable {
     var speedKilometersPerHour: Double
     var timeRate: Int
     var isClockRunning: Bool
@@ -20,6 +19,7 @@ struct RunSimulationState: Equatable {
     }
 }
 
+#if DEBUG
 struct RunSimulationRouteSampler {
     private struct Segment {
         let start: RouteCoordinate

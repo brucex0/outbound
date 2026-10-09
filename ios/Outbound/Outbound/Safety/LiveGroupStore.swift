@@ -247,8 +247,28 @@ final class LiveGroupStore: ObservableObject {
         }
     }
 
-    func restoreSession(sessionID: String) async {
+    func restoreSession(
+        sessionID: String,
+        intent: SessionIntent? = nil,
+        snapshot: ActiveSessionSnapshot? = nil
+    ) async {
         guard activeSession == nil, !isJoining else { return }
+#if DEBUG
+        // This group exists only on device, so never send its synthetic ID to the API.
+        if sessionID == "debug-test-group-run" {
+            let center = snapshot?.location.map {
+                CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+            }
+            startDebugTestGroupRun(
+                intent: intent,
+                center: center,
+                activityEventID: intent?.activityEvent?.id,
+                distanceMeters: snapshot?.distanceMeters ?? 0
+            )
+            ActivityDiagnosticLog.notice(.recovery, "Local test group recovery completed")
+            return
+        }
+#endif
         isJoining = true
         defer { isJoining = false }
         do {
@@ -492,7 +512,8 @@ final class LiveGroupStore: ObservableObject {
     func startDebugTestGroupRun(
         intent: SessionIntent?,
         center: CLLocationCoordinate2D?,
-        activityEventID: String? = nil
+        activityEventID: String? = nil,
+        distanceMeters: Double = 0
     ) {
         updateTask?.cancel()
         pollingTask?.cancel()
@@ -525,7 +546,7 @@ final class LiveGroupStore: ObservableObject {
         participants = Self.debugParticipants(
             centeredAt: origin,
             timestamp: now,
-            distanceMeters: 0,
+            distanceMeters: distanceMeters,
             includesRemoteAttendee: activityEventID != nil
         )
     }

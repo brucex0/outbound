@@ -446,7 +446,11 @@ struct RecordView: View {
                 Task { await ActivityEventParticipationSync.shared.flush() }
                 if recorder.recoveredSession, recorder.state != .idle,
                    liveGroupStore.activeSession == nil, let sessionID = recorder.recordingLiveGroupSessionID {
-                    Task { await liveGroupStore.restoreSession(sessionID: sessionID) }
+                    Task {
+                        await liveGroupStore.restoreSession(
+                            sessionID: sessionID, intent: activeIntent, snapshot: recorder.liveSnapshot
+                        )
+                    }
                 }
             }
             guard newPhase == .active, recorder.state == .active else { return }
@@ -730,9 +734,14 @@ struct RecordView: View {
     private func trackRecoveryPresentationIfNeeded(result: String) {
         guard recorder.recoveredSession, !didTrackRecoveryPresentation else { return }
         didTrackRecoveryPresentation = true
+#if DEBUG
+        let sourceType = recorder.isSimulatingRun ? "run_simulation" : "recording"
+#else
+        let sourceType = "recording"
+#endif
         track(.init(.activityRecoveryPresentation, properties: [
             .result: .string(result),
-            .sourceType: .string("recording"),
+            .sourceType: .string(sourceType),
             .countBucket: .string(ProductAnalyticsBucket.count(1))
         ]))
     }
@@ -1200,7 +1209,16 @@ struct RecordView: View {
             trackFeatureExposure("group_activity_recovery")
         }
         if !recorder.recoveredAwaitingSave, let sessionID = recorder.recordingLiveGroupSessionID {
-            Task { await liveGroupStore.restoreSession(sessionID: sessionID) }
+#if DEBUG
+            if sessionID == "debug-test-group-run" {
+                trackFeatureExposure("test_group_recovery")
+            }
+#endif
+            Task {
+                await liveGroupStore.restoreSession(
+                    sessionID: sessionID, intent: activeIntent, snapshot: recorder.liveSnapshot
+                )
+            }
         }
         if recorder.recoveredAwaitingSave {
             didTrackRecoveryPresentation = true
@@ -1509,7 +1527,9 @@ struct RecordView: View {
             recorder.startRunSimulation(
                 activityType: .running,
                 routeGuidance: routeGuidance,
-                route: routeGuidance.route
+                route: routeGuidance.route,
+                activityEvent: activeIntent?.activityEvent,
+                liveGroupSessionID: liveGroupStore.isSharing ? liveGroupStore.activeSession?.id : nil
             )
             track(.init(.activitySimulationStarted, properties: [
                 .sourceType: .string("harvest_half"),
