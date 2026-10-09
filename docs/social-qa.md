@@ -1,5 +1,11 @@
 # Social QA
 
+## 2026-10-09 live panel follow-up
+
+- When the map is sharing the current event, use its existing live-sharing participant panel rather than also overlaying the event presence panel. Camera and sessions without event live-map sharing retain the presence panel.
+- Production request logs showed the participation-start endpoint returning 404 at 07:27 PDT. The active backend revision predates the participation change, so app compilation alone did not validate the deployed contract. A backend rollout is required for actual-start status; the missing invitee Start button still needs the stored event state checked.
+- Verification: Simulator build only; no test suite or two-device UI pass.
+
 ## 2026-10-08 planned activity regression
 
 - Restored Start activity and Share live map eligibility for known organizers and joined participants when a response lacks `canParticipate`; an explicit server denial remains authoritative. Both controls use the same eligibility rule.

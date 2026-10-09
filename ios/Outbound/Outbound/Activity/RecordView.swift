@@ -914,7 +914,10 @@ struct RecordView: View {
         .overlay(alignment: .top) {
             if countdownStep == nil, !isLiveWorkoutPanelExpanded,
                liveShareStore.mostRecentlyHeardCheer == nil,
-               let event = (activeIntent ?? plannedIntent)?.activityEvent {
+               let event = (activeIntent ?? plannedIntent)?.activityEvent,
+               // The map already shows this event's live-sharing participant panel.
+               activePage != .map || !liveGroupStore.isSharing
+                   || liveGroupStore.activeSession?.activityEventId != event.id {
                 GroupActivityPresenceView(eventID: event.id, title: event.title)
                     .padding(12)
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
