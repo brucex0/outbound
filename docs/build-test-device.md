@@ -200,6 +200,30 @@ Preferred shortcut:
 ./scripts/build-install-bruce-main.sh
 ```
 
+Build once and install the same signed app on every available paired iPhone:
+
+```sh
+./scripts/build-install-bruce-main.sh --all-devices
+./scripts/build-install-bruce-main.sh --all-devices --launch
+```
+
+`--all-devices` discovers physical iPhones through CoreDevice before building,
+including USB and local-network connections. It skips unpaired, unavailable,
+and connecting phones; simulators, iPads, and Apple Watches are not direct install
+targets. If no eligible phones are found, it exits before building. Device names
+and IDs are printed before the build. `CORE_DEVICE_ID` and `TARGET_DEVICE_NAME`
+are ignored in this mode. It requires `python3` to read CoreDevice's JSON inventory.
+
+Every target phone must be covered by the development provisioning profiles and
+have Developer Mode enabled. Unlock the phones when using `--launch`. The helper
+attempts each phone in turn, continues after an install or launch failure, prints
+installed/launched totals and failure details, and exits nonzero if any attempted
+operation fails. `INSTALL_TIMEOUT` applies separately to each install and device
+launch. Phones that disconnect during the build can therefore fail individually.
+
+The existing Social and Debug launch flags also apply to every target phone.
+`--all-devices` cannot be combined with `--simulator` or `--build-only`.
+
 Target the first available iPhone simulator instead:
 
 ```sh

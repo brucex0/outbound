@@ -30,6 +30,9 @@ enable_test_personas=false
 enable_analytics_debug=false
 enable_simulated_run=false
 target_simulator=false
+all_devices=false
+device_ids=()
+device_names=()
 local_development_host="${OUTBOUND_LOCAL_HOST:-}"
 
 timestamp() {
@@ -41,6 +44,9 @@ log() {
 }
 
 cleanup() {
+  if [[ -n "${device_discovery_dir:-}" ]]; then
+    rm -rf -- "$device_discovery_dir"
+  fi
   if [[ -n "${cache_staging_dir:-}" ]]; then
     rm -rf -- "$cache_staging_dir"
   fi
@@ -64,12 +70,16 @@ run_with_prefix() {
 
 usage() {
   cat <<USAGE
-Usage: $0 [--simulator] [--build-only] [--launch] [--simulated-run] [--analytics-debug] [--with-test-personas] [--with-social|--without-social]
+Usage: $0 [--simulator|--all-devices] [--build-only] [--launch] [--simulated-run] [--analytics-debug] [--with-test-personas] [--with-social|--without-social]
 
-Build and install Outbound on Bruce main or an iOS Simulator.
+Build and install Outbound on Bruce main, all available iPhones, or a Simulator.
 
 Options:
   --simulator       Target an iOS Simulator instead of Bruce main.
+  --all-devices     Build once and install on every available paired iPhone.
+                    Includes USB and network connections; excludes simulators,
+                    iPads, and Apple Watches. Cannot be used with --simulator
+                    or --build-only. Continues after individual device failures.
   --build-only      Build the app without installing it.
   --launch          Launch the app after installing. Phone must be unlocked.
   --analytics-debug Enable Firebase Analytics DebugView for the launched app.
@@ -88,8 +98,9 @@ Environment:
                      that is deleted when the script exits.
   KEEP_DERIVED_DATA  Set to 1 to keep that temp build directory for inspection.
   INSTALL_TIMEOUT    Device install timeout in seconds. Defaults to 120.
-  TARGET_DEVICE_NAME Defaults to Bruce main.
+  TARGET_DEVICE_NAME Defaults to Bruce main. Ignored with --all-devices.
   CORE_DEVICE_ID     Defaults to Bruce main's current CoreDevice ID.
+                     Ignored with --all-devices.
   SIMULATOR_ID       Optional simulator UUID. Defaults to the first available
                      iPhone simulator when --simulator is used.
   DEVELOPMENT_TEAM   Defaults to ${DEVELOPMENT_TEAM}.
@@ -127,6 +138,136 @@ detect_simulator_id() {
       }
     }
   '
+}
+
+discover_install_devices() {
+  device_discovery_dir="$(mktemp -d /tmp/outbound-device-discovery.XXXXXX)"
+  local inventory_path="$device_discovery_dir/devices.json"
+  local targets_path="$device_discovery_dir/targets.tsv"
+  local device_id
+  local device_name
+
+  log "Discovering available paired iPhones..."
+  if ! run_with_prefix "[devices]" xcrun devicectl list devices \
+    --timeout 15 --json-output "$inventory_path"; then
+    echo "Device discovery failed (CoreDevice list, timeout: 15s)." >&2
+    return 1
+  fi
+
+  # CoreDevice's JSON is its supported scripting interface. A disconnected
+  # tunnel can still be available: USB/localNetwork transport means reachable.
+  if ! python3 - "$inventory_path" "$targets_path" <<'PYTHON'
+import json
+import sys
+
+try:
+    with open(sys.argv[1], encoding="utf-8") as inventory:
+        payload = json.load(inventory)
+    if payload["info"]["outcome"] != "success":
+        raise ValueError("CoreDevice did not report success")
+    devices = payload["result"]["devices"]
+    if not isinstance(devices, list):
+        raise ValueError("result.devices is not an array")
+    targets = []
+    for device in devices:
+        hardware = device.get("hardwareProperties", {})
+        if hardware.get("deviceType") != "iPhone" or hardware.get("reality") != "physical":
+            continue
+        connection = device.get("connectionProperties", {})
+        name = " ".join(device.get("deviceProperties", {}).get("name", "iPhone").split())
+        pairing = connection.get("pairingState")
+        transport = connection.get("transportType")
+        tunnel = connection.get("tunnelState")
+        reachable = transport in ("usb", "wired", "localNetwork") or tunnel == "connected"
+        if pairing != "paired" or not reachable or tunnel == "connecting":
+            print(f"Skipping {name}: pairing={pairing}, transport={transport}, tunnel={tunnel}", file=sys.stderr)
+            continue
+        identifier = device["identifier"]
+        if not isinstance(identifier, str) or not identifier or any(c.isspace() for c in identifier):
+            raise ValueError("eligible device has an invalid identifier")
+        targets.append((identifier, name or "iPhone"))
+    with open(sys.argv[2], "w", encoding="utf-8") as output:
+        for identifier, name in sorted(set(targets), key=lambda target: (target[1], target[0])):
+            output.write(f"{identifier}\t{name}\n")
+except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+    print(f"Device discovery JSON failed: {type(error).__name__}: {error}", file=sys.stderr)
+    sys.exit(1)
+PYTHON
+  then
+    return 1
+  fi
+
+  while IFS=$'\t' read -r device_id device_name; do
+    device_ids+=("$device_id")
+    device_names+=("$device_name")
+    log "Install target: ${device_name} (${device_id})"
+  done < "$targets_path"
+
+  if [[ ${#device_ids[@]} -eq 0 ]]; then
+    echo "No available paired iPhones found. Unlock and connect the phones, then check 'xcrun devicectl list devices'." >&2
+    return 1
+  fi
+}
+
+launch_device_app() {
+  local device_id="$1"
+  local device_name="$2"
+  local launch_args=(
+    xcrun devicectl device process launch
+    --device "$device_id"
+    --timeout "$INSTALL_TIMEOUT"
+  )
+  if [[ ${#app_launch_args[@]} -gt 0 ]]; then
+    launch_args+=(--terminate-existing "$BUNDLE_ID" --)
+    launch_args+=("${app_launch_args[@]}")
+  else
+    launch_args+=("$BUNDLE_ID")
+  fi
+  log "Launching Outbound on ${device_name}..."
+  run_with_prefix "[launch]" "${launch_args[@]}"
+}
+
+install_on_all_devices() {
+  local index
+  local device_id
+  local device_name
+  local command_status
+  local installed=0
+  local launched=0
+  local failures=()
+
+  for ((index = 0; index < ${#device_ids[@]}; index++)); do
+    device_id="${device_ids[$index]}"
+    device_name="${device_names[$index]}"
+    log "Installing Outbound on ${device_name} (${device_id})..."
+    if run_with_prefix "[install]" xcrun devicectl device install app \
+      --device "$device_id" --timeout "$INSTALL_TIMEOUT" "$APP_PATH"; then
+      installed=$((installed + 1))
+    else
+      command_status=$?
+      log "Install failed: ${device_name} (${device_id}), exit=${command_status}, timeout=${INSTALL_TIMEOUT}s"
+      failures+=("${device_name}: install failed (exit ${command_status})")
+      continue
+    fi
+    if [[ "$launch_after_install" == true ]]; then
+      if launch_device_app "$device_id" "$device_name"; then
+        launched=$((launched + 1))
+      else
+        command_status=$?
+        log "Launch failed: ${device_name} (${device_id}), exit=${command_status}, timeout=${INSTALL_TIMEOUT}s"
+        failures+=("${device_name}: launch failed (exit ${command_status})")
+      fi
+    fi
+  done
+
+  log "Installed on ${installed}/${#device_ids[@]} iPhones."
+  if [[ "$launch_after_install" == true ]]; then
+    log "Launched on ${launched}/${#device_ids[@]} iPhones."
+  fi
+  if [[ ${#failures[@]} -gt 0 ]]; then
+    printf 'Device failure: %s\n' "${failures[@]}" >&2
+    return 1
+  fi
 }
 
 start_local_backend_if_needed() {
@@ -271,6 +412,9 @@ while [[ $# -gt 0 ]]; do
     --simulator)
       target_simulator=true
       ;;
+    --all-devices)
+      all_devices=true
+      ;;
     --build-only)
       build_only=true
       ;;
@@ -304,6 +448,11 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+
+if [[ "$all_devices" == true && ( "$target_simulator" == true || "$build_only" == true ) ]]; then
+  echo "--all-devices cannot be combined with --simulator or --build-only." >&2
+  exit 2
+fi
 
 if [[ ! "$INSTALL_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
   echo "INSTALL_TIMEOUT must be a positive number of seconds." >&2
@@ -346,6 +495,10 @@ fi
 
 cd "$ROOT_DIR"
 
+if [[ "$all_devices" == true ]]; then
+  discover_install_devices
+fi
+
 if [[ "$enable_test_personas" == true ]]; then
   start_local_backend_if_needed
 fi
@@ -354,14 +507,18 @@ if [[ "$target_simulator" == true ]]; then
   target_description="iOS Simulator"
   [[ -z "$SIMULATOR_ID" ]] || target_description="iOS Simulator ${SIMULATOR_ID}"
 else
-  target_description="$TARGET_DEVICE_NAME"
+  if [[ "$all_devices" == true ]]; then
+    target_description="${#device_ids[@]} available iPhones"
+  else
+    target_description="$TARGET_DEVICE_NAME"
+  fi
 fi
 
 log "Starting build helper for ${target_description}"
 log "DerivedData: ${DERIVED_DATA_PATH}"
 if [[ "$target_simulator" == true ]]; then
   [[ -z "$SIMULATOR_ID" ]] || log "Simulator ID: ${SIMULATOR_ID}"
-else
+elif [[ "$all_devices" != true ]]; then
   log "CoreDevice ID: ${CORE_DEVICE_ID}"
 fi
 if [[ "$enable_social" == true ]]; then
@@ -451,6 +608,27 @@ cache_staging_dir=""
 APP_PATH="$cached_app_path"
 log "Saved app: ${APP_PATH}"
 
+app_launch_args=()
+if [[ "$enable_analytics_debug" == true ]]; then
+  app_launch_args+=(-FIRDebugEnabled)
+fi
+if [[ "$enable_test_personas" == true ]]; then
+  app_launch_args+=(
+    -OutboundEnableDebugPersonas
+    -OutboundLocalAPIHost "$local_development_host"
+    -OutboundAPIBaseURL "http://${local_development_host}:3000/v1"
+  )
+fi
+if [[ "$enable_simulated_run" == true ]]; then
+  app_launch_args+=(-OutboundSimulatedHarvestRun)
+fi
+
+if [[ "$all_devices" == true ]]; then
+  install_on_all_devices
+  log "Done."
+  exit 0
+fi
+
 if [[ "$target_simulator" == true ]]; then
   simulator_state="$(xcrun simctl list devices | awk -v id="$SIMULATOR_ID" 'index($0, id) { print; exit }')"
   if [[ -z "$simulator_state" ]]; then
@@ -487,42 +665,16 @@ else
 fi
 
 if [[ "$launch_after_install" == true ]]; then
-  log "Launching Outbound on ${target_description}..."
-  app_launch_args=()
-  if [[ "$enable_analytics_debug" == true ]]; then
-    app_launch_args+=(-FIRDebugEnabled)
-  fi
-  if [[ "$enable_test_personas" == true ]]; then
-    app_launch_args+=(
-      -OutboundEnableDebugPersonas
-      -OutboundLocalAPIHost "$local_development_host"
-      -OutboundAPIBaseURL "http://${local_development_host}:3000/v1"
-    )
-  fi
-  if [[ "$enable_simulated_run" == true ]]; then
-    app_launch_args+=(-OutboundSimulatedHarvestRun)
-  fi
-
   if [[ "$target_simulator" == true ]]; then
+    log "Launching Outbound on ${target_description}..."
     launch_args=(xcrun simctl launch --terminate-running-process "$SIMULATOR_ID" "$BUNDLE_ID")
-    launch_args+=("${app_launch_args[@]}")
-  else
-    launch_args=(
-      xcrun devicectl device process launch
-      --device "$CORE_DEVICE_ID"
-    )
     if [[ ${#app_launch_args[@]} -gt 0 ]]; then
-      launch_args+=(
-        --terminate-existing
-        "$BUNDLE_ID"
-        --
-      )
       launch_args+=("${app_launch_args[@]}")
-    else
-      launch_args+=("$BUNDLE_ID")
     fi
+    run_with_prefix "[launch]" "${launch_args[@]}"
+  else
+    launch_device_app "$CORE_DEVICE_ID" "$TARGET_DEVICE_NAME"
   fi
-  run_with_prefix "[launch]" "${launch_args[@]}"
 fi
 
 log "Done."
