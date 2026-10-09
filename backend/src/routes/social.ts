@@ -144,9 +144,10 @@ async function socialHome(c: Context<AppEnv>) {
     });
   }
   const visibility = [
+    { creatorId: user.id },
     { creatorId: { in: [user.id, ...connections] }, visibility: "connections" },
     { participants: { some: { userId: user.id, status: "going" } } },
-    { invitations: { some: { recipientId: user.id, status: "pending" } } },
+    { invitations: { some: { recipientId: user.id, status: { in: ["pending", "accepted", "cancelled"] } } } },
     { group: { members: { some: { userId: user.id, status: "active" } } } },
   ];
   const feedCursorValue = c.req.query("feedCursor");
@@ -164,7 +165,7 @@ async function socialHome(c: Context<AppEnv>) {
     }),
     prisma.activityEvent.findMany({
       where: {
-        status: { in: ["reconciling", "completed"] },
+        status: { in: ["reconciling", "completed", "cancelled"] },
         OR: visibility,
       },
       include: activityEventInclude(user.id),
@@ -742,6 +743,45 @@ router.patch("/activity-events/:id", zValidator("json", updateActivityEventSchem
   return c.json(activityEventPayload(updated, user.id, connections, true));
 });
 
+// Standalone and Group activities share organizer ownership and cancellation rules.
+router.post("/activity-events/:id/cancel", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const prisma = getPrismaClient();
+  const id = c.req.param("id");
+  const outcome = await prisma.$transaction(async (tx) => {
+    const event = await tx.activityEvent.findFirst({ where: { id, creatorId: user.id } });
+    if (!event) return "not_found";
+    if (event.status === "cancelled") return "cancelled";
+    const changed = await tx.activityEvent.updateMany({
+      where: { id, creatorId: user.id, status: "scheduled", startsAt: { gt: new Date() } },
+      data: { status: "cancelled" },
+    });
+    if (!changed.count) {
+      const current = await tx.activityEvent.findUnique({ where: { id }, select: { status: true } });
+      return current?.status === "cancelled" ? "cancelled" : "too_late";
+    }
+    await tx.liveGroupSession.updateMany({ where: { activityEventId: id, status: "active" }, data: { status: "ended", endedAt: new Date() } });
+    const [participants, invitations] = await Promise.all([
+      tx.activityEventParticipant.findMany({ where: { activityEventId: id, status: { in: ["going", "participating"] } }, select: { userId: true } }),
+      tx.invitation.findMany({ where: { activityEventId: id, status: "pending" }, select: { id: true, recipientId: true } }),
+    ]);
+    await tx.invitation.updateMany({ where: { activityEventId: id, status: "pending" }, data: { status: "cancelled", expiresAt: new Date() } });
+    await tx.socialNotification.deleteMany({ where: { type: "runInvitation", objectId: { in: invitations.map((invite) => invite.id) } } });
+    const recipients = new Set([...participants.map((p) => p.userId), ...invitations.flatMap((invite) => invite.recipientId ? [invite.recipientId] : [])]);
+    recipients.delete(user.id);
+    await tx.socialNotification.createMany({
+      data: [...recipients].map((recipientId) => ({ recipientId, actorId: user.id, type: "activityEventCancelled", objectId: id, message: `${event.title} has been cancelled.`, dedupeKey: `activityEventCancelled:${id}:${recipientId}` })),
+      skipDuplicates: true,
+    });
+    return "cancelled";
+  });
+  if (outcome === "not_found") return c.json({ error: "Activity event not found." }, 404);
+  if (outcome === "too_late") return c.json({ error: "Only activities that have not started can be cancelled." }, 409);
+  const activity = await prisma.activityEvent.findUniqueOrThrow({ where: { id }, include: activityEventInclude(user.id) });
+  return c.json(activityEventPayload(activity, user.id, await acceptedConnectionIDs(user.id), true));
+});
+
 router.get("/activity-events/:id", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
@@ -764,11 +804,16 @@ router.post("/activity-events/:id/rsvp", zValidator("json", attendanceModeSchema
   if (attendanceMode === "virtual" && activity.participationMode !== "hybrid") {
     return c.json({ error: "This activity is in-person only." }, 422);
   }
-  const participant = await getPrismaClient().activityEventParticipant.upsert({
-    where: { activityEventId_userId: { activityEventId: activity.id, userId: user.id } },
-    create: { activityEventId: activity.id, userId: user.id, status: "going", attendanceMode },
-    update: { status: "going", attendanceMode },
+  const participant = await getPrismaClient().$transaction(async (tx) => {
+    const gate = await tx.activityEvent.updateMany({ where: { id: activity.id, status: "scheduled" }, data: { status: "scheduled" } });
+    if (!gate.count) return null;
+    return tx.activityEventParticipant.upsert({
+      where: { activityEventId_userId: { activityEventId: activity.id, userId: user.id } },
+      create: { activityEventId: activity.id, userId: user.id, status: "going", attendanceMode },
+      update: { status: "going", attendanceMode },
+    });
   });
+  if (!participant) return c.json({ error: "Activity unavailable." }, 409);
   if (activity.creatorId !== user.id) {
     await createSocialNotification(activity.creatorId, user.id, "activityEventJoined", activity.id, `${user.displayName} joined ${activity.title}.`);
   }
@@ -799,8 +844,14 @@ router.post("/activity-events/:id/invitations", zValidator("json", z.object({ re
   const token = randomBytes(24).toString("base64url");
   const recipientId = c.req.valid("json").recipientUserId;
   if (recipientId && !(await acceptedConnectionIDs(user.id)).includes(recipientId)) return c.json({ error: "Connect with this person before inviting them." }, 403);
-  const invitation = await getPrismaClient().invitation.create({ data: { senderId: user.id, recipientId, activityEventId: activity.id, kind: "activityEvent", tokenHash: createHash("sha256").update(token).digest("hex"), expiresAt: new Date(Date.now() + 7 * 86400000) } });
-  if (recipientId) await createSocialNotification(recipientId, user.id, "runInvitation", invitation.id, `${user.displayName} invited you to ${activity.title}.`);
+  const invitation = await getPrismaClient().$transaction(async (tx) => {
+    const gate = await tx.activityEvent.updateMany({ where: { id: activity.id, status: "scheduled" }, data: { status: "scheduled" } });
+    if (!gate.count) return null;
+    const created = await tx.invitation.create({ data: { senderId: user.id, recipientId, activityEventId: activity.id, kind: "activityEvent", tokenHash: createHash("sha256").update(token).digest("hex"), expiresAt: new Date(Date.now() + 7 * 86400000) } });
+    if (recipientId) await tx.socialNotification.create({ data: { recipientId, actorId: user.id, type: "runInvitation", objectId: created.id, message: `${user.displayName} invited you to ${activity.title}.` } });
+    return created;
+  });
+  if (!invitation) return c.json({ error: "Activity unavailable." }, 409);
   return c.json({ id: invitation.id, token, status: invitation.status }, 201);
 });
 
@@ -832,8 +883,14 @@ router.post("/activity-events/:id/invitations/batch", zValidator("json", invitat
   for (const recipientId of recipientIds) {
     const existing = await getPrismaClient().invitation.findFirst({ where: { activityEventId: activity.id, recipientId, status: "pending" } });
     if (existing) { invitations.push({ id: existing.id, recipientUserId: recipientId, status: "alreadyInvited" }); continue; }
-    const created = await getPrismaClient().invitation.create({ data: { senderId: user.id, recipientId, activityEventId: activity.id, kind: "activityEvent", expiresAt: new Date(Date.now() + 7 * 86400000) } });
-    await createSocialNotification(recipientId, user.id, "runInvitation", created.id, `${user.displayName} invited you to ${activity.title}.`);
+    const created = await getPrismaClient().$transaction(async (tx) => {
+      const gate = await tx.activityEvent.updateMany({ where: { id: activity.id, status: "scheduled" }, data: { status: "scheduled" } });
+      if (!gate.count) return null;
+      const invite = await tx.invitation.create({ data: { senderId: user.id, recipientId, activityEventId: activity.id, kind: "activityEvent", expiresAt: new Date(Date.now() + 7 * 86400000) } });
+      await tx.socialNotification.create({ data: { recipientId, actorId: user.id, type: "runInvitation", objectId: invite.id, message: `${user.displayName} invited you to ${activity.title}.` } });
+      return invite;
+    });
+    if (!created) return c.json({ error: "Activity unavailable." }, 409);
     invitations.push({ id: created.id, recipientUserId: recipientId, status: "sent" });
   }
   return c.json({ invitations }, 201);
@@ -865,17 +922,24 @@ router.post("/invitations/:id/accept", zValidator("json", attendanceModeSchema),
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
   const invitation = await getPrismaClient().invitation.findFirst({
-    where: { id: c.req.param("id"), recipientId: user.id, status: "pending" },
+    where: { id: c.req.param("id"), recipientId: user.id, status: "pending", activityEvent: { status: { not: "cancelled" } } },
   });
   if (!invitation || !invitation.activityEventId) return c.json({ error: "Invitation not found." }, 404);
-  await getPrismaClient().$transaction([
-    getPrismaClient().invitation.update({ where: { id: invitation.id }, data: { status: "accepted" } }),
-    getPrismaClient().activityEventParticipant.upsert({
-      where: { activityEventId_userId: { activityEventId: invitation.activityEventId, userId: user.id } },
-      create: { activityEventId: invitation.activityEventId, userId: user.id, status: "going", attendanceMode: c.req.valid("json").attendanceMode },
-      update: { status: "going", attendanceMode: c.req.valid("json").attendanceMode },
-    }),
-  ]);
+  const eventId = invitation.activityEventId;
+  const accepted = await getPrismaClient().$transaction(async (tx) => {
+    const gate = await tx.activityEvent.updateMany({ where: { id: eventId, status: { not: "cancelled" } }, data: { updatedAt: new Date() } });
+    if (!gate.count) return false;
+    await Promise.all([
+      tx.invitation.update({ where: { id: invitation.id }, data: { status: "accepted" } }),
+      tx.activityEventParticipant.upsert({
+        where: { activityEventId_userId: { activityEventId: eventId, userId: user.id } },
+        create: { activityEventId: eventId, userId: user.id, status: "going", attendanceMode: c.req.valid("json").attendanceMode },
+        update: { status: "going", attendanceMode: c.req.valid("json").attendanceMode },
+      }),
+    ]);
+    return true;
+  });
+  if (!accepted) return c.json({ error: "Activity unavailable." }, 409);
   await dismissSocialNotification(user.id, "runInvitation", invitation.id);
   await createSocialNotification(invitation.senderId, user.id, "invitationAccepted", invitation.activityEventId, `${user.displayName} accepted your activity invitation.`);
   await awardRecognition(user.id, "relayPlayer", {
@@ -906,17 +970,24 @@ router.post("/invitations/token/:token/accept", async (c) => {
     where: { tokenHash, status: "pending", expiresAt: { gt: new Date() } },
     include: { activityEvent: true },
   });
-  if (!invitation?.activityEvent || (invitation.recipientId && invitation.recipientId !== user.id)) {
+  if (!invitation?.activityEvent || invitation.activityEvent.status === "cancelled" || (invitation.recipientId && invitation.recipientId !== user.id)) {
     return c.json({ error: "Invitation not found." }, 404);
   }
-  await getPrismaClient().$transaction([
-    getPrismaClient().invitation.update({ where: { id: invitation.id }, data: { status: "accepted", recipientId: user.id } }),
-    getPrismaClient().activityEventParticipant.upsert({
-      where: { activityEventId_userId: { activityEventId: invitation.activityEvent.id, userId: user.id } },
-      create: { activityEventId: invitation.activityEvent.id, userId: user.id, status: "going" },
-      update: { status: "going", outcome: null, resolvedAt: null },
-    }),
-  ]);
+  const eventId = invitation.activityEvent.id;
+  const accepted = await getPrismaClient().$transaction(async (tx) => {
+    const gate = await tx.activityEvent.updateMany({ where: { id: eventId, status: { not: "cancelled" } }, data: { updatedAt: new Date() } });
+    if (!gate.count) return false;
+    await Promise.all([
+      tx.invitation.update({ where: { id: invitation.id }, data: { status: "accepted", recipientId: user.id } }),
+      tx.activityEventParticipant.upsert({
+        where: { activityEventId_userId: { activityEventId: eventId, userId: user.id } },
+        create: { activityEventId: eventId, userId: user.id, status: "going" },
+        update: { status: "going", outcome: null, resolvedAt: null },
+      }),
+    ]);
+    return true;
+  });
+  if (!accepted) return c.json({ error: "Activity unavailable." }, 409);
   if (invitation.senderId !== user.id) {
     await createSocialNotification(invitation.senderId, user.id, "activityEventJoined", invitation.activityEvent.id, `${user.displayName} joined ${invitation.activityEvent.title}.`);
   }
@@ -924,7 +995,7 @@ router.post("/invitations/token/:token/accept", async (c) => {
     sourceType: "social",
     sourceReferenceId: `activityEvent:${invitation.activityEvent.id}`,
   });
-  return c.json({ ok: true, activityEventId: invitation.activityEvent.id });
+  return c.json({ ok: true, activityEventId: eventId });
 });
 
 router.post("/activity-events/:id/link-activity", zValidator("json", linkActivityEventSchema), async (c) => {
@@ -947,7 +1018,7 @@ router.post("/activity-events/:id/start", zValidator("json", z.object({ startedA
   if (!event || event.status === "cancelled") return c.json({ error: "Activity unavailable." }, 403);
   const existing = await getPrismaClient().activityEventParticipant.findUnique({ where: { activityEventId_userId: { activityEventId: event.id, userId: user.id } } });
   if (!existing?.startedAt && !validOfflineStart && !["scheduled", "active"].includes(event.status)) return c.json({ error: "Activity unavailable." }, 403);
-  if (!existing?.startedAt) await startEventParticipation(user.id, event.id, startedAt);
+  if (!existing?.startedAt && !await startEventParticipation(user.id, event.id, startedAt)) return c.json({ error: "Activity unavailable." }, 403);
   return c.json({ ok: true });
 });
 
@@ -1580,7 +1651,7 @@ async function visibleActivityEvent(userId: string, connectionIds: string[], id:
         { creatorId: userId },
         { creatorId: { in: connectionIds }, visibility: "connections" },
         { participants: { some: { userId } } },
-        { invitations: { some: { recipientId: userId, status: { in: ["pending", "accepted"] } } } },
+        { invitations: { some: { recipientId: userId, status: { in: ["pending", "accepted", "cancelled"] } } } },
         { group: { members: { some: { userId, status: "active" } } } },
         { group: { trustPolicy: "community", visibility: "public", lifecycle: "active" } },
       ],
@@ -1720,10 +1791,10 @@ async function refreshActivityEventStatus(activity: any) {
         ? "active"
         : "scheduled";
   if (nextStatus !== activity.status) {
-    await getPrismaClient().activityEvent.update({ where: { id: activity.id }, data: { status: nextStatus } });
-    activity.status = nextStatus;
+    const changed = await getPrismaClient().activityEvent.updateMany({ where: { id: activity.id, status: activity.status }, data: { status: nextStatus } });
+    activity.status = changed.count ? nextStatus : (await getPrismaClient().activityEvent.findUniqueOrThrow({ where: { id: activity.id } })).status;
   }
-  return nextStatus;
+  return activity.status;
 }
 
 async function linkRecordedActivity(userId: string, activityEventId: string, activityId: string) {

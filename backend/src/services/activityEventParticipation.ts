@@ -29,14 +29,21 @@ export async function eligibleActivityEvent(userId: string, id: string) {
 
 export async function startEventParticipation(userId: string, activityEventId: string, startedAt = new Date()) {
   const prisma = getPrismaClient();
-  await prisma.activityEventParticipant.upsert({
-    where: { activityEventId_userId: { activityEventId, userId } },
-    create: { activityEventId, userId, status: "participating", startedAt },
-    update: {},
-  });
-  // Concurrent retries must not overwrite a recording that has already resolved.
-  return prisma.activityEventParticipant.updateMany({
-    where: { activityEventId, userId, startedAt: null },
-    data: { startedAt, outcome: null, resolvedAt: null },
+  return prisma.$transaction(async (tx) => {
+    // Serialize new participation with organizer cancellation; personal saves remain independent.
+    const event = await tx.activityEvent.findUnique({ where: { id: activityEventId }, select: { status: true } });
+    if (!event || event.status === "cancelled") return null;
+    const gate = await tx.activityEvent.updateMany({ where: { id: activityEventId, status: event.status }, data: { status: event.status } });
+    if (!gate.count) return null;
+    await tx.activityEventParticipant.upsert({
+      where: { activityEventId_userId: { activityEventId, userId } },
+      create: { activityEventId, userId, status: "participating", startedAt },
+      update: {},
+    });
+    // Concurrent retries must not overwrite a recording that has already resolved.
+    return tx.activityEventParticipant.updateMany({
+      where: { activityEventId, userId, startedAt: null },
+      data: { startedAt, outcome: null, resolvedAt: null },
+    });
   });
 }
