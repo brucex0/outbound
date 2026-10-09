@@ -16,6 +16,8 @@ struct ActiveSessionJournal {
     let lastWatchLifecycle: PlainstrideWorkoutLifecycle?
     let lastWatchMessageSequence: UInt64?
     let recoveryStage: ActiveSessionRecoveryStage
+    let activityEvent: ActivityEventLaunchContext?
+    let liveGroupSessionID: String?
     let goalDistanceAdjustmentMeters: Double?
     let trackPoints: [JournalTrackPoint]
 
@@ -33,6 +35,8 @@ struct ActiveSessionJournal {
         lastWatchLifecycle: PlainstrideWorkoutLifecycle? = nil,
         lastWatchMessageSequence: UInt64? = nil,
         recoveryStage: ActiveSessionRecoveryStage = .recording,
+        activityEvent: ActivityEventLaunchContext? = nil,
+        liveGroupSessionID: String? = nil,
         goalDistanceAdjustmentMeters: Double? = nil,
         trackPoints: [JournalTrackPoint] = []
     ) {
@@ -49,6 +53,8 @@ struct ActiveSessionJournal {
         self.lastWatchLifecycle = lastWatchLifecycle
         self.lastWatchMessageSequence = lastWatchMessageSequence
         self.recoveryStage = recoveryStage
+        self.activityEvent = activityEvent
+        self.liveGroupSessionID = liveGroupSessionID
         self.goalDistanceAdjustmentMeters = goalDistanceAdjustmentMeters
         self.trackPoints = trackPoints
     }
@@ -72,6 +78,8 @@ struct ActiveSessionJournal {
                 lastWatchLifecycle: metadata.lastWatchLifecycle,
                 lastWatchMessageSequence: metadata.lastWatchMessageSequence,
                 recoveryStage: metadata.recoveryStage ?? .recording,
+                activityEvent: metadata.activityEvent,
+                liveGroupSessionID: metadata.liveGroupSessionID,
                 goalDistanceAdjustmentMeters: metadata.goalDistanceAdjustmentMeters,
                 trackPoints: ActiveSessionTrackJournal.load()
             )
@@ -101,6 +109,8 @@ struct ActiveSessionJournal {
                 lastWatchLifecycle: lastWatchLifecycle,
                 lastWatchMessageSequence: lastWatchMessageSequence,
                 recoveryStage: recoveryStage,
+                activityEvent: activityEvent,
+                liveGroupSessionID: liveGroupSessionID,
                 goalDistanceAdjustmentMeters: goalDistanceAdjustmentMeters
             )
             let data = try JSONEncoder().encode(metadata)
@@ -155,6 +165,8 @@ struct ActiveSessionJournal {
         let lastWatchLifecycle: PlainstrideWorkoutLifecycle?
         let lastWatchMessageSequence: UInt64?
         let recoveryStage: ActiveSessionRecoveryStage?
+        let activityEvent: ActivityEventLaunchContext?
+        let liveGroupSessionID: String?
         let goalDistanceAdjustmentMeters: Double?
     }
 }

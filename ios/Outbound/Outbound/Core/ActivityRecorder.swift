@@ -46,6 +46,8 @@ final class ActivityRecorder: ObservableObject {
     @Published private(set) var lastAutoPauseRecoveredDurationSeconds = 0
     @Published private(set) var recoveredSession = false
     @Published private(set) var recoveredAwaitingSave = false
+    private(set) var recordingActivityEvent: ActivityEventLaunchContext?
+    private(set) var recordingLiveGroupSessionID: String?
     @Published private(set) var recoveredRouteGuidance: ActiveRouteGuidanceJournal?
     @Published private(set) var recoveredActivityType: ActivityType?
     private(set) var recoveredWatchLifecycle: PlainstrideWorkoutLifecycle?
@@ -126,7 +128,9 @@ final class ActivityRecorder: ObservableObject {
         routeGuidance: ActiveRouteGuidanceJournal? = nil,
         canonicalStartDate: Date? = nil,
         sessionMetadata: ActivityRecordingSessionMetadata? = nil,
-        companionType: ActivityCompanionType? = nil
+        companionType: ActivityCompanionType? = nil,
+        activityEvent: ActivityEventLaunchContext? = nil,
+        liveGroupSessionID: String? = nil
     ) {
 #if DEBUG
         resetRunSimulation()
@@ -148,6 +152,8 @@ final class ActivityRecorder: ObservableObject {
         self.autoPauseEnabled = autoPauseEnabled ?? AutoPauseDefaults.isEnabled(for: activityType)
         self.sessionMetadata = sessionMetadata
         self.companionType = companionType
+        recordingActivityEvent = activityEvent
+        recordingLiveGroupSessionID = liveGroupSessionID
         recoveredWatchLifecycle = nil
         recoveredWatchMessageSequence = nil
         self.routeGuidance = routeGuidance
@@ -713,6 +719,8 @@ final class ActivityRecorder: ObservableObject {
         autoPauseEnabled = journal.autoPauseEnabled ?? AutoPauseDefaults.isEnabled(for: activityType)
         goalDistanceAdjustmentMeters = journal.goalDistanceAdjustmentMeters ?? 0
         companionType = journal.companionType
+        recordingActivityEvent = journal.activityEvent
+        recordingLiveGroupSessionID = journal.liveGroupSessionID
         locationManager.restoreTracking(
             from: points,
             segmentStartIndices: segmentStarts,
@@ -769,6 +777,12 @@ final class ActivityRecorder: ObservableObject {
         }
     }
 
+    func updateLiveGroupRecoveryContext(sessionID: String?) {
+        guard state != .idle else { return }
+        recordingLiveGroupSessionID = sessionID
+        persistJournal(force: true)
+    }
+
     private func persistJournal(
         force: Bool = false,
         recoveryStage: ActiveSessionRecoveryStage = .recording
@@ -805,6 +819,8 @@ final class ActivityRecorder: ObservableObject {
             lastWatchLifecycle: recoveredWatchLifecycle,
             lastWatchMessageSequence: recoveredWatchMessageSequence,
             recoveryStage: recoveryStage,
+            activityEvent: recordingActivityEvent,
+            liveGroupSessionID: recordingLiveGroupSessionID,
             goalDistanceAdjustmentMeters: goalDistanceAdjustmentMeters
         ).save()
         if force {

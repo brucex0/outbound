@@ -1150,6 +1150,8 @@ final class TogetherStore: ObservableObject {
             }
             return await activityEventDetail(id: run.id)
         } catch {
+            if Task.isCancelled || (error as NSError).code == NSURLErrorCancelled { return nil }
+            Self.logger.error("Activity event RSVP failed operation=\(run.currentUserGoing ? "leave" : "join", privacy: .public) error=\(Self.networkErrorCode(error), privacy: .public)")
             errorMessage = error.localizedDescription
             return nil
         }

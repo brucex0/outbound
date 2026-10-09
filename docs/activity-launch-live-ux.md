@@ -138,3 +138,7 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 - Repeated force-kill/relaunch recovery leaves exactly one app-owned Live Activity card for the recovered session.
 - Goal-specific live metrics, pause/resume, finish confirmation, and expanded-map return all work without console warnings or errors.
 - A live session with both a target and a route keeps the target as its header and shows the route once in the secondary route row; freestyle route sessions use the route as the header without duplicating it.
+
+The live recording assistant reuses `DesignSystem/AssistantLauncherButton.swift`, including the fox mark, theme color, animation, and accessibility. Its top-trailing placement is specific to recording; its appearance is shared with the main navigation dock.
+
+The fullscreen recording surface owns the live assistant launcher. The outer RecordView launcher is limited to standalone setup, preventing overlapping setup and live launchers.

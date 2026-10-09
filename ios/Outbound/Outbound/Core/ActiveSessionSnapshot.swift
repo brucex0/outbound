@@ -431,7 +431,7 @@ struct SessionIntent: Identifiable, Hashable {
     )
 }
 
-struct ActivityEventLaunchContext: Hashable {
+struct ActivityEventLaunchContext: Hashable, Codable {
     let id: String
     let title: String
     let role: String

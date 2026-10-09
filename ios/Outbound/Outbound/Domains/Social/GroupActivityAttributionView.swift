@@ -101,6 +101,10 @@ struct GroupActivityPresenceView: View {
     @Environment(\.analyticsManager) private var analyticsManager
     let eventID: String
     var title: String? = nil
+    var isSharingLiveMap = false
+    var isLiveMapBusy = false
+    var onToggleLiveMap: (() -> Void)? = nil
+    var onParticipantsLoaded: (([ActivityEventParticipantDTO]) -> Void)? = nil
     @State private var participants: [ActivityEventParticipantDTO] = []
     @State private var isExpanded = false
     @State private var hasTrackedPresence = false
@@ -120,6 +124,16 @@ struct GroupActivityPresenceView: View {
                 }
             }
             .frame(maxHeight: 180)
+            if let onToggleLiveMap {
+                Button(action: onToggleLiveMap) {
+                    Label(isSharingLiveMap
+                          ? String(localized: "record.group.event.stop", defaultValue: "Stop sharing")
+                          : String(localized: "record.group.event.share", defaultValue: "Share live map with attendees"),
+                          systemImage: isSharingLiveMap ? "location.slash" : "person.2.wave.2.fill")
+                }
+                .font(.caption.weight(.semibold))
+                .disabled(isLiveMapBusy)
+            }
         } label: {
             VStack(alignment: .leading, spacing: 3) {
                 Label(title ?? String(localized: "group.activity.label", table: "GroupActivity"), systemImage: "person.2.fill")
@@ -135,6 +149,7 @@ struct GroupActivityPresenceView: View {
                 do {
                     let detail = try await APIClient.shared.fetchActivityEvent(id: eventID)
                     participants = detail.participants ?? []
+                    onParticipantsLoaded?(participants)
                     if !hasTrackedPresence {
                         hasTrackedPresence = true
                         await analyticsManager?.track(.init(.groupActivityPresenceViewed, properties: [

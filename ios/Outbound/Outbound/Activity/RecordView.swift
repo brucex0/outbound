@@ -150,6 +150,7 @@ struct RecordView: View {
     @State private var isLocationPermissionModalPresented = false
 #if DEBUG
     @State private var isRunSimulationEnabled = false
+    @State private var liveGroupTopControlsHeight: CGFloat = 0
     @State private var didConfigureRequestedRunSimulation = false
 #endif
 
@@ -415,7 +416,7 @@ struct RecordView: View {
         }
     }
 
-    var body: some View {
+    private var recordLifecycleSurface: some View {
         recordStateSurface
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .task {
@@ -441,6 +442,10 @@ struct RecordView: View {
                 workoutPresence.sync(with: recorder.state)
                 refreshLocationForForeground()
                 Task { await ActivityEventParticipationSync.shared.flush() }
+                if recorder.recoveredSession, recorder.state != .idle,
+                   liveGroupStore.activeSession == nil, let sessionID = recorder.recordingLiveGroupSessionID {
+                    Task { await liveGroupStore.restoreSession(sessionID: sessionID) }
+                }
             }
             guard newPhase == .active, recorder.state == .active else { return }
             Task { await musicStore.retryPendingWorkoutPlaybackIfNeeded() }
@@ -452,6 +457,9 @@ struct RecordView: View {
                 .selectionType: .string(newPage.rawValue),
                 .sourceType: .string("page_selection")
             ]))
+        }
+        .onChange(of: liveGroupStore.activeSession?.id) { _, sessionID in
+            recorder.updateLiveGroupRecoveryContext(sessionID: sessionID)
         }
         .onChange(of: plannedIntent) { _, intent in
             applyWorkoutMusicSuggestion()
@@ -479,6 +487,10 @@ struct RecordView: View {
             cancelStartCountdown(returnToSetup: recorder.state == .idle)
             cancelLocationWait()
         }
+    }
+
+    var body: some View {
+        recordLifecycleSurface
         .onReceive(recorder.locationManager.$authorizationStatus) { status in
             isLocationPermissionGranted = status == .authorizedAlways || status == .authorizedWhenInUse
             if isLocationPermissionGranted, isLocationPermissionModalPresented {
@@ -517,22 +529,10 @@ struct RecordView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if isVisible,
-               pendingActivity == nil,
-               !isLiveWorkoutPanelExpanded,
-               !isEmbeddedInToday || showCamera || recorder.state != .idle {
-                Button {
-                    isAssistantPresented = true
-                } label: {
-                    Image(systemName: "sparkles")
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(showCamera ? .white : .primary)
-                        .frame(width: 40, height: 40)
-                        .background(.ultraThinMaterial, in: Circle())
-                }
-                .padding(.top, showCamera ? 18 : 14)
-                .padding(.trailing, 16)
-                .accessibilityLabel(String(localized: "record.accessibility.open_assistant", defaultValue: "Open assistant"))
+            // The fullscreen surface owns its launcher; the outer overlay is setup-only.
+            if isVisible, pendingActivity == nil, !showsEmbeddedLiveSurface, !showCamera,
+               !isEmbeddedInToday {
+                embeddedActivityAssistantButton
             }
         }
         .sheet(isPresented: $showsRouteLibrary) {
@@ -865,7 +865,8 @@ struct RecordView: View {
                     onPause: pauseRecording,
                     onResume: resumeRecording,
                     onFinish: finishRecording,
-                    isFinishEnabled: !isCapturingSessionPhoto
+                    isFinishEnabled: !isCapturingSessionPhoto,
+                    reservesAssistantSpace: isEmbeddedInToday
                 )
                 .tag(SessionPage.map)
                 .ignoresSafeArea()
@@ -884,14 +885,14 @@ struct RecordView: View {
             }
 
 #if DEBUG
-            if recorder.isSimulatingRun, countdownStep == nil {
+            if recorder.isSimulatingRun, countdownStep == nil, !isLiveWorkoutPanelExpanded {
                 VStack {
                     RunSimulationControls(
                         recorder: recorder,
                         onControlUsed: trackRunSimulationControl
                     )
                     .padding(.horizontal, 12)
-                    .padding(.top, 62)
+                    .padding(.top, 62 + (liveGroupTopControlsHeight > 0 ? liveGroupTopControlsHeight + 8 : 0))
 
                     Spacer()
                 }
@@ -899,6 +900,7 @@ struct RecordView: View {
             }
 #endif
         }
+        .onPreferenceChange(LiveGroupTopControlsHeightPreferenceKey.self) { liveGroupTopControlsHeight = $0 }
         .background(Color(.systemBackground))
         .toolbar(.hidden, for: .tabBar)
         .overlay(alignment: .topLeading) {
@@ -907,22 +909,26 @@ struct RecordView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if isEmbeddedInToday, !isLiveWorkoutPanelExpanded {
+            if isVisible, !isLiveWorkoutPanelExpanded {
                 embeddedActivityAssistantButton
             }
         }
         .overlay(alignment: .top) {
-            if countdownStep == nil, !isLiveWorkoutPanelExpanded,
-               liveShareStore.mostRecentlyHeardCheer == nil,
-               let event = (activeIntent ?? plannedIntent)?.activityEvent,
-               // The map already shows this event's live-sharing participant panel.
-               activePage != .map || !liveGroupStore.isSharing
-                   || liveGroupStore.activeSession?.activityEventId != event.id {
-                GroupActivityPresenceView(eventID: event.id, title: event.title)
+            if countdownStep == nil, activePage == .camera,
+               let event = (activeIntent ?? plannedIntent)?.activityEvent {
+                GroupActivityPresenceView(
+                    eventID: event.id, title: event.title,
+                    isSharingLiveMap: isSharingRecordingEventLiveMap,
+                    isLiveMapBusy: liveGroupStore.isJoining || (liveGroupStore.isSharing && !isSharingRecordingEventLiveMap),
+                    onToggleLiveMap: toggleRecordingEventLiveMap
+                )
                     .padding(12)
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
                     .padding(.horizontal, 16)
                     .padding(.top, 62)
+                    .opacity(isLiveWorkoutPanelExpanded || liveShareStore.mostRecentlyHeardCheer != nil ? 0 : 1)
+                    .allowsHitTesting(!isLiveWorkoutPanelExpanded && liveShareStore.mostRecentlyHeardCheer == nil)
+                    .accessibilityHidden(isLiveWorkoutPanelExpanded || liveShareStore.mostRecentlyHeardCheer != nil)
             }
         }
         .overlay(alignment: .top) {
@@ -946,6 +952,27 @@ struct RecordView: View {
         }
     }
 
+    private var isSharingRecordingEventLiveMap: Bool {
+        liveGroupStore.isSharing
+            && liveGroupStore.activeSession?.activityEventId == (activeIntent ?? plannedIntent)?.activityEvent?.id
+    }
+
+    private func toggleRecordingEventLiveMap() {
+        if isSharingRecordingEventLiveMap {
+            liveGroupStore.stopFromManagementControl()
+        } else if let event = (activeIntent ?? plannedIntent)?.activityEvent {
+            Task {
+                track(.init(.groupRunJoinAttempted))
+                await liveGroupStore.joinActivityEvent(event.id)
+                if isSharingRecordingEventLiveMap {
+                    track(.init(.groupRunJoined, properties: [
+                        .participantCountBucket: .string(ProductAnalyticsBucket.count(liveGroupStore.participants.count))
+                    ]))
+                }
+            }
+        }
+    }
+
     private var embeddedCountdownCancelButton: some View {
         Button {
             cancelStartCountdown(returnToSetup: true)
@@ -962,18 +989,15 @@ struct RecordView: View {
     }
 
     private var embeddedActivityAssistantButton: some View {
-        Button {
+        AssistantLauncherButton(
+            accentColor: guideCatalog.selectedTheme.accentColor,
+            analyticsDestination: "live_activity",
+            analyticsEntrySource: "live_activity"
+        ) {
             isAssistantPresented = true
-        } label: {
-            Image(systemName: "sparkles")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(.white)
-                .frame(width: 40, height: 40)
-                .background(.ultraThinMaterial, in: Circle())
         }
         .padding(.top, 18)
         .padding(.trailing, 16)
-        .accessibilityLabel(String(localized: "record.accessibility.open_assistant", defaultValue: "Open assistant"))
     }
 
     private func startRecording() {
@@ -1150,23 +1174,32 @@ struct RecordView: View {
                 startLabel: String(localized: "route.guidance.resume", defaultValue: "Resume Route Guidance"),
                 routeName: route.name,
                 preparedRoute: route,
-                activityTypeOverride: recoveredActivityType
+                activityTypeOverride: recoveredActivityType,
+                activityEvent: recorder.recordingActivityEvent
             )
             selectedRouteDistanceMeters = Self.calculatePreparedRouteDistance(route)
         } else if let recoveredActivityType = recorder.recoveredActivityType,
-                  recoveredActivityType != .running {
+                  recoveredActivityType != .running || recorder.recordingActivityEvent != nil {
             let sport = SportType(activityType: recoveredActivityType)
             plannedIntent = SessionIntent(
                 id: "recovered-\(sport.rawValue)",
                 sport: sport,
-                title: String(format: String(localized: "activity.recovered.title.format", defaultValue: "Recovered %@"), locale: .autoupdatingCurrent, sport.displayName.lowercased()),
+                title: recorder.recordingActivityEvent?.title ?? String(format: String(localized: "activity.recovered.title.format", defaultValue: "Recovered %@"), locale: .autoupdatingCurrent, sport.displayName.lowercased()),
                 detail: String(localized: "activity.recovered.detail", defaultValue: "Paused activity recovered on this device"),
                 guideLine: String(localized: "activity.recovered.companion", defaultValue: "Resume when you are ready."),
                 startLabel: String(localized: "common.resume", defaultValue: "Resume"),
-                activityTypeOverride: recoveredActivityType
+                activityTypeOverride: recoveredActivityType,
+                activityEvent: recorder.recordingActivityEvent
             )
         }
         activeIntent = plannedIntent
+        if let eventID = recorder.recordingActivityEvent?.id {
+            socialStore.prepareToRecord(activityEventID: eventID)
+            trackFeatureExposure("group_activity_recovery")
+        }
+        if !recorder.recoveredAwaitingSave, let sessionID = recorder.recordingLiveGroupSessionID {
+            Task { await liveGroupStore.restoreSession(sessionID: sessionID) }
+        }
         if recorder.recoveredAwaitingSave {
             didTrackRecoveryPresentation = true
             track(.init(.activityRecoveryPresentation, properties: [
@@ -1473,7 +1506,9 @@ struct RecordView: View {
             routeGuidance: routeGuidance,
             canonicalStartDate: phoneWorkoutCoordinator.canonicalStartDate,
             sessionMetadata: phoneWorkoutCoordinator.recordingMetadata(),
-            companionType: isCompanionContextEligible ? companionType : nil
+            companionType: isCompanionContextEligible ? companionType : nil,
+            activityEvent: activeIntent?.activityEvent,
+            liveGroupSessionID: liveGroupStore.isSharing ? liveGroupStore.activeSession?.id : nil
         )
         phoneWorkoutCoordinator.markPhoneRecorderStarted()
     }

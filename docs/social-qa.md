@@ -1,10 +1,18 @@
 # Social QA
 
-## 2026-10-09 live panel follow-up
+## 2026-10-09 live assistant contrast
 
-- When the map is sharing the current event, use its existing live-sharing participant panel rather than also overlaying the event presence panel. Camera and sessions without event live-map sharing retain the presence panel.
-- Production request logs showed the participation-start endpoint returning 404 at 07:27 PDT. The active backend revision predates the participation change, so app compilation alone did not validate the deployed contract. A backend rollout is required for actual-start status; the missing invitee Start button still needs the stored event state checked.
-- Verification: Simulator build only; no test suite or two-device UI pass.
+- The live assistant uses a white icon on a dark translucent circle with a visible border, shadow, and 44-point tap target, so pale map tiles cannot wash it out. Opens reuse `assistant_launcher_opened` with `entry_source=live_activity`.
+
+## 2026-10-09 live layout and active-event join
+
+- One top activity panel owns event status and expandable live-map controls. Participant pills sit beneath it; only participants with map-visible locations move the camera when tapped. Ad hoc group runs retain their existing group management controls at the top.
+- Expanding the workout sheet hides the top panel and pills without unmounting their state. Map buttons clear the measured complete bottom overlay, including route guidance.
+- Replaced the ambiguous `I'm going` action with localized `Join activity`. RSVP actions prevent duplicate submissions and use transient success/failure feedback, safe failure diagnostics, and bounded result analytics.
+- The app allowed RSVP during `active`, but the backend required `scheduled`, returning 404 for joins after the start time. The backend now checks actual participation eligibility, refreshes lifecycle status, and allows scheduled/active joins before the end; its transaction also rejects races with cancellation or completion.
+- Production logs separately showed the recording-start endpoint returning 404 on the old backend. Backend/schema deployment `outbound-api-00161-rlp` restored that endpoint. The event was active with only its organizer RSVP; no invitee RSVP had been persisted.
+- The active-event RSVP fix was deployed with its matching schema as `outbound-api-00162-68k`; health verification succeeded.
+- Verification: iOS/backend build-only checks. Manual test-group simulator review checked the relocated panel and map controls and exposed assistant/debug-overlay collisions, which received spacing fixes. No test suite or two-device UI pass; final spacing needs visual confirmation on device.
 
 ## 2026-10-08 planned activity regression
 

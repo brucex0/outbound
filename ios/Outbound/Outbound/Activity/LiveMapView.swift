@@ -23,11 +23,14 @@ struct LiveMapView: View {
     let onResume: () -> Void
     let onFinish: () -> Void
     let isFinishEnabled: Bool
+    var reservesAssistantSpace = false
 
     @State private var mapPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var isFollowingUser = true
     @State private var statusCardHeight: CGFloat = 132
     @State private var bottomOverlayHeight: CGFloat = 168
+    @State private var eventParticipants: [ActivityEventParticipantDTO] = []
+    @State private var participantToast: String?
     @State private var focusedParticipantID: String?
     @State private var isGroupManagementExpanded = false
     @State private var hasTrackedRouteDisplay = false
@@ -47,6 +50,28 @@ struct LiveMapView: View {
                     rightControls
                 }
             }
+            .overlay(alignment: .top) {
+                topGroupControls
+                    .padding(.top, 62)
+                    .opacity(isWorkoutPanelExpanded ? 0 : 1)
+                    .allowsHitTesting(!isWorkoutPanelExpanded)
+                    .accessibilityHidden(isWorkoutPanelExpanded)
+            }
+            .overlay(alignment: .center) {
+                if let participantToast {
+                    Text(participantToast)
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 14).padding(.vertical, 10)
+                        .background(.regularMaterial, in: Capsule())
+                        .allowsHitTesting(false)
+                }
+            }
+            .task(id: participantToast) {
+                guard participantToast != nil else { return }
+                do { try await Task.sleep(for: .seconds(2.2)) } catch { return }
+                participantToast = nil
+            }
+            .onChange(of: intent?.activityEvent?.id) { _, _ in eventParticipants = [] }
             .onReceive(locationManager.$location) { loc in
                 guard let loc else { return }
                 trackActivityAvatarDisplayIfNeeded()
@@ -145,47 +170,113 @@ struct LiveMapView: View {
         .ignoresSafeArea()
     }
 
+    private var participantPills: [LiveGroupRunnerPill] {
+        let matchesEvent = intent?.activityEvent == nil || liveGroupStore.activeSession?.activityEventId == intent?.activityEvent?.id
+        let liveParticipants = matchesEvent ? liveGroupStore.participants.filter { $0.status != "left" } : []
+        if intent?.activityEvent != nil {
+            return eventParticipants.filter { $0.status == "going" }.map { attendee in
+                LiveGroupRunnerPill(
+                    id: attendee.person.id, displayName: attendee.person.displayName,
+                    avatarURL: attendee.person.avatarUrl,
+                    liveParticipant: liveParticipants.first { $0.userId == attendee.person.id }
+                )
+            }
+        }
+        return liveParticipants.filter { !$0.isCurrentUser }.map {
+            LiveGroupRunnerPill(id: $0.userId, displayName: $0.displayName, avatarURL: nil, liveParticipant: $0)
+        }
+    }
+
+    private var isSharingEventLiveMap: Bool {
+        liveGroupStore.isSharing && liveGroupStore.activeSession?.activityEventId == intent?.activityEvent?.id
+    }
+
+    private func toggleEventLiveMap() {
+        if isSharingEventLiveMap {
+            liveGroupStore.stopFromManagementControl()
+        } else if let event = intent?.activityEvent {
+            Task {
+                track(.init(.groupRunJoinAttempted))
+                await liveGroupStore.joinActivityEvent(event.id)
+                if isSharingEventLiveMap {
+                    track(.init(.groupRunJoined, properties: [
+                        .participantCountBucket: .string(ProductAnalyticsBucket.count(liveGroupStore.participants.count))
+                    ]))
+                }
+            }
+        }
+    }
+
+    private var topGroupControls: some View {
+        VStack(spacing: 8) {
+            if let event = intent?.activityEvent {
+                GroupActivityPresenceView(
+                    eventID: event.id, title: event.title,
+                    isSharingLiveMap: isSharingEventLiveMap,
+                    isLiveMapBusy: liveGroupStore.isJoining || (liveGroupStore.isSharing && !isSharingEventLiveMap),
+                    onToggleLiveMap: toggleEventLiveMap,
+                    onParticipantsLoaded: { eventParticipants = $0 }
+                )
+                .padding(12)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                .padding(.horizontal, 16)
+                .padding(.trailing, reservesAssistantSpace ? AssistantLauncherButton.diameter + 8 : 0)
+            } else if liveGroupStore.isSharing {
+                LiveGroupManagementPanel(
+                    title: liveGroupStore.displayTitle,
+                    statusSummary: liveGroupStore.statusSummary,
+                    participants: liveGroupStore.participants,
+                    isExpanded: $isGroupManagementExpanded,
+                    isCreator: liveGroupStore.activeSession?.isCreatedByCurrentUser == true,
+                    onInvite: {
+                        Task {
+                            guard let presentation = liveGroupStore.invitePresentation(intent: intent) else { return }
+                            await SystemSharePresenter.present(activityItems: presentation.activityItems)
+                        }
+                    },
+                    onStop: {
+                        liveGroupStore.stopFromManagementControl()
+                    }
+                )
+                .padding(.horizontal, 16)
+                .padding(.trailing, reservesAssistantSpace ? AssistantLauncherButton.diameter + 8 : 0)
+            }
+
+            if !participantPills.isEmpty {
+                LiveGroupRunnerStrip(
+                    participants: participantPills,
+                    focusedParticipantID: focusedParticipantID,
+                    onSelect: { participant in
+                        let live = participant.liveParticipant
+                        let coordinate = live?.isCurrentUser == true ? currentCoordinate : (live?.isVisibleOnMap == true ? live?.coordinate : nil)
+                        guard let coordinate else {
+                            track(.init(.groupParticipantLocationUnavailable, properties: [.sourceType: .string("participant_pill")]))
+                            participantToast = String(localized: "group.activity.location_unavailable", table: "GroupActivity")
+                            return
+                        }
+                        track(.init(.groupParticipantFocused, properties: [.sourceType: .string("participant_pill")]))
+                        focusedParticipantID = participant.liveParticipant?.id
+                        isFollowingUser = false
+                        updateMapCamera(for: coordinate, animated: true)
+                    }
+                )
+                .padding(.horizontal, 16)
+            }
+
+        }
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(key: LiveGroupTopControlsHeightPreferenceKey.self, value: proxy.size.height)
+            }
+        }
+    }
+
+
     private func bottomControls(expandedHeight: CGFloat) -> some View {
         VStack {
             Spacer()
 
             VStack(spacing: 12) {
-                if !isWorkoutPanelExpanded, liveGroupStore.isSharing {
-                    LiveGroupManagementPanel(
-                        title: liveGroupStore.displayTitle,
-                        statusSummary: liveGroupStore.statusSummary,
-                        participants: liveGroupStore.participants,
-                        isExpanded: $isGroupManagementExpanded,
-                        isCreator: liveGroupStore.activeSession?.isCreatedByCurrentUser == true,
-                        onInvite: {
-                            Task {
-                                guard let presentation = liveGroupStore.invitePresentation(intent: intent) else { return }
-                                await SystemSharePresenter.present(activityItems: presentation.activityItems)
-                            }
-                        },
-                        onStop: {
-                            liveGroupStore.stopFromManagementControl()
-                        }
-                    )
-                    .padding(.horizontal, 16)
-                }
-
-                if !isWorkoutPanelExpanded, !liveGroupStore.visibleParticipants.isEmpty {
-                    LiveGroupRunnerStrip(
-                        participants: liveGroupStore.visibleParticipants,
-                        currentCoordinate: currentCoordinate,
-                        unitSystem: measurementPreferences.unitSystem,
-                        focusedParticipantID: focusedParticipantID,
-                        onSelect: { participant in
-                            guard let coordinate = participant.coordinate else { return }
-                            focusedParticipantID = participant.id
-                            isFollowingUser = false
-                            updateMapCamera(for: coordinate, animated: true)
-                        }
-                    )
-                    .padding(.horizontal, 16)
-                }
-
                 if !isWorkoutPanelExpanded, let routeGuidance = recorder.routeGuidanceSnapshot {
                     RouteGuidanceStatusView(
                         snapshot: routeGuidance,
@@ -469,7 +560,7 @@ struct LiveMapView: View {
     }
 
     private var railBottomPadding: CGFloat {
-        max(statusCardHeight + 38, 150)
+        max(bottomOverlayHeight + 20, 150)
     }
 
     private var sessionPaceText: String {
@@ -774,85 +865,73 @@ private struct LiveGroupParticipantPin: View {
     }
 }
 
+private struct LiveGroupRunnerPill: Identifiable {
+    let id: String
+    let displayName: String
+    let avatarURL: String?
+    let liveParticipant: LiveGroupParticipant?
+
+    var isSharingLocation: Bool {
+        liveParticipant?.status == "active" || liveParticipant?.status == "stale"
+    }
+}
+
 private struct LiveGroupRunnerStrip: View {
-    let participants: [LiveGroupParticipant]
-    let currentCoordinate: CLLocationCoordinate2D?
-    let unitSystem: MeasurementUnitSystem
+    let participants: [LiveGroupRunnerPill]
     let focusedParticipantID: String?
-    let onSelect: (LiveGroupParticipant) -> Void
+    let onSelect: (LiveGroupRunnerPill) -> Void
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(participants) { participant in
+                ForEach(Array(participants.prefix(5))) { participant in
                     Button {
                         onSelect(participant)
                     } label: {
-                        HStack(spacing: 8) {
-                            Text(participant.initials)
-                                .font(.caption.weight(.black))
-                                .foregroundStyle(.white)
-                                .frame(width: 28, height: 28)
-                                .background(pinColor(for: participant).opacity(participant.isFresh ? 1 : 0.52), in: Circle())
-
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(participant.displayName)
-                                    .font(.caption.weight(.bold))
-                                    .lineLimit(1)
-                                Text(statusText(for: participant))
-                                    .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
+                        HStack(spacing: 6) {
+                            SocialAvatar(name: participant.displayName, avatarURL: participant.avatarURL, size: 28)
+                                .accessibilityHidden(true)
+                            Text(shortName(for: participant))
+                                .font(.caption.weight(.bold))
+                                .lineLimit(1)
+                            Image(systemName: participant.isSharingLocation ? "location.fill" : "location.slash")
+                                .font(.caption2)
+                                .foregroundStyle(participant.isSharingLocation ? Color.green : Color.secondary)
                         }
                         .padding(.horizontal, 10)
-                        .frame(height: 46)
-                        .background(
-                            Capsule()
-                                .fill(focusedParticipantID == participant.id ? Color.orange.opacity(0.18) : Color(.systemBackground).opacity(0.92))
-                        )
+                        .frame(height: 44)
+                        .background(.regularMaterial, in: Capsule())
                         .overlay {
-                            Capsule()
-                                .stroke(focusedParticipantID == participant.id ? Color.orange : Color.primary.opacity(0.08), lineWidth: 1)
+                            Capsule().stroke(isFocused(participant) ? Color.orange : Color.primary.opacity(0.08), lineWidth: 1)
                         }
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(participant.displayName)
+                    .accessibilityValue(String(localized: participant.isSharingLocation
+                        ? "group.activity.location_sharing" : "group.activity.location_not_sharing", table: "GroupActivity"))
                 }
             }
             .padding(.horizontal, 2)
         }
     }
 
-    private func statusText(for participant: LiveGroupParticipant) -> String {
-        var parts: [String] = []
-        if let distanceText = distanceText(to: participant.coordinate) {
-            parts.append(distanceText)
-        }
-        if let lastLocationAt = participant.lastLocationAt {
-            parts.append(participant.isFresh ? "last \(relativeAge(from: lastLocationAt))" : "last seen \(relativeAge(from: lastLocationAt))")
-        } else {
-            parts.append("waiting")
-        }
-        return parts.joined(separator: " - ")
+    private func isFocused(_ participant: LiveGroupRunnerPill) -> Bool {
+        guard let focusedParticipantID else { return false }
+        return participant.liveParticipant?.id == focusedParticipantID
     }
 
-    private func distanceText(to coordinate: CLLocationCoordinate2D?) -> String? {
-        guard let currentCoordinate, let coordinate else { return nil }
-        let current = CLLocation(latitude: currentCoordinate.latitude, longitude: currentCoordinate.longitude)
-        let other = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-        let meters = current.distance(from: other)
-        return unitSystem.distanceValueString(meters: meters)
+    private func shortName(for participant: LiveGroupRunnerPill) -> String {
+        let parts = participant.displayName.split(separator: " ")
+        guard let first = parts.first else { return participant.displayName }
+        let duplicates = participants.filter {
+            $0.displayName.split(separator: " ").first?.lowercased() == first.lowercased()
+        }.count > 1
+        guard duplicates, parts.count > 1, let initial = parts.last?.first else { return String(first) }
+        return "\(first) \(initial)."
     }
+}
 
-    private func relativeAge(from date: Date) -> String {
-        let seconds = max(0, Int(Date().timeIntervalSince(date)))
-        if seconds < 60 { return "\(seconds)s" }
-        return "\(seconds / 60)m"
-    }
-
-    private func pinColor(for participant: LiveGroupParticipant) -> Color {
-        let palette: [Color] = [.blue, .green, .purple, .pink, .teal]
-        let index = abs(participant.id.hashValue) % palette.count
-        return palette[index]
-    }
+struct LiveGroupTopControlsHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }

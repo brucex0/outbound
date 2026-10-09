@@ -152,3 +152,7 @@ Production schema rollout uses the Cloud Run database job documented in `docs/ba
 - Consolidated Group creation and administration are specified in `docs/run-groups.md` but not implemented.
 - Public following, public feed ranking, direct messages, rivals, challenges, and relays. The existing Circle implementation is a migration input for the consolidated Group product.
 - Automated moderation classification and an operator review console; reports are persisted but still require response ownership.
+
+- The live map shows a separate row of at most five attendee pills below the activity panel, including attendees who have not joined location sharing. Pills reuse Social avatars and show first names, adding a last-name initial for duplicate first names across the roster. The location icon indicates active sharing; tapping focuses an available location or shows a temporary localized unavailable toast. The expanded activity panel retains the full attendee list. Both top controls and pills hide while the workout dashboard is expanded.
+
+- Active recording recovery persists the activity-event launch context and existing live-map session ID in the session journal. Restart restores the event title, attendee panel, pills, and saved event attribution; it reconnects an existing active membership rather than joining a new session. Ended/left memberships are not resumed.

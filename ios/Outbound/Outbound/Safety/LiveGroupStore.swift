@@ -247,6 +247,25 @@ final class LiveGroupStore: ObservableObject {
         }
     }
 
+    func restoreSession(sessionID: String) async {
+        guard activeSession == nil, !isJoining else { return }
+        isJoining = true
+        defer { isJoining = false }
+        do {
+            let response = try await api.fetchLiveGroupRun(sessionID: sessionID)
+            guard activeSession == nil else { return }
+            guard response.status == "active", response.endedAt == nil, response.expiresAt > Date(),
+                  response.participants.contains(where: { $0.userId == response.currentUserId && ($0.status == "active" || $0.status == "stale") }) else { return }
+            apply(response)
+            connectRealtime(sessionID: response.id)
+            ActivityDiagnosticLog.notice(.recovery, "Live group recovery completed")
+        } catch {
+            if Task.isCancelled || (error as NSError).code == NSURLErrorCancelled { return }
+            ActivityDiagnosticLog.error(.recovery, "Live group recovery failed error=\(ActivityDiagnosticLog.errorCategory(error)) code=\((error as NSError).code)")
+            lastErrorMessage = String(localized: "group.activity.live_error", table: "GroupActivity")
+        }
+    }
+
     func joinActivityEvent(_ activityEventID: String) async {
         guard activeSession == nil else { return }
         isJoining = true

@@ -1826,6 +1826,7 @@ struct ActivityEventDetailView: View {
     @State private var isCancelConfirmationPresented = false
     @State private var isCancelling = false
     @State private var cancellationToast: String?
+    @State private var isUpdatingAttendance = false
     @StateObject private var startLocationManager = LocationManager()
     @State private var showAllParticipants = false
     private var results: ActivityEventResultDTO? { socialStore.resultsByActivityEventID[run.id] }
@@ -1993,19 +1994,15 @@ struct ActivityEventDetailView: View {
                     Button {
                         guard let detail else { return }
                         if detail.currentUserGoing {
-                            Task {
-                                if let updatedDetail = await socialStore.toggleRSVP(for: detail) {
-                                    self.detail = updatedDetail
-                                }
-                            }
+                            updateAttendance(attendanceMode: nil)
                         } else {
                             isAttendanceChoicePresented = true
                         }
                     } label: {
-                        Label(detail?.currentUserGoing == true ? String(localized: "Leave run") : String(localized: "I'm going"),
+                        Label(detail?.currentUserGoing == true ? String(localized: "Leave run") : String(localized: "group.activity.join", table: "GroupActivity"),
                               systemImage: detail?.currentUserGoing == true ? "calendar.badge.minus" : "calendar.badge.checkmark")
                     }
-                    .disabled(detail == nil)
+                    .disabled(detail == nil || isUpdatingAttendance)
                 }
 
                 if canCancelActivity {
@@ -2355,12 +2352,28 @@ struct ActivityEventDetailView: View {
     }
 
     private func join(attendanceMode: String) {
-        guard let detail else { return }
+        updateAttendance(attendanceMode: attendanceMode)
+    }
+
+    private func updateAttendance(attendanceMode: String?) {
+        guard let detail, !isUpdatingAttendance else { return }
+        let isJoining = !detail.currentUserGoing
+        isUpdatingAttendance = true
         Task {
-            if let updatedDetail = await socialStore.toggleRSVP(for: detail, attendanceMode: attendanceMode) {
-                self.detail = updatedDetail
-                _ = socialRecognitionStore.registerGroupJoin(groupID: "run:\(run.id)")
+            defer { isUpdatingAttendance = false }
+            let updated = await socialStore.toggleRSVP(for: detail, attendanceMode: attendanceMode)
+            if let updated {
+                self.detail = updated
+                if isJoining { _ = socialRecognitionStore.registerGroupJoin(groupID: "run:\(run.id)") }
             }
+            cancellationToast = updated != nil
+                ? String(localized: isJoining ? "group.activity.joined" : "group.activity.left", table: "GroupActivity")
+                : String(localized: "group.activity.rsvp_error", table: "GroupActivity")
+            await analyticsManager?.track(.init(.activityEventRSVPResult, properties: [
+                .entrySource: .string(entrySource),
+                .selectionType: .string(isJoining ? "join" : "leave"),
+                .result: .string(updated != nil ? "success" : "failure")
+            ]))
         }
     }
 
