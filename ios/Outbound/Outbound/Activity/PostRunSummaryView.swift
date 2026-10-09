@@ -271,7 +271,7 @@ struct PostRunSummaryView: View {
                     Divider().frame(height: 48)
                     SummaryStatColumn(
                         label: String(localized: "activity.metric.steps", defaultValue: "Steps"),
-                        value: walkingStepCount.formatted(),
+                        value: walkingStepCount.formatted(.number),
                         unit: ""
                     )
                 }

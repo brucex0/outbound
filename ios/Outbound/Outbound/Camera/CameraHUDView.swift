@@ -1199,7 +1199,7 @@ struct SessionStatusCard: View {
 
     private var movementDetailValue: String {
         guard intent?.sport == .walk else { return elevationText }
-        return walkingStepCount?.formatted() ?? "--"
+        return walkingStepCount?.formatted(.number) ?? "--"
     }
 
     private var movementDetailLabel: String {

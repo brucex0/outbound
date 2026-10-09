@@ -127,7 +127,7 @@ struct ActivityDetailView: View {
            let walkingStepCount = currentActivity.walkingStepCount {
             stats.append(DetailActivityStat(
                 label: String(localized: "activity.metric.steps", defaultValue: "Steps"),
-                value: walkingStepCount.formatted()
+                value: walkingStepCount.formatted(.number)
             ))
         }
         if let kilocalories = displayedKilocalories {

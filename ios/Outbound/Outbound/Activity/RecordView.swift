@@ -1562,7 +1562,8 @@ struct RecordView: View {
                     locationDiagnostics.segmentCount
                 )),
                 .motionBridgeUsed: .boolean(locationDiagnostics.motionAssistedDistanceMeters > 0),
-                .routeMatchResult: .string(locationDiagnostics.routeMatchResult)
+                .routeMatchResult: .string(locationDiagnostics.routeMatchResult),
+                .walkingStepsAvailable: .boolean(summary.walkingStepCount != nil)
             ]))
         }
         liveActivityManager.end(using: recorder.liveSnapshot, unitSystem: measurementPreferences.unitSystem)
