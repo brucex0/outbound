@@ -799,13 +799,16 @@ router.post("/activity-events/:id/rsvp", zValidator("json", attendanceModeSchema
   if (user instanceof Response) return user;
   const connections = await acceptedConnectionIDs(user.id);
   const activity = await visibleActivityEvent(user.id, connections, c.req.param("id"));
-  if (!activity || activity.status !== "scheduled") return c.json({ error: "Activity event not found." }, 404);
+  if (!activity) return c.json({ error: "Activity event not found." }, 404);
+  if (!(await eligibleActivityEvent(user.id, activity.id))) return c.json({ error: "Activity unavailable." }, 403);
+  await refreshActivityEventStatus(activity);
+  if (!["scheduled", "active"].includes(activity.status)) return c.json({ error: "Activity unavailable." }, 409);
   const attendanceMode = c.req.valid("json").attendanceMode;
   if (attendanceMode === "virtual" && activity.participationMode !== "hybrid") {
     return c.json({ error: "This activity is in-person only." }, 422);
   }
   const participant = await getPrismaClient().$transaction(async (tx) => {
-    const gate = await tx.activityEvent.updateMany({ where: { id: activity.id, status: "scheduled" }, data: { status: "scheduled" } });
+    const gate = await tx.activityEvent.updateMany({ where: { id: activity.id, status: activity.status, endsAt: { gt: new Date() } }, data: { status: activity.status } });
     if (!gate.count) return null;
     return tx.activityEventParticipant.upsert({
       where: { activityEventId_userId: { activityEventId: activity.id, userId: user.id } },
