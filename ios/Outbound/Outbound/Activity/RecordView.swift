@@ -151,6 +151,7 @@ struct RecordView: View {
 #if DEBUG
     @State private var isRunSimulationEnabled = false
     @State private var liveGroupTopControlsHeight: CGFloat = 0
+    @State private var didConfigureRequestedGroupRecoveryTest = false
     @State private var didConfigureRequestedRunSimulation = false
 #endif
 
@@ -386,6 +387,7 @@ struct RecordView: View {
             onPreActivityPhotoChange?(preActivityPhoto)
             restoreInterruptedSessionIfNeeded()
 #if DEBUG
+            configureRequestedGroupRecoveryTestIfNeeded()
             configureRequestedRunSimulationIfNeeded()
 #endif
             switch recorder.state {
@@ -1269,6 +1271,25 @@ struct RecordView: View {
     }
 
 #if DEBUG
+    /// Seeds only setup inputs. Recording and recovery use the production journal path.
+    private func configureRequestedGroupRecoveryTestIfNeeded() {
+        guard isVisible, recorder.state == .idle, !didConfigureRequestedGroupRecoveryTest,
+              ProcessInfo.processInfo.arguments.contains("-OutboundGroupRecoveryUITestSetup") else { return }
+        didConfigureRequestedGroupRecoveryTest = true
+        isIndoorSession = true
+        Task {
+            await liveGroupStore.joinActivityEvent("ui-recovery-event")
+            plannedIntent = SessionIntent(
+                id: "ui-recovery-event", sport: .run, title: "Recovery group run",
+                detail: "Synthetic UI recovery fixture", guideLine: "", startLabel: "Start recovery run",
+                activityEvent: ActivityEventLaunchContext(
+                    id: "ui-recovery-event", title: "Recovery group run", role: "organizer",
+                    attendanceMode: "remote", organizerName: "Fixture runner"
+                )
+            )
+        }
+    }
+
     private func configureRequestedRunSimulationIfNeeded() {
         guard isVisible,
               !didConfigureRequestedRunSimulation,

@@ -906,6 +906,7 @@ private struct LiveGroupRunnerStrip: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("live.group.participant.\(participant.id)")
                     .accessibilityLabel(participant.displayName)
                     .accessibilityValue(String(localized: participant.isSharingLocation
                         ? "group.activity.location_sharing" : "group.activity.location_not_sharing", table: "GroupActivity"))

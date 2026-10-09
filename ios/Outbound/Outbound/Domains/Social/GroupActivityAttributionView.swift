@@ -144,6 +144,7 @@ struct GroupActivityPresenceView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
+        .accessibilityIdentifier("live.group.activity")
         .task(id: eventID) {
             while !Task.isCancelled {
                 do {

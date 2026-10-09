@@ -345,3 +345,19 @@ xcrun devicectl device process launch \
   --device 591E461F-4950-5FBD-A797-4777F1E83532 \
   plainstride.outbound
 ```
+
+## Focused Group Recording Recovery UI Test
+
+Run only when UI tests are requested:
+
+```sh
+./scripts/run-group-recovery-ui-test.sh
+# Optional result directory (must not already contain GroupRecovery.xcresult):
+./scripts/run-group-recovery-ui-test.sh /tmp/outbound-group-recovery-results
+```
+
+The runner creates and removes a dedicated iPhone simulator and serves synthetic attendees/live-map membership on loopback port 18763. Keep that port free. The Debug setup flag supplies a group intent and indoor setup only; the test starts and pauses a real recorder, then terminates and relaunches twice without the setup flag. It does not seed the recovery journal, use run simulation, or call production APIs.
+
+Assertions cover the retained event title, exactly one assistant button, five attendee pills, sharing status, and Stop sharing after each restart. `GroupRecovery.xcresult` keeps restart screenshots; `fixture.log` confirms reads of the original live-map session after relaunch. No personal activity is saved. The focused `GroupRecoveryUI` scheme excludes unrelated unit-test targets; existing broad UI tests are not run.
+
+Verified on iPhone 17 Pro / iOS 26.5 Simulator: one initial join, two app restarts, two reads of the same live-map session, with all group UI assertions passing. This covers recordings started by the current build; older journals without group context cannot reconstruct it.

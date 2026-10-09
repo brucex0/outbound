@@ -51,6 +51,7 @@ struct AssistantLauncherButton: View {
             .scaleEffect(scale)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("assistant.launcher")
         .accessibilityLabel(String(localized: "Open assistant"))
         .accessibilityHint(String(localized: "Get help with this page or anywhere in Plainstride"))
         .task(id: "\(scenePhase)-\(reduceMotion)") {
