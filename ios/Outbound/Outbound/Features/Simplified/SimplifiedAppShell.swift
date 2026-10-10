@@ -905,26 +905,46 @@ private struct SimplifiedTodayView: View {
                             Image(systemName: "paintpalette.fill")
                         }
                         .accessibilityLabel("Change appearance")
-                        .coordinatedTooltip(
-                            .themeDiscovery,
-                            isEligible: isSelected && activitySessionState == .idle,
-                            text: String(localized: "theme.discovery.tip", defaultValue: "Tap to change appearance"),
-                            arrowEdge: .top
-                        )
+                        .accessibilityIdentifier("today.appearance")
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     GlobalConditionsButton()
+                        .accessibilityIdentifier("today.conditions")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     socialInboxButton(entrySource: "today")
+                        .accessibilityIdentifier("today.inbox")
                 }
                 if showsActivityOverflowMenu, activitySessionState == .idle {
                     ToolbarItem(placement: .topBarTrailing) {
                         activityOverflowMenu
+                            .accessibilityIdentifier("today.overflow")
                     }
                 }
             }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if tooltipCoordinator.isPresented(.themeDiscovery) {
+                    HStack {
+                        Button(action: openThemeChooserFromTip) {
+                            Text(String(localized: "theme.discovery.tip", defaultValue: "Tap to change appearance"))
+                                .font(.subheadline.weight(.semibold))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(.regularMaterial, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("today.appearanceTip")
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, OutboundSpacing.screen)
+                    .padding(.bottom, 8)
+                }
+            }
+            .tooltipCandidate(
+                .themeDiscovery,
+                isEligible: isSelected && activitySessionState == .idle && !isActivityFullscreenVisible
+            )
             .onAppear {
                 presentPendingAdjustmentIfNeeded(personalizationStore.snapshot.pendingAdjustment?.id)
             }
@@ -1148,20 +1168,8 @@ private struct SimplifiedTodayView: View {
     }
 
     private func openThemeChooserFromTip() {
-        let waitsForTipDismissal = tooltipCoordinator.isPresented(.themeDiscovery)
         tooltipCoordinator.dismiss(.themeDiscovery, outcome: "opened")
-        guard waitsForTipDismissal else {
-            showsThemeChooser = true
-            return
-        }
-        Task { @MainActor in
-            do {
-                try await Task.sleep(for: .milliseconds(250))
-            } catch {
-                return
-            }
-            showsThemeChooser = true
-        }
+        showsThemeChooser = true
     }
 
     private var activityEventToday: ActivityEventDTO? {

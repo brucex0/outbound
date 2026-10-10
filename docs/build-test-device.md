@@ -109,6 +109,25 @@ Run the complete deterministic app UI regression suite. It selects the first ava
 
 This suite covers the primary shell and navigation, installed iOS guide voice previews, seeded Social connections, requests, groups, notifications, group-run RSVP, Cheers, comments and activity sharing, activity history, Settings, recording and post-run lifecycle, a deterministic live 10K run with route and health metrics, and launch performance. It uses local UI-test authentication, deterministic in-memory fixtures, and skips onboarding; use `run-local-e2e.sh` separately for Firebase and server persona coverage. Standalone DEBUG harness tests are intentionally outside this production-flow suite.
 
+### On-Demand UI Flows From Terminal
+
+```sh
+./scripts/run-ui-flow.sh --list
+./scripts/run-ui-flow.sh appearance
+./scripts/run-ui-flow.sh appearance-palette
+# Explicit simulator or connected test iPhone (use its Xcode UDID):
+./scripts/run-ui-flow.sh appearance 'platform=iOS Simulator,id=SIMULATOR_UUID'
+./scripts/run-ui-flow.sh appearance 'platform=iOS,id=DEVICE_UDID'
+```
+
+- Each command runs only the named XCTest UI flow. The default creates and removes a dedicated iPhone simulator, preserving existing simulator apps and data.
+- `appearance` verifies that the tip and all four toolbar controls are visible, tappable, and do not overlap, then taps the pill, verifies the chooser, and returns to the toolbar. `appearance-palette` checks the palette path while the tip is visible.
+- Screenshots and XCTest assertions are retained in `Flow.xcresult`, with the build/test log in the fresh `/tmp/plainstride-ui-flow.*` directory printed by the runner. Open the result bundle in Xcode to inspect failures and screenshots. The command returns nonzero on failure.
+- Connected phones require pairing, Developer Mode, an unlocked screen, and valid development signing. Use a dedicated test phone: flows relaunch the app with local test authentication and fixtures, and some scenarios change local app state. They do not test production sign-in.
+- The runner controls the app through Apple's XCTest runner; no network command listener is added to the app. Device availability and signing are reported by `xcodebuild`.
+- Add a focused test to `UIFlowTests.swift` with stable accessibility identifiers and meaningful visible-state assertions, then register its name in the script's `case` list. Keep fixture setup in launch arguments and retain screenshots at key transitions. Do not map a flow to the entire suite.
+- Run one command at a time; runners share `/tmp/plainstride-ui-flow-derived` to reuse build products.
+
 ### Seeded Live 10K
 
 The focused automated test is `OutboundUITests.testSeededLive10KRunMetricsAndLifecycle`. It runs on a simulator with local UI-test authentication, not a Firebase test account:

@@ -241,13 +241,11 @@ final class TooltipCoordinator: ObservableObject {
     private let dailyCountKey = "tooltip.daily.count.v1"
 }
 
-private struct CoordinatedTooltipModifier: ViewModifier {
+private struct TooltipCandidateModifier: ViewModifier {
     @EnvironmentObject private var coordinator: TooltipCoordinator
 
     let tooltip: AppTooltip
     let isEligible: Bool
-    let text: String
-    let arrowEdge: Edge
 
     func body(content: Content) -> some View {
         content
@@ -265,6 +263,20 @@ private struct CoordinatedTooltipModifier: ViewModifier {
                 coordinator.request(tooltip)
             }
             .onDisappear { coordinator.withdraw(tooltip) }
+    }
+}
+
+private struct CoordinatedTooltipModifier: ViewModifier {
+    @EnvironmentObject private var coordinator: TooltipCoordinator
+
+    let tooltip: AppTooltip
+    let isEligible: Bool
+    let text: String
+    let arrowEdge: Edge
+
+    func body(content: Content) -> some View {
+        content
+            .tooltipCandidate(tooltip, isEligible: isEligible)
             .popover(
                 isPresented: presentation,
                 attachmentAnchor: .point(anchorPoint),
@@ -296,6 +308,12 @@ private struct CoordinatedTooltipModifier: ViewModifier {
 }
 
 extension View {
+    /// Registers an inline discovery surface with the same scheduling and analytics
+    /// as anchored popovers, without presenting a native modal over its controls.
+    func tooltipCandidate(_ tooltip: AppTooltip, isEligible: Bool) -> some View {
+        modifier(TooltipCandidateModifier(tooltip: tooltip, isEligible: isEligible))
+    }
+
     func coordinatedTooltip(
         _ tooltip: AppTooltip,
         isEligible: Bool,

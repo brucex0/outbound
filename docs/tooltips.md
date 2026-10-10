@@ -6,6 +6,7 @@ Open this when adding or changing a short, anchored discovery tooltip in the iOS
 
 - `Core/TooltipCoordinator.swift` is the app-scoped scheduler and persistence owner.
 - `AppTooltip` defines each tooltip's stable ID, analytics name, priority, delay, and lifetime presentation limit.
+- `tooltipCandidate(_:isEligible:)` registers an inline tip with the same delay, scheduling, limits, withdrawal, and analytics. Today uses this for its actionable appearance pill below the toolbar, avoiding a native toolbar popover.
 - `coordinatedTooltip(_:isEligible:text:arrowEdge:)` attaches a definition to its visible anchor.
 - The coordinator batches simultaneous candidates, shows the highest priority candidate, and never presents two tooltips at once.
 - Discovery tips share a global budget of one presentation per calendar day. Contextual tips are exempt because they appear only after a qualifying action, but they still never overlap another tooltip.
