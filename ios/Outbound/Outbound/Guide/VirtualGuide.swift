@@ -254,6 +254,9 @@ final class VirtualGuide: NSObject, ObservableObject {
         }
         announceProgressIfNeeded(for: snapshot)
         guard runningSession else { return }
+        momentDirector.suppressionHandler = { [weak self] reason in
+            self?.guidanceEventHandler?(.momentSuppressed(reason: reason))
+        }
         let update = momentDirector.ingest(snapshot, profile: profile, intent: sessionIntent)
         update.evaluatedCues.forEach { record in
             guidanceEventHandler?(.cueEvaluated(type: record.momentType, outcome: record.outcome))
@@ -276,6 +279,13 @@ final class VirtualGuide: NSObject, ObservableObject {
         autoPaused: Bool,
         snapshot: ActiveSessionSnapshot
     ) {
+        if previousState != state {
+            momentDirector.resetPaceEvidence()
+            snapshotHistory = []
+            let paceTypes: Set<LiveGuidanceMomentType> = [.earlyOverpace, .paceAboveTarget, .paceBelowTarget, .paceInstability, .paceDrift, .targetLocked, .rhythmRecovery, .recoveryTooHard, .raceLateFade, .racePaceLocked]
+            if let pendingMoment, paceTypes.contains(pendingMoment.type) { self.pendingMoment = nil }
+            queuedMoments.removeAll { paceTypes.contains($0.type) }
+        }
         guard isActive, autoPaused else { return }
         let momentType: LiveGuidanceMomentType
         let message: String
@@ -367,6 +377,13 @@ final class VirtualGuide: NSObject, ObservableObject {
     // MARK: - Private
 
     private func processPendingMoment(using snapshot: ActiveSessionSnapshot) {
+        if let pendingMoment,
+           [.earlyOverpace, .paceAboveTarget, .paceBelowTarget, .paceInstability, .paceDrift, .targetLocked, .rhythmRecovery, .recoveryTooHard, .raceLateFade, .racePaceLocked].contains(pendingMoment.type),
+           snapshot.paceEvidenceTimestamp == nil || snapshot.elapsedSeconds - pendingMoment.detectedAtElapsedSeconds > 10 {
+            self.pendingMoment = nil
+            advancePendingMoment()
+            return
+        }
         guard let moment = pendingMoment,
               !isAnalyzing,
               routeSpeechQuietUntil.map({ Date() >= $0 }) ?? true,
@@ -888,13 +905,13 @@ final class VirtualGuide: NSObject, ObservableObject {
         case .distanceComplete:
             "Distance goal covered. Ease through the finish."
         case .durationOneThird:
-            "One third of your time goal done. Settle into the rhythm."
+            String(localized: "live_guidance.goal.one_third_time", defaultValue: "One third of your time goal done.")
         case .durationHalfway:
             "Halfway through your time goal. Keep the effort even."
         case .durationTwoThirds:
             "Two thirds of the time goal done. Stay composed."
         case .durationLastFiveMinutes:
-            "Last 5 minutes of the time goal. Keep the rhythm calm."
+            String(localized: "live_guidance.goal.five_minutes_left", defaultValue: "Five minutes left to reach your time goal.")
         case .durationLastMinute:
             "Last minute of the time goal. Finish steady."
         case .durationComplete:

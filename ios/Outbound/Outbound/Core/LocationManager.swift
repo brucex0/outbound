@@ -481,6 +481,26 @@ final class LocationManager: NSObject, ObservableObject {
         return pace
     }
 
+    /// Coaching needs fresh, densely covered fixes; display pace can remain available
+    /// during a brief dropout without being treated as new coaching evidence.
+    var coachingPaceEvidenceTimestamp: Date? {
+#if DEBUG
+        // Controlled run simulations supply fresh synthetic pace on every tick.
+        if testCurrentPaceSecsPerKm != nil { return Date() }
+#endif
+        guard let segment = locationSegments.last, let last = segment.last,
+              (0...5).contains(Date().timeIntervalSince(last.timestamp)) else { return nil }
+        let recent = Array(segment.drop { last.timestamp.timeIntervalSince($0.timestamp) > paceWindowSeconds })
+        guard recent.count >= 8, let first = recent.first,
+              last.timestamp.timeIntervalSince(first.timestamp) >= 20,
+              recent.allSatisfy({ (0...20).contains($0.horizontalAccuracy) }),
+              zip(recent, recent.dropFirst()).allSatisfy({ edge in
+                  let gap = edge.1.timestamp.timeIntervalSince(edge.0.timestamp)
+                  return gap > 0 && gap <= 5
+              }) else { return nil }
+        return last.timestamp
+    }
+
     func recordFinalReconciliation(
         liveDistanceMeters: Double,
         finalDistanceMeters: Double,

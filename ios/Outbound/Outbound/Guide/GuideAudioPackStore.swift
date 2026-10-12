@@ -140,6 +140,7 @@ final class GuideAudioPackStore {
                 && $0.locale == locale
                 && $0.voiceProfileId == voiceProfileID
                 && $0.compatibleCoachPersonaIds.contains(coachPersonaID)
+                && (transcript == nil || normalize($0.transcript) == normalize(transcript!))
         } ?? []
         if let styled = candidates.first(where: { $0.scriptStyleId == scriptStyleID }) { return styled }
         if let standard = candidates.first(where: { $0.scriptStyleId == "standard" }) { return standard }

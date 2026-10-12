@@ -1,6 +1,50 @@
 {
   "sourceLanguage": "en",
   "strings": {
+  "live_guidance.goal.one_third_time": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "One third of your time goal done."
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Has completado un tercio del tiempo objetivo."
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "时间目标已完成三分之一。"
+        }
+      }
+    }
+  },
+  "live_guidance.goal.five_minutes_left": {
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Five minutes left to reach your time goal."
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Faltan cinco minutos para completar el tiempo objetivo."
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "距离完成时间目标还剩五分钟。"
+        }
+      }
+    }
+  },
 
   "group.moment.results": {
     "localizations": {

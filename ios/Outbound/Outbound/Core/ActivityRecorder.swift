@@ -891,7 +891,8 @@ final class ActivityRecorder: ObservableObject {
             activityType: activityType,
             heartRate: heartRate,
             location: locationManager.location.map(SessionLocation.init),
-            isActive: isActive ?? (state == .active)
+            isActive: isActive ?? (state == .active),
+            paceEvidenceTimestamp: locationManager.coachingPaceEvidenceTimestamp
         )
     }
 

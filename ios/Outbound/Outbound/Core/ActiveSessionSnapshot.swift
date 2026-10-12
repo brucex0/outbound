@@ -11,6 +11,7 @@ struct ActiveSessionSnapshot: Equatable {
     let heartRate: Int?
     let location: SessionLocation?
     let isActive: Bool
+    var paceEvidenceTimestamp: Date? = nil
 
     static var empty: ActiveSessionSnapshot {
         ActiveSessionSnapshot(

@@ -3490,6 +3490,8 @@ struct RecordView: View {
                 .activityType: .string(activityType),
                 .result: .string(result)
             ]))
+        case .momentSuppressed(let reason):
+            track(.init(.liveGuidanceMomentSuppressed, properties: [.result: .string(reason)]))
         case .momentDetected(let type, let contract):
             track(.init(.liveGuidanceMomentDetected, properties: [
                 .momentType: .string(type.rawValue),

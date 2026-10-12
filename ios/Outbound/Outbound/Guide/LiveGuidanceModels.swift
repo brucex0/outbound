@@ -177,6 +177,7 @@ struct LiveGuidanceSessionReport: Equatable {
 
 enum LiveGuidanceTelemetryEvent: Equatable {
     case eligibilityResolved(activityType: String, result: String)
+    case momentSuppressed(reason: String)
     case momentDetected(type: LiveGuidanceMomentType, contract: CoachingContract)
     case cueSpoken(type: LiveGuidanceMomentType, contract: CoachingContract)
     case cueEvaluated(type: LiveGuidanceMomentType, outcome: LiveGuidanceCueOutcome)
@@ -255,6 +256,10 @@ final class LiveGuidanceDirector {
     private var emittedSegmentMoments: Set<String> = []
     private var lastMomentElapsedSeconds: Int?
     private var lastDriftElapsedSeconds: Int?
+    private var instabilityCandidateSince: Int?
+    private var instabilityLatched = false
+    private var suppressionReasons: Set<String> = []
+    var suppressionHandler: ((String) -> Void)?
     private var lastInstabilityElapsedSeconds: Int?
     private var isOnClimb = false
     private var climbCandidateStartDistanceMeters: Double?
@@ -277,6 +282,9 @@ final class LiveGuidanceDirector {
         lastMomentElapsedSeconds = nil
         lastDriftElapsedSeconds = nil
         lastInstabilityElapsedSeconds = nil
+        instabilityCandidateSince = nil
+        instabilityLatched = false
+        suppressionReasons = []
         isOnClimb = false
         climbCandidateStartDistanceMeters = nil
         challengeStartedAtElapsedSeconds = nil
@@ -289,6 +297,14 @@ final class LiveGuidanceDirector {
         profile: GuideProfile?,
         intent: SessionIntent?
     ) -> LiveGuidanceDirectorUpdate {
+        if snapshot.paceEvidenceTimestamp == nil {
+            resetPaceEvidence()
+            suppress("unreliable_pace")
+        } else if let previous = history.last,
+                  snapshot.recordedAt.timeIntervalSince(previous.recordedAt) > 8 {
+            resetPaceEvidence()
+            suppress("measurement_gap")
+        }
         history.append(snapshot)
         retainRecentLiveGuidanceHistory(&history, through: snapshot.elapsedSeconds)
 
@@ -322,6 +338,14 @@ final class LiveGuidanceDirector {
             lastMomentElapsedSeconds = snapshot.elapsedSeconds
             return LiveGuidanceDirectorUpdate(nextMoment: raceDeviation, evaluatedCues: evaluation.records)
         }
+
+        guard let cooldown = contract.coachingCooldownSeconds,
+              lastMomentElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= cooldown }) ?? true
+        else {
+            instabilityCandidateSince = nil
+            return LiveGuidanceDirectorUpdate(nextMoment: nil, evaluatedCues: evaluation.records)
+        }
+
         if contract != .quiet, let paceShift = paceInstabilityMoment(
             snapshot: snapshot,
             activeSegment: activeSegment,
@@ -330,12 +354,6 @@ final class LiveGuidanceDirector {
         ) {
             lastMomentElapsedSeconds = snapshot.elapsedSeconds
             return LiveGuidanceDirectorUpdate(nextMoment: paceShift, evaluatedCues: evaluation.records)
-        }
-
-        guard let cooldown = contract.coachingCooldownSeconds,
-              lastMomentElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= cooldown }) ?? true
-        else {
-            return LiveGuidanceDirectorUpdate(nextMoment: nil, evaluatedCues: evaluation.records)
         }
 
         let segmentDeviation: DetectedLiveGuidanceMoment?
@@ -367,7 +385,8 @@ final class LiveGuidanceDirector {
             ?? paceDriftMoment(
                 snapshot: snapshot,
                 activeSegment: activeSegment,
-                gradePercent: gradePercent
+                gradePercent: gradePercent,
+                athleteReferencePace: athleteReferencePace
             )
             ?? targetLockedMoment(
                 snapshot: snapshot,
@@ -523,7 +542,7 @@ final class LiveGuidanceDirector {
                 athleteReferencePace: athleteReferencePace
             )
         } else {
-            target = athleteReferencePace
+            target = nil
         }
         guard !suppressedMomentTypes.contains(.earlyOverpace),
               !emittedOneShotMoments.contains(.earlyOverpace),
@@ -593,26 +612,30 @@ final class LiveGuidanceDirector {
     private func paceDriftMoment(
         snapshot: ActiveSessionSnapshot,
         activeSegment: ActiveSessionCoachingSegment?,
-        gradePercent: Double?
+        gradePercent: Double?,
+        athleteReferencePace: Double?
     ) -> DetectedLiveGuidanceMoment? {
+        guard let segment = activeSegment,
+              let target = resolvedPaceTarget(for: segment, athleteReferencePace: athleteReferencePace)
+        else { suppress("no_actionable_target"); return nil }
         guard !suppressedMomentTypes.contains(.paceDrift),
               snapshot.elapsedSeconds >= 300,
               activeSegment?.target.phase != .work,
               activeSegment?.target.phase != .recovery,
               !isMeaningfulGrade(gradePercent),
               lastDriftElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= 600 }) ?? true,
-              let earlier = averagePace(from: snapshot.elapsedSeconds - 100, through: snapshot.elapsedSeconds - 45),
-              let recent = averagePace(from: snapshot.elapsedSeconds - 30, through: snapshot.elapsedSeconds)
+              let earlier = stablePaceWindow(from: snapshot.elapsedSeconds - 100, through: snapshot.elapsedSeconds - 45),
+              let recent = stablePaceWindow(from: snapshot.elapsedSeconds - 30, through: snapshot.elapsedSeconds)
         else { return nil }
 
         let threshold = contract == .coachMe ? 18.0 : 25.0
-        guard recent - earlier >= threshold else { return nil }
+        guard recent - earlier >= threshold, recent - target >= threshold else { return nil }
         lastDriftElapsedSeconds = snapshot.elapsedSeconds
         return DetectedLiveGuidanceMoment(
             type: .paceDrift,
             detectedAtElapsedSeconds: snapshot.elapsedSeconds,
             baselinePaceSecondsPerKilometer: recent,
-            targetPaceSecondsPerKilometer: earlier
+            targetPaceSecondsPerKilometer: target
         )
     }
 
@@ -629,7 +652,7 @@ final class LiveGuidanceDirector {
               (activeSegment?.elapsedSeconds ?? snapshot.elapsedSeconds) >= 180,
               !isMeaningfulGrade(gradePercent),
               lastInstabilityElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= 180 }) ?? true
-        else { return nil }
+        else { instabilityCandidateSince = nil; return nil }
 
         // Compare separated windows after startup so repeated snapshots of one
         // settling GPS estimate cannot count as an abrupt pace change.
@@ -641,12 +664,22 @@ final class LiveGuidanceDirector {
             from: snapshot.elapsedSeconds - 30,
             through: snapshot.elapsedSeconds
         )
-        guard let earlier, let recent else { return nil }
-        let referencePace = activeSegment.flatMap {
-            resolvedPaceTarget(for: $0, athleteReferencePace: athleteReferencePace)
-        } ?? athleteReferencePace
-        let spreadThreshold = referencePace.map { max(60, $0 * 0.15) } ?? 60
-        guard abs(recent - earlier) >= spreadThreshold else { return nil }
+        guard let earlier, let recent else { instabilityCandidateSince = nil; return nil }
+        guard let segment = activeSegment,
+              let referencePace = resolvedPaceTarget(for: segment, athleteReferencePace: athleteReferencePace)
+        else { suppress("no_actionable_target"); return nil }
+        let spreadThreshold = max(60, referencePace * 0.15)
+        let difference = abs(recent - earlier)
+        if difference < spreadThreshold * 0.5 { instabilityLatched = false }
+        guard difference >= spreadThreshold else { instabilityCandidateSince = nil; return nil }
+        guard !instabilityLatched else { suppress("repeat_correction"); return nil }
+        // A target-directed correction needs both an established shift and a
+        // sustained deviation; a GPS swing back inside target needs no speech.
+        guard abs(recent - referencePace) >= 35 else { instabilityCandidateSince = nil; return nil }
+        if instabilityCandidateSince == nil { instabilityCandidateSince = snapshot.elapsedSeconds }
+        guard snapshot.elapsedSeconds - instabilityCandidateSince! >= 15 else { instabilityCandidateSince = nil; return nil }
+        instabilityLatched = true
+        instabilityCandidateSince = nil
         lastInstabilityElapsedSeconds = snapshot.elapsedSeconds
         return DetectedLiveGuidanceMoment(
             type: .paceInstability,
@@ -657,23 +690,10 @@ final class LiveGuidanceDirector {
     }
 
     private func stablePaceWindow(from start: Int, through end: Int) -> Double? {
-        var paceBySecond: [Int: Double] = [:]
-        for snapshot in history {
-            if snapshot.elapsedSeconds >= start,
-               snapshot.elapsedSeconds <= end,
-               let pace = snapshot.currentPaceSecsPerKm,
-               pace.isFinite,
-               (60...3_600).contains(pace) {
-                paceBySecond[snapshot.elapsedSeconds] = pace
-            }
-        }
-        let seconds = paceBySecond.keys.sorted()
-        guard seconds.count >= 8,
-              let first = seconds.first,
-              let last = seconds.last,
-              last - first >= 20
-        else { return nil }
-        return percentile(0.5, in: paceBySecond.values.sorted())
+        let values = paceValues(from: start, through: end).sorted()
+        guard !values.isEmpty,
+              percentile(0.9, in: values) - percentile(0.1, in: values) <= 30 else { return nil }
+        return percentile(0.5, in: values)
     }
 
     private func targetLockedMoment(
@@ -855,10 +875,31 @@ final class LiveGuidanceDirector {
     }
 
     private func paceValues(from start: Int, through end: Int) -> [Double] {
-        history
-            .filter { $0.elapsedSeconds >= start && $0.elapsedSeconds <= end }
-            .compactMap(\.currentPaceSecsPerKm)
-            .filter { $0.isFinite && (60...3_600).contains($0) }
+        var byFix: [Date: (Int, Double)] = [:]
+        for snapshot in history where snapshot.elapsedSeconds >= start && snapshot.elapsedSeconds <= end {
+            guard let fix = snapshot.paceEvidenceTimestamp,
+                  let pace = snapshot.currentPaceSecsPerKm,
+                  pace.isFinite, (60...3_600).contains(pace) else { continue }
+            if byFix[fix] == nil { byFix[fix] = (snapshot.elapsedSeconds, pace) }
+        }
+        let samples = byFix.values.sorted { $0.0 < $1.0 }
+        guard samples.count >= 8, let first = samples.first, let last = samples.last,
+              last.0 - first.0 >= max(20, (end - start) * 2 / 3) else { return [] }
+        return samples.map { $0.1 }
+    }
+
+    func resetPaceEvidence() {
+        history = []
+        instabilityCandidateSince = nil
+        // Preserve the latch/cooldowns across gaps so a dropout cannot rearm noise.
+        for index in records.indices where records[index].outcome == .pending {
+            records[index].outcome = .notMeasured
+        }
+    }
+
+    private func suppress(_ reason: String) {
+        guard suppressionReasons.insert(reason).inserted else { return }
+        suppressionHandler?(reason)
     }
 
     private func athleteReferencePace(from profile: GuideProfile?) -> Double? {
@@ -968,9 +1009,9 @@ final class LiveGuidanceDirector {
 
     private var recoveryMessage: String {
         switch AppLanguage.current {
-        case .english: "That adjustment worked. You found the rhythm again."
-        case .spanish: "Ese ajuste funcionó. Recuperaste el ritmo."
-        case .simplifiedChinese: "刚才的调整有效。你重新找回节奏了。"
+        case .english: "Your pace is closer to the target now; keep the effort controlled."
+        case .spanish: "Ahora estás más cerca del ritmo objetivo; mantén el esfuerzo controlado."
+        case .simplifiedChinese: "现在更接近目标配速了，继续控制强度。"
         }
     }
 }
