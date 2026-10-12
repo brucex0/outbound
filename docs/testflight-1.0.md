@@ -1,4 +1,4 @@
-# TestFlight and App Store 1.7.5 Submission Sheet
+# TestFlight and App Store 1.7.6 Submission Sheet
 
 Open this for the current TestFlight upload and public App Store release. Product behavior and release mechanics remain in `docs/app-store-release.md`.
 
@@ -7,8 +7,8 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - App Store name: `Plainstride` (confirm availability in App Store Connect).
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
-- Version: `1.7.5`
-- Build: `49`
+- Version: `1.7.6`
+- Build: `57`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -54,16 +54,16 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- [iOS] Stabilize social feed and splash layout
-- [iOS] Fix initial activity feed row layout
-- [iOS] Refresh Trail Fox launch artwork
-- [iOS] Stream live session updates with Ably
-- [BE] Add Ably session realtime
-- Plus 31 more fixes and improvements
+- Live coaching now checks fresh GPS evidence and sustained pace changes to reduce false pace-change alerts.
+- Clearer coaching instructions replace vague rhythm and posture cues.
+- Better pause, signal-gap, and repeat-cue handling keeps guidance relevant.
+- Updated fixed recordings are pending audio review; changed cues may remain silent until those recordings are published.
 
 ### App Store What's New
 
-Start your next run faster with map-first setup that keeps goals, Music, Live Track, shoes, and voice guidance close at hand. Adaptive workout suggestions and live coaching better match your plan and recent activity. Improved save and recovery flows help protect finished activities and celebrate your progress. Group joining and notices are clearer, with more useful plan recommendations and richer activity details.
+- Fewer false pace-change alerts through improved pace detection.
+- Clearer live coaching instructions and encouragement.
+- Better handling of pauses and weak GPS signals during workouts.
 
 ### How to Report Feedback
 
@@ -178,6 +178,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.7.5 (49)`, validate, and upload from Xcode Organizer.
+- Archive `1.7.6 (57)`, validate, and upload from Xcode Organizer.
 - After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.

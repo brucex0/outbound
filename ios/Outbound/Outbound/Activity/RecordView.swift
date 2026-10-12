@@ -911,7 +911,9 @@ struct RecordView: View {
             }
 #endif
         }
+#if DEBUG
         .onPreferenceChange(LiveGroupTopControlsHeightPreferenceKey.self) { liveGroupTopControlsHeight = $0 }
+#endif
         .background(Color(.systemBackground))
         .toolbar(.hidden, for: .tabBar)
         .overlay(alignment: .topLeading) {
