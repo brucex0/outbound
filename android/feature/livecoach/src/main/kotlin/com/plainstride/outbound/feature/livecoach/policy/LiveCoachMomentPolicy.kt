@@ -12,6 +12,8 @@ import kotlin.math.sqrt
 
 data class CoachSnapshot(
     val elapsedSeconds: Int,
+    val paceEvidenceTimestamp: Long? = null,
+    val recordedAtMilliseconds: Long = 0,
     val distanceMeters: Double,
     val paceSecondsPerKilometer: Double?,
     val targetPaceSecondsPerKilometer: Double? = null,
@@ -74,6 +76,10 @@ class LiveCoachMomentPolicy {
     private var lastMomentAt: Int? = null
     private var lastDriftAt: Int? = null
     private var lastInstabilityAt: Int? = null
+    private var instabilityCandidateSince: Int? = null
+    private var instabilityLatched = false
+    private val suppressionReasons = mutableSetOf<String>()
+    var suppressionHandler: ((String) -> Unit)? = null
     private var onClimb = false
     private var climbCandidateStartMeters: Double? = null
     var rollingGradePercent: Double? = null
@@ -89,12 +95,22 @@ class LiveCoachMomentPolicy {
         lastMomentAt = null
         lastDriftAt = null
         lastInstabilityAt = null
+        instabilityCandidateSince = null
+        instabilityLatched = false
+        suppressionReasons.clear()
         onClimb = false
         climbCandidateStartMeters = null
         rollingGradePercent = null
     }
 
     fun ingest(snapshot: CoachSnapshot, contract: CoachingContract): PolicyUpdate {
+        if (snapshot.paceEvidenceTimestamp == null) {
+            resetPaceEvidence()
+            suppress("unreliable_pace")
+        } else if (history.lastOrNull()?.let { snapshot.recordedAtMilliseconds - it.recordedAtMilliseconds > 8_000 } == true) {
+            resetPaceEvidence()
+            suppress("measurement_gap")
+        }
         val pace = snapshot.paceSecondsPerKilometer?.takeIf { it.isFinite() && it in 60.0..3_600.0 }
         history.addLast(snapshot.copy(paceSecondsPerKilometer = pace))
         while (history.firstOrNull()?.elapsedSeconds?.let { it < snapshot.elapsedSeconds - HISTORY_SECONDS } == true) {
@@ -109,7 +125,7 @@ class LiveCoachMomentPolicy {
         if (contract != CoachingContract.Quiet) {
             val grade = rollingGradePercent
             val priorityMoment = raceTargetDeviation(snapshot, grade)
-                ?: instability(snapshot, grade)
+
             if (priorityMoment != null) {
                 lastMomentAt = snapshot.elapsedSeconds
                 return PolicyUpdate(priorityMoment, evaluation.records)
@@ -122,11 +138,13 @@ class LiveCoachMomentPolicy {
             CoachingContract.CoachMe -> 90
         }
         if (lastMomentAt?.let { snapshot.elapsedSeconds - it < cooldown } == true) {
+            instabilityCandidateSince = null
             return PolicyUpdate(null, evaluation.records)
         }
 
         val grade = rollingGradePercent
-        val moment = terrain(snapshot, grade)
+        val moment = instability(snapshot, grade)
+            ?: terrain(snapshot, grade)
             ?: earlyOverpace(snapshot, contract, grade)
             ?: targetDeviation(snapshot, grade)
             ?: finish(snapshot)
@@ -206,12 +224,13 @@ class LiveCoachMomentPolicy {
     private fun drift(s: CoachSnapshot, contract: CoachingContract, grade: Double?): DetectedMoment? {
         if (s.elapsedSeconds < 300 || s.segmentPhase in setOf("work", "recovery") || meaningfulGrade(grade)) return null
         if (lastDriftAt?.let { s.elapsedSeconds - it < 600 } == true) return null
-        val earlier = averagePace(s.elapsedSeconds - 100, s.elapsedSeconds - 45) ?: return null
-        val recent = averagePace(s.elapsedSeconds - 30, s.elapsedSeconds) ?: return null
+        val target = s.targetPaceSecondsPerKilometer ?: run { suppress("no_actionable_target"); return null }
+        val earlier = stablePaceWindow(s.elapsedSeconds - 100, s.elapsedSeconds - 45) ?: return null
+        val recent = stablePaceWindow(s.elapsedSeconds - 30, s.elapsedSeconds) ?: return null
         val threshold = if (contract == CoachingContract.CoachMe) 18.0 else 25.0
-        if (recent - earlier < threshold) return null
+        if (recent - earlier < threshold || recent - target < threshold) return null
         lastDriftAt = s.elapsedSeconds
-        return DetectedMoment(LiveCoachMoment.PaceDrift, s.elapsedSeconds, recent, earlier)
+        return DetectedMoment(LiveCoachMoment.PaceDrift, s.elapsedSeconds, recent, target)
     }
 
     private fun instability(s: CoachSnapshot, grade: Double?): DetectedMoment? {
@@ -220,30 +239,32 @@ class LiveCoachMomentPolicy {
             || s.elapsedSeconds < 180
             || (s.segmentElapsedSeconds ?: s.elapsedSeconds) < 180
             || meaningfulGrade(grade)
-        ) return null
-        if (lastInstabilityAt?.let { s.elapsedSeconds - it < 180 } == true) return null
+        ) { instabilityCandidateSince = null; return null }
+        if (lastInstabilityAt?.let { s.elapsedSeconds - it < 180 } == true) { instabilityCandidateSince = null; return null }
         // Separated windows avoid treating repeated snapshots of one settling
         // GPS estimate as evidence of an abrupt change.
-        val earlier = stablePaceWindow(s.elapsedSeconds - 90, s.elapsedSeconds - 60) ?: return null
-        val recent = stablePaceWindow(s.elapsedSeconds - 30, s.elapsedSeconds) ?: return null
+        val earlier = stablePaceWindow(s.elapsedSeconds - 90, s.elapsedSeconds - 60) ?: run { instabilityCandidateSince = null; return null }
+        val recent = stablePaceWindow(s.elapsedSeconds - 30, s.elapsedSeconds) ?: run { instabilityCandidateSince = null; return null }
         val referencePace = s.targetPaceSecondsPerKilometer
             ?.takeIf { it.isFinite() && it in 60.0..3_600.0 }
-        if (abs(recent - earlier) < max(60.0, (referencePace ?: 0.0) * .15)) return null
+            ?: run { suppress("no_actionable_target"); return null }
+        val threshold = max(60.0, referencePace * .15)
+        val difference = abs(recent - earlier)
+        if (difference < threshold * .5) instabilityLatched = false
+        if (difference < threshold || abs(recent - referencePace) < 35) { instabilityCandidateSince = null; return null }
+        if (instabilityLatched) { suppress("repeat_correction"); return null }
+        if (instabilityCandidateSince == null) instabilityCandidateSince = s.elapsedSeconds
+        if (s.elapsedSeconds - instabilityCandidateSince!! < 15) { instabilityCandidateSince = null; return null }
+        instabilityLatched = true
+        instabilityCandidateSince = null
         lastInstabilityAt = s.elapsedSeconds
         return DetectedMoment(LiveCoachMoment.PaceInstability, s.elapsedSeconds, recent, referencePace)
     }
 
     private fun stablePaceWindow(start: Int, end: Int): Double? {
-        val paceBySecond = mutableMapOf<Int, Double>()
-        history.forEach { sample ->
-            val pace = sample.paceSecondsPerKilometer
-            if (sample.elapsedSeconds in start..end && pace != null) {
-                paceBySecond[sample.elapsedSeconds] = pace
-            }
-        }
-        val seconds = paceBySecond.keys.sorted()
-        if (seconds.size < 8 || seconds.last() - seconds.first() < 20) return null
-        return percentile(.5, paceBySecond.values.sorted())
+        val values = paceValues(start, end).sorted()
+        if (values.isEmpty() || percentile(.9, values) - percentile(.1, values) > 30) return null
+        return percentile(.5, values)
     }
 
     private fun targetLocked(s: CoachSnapshot, grade: Double?): DetectedMoment? {
@@ -325,7 +346,23 @@ class LiveCoachMomentPolicy {
     }
 
     private fun averagePace(start: Int, end: Int) = paceValues(start, end).takeIf { it.size >= 4 }?.average()
-    private fun paceValues(start: Int, end: Int) = history.filter { it.elapsedSeconds in start..end }.mapNotNull { it.paceSecondsPerKilometer }
+    private fun paceValues(start: Int, end: Int): List<Double> {
+        val samples = history.filter { it.elapsedSeconds in start..end && it.paceEvidenceTimestamp != null && it.paceSecondsPerKilometer != null }
+            .distinctBy { it.paceEvidenceTimestamp }
+        if (samples.size < 8 || samples.last().elapsedSeconds - samples.first().elapsedSeconds < max(20, (end - start) * 2 / 3)) return emptyList()
+        return samples.mapNotNull { it.paceSecondsPerKilometer }
+    }
+
+    fun resetPaceEvidence() {
+        history.clear()
+        instabilityCandidateSince = null
+        records.filter { it.outcome == CueOutcome.Pending }.forEach { it.outcome = CueOutcome.NotMeasured }
+    }
+
+    private fun suppress(reason: String) {
+        if (!suppressionReasons.add(reason)) return
+        suppressionHandler?.invoke(reason)
+    }
     private fun segmentKey(moment: LiveCoachMoment, s: CoachSnapshot) = "${moment.wireValue}|${s.segmentIndex ?: s.segmentPhase ?: "overall"}"
     private fun meaningfulGrade(grade: Double?) = grade?.let { abs(it) >= 2.5 } == true
     private fun percentile(fraction: Double, sorted: List<Double>): Double {

@@ -282,6 +282,10 @@ class LiveCoachPlaybackCoordinator @Inject constructor(
                     check(metadata.cueRequestId == request.cueRequestId && metadata.moment == request.moment)
                     check(runCatching { Instant.parse(metadata.expiresAt).isAfter(Instant.now()) }.getOrDefault(false))
                     recordProvider(metadata, startedAtNanos, mode, accessReason)
+                    // Never speak an older fixed script under the replacement text.
+                    if (metadata.source == CueSource.Fixed || metadata.source == CueSource.Cached) {
+                        check(metadata.transcript == fallbackText)
+                    }
                     val audio = metadata.audio
                     if (audio != null) {
                         check(audio.contentType == "audio/L16" && audio.codec == "pcm_s16le" && audio.sampleRateHz == 24_000.0 && audio.channels == 1)
@@ -319,7 +323,8 @@ class LiveCoachPlaybackCoordinator @Inject constructor(
                 recordProviderFallback(startedAtNanos, mode, accessReason)
             } catch (error: CancellationException) {
                 throw error
-            } catch (_: Exception) {
+            } catch (error: Exception) {
+                android.util.Log.w("PlainstrideLiveCoach", "Stream playback failed: ${error.javaClass.simpleName}")
                 recordProviderFallback(startedAtNanos, mode, accessReason)
             }
         }

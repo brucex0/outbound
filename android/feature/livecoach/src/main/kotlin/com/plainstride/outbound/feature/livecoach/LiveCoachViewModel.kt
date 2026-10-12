@@ -180,6 +180,10 @@ class LiveCoachViewModel @Inject constructor(
         unitSystem: MeasurementUnitSystem,
     ) {
         val previousStatus = lastStatus
+        if (previousStatus != snapshot.status) {
+            policy.resetPaceEvidence()
+            pendingCues.removeAll { it.scheduled == null }
+        }
         lastStatus = snapshot.status
         val prefs = preferences.value
         if (!prefs.enabled) {
@@ -227,6 +231,9 @@ class LiveCoachViewModel @Inject constructor(
             context.startService(LiveCoachPlaybackService.startIntent(context))
         }
 
+        policy.suppressionHandler = { reason ->
+            analytics.record(AnalyticsEvent("live_guidance_moment_suppressed", mapOf(AnalyticsProperty.Result to reason)))
+        }
         val coachSnapshot = snapshot.toCoachSnapshot(launch)
         val policyUpdate = if (launch.activityKind == ActivityKind.RUNNING) {
             policy.ingest(coachSnapshot, prefs.contract)
@@ -620,6 +627,8 @@ private fun RecordingSnapshot.toCoachSnapshot(launch: RecordingLaunchConfigurati
     val location = latestLocation
     return CoachSnapshot(
         elapsedSeconds = elapsedSeconds.toInt(),
+        paceEvidenceTimestamp = coachingPaceEvidenceTimestamp(),
+        recordedAtMilliseconds = recordedAtEpochMilliseconds,
         distanceMeters = distanceMeters,
         paceSecondsPerKilometer = currentPaceSecondsPerKilometer,
         targetPaceSecondsPerKilometer = segment?.targetPace ?: launch.raceIntent
@@ -765,3 +774,15 @@ private fun RecordingLaunchConfiguration.clientWorkout(): ClientWorkout? {
 private fun Double?.validPace() = this?.takeIf { it.isFinite() && it in 60.0..3_600.0 }
 private fun isSupportedPhase(value: String) = value in setOf("warmup", "easy", "work", "recovery", "walk", "cooldown", "open")
 private fun CreateSessionResponse.isExpired() = runCatching { !Instant.parse(expiresAt).isAfter(Instant.now()) }.getOrDefault(true)
+
+/** A UI tick is not a new sensor observation. Require distinct, accurate fixes. */
+private fun RecordingSnapshot.coachingPaceEvidenceTimestamp(): Long? {
+    if (runSimulation != null) return elapsedSeconds * 1_000
+    val last = latestLocation ?: return null
+    if (recordedAtEpochMilliseconds - last.capturedAtEpochMilliseconds !in 0L..5_000L) return null
+    val recent = track.takeLastWhile { last.capturedAtEpochMilliseconds - it.capturedAtEpochMilliseconds <= 30_000 }
+    if (recent.size < 8 || last.capturedAtEpochMilliseconds - recent.first().capturedAtEpochMilliseconds < 20_000) return null
+    if (recent.any { it.horizontalAccuracyMeters !in 0.0..20.0 }) return null
+    if (recent.zipWithNext().any { (a, b) -> b.capturedAtEpochMilliseconds - a.capturedAtEpochMilliseconds !in 1L..5_000L }) return null
+    return last.capturedAtEpochMilliseconds
+}

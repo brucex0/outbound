@@ -95,7 +95,7 @@ class VerifiedAudioPackStore @Inject constructor(
     }
 
     private fun match(cueKey: String, selection: AudioPackSelection, transcript: String?): AudioPackEntry? {
-        val candidates = manifest?.entries.orEmpty().filter { it.cueKey == cueKey && it.locale == selection.locale && it.voiceProfileId == selection.voiceProfileId && selection.coachPersonaId in it.compatibleCoachPersonaIds }
+        val candidates = manifest?.entries.orEmpty().filter { it.cueKey == cueKey && it.locale == selection.locale && it.voiceProfileId == selection.voiceProfileId && selection.coachPersonaId in it.compatibleCoachPersonaIds && (transcript == null || normalize(it.transcript) == normalize(transcript)) }
         return candidates.firstOrNull { it.scriptStyleId == selection.scriptStyleId }
             ?: candidates.firstOrNull { it.scriptStyleId == "standard" }
             ?: transcript?.let { wanted -> manifest?.entries?.firstOrNull { it.locale == selection.locale && it.voiceProfileId == selection.voiceProfileId && selection.coachPersonaId in it.compatibleCoachPersonaIds && normalize(it.transcript) == normalize(wanted) } }
