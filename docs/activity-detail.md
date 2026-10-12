@@ -170,3 +170,11 @@ Safe-area strategy:
 - The sheet ignores the bottom safe area but stays below the status bar when expanded.
 - The sheet owns bottom padding for the persistent app chrome.
 - Route controls are inline in the sheet content, not a floating toolbar.
+
+## Photo Orientation Regression Guard
+
+- Full-size ImageIO decodes must transfer EXIF orientation to `UIImage`; thumbnail decodes already apply `kCGImageSourceCreateThumbnailWithTransform`. Never wrap untransformed camera pixels with the default `.up` orientation.
+- Introduced by `015087c5` (2026-09-18): the shared cache replaced UIKit decoding with ImageIO, preserving orientation only for thumbnails. Upright-only fixtures and compile checks missed the visual mismatch.
+- `ActivityPhotoCacheTests.fullSizeDecodePreservesEXIFOrientation` encodes all eight EXIF orientations and checks full-size, memory-cache, and thumbnail paths against UIKit decoding. Run it when tests are explicitly requested.
+- Before shipping photo pipeline changes, compare EXIF-rotated portrait, landscape, and mirrored photos across feed, detail strip/map pin, and lightbox (including zoom, cold load, and cached reopen). Include local and remote media; verify orientation and aspect ratio agree. Already-normalized fixtures are insufficient.
+- Existing `photo_previewed` and `photo_zoomed` instrumentation remains in the viewer; this decoding correction adds no event or photo metadata.

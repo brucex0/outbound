@@ -358,7 +358,22 @@ final class ActivityPhotoCache {
             return UIImage(cgImage: cgImage)
         }
         guard let cgImage = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
-        return UIImage(cgImage: cgImage)
+        // Raw CGImage pixels omit EXIF orientation. Thumbnails apply the
+        // transform above; full-size decodes must preserve it in UIImage.
+        let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        let exifOrientation = (properties?[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1
+        let orientation: UIImage.Orientation
+        switch exifOrientation {
+        case 2: orientation = .upMirrored
+        case 3: orientation = .down
+        case 4: orientation = .downMirrored
+        case 5: orientation = .leftMirrored
+        case 6: orientation = .right
+        case 7: orientation = .rightMirrored
+        case 8: orientation = .left
+        default: orientation = .up
+        }
+        return UIImage(cgImage: cgImage, scale: 1, orientation: orientation)
     }
 }
 

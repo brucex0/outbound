@@ -1,5 +1,7 @@
 import CoreGraphics
 import Foundation
+import ImageIO
+import UniformTypeIdentifiers
 import Testing
 import UIKit
 @testable import Outbound
@@ -134,6 +136,34 @@ struct ActivityPhotoCacheTests {
         let image = try #require(loaded)
         #expect(max(image.size.width, image.size.height) <= 84 * image.scale)
         #expect(min(image.size.width, image.size.height) > 0)
+    }
+
+    // Upright-only JPEG fixtures cannot catch discarded EXIF metadata.
+    @Test(arguments: 1...8)
+    func fullSizeDecodePreservesEXIFOrientation(exifOrientation: Int) async throws {
+        let sourceData = Self.makeTestJPEG(pixelWidth: 120, pixelHeight: 80)
+        let source = try #require(CGImageSourceCreateWithData(sourceData as CFData, nil))
+        let pixels = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        let encoded = NSMutableData()
+        let destination = try #require(CGImageDestinationCreateWithData(encoded, UTType.jpeg.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, pixels, [kCGImagePropertyOrientation: exifOrientation] as CFDictionary)
+        #expect(CGImageDestinationFinalize(destination))
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("jpg")
+        try (encoded as Data).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let reference = try #require(UIImage(data: encoded as Data))
+        let cache = ActivityPhotoCache()
+        let loaded = await cache.image(for: url)
+        let fullSize = try #require(loaded)
+        #expect(fullSize.imageOrientation == reference.imageOrientation)
+        #expect(fullSize.size == reference.size)
+        let cached = try #require(cache.cachedImage(for: url))
+        #expect(cached.imageOrientation == reference.imageOrientation)
+        let thumbnailLoaded = await cache.image(for: url, maxPixelSize: 60)
+        let thumbnail = try #require(thumbnailLoaded)
+        #expect(thumbnail.imageOrientation == .up)
+        #expect(abs(thumbnail.size.width / thumbnail.size.height - reference.size.width / reference.size.height) < 0.01)
     }
 
     // MARK: - Helpers
