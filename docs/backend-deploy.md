@@ -140,7 +140,7 @@ npm run db:rebuild
 npm run seed:test-personas
 ```
 
-For Cloud Run, deploy the matching image and run the pinned `outbound-db-push` schema job before moving traffic. The job uses `prisma db push --force-reset` for a clean pre-release database; do not run it against a production database containing data that must be preserved.
+For Cloud Run, deploy the matching image and run the pinned `outbound-db-push` schema job before moving traffic. The standard production job refuses destructive schema changes. The historical Social cutover required a separately authorized reset of disposable pre-release data; it is not the production deployment default.
 
 Android weather uses the authenticated `GET /v1/weather/current` proxy. The proxy rounds coordinates to two decimals, keeps account/locale/location results in memory for 30 minutes, honors MET Norway conditional responses, and never logs coordinates. It uses the keyless global Locationforecast API because Google Weather requires billing and a server credential; the provider boundary can move to Google without changing the Android contract. Set `WEATHER_PROVIDER_USER_AGENT` to an identifying application/domain plus support contact before production deployment (for example `Plainstride/1.0 https://plainstride.run`). Keep the response attribution accessible from weather surfaces through the weather details; the response is derived from MET Norway data licensed under CC BY 4.0.
 
