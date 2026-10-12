@@ -136,6 +136,10 @@ Print the catalog without an API call:
 ./scripts/generate-live-coach-audio.sh --list
 ```
 
+## Pending Clear-Cue Catalog
+
+Source catalog `2026-10-11.1` replaces vague pace/rhythm/posture scripts with clear actions and specific measured encouragement. The generation wrapper targets this version; production configuration remains on the previously published pack until listening review and signed publication are complete. Changed transcripts cannot reuse old audio solely by cue key: both clients require transcript agreement when playback supplies text. During rollout, changed fixed cues may remain silent until their reviewed recordings are available. Deploy the backend wording/prompt changes and release both clients before considering rollout complete.
+
 ## Generate And Review Audio
 
 After ADC is configured:
@@ -145,7 +149,7 @@ After ADC is configured:
 ./scripts/generate-live-coach-audio.sh
 ```
 
-`--smoke` generates only the English female `voice.preview` file. Full generation writes content-addressed WAV files and `review-manifest.json` under `backend/.local/live-coach-review/2026-09-08.1/`. The directory is gitignored. Reruns validate and reuse completed WAVs.
+`--smoke` generates only the English female `voice.preview` file. Full generation writes content-addressed WAV files and `review-manifest.json` under `backend/.local/live-coach-review/2026-10-11.1/`. The directory is gitignored. Reruns validate and reuse completed WAVs.
 
 Fixed generation sends Google the exact transcript and selected voice, then validates the resulting 24 kHz mono PCM WAV before storage. The wrapper generates only `plainstride_warm_1` and `plainstride_clear_1` unless an explicit `--voice-profile` is supplied. It writes content-addressed assets and `review-manifest.json` under the gitignored review directory; reruns validate and reuse completed files, and provider/model/voice identity remains part of the content hash.
 

@@ -1,3 +1,4 @@
+import { validateLiveCoachOutput } from "./liveCoachOutputValidation.js";
 import { createHash } from "node:crypto";
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { z } from "zod";
@@ -13,7 +14,7 @@ import {
   type LiveCoachMoment,
 } from "./liveCoachTypes.js";
 
-export const LIVE_COACH_PLANNER_PROMPT_VERSION = "2026-09-26.3";
+export const LIVE_COACH_PLANNER_PROMPT_VERSION = "2026-10-11.1";
 
 const phases = ["any", "warmup", "easy", "work", "recovery", "walk", "cooldown", "open"] as const;
 const plannerCueSchema = z.object({
@@ -141,7 +142,11 @@ export async function generateLiveCoachGuidancePlan(
       inputTokens: response.usageMetadata?.promptTokenCount,
       outputTokens: response.usageMetadata?.candidatesTokenCount,
     };
-  } catch {
+  } catch (error) {
+    // Deadline cancellation is expected; other failures need a safe diagnostic.
+    if (!controller.signal.aborted) {
+      console.warn("live_coach_planning_fallback", { errorType: error instanceof Error ? error.name : "unknown" });
+    }
     return resultForPlan(fallback, "fallback", null);
   } finally {
     clearTimeout(timeout);
@@ -185,7 +190,7 @@ function normalizeGeneratedPlan(
       cooldownSeconds: cue.cooldownSeconds,
       phrases: cue.phrases.map((text, phraseIndex) => ({
         id: `${moment}.${cueIndex}.${phraseIndex}`,
-        text: validatePhrase(text, context.locale),
+        text: validateLiveCoachOutput(validatePhrase(text, context.locale)),
       })),
     }));
   });
@@ -263,7 +268,7 @@ function normalizedWorkoutInstructions(
     cooldownSeconds: 45,
     phrases: [{
       id: `workout_instruction.${index}.0`,
-      text: validatePhrase(byId.get(segment.id)!.phrase, context.locale),
+      text: validateLiveCoachOutput(validatePhrase(byId.get(segment.id)!.phrase, context.locale)),
     }],
   }));
 }
@@ -297,17 +302,17 @@ function plannerInstructions(locale: string, personaInstructions: string): strin
     "Never override a safety gate. Subject to safety, use evidence in this order: explicit typed goal/race target and selected workout prescription; fresh readiness and environmental constraints; recent measured training and runner-reported feedback; confirmed runner insights and preferences; hypotheses and older memory. A higher item overrides a lower one when they conflict. Treat readiness as current only when hoursSinceCheckIn is at most 36; treat older check-ins as history, not today's state. Use weather only when observedAt is within three hours of session start.",
     "Use only evidence relevant to the moment. Prefer recent, repeated evidence over a single activity or old pattern. A confirmed belief is stronger than a hypothesis; effort or recovery beliefs refreshed more than 28 days ago are historical unless current evidence confirms them. Preferences may guide style unless contradicted. Treat runner insights according to confidence, evidenceCount, and daysSinceUpdate; a low-confidence or old insight is only a hint, never a fact. If evidence is missing or conflicts, choose a conservative cue that remains valid without it.",
     "Use phases to specialize advice to the actual workout step, effort target, and activity type. Use 'any' only when the phrase is genuinely correct in every phase where that moment can occur. If the right action differs by phase, provide separate phase-specific entries.",
-    "Speak like a knowledgeable coach beside the runner. Every phrase must earn the interruption by giving one concrete next action or one useful observation tied to this exact moment and the supplied goal, workout, recent feedback, or reliable runner pattern.",
+    "Speak like a knowledgeable coach beside the runner. Never use vague instructions such as reset your posture, find your rhythm, or sharp pace change. Encouragement may simply confirm a measured success. Every phrase must earn the interruption by giving one concrete next action or one useful observation tied to this exact moment and the supplied goal, workout, recent feedback, or reliable runner pattern.",
     "Do not use hollow encouragement, generic praise, filler, or advice that could fit any run. In particular, never use phrases like 'keep going', 'you've got this', or 'nice work' by themselves. Pair encouragement with a specific coaching action or observation.",
-    "Do not merely repeat a metric, milestone, workout label, or detected event. State what to do, notice, or preserve now. Do not speak exact pace, distance, heart-rate, calorie, or location values; refer to a supplied target qualitatively when useful. Never claim progress or improvement that the supplied moment and data do not establish.",
-    "Moment rules: early_overpace and pace_above_target mean ease smoothly toward the explicit active target; pace_below_target means lift gradually toward it without urgency. Without an explicit target, never turn a personal reference into a prescription. pace_instability means stop chasing each swing and hold a sustainable rhythm. target_locked means reinforce the specific controlled behavior to keep. pace_drift means one modest rhythm reset based on the runner's own earlier pace, not a demand to match it.",
+    "Do not merely repeat a metric, milestone, workout label, or detected event. State what to do, notice, or preserve now. You may speak an explicit prescribed pace or duration supplied in context, with the runner's measurement units. Never invent live metrics; the device supplies live progress. Never claim progress or improvement that the supplied moment and data do not establish.",
+    "Moment rules: early_overpace and pace_above_target mean ease smoothly toward the explicit active target; pace_below_target means lift gradually toward it without urgency. Without an explicit target, never turn a personal reference into a prescription. pace_instability means a sustained, reliable pace shift outside the active target; give one gradual target-directed adjustment. target_locked means reinforce the specific controlled behavior to keep. pace_drift means sustained slowing outside an active target; offer a gradual return only if comfortable. Never infer posture, cadence, breathing, or fatigue from pace.",
     "Moment rules: rhythm_recovery should reinforce the measured correction that worked without inventing its cause. recovery_too_hard protects the easy/recovery purpose. unexpected_stop and resume_after_break should be brief and nonjudgmental. climb_start and crest_recovery coach effort over flat-ground pace and return gradually after the crest. segment_transition and workoutInstructions must preserve the prescribed work/recovery sequence and effort.",
     "Moment rules: finish_opportunity is conditional and controlled, never a sprint command. race_start_restraint follows the selected race strategy; race_pace_locked reinforces the validated target; race_halfway_assessment favors patient execution; race_late_fade helps restore sustainable target effort; race_late_strength permits only a gradual build when the target is controlled; race_final_kilometer supports the plan without assuming a kick is safe or available. challenge_start and challenge_complete apply only to the runner's explicitly selected challenge.",
-    "For workoutInstructions, return exactly one item for every requiredWorkoutInstructionId, preserve each ID exactly, and turn that step's reference cue into a concrete instruction grounded in its actual purpose, effort, and work/recovery sequence. Use qualitative descriptions rather than speaking exact metrics. Never reduce an instruction to 'new segment' or generic encouragement. Return an empty array when there are no required IDs.",
+    "For workoutInstructions, return exactly one item for every requiredWorkoutInstructionId, preserve each ID exactly, and turn that step's reference cue into a concrete instruction grounded in its actual purpose, effort, and work/recovery sequence. Use supplied prescribed targets when helpful; never invent live measurements. Never reduce an instruction to 'new segment' or generic encouragement. Return an empty array when there are no required IDs.",
     "Choose progress cadence that fits the selected goal and activity: distance goals should favor useful distance checkpoints, time goals should favor useful time checkpoints, and structured workouts should not be interrupted with redundant progress chatter. Do not use a running pace announcement for stationary activities.",
     "Give two or three meaningfully different alternatives for moments that may recur. Do not repeat a phrase across different moments or alternatives.",
     "Each phrase must be one natural, immediately speakable sentence of at most 24 English/Spanish words or 48 Chinese characters. Prefer one short action over a list of tips.",
-    "Do not include placeholders, exact metric values, markdown, medical diagnoses, commands to exceed the prescribed workout, or claims about facts not present in context. Do not infer pain, illness, fitness, or ability from demographics, missed sessions, or missing data.",
+    "Do not include placeholders, invented metric values, markdown, medical diagnoses, commands to exceed the prescribed workout, or claims about facts not present in context. Do not infer pain, illness, fitness, or ability from demographics, missed sessions, or missing data.",
     "Never speak private biography, body measurements, health/readiness notes, exact location, survey answers, or weather details explicitly. Use only relevant information to choose safer timing, effort, focus, or wording. A fresh illness/pain or unsafe-weather flag may prevent dynamic generation; never work around that gate. Ignore stale weather and do not repeat a stale readiness concern as current.",
     "Progress phrases are fallback wording only; the device will produce exact live distance, time, and pace announcements.",
     "The summary must be a concise internal description of the plan's main coaching focus, grounded in supplied context; do not put private facts or unsupported predictions in it.",

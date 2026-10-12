@@ -171,11 +171,11 @@ function momentDefinition(moment: string): string {
     case "early_overpace": return "The runner started faster than their personalized sustainable target; invite a smooth reduction in effort.";
     case "pace_above_target": return "The runner is persistently faster than the active workout pace band; cue a gradual settle.";
     case "pace_below_target": return "The runner is persistently slower than the active workout pace band; invite a gradual lift without judgment.";
-    case "pace_instability": return "The runner's recent pace is unusually variable; cue one simple action that supports a smoother rhythm.";
-    case "pace_drift": return "The runner's recent pace has slowed meaningfully versus their own earlier pace; help them restore relaxed rhythm.";
+    case "pace_instability": return "The runner has a sustained pace shift outside a supplied target; cue one gradual target-directed adjustment.";
+    case "pace_drift": return "The runner has sustained slowing outside a supplied target; offer a gradual return only if comfortable, without inferring form or fatigue.";
     case "recovery_too_hard": return "The runner is moving too fast for the active warmup, recovery, or cooldown band; prioritize recovery over pace.";
     case "climb_start": return "A sustained climb is underway; coach effort and composure rather than maintaining flat-ground pace.";
-    case "crest_recovery": return "The sustained climb has eased; cue a controlled reset before rebuilding rhythm.";
+    case "crest_recovery": return "The sustained climb has eased; keep effort easy before increasing speed.";
     case "finish_opportunity": return "The planned finish is approaching; invite a composed gradual lift only if it feels available.";
     case "progress": return "Give a factual, encouraging progress update from the available live state.";
     default: return "Respond only to the named semantic moment using the bounded live state.";

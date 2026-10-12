@@ -104,8 +104,8 @@ const CUE_DELIVERY_CONTEXT: Record<string, CueDeliveryContext> = {
     delivery: "Steady and grounding, with an unhurried pause after the first sentence. Do not sound corrective or impatient.",
   },
   "coach.rebuild_rhythm": {
-    situation: "The runner has gradually slowed relative to their own earlier sustainable rhythm.",
-    delivery: "Supportive and practical. Make the posture reset distinct, then guide the rhythm back without pressure.",
+    situation: "The runner has sustained slowing outside a supplied pace target.",
+    delivery: "Supportive and practical. Clearly offer a gradual return to the supplied target without pressure.",
   },
   "coach.recovery_easy": {
     situation: "The runner is pushing a warmup, recovery, or cooldown segment harder than its intended easy effort.",
@@ -116,7 +116,7 @@ const CUE_DELIVERY_CONTEXT: Record<string, CueDeliveryContext> = {
     delivery: "Practical and composed. Give the stride cue clearly, then emphasize effort over pace without sounding urgent.",
   },
   "coach.crest_reset": {
-    situation: "A sustained climb has eased and the runner should reset form before increasing effort again.",
+    situation: "A sustained climb has eased and the runner should keep effort easy before increasing speed.",
     delivery: "Reassuring and transitional. Let the first sentence release tension, then keep the rebuild advice patient.",
   },
   "coach.settle": {
@@ -124,8 +124,8 @@ const CUE_DELIVERY_CONTEXT: Record<string, CueDeliveryContext> = {
     delivery: "Grounded, calming, and unhurried. Make the adjustment feel achievable, not like criticism.",
   },
   "coach.restore_rhythm": {
-    situation: "The runner has lost smooth rhythm and needs a gentle physical reset.",
-    delivery: "Supportive and soothing, with a natural pause between relaxing the shoulders and finding rhythm.",
+    situation: "The runner should keep effort easy without trying to recover lost time.",
+    delivery: "Supportive and soothing, with clear emphasis on easy effort and no pressure to catch up.",
   },
   "coach.rhythm_recovered": {
     situation: "The runner's recent adjustment worked and their rhythm has recovered.",
