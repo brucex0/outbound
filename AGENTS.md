@@ -6,6 +6,15 @@ Do not run the test suite unless the user explicitly asks. A build-only compile 
 
 When user ask questions or brain storm, always answer in concise bullet points
 
+## Scope And Behavior Preservation
+
+- Keep changes within the user's requested scope. Do not bundle unrelated fixes, cleanup, or behavior changes into the task.
+- Refactors and optimizations must preserve existing behavior unless the user explicitly requests a behavior change. Choosing a different implementation does not authorize dropping existing guarantees.
+- Before replacing an API or implementation, identify its implicit guarantees and preserve them in the replacement. For image handling, this includes EXIF orientation, mirroring, aspect ratio, image quality, and metadata handling.
+- Verify behavioral equivalence with representative inputs across affected consumers, including edge cases and cached/uncached paths where relevant. A passing build alone is insufficient evidence for visual or runtime behavior. Continue to honor the restriction on running tests without an explicit request.
+- Before merging, review the diff for unrelated changes and report any behavioral verification that could not be completed. Do not claim unverified behavior is confirmed.
+- The Pre-Publish Data Policy permits the documented data resets and migrations described below; it does not authorize unrelated changes to current product behavior.
+
 ## Completion And Commits
 
 - For every code change, create and work in a Git worktree under this repository's `worktrees/<task>` directory. Do not use `~/.codex/worktrees`. After basic verification succeeds, squash and merge the worktree branch back into main branch, then remove the worktree and delete its branch.
