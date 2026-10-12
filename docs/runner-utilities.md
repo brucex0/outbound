@@ -208,6 +208,7 @@ V1 zones:
 Cadence is source-dependent.
 
 - iOS records running cadence from `CMPedometer.currentCadence` on supported iPhones after Motion & Fitness authorization; the runner must carry the phone
+- running UI labels use “Steps / min” (localized), including live, finish review, and saved detail; analytics retain the stable `running_cadence_*` feature names
 - the expanded live map/camera dashboard shows total footfalls per minute (both feet), smoothed over recent readings; paused, missing, or more-than-ten-second-old readings show a dash
 - finish review shows average/max cadence and an active-time chart; saved activity detail retains the summary and chart through the existing private client-data sync payload
 - averages are time-weighted over available positive motion readings, not the whole activity duration; absent data is never treated as zero

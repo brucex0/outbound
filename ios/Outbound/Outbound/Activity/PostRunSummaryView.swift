@@ -274,9 +274,9 @@ struct PostRunSummaryView: View {
                 if activityType == .running, let average = summary.cadence?.averageStepsPerMinute {
                     Divider().frame(height: 48)
                     SummaryStatColumn(
-                        label: String(localized: "running_cadence.average_label", defaultValue: "Avg. cadence"),
+                        label: String(localized: "running_cadence.average_label", defaultValue: "Avg. steps / min"),
                         value: average.formatted(.number),
-                        unit: String(localized: "running_cadence.unit", defaultValue: "spm")
+                        unit: ""
                     )
                 }
                 if activityType == .walking, let walkingStepCount = summary.walkingStepCount {

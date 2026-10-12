@@ -10,10 +10,10 @@ struct RunningCadenceChartView: View {
     private var summaryText: String {
         [
             summary.averageStepsPerMinute.map {
-                String(format: String(localized: "activity.meta.cadence.average", defaultValue: "Avg %d spm"), locale: .autoupdatingCurrent, $0)
+                String(format: String(localized: "running_cadence.average_format", defaultValue: "Avg %d steps / min"), locale: .autoupdatingCurrent, $0)
             },
             summary.maxStepsPerMinute.map {
-                String(format: String(localized: "activity.meta.cadence.maximum", defaultValue: "Max %d spm"), locale: .autoupdatingCurrent, $0)
+                String(format: String(localized: "running_cadence.maximum_format", defaultValue: "Max %d steps / min"), locale: .autoupdatingCurrent, $0)
             }
         ].compactMap { $0 }.joined(separator: " • ")
     }
@@ -21,7 +21,7 @@ struct RunningCadenceChartView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(String(localized: "activity.meta.cadence.title", defaultValue: "Cadence"))
+                Text(String(localized: "running_cadence.live_label", defaultValue: "Steps / min"))
                     .font(.headline)
                 Spacer()
                 Text(summaryText)
@@ -34,24 +34,24 @@ struct RunningCadenceChartView: View {
                         let sample = samples[index]
                         LineMark(
                             x: .value(String(localized: "running_cadence.time_axis", defaultValue: "Active time (min)"), Double(sample.elapsedSeconds) / 60),
-                            y: .value(String(localized: "running_cadence.unit", defaultValue: "spm"), sample.stepsPerMinute),
-                            series: .value(String(localized: "activity.meta.cadence.title", defaultValue: "Cadence"), sample.segment)
+                            y: .value(String(localized: "running_cadence.unit", defaultValue: "steps / min"), sample.stepsPerMinute),
+                            series: .value(String(localized: "running_cadence.live_label", defaultValue: "Steps / min"), sample.segment)
                         )
                         .foregroundStyle(theme.accentColor)
                         PointMark(
                             x: .value(String(localized: "running_cadence.time_axis", defaultValue: "Active time (min)"), Double(sample.elapsedSeconds) / 60),
-                            y: .value(String(localized: "running_cadence.unit", defaultValue: "spm"), sample.stepsPerMinute)
+                            y: .value(String(localized: "running_cadence.unit", defaultValue: "steps / min"), sample.stepsPerMinute)
                         )
                         .symbolSize(8)
                         .foregroundStyle(theme.accentColor)
                     }
                 }
                 .chartXAxisLabel(String(localized: "running_cadence.time_axis", defaultValue: "Active time (min)"))
-                .chartYAxisLabel(String(localized: "running_cadence.unit", defaultValue: "spm"))
+                .chartYAxisLabel(String(localized: "running_cadence.unit", defaultValue: "steps / min"))
                 .chartLegend(.hidden)
                 .frame(height: 160)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(String(localized: "activity.meta.cadence.title", defaultValue: "Cadence"))
+                .accessibilityLabel(String(localized: "running_cadence.live_label", defaultValue: "Steps / min"))
                 .accessibilityValue(summaryText)
             }
             Text(String(localized: "running_cadence.coverage", defaultValue: "Based on available motion readings."))

@@ -899,7 +899,7 @@ struct SessionStatusCard: View {
                         if (intent?.resolvedActivityType ?? .running) == .running {
                             ExpandedSessionMetric(
                                 value: cadenceStepsPerMinute.map { $0.formatted(.number) } ?? "—",
-                                label: String(localized: "running_cadence.live_label", defaultValue: "Cadence (spm)")
+                                label: String(localized: "running_cadence.live_label", defaultValue: "Steps / min")
                             )
                             .accessibilityIdentifier("LiveRunningCadence")
                             .task {

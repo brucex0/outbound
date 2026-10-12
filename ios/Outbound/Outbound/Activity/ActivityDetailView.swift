@@ -809,10 +809,16 @@ struct ActivityDetailView: View {
                cadence.averageStepsPerMinute != nil || cadence.maxStepsPerMinute != nil {
                 ActivityMetadataRow(
                     icon: "metronome.fill",
-                    title: String(localized: "activity.meta.cadence.title", defaultValue: "Cadence"),
+                    title: currentActivity.activityType == .running
+                        ? String(localized: "running_cadence.live_label", defaultValue: "Steps / min")
+                        : String(localized: "activity.meta.cadence.title", defaultValue: "Cadence"),
                     detail: [
-                        cadence.averageStepsPerMinute.map { String(format: String(localized: "activity.meta.cadence.average", defaultValue: "Avg %d spm"), locale: .autoupdatingCurrent, $0) },
-                        cadence.maxStepsPerMinute.map { String(format: String(localized: "activity.meta.cadence.maximum", defaultValue: "Max %d spm"), locale: .autoupdatingCurrent, $0) }
+                        cadence.averageStepsPerMinute.map { String(format: (currentActivity.activityType == .running
+                            ? String(localized: "running_cadence.average_format", defaultValue: "Avg %d steps / min")
+                            : String(localized: "activity.meta.cadence.average", defaultValue: "Avg %d spm")), locale: .autoupdatingCurrent, $0) },
+                        cadence.maxStepsPerMinute.map { String(format: (currentActivity.activityType == .running
+                            ? String(localized: "running_cadence.maximum_format", defaultValue: "Max %d steps / min")
+                            : String(localized: "activity.meta.cadence.maximum", defaultValue: "Max %d spm")), locale: .autoupdatingCurrent, $0) }
                     ].compactMap { $0 }.joined(separator: " • ")
                 )
             }
