@@ -64333,6 +64333,121 @@
           }
         }
       }
+    },
+    "running_cadence.average_label": {
+      "comment": "Running cadence counts both feet per minute. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avg. cadence"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cadencia media"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平均步频"
+          }
+        }
+      }
+    },
+    "running_cadence.coverage": {
+      "comment": "Running cadence counts both feet per minute. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Based on available motion readings."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Según las lecturas de movimiento disponibles."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "根据可用的运动传感器数据统计。"
+          }
+        }
+      }
+    },
+    "running_cadence.live_label": {
+      "comment": "Running cadence counts both feet per minute. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cadence (spm)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cadencia (ppm)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步频（步/分钟）"
+          }
+        }
+      }
+    },
+    "running_cadence.time_axis": {
+      "comment": "Running cadence counts both feet per minute. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active time (min)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiempo activo (min)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运动时间（分钟）"
+          }
+        }
+      }
+    },
+    "running_cadence.unit": {
+      "comment": "Running cadence counts both feet per minute. [platform:ios]",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "spm"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ppm"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步/分钟"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

@@ -1016,6 +1016,26 @@ struct RecordView: View {
     private func startRecording() {
         guard recorder.state == .idle, !isCountingDown else { return }
         guard !isStartingActivity else { return }
+#if DEBUG
+        if isRunSimulationEnabled {
+            beginStartRecording()
+            return
+        }
+#endif
+        let type = plannedIntent?.resolvedActivityType ?? .running
+        if type == .running || type == .walking {
+            let requested = recorder.locationManager.requestStepMotionPermissionIfNeeded { result in
+                track(.init(.motionAuthorizationCompleted, properties: [.result: .string(result.rawValue)]))
+                isStartingActivity = false
+                guard isVisible else { return }
+                beginStartRecording()
+            }
+            if requested {
+                isStartingActivity = true
+                track(.init(.motionAuthorizationRequested))
+                return
+            }
+        }
         beginStartRecording()
     }
 
@@ -1644,7 +1664,8 @@ struct RecordView: View {
                 )),
                 .motionBridgeUsed: .boolean(locationDiagnostics.motionAssistedDistanceMeters > 0),
                 .routeMatchResult: .string(locationDiagnostics.routeMatchResult),
-                .walkingStepsAvailable: .boolean(summary.walkingStepCount != nil)
+                .walkingStepsAvailable: .boolean(summary.walkingStepCount != nil),
+                .runningCadenceAvailable: .boolean(summary.cadence != nil)
             ]))
         }
         liveActivityManager.end(using: recorder.liveSnapshot, unitSystem: measurementPreferences.unitSystem)
@@ -2802,7 +2823,7 @@ struct RecordView: View {
 
     private func selectWorkoutChoice(_ choice: LaunchWorkoutChoice, trackChange: Bool = true) {
         if trackChange, choice == .sport(.walk) {
-            let didRequestPermission = recorder.locationManager.requestWalkingStepPermissionIfNeeded { result in
+            let didRequestPermission = recorder.locationManager.requestStepMotionPermissionIfNeeded { result in
                 track(.init(.motionAuthorizationCompleted, properties: [
                     .result: .string(result.rawValue)
                 ]))

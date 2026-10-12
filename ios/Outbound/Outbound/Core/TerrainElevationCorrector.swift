@@ -51,6 +51,7 @@ enum TerrainElevationCorrector {
                 modified: response.attribution.modified
             ),
             walkingStepCount: summary.walkingStepCount,
+            cadence: summary.cadence,
             healthMetrics: summary.healthMetrics,
             heartRateZones: summary.heartRateZones,
             sessionMetadata: summary.sessionMetadata,

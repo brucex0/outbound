@@ -58,6 +58,9 @@ final class LocationManager: NSObject, ObservableObject {
     @Published var trackPoints: [CLLocation] = []
     @Published private(set) var trackCoordinates: [CLLocationCoordinate2D] = []
     @Published private(set) var walkingStepCount: Int?
+    private(set) var runningCadenceReading: RunningCadenceReading?
+    private var pedometerGeneration = UUID()
+    private var loggedPedometerError: String?
 
     private let maximumPublishedLocationAccuracyMeters: Double = 80
     private let minimumValidPaceDistanceMeters: Double = 25
@@ -102,7 +105,7 @@ final class LocationManager: NSObject, ObservableObject {
     private var pedometerDistanceAtLastTrackPoint: Double = 0
     private var pedometerDistanceAtProbeStart: Double = 0
     private var accumulatedWalkingStepCount = 0
-    private var isRequestingWalkingStepPermission = false
+    private var isRequestingStepMotionPermission = false
     private var lastAcceptedDeliveryAt: Date?
 #if DEBUG
     private var testDistanceMeters: Double?
@@ -199,23 +202,23 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     @discardableResult
-    func requestWalkingStepPermissionIfNeeded(
+    func requestStepMotionPermissionIfNeeded(
         completion: @escaping @MainActor (MotionPermissionResult) -> Void
     ) -> Bool {
         guard CMPedometer.isStepCountingAvailable() else { return false }
         guard CMPedometer.authorizationStatus() == .notDetermined,
-              !isRequestingWalkingStepPermission
+              !isRequestingStepMotionPermission
         else { return false }
 
-        isRequestingWalkingStepPermission = true
+        isRequestingStepMotionPermission = true
         let now = Date()
         permissionPedometer.queryPedometerData(
             from: now.addingTimeInterval(-1),
             to: now
-        ) { [weak self] _, _ in
+        ) { [weak self] _, error in
             Task { @MainActor in
                 guard let self else { return }
-                self.isRequestingWalkingStepPermission = false
+                self.isRequestingStepMotionPermission = false
                 let result: MotionPermissionResult = switch CMPedometer.authorizationStatus() {
                 case .authorized: .authorized
                 case .denied: .denied
@@ -223,6 +226,12 @@ final class LocationManager: NSObject, ObservableObject {
                 case .notDetermined: .failed
                 @unknown default: .failed
                 }
+                if result == .failed {
+                    let technicalError = error as NSError?
+                    ActivityDiagnosticLog.error(.lifecycle,
+                        "Motion authorization request failed domain=\(technicalError?.domain ?? "none") code=\(technicalError?.code ?? 0)")
+                }
+                // Denial/restriction is expected permission control flow.
                 completion(result)
             }
         }
@@ -560,6 +569,7 @@ final class LocationManager: NSObject, ObservableObject {
         pedometerDistanceAtLastTrackPoint = 0
         accumulatedWalkingStepCount = 0
         walkingStepCount = nil
+        runningCadenceReading = nil
         previousMotionLocation = nil
         currentMotionSpeed = nil
         lastAcceptedDeliveryAt = nil
@@ -584,14 +594,34 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     private func startPedometerIfAvailable() {
-        guard supportsPedometerDistance || supportsWalkingStepCount else { return }
+        guard supportsPedometerDistance || supportsWalkingStepCount || supportsRunningCadence else { return }
         pedometer.stopUpdates()
+        pedometerGeneration = UUID()
+        let generation = pedometerGeneration
+        runningCadenceReading = nil
+        loggedPedometerError = nil
         pedometerDistanceMeters = 0
         pedometerDistanceAtLastTrackPoint = 0
-        pedometer.startUpdates(from: Date()) { [weak self] data, _ in
-            guard let data else { return }
+        pedometer.startUpdates(from: Date()) { [weak self] data, error in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, self.pedometerGeneration == generation else { return }
+                if let error {
+                    self.runningCadenceReading = nil
+                    let technicalError = error as NSError
+                    let signature = "\(technicalError.domain):\(technicalError.code)"
+                    if self.loggedPedometerError != signature {
+                        self.loggedPedometerError = signature
+                        ActivityDiagnosticLog.error(.lifecycle,
+                            "Pedometer update failed domain=\(technicalError.domain) code=\(technicalError.code)")
+                    }
+                    return
+                }
+                guard let data else { return }
+                if self.supportsRunningCadence {
+                    self.runningCadenceReading = data.currentCadence.map {
+                        RunningCadenceReading(stepsPerMinute: $0.doubleValue * 60, measuredAt: data.endDate)
+                    }
+                }
                 if let distance = data.distance?.doubleValue {
                     self.pedometerDistanceMeters = max(0, distance)
                 }
@@ -607,7 +637,13 @@ final class LocationManager: NSObject, ObservableObject {
         if let walkingStepCount {
             accumulatedWalkingStepCount = walkingStepCount
         }
+        pedometerGeneration = UUID()
+        runningCadenceReading = nil
         pedometer.stopUpdates()
+    }
+
+    private var supportsRunningCadence: Bool {
+        activityType == .running && CMPedometer.isCadenceAvailable()
     }
 
     private var supportsWalkingStepCount: Bool {

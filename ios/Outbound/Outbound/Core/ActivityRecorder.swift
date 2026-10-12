@@ -34,6 +34,8 @@ final class ActivityRecorder: ObservableObject {
     @Published var distanceMeters: Double = 0
     @Published var elevationGainMeters: Double = 0
     @Published private(set) var walkingStepCount: Int?
+    @Published private(set) var currentCadenceStepsPerMinute: Int?
+    private var cadenceTracker = RunningCadenceTracker()
     @Published private(set) var companionType: ActivityCompanionType?
     @Published var currentPace: Double?   // secs/km
     @Published private(set) var heartRate: Int?
@@ -171,6 +173,9 @@ final class ActivityRecorder: ObservableObject {
         goalDistanceAdjustmentMeters = 0
         elevationGainMeters = 0
         walkingStepCount = nil
+        cadenceTracker = RunningCadenceTracker()
+        cadenceTracker.beginSegment(at: now)
+        currentCadenceStepsPerMinute = nil
         currentPace = nil
         heartRate = nil
         heartRateSignalState = .waitingForFirstReading
@@ -208,6 +213,8 @@ final class ActivityRecorder: ObservableObject {
             goalDistanceAdjustmentMeters += distanceGoalMeters - distanceMeters
             distanceMeters = distanceGoalMeters
         }
+        cadenceTracker.suspend()
+        currentCadenceStepsPerMinute = nil
         autoPaused = autoTriggered
         state = .paused
         accumulatedActiveDuration = TimeInterval(elapsedSeconds)
@@ -239,6 +246,7 @@ final class ActivityRecorder: ObservableObject {
             : 0
         lastAutoPauseRecoveredDurationSeconds = Int(recoveredDuration.rounded())
         accumulatedActiveDuration += recoveredDuration
+        cadenceTracker.beginSegment(at: now)
         state = .active
         autoPaused = false
         autoPauseCandidateStart = nil
@@ -304,6 +312,7 @@ final class ActivityRecorder: ObservableObject {
             ),
             elevationGainM: finalElevationGainMeters,
             walkingStepCount: stoppedTrack.walkingStepCount,
+            cadence: cadenceTracker.summary,
             healthMetrics: healthMetricsSummary(),
             heartRateZones: heartRateZoneSummary(),
             sessionMetadata: sessionMetadata,
@@ -702,6 +711,14 @@ final class ActivityRecorder: ObservableObject {
         distanceMeters = locationManager.totalDistanceMeters + goalDistanceAdjustmentMeters
         elevationGainMeters = locationManager.elevationGainMeters
         walkingStepCount = locationManager.walkingStepCount
+        if activityType == .running, state == .active {
+            cadenceTracker.update(
+                reading: locationManager.runningCadenceReading,
+                elapsedSeconds: elapsedSeconds,
+                now: now
+            )
+            currentCadenceStepsPerMinute = cadenceTracker.currentStepsPerMinute
+        }
         currentPace = locationManager.currentPaceSecsPerKm
         if let lastSample = heartRateEngine.snapshot.lastSampleDate,
            now.timeIntervalSince(lastSample) > heartRateStaleInterval {
@@ -726,6 +743,9 @@ final class ActivityRecorder: ObservableObject {
         currentSegmentStartDate = nil
         elapsedSeconds = journal.elapsedSeconds
         activityType = journal.activityType ?? .running
+        cadenceTracker = journal.cadenceTracker ?? RunningCadenceTracker()
+        cadenceTracker.suspend()
+        currentCadenceStepsPerMinute = nil
         autoPauseEnabled = journal.autoPauseEnabled ?? AutoPauseDefaults.isEnabled(for: activityType)
         goalDistanceAdjustmentMeters = journal.goalDistanceAdjustmentMeters ?? 0
         companionType = journal.companionType
@@ -834,6 +854,7 @@ final class ActivityRecorder: ObservableObject {
             activityType: activityType,
             autoPauseEnabled: autoPauseEnabled,
             walkingStepCount: walkingStepCount,
+            cadenceTracker: activityType == .running ? cadenceTracker : nil,
             companionType: companionType,
             routeGuidanceRecoverySeed: routeGuidance?.recoverySeed,
             sessionMetadata: sessionMetadata,
@@ -962,6 +983,7 @@ final class ActivityRecorder: ObservableObject {
             elevationGainM: summary.elevationGainM,
             elevationMetadata: summary.elevationMetadata,
             walkingStepCount: summary.walkingStepCount,
+            cadence: summary.cadence,
             healthMetrics: ActivityHealthMetrics(
                 averageHeartRateBPM: metrics.averageBPM,
                 maxHeartRateBPM: metrics.maximumBPM,
@@ -1059,6 +1081,7 @@ struct ActivitySummary {
     let elevationGainM: Double
     let elevationMetadata: ActivityElevationMetadata?
     let walkingStepCount: Int?
+    let cadence: ActivityCadenceSummary?
     let healthMetrics: ActivityHealthMetrics?
     let heartRateZones: ActivityHeartRateZoneSummary?
     let sessionMetadata: ActivityRecordingSessionMetadata?
@@ -1091,6 +1114,7 @@ struct ActivitySummary {
         elevationGainM: Double = 0,
         elevationMetadata: ActivityElevationMetadata? = nil,
         walkingStepCount: Int? = nil,
+        cadence: ActivityCadenceSummary? = nil,
         healthMetrics: ActivityHealthMetrics? = nil,
         heartRateZones: ActivityHeartRateZoneSummary? = nil,
         sessionMetadata: ActivityRecordingSessionMetadata? = nil,
@@ -1106,6 +1130,7 @@ struct ActivitySummary {
         self.elevationGainM = elevationGainM
         self.elevationMetadata = elevationMetadata
         self.walkingStepCount = walkingStepCount
+        self.cadence = cadence
         self.healthMetrics = healthMetrics
         self.heartRateZones = heartRateZones
         self.sessionMetadata = sessionMetadata

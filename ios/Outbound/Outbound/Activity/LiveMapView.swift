@@ -318,6 +318,7 @@ struct LiveMapView: View {
             distanceMeters: recorder.distanceMeters,
             energyKilocalories: estimatedEnergyKilocalories,
             walkingStepCount: recorder.walkingStepCount,
+            cadenceStepsPerMinute: recorder.currentCadenceStepsPerMinute,
             distanceLabel: measurementPreferences.unitSystem.distanceLabel,
             elevationText: measurementPreferences.unitSystem.elevationValueString(meters: recorder.elevationGainMeters),
             elevationLabel: measurementPreferences.unitSystem.elevationLabel,

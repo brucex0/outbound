@@ -106,6 +106,10 @@ struct PostRunSummaryView: View {
                     recognitionSection(primaryRecognition)
                 }
                 statsSection
+                if activityType == .running, let cadence = summary.cadence {
+                    RunningCadenceChartView(summary: cadence)
+                        .padding(.horizontal, 20)
+                }
                 if !isSaveEligible {
                     saveEligibilitySection
                 }
@@ -267,6 +271,14 @@ struct PostRunSummaryView: View {
                     value: measurementPreferences.unitSystem.elevationValueString(meters: summary.elevationGainM),
                     unit: measurementPreferences.unitSystem.elevationUnit
                 )
+                if activityType == .running, let average = summary.cadence?.averageStepsPerMinute {
+                    Divider().frame(height: 48)
+                    SummaryStatColumn(
+                        label: String(localized: "running_cadence.average_label", defaultValue: "Avg. cadence"),
+                        value: average.formatted(.number),
+                        unit: String(localized: "running_cadence.unit", defaultValue: "spm")
+                    )
+                }
                 if activityType == .walking, let walkingStepCount = summary.walkingStepCount {
                     Divider().frame(height: 48)
                     SummaryStatColumn(

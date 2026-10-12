@@ -207,9 +207,17 @@ V1 zones:
 
 Cadence is source-dependent.
 
-- live cadence requires watch/sensor support and should wait
+- iOS records running cadence from `CMPedometer.currentCadence` on supported iPhones after Motion & Fitness authorization; the runner must carry the phone
+- the expanded live map/camera dashboard shows total footfalls per minute (both feet), smoothed over recent readings; paused, missing, or more-than-ten-second-old readings show a dash
+- finish review shows average/max cadence and an active-time chart; saved activity detail retains the summary and chart through the existing private client-data sync payload
+- averages are time-weighted over available positive motion readings, not the whole activity duration; absent data is never treated as zero
+- chart points are stored at most every five active seconds, with separate line segments across pauses and signal gaps; recovery preserves measured statistics and samples
+- maximum cadence is the highest valid sensor reading; live/chart values are smoothed
+- physical-device validation against counted footfalls is still required before making an accuracy claim; there is no measured error guarantee
 - imported cadence can appear on activity detail when HealthKit or file imports provide it
 - never fake cadence from GPS speed
+
+Device validation: allow Motion & Fitness, record a Run with the phone in a secure pocket, and compare a steady one-minute interval against counted footfalls. Repeat with hand-held use and a running belt. Pause while moving, resume, finish, save, and reopen the activity; verify paused time adds no cadence samples and the saved chart/summary survive recovery. Simulator builds cannot validate motion accuracy.
 
 ## Rollout Recommendation
 
@@ -240,4 +248,4 @@ Still future work:
 
 - richer route, heart-rate, cadence, and device-detail ingestion for Apple Health imports, plus FIT parsing and Garmin integrations
 - true HR-zone distributions from samples rather than saved summaries/estimates
-- imported cadence ingestion and live cadence sensor support
+- fuller imported cadence ingestion and Watch/foot-pod cadence support

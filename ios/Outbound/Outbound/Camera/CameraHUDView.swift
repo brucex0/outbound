@@ -83,6 +83,7 @@ struct CameraHUDView: View {
                         distanceMeters: recorder.distanceMeters,
                         energyKilocalories: estimatedEnergyKilocalories,
                         walkingStepCount: recorder.walkingStepCount,
+                        cadenceStepsPerMinute: recorder.currentCadenceStepsPerMinute,
                         distanceLabel: measurementPreferences.unitSystem.distanceLabel,
                         elevationText: measurementPreferences.unitSystem.elevationValueString(meters: recorder.elevationGainMeters),
                         elevationLabel: measurementPreferences.unitSystem.elevationLabel,
@@ -696,6 +697,7 @@ struct SessionStatusCard: View {
 
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var connectivityStore: ConnectivityStore
+    @Environment(\.analyticsManager) private var analyticsManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.outboundTheme) private var theme
@@ -713,6 +715,7 @@ struct SessionStatusCard: View {
     let distanceMeters: Double
     let energyKilocalories: Double?
     let walkingStepCount: Int?
+    let cadenceStepsPerMinute: Int?
     let distanceLabel: String
     let elevationText: String
     let elevationLabel: String
@@ -893,6 +896,18 @@ struct SessionStatusCard: View {
                         )
                         ExpandedSessionMetric(value: paceText, label: paceLabel)
                         ExpandedSessionMetric(value: movementDetailValue, label: movementDetailLabel)
+                        if (intent?.resolvedActivityType ?? .running) == .running {
+                            ExpandedSessionMetric(
+                                value: cadenceStepsPerMinute.map { $0.formatted(.number) } ?? "—",
+                                label: String(localized: "running_cadence.live_label", defaultValue: "Cadence (spm)")
+                            )
+                            .accessibilityIdentifier("LiveRunningCadence")
+                            .task {
+                                await analyticsManager?.track(.init(.featureExposed, properties: [
+                                    .feature: .string("running_cadence_live")
+                                ]))
+                            }
+                        }
                         ExpandedSessionMetric(
                             value: heartRateText,
                             label: String(localized: "session.metric.heart_rate", defaultValue: "Heart rate")

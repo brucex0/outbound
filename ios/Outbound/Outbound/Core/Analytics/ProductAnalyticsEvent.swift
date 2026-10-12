@@ -321,6 +321,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case motionBridgeUsed = "motion_bridge_used"
     case routeMatchResult = "route_match_result"
     case walkingStepsAvailable = "walking_steps_available"
+    case runningCadenceAvailable = "running_cadence_available"
     case documentType = "document_type"
     case termsVersion = "terms_version"
 }
@@ -379,7 +380,7 @@ enum ProductAnalyticsSchema {
         .activityRecordingQuality: [
             .sourceType, .countBucket, .result, .locationQuality, .precisionMode,
             .filterRatioBucket, .distanceCorrectionBucket, .segmentCountBucket,
-            .motionBridgeUsed, .routeMatchResult, .walkingStepsAvailable
+            .motionBridgeUsed, .routeMatchResult, .walkingStepsAvailable, .runningCadenceAvailable
         ],
         .activityElevationCorrectionCompleted: [.result, .sourceType, .latencyBucket, .errorCategory],
         .activityFeedLoaded: [.countBucket, .sourceType, .timestampSource],

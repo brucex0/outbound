@@ -163,7 +163,7 @@ private nonisolated enum LocalActivityStore {
             gear: gear,
             manualEdits: manualEdits,
             indoor: indoor,
-            cadence: cadence,
+            cadence: cadence ?? summary.cadence,
             heartRateZones: heartRateZones,
             recordingSession: recordingSession,
             activityEventID: activityEventID,
@@ -859,6 +859,19 @@ nonisolated struct ActivityIndoorMetadata: Codable, Hashable {
 nonisolated struct ActivityCadenceSummary: Codable, Hashable {
     let averageStepsPerMinute: Int?
     let maxStepsPerMinute: Int?
+    let samples: [ActivityCadenceSample]?
+
+    init(averageStepsPerMinute: Int?, maxStepsPerMinute: Int?, samples: [ActivityCadenceSample]? = nil) {
+        self.averageStepsPerMinute = averageStepsPerMinute
+        self.maxStepsPerMinute = maxStepsPerMinute
+        self.samples = samples
+    }
+}
+
+nonisolated struct ActivityCadenceSample: Codable, Hashable {
+    let elapsedSeconds: Int
+    let stepsPerMinute: Int
+    let segment: Int
 }
 
 nonisolated struct ActivityHeartRateZoneSummary: Codable, Hashable {

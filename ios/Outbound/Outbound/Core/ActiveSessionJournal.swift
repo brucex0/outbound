@@ -9,6 +9,7 @@ struct ActiveSessionJournal {
     let activityType: ActivityType?
     let autoPauseEnabled: Bool?
     let walkingStepCount: Int?
+    let cadenceTracker: RunningCadenceTracker?
     let companionType: ActivityCompanionType?
     let routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?
     let sessionMetadata: ActivityRecordingSessionMetadata?
@@ -29,6 +30,7 @@ struct ActiveSessionJournal {
         activityType: ActivityType?,
         autoPauseEnabled: Bool? = nil,
         walkingStepCount: Int? = nil,
+        cadenceTracker: RunningCadenceTracker? = nil,
         companionType: ActivityCompanionType? = nil,
         routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?,
         sessionMetadata: ActivityRecordingSessionMetadata? = nil,
@@ -48,6 +50,7 @@ struct ActiveSessionJournal {
         self.activityType = activityType
         self.autoPauseEnabled = autoPauseEnabled
         self.walkingStepCount = walkingStepCount
+        self.cadenceTracker = cadenceTracker
         self.companionType = companionType
         self.routeGuidanceRecoverySeed = routeGuidanceRecoverySeed
         self.sessionMetadata = sessionMetadata
@@ -74,6 +77,7 @@ struct ActiveSessionJournal {
                 activityType: metadata.activityType,
                 autoPauseEnabled: metadata.autoPauseEnabled,
                 walkingStepCount: metadata.walkingStepCount,
+                cadenceTracker: metadata.cadenceTracker,
                 companionType: metadata.companionType,
                 routeGuidanceRecoverySeed: metadata.routeGuidanceRecoverySeed,
                 sessionMetadata: metadata.sessionMetadata,
@@ -106,6 +110,7 @@ struct ActiveSessionJournal {
                 activityType: activityType,
                 autoPauseEnabled: autoPauseEnabled,
                 walkingStepCount: walkingStepCount,
+                cadenceTracker: cadenceTracker,
                 companionType: companionType,
                 routeGuidanceRecoverySeed: routeGuidanceRecoverySeed,
                 sessionMetadata: sessionMetadata,
@@ -163,6 +168,7 @@ struct ActiveSessionJournal {
         let activityType: ActivityType?
         let autoPauseEnabled: Bool?
         let walkingStepCount: Int?
+        let cadenceTracker: RunningCadenceTracker?
         let companionType: ActivityCompanionType?
         let routeGuidanceRecoverySeed: RouteGuidanceRecoverySeed?
         let sessionMetadata: ActivityRecordingSessionMetadata?

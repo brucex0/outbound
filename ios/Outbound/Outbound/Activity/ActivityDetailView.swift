@@ -432,6 +432,11 @@ struct ActivityDetailView: View {
                         statsHeroSection
                         if currentActivity.activityEventID != nil || eventAttribution != nil { sharedActivitySection }
                         if showsPrivateDetails, showsMetadataSection { metadataSection }
+                        if showsPrivateDetails, currentActivity.activityType == .running,
+                           let cadence = currentActivity.cadence, !(cadence.samples ?? []).isEmpty {
+                            RunningCadenceChartView(summary: cadence)
+                                .padding(16)
+                        }
                         elevationProfileSection
                         if !splits.isEmpty { splitsSection }
                         if showsPrivateDetails { guideHeroCard(currentActivity.reflection) }
@@ -806,8 +811,8 @@ struct ActivityDetailView: View {
                     icon: "metronome.fill",
                     title: String(localized: "activity.meta.cadence.title", defaultValue: "Cadence"),
                     detail: [
-                        cadence.averageStepsPerMinute.map { String(localized: "Avg \($0) spm") },
-                        cadence.maxStepsPerMinute.map { String(localized: "Max \($0) spm") }
+                        cadence.averageStepsPerMinute.map { String(format: String(localized: "activity.meta.cadence.average", defaultValue: "Avg %d spm"), locale: .autoupdatingCurrent, $0) },
+                        cadence.maxStepsPerMinute.map { String(format: String(localized: "activity.meta.cadence.maximum", defaultValue: "Max %d spm"), locale: .autoupdatingCurrent, $0) }
                     ].compactMap { $0 }.joined(separator: " • ")
                 )
             }
