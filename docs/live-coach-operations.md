@@ -23,6 +23,14 @@ At live-session activation, iOS preloads the selected voice's reviewed `workout.
 
 There is no TTS WebSocket and no LLM call in the live cue path. HTTP/2 is device-to-Plainstride and gRPC is Plainstride-to-Google. `live_guidance_audio_first_byte` measures the end-to-end product gate separately from response-metadata latency.
 
+### Countdown Lookup Contract And Regression Checks
+
+- Fixed start and segment countdowns select reviewed clips by cue key, locale, voice, and persona. Do not pass display digits as a transcript constraint: `3` differs from `Three.`, `Tres.`, and `三。`.
+- Sentence cues retain transcript matching so a recorded fallback cannot speak a different instruction from the intended message. Do not relax that shared guard to repair countdowns.
+- Regression `977d8593` (2026-10-11) added transcript matching to shared cue-key candidates without adapting the countdown consumers. Start aborted on the first miss; segment countdowns also failed despite successful key-only preloading. Compile checks cannot detect this data-contract mismatch.
+- Before changing shared audio lookup, inspect all consumers and verify numeric countdowns plus matching/mismatching sentences against actual catalog wording in every locale. Check both locally cached clips and uncached download selection; preloading alone does not verify playback selection.
+- Device acceptance: hear the full three-two-one-Go start and five-through-one segment sequence with both voices in EN/ZH; confirm unavailable packs stay silent and emit `live_guidance_fixed_audio_unavailable` with `start_countdown` or `segment_countdown`. Failed lookups also emit a safe `GuideAudio` diagnostic; missed timing windows are normal control flow and are not error-logged.
+
 ### Current Latency Evidence
 
 On 2026-08-30, the former complete-WAV route measured 790–1,270 ms for direct warm synthesis, with a 1,017 ms median, before iPhone/Cloud Run transport. That evidence rejected the complete-WAV design; it is not evidence for the streaming implementation. Do not claim the new path meets the gate until a real iPhone records device-request-to-first-playable-audio below one second at representative percentiles. During live beta testing, six successful stream requests completed in 637–963 ms, and the owner approved increasing the device fallback threshold from 850 ms to 1.5 seconds so viable cloud streams are not cancelled prematurely.

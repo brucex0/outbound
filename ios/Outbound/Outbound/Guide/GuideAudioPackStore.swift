@@ -133,6 +133,9 @@ final class GuideAudioPackStore {
         return nil
     }
 
+    // A supplied transcript protects sentence cues from mismatched recorded speech.
+    // Fixed countdown callers omit it: "3" and localized spoken "Three." are
+    // equivalent countdown beats but deliberately not text-equivalent sentences.
     private func matchingEntry(cueKey: String, transcript: String?) -> Entry? {
         let locale = AppLanguage.currentIdentifier
         let candidates = manifest?.entries.filter {

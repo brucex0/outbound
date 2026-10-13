@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import OSLog
 
 enum GuideSpeechEvent {
     case didStart
@@ -317,15 +318,17 @@ final class VirtualGuide: NSObject, ObservableObject {
         ))
     }
 
-    func announceStartCountdown(_ texts: [String]) {
+    func announceStartCountdown() {
         guard speechEnabled else { return }
         let keys = ["countdown.three", "countdown.two", "countdown.one", "countdown.go"]
         Task { @MainActor [weak self] in
             guard let self else { return }
             var clips: [Data] = []
-            for (index, key) in keys.enumerated() {
-                let transcript = texts.indices.contains(index) ? texts[index] : nil
-                guard let data = await GuideAudioPackStore.shared.audioData(for: key, transcript: transcript) else {
+            // Countdown identity comes from its cue key. Display digits intentionally
+            // differ from the reviewed spoken words in each locale.
+            for key in keys {
+                guard let data = await GuideAudioPackStore.shared.audioData(for: key) else {
+                    self.reportCountdownAudioUnavailable(group: "start_countdown", reason: "audio_unavailable")
                     return
                 }
                 clips.append(data)
@@ -961,7 +964,6 @@ final class VirtualGuide: NSObject, ObservableObject {
         if let countdownCueKey = Self.countdownCueKey(for: cue.text) {
             guard prepareTimedCountdownCue(
                 countdownCueKey,
-                text: cue.text,
                 boundarySeconds: cue.boundarySeconds
             ) else { return true }
             spokenTimedBoundaryCues.insert(cue.id)
@@ -992,12 +994,11 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     private func prepareTimedCountdownCue(
         _ cueKey: String,
-        text: String,
         boundarySeconds: Int
     ) -> Bool {
         guard !suppressedTimedCountdownBoundaries.contains(boundarySeconds) else { return false }
 
-        if text == "5" {
+        if cueKey == "countdown.five" {
             guard GuideAudioPackStore.shared.localAudioSequence(
                 for: GuideAudioPackStore.segmentCountdownCueKeys
             ) != nil else {
@@ -1010,7 +1011,8 @@ final class VirtualGuide: NSObject, ObservableObject {
             return false
         }
 
-        guard let data = GuideAudioPackStore.shared.localAudioData(for: cueKey, transcript: text) else {
+        // Use the semantic key, not the numeric display text, just as at start.
+        guard let data = GuideAudioPackStore.shared.localAudioData(for: cueKey) else {
             suppressTimedCountdown(at: boundarySeconds, reason: "audio_unavailable")
             return false
         }
@@ -1020,7 +1022,15 @@ final class VirtualGuide: NSObject, ObservableObject {
     private func suppressTimedCountdown(at boundarySeconds: Int, reason: String) {
         guard suppressedTimedCountdownBoundaries.insert(boundarySeconds).inserted else { return }
         activeTimedCountdownBoundaries.remove(boundarySeconds)
-        guidanceEventHandler?(.fixedAudioUnavailable(cueGroup: "segment_countdown", reason: reason))
+        reportCountdownAudioUnavailable(group: "segment_countdown", reason: reason)
+    }
+
+    private func reportCountdownAudioUnavailable(group: String, reason: String) {
+        if reason == "audio_unavailable" {
+            Logger(subsystem: "plainstride.outbound", category: "GuideAudio")
+                .error("Countdown audio lookup failed group=\(group, privacy: .public) reason=\(reason, privacy: .public)")
+        }
+        guidanceEventHandler?(.fixedAudioUnavailable(cueGroup: group, reason: reason))
     }
 
     private func nextTimedBoundaryCue(

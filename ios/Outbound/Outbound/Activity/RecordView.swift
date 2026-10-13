@@ -1442,7 +1442,7 @@ struct RecordView: View {
             completeStartCountdown()
             return
         }
-        guide.announceStartCountdown(ActivityStartCountdownStep.sequence.map(\.spokenText))
+        guide.announceStartCountdown()
         countdownTask = Task { @MainActor in
             for step in ActivityStartCountdownStep.sequence {
                 guard !Task.isCancelled else { return }
