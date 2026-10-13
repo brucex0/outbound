@@ -1,9 +1,12 @@
 package com.plainstride.outbound.feature.social
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -104,12 +107,18 @@ fun GroupDetailScreen(
     changeRole: (String, String) -> Unit,
     transferOwnership: (String) -> Unit,
     trackMembersOpened: (Int) -> Unit,
+    unitSystem: com.plainstride.outbound.core.model.activity.MeasurementUnitSystem,
+    trackMomentOpened: (String) -> Unit,
+    loadMomentResults: suspend (String) -> Result<ActivityEventResult>,
+    loadMomentPhoto: suspend (String) -> ByteArray?,
     planActivity: () -> Unit,
     requestJoin: () -> Unit,
     openActivity: (String) -> Unit,
     publishNotice: (String?, String, Boolean) -> Unit,
     markNoticesRead: () -> Unit,
 ) {
+    val groupListState = rememberLazyListState()
+    var selectedMomentID by rememberSaveable(group.id) { mutableStateOf<String?>(null) }
     var settings by rememberSaveable { mutableStateOf(false) }
     var focusOpen by rememberSaveable { mutableStateOf(false) }
     var showMembers by rememberSaveable { mutableStateOf(false) }
@@ -135,6 +144,11 @@ fun GroupDetailScreen(
     val isMember = group.currentUserRole != null || orderedMembers.any { it.isCurrentUser }
     val dateFormatter = remember(context) { java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT, context.resources.configuration.locales[0]) }
 
+    group.recentMoments.firstOrNull { it.id == selectedMomentID }?.let { moment ->
+        GroupMomentDetailScreen(group, moment, unitSystem, { selectedMomentID = null }, trackMomentOpened, loadMomentResults, loadMomentPhoto)
+        return
+    }
+
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column {
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -142,7 +156,7 @@ fun GroupDetailScreen(
                 Text(group.name, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
                 if (group.currentUserRole in setOf("owner", "admin")) IconButton({ settings = true }) { Icon(Icons.Outlined.Settings, stringResource(R.string.group_manage)) }
             }
-            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            LazyColumn(Modifier.weight(1f), state = groupListState, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 item {
                     ElevatedCard {
                         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -207,7 +221,7 @@ fun GroupDetailScreen(
                         } }
                     }
                     item { Button(planActivity, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_plan_activity)) } }
-                    if (group.recentMoments.isNotEmpty()) item { momentsCard(group, dateFormatter) }
+                    if (group.recentMoments.isNotEmpty()) item { momentsCard(group) { selectedMomentID = it.id } }
                     group.history?.takeIf { it.isNotEmpty() }?.let { history -> item { historyCard(history) } }
                 }
             }
@@ -384,15 +398,16 @@ private fun LazyListScope.memberSection(group: GroupSummary, members: List<Group
     }
 }
 
-@Composable private fun momentsCard(group: GroupSummary, dateFormat: java.text.DateFormat) {
+@Composable private fun momentsCard(group: GroupSummary, open: (GroupMoment) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(stringResource(R.string.group_recent_moments), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         ElevatedCard { Column(Modifier.padding(horizontal = 14.dp)) {
             group.recentMoments.forEach { moment ->
-                Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Icon(if (moment.type == "cheer") Icons.Outlined.Favorite else Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
-                    Text(moment.title ?: stringResource(if (moment.type == "cheer") R.string.group_moment_cheer else R.string.group_moment_activity), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                    Text(runCatching { dateFormat.format(java.util.Date.from(java.time.OffsetDateTime.parse(moment.createdAt).toInstant())) }.getOrDefault(""), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { open(moment) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Icon(when(moment.type) { "cheer" -> Icons.Filled.Favorite; "completed_activity" -> Icons.Filled.Groups; else -> Icons.Outlined.AutoAwesome }, null, tint = MaterialTheme.colorScheme.primary)
+                    Text(groupMomentText(moment), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                    Text(groupMomentRelativeTime(moment.createdAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         } }

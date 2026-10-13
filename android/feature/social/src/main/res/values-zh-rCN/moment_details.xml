@@ -1,0 +1,29 @@
+<resources>
+    <string name="moment_details">动态详情</string>
+    <string name="moment_results">参与结果</string>
+    <string name="moment_results_failed">无法加载参与结果。</string>
+    <string name="moment_results_retry">重试</string>
+    <string name="moment_results_empty">暂无参与结果。</string>
+    <string name="moment_cheer">有人送上了鼓励</string>
+    <string name="moment_weekly">已完成每周目标</string>
+    <string name="moment_activity">已结束</string>
+    <string name="moment_encouragement">继续加油</string>
+    <string name="moment_celebration">庆祝一下</string>
+    <string name="moment_support">支持一下</string>
+    <string name="moment_collecting">正在汇总大家的活动结果</string>
+    <string name="moment_no_recording">已完成 · 未保存活动</string>
+    <string name="moment_not_participated">未能参加</string>
+    <string name="moment_waiting">等待结果</string>
+    <string name="moment_photo">Activity photo preview</string>
+    <string name="moment_theme_build_consistency">坚持成习惯</string>
+    <string name="moment_theme_one_small_step">从小小一步开始</string>
+    <string name="moment_theme_keep_the_rhythm">保持节奏</string>
+    <string name="moment_theme_move_for_your_mood">为好心情而动</string>
+    <string name="moment_theme_recover_and_recharge">好好恢复，充充电</string>
+    <string name="moment_theme_do_something_together">一起动起来</string>
+    <string name="moment_theme_explore_somewhere_new">探索新地方</string>
+    <string name="moment_theme_try_something_different">换种方式动一动</string>
+    <string name="moment_theme_celebrate_every_effort">每一次努力都值得庆祝</string>
+    <string name="moment_finished">已完成</string>
+    <string name="moment_completed_distance">已完成 · %1$s</string>
+</resources>

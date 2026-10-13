@@ -144,6 +144,7 @@ import kotlinx.serialization.json.JsonElement
 @Serializable data class GroupInvitationSnapshot(val id:String,val recipient:SocialPerson?=null,val status:String="pending")
 @Serializable data class GroupCapability(val weeklyTheme:Boolean=false,val workoutContributions:Boolean=false,val presetCheers:Boolean=false,val notices:Boolean=false,val scheduledActivities:Boolean=true)
 @Serializable data class GroupActivitySummary(val id:String,val title:String,val startsAt:String,val endsAt:String?=null,val locationName:String?=null,val paceNote:String?=null,val status:String="scheduled",val attendeeCount:Int=0,val currentUserGoing:Boolean=false)
+@Serializable data class GroupCheer(val id:String,val senderUserId:String,val recipientUserId:String,val presetType:String,val createdAt:String)
 @Serializable data class GroupMoment(val id:String,val type:String,val createdAt:String,val title:String?=null)
 @Serializable data class GroupWeekHistory(val id:String,val startsAt:String,val themeKey:String?=null,val themeTitle:String?=null,val state:String="recorded")
 @Serializable data class GroupPendingRequest(val status:String="pending")
@@ -171,6 +172,7 @@ import kotlinx.serialization.json.JsonElement
     val members: List<GroupMember> = emptyList(),
     val invitations: List<GroupInvitationSnapshot> = emptyList(),
     val upcomingActivities: List<GroupActivitySummary> = emptyList(),
+    val cheers: List<GroupCheer> = emptyList(),
     val recentMoments: List<GroupMoment> = emptyList(),
     val history: List<GroupWeekHistory>? = null,
     val capabilities: GroupCapability = GroupCapability(),
@@ -213,4 +215,6 @@ class SocialException(val reason: SocialError, val httpStatus: Int? = null) : Ex
 @Serializable data class ConnectionLinkResult(val result: String, val person: SocialPerson, val relationship: SocialRelationship? = null)
 @Serializable data class SocialNotification(val id: String, val type: String, val objectId: String, val message: String, val readAt: String? = null)
 @Serializable data class EventParticipant(val person: SocialPerson, val status: String, val outcome: String? = null, val attendanceMode: String? = null, val recordedActivity: FeedActivity? = null)
-@Serializable data class ActivityEventResult(val event: SocialEvent? = null, val participants: List<EventParticipant> = emptyList())
+@Serializable data class ActivityEventResultActivity(val id: String, val distanceM: Double? = null, val durationSecs: Int? = null, val photos: List<ActivityPhoto> = emptyList())
+@Serializable data class ActivityEventResultParticipant(val person: SocialPerson, val outcome: String? = null, val result: ActivityEventResultActivity? = null)
+@Serializable data class ActivityEventResult(val activityEventId: String, val status: String, val participants: List<ActivityEventResultParticipant> = emptyList())

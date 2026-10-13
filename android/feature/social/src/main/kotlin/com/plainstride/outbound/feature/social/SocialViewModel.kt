@@ -227,6 +227,38 @@ sealed interface ConnectionEffect {
         )))
     }
 
+    fun trackGroupMomentOpened(type: String) = analytics.record(AnalyticsEvent("group_moment_opened", mapOf(
+        AnalyticsProperty.EntrySource to "group_detail",
+        AnalyticsProperty.SelectionType to type.takeIf { it in setOf("cheer", "completed_activity", "weekly_completion") }.orEmpty().ifEmpty { "other" },
+    )))
+
+    suspend fun loadGroupMomentPhoto(url: String): ByteArray? {
+        val path = android.net.Uri.parse(url).pathSegments
+        val marker = path.indexOf("activity-photos")
+        val photoId = path.getOrNull(marker + 1)
+        val representation = path.getOrNull(marker + 2)
+        if (marker < 0 || photoId == null || representation !in setOf("thumbnail", "content")) return null
+        val result = repository.downloadPostPhoto(photoId, thumbnail = representation == "thumbnail")
+        result.exceptionOrNull()?.let { error ->
+            if (error is CancellationException) throw error
+            Log.w("PlainstrideSocial", "Load moment photo failed (HTTP ${(error as? SocialException)?.httpStatus}, type ${error.javaClass.simpleName})")
+        }
+        return result.getOrNull()
+    }
+
+    suspend fun loadGroupMomentResults(eventId: String): Result<ActivityEventResult> {
+        val result = repository.eventResults(eventId)
+        result.exceptionOrNull()?.let { error ->
+            if (error is CancellationException) throw error
+            Log.w("PlainstrideSocial", "Load moment participation results failed (HTTP ${(error as? SocialException)?.httpStatus}, type ${error.javaClass.simpleName})")
+        }
+        analytics.record(AnalyticsEvent("group_moment_results_loaded", buildMap {
+            put(AnalyticsProperty.Result, if (result.isSuccess) "success" else "failure")
+            result.getOrNull()?.let { put(AnalyticsProperty.CountBucket, countBucket(it.participants.size)) }
+        }))
+        return result
+    }
+
     private fun countBucket(count: Int) = when (count.coerceAtLeast(0)) {
         0 -> "0"
         1 -> "1"

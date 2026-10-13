@@ -1,0 +1,29 @@
+<resources>
+    <string name="moment_details">Moment details</string>
+    <string name="moment_results">Participation results</string>
+    <string name="moment_results_failed">Could not load participation results.</string>
+    <string name="moment_results_retry">Try again</string>
+    <string name="moment_results_empty">No participation results yet.</string>
+    <string name="moment_cheer">A Cheer was sent</string>
+    <string name="moment_weekly">Weekly focus completed</string>
+    <string name="moment_activity">Activity completed</string>
+    <string name="moment_encouragement">Keep going</string>
+    <string name="moment_celebration">Celebrate</string>
+    <string name="moment_support">Support</string>
+    <string name="moment_collecting">Collecting participant results</string>
+    <string name="moment_no_recording">Finished · No activity saved</string>
+    <string name="moment_not_participated">Couldn\'t participate</string>
+    <string name="moment_waiting">Waiting for result</string>
+    <string name="moment_photo">Activity photo preview</string>
+    <string name="moment_theme_build_consistency">Build consistency</string>
+    <string name="moment_theme_one_small_step">One small step</string>
+    <string name="moment_theme_keep_the_rhythm">Keep the rhythm</string>
+    <string name="moment_theme_move_for_your_mood">Move for your mood</string>
+    <string name="moment_theme_recover_and_recharge">Recover and recharge</string>
+    <string name="moment_theme_do_something_together">Do something together</string>
+    <string name="moment_theme_explore_somewhere_new">Explore somewhere new</string>
+    <string name="moment_theme_try_something_different">Try something different</string>
+    <string name="moment_theme_celebrate_every_effort">Celebrate every effort</string>
+    <string name="moment_finished">Finished</string>
+    <string name="moment_completed_distance">Completed · %1$s</string>
+</resources>

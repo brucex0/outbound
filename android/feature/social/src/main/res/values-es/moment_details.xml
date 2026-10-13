@@ -1,0 +1,29 @@
+<resources>
+    <string name="moment_details">Detalles del momento</string>
+    <string name="moment_results">Resultados de participación</string>
+    <string name="moment_results_failed">No se pudieron cargar los resultados de participación.</string>
+    <string name="moment_results_retry">Reintentar</string>
+    <string name="moment_results_empty">Aún no hay resultados de participación.</string>
+    <string name="moment_cheer">Se envió un mensaje de ánimo</string>
+    <string name="moment_weekly">Enfoque semanal completado</string>
+    <string name="moment_activity">Actividad completada</string>
+    <string name="moment_encouragement">Sigue así</string>
+    <string name="moment_celebration">Celebrar</string>
+    <string name="moment_support">Apoyar</string>
+    <string name="moment_collecting">Recopilando los resultados del grupo</string>
+    <string name="moment_no_recording">Finalizado · Sin actividad guardada</string>
+    <string name="moment_not_participated">No pudo participar</string>
+    <string name="moment_waiting">Esperando resultado</string>
+    <string name="moment_photo">Activity photo preview</string>
+    <string name="moment_theme_build_consistency">Crear constancia</string>
+    <string name="moment_theme_one_small_step">Un pequeño paso</string>
+    <string name="moment_theme_keep_the_rhythm">Mantén el ritmo</string>
+    <string name="moment_theme_move_for_your_mood">Muévete para sentirte mejor</string>
+    <string name="moment_theme_recover_and_recharge">Recupérate y recarga energías</string>
+    <string name="moment_theme_do_something_together">Hagan algo juntos</string>
+    <string name="moment_theme_explore_somewhere_new">Explora un lugar nuevo</string>
+    <string name="moment_theme_try_something_different">Prueba algo diferente</string>
+    <string name="moment_theme_celebrate_every_effort">Celebrar cada esfuerzo</string>
+    <string name="moment_finished">Finalizado</string>
+    <string name="moment_completed_distance">Completado · %1$s</string>
+</resources>

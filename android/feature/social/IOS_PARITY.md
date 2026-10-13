@@ -90,3 +90,15 @@
 - No Group with accepted connections, creation loading/success/failure with one or several invitees, generated or custom name, awaiting-members state, active progress with and without a numeric focus, personal skip, shared focus now/next week, owner/member management, archived/reactivated lifecycle, and transient mutation failure.
 
 - Group member invitations exclude existing members and recipients with pending invitations, using the latest open Group detail. Opening the picker emits feature_exposed with only feature = group_invite_picker; invitation outcomes retain group_invitation_sent. No identities or picker contents are recorded.
+
+## Recent Moment Details
+
+- Authority: iOS `GroupViews.momentDetails` and `GroupMomentResultsView`.
+- Tapping a recent moment opens a full detail page; Back returns to the same Group. Rows use relative timestamps and type-specific icons; details show the title, Group name, and full localized date with short time.
+- Cheers show the localized preset and sender/recipient only when both remain in the member projection. Weekly completions show the current theme/note only when the completion ID matches the current week; predefined theme titles use the iOS translations.
+- Completed activity moments with an `event:` ID load the same results endpoint. Loading, retryable failure, collecting, empty, participant outcome, optional distance in preferred units, photos, and optional `h:mm:ss` duration match iOS order and conditions. A completed outcome without visible stats still says Finished.
+- Photo previews use authenticated media downloads, 132 × 100 dp frames, center crop, 8 dp corners, EXIF-aware decoding capped at 720 pixels, and a bounded decoded-image cache. The backend controls which photos and stats are visible; no client reconstructs hidden results.
+- Analytics match `group_moment_opened` and `group_moment_results_loaded`, with the same bounded properties and no identities, dates, stats, or media in events.
+- Manual parity cases: each moment type; missing Cheer members; custom/predefined/unknown themes; old completion IDs; malformed event IDs; collecting/empty/results/error/retry; completed without stats; no-recording/waiting outcomes; metric/imperial; no photos, thumbnail/full-content fallback; cached/uncached rotated/mirrored/portrait photos; Back and locale/font scaling.
+
+Verification for this change: debug app build passed; a temporary local-only preview on a physical Android phone showed localized date, imperial distance, duration, collecting state, no-recording, completed-without-stats, and waiting outcomes. No server data was created. Final code preserves the Group list state on Back. Photo orientation/cache, loading/failure/retry, other locales, font scaling, and side-by-side iOS visual equality were reviewed in code but were not verified on device. Temporary preview code was removed.
