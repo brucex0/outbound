@@ -708,7 +708,7 @@ private fun ActivityPhotoStrip(
     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp)) {
         itemsIndexed(photos, key = { _, photo -> photo.id }) { index, photo ->
             val bitmap = remember(photo.localRelativePath) {
-                photo.localRelativePath?.let(photoBytes)?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+                photo.localRelativePath?.let(photoBytes)?.let { decodeActivityPhoto(it) }
             }
             val selected = index == selectedIndex
             Card(
@@ -928,7 +928,7 @@ private fun ActivityPhotoLightbox(
             HorizontalPager(pagerState, Modifier.fillMaxSize()) { page ->
                 val photo = photos[page]
                 val bitmap = remember(photo.localRelativePath) {
-                    photo.localRelativePath?.let(photoBytes)?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+                    photo.localRelativePath?.let(photoBytes)?.let { decodeActivityPhoto(it) }
                 }
                 if (bitmap != null) Image(bitmap.asImageBitmap(), stringResource(R.string.activity_photo), Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                 else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.CameraAlt, stringResource(R.string.activity_photo_pending), tint = Color.White) }
