@@ -233,6 +233,10 @@ class ActivityViewModel @Inject constructor(
         )))
     }
 
+    fun trackCadenceExposure() = analytics.record(AnalyticsEvent(
+        "feature_exposed", mapOf(AnalyticsProperty.Feature to "running_cadence_summary"),
+    ))
+
     fun trackCalorieExposure() {
         analytics.record(AnalyticsEvent("feature_exposed", mapOf(
             AnalyticsProperty.Feature to "completed_workout_calories",

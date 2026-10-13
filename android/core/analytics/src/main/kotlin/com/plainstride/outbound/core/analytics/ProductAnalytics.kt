@@ -40,6 +40,7 @@ enum class AnalyticsProperty(val wireName: String) {
     RouteSelected("route_selected"),
     ShoeSelected("shoe_selected"),
     Indoor("indoor"),
+    RunningCadenceAvailable("running_cadence_available"),
 }
 
 data class AnalyticsEvent(

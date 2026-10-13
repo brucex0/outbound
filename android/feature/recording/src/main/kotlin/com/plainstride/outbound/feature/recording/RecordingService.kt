@@ -50,6 +50,7 @@ class RecordingService : Service() {
             permissionState = permissionState,
             scope = serviceScope,
             analytics = analytics,
+            stepSource = StepDetectorSource(applicationContext),
         )
         serviceScope.launch {
             coordinator.snapshot.collect { snapshot ->

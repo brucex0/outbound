@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
+<resources>
+    <string name="running_cadence_average_format">Media %1$d pasos / min</string>
+    <string name="running_cadence_average_label">Media de pasos / min</string>
+    <string name="running_cadence_coverage">Según las lecturas de movimiento disponibles.</string>
+    <string name="running_cadence_live_label">Pasos / min</string>
+    <string name="running_cadence_maximum_format">Máx. %1$d pasos / min</string>
+    <string name="running_cadence_time_axis">Tiempo activo (min)</string>
+    <string name="running_cadence_unit">pasos / min</string>
+</resources>

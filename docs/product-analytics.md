@@ -332,4 +332,6 @@ Historical dashboards do not migrate automatically just because the client adapt
 
 `feature_exposed` with `feature=group_activity_recovery` records restoration of durable event context. It contains no event ID, participant names, or location. Live-map reconnection emits safe recovery diagnostics and existing participant presence analytics.
 
-- Running cadence uses `feature_exposed` with only `feature=running_cadence_live` or `running_cadence_summary` when those surfaces appear. Recording quality reports availability only; cadence values, step counts, samples, timestamps, and activity IDs are excluded.
+- iOS and Android running cadence use `feature_exposed` with only `feature=running_cadence_live` or `running_cadence_summary` when those surfaces appear. Recording quality reports availability only; cadence values, step counts, samples, timestamps, and activity IDs are excluded.
+
+- Android recording emits `activity_recording_quality` with only `running_cadence_available` for motion coverage. Optional motion permission uses the canonical requested/completed events and a bounded result, without step timestamps or counts.

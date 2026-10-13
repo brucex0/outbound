@@ -43,6 +43,7 @@ class RecordingCoordinator internal constructor(
     private val analytics: ProductAnalytics,
     private val json: Json = Json { ignoreUnknownKeys = true },
     private val clock: RecordingClock = AndroidRecordingClock,
+    private val stepSource: StepDetectorSource? = null,
 ) {
     private val mutex = Mutex()
     private val handledCommandIds = LinkedHashSet<String>()
@@ -58,6 +59,8 @@ class RecordingCoordinator internal constructor(
     )
     val simulationSnapshots: SharedFlow<RecordingSnapshot> = _simulationSnapshots.asSharedFlow()
 
+    private val cadenceTracker = RunningCadenceTracker()
+    private var cadenceJob: Job? = null
     private var tickJob: Job? = null
     private var locationJob: Job? = null
     private var simulationClockJob: Job? = null
@@ -96,6 +99,7 @@ class RecordingCoordinator internal constructor(
             revision = entity.revision,
             recordedAtEpochMilliseconds = clock.utcMillis(),
             recovered = true,
+            currentCadenceStepsPerMinute = null,
         )
         simulationSampler = restoredSimulationSampler(_snapshot.value)
         simulationStartElapsedRealtimeNanos = simulationSampler?.let {
@@ -132,6 +136,7 @@ class RecordingCoordinator internal constructor(
                     revision = existing.revision,
                     recordedAtEpochMilliseconds = clock.utcMillis(),
                     recovered = true,
+                    currentCadenceStepsPerMinute = null,
                 )
                 simulationSampler = restoredSimulationSampler(_snapshot.value)
                 simulationStartElapsedRealtimeNanos = simulationSampler?.let {
@@ -147,6 +152,7 @@ class RecordingCoordinator internal constructor(
         } else null
         simulationSampler = sampler
         simulationStartElapsedRealtimeNanos = sampler?.let { clock.elapsedRealtimeNanos() }
+        cadenceTracker.restore(null)
         filter = LocationTrackFilter(activityKind)
         elevation = ElevationGainAccumulator()
         accumulatedElapsedNanos = 0
@@ -266,6 +272,9 @@ class RecordingCoordinator internal constructor(
                 ),
             ),
         )
+        analytics.record(AnalyticsEvent("activity_recording_quality", mapOf(
+            AnalyticsProperty.RunningCadenceAvailable to (finished.cadenceState?.summary() != null),
+        )))
         _events.emit(RecordingEvent.SessionFinished(commandId, finished))
     }
 
@@ -323,7 +332,24 @@ class RecordingCoordinator internal constructor(
         runCatching { block() }.onFailure { _events.emit(RecordingEvent.Failure(commandId, "command", it)) }
     }
 
+    private fun beginCadenceCollection() {
+        cadenceJob?.cancel()
+        if (_snapshot.value.activityKind != ActivityKind.RUNNING || _snapshot.value.runSimulation != null) return
+        cadenceTracker.begin(clock.elapsedRealtimeNanos())
+        cadenceJob = scope.launch {
+            stepSource?.steps()?.collect { timestamp ->
+                mutex.withLock {
+                    if (_snapshot.value.status != RecordingStatus.ACTIVE) return@withLock
+                    cadenceTracker.ingest(timestamp, elapsedSeconds(), clock.elapsedRealtimeNanos())
+                    // The existing one-second clock publishes/journals cadence with
+                    // the other metrics, avoiding notification updates per footfall.
+                }
+            }
+        }
+    }
+
     private fun beginCollection() {
+        beginCadenceCollection()
         locationJob?.cancel()
         if (_snapshot.value.runSimulation == null) {
             locationSource.start()
@@ -361,6 +387,8 @@ class RecordingCoordinator internal constructor(
     }
 
     private fun stopCollection() {
+        cadenceJob?.cancel()
+        cadenceTracker.suspend()
         tickJob?.cancel()
         tickJob = null
         locationJob?.cancel()
@@ -456,6 +484,8 @@ class RecordingCoordinator internal constructor(
         freezeElapsed()
         stopSimulationClock()
         activeSegmentStartedElapsedNanos = null
+        cadenceJob?.cancel()
+        cadenceTracker.suspend()
         autoPauseCandidateStartedAtNanos = null
         autoResumeCandidateStartedAtNanos = null
         val currentDistance = _snapshot.value.distanceMeters
@@ -482,6 +512,7 @@ class RecordingCoordinator internal constructor(
         autoPauseCandidateStartedAtNanos = null
         autoResumeCandidateStartedAtNanos = null
         _snapshot.value = nextSnapshot(status = RecordingStatus.ACTIVE, autoPaused = false)
+        beginCadenceCollection()
         persist(force = true)
         analytics.record(AnalyticsEvent("activity_recording_resumed", mapOf(AnalyticsProperty.Trigger to "automatic")))
     }
@@ -554,6 +585,7 @@ class RecordingCoordinator internal constructor(
     }
 
     private fun rebuildProcessors(snapshot: RecordingSnapshot) {
+        cadenceTracker.restore(snapshot.cadenceState)
         filter = LocationTrackFilter(snapshot.activityKind)
         elevation = ElevationGainAccumulator()
         snapshot.track.forEach { filter.ingest(it).sample?.let(elevation::ingest) }
@@ -596,6 +628,8 @@ class RecordingCoordinator internal constructor(
         trackSegmentStartIndices = trackSegmentStartIndices,
         autoPaused = autoPaused,
         runSimulation = runSimulation,
+        currentCadenceStepsPerMinute = if (status == RecordingStatus.ACTIVE) cadenceTracker.current(clock.elapsedRealtimeNanos()) else null,
+        cadenceState = if (_snapshot.value.activityKind == ActivityKind.RUNNING) cadenceTracker.state else null,
     )
 
     suspend fun setRunSimulationTimeRate(rate: Int) = serialized("simulation_rate_${UUID.randomUUID()}") {

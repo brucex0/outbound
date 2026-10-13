@@ -54,6 +54,8 @@ data class RecordingSnapshot(
     val recovered: Boolean = false,
     val companionType: ActivityCompanionType? = null,
     val runSimulation: RunSimulationState? = null,
+    val currentCadenceStepsPerMinute: Int? = null,
+    val cadenceState: RunningCadenceState? = null,
 ) {
     val saveEligibility: ActivitySaveEligibility
         get() = ActivitySaveEligibility.evaluate(elapsedSeconds, distanceMeters)

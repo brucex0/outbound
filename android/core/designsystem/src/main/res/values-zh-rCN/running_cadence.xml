@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
+<resources>
+    <string name="running_cadence_average_format">平均 %1$d 步/分钟</string>
+    <string name="running_cadence_average_label">平均步/分钟</string>
+    <string name="running_cadence_coverage">根据可用的运动传感器数据统计。</string>
+    <string name="running_cadence_live_label">步/分钟</string>
+    <string name="running_cadence_maximum_format">最高 %1$d 步/分钟</string>
+    <string name="running_cadence_time_axis">运动时间（分钟）</string>
+    <string name="running_cadence_unit">步/分钟</string>
+</resources>

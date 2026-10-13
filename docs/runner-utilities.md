@@ -207,6 +207,9 @@ V1 zones:
 
 Cadence is source-dependent.
 
+- Android records running steps per minute from `TYPE_STEP_DETECTOR` timestamps on supported phones, after optional Activity Recognition authorization; no GPS-derived or accelerometer-guess fallback is used
+- Android uses a recent five-second step window for the live/chart value, requires at least four detections, and weights average cadence over valid consecutive step intervals; sensor absence/denial and stale readings show a dash
+- Android pauses stop cadence collection without changing location Auto Pause probing; journal recovery preserves statistics/series but clears the transient live reading. Saved cadence uses the same private `cadence` client-data shape as iOS
 - iOS records running cadence from `CMPedometer.currentCadence` on supported iPhones after Motion & Fitness authorization; the runner must carry the phone
 - running UI labels use “Steps / min” (localized), including live, finish review, and saved detail; analytics retain the stable `running_cadence_*` feature names
 - the expanded live map/camera dashboard shows total footfalls per minute (both feet), smoothed over recent readings; paused, missing, or more-than-ten-second-old readings show a dash

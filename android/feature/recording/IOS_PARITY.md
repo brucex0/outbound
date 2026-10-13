@@ -16,6 +16,8 @@
 - Active recording is non-dismissible. Pause reveals separate Resume and Finish controls; Finish requires confirmation.
 - The map and camera share compact and expanded dashboard state. Tap or vertical drag changes state without dismissing the activity.
 - The compact dashboard mirrors iOS's glanceable time / primary action / optional Finish / distance row; the expanded dashboard owns the title and status, goal hero, progress, metric cards, current workout step, route name, and labeled controls.
+- Running's expanded dashboard shows localized `Steps / min` from the phone step detector. Optional Activity Recognition access is requested once before a real Run start; denial or unsupported hardware leaves the metric unavailable and does not block recording. No synthetic cadence is shown for debug route simulation.
+- Steps-per-minute statistics and a segmented active-time chart appear in finish review and saved detail. Pauses stop step collection, stale values clear after ten seconds, recovery retains measured statistics, and missing intervals never become zero cadence. The saved private payload is compatible with iOS's cadence summary and samples.
 - The primary live metric follows the selected distance, time, calorie, structured-workout, or freestyle goal.
 - Sessions launched with `Stop at goal` enabled finish automatically at the distance, elapsed-time, or estimated-calorie target and move directly to review. Recovery retains the choice; paused sessions do not auto-finish.
 - Live distance, pace, elevation, target progress, and calorie estimates honor the runner's persisted measurement and weight preferences, matching the iOS formatter and estimator contracts.
@@ -47,6 +49,7 @@
 - Planned distance workout, manual free run, timed walk, calorie goal, structured workout, and followed route.
 - DEBUG Redmond simulated run with no GPS fix, 4–24 km/h speed bounds, all three time rates, manual time jumps, normal pause/resume, route completion, and discard.
 - Active and paused map/camera surfaces, compact and expanded dashboard, pending photo write, finish confirmation, recovery, and post-run review.
+- Motion permission allowed/denied, unsupported step detector, steady and changing step timing, sensor gaps, manual/automatic pause, process recovery, and saved/synced cadence charts.
 - English, Spanish, and Simplified Chinese; light/dark themes; compact phone and increased font scale.
 - Offline before start, during map and camera recording, and during a connectivity recovery while an activity remains active.
 
@@ -54,7 +57,7 @@
 
 - Core start/spoken 3–2–1–Go countdown, foreground recording, pause/resume/finish, camera/map switching, in-session voice commands, route-aware live mapping, recovery, review, local save, and the iOS compact/expanded dashboard hierarchy are implemented. Countdown speech checks the selected app locale and falls back to a supported language before reporting speech readiness.
 - DEBUG interactive Redmond run simulation is implemented with the iOS route fixture and synthetic locations routed through the normal recorder snapshot pipeline.
-- Visible live heart rate/steps, coach text, music controls, and group-run strips remain dependent on those data streams being exposed to the recording UI; their audio, wearable, music, and safety owners are implemented separately.
+- Visible live heart rate/walking total steps, coach text, music controls, and group-run strips remain dependent on those data streams being exposed to the recording UI; their audio, wearable, music, and safety owners are implemented separately.
 - Manual visual comparison and real-device longevity/background validation remain release-gate work.
 
 ## Approved Exceptions

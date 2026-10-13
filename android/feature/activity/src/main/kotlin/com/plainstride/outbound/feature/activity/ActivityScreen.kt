@@ -321,6 +321,7 @@ fun ActivityHistoryRoute(
         onShareCard = { viewModel.shareCard(selected, unitSystem) },
         onShareAction = viewModel::trackShareAction,
         onCalorieExposure = viewModel::trackCalorieExposure,
+        onCadenceExposure = viewModel::trackCadenceExposure,
         onPublishRoute = onPublishRoute,
         photoBytes = viewModel::photoBytes,
         modifier = modifier,
@@ -408,6 +409,7 @@ private fun ActivityDetailScreen(
     onShareCard: () -> ActivityExport?,
     onShareAction: (String) -> Unit,
     onCalorieExposure: () -> Unit,
+    onCadenceExposure: () -> Unit,
     onPublishRoute: suspend (String, String) -> Boolean,
     photoBytes: (String) -> ByteArray?,
     modifier: Modifier,
@@ -423,6 +425,16 @@ private fun ActivityDetailScreen(
                 elevationGainMeters = activity.elevationGainM ?: 0.0,
                 weightKilograms = weightKilograms,
             ).kilocalories
+    }
+    val cadence = remember(activity.cadenceJson) {
+        activity.cadenceJson?.let { raw ->
+            try {
+                kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString<com.plainstride.outbound.core.model.activity.ActivityCadenceSummary>(raw)
+            } catch (error: IllegalArgumentException) {
+                android.util.Log.e("ActivityDetail", "Cadence decode failed type=${error.javaClass.simpleName}")
+                null
+            }
+        }
     }
     val elevationPoints = remember(activity.track) { elevationProfile(activity.track) }
     val splits = remember(activity.track, unitSystem) { computeDetailSplits(activity.track, unitSystem) }
@@ -560,6 +572,12 @@ private fun ActivityDetailScreen(
                         }
                         if (activity.activityEventId != null) item { SharedActivitySection() }
                         if (hasActivityMetadata(activity)) item { ActivityMetadataSection(activity) }
+                        if (activity.type == ActivityType.running && cadence != null &&
+                            (cadence.averageStepsPerMinute != null || cadence.maxStepsPerMinute != null)) item {
+                            com.plainstride.outbound.core.designsystem.StepsPerMinuteChart(
+                                cadence, Modifier.fillMaxWidth().padding(20.dp), onCadenceExposure,
+                            )
+                        }
                         if (elevationPoints.size > 1) item { ElevationProfileSection(elevationPoints, unitSystem) }
                         if (splits.isNotEmpty()) item { ActivitySplitsSection(splits, unitSystem) }
                         item { CompanionReflectionCard(activity) }
@@ -765,10 +783,10 @@ private fun ActivityMetadataSection(activity: SavedActivity) = Column(
     val maximumCadence = jsonInt(activity.cadenceJson, "maxStepsPerMinute", "maximumSpm")
     if (averageCadence != null || maximumCadence != null) {
         val detail = listOfNotNull(
-            averageCadence?.let { stringResource(R.string.activity_meta_cadence_average, it) },
-            maximumCadence?.let { stringResource(R.string.activity_meta_cadence_maximum, it) },
+            averageCadence?.let { stringResource(if (activity.type == ActivityType.running) com.plainstride.outbound.core.designsystem.R.string.running_cadence_average_format else R.string.activity_meta_cadence_average, it) },
+            maximumCadence?.let { stringResource(if (activity.type == ActivityType.running) com.plainstride.outbound.core.designsystem.R.string.running_cadence_maximum_format else R.string.activity_meta_cadence_maximum, it) },
         ).joinToString(" • ")
-        MetadataRow(Icons.AutoMirrored.Outlined.DirectionsRun, stringResource(R.string.activity_meta_cadence_title), detail)
+        MetadataRow(Icons.AutoMirrored.Outlined.DirectionsRun, stringResource(if (activity.type == ActivityType.running) com.plainstride.outbound.core.designsystem.R.string.running_cadence_live_label else R.string.activity_meta_cadence_title), detail)
     }
 }
 

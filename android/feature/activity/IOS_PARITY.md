@@ -52,3 +52,9 @@
 - The iOS editor additionally changes date, distance, duration, shoes, and photo order/capture; Android's existing edit action currently changes only the title. This remains an open activity-edit parity defect rather than an approved exception.
 - Social feed activity detail still owns a share-safe reduced payload in `feature/social`; adapting that payload to this shared map-and-sheet shell remains tracked by the Social parity manifest and is not an approved exception.
 - Save Route remains reachable from Android's My Routes publishing flow, but the iOS detail-level shortcut and tooltip are still open parity work.
+
+## Running Steps Per Minute
+
+- Running detail uses the localized `Steps / min` label and average/maximum values.
+- The shared chart decodes the private iOS/Android cadence summary and segmented samples; old summary-only activities retain statistics without a chart.
+- Chart exposure records only `feature_exposed/running_cadence_summary`; exact values and samples are excluded.

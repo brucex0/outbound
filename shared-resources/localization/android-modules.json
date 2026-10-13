@@ -6,6 +6,7 @@
     "zh-Hans": "values-zh-rCN"
   },
   "modules": [
+    { "keyPrefix": "running_cadence", "androidPrefix": "running_cadence_", "resourceRoot": "android/core/designsystem/src/main/res", "file": "running_cadence.xml" },
     { "keyPrefix": "app", "androidPrefix": "", "resourceRoot": "android/app/src/main/res", "file": "strings.xml" },
     {
       "keyPrefix": "design",

@@ -85,6 +85,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -323,7 +324,27 @@ fun RecordingRoute(
         showLocationEducation = true
     }
 
+    var motionRequested by rememberSaveable {
+        mutableStateOf(context.getSharedPreferences("motion_permission", Context.MODE_PRIVATE).getBoolean("requested", false))
+    }
+    var pendingMotionStart by remember { mutableStateOf(false) }
+    val motionPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        viewModel.trackMotionAuthorization(if (granted) "authorized" else "denied")
+        pendingMotionStart = true
+    }
+
     fun beginCountdown() {
+        if (ui.launch.activityKind == ActivityKind.RUNNING &&
+            !(BuildConfig.DEBUG && ui.launch.simulatedRunEnabled) && android.os.Build.VERSION.SDK_INT >= 29 &&
+            !motionRequested && context.checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED &&
+            context.getSystemService(android.hardware.SensorManager::class.java)?.getDefaultSensor(android.hardware.Sensor.TYPE_STEP_DETECTOR) != null
+        ) {
+            motionRequested = true
+            context.getSharedPreferences("motion_permission", Context.MODE_PRIVATE).edit().putBoolean("requested", true).apply()
+            viewModel.trackMotionAuthorization(null)
+            motionPermissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+            return
+        }
         pendingResume = false
         onPrepareActivityStart()
         if (BuildConfig.DEBUG && ui.launch.simulatedRunEnabled) {
@@ -352,6 +373,13 @@ fun RecordingRoute(
         } else showLocationRequired()
     }
 
+    LaunchedEffect(pendingMotionStart) {
+        if (pendingMotionStart) {
+            pendingMotionStart = false
+            beginCountdown()
+        }
+    }
+
     LaunchedEffect(permissionRevision) {
         if (!pendingStartAfterSettings) return@LaunchedEffect
         val permission = recordingLocationPermission(context, LocationPermissionAccess.wasRequestedBefore(context))
@@ -365,6 +393,10 @@ fun RecordingRoute(
         if (launch.startImmediately && snapshot.status == RecordingStatus.IDLE) beginCountdown()
     }
 
+    LaunchedEffect(snapshot.status) {
+        if (snapshot.status == RecordingStatus.AWAITING_SAVE && snapshot.cadenceState?.summary() != null)
+            viewModel.trackCadenceExposure("running_cadence_summary")
+    }
     LaunchedEffect(accountId) { viewModel.recover(accountId, permissionState()) }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -581,7 +613,10 @@ fun RecordingRoute(
                 onListen = ::listenForCommand,
                 onOpenAssistant = onOpenAssistant,
                 voiceListening = voiceListening,
-                onDashboardChanged = viewModel::trackDashboardChanged,
+                onDashboardChanged = { expanded ->
+                    viewModel.trackDashboardChanged(expanded)
+                    if (expanded && snapshot.activityKind == ActivityKind.RUNNING) viewModel.trackCadenceExposure("running_cadence_live")
+                },
                 runSimulation = snapshot.runSimulation,
                     onSimulationRate = viewModel::setRunSimulationTimeRate,
                 onSimulationSpeed = viewModel::adjustRunSimulationSpeed,
@@ -1461,7 +1496,10 @@ private fun ExpandedMetricGrid(snapshot: RecordingSnapshot, unitSystem: Measurem
         stringResource(R.string.recording_distance) to formatDistance(snapshot.distanceMeters, unitSystem),
         stringResource(if (snapshot.status == RecordingStatus.PAUSED) R.string.recording_avg_pace else R.string.recording_pace) to formatPace(pace, unitSystem),
         stringResource(R.string.recording_elevation) to formatElevation(snapshot.elevationGainMeters, unitSystem),
-    )
+    ) + if (snapshot.activityKind == ActivityKind.RUNNING) listOf(
+        stringResource(com.plainstride.outbound.core.designsystem.R.string.running_cadence_live_label) to
+            (snapshot.currentCadenceStepsPerMinute?.let { "%,d".format(it) } ?: "—"),
+    ) else emptyList()
     val columns = if (LocalDensity.current.fontScale >= 1.3f) 2 else 3
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         metrics.chunked(columns).forEach { rowMetrics ->
@@ -1650,6 +1688,13 @@ private fun ReflectionScreen(
                     ) {
                         Text(stringResource(if (saving) R.string.recording_saving_activity else if (snapshot.saveEligibility == ActivitySaveEligibility.ELIGIBLE) R.string.recording_save_activity else R.string.recording_too_short_to_save))
                     }
+                }
+            }
+            snapshot.cadenceState?.summary()?.let { cadence ->
+                item {
+                    com.plainstride.outbound.core.designsystem.StepsPerMinuteChart(
+                        cadence, Modifier.fillMaxWidth().padding(20.dp),
+                    )
                 }
             }
             item {

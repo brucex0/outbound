@@ -14,6 +14,7 @@ import java.util.UUID
 import java.util.Locale
 import java.text.SimpleDateFormat
 import javax.inject.Inject
+import kotlinx.serialization.encodeToString
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -345,6 +346,15 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.Feature to "activity_post_save_celebration",
         )))
     }
+    fun trackMotionAuthorization(result: String?) = analytics.record(AnalyticsEvent(
+        if (result == null) "motion_authorization_requested" else "motion_authorization_completed",
+        if (result == null) emptyMap() else mapOf(AnalyticsProperty.Result to result),
+    ))
+
+    fun trackCadenceExposure(feature: String) = analytics.record(AnalyticsEvent(
+        "feature_exposed", mapOf(AnalyticsProperty.Feature to feature),
+    ))
+
     fun trackDashboardChanged(expanded: Boolean) = analytics.record(AnalyticsEvent(
         "activity_dashboard_changed",
         mapOf(AnalyticsProperty.Result to if (expanded) "expanded" else "compact"),
@@ -501,6 +511,7 @@ class RecordingViewModel @Inject constructor(
                 companionType = mutableState.value.launch.companionType,
                 gearJson=mutableState.value.launch.gearId?.let { "{\"id\":\"$it\"}" },
                 indoorJson="{\"indoor\":${mutableState.value.launch.indoor}}",
+                cadenceJson = snapshot.cadenceState?.summary()?.let { kotlinx.serialization.json.Json.encodeToString(it) },
                 followedRouteId=mutableState.value.launch.followedRoute?.id,
                 followedRouteCompleted=mutableState.value.launch.followedRoute?.let{route->snapshot.latestLocation?.let{last->route.points.lastOrNull()?.let{end->distanceMeters(last.latitude,last.longitude,end.latitude,end.longitude)<=50}}}==true,
                 reflection = ActivityReflection(
