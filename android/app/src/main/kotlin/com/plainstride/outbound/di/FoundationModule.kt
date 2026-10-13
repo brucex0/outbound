@@ -169,6 +169,15 @@ object FoundationModule {
     @Provides @Singleton fun planningApi(client: OkHttpClient): PlanningApiService =
         createPlanningApi(BuildConfig.API_BASE_URL, client)
 
+    @Provides @Singleton fun groupActivityRepository(@ApplicationContext context: Context, api: ActivitiesApiService, tokens: AccessTokenProvider, sessions: SessionCoordinator) =
+        com.plainstride.outbound.core.data.GroupActivityRepository(context, api, tokens) {
+            when (val state = sessions.state.value) {
+                is com.plainstride.outbound.core.auth.SessionState.SignedIn -> state.accountId
+                is com.plainstride.outbound.core.auth.SessionState.Refreshing -> state.accountId
+                else -> null
+            }
+        }
+
     @Provides @Singleton fun activitiesApi(client: OkHttpClient): ActivitiesApiService =
         createActivitiesApi(BuildConfig.API_BASE_URL, client)
 

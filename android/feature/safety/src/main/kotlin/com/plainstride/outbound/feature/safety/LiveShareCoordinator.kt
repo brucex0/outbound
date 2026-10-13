@@ -11,6 +11,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import android.os.SystemClock
 import android.content.Context
 import android.util.Log
@@ -115,13 +117,25 @@ class LiveShareCoordinator @Inject constructor(
  suspend fun joinActivityGroupRun(activityEventId:String):Result<GroupRun>{
   if(hasDifferentActiveGroup(activityEventId))return Result.failure(IllegalStateException("another_group_active"))
   mutableGroupJoining.value=true
-  return try{authenticated{apiCall{api.joinActivityGroupRun(it,activityEventId)}}.onSuccess(::saveGroup)}finally{mutableGroupJoining.value=false}
+  analytics.record(AnalyticsEvent("group_run_join_attempted"))
+  return try {
+   authenticated { auth ->
+    val result = apiCall { api.joinActivityGroupRun(auth, activityEventId) }
+    currentCoroutineContext().ensureActive()
+    if (result is ApiResult.Failure) Log.w(REALTIME_TAG, "event_live_map_join status=${result.error.httpStatus} category=${result.error.code}")
+    result
+   }.onSuccess { run ->
+    saveGroup(run)
+    val count = when(run.participants.size) { 0 -> "0"; 1 -> "1"; in 2..3 -> "2_3"; in 4..7 -> "4_7"; else -> "8_plus" }
+    analytics.record(AnalyticsEvent("group_run_joined", mapOf(AnalyticsProperty.ParticipantCountBucket to count)))
+   }
+  } finally { mutableGroupJoining.value=false }
  }
  fun isSharingEvent(activityEventId:String):Boolean=mutableGroup.value?.let{run->run.status=="active"&&run.activityEventId==activityEventId&&run.participants.any{it.userId==run.currentUserId&&it.status in setOf("active","stale")}}==true
  fun hasDifferentActiveGroup(activityEventId:String):Boolean=mutableGroup.value?.let{run->run.status=="active"&&run.activityEventId!=activityEventId&&run.participants.any{it.userId==run.currentUserId&&it.status in setOf("active","stale")}}==true
  suspend fun finishRecordingGroupRun(activityEventId:String?){
   val run=mutableGroup.value?:return
-  if(activityEventId==null||run.activityEventId!=activityEventId)return
+  if(run.activityEventId!=activityEventId)return
   if(run.participants.none{it.userId==run.currentUserId&&it.status in setOf("active","stale")}){clearGroup();return}
   leaveGroupRun(run.id,true)
  }
@@ -147,7 +161,7 @@ class LiveShareCoordinator @Inject constructor(
  suspend fun updateRecording(point:LiveLocation,paceSecondsPerKilometer:Double?,activityEventId:String?=null){
   update(point.copy(currentPaceSecsPerKm=paceSecondsPerKilometer))
   val run=mutableGroup.value?:return
-  if(activityEventId==null||run.activityEventId!=activityEventId)return
+  if(run.activityEventId!=activityEventId)return
   val now=SystemClock.elapsedRealtime()
   val current=mutableGroup.value?:run
   if(current.participants.none{it.userId==current.currentUserId&&it.status in setOf("active","stale")})return

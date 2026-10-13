@@ -1,0 +1,34 @@
+<resources>
+    <string name="group_activity_label">团体活动</string>
+    <string name="group_activity_named">团体活动 · %s</string>
+    <string name="group_activity_ran_with">与%s一起跑步</string>
+    <string name="group_activity_walked_with">与%s一起步行</string>
+    <string name="group_activity_hiked_with">与%s一起徒步</string>
+    <string name="group_activity_rode_with">与%s一起骑行</string>
+    <string name="group_activity_swam_with">与%s一起游泳</string>
+    <string name="group_activity_worked_out_with">与%s一起锻炼</string>
+    <string name="group_activity_joined_with">与%s共同参加活动</string>
+    <string name="group_activity_started_count">%d人已开始</string>
+    <string name="group_activity_counts">%1$d人计划参加 · %2$d人已开始 · %3$d人已完成</string>
+    <string name="group_activity_recording">记录中</string>
+    <string name="group_activity_not_started">尚未开始</string>
+    <string name="group_activity_finished">已完成</string>
+    <string name="group_activity_live_error">无法加入实时地图，请重试。</string>
+    <string name="group_activity_started">已开始</string>
+    <string name="group_activity_open_error">无法打开团体活动，请重试。</string>
+    <string name="group_activity_join">参加活动</string>
+    <string name="group_activity_joined">已参加活动。</string>
+    <string name="group_activity_left">已退出活动。</string>
+    <string name="group_activity_rsvp_error">无法更新参加状态，请重试。</string>
+    <string name="group_activity_location_recent">%s前更新</string>
+    <string name="group_activity_location_stale">最后出现于%s前</string>
+    <string name="group_activity_location_waiting">等待位置信息</string>
+    <string name="group_activity_location_unavailable">暂无位置信息</string>
+    <string name="group_activity_location_sharing">正在共享位置</string>
+    <string name="group_activity_location_not_sharing">未共享位置</string>
+    <string name="group_activity_share">与参与者共享实时地图</string>
+    <string name="group_activity_stop_sharing">停止共享</string>
+    <string name="group_activity_expand">显示参与者</string>
+    <string name="group_activity_collapse">收起参与者</string>
+    <string name="group_activity_today">今天的团体活动</string>
+</resources>

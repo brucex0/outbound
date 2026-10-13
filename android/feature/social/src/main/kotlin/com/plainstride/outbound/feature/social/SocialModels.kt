@@ -37,6 +37,7 @@ import kotlinx.serialization.json.JsonElement
     val route: JsonElement? = null,
     val photos: List<ActivityPhoto> = emptyList(),
     val photoCount: Int? = null,
+    val eventAttribution: com.plainstride.outbound.core.model.activity.GroupActivityAttribution? = null,
     val recognitions: List<ActivityRecognition> = emptyList(),
 ) {
     val totalPhotoCount: Int get() = photoCount ?: photos.size
@@ -103,6 +104,8 @@ import kotlinx.serialization.json.JsonElement
     @SerialName("currentUserGoing") val joined: Boolean = false,
     val status: String = "scheduled",
     val note: String? = null,
+    val canParticipate: Boolean? = null,
+    val startedCount: Int = 0,
     val attendeeCount: Int = 0,
     val currentUserRole: String = "viewer",
     val currentUserOutcome: String? = null,
@@ -120,7 +123,7 @@ import kotlinx.serialization.json.JsonElement
     val compatibility: SocialEventCompatibility? = null,
 )
 @Serializable data class SocialEventSource(val kind: String)
-@Serializable data class SocialEventParticipant(val person: SocialPerson, val attendanceMode: String? = null, val status: String = "going")
+@Serializable data class SocialEventParticipant(val person: SocialPerson, val attendanceMode: String? = null, val status: String = "going", val outcome: String? = null, val startedAt: String? = null, val isRecording: Boolean = false)
 @Serializable data class SocialEventOption(val id: String, val label: String, val distanceMeters: Double? = null)
 @Serializable data class SocialEventCompatibility(val groupId: String, val explanation: String)
 @Serializable data class SocialInvitation(val id: String, val kind: String, val title: String, val sender: SocialPerson, val objectId: String? = null)

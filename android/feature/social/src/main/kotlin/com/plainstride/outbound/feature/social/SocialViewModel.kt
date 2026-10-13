@@ -37,7 +37,7 @@ data class SocialUiState(
     val connectionProfileLoading: Boolean = false, val connectionProfileCode: String? = null,
     val connectionProfileIsSelf: Boolean = false,
 )
-enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED, GROUP_CREATED, GROUP_CREATION_FAILED, GROUP_SETTINGS_SAVED, GROUP_SETTINGS_FAILED, GROUP_JOINED, GROUP_DECLINED, GROUP_INVITATION_FAILED }
+enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED, GROUP_CREATED, GROUP_CREATION_FAILED, GROUP_SETTINGS_SAVED, GROUP_SETTINGS_FAILED, GROUP_JOINED, GROUP_DECLINED, GROUP_INVITATION_FAILED, EVENT_JOINED, EVENT_LEFT, EVENT_RSVP_FAILED }
 enum class ConnectionFeedback { REQUESTED, ALREADY_PENDING, INCOMING_PENDING, ALREADY_CONNECTED, SELF, UPDATED, REQUEST_FAILED, PROFILE_LOAD_FAILED, INVITE_LINK_FAILED }
 sealed interface ConnectionEffect {
     data class Feedback(val value: ConnectionFeedback, val closeScanner: Boolean) : ConnectionEffect
@@ -45,6 +45,7 @@ sealed interface ConnectionEffect {
 }
 
 @HiltViewModel class SocialViewModel @Inject constructor(
+    private val groups: com.plainstride.outbound.core.data.GroupActivityRepository,
     private val repository: SocialRepository,
     private val analytics: ProductAnalytics,
 ) : ViewModel() {
@@ -62,8 +63,17 @@ sealed interface ConnectionEffect {
     private var feedPagesLoaded = 1
     private var connectionPagesLoaded = 1
 
-    fun start(accountId: String, localeTag: String) {
-        if (this.accountId == accountId && this.localeTag == localeTag) return
+    private var trackHomeExposure = false
+    fun start(accountId: String, localeTag: String, trackOpen: Boolean = true) {
+        if (trackOpen) analytics.record(AnalyticsEvent("social_opened", mapOf(AnalyticsProperty.Source to "tab")))
+        if (this.accountId == accountId && this.localeTag == localeTag) {
+            if (trackOpen) {
+                trackHomeExposure = true
+                if (!activityFeedLoadTracked) trackActivityFeedLoaded(mutableState.value.home.posts)
+            }
+            return
+        }
+        trackHomeExposure = trackOpen
         this.accountId = accountId; this.localeTag = localeTag
         groupLoadJob?.cancel()
         mutableState.update { it.copy(selectedGroupId = null, selectedGroupDetail = null, groupLoading = false, groupLoadFailed = false, groupUnavailable = false, groupInvitationResponding = false) }
@@ -77,15 +87,16 @@ sealed interface ConnectionEffect {
                 CachedSocialHome.Empty -> Unit
                 is CachedSocialHome.Available -> {
                     mutableState.update { it.copy(home = cached.value, loading = false, offline = cached.stale) }
-                    if (!activityFeedLoadTracked) trackActivityFeedLoaded(cached.value.posts)
+                    if (trackHomeExposure && !activityFeedLoadTracked) trackActivityFeedLoaded(cached.value.posts)
                 }
             }
         } }
         refresh()
-        analytics.record(AnalyticsEvent("social_opened", mapOf(AnalyticsProperty.Source to "tab")))
     }
 
+    fun retryGroupParticipation() = viewModelScope.launch { groups.flush() }
     fun refresh() { val account = accountId ?: return; viewModelScope.launch {
+        groups.flush()
         mutableState.update { it.copy(refreshing = true) }
         repository.refresh(account, localeTag)
             .onFailure { mutableState.update { s -> s.copy(offline = true) }; messages.emit(SocialMessage.ACTION_FAILED) }
@@ -344,7 +355,7 @@ sealed interface ConnectionEffect {
     fun trackProfileOpened() = analytics.record(AnalyticsEvent("social_profile_opened", mapOf(AnalyticsProperty.Source to "social")))
     fun openProfile(person: SocialPerson) { mutableState.update { it.copy(selectedProfile = person, connectionProfileCode = null, connectionProfileIsSelf = false) }; trackProfileOpened() }
     fun closeProfile() = mutableState.update { it.copy(selectedProfile = null, connectionProfileCode = null, connectionProfileIsSelf = false) }
-    fun openTarget(type:String,id:String,entrySource:String="deep_link"){when(type){"activity","post"->viewModelScope.launch{var post=mutableState.value.home.posts.firstOrNull{it.id==id||it.activity?.id==id};var cursor=mutableState.value.home.nextCursor;repeat(5){if(post!=null||cursor==null)return@repeat;repository.loadFeed(cursor).onSuccess{page->post=page.items.firstOrNull{it.id==id||it.activity?.id==id};cursor=page.nextCursor}};post?.let(::openComments)};"event"->viewModelScope.launch{repository.event(id).onSuccess{event->mutableState.update{it.copy(selectedEvent=event)};analytics.record(AnalyticsEvent("activity_event_detail_opened",mapOf(AnalyticsProperty.EntrySource to entrySource)))}};"group"->loadGroup(id,entrySource);"invitation"->{val invitation=mutableState.value.home.invitations.firstOrNull{it.id==id||it.objectId==id};if(invitation?.kind=="group"&&invitation.objectId!=null)loadGroup(invitation.objectId,"invitation",invitation.id)else mutableState.update{it.copy(selectedInvitation=invitation)}}}}
+    fun openTarget(type:String,id:String,entrySource:String="deep_link"){when(type){"activity","post"->viewModelScope.launch{var post=mutableState.value.home.posts.firstOrNull{it.id==id||it.activity?.id==id};var cursor=mutableState.value.home.nextCursor;repeat(5){if(post!=null||cursor==null)return@repeat;repository.loadFeed(cursor).onSuccess{page->post=page.items.firstOrNull{it.id==id||it.activity?.id==id};cursor=page.nextCursor}};post?.let(::openComments)};"event"->viewModelScope.launch{eventEntrySource=entrySource;repository.event(id).onSuccess{event->mutableState.update{it.copy(selectedEvent=event)};analytics.record(AnalyticsEvent("activity_event_detail_opened",mapOf(AnalyticsProperty.EntrySource to entrySource)))}};"group"->loadGroup(id,entrySource);"invitation"->{val invitation=mutableState.value.home.invitations.firstOrNull{it.id==id||it.objectId==id};if(invitation?.kind=="group"&&invitation.objectId!=null)loadGroup(invitation.objectId,"invitation",invitation.id)else mutableState.update{it.copy(selectedInvitation=invitation)}}}}
     fun closeTarget() { closeGroup(); mutableState.update { it.copy(selectedEvent = null, selectedInvitation = null) } }
     fun closeEvent()=mutableState.update{it.copy(selectedEvent=null)}
     fun openGroup(group: GroupSummary) = loadGroup(group.id, "groups")
@@ -437,7 +448,7 @@ sealed interface ConnectionEffect {
         mutableState.update{state->state.copy(comments=state.comments.filterNot{it.id==comment.id},selectedPost=state.selectedPost?.copy(commentCount=(state.selectedPost.commentCount-1).coerceAtLeast(0)),home=state.home.copy(posts=state.home.posts.map{if(it.id==post.id)it.copy(commentCount=(it.commentCount-1).coerceAtLeast(0))else it}))}
         viewModelScope.launch { repository.deleteComment(comment.id).onSuccess{messages.emit(SocialMessage.ACTION_COMPLETE);analytics.record(AnalyticsEvent("social_comment_deleted",mapOf(AnalyticsProperty.Result to "success")))}.onFailure{mutableState.value=previous;messages.emit(SocialMessage.ACTION_FAILED);analytics.record(AnalyticsEvent("social_comment_deleted",mapOf(AnalyticsProperty.Result to "failure")))}}
     }
-    fun setEventRsvp(event:SocialEvent,going:Boolean,mode:String="in_person")=mutate("social_event_rsvp_changed"){repository.setEventRsvp(event.id,going,mode).getOrThrow();repository.event(event.id).onSuccess{updated->mutableState.update{it.copy(selectedEvent=updated)}};refresh()}
+    fun setEventRsvp(event:SocialEvent,going:Boolean,mode:String="in_person")=mutate("social_event_rsvp_changed", success = if(going) SocialMessage.EVENT_JOINED else SocialMessage.EVENT_LEFT, failure = SocialMessage.EVENT_RSVP_FAILED){val result = repository.setEventRsvp(event.id,going,mode); analytics.record(AnalyticsEvent("activity_event_rsvp_result", mapOf(AnalyticsProperty.EntrySource to eventEntrySource, AnalyticsProperty.SelectionType to if(going) "join" else "leave", AnalyticsProperty.Result to if(result.isSuccess) "success" else "failure"))); result.getOrThrow();repository.event(event.id).onSuccess{updated->mutableState.update{it.copy(selectedEvent=updated)}};refresh()}
     fun refreshEvent(eventId:String)=viewModelScope.launch{repository.event(eventId).onSuccess{updated->mutableState.update{state->if(state.selectedEvent?.id==eventId)state.copy(selectedEvent=updated)else state}}}
     fun inviteToEvent(event:SocialEvent,person:SocialPerson?)=mutate("social_event_invitation_sent"){repository.inviteToEvent(event.id,person?.id).getOrThrow()}
     fun connect(person:SocialPerson)=mutate("social_connection_requested"){repository.connect(person.id).getOrThrow();refresh()}
@@ -595,10 +606,12 @@ sealed interface ConnectionEffect {
         },
     )))
     fun respondToInvitation(invitation:SocialInvitation,accept:Boolean)=mutate("social_invitation_responded"){repository.respondToInvitation(invitation,accept).getOrThrow();closeTarget();refresh()}
+    private var eventEntrySource = "social_upcoming"
     private fun mutate(
         event: String,
         success: SocialMessage = SocialMessage.ACTION_COMPLETE,
         feedback: ((Boolean) -> Unit)? = null,
+        failure: SocialMessage = SocialMessage.ACTION_FAILED,
         block: suspend () -> Unit,
     ) = viewModelScope.launch {
         runCatching { block() }.onSuccess {
@@ -610,7 +623,7 @@ sealed interface ConnectionEffect {
             val socialError = error as? SocialException
             Log.w("SocialViewModel", "$event failed (type=${error.javaClass.simpleName}, status=${socialError?.httpStatus}, reason=${socialError?.reason})")
             feedback?.invoke(false)
-            messages.emit(SocialMessage.ACTION_FAILED)
+            messages.emit(failure)
             analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "failure")))
         }
     }

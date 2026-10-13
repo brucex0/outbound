@@ -185,6 +185,7 @@ fun TodayRoute(
     onMessage: suspend (TodayMessage) -> Unit,
     initialWorkoutId: String? = null,
     guidanceContent: @Composable () -> Unit = {},
+    groupActivityContent: (@Composable () -> Unit)? = null,
     startRequest: Int = 0,
     refreshRequest: Int = 0,
     modifier: Modifier = Modifier,
@@ -221,6 +222,7 @@ fun TodayRoute(
     LaunchedEffect(viewModel) { viewModel.messages.collect(onMessage) }
     TodayScreen(
         state = state,
+        groupActivityContent = groupActivityContent,
         weather = weather,
         onRefresh = viewModel::refresh,
         onStart = { suggestion, source, options ->
@@ -321,6 +323,7 @@ fun TodayScreen(
     onLaunchConfigurationChanged: (String, String) -> Unit = { _, _ -> },
     calorieEstimate:suspend (TodayActivityChoice,Int)->PlannedCalorieEstimate?={_,_->null},
     guidanceContent: @Composable () -> Unit = {},
+    groupActivityContent: (@Composable () -> Unit)? = null,
     startRequest: Int = 0,
     initialWorkoutId: String? = null,
     locationGranted: Boolean = false,
@@ -429,6 +432,7 @@ fun TodayScreen(
                     )
                 }
                 when {
+                    groupActivityContent != null -> groupActivityContent()
                     state.suggestion is CachedResource.Loading && state.refreshError == null -> TodaySkeleton()
                     suggestion != null && activityChoice == TodayActivityChoice.PLANNED -> WorkoutRecommendationCard(
                         suggestion = suggestion,

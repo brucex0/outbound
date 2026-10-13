@@ -277,6 +277,8 @@ fun PlainstrideLiveRouteMap(
     interactive: Boolean = true,
     zoom: Float = 16f,
     bottomContentPadding: Dp = 0.dp,
+    additionalMarkers: List<MapRouteMarker> = emptyList(),
+    onAdditionalMarkerClick: ((String) -> Unit)? = null,
 ) {
     var mapReady by remember { mutableStateOf(false) }
     val bearing = remember(recordedRoute, rotateWithRunner) {
@@ -298,7 +300,7 @@ fun PlainstrideLiveRouteMap(
                 id = "live-runner",
                 coordinate = runnerLocation,
                 title = stringResource(R.string.route_map_runner),
-                selected = true,
+                selected = additionalMarkers.none { it.selected },
                 animatePosition = true,
                 animatedRunner = showRunnerMascot,
                 runnerMoving = runnerMoving,
@@ -314,7 +316,8 @@ fun PlainstrideLiveRouteMap(
         interactive = interactive,
         showEndpointMarkers = showEndpointMarkers,
         routeSegments = segments,
-        markers = runnerMarker,
+        markers = runnerMarker + additionalMarkers,
+        onMarkerClick = onAdditionalMarkerClick,
         bottomContentPadding = bottomContentPadding,
         fitRouteOnChange = false,
         followCoordinate = runnerLocation.takeIf { followRunner },

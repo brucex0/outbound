@@ -4,7 +4,7 @@
     <string name="recording_acquiring_location">Buscando ubicación…</string>
     <string name="recording_activity_in_progress">Actividad en curso</string>
     <string name="recording_group_share">Compartir mi ubicación en directo con esta actividad del grupo</string>
-    <string name="recording_group_share_detail">Solo quienes confirmen asistencia y activen la opción podrán verse en el mapa en directo.</string>
+    <string name="recording_group_share_detail">Los miembros pueden acceder al mapa en vivo sin confirmar asistencia. Cada participante decide si comparte su ubicación.</string>
     <string name="recording_group_shared">Compartiendo ubicación en directo con esta actividad</string>
     <string name="recording_group_stop_sharing">Dejar de compartir</string>
     <string name="recording_group_active_elsewhere">Estás compartiendo otro mapa en directo del grupo. Detén ese uso compartido antes de unirte a este.</string>

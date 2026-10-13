@@ -136,7 +136,12 @@ data class RemoteActivityDto(
 @Serializable data class ActivityListResponse(val activities: List<RemoteActivityDto>, val hasMore: Boolean)
 @Serializable data class ActivityDeleteResponse(val status: String, val id: String? = null, val deletedAt: String? = null)
 
+@Serializable data class GroupActivityStartRequest(val startedAt: String)
+
 interface ActivitiesApiService {
+    @GET("v1/social/activity-events/{id}") suspend fun groupActivity(@Header("Authorization") auth: String, @Path("id") id: String): Response<com.plainstride.outbound.core.model.activity.GroupActivityDetail>
+    @POST("v1/social/activity-events/{id}/start") suspend fun startGroupActivity(@Header("Authorization") auth: String, @Path("id") id: String, @Body body: GroupActivityStartRequest): Response<Unit>
+    @POST("v1/social/activity-events/{id}/no-recording") suspend fun finishGroupActivityWithoutRecording(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
     @POST("v1/media/activity-photos")
     suspend fun uploadActivityPhoto(
         @Header("Authorization") authorization: String,

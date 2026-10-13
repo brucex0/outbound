@@ -57,6 +57,7 @@ data class RecordingUiState(
     val startRequested: Boolean = false,
     val saving: Boolean = false,
     val discarding: Boolean = false,
+    val participants: List<com.plainstride.outbound.core.model.activity.GroupActivityParticipant> = emptyList(),
     val pendingMedia:Boolean=false,
 )
 
@@ -69,6 +70,7 @@ data class RecordedActivitySaveResult(
 class RecordingViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val analytics: ProductAnalytics,
+    private val groups: com.plainstride.outbound.core.data.GroupActivityRepository,
     private val activities: ActivityRepository,
     private val media: ActivityMediaStore,
     private val syncScheduler: ActivitySyncScheduler,
@@ -88,11 +90,38 @@ class RecordingViewModel @Inject constructor(
     )
     private var recoveryAccountId: String? = null
     private var preparingCountdown = false
+    private var liveGroupSharing = false
+    private var startedWithGroup = false
+    fun setLiveGroupSharing(enabled: Boolean) { liveGroupSharing = enabled }
     private var didAutoPauseAtGoal = false
     private var routeBeforeSimulation: FollowedRouteConfiguration? = null
     private var presentationUnitSystem = MeasurementUnitSystem.metric
     val voiceListening: StateFlow<Boolean> = voice.listening
-    init { voice.observe(viewModelScope, snapshot = { snapshot.value }, ::pause, ::resume, ::requestFinish) }
+    init {
+        voice.observe(viewModelScope, snapshot = { snapshot.value }, ::pause, ::resume, ::requestFinish)
+        viewModelScope.launch {
+            var registeredSession: String? = null
+            snapshot.collect { value ->
+                val event = mutableState.value.launch.activityEventId
+                if (value.status == RecordingStatus.ACTIVE && event != null && registeredSession != value.sessionId) {
+                    registeredSession = value.sessionId
+                    groups.enqueueStart(event)
+                    viewModelScope.launch { groups.flush() }
+                }
+            }
+        }
+    }
+    suspend fun refreshGroupParticipants(): Boolean {
+        val event = mutableState.value.launch.activityEventId ?: return false
+        val detail = groups.detail(event) ?: return false
+        if (mutableState.value.launch.activityEventId != event) return false
+        mutableState.value = mutableState.value.copy(participants = detail.participants)
+        return true
+    }
+    suspend fun flushGroupParticipation() = groups.flush()
+    fun trackGroupPresenceViewed() = analytics.record(AnalyticsEvent("group_activity_presence_viewed", mapOf(
+        AnalyticsProperty.ParticipantCountBucket to photoCountBucket(mutableState.value.participants.size)
+    )))
     fun listen(permissionGranted: Boolean) = voice.listen(permissionGranted)
 
     fun configure(configuration: RecordingLaunchConfiguration, unitSystem: MeasurementUnitSystem = MeasurementUnitSystem.metric) {
@@ -170,6 +199,7 @@ class RecordingViewModel @Inject constructor(
 
     fun start(accountId: String, permission: LocationPermissionState) {
         val launch = mutableState.value.launch
+        startedWithGroup = liveGroupSharing || launch.activityEventId != null
         didAutoPauseAtGoal = false
         mutableState.value = mutableState.value.copy(startRequested = true, countdown = null, countdownVoiceReady = false)
         context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).edit().putString(LAUNCH_KEY,launchJson.encodeToString(launch)).apply()
@@ -188,6 +218,7 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.ActivityType to launch.activityKind.name.lowercase(),
             AnalyticsProperty.GoalType to launch.goal.type.name.lowercase(),
             AnalyticsProperty.Permission to permission.name.lowercase(),
+            AnalyticsProperty.GroupRunEnabled to startedWithGroup,
             AnalyticsProperty.VoiceGuideEnabled to launch.voiceGuideEnabled,
             AnalyticsProperty.AutoPauseEnabled to (launch.autoPauseEnabled ?: AutoPauseDefaults.enabled(launch.activityKind)),
             AnalyticsProperty.AutoStopAtGoal to (launch.autoStopAtGoal ?: false),
@@ -255,6 +286,7 @@ class RecordingViewModel @Inject constructor(
             mutableState.value = mutableState.value.copy(discarding = false, showDiscardConfirmation = true)
             return false
         }
+        mutableState.value.launch.activityEventId?.let { groups.enqueueDiscard(it); viewModelScope.launch { groups.flush() } }
         val finishedSnapshot = snapshot.value
         analytics.record(AnalyticsEvent("activity_discarded", mapOf(
             AnalyticsProperty.DurationBucket to durationBucket(finishedSnapshot.elapsedSeconds),
@@ -558,6 +590,7 @@ class RecordingViewModel @Inject constructor(
                 AnalyticsProperty.RouteSelected to (currentLaunch.followedRoute != null),
                 AnalyticsProperty.ShoeSelected to (currentLaunch.gearId != null),
                 AnalyticsProperty.Indoor to currentLaunch.indoor,
+                AnalyticsProperty.GroupRunEnabled to (startedWithGroup || currentLaunch.activityEventId != null),
                 AnalyticsProperty.DogCompanionEnabled to (currentLaunch.companionType != null),
             )))
             RecordedActivitySaveResult(saved = true, photoAlbumExport = photoAlbumExport)

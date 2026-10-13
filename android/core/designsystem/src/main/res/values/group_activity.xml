@@ -1,0 +1,34 @@
+<resources>
+    <string name="group_activity_label">Group activity</string>
+    <string name="group_activity_named">Group activity · %s</string>
+    <string name="group_activity_ran_with">Ran with %s</string>
+    <string name="group_activity_walked_with">Walked with %s</string>
+    <string name="group_activity_hiked_with">Hiked with %s</string>
+    <string name="group_activity_rode_with">Rode with %s</string>
+    <string name="group_activity_swam_with">Swam with %s</string>
+    <string name="group_activity_worked_out_with">Worked out with %s</string>
+    <string name="group_activity_joined_with">Participated with %s</string>
+    <string name="group_activity_started_count">%d started</string>
+    <string name="group_activity_counts">%1$d going · %2$d started · %3$d finished</string>
+    <string name="group_activity_recording">Recording</string>
+    <string name="group_activity_not_started">Not started</string>
+    <string name="group_activity_finished">Finished</string>
+    <string name="group_activity_live_error">Could not join the live map. Try again.</string>
+    <string name="group_activity_started">Started</string>
+    <string name="group_activity_open_error">Could not open the group activity. Try again.</string>
+    <string name="group_activity_join">Join activity</string>
+    <string name="group_activity_joined">You joined the activity.</string>
+    <string name="group_activity_left">You left the activity.</string>
+    <string name="group_activity_rsvp_error">Could not update your participation. Try again.</string>
+    <string name="group_activity_location_recent">Updated %s ago</string>
+    <string name="group_activity_location_stale">Last seen %s ago</string>
+    <string name="group_activity_location_waiting">Waiting for location</string>
+    <string name="group_activity_location_unavailable">Location unavailable</string>
+    <string name="group_activity_location_sharing">Sharing location</string>
+    <string name="group_activity_location_not_sharing">Not sharing location</string>
+    <string name="group_activity_share">Share live map with attendees</string>
+    <string name="group_activity_stop_sharing">Stop sharing</string>
+    <string name="group_activity_expand">Show participants</string>
+    <string name="group_activity_collapse">Hide participants</string>
+    <string name="group_activity_today">TODAY’S GROUP ACTIVITY</string>
+</resources>

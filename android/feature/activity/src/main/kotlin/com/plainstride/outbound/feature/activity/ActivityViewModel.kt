@@ -52,6 +52,7 @@ data class ActivityUiState(
     val loading: Boolean = true,
     val mutating: Boolean = false,
     val selected: SavedActivity? = null,
+    val groupAttribution: com.plainstride.outbound.core.model.activity.GroupActivityAttribution? = null,
 ) {
     companion object { const val PAGE_SIZE = 30 }
 }
@@ -59,6 +60,7 @@ data class ActivityUiState(
 @HiltViewModel
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ActivityViewModel @Inject constructor(
+    private val groups: com.plainstride.outbound.core.data.GroupActivityRepository,
     private val repository: ActivityRepository,
     private val mediaStore: ActivityMediaStore,
     private val analytics: ProductAnalytics,
@@ -103,8 +105,14 @@ class ActivityViewModel @Inject constructor(
         viewModelScope.launch {
             mutableState.value = mutableState.value.copy(loading = true)
             val activity = repository.activity(accountId, activityId)
-            mutableState.value = mutableState.value.copy(selected = activity, loading = false)
+            mutableState.value = mutableState.value.copy(selected = activity, loading = false, groupAttribution = null)
             if (activity != null) analytics.record(AnalyticsEvent("activity_detail_opened", mapOf(AnalyticsProperty.Source to "history")))
+            activity?.activityEventId?.let { event ->
+                val detail = groups.detail(event)
+                if (account.value == accountId && mutableState.value.selected?.id == activity.id) {
+                    mutableState.value = mutableState.value.copy(groupAttribution = detail?.attribution(accountId))
+                }
+            }
         }
     }
 

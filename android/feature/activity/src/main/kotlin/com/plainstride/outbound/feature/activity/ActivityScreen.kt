@@ -299,6 +299,7 @@ fun ActivityHistoryRoute(
     onBack: () -> Unit,
     onMessage: suspend (ActivityMessage) -> Unit,
     onPublishRoute: suspend (String, String) -> Boolean,
+    onOpenGroupActivity: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ActivityViewModel = hiltViewModel(),
 ) {
@@ -312,6 +313,8 @@ fun ActivityHistoryRoute(
     if (selected == null) ActivityHistoryScreen(state, unitSystem, viewModel::open, viewModel::loadMore, viewModel::createManual, onBack, modifier)
     else ActivityDetailScreen(
         activity = selected,
+        groupAttribution = state.groupAttribution,
+        onOpenGroupActivity = onOpenGroupActivity,
         unitSystem = unitSystem,
         weightKilograms = weightKilograms,
         mutating = state.mutating,
@@ -400,6 +403,8 @@ private fun ActivityHistoryScreen(
 @Composable
 private fun ActivityDetailScreen(
     activity: SavedActivity,
+    groupAttribution: com.plainstride.outbound.core.model.activity.GroupActivityAttribution?,
+    onOpenGroupActivity: (String) -> Unit,
     unitSystem: MeasurementUnitSystem,
     weightKilograms: Double?,
     mutating: Boolean,
@@ -570,7 +575,11 @@ private fun ActivityDetailScreen(
                                 photoBytes = photoBytes,
                             )
                         }
-                        if (activity.activityEventId != null) item { SharedActivitySection() }
+                        if (activity.activityEventId != null) item {
+                            com.plainstride.outbound.core.designsystem.GroupActivityAttributionRow(
+                                groupAttribution ?: com.plainstride.outbound.core.model.activity.GroupActivityAttribution(id = activity.activityEventId),
+                                activity.type.name.lowercase(), Modifier.padding(horizontal = 18.dp, vertical = 12.dp), onOpenGroupActivity)
+                        }
                         if (hasActivityMetadata(activity)) item { ActivityMetadataSection(activity) }
                         if (activity.type == ActivityType.running && cadence != null &&
                             (cadence.averageStepsPerMinute != null || cadence.maxStepsPerMinute != null)) item {
@@ -753,17 +762,6 @@ private fun ActivityPhotoStrip(
     }
 }
 
-@Composable
-private fun SharedActivitySection() = Row(
-    Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
-    horizontalArrangement = Arrangement.spacedBy(12.dp),
-) {
-    Icon(Icons.Outlined.People, null, tint = MaterialTheme.colorScheme.primary)
-    Column {
-        Text(stringResource(R.string.activity_shared_title), fontWeight = FontWeight.SemiBold)
-        Text(stringResource(R.string.activity_shared_detail), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
 
 @Composable
 private fun ActivityMetadataSection(activity: SavedActivity) = Column(

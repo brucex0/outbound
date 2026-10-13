@@ -189,6 +189,13 @@ fun RecordingRoute(
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     val ui by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(ui.launch.activityEventId) {
+        var tracked = false
+        while (ui.launch.activityEventId != null) {
+            if (viewModel.refreshGroupParticipants() && !tracked) { tracked = true; viewModel.trackGroupPresenceViewed() }
+            kotlinx.coroutines.delay(15_000)
+        }
+    }
     val snapshot by viewModel.snapshot.collectAsStateWithLifecycle()
     val voiceListening by viewModel.voiceListening.collectAsStateWithLifecycle()
     var askedForLocation by remember(context) {
@@ -210,11 +217,12 @@ fun RecordingRoute(
     val saveSnackbar = remember { SnackbarHostState() }
     val saveFailedMessage = stringResource(R.string.recording_save_failed)
     val eventGroupRun = groupRun?.takeIf { run ->
-        launch.activityEventId != null && run.activityEventId == launch.activityEventId
+        run.activityEventId == launch.activityEventId
     }
     val eventGroupSharing = eventGroupRun?.participants?.any { participant ->
         participant.userId == eventGroupRun.currentUserId && participant.status in setOf("active", "stale")
     } == true
+    LaunchedEffect(eventGroupSharing) { viewModel.setLiveGroupSharing(eventGroupSharing) }
     val otherActiveGroupRun = groupRun?.takeIf { run ->
         run.status == "active" && run.activityEventId != launch.activityEventId && run.participants.any { participant ->
             participant.userId == run.currentUserId && participant.status in setOf("active", "stale")
@@ -244,6 +252,7 @@ fun RecordingRoute(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
+                scope.launch { viewModel.flushGroupParticipation() }
                 askedForLocation = LocationPermissionAccess.wasRequestedBefore(context)
                 permissionRevision++
                 viewModel.updatePermission(recordingLocationPermission(context, LocationPermissionAccess.wasRequestedBefore(context)))
@@ -589,6 +598,9 @@ fun RecordingRoute(
                 snapshot = snapshot,
                 configuration = ui.launch,
                 groupRun = eventGroupRun?.takeIf { eventGroupSharing },
+                participants = ui.participants,
+                liveMapBusy = groupRunJoining || otherActiveGroupRun != null,
+                onToggleActivityLiveMap = onToggleActivityLiveMap,
                 locationPermission = permissionState(),
                 unitSystem = unitSystem,
                 weightKilograms = weightKilograms,
@@ -1001,6 +1013,9 @@ private fun LiveRecordingScreen(
     snapshot: RecordingSnapshot,
     configuration: RecordingLaunchConfiguration,
     groupRun: SharedLiveRun?,
+    participants: List<com.plainstride.outbound.core.model.activity.GroupActivityParticipant>,
+    liveMapBusy: Boolean,
+    onToggleActivityLiveMap: () -> Unit,
     locationPermission: LocationPermissionState,
     unitSystem: MeasurementUnitSystem,
     weightKilograms: Double?,
@@ -1025,6 +1040,7 @@ private fun LiveRecordingScreen(
     onSimulationAdvance: (Int) -> Unit,
     onStopActivityLiveMap: () -> Unit = {},
 ) {
+    var focusedParticipant by remember { mutableStateOf<String?>(null) }
     var dashboardExpanded by remember { mutableStateOf(false) }
     val energyKilocalories = WorkoutCalorieEstimator.liveEnergyKilocalories(
         activityType = snapshot.activityKind.toActivityType(),
@@ -1039,7 +1055,7 @@ private fun LiveRecordingScreen(
             if (amount > 18 && mode == RecordingSurfaceMode.MAP) onMode(RecordingSurfaceMode.CAMERA)
         }
     }) {
-        if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot, configuration, Modifier.fillMaxSize())
+        if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot, configuration, Modifier.fillMaxSize(), groupRun, focusedParticipant) { focusedParticipant = it }
         else CameraSurface(photoPath, onPhotoCaptured, onTakePhoto,onPhotoPending, Modifier.fillMaxSize())
 
         if (!dashboardExpanded) Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1078,8 +1094,44 @@ private fun LiveRecordingScreen(
                 modifier = Modifier.align(Alignment.TopCenter).padding(top = 58.dp, start = 12.dp, end = 12.dp),
             )
         }
-        groupRun?.let { run ->
-            ActivityGroupLiveMapCard(run,Modifier.align(Alignment.TopStart).padding(top=16.dp,start=16.dp,end=16.dp),onStopActivityLiveMap)
+        if (!dashboardExpanded && configuration.activityEventId != null) {
+            com.plainstride.outbound.core.designsystem.GroupActivityPresencePanel(configuration.title ?: stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_label), participants, groupRun != null, liveMapBusy, onToggleActivityLiveMap,
+                Modifier.align(Alignment.TopCenter).padding(top = 62.dp, start = 16.dp, end = 16.dp),
+                avatar = { person -> com.plainstride.outbound.feature.social.SocialAvatar(com.plainstride.outbound.feature.social.SocialPerson(person.id, person.displayName, avatarUrl = person.avatarUrl), size = 40.dp) })
+        }
+        if (mode == RecordingSurfaceMode.MAP && !dashboardExpanded) {
+            val attendees = if (configuration.activityEventId != null) participants.filter { it.status == "going" } else groupRun?.participants.orEmpty().filter { it.userId != groupRun?.currentUserId && it.status != "left" }.map {
+                com.plainstride.outbound.core.model.activity.GroupActivityParticipant(com.plainstride.outbound.core.model.activity.GroupActivityPerson(it.userId, it.displayName))
+            }
+            if (attendees.isNotEmpty()) androidx.compose.foundation.lazy.LazyRow(
+                Modifier.align(Alignment.BottomCenter).padding(bottom = 180.dp, start = 16.dp, end = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(attendees.size) { index ->
+                    val person = attendees[index].person
+                    val live = groupRun?.participants?.firstOrNull { it.userId == person.id && it.status != "left" }
+                    val age = live?.lastLocationAt?.let { runCatching { java.time.Duration.between(java.time.Instant.parse(it), java.time.Instant.now()).seconds.coerceAtLeast(0) }.getOrNull() }
+                    val status = when {
+                        live == null -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_not_sharing)
+                        live.latitude == null || live.longitude == null -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_waiting)
+                        live.status == "stale" || (age ?: 0) > 60 -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_stale, formatDuration(age ?: 0))
+                        else -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_recent, formatDuration(age ?: 0))
+                    }
+                    Surface(onClick = { if (live?.latitude != null && live.longitude != null) focusedParticipant = live.id.takeUnless { live.userId == groupRun?.currentUserId } }, shape = RoundedCornerShape(24.dp), tonalElevation = 6.dp) {
+                        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            com.plainstride.outbound.feature.social.SocialAvatar(com.plainstride.outbound.feature.social.SocialPerson(person.id, person.displayName, avatarUrl = person.avatarUrl), size = 36.dp)
+                            Column { Text(person.displayName, style = MaterialTheme.typography.labelMedium); Text(status, style = MaterialTheme.typography.labelSmall) }
+                        }
+                    }
+                }
+            }
+        }
+        if (mode == RecordingSurfaceMode.MAP && focusedParticipant != null) {
+            Surface(Modifier.align(Alignment.TopEnd).padding(top = 12.dp, end = 64.dp), shape = CircleShape) {
+                IconButton(onClick = { focusedParticipant = null }) { Icon(Icons.Default.MyLocation, stringResource(R.string.recording_show_map)) }
+            }
+        }
+        if (configuration.activityEventId == null && groupRun != null && !dashboardExpanded) {
+            TextButton(onClick = onStopActivityLiveMap, modifier = Modifier.align(Alignment.TopCenter).padding(top = 62.dp)) { Text(stringResource(R.string.recording_group_stop_sharing)) }
         }
         SessionDashboard(snapshot, configuration, unitSystem, energyKilocalories, dashboardExpanded, {
             if (dashboardExpanded != it) {
@@ -1172,6 +1224,9 @@ private fun TrackMap(
     snapshot: RecordingSnapshot,
     configuration: RecordingLaunchConfiguration,
     modifier: Modifier = Modifier,
+    groupRun: SharedLiveRun? = null,
+    focusedParticipant: String? = null,
+    onFocus: (String?) -> Unit = {},
 ) {
     val recorded = snapshot.track.map { MapCoordinate(it.latitude, it.longitude) }
     val planned = configuration.followedRoute?.points.orEmpty().map { MapCoordinate(it.latitude, it.longitude) }
@@ -1183,6 +1238,13 @@ private fun TrackMap(
         }
     }
     PlainstrideLiveRouteMap(
+        additionalMarkers = groupRun?.participants.orEmpty().filter { it.userId != groupRun?.currentUserId && it.status != "left" && (it.status in setOf("active", "stale") || it.lastLocationAt?.let { timestamp -> runCatching { java.time.Duration.between(java.time.Instant.parse(timestamp), java.time.Instant.now()).seconds < 300 }.getOrDefault(false) } == true) }.mapNotNull { participant ->
+            val latitude = participant.latitude ?: return@mapNotNull null
+            val longitude = participant.longitude ?: return@mapNotNull null
+            com.plainstride.outbound.core.designsystem.MapRouteMarker(participant.id, MapCoordinate(latitude, longitude), participant.displayName, selected = participant.id == focusedParticipant)
+        },
+        onAdditionalMarkerClick = { id -> onFocus(id.takeUnless { it == "live-runner" }) },
+        followRunner = focusedParticipant == null,
         recordedRoute = recorded,
         plannedRoute = planned,
         recordedRouteSegments = recordedSegments,
@@ -1201,22 +1263,6 @@ private fun TrackMap(
     }
 }
 
-@Composable
-private fun ActivityGroupLiveMapCard(run:SharedLiveRun,modifier:Modifier=Modifier,onStop:()->Unit){
- val participants=run.participants.filter{it.status in setOf("active","stale")}
- val mapPoints=participants.mapNotNull{participant->participant.latitude?.let{latitude->participant.longitude?.let{longitude->MapCoordinate(latitude,longitude)}}}
- Surface(modifier=modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.surface.copy(alpha=.96f),shadowElevation=8.dp){
-  Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
-   Row(verticalAlignment=Alignment.CenterVertically){Text(stringResource(R.string.recording_group_participants),Modifier.weight(1f),style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.SemiBold);TextButton(onClick=onStop){Text(stringResource(R.string.recording_group_stop_sharing))}}
-   if(mapPoints.isNotEmpty())PlainstrideRouteMap(points=mapPoints,modifier=Modifier.fillMaxWidth().height(150.dp),showUserLocation=false,preciseLocationGranted=false,focusOnUser=false,fitRouteOnChange=true,markers=participants.mapNotNull{participant->participant.latitude?.let{latitude->participant.longitude?.let{longitude->com.plainstride.outbound.core.designsystem.MapRouteMarker(id=participant.id,coordinate=MapCoordinate(latitude,longitude),title=participant.displayName,selected=participant.userId==run.currentUserId)}}})
-   participants.forEach{participant->
-    val freshness=participant.lastLocationAt?.let{raw->runCatching{java.time.Duration.between(java.time.Instant.parse(raw),java.time.Instant.now()).seconds.coerceAtLeast(0)}.getOrNull()}
-    val status=when{participant.latitude==null||participant.longitude==null->stringResource(R.string.recording_group_waiting);freshness!=null&&freshness>60->stringResource(R.string.recording_group_stale,formatDuration(freshness));else->"${formatDistance(participant.distanceMeters,MeasurementUnitSystem.metric)} · ${formatDuration(participant.elapsedSeconds.toLong())}"}
-    Text("${participant.displayName} · $status",style=MaterialTheme.typography.bodySmall,maxLines=1,overflow=TextOverflow.Ellipsis)
-   }
-  }
- }
-}
 
 @Composable
 private fun CameraSurface(photoPath: String?, onCaptured: (String) -> Unit, onTakePhoto: () -> Unit,onPending:(Boolean)->Unit, modifier: Modifier = Modifier) {

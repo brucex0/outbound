@@ -1,5 +1,7 @@
 package com.plainstride.outbound
 
+import com.plainstride.outbound.feature.recording.recordingLaunch
+
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
@@ -406,6 +408,25 @@ private fun SignedInApp(
         ?: activeShoes.firstOrNull { it.id.toString() == integration.defaultGearId }
         ?: activeShoes.firstOrNull()
     val selectedTodayShoeIdForLaunch = selectedTodayShoe?.id?.toString()
+    val sharedSocialViewModel: SocialViewModel = hiltViewModel(key = "shared_social_$accountId")
+    val sharedSocialActivityViewModel: ActivityViewModel = hiltViewModel(key = "shared_social_activity_$accountId")
+    val groupSocialState by sharedSocialViewModel.state.collectAsStateWithLifecycle()
+    val groupLifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(groupLifecycleOwner, sharedSocialViewModel) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) sharedSocialViewModel.retryGroupParticipation()
+        }
+        groupLifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { groupLifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val groupLocale = resources.configuration.locales[0].toLanguageTag()
+    LaunchedEffect(accountId, groupLocale) { accountId?.let { sharedSocialViewModel.start(it, groupLocale, trackOpen = false) } }
+    val todayGroupEvent = groupSocialState.home.upcomingRuns.firstOrNull { event ->
+        (event.joined || event.canParticipate == true) && event.status in setOf("scheduled", "active") &&
+            (event.status == "active" || runCatching { java.time.Instant.parse(event.startsAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate() == java.time.LocalDate.now() }.onFailure { android.util.Log.w("PlainstrideGroups", "today_event_start_parse type=${it.javaClass.simpleName}") }.getOrDefault(false))
+    }
+
     val trustedContacts by cheerPickerViewModel.trustedContacts.collectAsStateWithLifecycle()
     val sharesWithTrustedContactsByDefault by cheerPickerViewModel.sharesWithTrustedContactsByDefault.collectAsStateWithLifecycle()
     val selectedCheerIds by cheerPickerViewModel.selectedRecipientIds.collectAsStateWithLifecycle()
@@ -716,6 +737,12 @@ private fun SignedInApp(
                             localeTag = resources.configuration.locales[0].toLanguageTag(),
                             viewModel = todayViewModel,
                             activeSession = hasActiveSession,
+                            groupActivityContent = todayGroupEvent?.takeIf { !hasActiveSession }?.let { event ->
+                                { com.plainstride.outbound.feature.social.TodayGroupActivityCard(event,
+                                    recordingSafetyViewModel.coordinator.isSharingEvent(event.id), groupRunJoining || recordingSafetyViewModel.coordinator.hasDifferentActiveGroup(event.id),
+                                    { navController.navigate("$SOCIAL_ACTIVITY_EVENT_ROUTE/${event.id}?source=today_group_activity") },
+                                    { toggleActivityLiveMap(event.id) }) }
+                            },
                             completedToday = integration.completedToday,
                             onStartWorkout = { intent, options ->
                                 recordingLaunch = intent.toRecordingLaunch().copy(gearId = selectedTodayShoeIdForLaunch,privateTrainingSignal=cycleState.currentSignal.takeIf{cycleState.enabled&&it!=CycleTrainingSignal.NO_ADJUSTMENT}?.wireValue,startImmediately=true,indoor=options.indoor,voiceGuideEnabled=options.voiceGuideEnabled,companionType=options.companionType).withTodayRoute(todaySelectedRoute, todayRouteReversed)
@@ -946,7 +973,7 @@ private fun SignedInApp(
                             onMessage = { message -> snackbar.showSnackbar(resources.getString(settingsMessageResource(message))) },
                         )
                     } else if (destination == TopLevelDestination.Social && accountId != null) {
-                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.type,socialTarget?.id,targetEntrySource=socialTarget?.entrySource ?: "deep_link",inboxCount=NotificationPresentationPolicy.actionableAttentionCount(integration.notifications),unitSystem=measurementUnitSystem,onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE) { launchSingleTop = true }},onActivity={id->activityTarget=id;navController.navigate(ACTIVITY_HISTORY_ROUTE)},onMyInvite={navController.navigate(MY_QR_ROUTE){launchSingleTop=true}},onTargetConsumed={socialTarget=null},onConnectionLinkConsumed={socialTarget=null;onConnectionCodeConsumed()},onGroupInviteConsumed={socialTarget=null},onRoutesTabSelected={if(integration.routeScope!=RouteScope.DISCOVERY)integrationViewModel.scope(RouteScope.DISCOVERY)},onOpenSharedActivity={id->navController.navigate("$SOCIAL_ACTIVITY_DETAIL_ROUTE/$id")},onOpenSharedEvent={id,source->navController.navigate("$SOCIAL_ACTIVITY_EVENT_ROUTE/$id?source=$source")},onOpenSharedProfile={person->sharedSocialProfile=person;navController.navigate("$SOCIAL_PROFILE_ROUTE/${person.id}")},groupRun=sharedLiveGroupRun?.toSharedLiveRun(),groupRunJoining=groupRunJoining,onToggleActivityLiveMap=toggleActivityLiveMap,onStartGroupActivity={event->recordingLaunch=RecordingLaunchConfiguration(activityKind=when(event.activityType?.lowercase()){"walking"->ActivityKind.WALKING;"hiking"->ActivityKind.HIKING;"cycling"->ActivityKind.CYCLING;"swimming"->ActivityKind.SWIMMING;else->ActivityKind.RUNNING},title=event.name,entrySource="group_event",activityEventId=event.id,startImmediately=false);navController.navigate(RECORDING_ROUTE){launchSingleTop=true}},communityRoutesContent={ routeImportRequest -> CommunityRouteScreen(integration.routes,integration.routeScope,integrationViewModel::scope,integrationViewModel::refreshRoutes,integrationViewModel::search,{launch->recordingLaunch=launch;navController.navigate(RECORDING_ROUTE)},integrationViewModel::bookmark,integrationViewModel::trackRouteImport,bottomContentPadding=PrimaryBottomToolbarClearance,routeDetail=integration.selectedCommunityRoute,routeDetailLoading=integration.communityRouteLoading,onLoadDetail=integrationViewModel::loadCommunityRoute,onRemovePublished=integrationViewModel::removePublishedRoute,onClearDetail=integrationViewModel::clearCommunityRoute,unitSystem=measurementUnitSystem,onImportedDelete=integrationViewModel::trackImportedRouteDeleted,importRequest=routeImportRequest,searchQuery=integration.routeQuery)},notificationAccessAvailable=pushPermissionGranted,onEnableNotifications={integrationViewModel.trackPushPermissionPromptAction("social","enable");requestNotificationPermission(forPush=true,forReminder=reminderEnabled)})
+                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.type,socialTarget?.id,targetEntrySource=socialTarget?.entrySource ?: "deep_link",inboxCount=NotificationPresentationPolicy.actionableAttentionCount(integration.notifications),unitSystem=measurementUnitSystem,onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE) { launchSingleTop = true }},onActivity={id->activityTarget=id;navController.navigate(ACTIVITY_HISTORY_ROUTE)},onMyInvite={navController.navigate(MY_QR_ROUTE){launchSingleTop=true}},onTargetConsumed={socialTarget=null},onConnectionLinkConsumed={socialTarget=null;onConnectionCodeConsumed()},onGroupInviteConsumed={socialTarget=null},onRoutesTabSelected={if(integration.routeScope!=RouteScope.DISCOVERY)integrationViewModel.scope(RouteScope.DISCOVERY)},onOpenSharedActivity={id->navController.navigate("$SOCIAL_ACTIVITY_DETAIL_ROUTE/$id")},onOpenSharedEvent={id,source->navController.navigate("$SOCIAL_ACTIVITY_EVENT_ROUTE/$id?source=$source")},onOpenSharedProfile={person->sharedSocialProfile=person;navController.navigate("$SOCIAL_PROFILE_ROUTE/${person.id}")},groupRun=sharedLiveGroupRun?.toSharedLiveRun(),groupRunJoining=groupRunJoining,onToggleActivityLiveMap=toggleActivityLiveMap,onStartGroupActivity={event->recordingLaunch=event.recordingLaunch();navController.navigate(RECORDING_ROUTE){launchSingleTop=true}},communityRoutesContent={ routeImportRequest -> CommunityRouteScreen(integration.routes,integration.routeScope,integrationViewModel::scope,integrationViewModel::refreshRoutes,integrationViewModel::search,{launch->recordingLaunch=launch;navController.navigate(RECORDING_ROUTE)},integrationViewModel::bookmark,integrationViewModel::trackRouteImport,bottomContentPadding=PrimaryBottomToolbarClearance,routeDetail=integration.selectedCommunityRoute,routeDetailLoading=integration.communityRouteLoading,onLoadDetail=integrationViewModel::loadCommunityRoute,onRemovePublished=integrationViewModel::removePublishedRoute,onClearDetail=integrationViewModel::clearCommunityRoute,unitSystem=measurementUnitSystem,onImportedDelete=integrationViewModel::trackImportedRouteDeleted,importRequest=routeImportRequest,searchQuery=integration.routeQuery)},notificationAccessAvailable=pushPermissionGranted,onEnableNotifications={integrationViewModel.trackPushPermissionPromptAction("social","enable");requestNotificationPermission(forPush=true,forReminder=reminderEnabled)},viewModel=sharedSocialViewModel)
                     } else {
                         FoundationScreen(destination, authState, authViewModel)
                     }
@@ -954,11 +981,11 @@ private fun SignedInApp(
             }
             composable("$SOCIAL_ACTIVITY_DETAIL_ROUTE/{postId}") { entry ->
                 val postId = entry.arguments?.getString("postId").orEmpty()
-                val socialEntry = remember(navController) { navController.getBackStackEntry(TopLevelDestination.Social.route) }
-                val socialViewModel: SocialViewModel = hiltViewModel(socialEntry)
-                val activityViewModel: ActivityViewModel = hiltViewModel(socialEntry)
+                val socialViewModel = sharedSocialViewModel
+                val activityViewModel = sharedSocialActivityViewModel
                 SocialActivityDetailDestination(
                     postId = postId,
+                    onOpenGroupActivity = { id -> navController.navigate("$SOCIAL_ACTIVITY_EVENT_ROUTE/$id?source=activity_detail") },
                     unitSystem = measurementUnitSystem,
                     viewModel = socialViewModel,
                     activityViewModel = activityViewModel,
@@ -969,10 +996,17 @@ private fun SignedInApp(
             composable("$SOCIAL_ACTIVITY_EVENT_ROUTE/{eventId}?source={source}") { entry ->
                 val eventId = entry.arguments?.getString("eventId").orEmpty()
                 val source = entry.arguments?.getString("source") ?: "social_upcoming"
-                val socialEntry = remember(navController) { navController.getBackStackEntry(TopLevelDestination.Social.route) }
-                val socialViewModel: SocialViewModel = hiltViewModel(socialEntry)
+                val socialViewModel = sharedSocialViewModel
                 SocialActivityEventDestination(
                     eventId = eventId,
+                    unitSystem = measurementUnitSystem,
+                    groupRun = sharedLiveGroupRun?.toSharedLiveRun(),
+                    groupRunJoining = groupRunJoining,
+                    onToggleActivityLiveMap = { toggleActivityLiveMap(eventId) },
+                    onStartActivity = { event ->
+                        recordingLaunch = event.recordingLaunch()
+                        navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
+                    },
                     entrySource = source,
                     viewModel = socialViewModel,
                     onBack = { navController.popBackStack() },
@@ -981,8 +1015,7 @@ private fun SignedInApp(
             composable("$SOCIAL_PROFILE_ROUTE/{personId}") { entry ->
                 val personId = entry.arguments?.getString("personId").orEmpty()
                 DisposableEffect(personId) { onDispose { if (sharedSocialProfile?.id == personId) sharedSocialProfile = null } }
-                val socialEntry = remember(navController) { navController.getBackStackEntry(TopLevelDestination.Social.route) }
-                val socialViewModel: SocialViewModel = hiltViewModel(socialEntry)
+                val socialViewModel = sharedSocialViewModel
                 SocialProfileDestination(
                     person = sharedSocialProfile?.takeIf { it.id == personId },
                     viewModel = socialViewModel,
@@ -1103,6 +1136,7 @@ private fun SignedInApp(
                     onBack = { navController.popBackStack() },
                     onMessage = { message -> snackbar.showSnackbar(resources.getString(activityMessageResource(message))) },
                     onPublishRoute = integrationViewModel::publishSavedActivityRoute,
+                    onOpenGroupActivity = { id -> navController.navigate("$SOCIAL_ACTIVITY_EVENT_ROUTE/$id?source=activity_detail") },
                 )
             }
             composable(MUSIC_ROUTE) { MusicRoute(onClose = { navController.popBackStack() }) }

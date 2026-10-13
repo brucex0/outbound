@@ -1,0 +1,34 @@
+<resources>
+    <string name="group_activity_label">Actividad en grupo</string>
+    <string name="group_activity_named">Actividad en grupo · %s</string>
+    <string name="group_activity_ran_with">Corrió con %s</string>
+    <string name="group_activity_walked_with">Caminó con %s</string>
+    <string name="group_activity_hiked_with">Hizo senderismo con %s</string>
+    <string name="group_activity_rode_with">Pedaleó con %s</string>
+    <string name="group_activity_swam_with">Nadó con %s</string>
+    <string name="group_activity_worked_out_with">Entrenó con %s</string>
+    <string name="group_activity_joined_with">Participó con %s</string>
+    <string name="group_activity_started_count">%d comenzaron</string>
+    <string name="group_activity_counts">%1$d asistirán · %2$d comenzaron · %3$d terminaron</string>
+    <string name="group_activity_recording">Grabando</string>
+    <string name="group_activity_not_started">Sin comenzar</string>
+    <string name="group_activity_finished">Finalizado</string>
+    <string name="group_activity_live_error">No se pudo acceder al mapa en vivo. Inténtalo de nuevo.</string>
+    <string name="group_activity_started">Comenzó</string>
+    <string name="group_activity_open_error">No se pudo abrir la actividad en grupo. Inténtalo de nuevo.</string>
+    <string name="group_activity_join">Unirse a la actividad</string>
+    <string name="group_activity_joined">Te uniste a la actividad.</string>
+    <string name="group_activity_left">Saliste de la actividad.</string>
+    <string name="group_activity_rsvp_error">No se pudo actualizar tu participación. Inténtalo de nuevo.</string>
+    <string name="group_activity_location_recent">Actualizado hace %s</string>
+    <string name="group_activity_location_stale">Visto por última vez hace %s</string>
+    <string name="group_activity_location_waiting">Esperando ubicación</string>
+    <string name="group_activity_location_unavailable">Ubicación no disponible</string>
+    <string name="group_activity_location_sharing">Compartiendo ubicación</string>
+    <string name="group_activity_location_not_sharing">No comparte ubicación</string>
+    <string name="group_activity_share">Compartir mapa en vivo con los participantes</string>
+    <string name="group_activity_stop_sharing">Dejar de compartir</string>
+    <string name="group_activity_expand">Mostrar participantes</string>
+    <string name="group_activity_collapse">Ocultar participantes</string>
+    <string name="group_activity_today">ACTIVIDAD EN GRUPO DE HOY</string>
+</resources>

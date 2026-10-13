@@ -104,6 +104,9 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { message ->
             val text = when (message) {
+                SocialMessage.EVENT_JOINED -> resources.getString(com.plainstride.outbound.core.designsystem.R.string.group_activity_joined)
+                SocialMessage.EVENT_LEFT -> resources.getString(com.plainstride.outbound.core.designsystem.R.string.group_activity_left)
+                SocialMessage.EVENT_RSVP_FAILED -> resources.getString(com.plainstride.outbound.core.designsystem.R.string.group_activity_rsvp_error)
                 SocialMessage.GROUP_JOINED -> resources.getString(R.string.group_toast_joined)
                 SocialMessage.GROUP_DECLINED -> resources.getString(R.string.group_toast_declined)
                 SocialMessage.GROUP_INVITATION_FAILED -> resources.getString(R.string.group_invitation_action_failed)
@@ -188,6 +191,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
         BackHandler { viewModel.closeActivityDetail() }
         SocialActivityDetail(
             post = selectedActivityPost,
+            onOpenGroupActivity = { onOpenSharedEvent(it, "activity_detail") },
             unitSystem = unitSystem,
             photos = state.activityDetailPhotos,
             photosLoading = state.activityDetailPhotosLoading,
@@ -288,6 +292,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
 @OptIn(ExperimentalMaterial3Api::class)
 fun SocialActivityDetailDestination(
     postId: String,
+    onOpenGroupActivity: (String) -> Unit,
     unitSystem: MeasurementUnitSystem,
     viewModel: SocialViewModel,
     activityViewModel: ActivityViewModel,
@@ -318,6 +323,7 @@ fun SocialActivityDetailDestination(
     }
     SocialActivityDetail(
         post = post,
+        onOpenGroupActivity = onOpenGroupActivity,
         unitSystem = unitSystem,
         photos = state.activityDetailPhotos,
         photosLoading = state.activityDetailPhotosLoading,
@@ -338,11 +344,26 @@ fun SocialActivityDetailDestination(
 @OptIn(ExperimentalMaterial3Api::class)
 fun SocialActivityEventDestination(
     eventId: String,
+    unitSystem: MeasurementUnitSystem,
+    groupRun: SharedLiveRun?,
+    groupRunJoining: Boolean,
+    onToggleActivityLiveMap: () -> Unit,
+    onStartActivity: (SocialEvent) -> Unit,
     entrySource: String,
     viewModel: SocialViewModel,
     onBack: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    LaunchedEffect(viewModel) { viewModel.messages.collect { message ->
+        val resource = when(message) {
+            SocialMessage.EVENT_JOINED -> com.plainstride.outbound.core.designsystem.R.string.group_activity_joined
+            SocialMessage.EVENT_LEFT -> com.plainstride.outbound.core.designsystem.R.string.group_activity_left
+            SocialMessage.EVENT_RSVP_FAILED -> com.plainstride.outbound.core.designsystem.R.string.group_activity_rsvp_error
+            else -> null
+        }
+        resource?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+    } }
     DisposableEffect(eventId) { onDispose { viewModel.closeEvent() } }
     LaunchedEffect(eventId, entrySource) { viewModel.openTarget("event", eventId, entrySource) }
     val event = state.selectedEvent
@@ -361,44 +382,14 @@ fun SocialActivityEventDestination(
         ) { padding -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
         return
     }
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(event.name, maxLines = 1) },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.closeEvent(); onBack() }) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.social_back))
-                    }
-                },
-            )
-        },
-    ) { padding ->
-        var isInvitePickerPresented by remember(event.id) { mutableStateOf(false) }
-        Column(Modifier.fillMaxSize().padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(event.name, style = MaterialTheme.typography.headlineSmall)
-            Text(event.startsAt, style = MaterialTheme.typography.bodyLarge)
-            event.endsAt?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-            event.locationName?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-            event.note?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-            Text(stringResource(R.string.social_upcoming_attendees, event.attendeeCount), style = MaterialTheme.typography.bodyMedium)
-            Button(onClick = { viewModel.setEventRsvp(event, !event.joined) }) {
-                Text(stringResource(if (event.joined) R.string.social_leave else R.string.social_join))
-            }
-            OutlinedButton(onClick = { isInvitePickerPresented = true }) {
-                Text(stringResource(R.string.social_invite))
-            }
-        }
-        if (isInvitePickerPresented) {
-            PersonPickerDialog(
-                title = stringResource(R.string.social_invite),
-                people = state.home.connections,
-                close = { isInvitePickerPresented = false },
-            ) { person ->
-                viewModel.inviteToEvent(event, person)
-                isInvitePickerPresented = false
-            }
-        }
+    var inviting by remember(event.id) { mutableStateOf(false) }
+    SocialEventDetailScreen(event, unitSystem, { viewModel.closeEvent(); onBack() },
+        { going, mode -> viewModel.setEventRsvp(event, going, mode) }, { inviting = true },
+        { viewModel.refreshEvent(event.id) }, groupRun, groupRunJoining, onToggleActivityLiveMap, { onStartActivity(event) })
+    if (inviting) PersonPickerDialog(stringResource(R.string.social_invite), state.home.connections, { inviting = false }) { person ->
+        viewModel.inviteToEvent(event, person); inviting = false
     }
+
 }
 
 @Composable
@@ -606,7 +597,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                     }
                 }
                 item { Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { SectionHeader(stringResource(R.string.social_activity_feed)) } }
-                items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, unitSystem, viewModel::loadFeedPhotoThumbnail, { openProfile(post.author) }, { if (post.activity != null) openActivity(post) }, { cheer(post) }, { comments(post) }, { openProfile(it) }, { if (post.isCurrentUser) { if (skipDeletionConfirmation) deletePost(post) else deletionConfirmationPost = post } else safetyPost = post }) }
+                items(state.home.posts, key = SocialPost::id) { post -> PostCard(post, unitSystem, viewModel::loadFeedPhotoThumbnail, { openProfile(post.author) }, { if (post.activity != null) openActivity(post) }, { cheer(post) }, { comments(post) }, { openProfile(it) }, { if (post.isCurrentUser) { if (skipDeletionConfirmation) deletePost(post) else deletionConfirmationPost = post } else safetyPost = post }, { id -> openTarget("event", id) }) }
                 if (!state.loading && state.home.posts.isEmpty()) item {
                     Box(Modifier.padding(horizontal = 16.dp)) { SocialCard {
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -925,7 +916,7 @@ private fun groupDisplayName(group: GroupSummary, all: List<GroupSummary>): Stri
 }
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, loadPhotoThumbnail: suspend (String) -> ByteArray?, profile: () -> Unit, openActivity:()->Unit, cheer: () -> Unit, comments:()->Unit, openProfile: (SocialPerson) -> Unit, safety: () -> Unit) {
+private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, loadPhotoThumbnail: suspend (String) -> ByteArray?, profile: () -> Unit, openActivity:()->Unit, cheer: () -> Unit, comments:()->Unit, openProfile: (SocialPerson) -> Unit, safety: () -> Unit, openEvent: (String) -> Unit) {
     var cheerersOpen by rememberSaveable(post.id) { mutableStateOf(false) }
     Card(
         Modifier
@@ -955,6 +946,7 @@ private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, loadPh
             }
             post.activity?.let { activity ->
                 Text(activity.title, Modifier.padding(horizontal = 16.dp), fontWeight = FontWeight.SemiBold)
+                activity.eventAttribution?.let { com.plainstride.outbound.core.designsystem.GroupActivityAttributionRow(it, activity.type, Modifier.padding(horizontal = 16.dp), openEvent) }
                 Box(Modifier.fillMaxWidth().aspectRatio(1f)) {
                     SocialRoutePreview(
                         activity = activity,
@@ -1056,6 +1048,7 @@ private fun SocialActivityDetail(
     trackShareAction: (String) -> Unit,
     loadPhotoContent: (String) -> Unit,
     trackPhotoPreview: () -> Unit,
+    onOpenGroupActivity: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val activity = post.activity ?: return
@@ -1295,6 +1288,7 @@ private fun SocialActivityDetail(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             Text(activity.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            activity.eventAttribution?.let { com.plainstride.outbound.core.designsystem.GroupActivityAttributionRow(it, activity.type, onOpen = onOpenGroupActivity) }
                         }
                     }
                 }
@@ -1883,17 +1877,17 @@ private fun SocialEventDetailScreen(
     var attendanceChoice by rememberSaveable(event.id) { mutableStateOf(false) }
     val context = LocalContext.current
     LaunchedEffect(event.id, event.status) {
-        if (event.group != null && event.status in setOf("scheduled", "active")) {
+        if (event.status in setOf("scheduled", "active")) {
             while (true) {
                 refreshEvent()
-                delay(12_000)
+                delay(15_000)
             }
         }
     }
     val start = remember(event.startsAt) { runCatching { java.time.OffsetDateTime.parse(event.startsAt).toInstant() }.getOrNull() }
     val end = remember(event.endsAt) { event.endsAt?.let { runCatching { java.time.OffsetDateTime.parse(it).toInstant() }.getOrNull() } }
-    val canStartActivity = event.status == "active" ||
-        start?.atZone(java.time.ZoneId.systemDefault())?.toLocalDate() == java.time.LocalDate.now()
+    val canStartActivity = (event.canParticipate ?: (event.currentUserRole == "owner" || event.joined)) && event.status in setOf("scheduled", "active") &&
+        (event.status == "active" || start?.atZone(java.time.ZoneId.systemDefault())?.toLocalDate() == java.time.LocalDate.now())
     val dateTime = remember(start) {
         start?.let { java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date.from(it)) }
             ?: event.startsAt
@@ -1962,7 +1956,7 @@ private fun SocialEventDetailScreen(
                             }
                         }
                     }
-                    if (event.group != null && event.currentUserRole != "owner" && event.joined && event.currentUserOutcome == null && event.status in setOf("scheduled", "active")) {
+                    if ((event.canParticipate ?: (event.currentUserRole == "owner" || event.joined)) && event.status in setOf("scheduled", "active")) {
                         val sharing = groupRun?.activityEventId == event.id && groupRun.participants.any {
                             it.userId == groupRun.currentUserId && it.status in setOf("active", "stale")
                         } == true
@@ -2016,11 +2010,17 @@ private fun SocialEventDetailScreen(
                     }
                     ElevatedCard {
                         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(stringResource(R.string.group_event_participants, event.attendeeCount), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_counts, event.attendeeCount, event.startedCount, event.participants.count { it.outcome in setOf("completed", "no_recording") }), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                             (event.participants.map(SocialEventParticipant::person).ifEmpty { event.attendeePreview }).forEach { person ->
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     SocialAvatar(person)
-                                    Text(person.displayName, style = MaterialTheme.typography.bodyMedium)
+                                    Column {
+                                        Text(person.displayName, style = MaterialTheme.typography.bodyMedium)
+                                        event.participants.firstOrNull { it.person.id == person.id }?.let { participant ->
+                                            Text(com.plainstride.outbound.core.designsystem.groupParticipantStatus(com.plainstride.outbound.core.model.activity.GroupActivityParticipant(
+                                                com.plainstride.outbound.core.model.activity.GroupActivityPerson(person.id, person.displayName, person.avatarUrl), participant.status, participant.outcome, participant.attendanceMode, participant.startedAt, participant.isRecording)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
                                 }
                             }
                             if (event.participants.isEmpty() && event.attendeePreview.isEmpty()) Text(stringResource(R.string.group_event_no_participants), color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -2084,5 +2084,22 @@ private fun profileActionFeedback(): (Boolean) -> Unit {
     val context = LocalContext.current
     return { success ->
         Toast.makeText(context, if (success) R.string.social_profile_action_complete else R.string.social_profile_action_failed, Toast.LENGTH_SHORT).show()
+    }
+}
+
+
+@Composable
+fun TodayGroupActivityCard(event: SocialEvent, sharing: Boolean, busy: Boolean, onOpen: () -> Unit, onToggleLiveMap: () -> Unit) {
+    OutlinedCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.fillMaxWidth().clickable(onClick = onOpen)) {
+                Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_today), style = MaterialTheme.typography.labelSmall)
+                Text(event.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                event.group?.name?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
+            if (event.canParticipate == true) TextButton(onClick = onToggleLiveMap, enabled = !busy) {
+                Text(stringResource(if (sharing) com.plainstride.outbound.core.designsystem.R.string.group_activity_stop_sharing else com.plainstride.outbound.core.designsystem.R.string.group_activity_share))
+            }
+        }
     }
 }
