@@ -64335,7 +64335,7 @@
       }
     },
     "running_cadence.average_label": {
-      "comment": "Running cadence counts both feet per minute. [platform:ios]",
+      "comment": "Running cadence counts both feet per minute. [android:running_cadence]",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -64358,7 +64358,7 @@
       }
     },
     "running_cadence.coverage": {
-      "comment": "Running cadence counts both feet per minute. [platform:ios]",
+      "comment": "Running cadence counts both feet per minute. [android:running_cadence]",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -64381,7 +64381,7 @@
       }
     },
     "running_cadence.live_label": {
-      "comment": "Running cadence counts both feet per minute. [platform:ios]",
+      "comment": "Running cadence counts both feet per minute. [android:running_cadence]",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -64404,7 +64404,7 @@
       }
     },
     "running_cadence.time_axis": {
-      "comment": "Running cadence counts both feet per minute. [platform:ios]",
+      "comment": "Running cadence counts both feet per minute. [android:running_cadence]",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -64427,7 +64427,7 @@
       }
     },
     "running_cadence.unit": {
-      "comment": "Running cadence counts both feet per minute. [platform:ios]",
+      "comment": "Running cadence counts both feet per minute. [android:running_cadence]",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -64450,7 +64450,7 @@
       }
     },
     "running_cadence.average_format": {
-      "comment": "%d is total footfalls per minute, counting both feet. [platform:ios]",
+      "comment": "%d is total footfalls per minute, counting both feet. [android:running_cadence]",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -64473,7 +64473,7 @@
       }
     },
     "running_cadence.maximum_format": {
-      "comment": "%d is total footfalls per minute, counting both feet. [platform:ios]",
+      "comment": "%d is total footfalls per minute, counting both feet. [android:running_cadence]",
       "localizations": {
         "en": {
           "stringUnit": {
