@@ -3,6 +3,7 @@ import Foundation
 
 @MainActor
 final class LiveCoachSessionController {
+    private var generation = UUID()
     private var createTask: Task<CreateLiveCoachSessionResponse, Error>?
     private var session: CreateLiveCoachSessionResponse?
     private var phraseUseCounts: [String: Int] = [:]
@@ -36,6 +37,8 @@ final class LiveCoachSessionController {
         guard (intent?.sport ?? persona.template.sport) == .run else { return }
         sessionRequestedForEligibleSport = true
         voiceProfileID = persona.voice.id
+        let expectedGeneration = generation
+        let selectedVoiceID = persona.voice.id
         let plannedWorkoutReference = intent?.workoutReference?.source == "planned_workout"
             ? intent?.workoutReference
             : nil
@@ -73,17 +76,38 @@ final class LiveCoachSessionController {
         )
         createTask = Task {
             let response = try await APIClient.shared.createLiveCoachSession(request)
-            guard !Task.isCancelled else { throw CancellationError() }
+            if Task.isCancelled || expectedGeneration != generation {
+                // The server may have created a session just before cancellation.
+                // End that specific response without attaching it to a new run.
+                Task {
+                    do {
+                        _ = try await APIClient.shared.endLiveCoachSession(
+                            sessionID: response.sessionId,
+                            request: .init(spokenCueCount: 0, helpfulCueCount: 0, outcome: "interrupted")
+                        )
+                    } catch is CancellationError {
+                        // Best-effort cleanup may be canceled at shutdown.
+                    } catch {
+                        ActivityDiagnosticLog.error(.lifecycle,
+                            "Canceled coach session cleanup failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                    }
+                }
+                throw CancellationError()
+            }
+            try validateGeneration(expectedGeneration)
             session = response
             await GuideAudioPackStore.shared.refresh(
                 from: response.audioPack.manifestUrl,
                 expectedCatalogVersion: response.audioPack.manifestVersion
             )
+            try validateGeneration(expectedGeneration)
             await GuideAudioPackStore.shared.preloadAudio(
                 for: GuideAudioPackStore.sessionControlCueKeys + GuideAudioPackStore.countdownCueKeys
             )
+            try validateGeneration(expectedGeneration)
             prewarmTask = Task { [weak self] in
-                await self?.prewarmPlan(response)
+                await self?.prewarmPlan(response, voiceProfileID: selectedVoiceID,
+                                       generation: expectedGeneration)
             }
             return response
         }
@@ -93,9 +117,12 @@ final class LiveCoachSessionController {
         _ request: LiveCoachCueRequest,
         instructionID: String? = nil
     ) async throws -> LiveCoachCueStreamResponse {
+        let expectedGeneration = generation
+        let selectedVoiceID = voiceProfileID
         let active = if let session { session } else if let createTask { try await createTask.value } else {
             throw LiveCoachSessionError.notStarted
         }
+        try validateGeneration(expectedGeneration)
         guard active.expiresAt > Date() else { throw LiveCoachSessionError.expired }
         let selectedPhraseID = request.moment == "progress" ? nil
             : request.selectedPhraseId ?? selectedPhraseID(
@@ -110,10 +137,11 @@ final class LiveCoachSessionController {
         if let selectedPhraseID,
            let cached = await GuidePlannedAudioCache.shared.audioData(
                 planHash: active.guidancePlanHash,
-                voiceProfileID: voiceProfileID,
+                voiceProfileID: selectedVoiceID,
                 phraseID: selectedPhraseID
            ),
            let phrase = phrase(in: active.guidancePlan, id: selectedPhraseID) {
+            try validateGeneration(expectedGeneration)
             let now = Date()
             let cachedRequest = LiveCoachCueRequest(
                 cueRequestId: request.cueRequestId,
@@ -148,6 +176,7 @@ final class LiveCoachSessionController {
                 cachedAudioData: cached
             )
         }
+        try validateGeneration(expectedGeneration)
         let boundedRequest = LiveCoachCueRequest(
             cueRequestId: request.cueRequestId,
             moment: request.moment,
@@ -157,10 +186,17 @@ final class LiveCoachSessionController {
             liveState: request.liveState
         )
         let response = try await APIClient.shared.streamLiveCoachCue(sessionID: active.sessionId, request: boundedRequest)
+        try validateGeneration(expectedGeneration)
         return response
     }
 
+    private func validateGeneration(_ expected: UUID) throws {
+        try Task.checkCancellation()
+        guard expected == generation else { throw CancellationError() }
+    }
+
     func end(report: LiveGuidanceSessionReport?) {
+        generation = UUID()
         sessionRequestedForEligibleSport = false
         prewarmTask?.cancel()
         prewarmTask = nil
@@ -183,7 +219,11 @@ final class LiveCoachSessionController {
         }
     }
 
-    private func prewarmPlan(_ response: CreateLiveCoachSessionResponse) async {
+    private func prewarmPlan(
+        _ response: CreateLiveCoachSessionResponse,
+        voiceProfileID: String,
+        generation expectedGeneration: UUID
+    ) async {
         guard response.effectiveMode == .dynamic, response.planner.status == "generated" else { return }
         let preferredMoments = [
             "early_overpace", "pace_above_target", "pace_below_target", "pace_drift",
@@ -198,16 +238,19 @@ final class LiveCoachSessionController {
         }
         let phrases = Array((workoutPhrases + reactivePhrases).prefix(8))
         for phrase in phrases {
-            guard !Task.isCancelled else { return }
-            if await GuidePlannedAudioCache.shared.audioData(
+            guard !Task.isCancelled, expectedGeneration == generation else { return }
+            let cached = await GuidePlannedAudioCache.shared.audioData(
                 planHash: response.guidancePlanHash,
                 voiceProfileID: voiceProfileID,
                 phraseID: phrase.id
-            ) != nil { continue }
+            )
+            guard !Task.isCancelled, expectedGeneration == generation else { return }
+            if cached != nil { continue }
             guard let audio = try? await APIClient.shared.fetchLiveCoachPhraseAudio(
                 sessionID: response.sessionId,
                 phraseID: phrase.id
             ) else { continue }
+            guard !Task.isCancelled, expectedGeneration == generation else { return }
             await GuidePlannedAudioCache.shared.store(
                 audio,
                 planHash: response.guidancePlanHash,

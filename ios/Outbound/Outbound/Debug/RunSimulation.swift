@@ -2,7 +2,7 @@ import CoreLocation
 import Foundation
 import SwiftUI
 
-struct RunSimulationState: Codable, Equatable {
+nonisolated struct RunSimulationState: Codable, Equatable, Sendable {
     var speedKilometersPerHour: Double
     var timeRate: Int
     var isClockRunning: Bool

@@ -100,40 +100,39 @@ struct ActiveSessionJournal {
         }
     }
 
-    @discardableResult
-    func save() -> Bool {
-        do {
-            let metadata = Metadata(
-                startedAt: startedAt,
-                elapsedSeconds: elapsedSeconds,
-                wasPaused: wasPaused,
-                activityType: activityType,
-                autoPauseEnabled: autoPauseEnabled,
-                walkingStepCount: walkingStepCount,
-                cadenceTracker: cadenceTracker,
-                companionType: companionType,
-                routeGuidanceRecoverySeed: routeGuidanceRecoverySeed,
-                sessionMetadata: sessionMetadata,
-                heartRateEffortEngine: heartRateEffortEngine,
-                lastWatchLifecycle: lastWatchLifecycle,
-                lastWatchMessageSequence: lastWatchMessageSequence,
-                recoveryStage: recoveryStage,
-                activityEvent: activityEvent,
-                liveGroupSessionID: liveGroupSessionID,
-                goalDistanceAdjustmentMeters: goalDistanceAdjustmentMeters,
-                runSimulation: runSimulation
-            )
-            let data = try JSONEncoder().encode(metadata)
-            let directory = Self.fileURL.deletingLastPathComponent()
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            try data.write(to: Self.fileURL, options: .atomic)
-            return true
-        } catch {
-            return false
-        }
+    func checkpoint(newTrackPoints: [JournalTrackPoint], force: Bool) {
+        let metadata = Metadata(
+            startedAt: startedAt,
+            elapsedSeconds: elapsedSeconds,
+            wasPaused: wasPaused,
+            activityType: activityType,
+            autoPauseEnabled: autoPauseEnabled,
+            walkingStepCount: walkingStepCount,
+            cadenceTracker: cadenceTracker,
+            companionType: companionType,
+            routeGuidanceRecoverySeed: routeGuidanceRecoverySeed,
+            sessionMetadata: sessionMetadata,
+            heartRateEffortEngine: heartRateEffortEngine,
+            lastWatchLifecycle: lastWatchLifecycle,
+            lastWatchMessageSequence: lastWatchMessageSequence,
+            recoveryStage: recoveryStage,
+            activityEvent: activityEvent,
+            liveGroupSessionID: liveGroupSessionID,
+            goalDistanceAdjustmentMeters: goalDistanceAdjustmentMeters,
+            runSimulation: runSimulation
+        )
+
+        RecoveryCheckpointWriter.shared.submit(
+            metadata: metadata, points: newTrackPoints,
+            metadataURL: Self.fileURL, trackURL: ActiveSessionTrackJournal.fileURL,
+            force: force
+        )
     }
 
     static func clear(reason: ActiveSessionClearReason) {
+        // Drain queued writes before deleting, so a discarded/saved session
+        // cannot be resurrected by a late periodic checkpoint.
+        RecoveryCheckpointWriter.shared.drainAndReset()
         let metadataPresent = FileManager.default.fileExists(atPath: fileURL.path)
         let metadataCleared = removeIfPresent(fileURL)
         let trackCleared = ActiveSessionTrackJournal.clear()
@@ -161,7 +160,7 @@ struct ActiveSessionJournal {
             .appendingPathComponent("active-session.json")
     }
 
-    private struct Metadata: Codable {
+    nonisolated struct Metadata: Codable, Sendable {
         let startedAt: Date
         let elapsedSeconds: Int
         let wasPaused: Bool
@@ -183,7 +182,7 @@ struct ActiveSessionJournal {
     }
 }
 
-enum ActiveSessionRecoveryStage: String, Codable {
+nonisolated enum ActiveSessionRecoveryStage: String, Codable, Sendable {
     case recording
     case awaitingSave
 }
@@ -262,7 +261,7 @@ enum ActiveSessionTrackJournal {
         }
     }
 
-    private static var fileURL: URL {
+    static var fileURL: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return base.appendingPathComponent("Outbound", isDirectory: true)
             .appendingPathComponent("active-session-track.jsonl")
@@ -501,7 +500,7 @@ extension ActiveRouteGuidanceJournal {
     }
 }
 
-struct JournalTrackPoint: Codable {
+nonisolated struct JournalTrackPoint: Codable, Sendable {
     let latitude: Double
     let longitude: Double
     let altitude: Double

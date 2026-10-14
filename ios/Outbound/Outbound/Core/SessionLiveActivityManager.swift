@@ -11,6 +11,17 @@ enum SessionLiveActivityReconciliationResult: String {
 @MainActor
 final class SessionLiveActivityManager: ObservableObject {
     private var activity: Activity<OutboundLiveActivityAttributes>?
+    private struct PendingUpdate {
+        let activity: Activity<OutboundLiveActivityAttributes>
+        let content: ActivityContent<OutboundLiveActivityAttributes.ContentState>
+    }
+    private enum Operation {
+        case update(PendingUpdate)
+        case end([Activity<OutboundLiveActivityAttributes>], ActivityContent<OutboundLiveActivityAttributes.ContentState>)
+    }
+    private var operations: [Operation] = []
+    private var updateTask: Task<Void, Never>?
+    private var endingActivityIDs = Set<String>()
     private var lastContentState: OutboundLiveActivityAttributes.ContentState?
 
     @discardableResult
@@ -42,9 +53,7 @@ final class SessionLiveActivityManager: ObservableObject {
         )
 
         if let activity {
-            Task {
-                await activity.update(content)
-            }
+            enqueueUpdate(activity: activity, content: content)
             return reconciliationResult
         }
 
@@ -55,9 +64,8 @@ final class SessionLiveActivityManager: ObservableObject {
                 pushType: nil
             )
         } catch {
-            #if DEBUG
-            print("Failed to start Live Activity: \(error)")
-            #endif
+            ActivityDiagnosticLog.error(.lifecycle,
+                "Live Activity start failed error=\(ActivityDiagnosticLog.errorCategory(error))")
         }
         return reconciliationResult
     }
@@ -79,14 +87,48 @@ final class SessionLiveActivityManager: ObservableObject {
         lastContentState = nil
         let finalContent = ActivityContent(state: finalState, staleDate: nil)
 
-        Task {
-            var activities = Activity<OutboundLiveActivityAttributes>.activities
-            if let trackedActivity, !activities.contains(where: { $0.id == trackedActivity.id }) {
-                activities.append(trackedActivity)
+        // Capture targets before yielding so a subsequent session is never ended.
+        var targets = Activity<OutboundLiveActivityAttributes>.activities
+        if let trackedActivity, !targets.contains(where: { $0.id == trackedActivity.id }) {
+            targets.append(trackedActivity)
+        }
+        dismiss(targets, finalContent: finalContent)
+    }
+
+    private func enqueueUpdate(
+        activity: Activity<OutboundLiveActivityAttributes>,
+        content: ActivityContent<OutboundLiveActivityAttributes.ContentState>
+    ) {
+        guard !endingActivityIDs.contains(activity.id) else { return }
+        // Coalesce metrics within a phase, retaining pause/resume transitions.
+        let next = PendingUpdate(activity: activity, content: content)
+        if case let .update(last) = operations.last,
+           last.activity.id == activity.id,
+           last.content.state.isPaused == content.state.isPaused {
+            operations[operations.count - 1] = .update(next)
+        } else {
+            operations.append(.update(next))
+        }
+        drainOperations()
+    }
+
+    private func drainOperations() {
+        guard updateTask == nil else { return }
+        updateTask = Task { [weak self] in
+            guard let self else { return }
+            while !operations.isEmpty {
+                switch operations.removeFirst() {
+                case let .update(next):
+                    guard !endingActivityIDs.contains(next.activity.id) else { continue }
+                    await next.activity.update(next.content)
+                case let .end(targets, content):
+                    for target in targets {
+                        await target.end(content, dismissalPolicy: .immediate)
+                        endingActivityIDs.remove(target.id)
+                    }
+                }
             }
-            for activity in activities {
-                await activity.end(finalContent, dismissalPolicy: .immediate)
-            }
+            updateTask = nil
         }
     }
 
@@ -98,6 +140,7 @@ final class SessionLiveActivityManager: ObservableObject {
         guard activity == nil else { return nil }
 
         let existingActivities = Activity<OutboundLiveActivityAttributes>.activities
+            .filter { !endingActivityIDs.contains($0.id) }
         guard !existingActivities.isEmpty else { return nil }
 
         let matchingActivity = sessionStartedAt.flatMap { sessionStartedAt in
@@ -127,12 +170,18 @@ final class SessionLiveActivityManager: ObservableObject {
         _ activities: [Activity<OutboundLiveActivityAttributes>],
         finalContent: ActivityContent<OutboundLiveActivityAttributes.ContentState>
     ) {
-        guard !activities.isEmpty else { return }
-        Task {
-            for activity in activities {
-                await activity.end(finalContent, dismissalPolicy: .immediate)
-            }
+        let targets = activities.filter { !endingActivityIDs.contains($0.id) }
+        guard !targets.isEmpty else { return }
+        let ids = Set(targets.map(\.id))
+        endingActivityIDs.formUnion(ids)
+        operations.removeAll {
+            if case let .update(update) = $0 { return ids.contains(update.activity.id) }
+            return false
         }
+        // An in-flight update completes before this end operation. Subsequent
+        // sessions enqueue behind teardown and cannot be captured by it.
+        operations.append(.end(targets, finalContent))
+        drainOperations()
     }
 
     private func makeContentState(

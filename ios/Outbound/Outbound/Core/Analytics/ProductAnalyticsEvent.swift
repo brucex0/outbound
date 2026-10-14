@@ -23,6 +23,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activityStarted = "activity_started"
     case activityPaused = "activity_paused"
     case activityResumed = "activity_resumed"
+    case activityLocationPermissionChanged = "activity_location_permission_changed"
     case activityFinished = "activity_finished"
     case activitySaved = "activity_saved"
     case activitySaveIneligibleShown = "activity_save_ineligible_shown"
@@ -382,6 +383,7 @@ enum ProductAnalyticsSchema {
             .filterRatioBucket, .distanceCorrectionBucket, .segmentCountBucket,
             .motionBridgeUsed, .routeMatchResult, .walkingStepsAvailable, .runningCadenceAvailable
         ],
+        .activityLocationPermissionChanged: [.result],
         .activityElevationCorrectionCompleted: [.result, .sourceType, .latencyBucket, .errorCategory],
         .activityFeedLoaded: [.countBucket, .sourceType, .timestampSource],
         .activityFeedReturned: [.sourceType, .countBucket, .pageDepthBucket],

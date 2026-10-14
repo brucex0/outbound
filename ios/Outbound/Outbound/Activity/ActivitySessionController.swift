@@ -79,9 +79,11 @@ final class ActivitySessionController: ObservableObject {
         phase = .review
     }
 
-    func beginSaving() {
-        guard phase == .review else { return }
+    @discardableResult
+    func beginSaving() -> Bool {
+        guard phase == .review else { return false }
         phase = .saving
+        return true
     }
 
     func completeSave(withPostSaveFlow: Bool) {

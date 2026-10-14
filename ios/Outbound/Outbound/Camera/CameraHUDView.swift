@@ -17,6 +17,7 @@ struct CameraHUDView: View {
     @ObservedObject var guide: VirtualGuide
     @ObservedObject var musicStore: MusicStore
     let intent: SessionIntent?
+    var locationPermissionUnavailable = false
     let capturedPhotoCount: Int
     let lastCapturedPhoto: UIImage?
     @Binding var activePage: SessionPage
@@ -69,6 +70,7 @@ struct CameraHUDView: View {
                 ActivityControlSheet(isExpanded: isWorkoutPanelExpanded) {
                     SessionStatusCard(
                         state: recorder.state,
+                        locationPermissionUnavailable: locationPermissionUnavailable,
                         isExpanded: $isWorkoutPanelExpanded,
                     expandedHeight: geometry.size.height,
                     intent: intent,
@@ -624,26 +626,27 @@ private struct HoldToPauseControl: View {
                 .background(tint, in: Circle())
                 .overlay { holdProgressRing }
             } else {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(tint)
-
-                    GeometryReader { geometry in
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(.white.opacity(0.2))
-                            .frame(width: geometry.size.width)
-                            .scaleEffect(x: holdProgress, anchor: .leading)
+                Text(String(localized: "session.action.pause.hold", defaultValue: "Hold to pause"))
+                    .font(.headline.weight(.bold))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .frame(minHeight: size)
+                    .background {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 18, style: .continuous).fill(tint)
+                            GeometryReader { geometry in
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .fill(.white.opacity(0.2))
+                                    .frame(width: geometry.size.width)
+                                    .scaleEffect(x: holdProgress, anchor: .leading)
+                            }
+                            .accessibilityHidden(true)
+                        }
                     }
-                    .accessibilityHidden(true)
-
-                    Text(String(localized: "session.action.pause.hold", defaultValue: "Hold to pause"))
-                        .font(.headline.weight(.bold))
-                        .frame(maxWidth: .infinity)
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: size)
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
         }
         .foregroundStyle(.white)
@@ -703,6 +706,7 @@ struct SessionStatusCard: View {
     @Environment(\.outboundTheme) private var theme
 
     let state: RecordingState
+    var locationPermissionUnavailable = false
     @Binding var isExpanded: Bool
     let expandedHeight: CGFloat
     let intent: SessionIntent?
@@ -733,7 +737,14 @@ struct SessionStatusCard: View {
     let isFinishEnabled: Bool
     @State private var panelDragHeight: CGFloat?
 
-    private let collapsedHeight: CGFloat = 100
+    @State private var compactContentHeight: CGFloat = 58
+    @State private var permissionContentHeight: CGFloat = 44
+    @ScaledMetric(relativeTo: .largeTitle) private var heroFontSize: CGFloat = 54
+
+    private var collapsedHeight: CGFloat {
+        max(100, 28 + compactContentHeight + 10
+            + (locationPermissionUnavailable ? permissionContentHeight + 8 : 0))
+    }
 
     var body: some View {
         let panelHeight = resolvedPanelHeight
@@ -741,6 +752,15 @@ struct SessionStatusCard: View {
 
         VStack(spacing: 0) {
             panelGrabber
+            if locationPermissionUnavailable {
+                locationPermissionBanner
+                    .fixedSize(horizontal: false, vertical: true)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+                        permissionContentHeight = $0
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 8)
+            }
 
             if expansionProgress > 0.08 {
                 expandedDashboard
@@ -748,6 +768,10 @@ struct SessionStatusCard: View {
                     .allowsHitTesting(isExpanded && panelDragHeight == nil)
             } else {
                 compactRow
+                    .fixedSize(horizontal: false, vertical: true)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+                        compactContentHeight = $0
+                    }
                     .padding(.horizontal, 14)
                     .padding(.bottom, 10)
                     .contentShape(Rectangle())
@@ -775,6 +799,23 @@ struct SessionStatusCard: View {
         .shadow(color: theme.glowColor.opacity(0.55), radius: 18, y: -6)
         .animation(panelAnimation, value: isExpanded)
         .accessibilityIdentifier("CameraDataOverlay")
+    }
+
+    private var locationPermissionBanner: some View {
+        Button {
+            guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+            UIApplication.shared.open(url)
+        } label: {
+            Label(String(localized: "session.location.permission_unavailable",
+                         defaultValue: "Location access is off. Open Settings to record your route."),
+                  systemImage: "location.slash")
+                .font(.caption.weight(.semibold))
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .foregroundStyle(.primary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("LiveLocationPermissionWarning")
     }
 
     private var panelGrabber: some View {
@@ -882,7 +923,7 @@ struct SessionStatusCard: View {
                     LazyVGrid(
                         columns: Array(
                             repeating: GridItem(.flexible(), spacing: 10),
-                            count: dynamicTypeSize.isAccessibilitySize ? 2 : 3
+                            count: dynamicTypeSize.isAccessibilitySize ? 1 : 3
                         ),
                         spacing: 10
                     ) {
@@ -954,7 +995,7 @@ struct SessionStatusCard: View {
     private var heroMetric: some View {
         VStack(spacing: 8) {
             Text(heroMetricValue)
-                .font(.system(size: 54, weight: .black, design: .rounded))
+                .font(.system(size: heroFontSize, weight: .black, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(.primary)
                 .lineLimit(1)
@@ -1014,13 +1055,19 @@ struct SessionStatusCard: View {
         }
     }
 
+    private var expandedActionLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 12))
+            : AnyLayout(HStackLayout(spacing: 12))
+    }
+
     private var expandedControls: some View {
         VStack(spacing: 12) {
             if let musicPlayback {
                 expandedMusicControls(musicPlayback)
             }
 
-            HStack(spacing: 12) {
+            expandedActionLayout {
                 if state == .active {
                     HoldToPauseControl(isCompact: false, size: 62, tint: theme.actionColor, onPause: onPause)
                         .frame(maxWidth: .infinity)
@@ -1029,7 +1076,9 @@ struct SessionStatusCard: View {
                         Label(expandedPrimaryTitle, systemImage: expandedPrimarySymbol)
                             .font(.headline.weight(.bold))
                             .frame(maxWidth: .infinity)
-                            .frame(height: 62)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 12 : 0)
+                            .frame(minHeight: 62)
                             .foregroundStyle(.white)
                             .background(theme.actionColor, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
@@ -1042,7 +1091,9 @@ struct SessionStatusCard: View {
                         Label(String(localized: "session.action.finish", defaultValue: "Finish"), systemImage: "stop.fill")
                             .font(.headline.weight(.bold))
                             .frame(maxWidth: .infinity)
-                            .frame(height: 62)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 12 : 0)
+                            .frame(minHeight: 62)
                             .foregroundStyle(.white)
                             .background(theme.secondaryColor, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
@@ -1127,7 +1178,36 @@ struct SessionStatusCard: View {
         }
     }
 
+    @ViewBuilder
     private var compactRow: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(spacing: 12) {
+                if connectivityStore.isOffline { OfflineStatusBanner(compact: true) }
+                if let companionType { companionType.liveBadge }
+                HStack(spacing: 12) {
+                    primaryControl(size: 54)
+                    if state == .paused { compactFinishControl }
+                    if let musicPlayback {
+                        Button(action: onTogglePlayback) {
+                            Image(systemName: musicPlayback.isPlaying ? "pause.fill" : "play.fill")
+                                .frame(minWidth: 44, minHeight: 44)
+                        }
+                        .accessibilityLabel(musicPlayback.isPlaying
+                            ? String(localized: "Pause music")
+                            : String(localized: "session.music.resume", defaultValue: "Resume music"))
+                    }
+                }
+                SessionMetricColumn(value: displayedElapsedText,
+                                    label: String(localized: "summary.stats.time", defaultValue: "Time"))
+                SessionMetricColumn(value: displayedDistanceText,
+                                    label: String(localized: "summary.stats.distance", defaultValue: "Distance"))
+            }
+        } else {
+            standardCompactRow
+        }
+    }
+
+    private var standardCompactRow: some View {
         HStack(spacing: 10) {
             if connectivityStore.isOffline {
                 Image(systemName: "icloud.slash.fill")
@@ -1153,6 +1233,8 @@ struct SessionStatusCard: View {
             }
 
             SessionMetricColumn(value: displayedElapsedText, label: nil)
+                .accessibilityLabel(String(localized: "summary.stats.time", defaultValue: "Time"))
+                .accessibilityValue(displayedElapsedText)
                 .frame(maxWidth: .infinity)
 
             primaryControl(size: 54)
@@ -1164,6 +1246,8 @@ struct SessionStatusCard: View {
             }
 
             SessionMetricColumn(value: displayedDistanceText, label: nil)
+                .accessibilityLabel(String(localized: "summary.stats.distance", defaultValue: "Distance"))
+                .accessibilityValue(displayedDistanceText)
                 .frame(maxWidth: .infinity)
         }
         .frame(height: 58)
@@ -1172,11 +1256,11 @@ struct SessionStatusCard: View {
     private var compactFinishControl: some View {
         Button(action: onFinish) {
             Image(systemName: "stop.fill")
-                .font(.callout.weight(.bold))
+                .font(.system(size: 17, weight: .bold))
         }
         .disabled(!isFinishEnabled)
         .opacity(isFinishEnabled ? 1 : 0.55)
-        .buttonStyle(SessionIconButtonStyle(background: theme.actionColor, foreground: .white, size: 40))
+        .buttonStyle(SessionIconButtonStyle(background: theme.actionColor, foreground: .white, size: 44))
         .accessibilityLabel(String(localized: "session.action.finish.accessibility", defaultValue: "Finish activity"))
     }
 
@@ -1253,7 +1337,7 @@ struct SessionStatusCard: View {
         case .idle:
             Button(action: onStart) {
                 Image(systemName: "record.circle.fill")
-                    .font(.title3.weight(.bold))
+                    .font(.system(size: 20, weight: .bold))
             }
             .buttonStyle(SessionIconButtonStyle(background: theme.actionColor, foreground: .white, size: size))
             .accessibilityLabel(String(localized: "session.action.start.accessibility", defaultValue: "Start activity"))
@@ -1262,7 +1346,7 @@ struct SessionStatusCard: View {
         case .paused:
             Button(action: onResume) {
                 Image(systemName: "play.fill")
-                    .font(.title3.weight(.bold))
+                    .font(.system(size: 20, weight: .bold))
             }
             .buttonStyle(SessionIconButtonStyle(background: theme.actionColor, foreground: .white, size: size))
             .accessibilityLabel(String(localized: "session.action.resume.accessibility", defaultValue: "Resume activity"))
@@ -1537,7 +1621,7 @@ private struct SessionMetricColumn: View {
     var body: some View {
         VStack(spacing: label == nil ? 0 : 6) {
             Text(value)
-                .font(.system(size: value.contains("/") ? 16 : 18, weight: .bold, design: .rounded))
+                .font(.headline.weight(.bold))
                 .monospacedDigit()
                 .foregroundStyle(.primary)
                 .lineLimit(1)
@@ -1563,17 +1647,16 @@ private struct ExpandedSessionMetric: View {
     var body: some View {
         VStack(spacing: 5) {
             Text(value)
-                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .font(.title2.weight(.bold))
                 .monospacedDigit()
                 .foregroundStyle(.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .fixedSize(horizontal: false, vertical: true)
 
             Text(label)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, minHeight: 72)
         .padding(.horizontal, 6)

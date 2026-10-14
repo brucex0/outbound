@@ -77,7 +77,7 @@ final class ActivityRecorder: ObservableObject {
     private let heartRateStaleInterval: TimeInterval = 20
     private var lastJournalSaveAt: Date?
     private var lastJournaledTrackPointCount = 0
-    private var activityType: ActivityType = .running
+    private(set) var activityType: ActivityType = .running
     private var goalDistanceAdjustmentMeters = 0.0
     var averagePace: Double? {
         activityType.plausibleAveragePace(
@@ -843,11 +843,10 @@ final class ActivityRecorder: ObservableObject {
         let newTrackPoints = locationManager.journalTrackPoints(
             startingAt: lastJournaledTrackPointCount
         )
-        let trackAppendSucceeded = ActiveSessionTrackJournal.append(newTrackPoints)
-        if trackAppendSucceeded {
-            lastJournaledTrackPointCount = trackPoints.count
-        }
-        let metadataSaved = ActiveSessionJournal(
+        // The serial writer retains failed appends for retry. This cursor tracks
+        // submitted points; only clear/reset discards the writer's pending tail.
+        lastJournaledTrackPointCount = trackPoints.count
+        ActiveSessionJournal(
             startedAt: startDate,
             elapsedSeconds: elapsedSeconds,
             wasPaused: state == .paused,
@@ -866,23 +865,7 @@ final class ActivityRecorder: ObservableObject {
             liveGroupSessionID: recordingLiveGroupSessionID,
             goalDistanceAdjustmentMeters: goalDistanceAdjustmentMeters,
             runSimulation: simulation
-        ).save()
-        if force {
-            let stateName = switch state {
-            case .idle: "idle"
-            case .active: "active"
-            case .paused: "paused"
-            }
-            ActivityDiagnosticLog.notice(
-                .recovery,
-                "Recovery checkpoint stage=\(recoveryStage.rawValue) state=\(stateName) new_points=\(ActivityDiagnosticLog.countBucket(newTrackPoints.count)) track_write=\(trackAppendSucceeded ? "success" : "failure") metadata_write=\(metadataSaved ? "success" : "failure")"
-            )
-        } else if !trackAppendSucceeded || !metadataSaved {
-            ActivityDiagnosticLog.error(
-                .recovery,
-                "Recovery checkpoint failed track_write=\(trackAppendSucceeded ? "success" : "failure") metadata_write=\(metadataSaved ? "success" : "failure")"
-            )
-        }
+        ).checkpoint(newTrackPoints: newTrackPoints, force: force)
     }
 
     private func currentElapsedSeconds(at now: Date) -> Int {

@@ -498,7 +498,13 @@ struct RecordView: View {
     var body: some View {
         recordLifecycleSurface
         .onReceive(recorder.locationManager.$authorizationStatus) { status in
-            isLocationPermissionGranted = status == .authorizedAlways || status == .authorizedWhenInUse
+            let granted = status == .authorizedAlways || status == .authorizedWhenInUse
+            if recorder.state != .idle, granted != isLocationPermissionGranted, !isIndoorSession {
+                track(.init(.activityLocationPermissionChanged, properties: [
+                    .result: .string(granted ? "restored" : "unavailable")
+                ]))
+            }
+            isLocationPermissionGranted = granted
             if isLocationPermissionGranted, isLocationPermissionModalPresented {
                 isLocationPermissionModalPresented = false
             }
@@ -721,6 +727,12 @@ struct RecordView: View {
         }
     }
 
+    private var showsLiveLocationPermissionWarning: Bool {
+        let type = activeIntent?.resolvedActivityType ?? recorder.activityType
+        return recorder.state != .idle && !isIndoorSession && !isLocationPermissionGranted
+            && type != .strengthTraining && type != .mobility
+    }
+
     private var showsEmbeddedLiveSurface: Bool {
         guard isEmbeddedInToday, isVisible else { return false }
         switch sessionController.phase {
@@ -841,6 +853,7 @@ struct RecordView: View {
                     guide: guide,
                     musicStore: musicStore,
                     intent: activeIntent ?? plannedIntent,
+                    locationPermissionUnavailable: showsLiveLocationPermissionWarning,
                     capturedPhotoCount: capturedPhotos.count,
                     lastCapturedPhoto: capturedPhotos.last?.0,
                     activePage: $activePage,
@@ -868,6 +881,7 @@ struct RecordView: View {
                     guide: guide,
                     musicStore: musicStore,
                     intent: activeIntent ?? plannedIntent,
+                    locationPermissionUnavailable: showsLiveLocationPermissionWarning,
                     capturedPhotoCount: capturedPhotos.count,
                     lastCapturedPhoto: capturedPhotos.last?.0,
                     activePage: $activePage,
@@ -1825,8 +1839,11 @@ struct RecordView: View {
         photos: [(UIImage, PhotoMetadata)],
         reflection: FinishReflection
     ) async -> Bool {
-        sessionController.beginSaving()
-        let correctedSummary = await elevationCorrectionTask?.value ?? activity.summary
+        guard sessionController.beginSaving() else { return false }
+        // Persist the best result already available; never wait for the network.
+        let correctedSummary = pendingActivity.flatMap {
+            $0.id == activity.id ? $0.summary : nil
+        } ?? activity.summary
         let resolvedActivity = PendingFinishedActivity(
             id: activity.id,
             summary: correctedSummary,
@@ -1932,20 +1949,29 @@ struct RecordView: View {
 
         if let workoutReference = activeIntent?.workoutReference,
            workoutReference.source == "planned_workout" {
-            try? await APIClient.shared.completePlannedWorkout(
-                id: workoutReference.id,
-                request: PlannedWorkoutCompletionRequest(
-                    activityId: nil,
-                    completedAt: resolvedActivity.summary.endedAt,
-                    durationSeconds: resolvedActivity.summary.durationSecs,
-                    distanceMeters: resolvedActivity.summary.distanceM,
-                    targetCalories: activeIntent?.targetCalories,
-                    energyKilocalories: energyKilocalories,
-                    avgPace: resolvedActivity.summary.avgPace,
-                    avgHeartRate: resolvedActivity.summary.healthMetrics?.averageHeartRateBPM,
-                    completionQuality: "completed"
-                )
+            let completionRequest = PlannedWorkoutCompletionRequest(
+                activityId: nil,
+                completedAt: resolvedActivity.summary.endedAt,
+                durationSeconds: resolvedActivity.summary.durationSecs,
+                distanceMeters: resolvedActivity.summary.distanceM,
+                targetCalories: activeIntent?.targetCalories,
+                energyKilocalories: energyKilocalories,
+                avgPace: resolvedActivity.summary.avgPace,
+                avgHeartRate: resolvedActivity.summary.healthMetrics?.averageHeartRateBPM,
+                completionQuality: "completed"
             )
+            Task {
+                do {
+                    _ = try await APIClient.shared.completePlannedWorkout(
+                        id: workoutReference.id, request: completionRequest
+                    )
+                } catch is CancellationError {
+                    // A canceled background completion does not undo a local save.
+                } catch {
+                    ActivityDiagnosticLog.error(.sync,
+                        "Planned workout completion failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                }
+            }
         }
 
         _ = recognitionStore.recordSavedActivity(
@@ -1961,6 +1987,8 @@ struct RecordView: View {
             postSaveStretchContext = PostSavedStretchContext(activityType: savedActivity.activityType, routines: routines)
         }
         postSaveCelebrationActivity = savedActivity
+        // The store owns enrichment after review is dismissed or the app is offline.
+        Task { await activityStore.correctElevationIfNeeded(for: savedActivity.id) }
         clearPending(recoveryReason: .saved)
         sessionController.completeSave(withPostSaveFlow: true)
         return true
@@ -2287,6 +2315,8 @@ struct RecordView: View {
                     .font(.caption.weight(.bold))
                     .frame(width: 32, height: 32)
                     .background(.thinMaterial, in: Circle())
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(String(localized: "record.route.remove", defaultValue: "Remove route"))
@@ -3987,14 +4017,19 @@ struct RecordView: View {
                 .accessibilityLabel(liveShareStore.invitationLabel)
 
                 setupOptionButton(
-                    title: "Treadmill",
-                    subtitle: isIndoorSession ? "Indoor" : "Outdoor",
+                    title: String(localized: "record.setup.treadmill", defaultValue: "Treadmill"),
+                    subtitle: isIndoorSession
+                        ? String(localized: "record.setup.indoor", defaultValue: "Indoor")
+                        : String(localized: "record.setup.outdoor", defaultValue: "Outdoor"),
                     systemImage: "figure.run.treadmill",
                     isSelected: isIndoorSession
                 ) {
                     isIndoorSession.toggle()
                 }
-                .accessibilityLabel(isIndoorSession ? "Turn off treadmill mode" : "Turn on treadmill mode")
+                .accessibilityLabel(String(localized: "record.setup.treadmill", defaultValue: "Treadmill"))
+                .accessibilityValue(isIndoorSession
+                    ? String(localized: "common.on", defaultValue: "On")
+                    : String(localized: "common.off", defaultValue: "Off"))
                 }
 
                 Divider()
@@ -4025,7 +4060,7 @@ struct RecordView: View {
             .padding(.top, 12)
         } label: {
             compactSetupLabel(
-                title: "Run options",
+                title: String(localized: "record.setup.run_options", defaultValue: "Run options"),
                 value: sessionOptionsSummary,
                 systemImage: "slider.horizontal.3"
             )

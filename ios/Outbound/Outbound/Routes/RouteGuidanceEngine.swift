@@ -18,7 +18,7 @@ enum RouteGuidanceEvent: Equatable {
     case arrival
 }
 
-struct RouteGuidanceRecoverySeed: Codable, Equatable {
+nonisolated struct RouteGuidanceRecoverySeed: Codable, Equatable, Sendable {
     let progressMeters: Double
     let segmentIndex: Int
     let hasAcquiredStart: Bool

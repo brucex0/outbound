@@ -472,43 +472,47 @@ final class ActivityStore: ObservableObject {
 
         do {
             let corrected = try await TerrainElevationCorrector.correct(summary)
-            guard let elevationMetadata = corrected.elevationMetadata else { return }
+            guard !Task.isCancelled,
+                  let elevationMetadata = corrected.elevationMetadata,
+                  let latest = self.activity(id: activityID),
+                  latest.route == activity.route
+            else { return } // Deleted/replaced routes must not be restored by enrichment.
             let updated = SavedActivity(
-                id: activity.id,
-                activityType: activity.activityType,
-                title: activity.title,
-                guideNudge: activity.guideNudge,
-                reflection: activity.reflection,
-                createdAt: activity.createdAt,
-                startedAt: activity.startedAt,
-                endedAt: activity.endedAt,
-                durationSecs: activity.durationSecs,
-                distanceM: activity.distanceM,
-                avgPace: activity.avgPace,
+                id: latest.id,
+                activityType: latest.activityType,
+                title: latest.title,
+                guideNudge: latest.guideNudge,
+                reflection: latest.reflection,
+                createdAt: latest.createdAt,
+                startedAt: latest.startedAt,
+                endedAt: latest.endedAt,
+                durationSecs: latest.durationSecs,
+                distanceM: latest.distanceM,
+                avgPace: latest.avgPace,
                 elevationGainM: corrected.elevationGainM,
-                walkingStepCount: activity.walkingStepCount,
-                healthMetrics: activity.healthMetrics,
-                goal: activity.goal,
-                companionType: activity.companionType,
-                source: activity.source,
-                gear: activity.gear,
-                manualEdits: activity.manualEdits,
-                indoor: activity.indoor,
-                cadence: activity.cadence,
-                heartRateZones: activity.heartRateZones,
-                recordingSession: activity.recordingSession,
-                activityEventID: activity.activityEventID,
-                followedRoute: activity.followedRoute,
-                recognitionBadgeIDs: activity.recognitionBadgeIDs,
+                walkingStepCount: latest.walkingStepCount,
+                healthMetrics: latest.healthMetrics,
+                goal: latest.goal,
+                companionType: latest.companionType,
+                source: latest.source,
+                gear: latest.gear,
+                manualEdits: latest.manualEdits,
+                indoor: latest.indoor,
+                cadence: latest.cadence,
+                heartRateZones: latest.heartRateZones,
+                recordingSession: latest.recordingSession,
+                activityEventID: latest.activityEventID,
+                followedRoute: latest.followedRoute,
+                recognitionBadgeIDs: latest.recognitionBadgeIDs,
                 route: SavedRoute(
                     points: SavedRoutePoint.simplified(from: corrected.trackSegments),
                     elevationMetadata: elevationMetadata
                 ),
-                photos: activity.photos,
+                photos: latest.photos,
                 sync: SavedActivitySyncState(
-                    clientActivityId: activity.sync?.clientActivityId ?? activity.id.uuidString,
-                    serverActivityId: activity.sync?.serverActivityId,
-                    lastAttemptAt: activity.sync?.lastAttemptAt,
+                    clientActivityId: latest.sync?.clientActivityId ?? latest.id.uuidString,
+                    serverActivityId: latest.sync?.serverActivityId,
+                    lastAttemptAt: latest.sync?.lastAttemptAt,
                     syncedAt: nil,
                     lastError: nil,
                     localUpdatedAt: Date()
@@ -525,7 +529,11 @@ final class ActivityStore: ObservableObject {
                 .latencyBucket: .string(ProductAnalyticsBucket.latency(milliseconds: Date().timeIntervalSince(startedAt) * 1_000))
             ]))
             Task { await syncActivityIfPossible(id: updated.id) }
+        } catch is CancellationError {
+            // Discard/session replacement intentionally cancels enrichment.
         } catch {
+            ActivityDiagnosticLog.error(.persistence,
+                "Saved activity elevation enrichment failed error=\(ActivityDiagnosticLog.errorCategory(error))")
             await analyticsManager?.track(.init(.activityElevationCorrectionCompleted, properties: [
                 .result: .string("fallback"),
                 .sourceType: .string("existing_on_device"),

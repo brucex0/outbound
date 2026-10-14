@@ -81,6 +81,8 @@ final class LocationManager: NSObject, ObservableObject {
     private var filter = LocationTrackFilter(activityType: .running)
     private var probeFilter = LocationTrackFilter(activityType: .running)
     private var wantsTracking = false
+    private var isManuallyPaused = false
+    private var isLocationDeliverySuspended = false
     private var wantsPreparation = false
     private var wantsOneShotLocation = false
     private var isAutoPauseProbing = false
@@ -162,20 +164,7 @@ final class LocationManager: NSObject, ObservableObject {
         authorizationStatus = manager.authorizationStatus
         accuracyAuthorization = manager.accuracyAuthorization
         updateSignalQuality(using: location)
-        guard wantsTracking || wantsPreparation else { return }
-        switch manager.authorizationStatus {
-        case .authorizedAlways, .authorizedWhenInUse:
-            requestTemporaryFullAccuracyIfNeeded()
-            manager.startUpdatingLocation()
-        case .notDetermined:
-            break
-        case .denied, .restricted:
-            wantsTracking = false
-            wantsPreparation = false
-            manager.stopUpdatingLocation()
-        @unknown default:
-            break
-        }
+        reconcileLocationDelivery()
     }
 
     /// Forces a one-shot refresh of the published location for screens that
@@ -298,6 +287,8 @@ final class LocationManager: NSObject, ObservableObject {
         resetRecordingState(preserving: warmLocation)
         trackingStartedAt = Date()
         wantsTracking = true
+        isManuallyPaused = false
+        isLocationDeliverySuspended = false
         wantsPreparation = false
         preparedLocation = nil
         startPedometerIfAvailable()
@@ -322,15 +313,58 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     private func startTrackingIfPermitted() {
+        reconcileLocationDelivery()
+    }
+
+    /// Session intent survives permission changes. Manual pause must never
+    /// restart delivery on a foreground/authorization callback; auto-pause
+    /// deliberately keeps GPS and motion probing alive.
+    private func reconcileLocationDelivery() {
 #if DEBUG
         guard !isSimulatingLocations else { return }
 #endif
-        guard wantsTracking || wantsPreparation else { return }
+        let shouldDeliver = isLocationPermissionGranted
+            && (wantsPreparation || (wantsTracking && !isManuallyPaused))
+        guard shouldDeliver else {
+            manager.stopUpdatingLocation()
+            if wantsTracking, !isLocationPermissionGranted {
+                if !isLocationDeliverySuspended {
+                    isLocationDeliverySuspended = true
+                    requiresNewSegment = true
+                    previousMotionLocation = nil
+                    probeLocations = []
+                    probeFilter.reset()
+                    // Motion permission is independent of GPS permission;
+                    // retain cadence/steps, including indoor walking sessions.
+                    ActivityDiagnosticLog.notice(.lifecycle,
+                        "Location delivery suspended reason=permission_unavailable")
+                }
+                currentMotionSpeed = nil
+                signalQuality = .unavailable
+            }
+            return
+        }
+        requestTemporaryFullAccuracyIfNeeded()
+        if isLocationDeliverySuspended {
+            isLocationDeliverySuspended = false
+            if wantsTracking {
+                let motionTail = pendingMotionGapDistance
+                accumulatedDistanceMeters += motionTail
+                motionAssistedDistanceMeters += motionTail
+                pedometerDistanceAtLastTrackPoint = pedometerDistanceMeters
+                requiresNewSegment = true
+                filter.reset()
+                pedometerDistanceAtProbeStart = pedometerDistanceMeters
+                ActivityDiagnosticLog.notice(.lifecycle,
+                    "Location delivery restored segment=new")
+            }
+        }
         manager.startUpdatingLocation()
     }
 
     func pauseTracking() {
         guard wantsTracking else { return }
+        isManuallyPaused = true
         manager.stopUpdatingLocation()
         stopPedometer()
         requiresNewSegment = true
@@ -350,6 +384,7 @@ final class LocationManager: NSObject, ObservableObject {
     @discardableResult
     func resumeTracking(fromAutoPause: Bool = false) -> TimeInterval {
         guard wantsTracking else { return 0 }
+        isManuallyPaused = false
         let promotedActiveDuration: TimeInterval
         if fromAutoPause {
             promotedActiveDuration = promoteAutoPauseProbe()
@@ -384,6 +419,8 @@ final class LocationManager: NSObject, ObservableObject {
         )
         motionAssistedDistanceMeters += motionTail
         wantsTracking = false
+        isManuallyPaused = false
+        isLocationDeliverySuspended = false
         wantsPreparation = false
         isAutoPauseProbing = false
         trackingStartedAt = nil
@@ -427,6 +464,8 @@ final class LocationManager: NSObject, ObservableObject {
         updateSignalQuality(using: points.last)
         trackingStartedAt = Date()
         wantsTracking = true
+        isManuallyPaused = true // Recovered sessions await explicit Resume.
+        isLocationDeliverySuspended = false
         requiresNewSegment = true
         filter.reset()
         manager.stopUpdatingLocation()
@@ -695,6 +734,7 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     private func handleLocation(_ newLocation: CLLocation, allowsMotionBridge: Bool) {
+        guard !wantsTracking || (!isManuallyPaused && isLocationPermissionGranted) else { return }
         updateSignalQuality(using: newLocation)
         guard isPublishable(newLocation) else {
             if wantsTracking { rejectedLocationCount += 1 }
@@ -713,7 +753,7 @@ final class LocationManager: NSObject, ObservableObject {
             }
             return
         }
-        guard wantsTracking else { return }
+        guard wantsTracking, !isManuallyPaused, isLocationPermissionGranted else { return }
 
         if isAutoPauseProbing {
             let output = probeFilter.ingest(newLocation)
@@ -852,6 +892,8 @@ final class LocationManager: NSObject, ObservableObject {
         resetRecordingState(preserving: nil)
         trackingStartedAt = Date()
         wantsTracking = true
+        isManuallyPaused = false
+        isLocationDeliverySuspended = false
         signalQuality = .excellent
     }
 
@@ -929,14 +971,13 @@ extension LocationManager: CLLocationManagerDelegate {
             self.updateSignalQuality(using: self.location)
             switch manager.authorizationStatus {
             case .authorizedAlways, .authorizedWhenInUse:
-                self.requestTemporaryFullAccuracyIfNeeded()
-                self.startTrackingIfPermitted()
+                self.reconcileLocationDelivery()
                 if self.wantsOneShotLocation && !self.wantsTracking && !self.wantsPreparation {
                     manager.requestLocation()
                 }
             case .denied, .restricted:
-                self.wantsTracking = false
                 self.wantsPreparation = false
+                self.reconcileLocationDelivery()
             case .notDetermined:
                 break
             @unknown default:
@@ -948,7 +989,16 @@ extension LocationManager: CLLocationManagerDelegate {
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         Task { @MainActor in
             self.wantsOneShotLocation = false
-            if self.location == nil { self.signalQuality = .unavailable }
+            // Cached accuracy is not evidence of current signal availability.
+            self.signalQuality = .unavailable
+            self.currentMotionSpeed = nil
+            let technical = error as NSError
+            if technical.domain == kCLErrorDomain,
+               technical.code == CLError.locationUnknown.rawValue {
+                return // Temporary GPS acquisition failure is expected.
+            }
+            ActivityDiagnosticLog.error(.lifecycle,
+                "Location delivery failed domain=\(technical.domain) code=\(technical.code)")
         }
     }
 }

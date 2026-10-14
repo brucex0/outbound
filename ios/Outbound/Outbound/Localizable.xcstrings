@@ -1,6 +1,52 @@
 {
   "sourceLanguage": "en",
   "strings": {
+  "record.setup.treadmill": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Treadmill"
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "跑步机"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Cinta de correr"
+        }
+      }
+    }
+  },
+  "session.location.permission_unavailable": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Location access is off. Open Settings to record your route."
+        }
+      },
+      "zh-Hans": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "定位权限已关闭。请前往设置开启，以记录运动路线。"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "El acceso a la ubicación está desactivado. Abre Ajustes para registrar tu ruta."
+        }
+      }
+    }
+  },
   "live_guidance.goal.one_third_time": {
     "localizations": {
       "en": {

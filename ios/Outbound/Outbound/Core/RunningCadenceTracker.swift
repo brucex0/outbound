@@ -7,7 +7,7 @@ nonisolated struct RunningCadenceReading {
 }
 
 /// Persists measured coverage rather than treating missing readings as zero.
-nonisolated struct RunningCadenceTracker: Codable {
+nonisolated struct RunningCadenceTracker: Codable, Sendable {
     private(set) var samples: [ActivityCadenceSample] = []
     private var weightedTotal = 0.0
     private var measuredSeconds = 0.0

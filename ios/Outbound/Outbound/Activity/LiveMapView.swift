@@ -14,6 +14,7 @@ struct LiveMapView: View {
     @ObservedObject var guide: VirtualGuide
     @ObservedObject var musicStore: MusicStore
     let intent: SessionIntent?
+    var locationPermissionUnavailable = false
     let capturedPhotoCount: Int
     let lastCapturedPhoto: UIImage?
     @Binding var activePage: SessionPage
@@ -304,6 +305,7 @@ struct LiveMapView: View {
         ActivityControlSheet(isExpanded: isWorkoutPanelExpanded) {
             SessionStatusCard(
             state: recorder.state,
+                        locationPermissionUnavailable: locationPermissionUnavailable,
             isExpanded: $isWorkoutPanelExpanded,
             expandedHeight: expandedHeight,
             intent: intent,

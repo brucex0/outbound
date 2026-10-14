@@ -33,7 +33,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
             return silentResult(source: .cachedFallback, result: .invalid, latency: .underOneSecond)
         }
         guard request.sessionIntent?.resolvedActivityType == .running else {
-            return immediateFallback(
+            return await immediateFallback(
                 for: moment,
                 preferredMessage: request.preferredMessage,
                 result: .success,
@@ -50,7 +50,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
             },
             fallback: { @MainActor [weak self] in
                 guard let self else { throw CancellationError() }
-                return self.immediateFallback(
+                return await self.immediateFallback(
                     for: moment,
                     preferredMessage: request.preferredMessage,
                     result: .timeout,
@@ -120,7 +120,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
             let fallbackAudio: Data? = if audioMatchesMessage, let cached = response.cachedAudioData {
                 cached
             } else if let fallbackKey {
-                GuideAudioPackStore.shared.localAudioData(for: fallbackKey, transcript: message)
+                await GuideAudioPackStore.shared.cachedOrBundledAudioData(for: fallbackKey, transcript: message)
             } else {
                 nil
             }
@@ -147,7 +147,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
             throw CancellationError()
         } catch {
             if Task.isCancelled { throw CancellationError() }
-            return immediateFallback(
+            return await immediateFallback(
                 for: moment,
                 preferredMessage: request.preferredMessage,
                 result: .unavailable,
@@ -165,12 +165,15 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         preferredMessage: String?,
         result: LiveCoachCueResult,
         latency: LiveCoachLatencyBucket
-    ) -> SessionAnalysisResult {
+    ) async -> SessionAnalysisResult {
         let fallback = Self.fallback(for: moment, language: AppLanguage.current)
         let message = preferredMessage ?? fallback.text
         let fixedCueKey = preferredMessage == nil ? fallback.key : nil
-        let audioData = fixedCueKey.flatMap {
-            GuideAudioPackStore.shared.localAudioData(for: $0, transcript: message)
+        let audioData: Data?
+        if let fixedCueKey {
+            audioData = await GuideAudioPackStore.shared.cachedOrBundledAudioData(for: fixedCueKey, transcript: message)
+        } else {
+            audioData = nil
         }
         return SessionAnalysisResult(
             message: message,
@@ -418,11 +421,12 @@ private final class LiveCoachAnalysisRace {
     private var continuation: CheckedContinuation<SessionAnalysisResult, Error>?
     private var operationTask: Task<Void, Never>?
     private var deadlineTask: Task<Void, Never>?
+    private var deadlineExpired = false
 
     func run(
         deadlineNanoseconds: UInt64,
         operation: @escaping @MainActor () async throws -> SessionAnalysisResult,
-        fallback: @escaping @MainActor () throws -> SessionAnalysisResult
+        fallback: @escaping @MainActor () async throws -> SessionAnalysisResult
     ) async throws -> SessionAnalysisResult {
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
@@ -434,8 +438,11 @@ private final class LiveCoachAnalysisRace {
                 operationTask = Task { @MainActor [weak self] in
                     guard let self else { return }
                     do {
-                        self.resolve(.success(try await operation()))
+                        let result = try await operation()
+                        guard !self.deadlineExpired, !Task.isCancelled else { return }
+                        self.resolve(.success(result))
                     } catch {
+                        guard !self.deadlineExpired, !Task.isCancelled else { return }
                         self.resolve(.failure(error))
                     }
                 }
@@ -443,7 +450,9 @@ private final class LiveCoachAnalysisRace {
                     do {
                         try await Task.sleep(nanoseconds: deadlineNanoseconds)
                         guard let self else { return }
-                        self.resolve(.success(try fallback()))
+                        self.deadlineExpired = true
+                        self.operationTask?.cancel()
+                        self.resolve(.success(try await fallback()))
                     } catch is CancellationError {
                         return
                     } catch {

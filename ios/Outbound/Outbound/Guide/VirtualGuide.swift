@@ -163,9 +163,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         ))
         sessionControlAudioPreloadTask?.cancel()
         sessionControlAudioPreloadTask = Task {
-            await GuideAudioPackStore.shared.preloadAudio(
-                for: GuideAudioPackStore.sessionControlCueKeys + GuideAudioPackStore.countdownCueKeys
-            )
+            await GuideAudioPackStore.shared.preloadSelectedAudio()
         }
         self.profile = profile
         self.persona = persona

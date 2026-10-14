@@ -432,7 +432,7 @@ struct SessionIntent: Identifiable, Hashable {
     )
 }
 
-struct ActivityEventLaunchContext: Hashable, Codable {
+nonisolated struct ActivityEventLaunchContext: Hashable, Codable, Sendable {
     let id: String
     let title: String
     let role: String
