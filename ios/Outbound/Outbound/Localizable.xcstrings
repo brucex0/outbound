@@ -1,6 +1,75 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "post_workout_stretch.preview": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preview movements"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预览动作"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver movimientos"
+          }
+        }
+      }
+    },
+    "post_workout_stretch.up_next": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Up next"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一个动作"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A continuación"
+          }
+        }
+      }
+    },
+    "post_workout_stretch.feedback": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transition sound & haptics"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切换提示音与触感反馈"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonido y vibración al cambiar"
+          }
+        }
+      }
+    },
   "record.setup.treadmill": {
     "extractionState": "manual",
     "localizations": {
@@ -411,19 +480,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Full-body cooldown"
+            "value": "Standard · Lower body"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vuelta a la calma"
+            "value": "Estándar · Tren inferior"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "运动后全身放松"
+            "value": "标准 · 下肢拉伸"
           }
         }
       }
@@ -457,19 +526,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hips & hamstrings"
+            "value": "Quick · Hips & hamstrings"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Caderas e isquiotibiales"
+            "value": "Rápida · Caderas e isquiotibiales"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "髋部与大腿后侧"
+            "value": "快速 · 髋部与大腿后侧"
           }
         }
       }
@@ -1867,19 +1936,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Speak instructions aloud"
+            "value": "Speak posture titles"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Leer instrucciones en voz alta"
+            "value": "Escuchar nombres de posturas"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "朗读动作说明"
+            "value": "播报动作名称"
           }
         }
       }
@@ -2044,19 +2113,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Take a few minutes for an optional, easy stretch routine."
+            "value": "Choose a gentle lower-body routine. A floor or mat and a wall for balance may help."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dedica unos minutos a una rutina opcional y tranquila."
+            "value": "Elige una rutina suave para el tren inferior. Puedes usar una colchoneta y una pared para apoyarte."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "花几分钟完成一套可选的轻松拉伸。"
+            "value": "选择一组轻柔的下肢拉伸。可准备垫子，并在墙边保持平衡。"
           }
         }
       }
@@ -2154,19 +2223,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Next"
+            "value": "Skip"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Siguiente"
+            "value": "Omitir"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "下一步"
+            "value": "跳过"
           }
         }
       }

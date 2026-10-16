@@ -250,6 +250,23 @@ final class APIClient {
         )
     }
 
+    func fetchStretchAudio(cue: String, locale: String, voice: String) async throws -> Data {
+        var req = URLRequest(url: url(for: "/live-coach/stretch/audio"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(["cue": cue, "locale": locale, "voiceProfileId": voice])
+        if let token = try await resolvedAuthToken() {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await authenticatedData(for: req)
+        try validate(response: response, data: data)
+        guard (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type")?.contains("audio/wav") == true,
+              data.count >= 44, data.count <= 512 * 1024 else {
+            throw APIError.http(statusCode: 502, message: "Invalid stretch audio.", code: "invalid_audio")
+        }
+        return data
+    }
+
     func fetchLiveCoachPhraseAudio(sessionID: String, phraseID: String) async throws -> Data {
         var req = URLRequest(url: url(for: "/live-coach/sessions/\(sessionID)/phrases/\(phraseID)/audio"))
         req.httpMethod = "POST"

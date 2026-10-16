@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import AVFoundation
+import AudioToolbox
 
 nonisolated enum PostWorkoutStretchEligibility {
     static func isEligible(_ type: ActivityType) -> Bool { [.running, .cycling, .hiking, .swimming].contains(type) }
@@ -17,6 +18,7 @@ struct StretchMovement: Identifiable, Sendable {
     let side: String?
     let duration: Int
     let icon: String
+    var cue: String { id.split(separator: "_").dropFirst().joined(separator: "_") }
 }
 
 struct StretchRoutine: Sendable, Identifiable {
@@ -24,6 +26,8 @@ struct StretchRoutine: Sendable, Identifiable {
     let title: String
     let durationLabel: String
     let movements: [StretchMovement]
+    var totalSeconds: Int { movements.reduce(0) { $0 + $1.duration } + 3 + max(0, movements.count - 1) * 5 }
+    var calculatedDuration: String { "≈ " + Duration.seconds(totalSeconds).formatted(.time(pattern: .minuteSecond)) }
 }
 
 struct PostSavedStretchContext {
@@ -110,6 +114,11 @@ enum PostWorkoutStretchCatalog {
     @Published var running = false
     @Published var complete = false
     @Published var phase: Phase = .idle
+    @Published var skipped = 0
+    @Published var heldSeconds = 0
+    var audioPlaying: () -> Bool = { false }
+    var onStepEnded: ((Bool, Int) -> Void)?
+    private var stepHeld = 0
     private(set) var routine: StretchRoutine
     private var task: Task<Void, Never>?
 
@@ -130,6 +139,8 @@ enum PostWorkoutStretchCatalog {
             while running && !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
                 guard running, !Task.isCancelled else { return }
+                if audioPlaying() && remaining <= 1 && (phase == .preparing || phase == .transitioning) { continue }
+                if phase == .holding { heldSeconds += 1; stepHeld += 1 }
                 if remaining > 1 {
                     remaining -= 1
                 } else {
@@ -146,6 +157,9 @@ enum PostWorkoutStretchCatalog {
         index = 0
         remaining = 0
         complete = false
+        skipped = 0
+        heldSeconds = 0
+        stepHeld = 0
     }
 
     func startMovementNow() {
@@ -158,7 +172,7 @@ enum PostWorkoutStretchCatalog {
         if phase == .preparing || phase == .transitioning {
             startMovementNow()
         } else if phase == .holding {
-            beginNextMovement()
+            beginNextMovement(skipped: true)
         }
     }
 
@@ -174,7 +188,10 @@ enum PostWorkoutStretchCatalog {
         }
     }
 
-    private func beginNextMovement() {
+    private func beginNextMovement(skipped wasSkipped: Bool = false) {
+        if wasSkipped { skipped += 1 }
+        onStepEnded?(wasSkipped, stepHeld)
+        stepHeld = 0
         guard index < routine.movements.count - 1 else {
             complete = true
             pause()
@@ -200,6 +217,7 @@ struct PostWorkoutStretchView: View {
     @State private var confirmEnd = false
     @State private var completedTracked = false
     @State private var speaksInstructions = true
+    @State private var transitionFeedback = false
 
     init(context: PostSavedStretchContext, activity: SavedActivity, onExit: @escaping () -> Void) {
         self.context = context
@@ -237,9 +255,21 @@ struct PostWorkoutStretchView: View {
                             }
                         }
 
-                        Toggle(stretchText("post_workout_stretch.voice_over", "Speak instructions aloud"), isOn: $speaksInstructions)
+                        DisclosureGroup(stretchText("post_workout_stretch.preview", "Preview movements")) {
+                            ForEach(timer.routine.movements) { movement in
+                                HStack {
+                                    StretchPostureIllustration(cue: movement.cue).frame(width: 56, height: 56)
+                                    VStack(alignment: .leading) {
+                                        Text(movement.title + " · " + (movement.side ?? ""))
+                                        Text(movement.instruction).font(.caption).foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                        Toggle(stretchText("post_workout_stretch.voice_over", "Speak posture titles"), isOn: $speaksInstructions)
                             .fixedSize(horizontal: false, vertical: true)
 
+                        Toggle(stretchText("post_workout_stretch.feedback", "Transition sound & haptics"), isOn: $transitionFeedback)
                         Button(stretchText("post_workout_stretch.start", "Start stretching")) {
                             chosen = true
                             track(.postWorkoutStretchStarted)
@@ -270,39 +300,23 @@ struct PostWorkoutStretchView: View {
                     Spacer()
                 }
             } else {
-                VStack(spacing: 20) {
-                    Spacer()
-                    Image(systemName: timer.movement.icon).font(.system(size: 60)).foregroundStyle(.orange)
-                    if timer.phase == .preparing {
-                        Text(stretchText("post_workout_stretch.get_ready", "Get ready")).font(.headline).foregroundStyle(.secondary)
-                    } else if timer.phase == .transitioning {
-                        Text(stretchText("post_workout_stretch.transition", "Transition")).font(.headline).foregroundStyle(.secondary)
-                    }
-                    Text(timer.movement.title).font(.title.bold())
-                    if let side = timer.movement.side { Text(side).foregroundStyle(.orange) }
-                    Text(timer.movement.instruction).multilineTextAlignment(.center)
-                    Text(timer.remaining.formatted()).font(.system(size: 56, weight: .bold, design: .rounded)).monospacedDigit()
-                    let movementProgress = timer.phase == .holding
-                        ? 1 - Double(timer.remaining) / Double(max(timer.movement.duration, 1))
-                        : 0
-                    ProgressView(value: Double(timer.index) + movementProgress, total: Double(timer.routine.movements.count))
-                    Text(stretchText("post_workout_stretch.safety", "Move only into gentle tension. Stop if you feel pain.")).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                    HStack {
-                        Button(timer.running ? stretchText("post_workout_stretch.pause", "Pause") : stretchText("post_workout_stretch.resume", "Resume")) { toggleTimer() }.buttonStyle(.borderedProminent)
-                        if timer.phase == .preparing || timer.phase == .transitioning {
-                            Button(stretchText("post_workout_stretch.start_now", "Start now")) { timer.startMovementNow() }.buttonStyle(.bordered)
-                        } else if timer.index < timer.routine.movements.count - 1 {
-                            Button(stretchText("post_workout_stretch.next", "Next")) { timer.next() }.buttonStyle(.bordered)
-                        }
-                    }
-                    Button(stretchText("post_workout_stretch.end", "End")) { timer.running ? (confirmEnd = true) : finish("ended_early") }.frame(minHeight: 48)
-                    Spacer()
-                }
+                activePlayer
             }
         }
         .safeAreaPadding(.vertical)
         .background(Color(.systemBackground))
-        .onAppear { track(.postWorkoutStretchOffered) }
+        .onAppear {
+            timer.audioPlaying = { narrator.isPlaying }
+            track(.postWorkoutStretchOffered)
+            timer.onStepEnded = { skipped, seconds in
+                track(.postWorkoutStretchStepEnded, result: skipped ? "skipped" : "held", seconds: seconds)
+            }
+        }
+        .task(id: timer.routine.id) { await narrator.preload(timer.routine.movements.map(\.cue)) }
+        .onChange(of: timer.remaining) { _, seconds in
+            guard chosen, timer.running, timer.phase == .holding, (1...5).contains(seconds) else { return }
+            if speaksInstructions { narrator.play(["one", "two", "three", "four", "five"][seconds - 1]) }
+        }
         .onChange(of: phase) { _, value in
             if value != .active {
                 timer.pause()
@@ -317,14 +331,20 @@ struct PostWorkoutStretchView: View {
         }
         .onChange(of: timer.complete) { _, done in
             if done {
-                narrator.speak(stretchText("post_workout_stretch.release", "Release"), locale: AppLanguage.speechLocale)
+                if speaksInstructions { narrator.play("release") }
                 if !completedTracked {
                     completedTracked = true
-                    track(.postWorkoutStretchCompleted)
+                    track(.postWorkoutStretchCompleted, result: timer.skipped == 0 ? "fully_held" : "with_skips", seconds: timer.heldSeconds)
                 }
             }
         }
-        .onDisappear { timer.leave(); narrator.stop(); UIApplication.shared.isIdleTimerDisabled = false }
+        .onDisappear {
+            timer.leave()
+            timer.onStepEnded = nil
+            timer.audioPlaying = { false }
+            narrator.stop()
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
         .onChange(of: timer.running) { _, running in UIApplication.shared.isIdleTimerDisabled = running }
         .alert(stretchText("post_workout_stretch.end_title", "End stretching?"), isPresented: $confirmEnd) {
             Button(stretchText("post_workout_stretch.end_confirm", "End"), role: .destructive) { finish("ended_early") }
@@ -332,10 +352,54 @@ struct PostWorkoutStretchView: View {
         } message: { Text(stretchText("post_workout_stretch.end_message", "You can stop whenever you want.")) }
     }
 
+    private var activePlayer: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                Spacer()
+                StretchPostureIllustration(cue: timer.movement.cue).frame(height: 150)
+                if timer.phase == .preparing {
+                    Text(stretchText("post_workout_stretch.get_ready", "Get ready")).font(.headline).foregroundStyle(.secondary)
+                } else if timer.phase == .transitioning {
+                    Text(stretchText("post_workout_stretch.transition", "Transition")).font(.headline).foregroundStyle(.secondary)
+                }
+                Text(timer.movement.title).font(.title.bold())
+                if let side = timer.movement.side { Text(side).foregroundStyle(.orange) }
+                Text(timer.movement.instruction).multilineTextAlignment(.center)
+                Text(timer.remaining.formatted()).font(.system(size: 56, weight: .bold, design: .rounded)).monospacedDigit()
+                let movementProgress = timer.phase == .holding
+                    ? 1 - Double(timer.remaining) / Double(max(timer.movement.duration, 1))
+                    : 0
+                ProgressView(value: Double(timer.index) + movementProgress, total: Double(timer.routine.movements.count))
+                Text(stretchText("post_workout_stretch.safety", "Move only into gentle tension. Stop if you feel pain.")).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                HStack {
+                    Button(timer.running ? stretchText("post_workout_stretch.pause", "Pause") : stretchText("post_workout_stretch.resume", "Resume")) { toggleTimer() }.buttonStyle(.borderedProminent)
+                    if timer.phase == .preparing || timer.phase == .transitioning {
+                        Button(stretchText("post_workout_stretch.start_now", "Start now")) { narrator.stop(); timer.startMovementNow() }.buttonStyle(.bordered)
+                    } else if timer.phase == .holding {
+                        Button(stretchText("post_workout_stretch.next", "Next")) { timer.next() }.buttonStyle(.bordered)
+                    }
+                }
+                if timer.index + 1 < timer.routine.movements.count {
+                    Text(nextMovementLabel)
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+                Toggle(stretchText("post_workout_stretch.voice_over", "Speak posture titles"), isOn: $speaksInstructions)
+                Button(stretchText("post_workout_stretch.end", "End")) { timer.running ? (confirmEnd = true) : finish("ended_early") }.frame(minHeight: 48)
+                Spacer()
+            }.padding(24)
+        }
+    }
+
+    private var nextMovementLabel: String {
+        guard timer.index + 1 < timer.routine.movements.count else { return "" }
+        let next = timer.routine.movements[timer.index + 1]
+        return stretchText("post_workout_stretch.up_next", "Up next") + ": " + next.title + " · " + (next.side ?? "")
+    }
+
     private func finish(_ result: String?) {
         timer.leave()
         narrator.stop()
-        if let result { track(.postWorkoutStretchDismissed, result: result) }
+        if let result { track(.postWorkoutStretchDismissed, result: result, seconds: timer.heldSeconds) }
         onExit()
     }
 
@@ -350,7 +414,7 @@ struct PostWorkoutStretchView: View {
             HStack(spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(routine.title).font(.subheadline.weight(.semibold))
-                    Text(routine.durationLabel).font(.caption).foregroundStyle(.secondary)
+                    Text(routine.calculatedDuration).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 8)
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
@@ -380,46 +444,106 @@ struct PostWorkoutStretchView: View {
             narrator.stop()
         } else {
             timer.start()
-            speakCurrentMovement(announceRelease: timer.phase == .transitioning)
+            if timer.phase != .holding { speakCurrentMovement(announceRelease: timer.phase == .transitioning) }
         }
     }
 
     private func speakCurrentMovement(announceRelease: Bool = false) {
-        guard speaksInstructions, phase == .active else { return }
-        let movement = timer.movement
-        var spokenParts = [String]()
-        if announceRelease {
-            spokenParts.append(stretchText("post_workout_stretch.release", "Release"))
+        guard phase == .active else { return }
+        if transitionFeedback && announceRelease {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            AudioServicesPlaySystemSound(1104)
         }
-        spokenParts.append(contentsOf: [movement.title, movement.side, movement.instruction].compactMap { $0 })
-        let spokenText = spokenParts
-            .joined(separator: ". ")
-        narrator.speak(spokenText, locale: AppLanguage.speechLocale)
+        guard speaksInstructions else { return }
+        narrator.play(timer.movement.cue, releaseFirst: announceRelease)
     }
 
-    private func track(_ event: ProductEventName, result: String? = nil, routineID: String? = nil) {
+    private func track(_ event: ProductEventName, result: String? = nil, routineID: String? = nil, seconds: Int? = nil) {
         var properties: [ProductPropertyKey: AnalyticsValue] = [
             .activityType: .string(context.activityType.rawValue),
             .routineID: .string(routineID ?? timer.routine.id)
         ]
         if let result { properties[.result] = .string(result) }
+        if let seconds { properties[.countBucket] = .string(seconds == 0 ? "zero" : seconds < 20 ? "under_20" : seconds < 60 ? "20_to_59" : "60_plus") }
         Task { await analytics?.track(.init(event, properties: properties)) }
     }
 }
 
 @MainActor
 private final class StretchNarrator {
-    private let synthesizer = AVSpeechSynthesizer()
+    private let player = GuideAudioPlayer()
+    var isPlaying: Bool { player.isSpeaking }
+    private var clips: [String: Data] = [:]
+    private let voice = GuideCatalogStore().selectedVoice.id
+    private var locale: String { AppLanguage.currentIdentifier }
+    private var directory: URL { FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("StretchAudio-v1") }
 
-    func speak(_ text: String, locale: Locale) {
-        synthesizer.stopSpeaking(at: .immediate)
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: locale.identifier)
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
-        synthesizer.speak(utterance)
+    func preload(_ movementCues: [String]) async {
+        var seen = Set<String>()
+        let cues = (movementCues + ["release", "five", "four", "three", "two", "one"]).filter { seen.insert($0).inserted }
+        for cue in cues {
+            guard !Task.isCancelled else { return }
+            let url = directory.appendingPathComponent("\(locale)-\(voice)-\(cue).wav")
+            if let data = try? Data(contentsOf: url), (try? AVAudioPlayer(data: data)) != nil { clips[cue] = data; continue }
+            do {
+                let data = try await APIClient.shared.fetchStretchAudio(cue: cue, locale: locale, voice: voice)
+                guard (try? AVAudioPlayer(data: data)) != nil else {
+                    ActivityDiagnosticLog.error(.lifecycle, "Stretch audio decode failed cue=\(cue)")
+                    continue
+                }
+                clips[cue] = data
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                try data.write(to: url, options: .atomic)
+            } catch is CancellationError { return }
+            catch {
+                ActivityDiagnosticLog.error(.lifecycle, "Stretch audio preload failed cue=\(cue) error=\(ActivityDiagnosticLog.errorCategory(error))")
+            }
+        }
     }
 
-    func stop() {
-        synthesizer.stopSpeaking(at: .immediate)
+    func play(_ cue: String, releaseFirst: Bool = false, completion: (() -> Void)? = nil) {
+        let sequence = (releaseFirst ? ["release", cue] : [cue]).compactMap { clips[$0] }
+        guard !sequence.isEmpty else {
+            ActivityDiagnosticLog.error(.lifecycle, "Stretch audio unavailable cue=\(cue)")
+            completion?()
+            return
+        }
+        if !player.playSequence(sequence, completion: completion) { completion?() }
+    }
+    func stop() { player.stopSpeaking(at: .immediate) }
+}
+
+/// Schematic setup reference; the orange limb marks the working side.
+private struct StretchPostureIllustration: View {
+    let cue: String
+    var body: some View {
+        Canvas { context, size in
+            let points: [[CGPoint]] = posturePoints(cue)
+            let scale = min(size.width / 100, size.height / 100)
+            let offset = CGPoint(x: (size.width - 100 * scale) / 2, y: (size.height - 100 * scale) / 2)
+            if let first = points.first?.first {
+                let lying = cue.hasPrefix("glute") || cue.hasPrefix("hamstring")
+                let center = CGPoint(x: offset.x + (first.x + (lying ? -7 : 0)) * scale, y: offset.y + (first.y + (lying ? 0 : -7)) * scale)
+                context.stroke(Path(ellipseIn: CGRect(x: center.x - 6 * scale, y: center.y - 6 * scale, width: 12 * scale, height: 12 * scale)), with: .color(.primary), lineWidth: 3 * scale)
+            }
+            for (index, line) in points.enumerated() {
+                var path = Path()
+                for (i, point) in line.enumerated() {
+                    let p = CGPoint(x: offset.x + point.x * scale, y: offset.y + point.y * scale)
+                    if i == 0 { path.move(to: p) } else { path.addLine(to: p) }
+                }
+                context.stroke(path, with: .color(index == points.count - 1 ? .orange : .primary), style: StrokeStyle(lineWidth: 4 * scale, lineCap: .round, lineJoin: .round))
+            }
+        }.accessibilityHidden(true)
+    }
+    private func posturePoints(_ cue: String) -> [[CGPoint]] {
+        let raw: [[(Double, Double)]]
+        if cue.hasPrefix("glute") { raw = [[(15,75),(35,75),(55,60),(75,60)],[(35,75),(45,45),(60,55)],[(45,45),(70,40),(75,60)],[(55,60),(55,80),(80,80)]] }
+        else if cue.hasPrefix("hamstring") { raw = [[(15,80),(45,80)],[(30,80),(50,55),(57,50)],[(45,80),(80,80)],[(45,80),(60,35)]] }
+        else if cue.hasPrefix("inner") { raw = [[(50,20),(50,55)],[(50,35),(30,60)],[(50,55),(30,80),(50,75)],[(50,55),(70,80),(50,75)]] }
+        else if cue.hasPrefix("calf") { raw = [[(65,20),(50,55)],[(60,30),(85,35)],[(50,55),(70,75),(85,75)],[(50,55),(25,85),(15,85)]] }
+        else if cue.hasPrefix("quad") { raw = [[(50,15),(50,55)],[(50,55),(50,90)],[(50,30),(30,55),(35,65)],[(50,55),(25,80),(35,65)]] }
+        else { raw = [[(50,15),(50,55)],[(50,35),(70,55)],[(50,55),(70,60),(70,85)],[(50,55),(30,85),(15,85)]] }
+        return raw.map { $0.map { x, y in CGPoint(x: cue.hasSuffix("right") ? 100 - x : x, y: y) } }
     }
 }
