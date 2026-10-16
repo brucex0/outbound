@@ -19,6 +19,8 @@ import { LiveCoachPhraseService } from "../services/liveCoach/liveCoachPhraseSer
 import { LIVE_COACH_STREAM_CONTENT_TYPE, liveCoachStreamFrame } from "../services/liveCoach/liveCoachStreamProtocol.js";
 import { LIVE_COACH_MOMENTS } from "../services/liveCoach/liveCoachTypes.js";
 
+import { stretchCueAudio, stretchCueKeys } from "../services/liveCoach/stretchCueAudio.js";
+
 const router = new Hono<AppEnv>();
 const identifier = z.string().uuid();
 
@@ -181,6 +183,26 @@ router.get("/catalog", zValidator("query", z.object({ locale: z.enum(SUPPORTED_A
   if (!appUser) return c.json({ error: "Authentication required.", code: "authentication_required" }, 401);
   const locale = c.req.valid("query").locale ?? c.get("locale");
   return c.json(publicLiveCoachCatalog(loadLiveCoachFeatureConfig(), locale));
+});
+
+// Only catalog keys reach TTS; no user-authored text or workout context is accepted.
+router.post("/stretch/audio", zValidator("json", z.object({
+  cue: z.enum(stretchCueKeys),
+  locale: z.enum(SUPPORTED_AI_LOCALES),
+  voiceProfileId: z.enum(VOICE_PROFILE_IDS),
+}).strict()), async (c) => {
+  const unavailable = requireDatabase(c);
+  if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c);
+  if (!user) return c.json({ error: "Authentication required.", code: "authentication_required" }, 401);
+  if (!liveCoachCueRepository.allowSessionRequest(`stretch:${user.id}`)) {
+    return c.json({ error: "Stretch audio request limit reached.", code: "rate_limited" }, 429);
+  }
+  const input = c.req.valid("json");
+  const audio = await stretchCueAudio(input.cue, input.locale, input.voiceProfileId);
+  c.header("Content-Type", "audio/wav");
+  c.header("Cache-Control", "private, max-age=86400");
+  return c.body(Uint8Array.from(audio).buffer);
 });
 
 router.post("/sessions", zValidator("json", createSessionSchema), async (c) => {
