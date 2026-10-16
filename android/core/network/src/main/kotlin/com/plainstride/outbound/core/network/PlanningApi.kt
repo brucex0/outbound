@@ -76,6 +76,9 @@ data class CreateTrainingGoalRequest(
 @Serializable data class PersonalizationMutationResponse(val accepted: Boolean? = null, val adjustment: AdjustmentProposal? = null, val personalization: PersonalizationSnapshot)
 
 interface PlanningApiService {
+    @POST("v1/live-coach/stretch/audio")
+    suspend fun stretchAudio(@Header("Authorization") authorization: String, @Body request: StretchAudioRequest): Response<okhttp3.ResponseBody>
+
     @GET("v1/planning/state") suspend fun state(@Header("Authorization") authorization: String): Response<PlanningState>
     @GET("v1/planning/recommendations") suspend fun recommendations(@Header("Authorization") authorization: String): Response<PlanRecommendationsResponse>
     @GET("v1/planning/activity-suggestion") suspend fun activitySuggestion(@Header("Authorization") authorization: String): Response<ActivitySuggestionEnvelope>
@@ -103,3 +106,5 @@ fun createPlanningApi(baseUrl: String, client: OkHttpClient): PlanningApiService
     .addConverterFactory(PlainstrideJson.asConverterFactory("application/json".toMediaType()))
     .build()
     .create(PlanningApiService::class.java)
+
+@Serializable data class StretchAudioRequest(val cue: String, val locale: String, val voiceProfileId: String = "plainstride_warm_1")

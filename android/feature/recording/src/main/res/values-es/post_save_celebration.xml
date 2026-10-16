@@ -4,9 +4,9 @@
     <string name="recording_post_save_accessibility">Celebración de actividad guardada</string>
     <string name="recording_post_save_done">Listo</string>
     <string name="recording_post_save_message">Hoy te hiciste un espacio para moverte.</string>
-    <string name="recording_post_save_program_full_body">Vuelta a la calma</string>
+    <string name="recording_post_save_program_full_body">Estándar · Tren inferior</string>
     <string name="recording_post_save_program_full_body_duration">Unos 5 min</string>
-    <string name="recording_post_save_program_hips_hamstrings">Caderas e isquiotibiales</string>
+    <string name="recording_post_save_program_hips_hamstrings">Rápida · Caderas e isquiotibiales</string>
     <string name="recording_post_save_program_hips_hamstrings_duration">Unos 2,5 min</string>
     <string name="recording_post_save_program_title">Elige una rutina</string>
     <string name="recording_stretch_instruction_calf">Apóyate y entra suavemente en el estiramiento.</string>

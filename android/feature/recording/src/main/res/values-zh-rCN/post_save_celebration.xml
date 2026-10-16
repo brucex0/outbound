@@ -4,9 +4,9 @@
     <string name="recording_post_save_accessibility">活动保存庆祝画面</string>
     <string name="recording_post_save_done">完成</string>
     <string name="recording_post_save_message">今天，你为自己留出了活动的时间。</string>
-    <string name="recording_post_save_program_full_body">运动后全身放松</string>
+    <string name="recording_post_save_program_full_body">标准 · 下肢拉伸</string>
     <string name="recording_post_save_program_full_body_duration">约 5 分钟</string>
-    <string name="recording_post_save_program_hips_hamstrings">髋部与大腿后侧</string>
+    <string name="recording_post_save_program_hips_hamstrings">快速 · 髋部与大腿后侧</string>
     <string name="recording_post_save_program_hips_hamstrings_duration">约 2 分半钟</string>
     <string name="recording_post_save_program_title">选择拉伸方案</string>
     <string name="recording_stretch_instruction_calf">扶稳身体，轻轻进入拉伸。</string>

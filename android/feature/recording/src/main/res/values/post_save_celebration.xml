@@ -4,9 +4,9 @@
     <string name="recording_post_save_accessibility">Activity saved celebration</string>
     <string name="recording_post_save_done">Done</string>
     <string name="recording_post_save_message">You made time for this today.</string>
-    <string name="recording_post_save_program_full_body">Full-body cooldown</string>
+    <string name="recording_post_save_program_full_body">Standard · Lower body</string>
     <string name="recording_post_save_program_full_body_duration">About 5 min</string>
-    <string name="recording_post_save_program_hips_hamstrings">Hips &amp; hamstrings</string>
+    <string name="recording_post_save_program_hips_hamstrings">Quick · Hips &amp; hamstrings</string>
     <string name="recording_post_save_program_hips_hamstrings_duration">About 2½ min</string>
     <string name="recording_post_save_program_title">Choose a stretch</string>
     <string name="recording_stretch_instruction_calf">Stand supported and gently lean into the stretch.</string>

@@ -673,6 +673,7 @@ fun RecordingRoute(
             val review = requireNotNull(postSaveReview)
             val export = postSavePhotoAlbumExport
             PostWorkoutStretchRoute(
+                fetchAudio = viewModel::fetchStretchAudio,
                 kind = requireNotNull(postSaveStretchKind),
                 track = review.snapshot.track,
                 sessionKey = review.snapshot.sessionId ?: review.snapshot.recordedAtEpochMilliseconds.toString(),
@@ -683,8 +684,8 @@ fun RecordingRoute(
                     postSaveStretchKind = null
                     onSaved(review, export)
                 },
-                onEvent = { name, routineId, result ->
-                    viewModel.trackStretchEvent(name, requireNotNull(postSaveStretchKind), routineId, result)
+                onEvent = { name, routineId, result, seconds ->
+                    viewModel.trackStretchEvent(name, requireNotNull(postSaveStretchKind), routineId, result, seconds)
                 },
             )
         } else if (postSaveCelebrationReview != null) {

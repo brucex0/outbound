@@ -55,6 +55,8 @@ data class StretchMovement(
     val seconds: Int,
 )
 
+private enum class StretchPhase { SETUP, HOLD, TRANSITION }
+
 data class StretchRoutine(
     val id: String,
     val title: Int,
@@ -134,7 +136,8 @@ fun PostWorkoutStretchRoute(
     track: List<RecordedLocationSample>,
     sessionKey: String,
     onDone: () -> Unit,
-    onEvent: (String, String?, String?) -> Unit,
+    onEvent: (String, String?, String?, Int?) -> Unit,
+    fetchAudio: suspend (String, String) -> ByteArray?,
 ) {
     val routines = remember(kind) { PostWorkoutStretchCatalog.routines(kind) }
     val initialRoutine = routines?.firstOrNull()
@@ -150,14 +153,41 @@ fun PostWorkoutStretchRoute(
     var running by remember { mutableStateOf(false) }
     var complete by remember { mutableStateOf(false) }
     var confirmEnd by remember { mutableStateOf(false) }
+    var phase by remember { mutableStateOf(StretchPhase.SETUP) }
+    var speaks by remember { mutableStateOf(true) }
+    var feedback by remember { mutableStateOf(false) }
+    var preview by remember { mutableStateOf(false) }
+    var skipped by remember { mutableIntStateOf(0) }
+    var stepHeld by remember { mutableIntStateOf(0) }
+    var totalHeld by remember { mutableIntStateOf(0) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val audio = remember { StretchAudio(context) }
     val view = LocalView.current
     val owner = LocalLifecycleOwner.current
     val movement = selectedRoutine.movements[movementIndex]
 
+    fun advance(skip: Boolean) {
+        onEvent("post_workout_stretch_step_ended", selectedRoutine.id, if (skip) "skipped" else "held", stepHeld)
+        if (skip) skipped += 1
+        stepHeld = 0
+        if (movementIndex == selectedRoutine.movements.lastIndex) {
+            complete = true
+            running = false
+            view.keepScreenOn = false
+            if (speaks) audio.play("release")
+            onEvent("post_workout_stretch_completed", selectedRoutine.id, if (skipped == 0) "fully_held" else "with_skips", totalHeld)
+        } else {
+            movementIndex += 1
+            phase = StretchPhase.TRANSITION
+            secondsLeft = 5
+        }
+    }
+
     fun finish(result: String?) {
+        audio.stop()
         running = false
         view.keepScreenOn = false
-        result?.let { onEvent("post_workout_stretch_dismissed", selectedRoutine.id, it) }
+        result?.let { onEvent("post_workout_stretch_dismissed", selectedRoutine.id, it, totalHeld) }
         onDone()
     }
 
@@ -165,37 +195,51 @@ fun PostWorkoutStretchRoute(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_STOP || event == Lifecycle.Event.ON_PAUSE) {
                 running = false
+                audio.stop()
                 view.keepScreenOn = false
             }
         }
         owner.lifecycle.addObserver(observer)
         onDispose {
+            audio.close()
             owner.lifecycle.removeObserver(observer)
             view.keepScreenOn = false
         }
     }
 
-    LaunchedEffect(running, movementIndex, selectedRoutine.id) {
-        while (running && !complete) {
-            delay(1_000)
-            if (secondsLeft <= 1) {
-                if (movementIndex == selectedRoutine.movements.lastIndex) {
-                    complete = true
-                    running = false
-                    view.keepScreenOn = false
-                    onEvent("post_workout_stretch_completed", selectedRoutine.id, null)
-                } else {
-                    movementIndex += 1
-                    secondsLeft = selectedRoutine.movements[movementIndex].seconds
-                }
-            } else {
-                secondsLeft -= 1
+    LaunchedEffect(selectedRoutine.id) {
+        audio.preload(selectedRoutine.movements.map { it.id.substringAfter('_') }.distinct(), fetchAudio)
+    }
+    LaunchedEffect(speaks) { if (!speaks) audio.stop() }
+    LaunchedEffect(running, movementIndex, selectedRoutine.id, phase, speaks) {
+        if (running && phase != StretchPhase.HOLD) {
+            if (feedback && phase == StretchPhase.TRANSITION) {
+                view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                view.playSoundEffect(android.view.SoundEffectConstants.CLICK)
             }
+            if (speaks) {
+                val started = android.os.SystemClock.elapsedRealtime()
+                audio.playAndWait(movement.id.substringAfter('_'), phase == StretchPhase.TRANSITION)
+                secondsLeft = maxOf(1, secondsLeft - ((android.os.SystemClock.elapsedRealtime() - started) / 1000).toInt())
+            }
+        }
+        while (running && !complete) {
+            if (phase == StretchPhase.HOLD && secondsLeft in 1..5 && speaks) {
+                audio.play(listOf("one", "two", "three", "four", "five")[secondsLeft - 1])
+            }
+            delay(1_000)
+            if (phase == StretchPhase.HOLD) { stepHeld += 1; totalHeld += 1 }
+            if (secondsLeft <= 1) {
+                if (phase != StretchPhase.HOLD) {
+                    phase = StretchPhase.HOLD
+                    secondsLeft = movement.seconds
+                } else advance(false)
+            } else secondsLeft -= 1
         }
     }
 
     LaunchedEffect(sessionKey) {
-        onEvent("post_workout_stretch_offered", initialRoutine.id, null)
+        onEvent("post_workout_stretch_offered", initialRoutine.id, null, null)
     }
 
     BackHandler {
@@ -209,7 +253,7 @@ fun PostWorkoutStretchRoute(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp),
+        modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp).then(if (chosen && !complete) Modifier.verticalScroll(rememberScrollState()) else Modifier),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if (!chosen) {
@@ -239,17 +283,37 @@ fun PostWorkoutStretchRoute(
                         onClick = {
                             selectedRoutine = routine
                             movementIndex = 0
-                            onEvent("post_workout_stretch_program_selected", routine.id, null)
+                            onEvent("post_workout_stretch_program_selected", routine.id, null, null)
                         },
                     )
                 }
 
+                TextButton(onClick = { preview = !preview }) { Text(stringResource(R.string.stretch_preview)) }
+                if (preview) selectedRoutine.movements.forEach { step ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        StretchIllustration(step.id, Modifier.size(56.dp))
+                        Column {
+                            Text(stringResource(step.title) + " · " + (step.side?.let { stringResource(it) } ?: ""))
+                            Text(stringResource(step.instruction), style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.Switch(checked = speaks, onCheckedChange = { speaks = it })
+                    Text(stringResource(R.string.stretch_voice))
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.Switch(checked = feedback, onCheckedChange = { feedback = it })
+                    Text(stringResource(R.string.stretch_feedback))
+                }
                 Button(
                     onClick = {
+                        secondsLeft = 3
+                        phase = StretchPhase.SETUP
                         chosen = true
                         running = true
                         view.keepScreenOn = true
-                        onEvent("post_workout_stretch_started", selectedRoutine.id, null)
+                        onEvent("post_workout_stretch_started", selectedRoutine.id, null, null)
                     },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                 ) {
@@ -271,6 +335,8 @@ fun PostWorkoutStretchRoute(
             Spacer(Modifier.weight(1f))
         } else {
             Spacer(Modifier.weight(1f))
+            StretchIllustration(movement.id, Modifier.size(150.dp))
+            if (phase != StretchPhase.HOLD) Text(stringResource(R.string.stretch_get_ready))
             Text(stringResource(movement.title), style = MaterialTheme.typography.headlineMedium)
             movement.side?.let { Text(stringResource(it), style = MaterialTheme.typography.titleMedium) }
             Text(stringResource(movement.instruction))
@@ -279,30 +345,35 @@ fun PostWorkoutStretchRoute(
                 style = MaterialTheme.typography.displayMedium,
             )
             LinearProgressIndicator(
-                progress = { movementIndex.toFloat() / selectedRoutine.movements.size },
+                progress = { (movementIndex + if (phase == StretchPhase.HOLD) 1f - secondsLeft.toFloat() / movement.seconds else 0f) / selectedRoutine.movements.size },
                 modifier = Modifier.fillMaxWidth(),
             )
             Text(stringResource(R.string.stretch_safety))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(onClick = {
+                    audio.stop()
                     running = !running
                     view.keepScreenOn = running
                 }) {
                     Text(stringResource(if (running) R.string.stretch_pause else R.string.stretch_resume))
                 }
                 OutlinedButton(onClick = {
-                    if (movementIndex == selectedRoutine.movements.lastIndex) {
-                        complete = true
-                        running = false
-                        view.keepScreenOn = false
-                        onEvent("post_workout_stretch_completed", selectedRoutine.id, null)
-                    } else {
-                        movementIndex += 1
-                        secondsLeft = selectedRoutine.movements[movementIndex].seconds
-                    }
+                    audio.stop()
+                    if (phase != StretchPhase.HOLD) {
+                        phase = StretchPhase.HOLD
+                        secondsLeft = movement.seconds
+                    } else advance(true)
                 }) {
-                    Text(stringResource(if (movementIndex == selectedRoutine.movements.lastIndex) R.string.stretch_finish else R.string.stretch_next))
+                    Text(stringResource(if (phase != StretchPhase.HOLD) R.string.stretch_start_now else R.string.stretch_next))
                 }
+            }
+            if (movementIndex < selectedRoutine.movements.lastIndex) {
+                val next = selectedRoutine.movements[movementIndex + 1]
+                Text(stringResource(R.string.stretch_up_next) + ": " + stringResource(next.title) + " · " + (next.side?.let { stringResource(it) } ?: ""))
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.Switch(checked = speaks, onCheckedChange = { speaks = it })
+                Text(stringResource(R.string.stretch_voice))
             }
             TextButton(onClick = { if (running) confirmEnd = true else finish("ended_early") }) {
                 Text(stringResource(R.string.stretch_end))
@@ -344,10 +415,40 @@ private fun StretchRoutineOption(routine: StretchRoutine, selected: Boolean, onC
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(stringResource(routine.title), style = MaterialTheme.typography.titleSmall)
-                Text(stringResource(routine.durationLabel), style = MaterialTheme.typography.bodySmall)
+                val duration = routine.movements.sumOf { it.seconds } + 3 + (routine.movements.size - 1) * 5
+                Text("≈ ${duration / 60}:${(duration % 60).toString().padStart(2, '0')}", style = MaterialTheme.typography.bodySmall)
             }
             Spacer(Modifier.width(8.dp))
             RadioButton(selected = selected, onClick = onClick)
+        }
+    }
+}
+
+@Composable
+private fun StretchIllustration(id: String, modifier: Modifier) {
+    val color = MaterialTheme.colorScheme.onSurface
+    val accent = MaterialTheme.colorScheme.primary
+    androidx.compose.foundation.Canvas(modifier) {
+        val cue = id.substringAfter('_')
+        val lines = when {
+            cue.startsWith("glute") -> listOf(listOf(15f to 75f,35f to 75f,55f to 60f,75f to 60f),listOf(35f to 75f,45f to 45f,60f to 55f),listOf(45f to 45f,70f to 40f,75f to 60f),listOf(55f to 60f,55f to 80f,80f to 80f))
+            cue.startsWith("hamstring") -> listOf(listOf(15f to 80f,45f to 80f),listOf(30f to 80f,50f to 55f,57f to 50f),listOf(45f to 80f,80f to 80f),listOf(45f to 80f,60f to 35f))
+            cue.startsWith("inner") -> listOf(listOf(50f to 20f,50f to 55f),listOf(50f to 35f,30f to 60f),listOf(50f to 55f,30f to 80f,50f to 75f),listOf(50f to 55f,70f to 80f,50f to 75f))
+            cue.startsWith("calf") -> listOf(listOf(65f to 20f,50f to 55f),listOf(60f to 30f,85f to 35f),listOf(50f to 55f,70f to 75f,85f to 75f),listOf(50f to 55f,25f to 85f,15f to 85f))
+            cue.startsWith("quad") -> listOf(listOf(50f to 15f,50f to 55f),listOf(50f to 55f,50f to 90f),listOf(50f to 30f,30f to 55f,35f to 65f),listOf(50f to 55f,25f to 80f,35f to 65f))
+            else -> listOf(listOf(50f to 15f,50f to 55f),listOf(50f to 35f,70f to 55f),listOf(50f to 55f,70f to 60f,70f to 85f),listOf(50f to 55f,30f to 85f,15f to 85f))
+        }
+        val scale = minOf(size.width, size.height) / 100f
+        val first = lines.first().first()
+        val lying = cue.startsWith("glute") || cue.startsWith("hamstring")
+        val headX = first.first + if (lying) -7f else 0f
+        val headY = first.second + if (lying) 0f else -7f
+        drawCircle(color, 6f * scale, androidx.compose.ui.geometry.Offset((if (cue.endsWith("right")) 100f - headX else headX) * scale, headY * scale), style = androidx.compose.ui.graphics.drawscope.Stroke(3f * scale))
+        lines.forEachIndexed { index, points ->
+            points.zipWithNext().forEach { (a,b) ->
+                fun point(p: Pair<Float, Float>) = androidx.compose.ui.geometry.Offset((if (cue.endsWith("right")) 100f - p.first else p.first) * scale, p.second * scale)
+                drawLine(if (index == lines.lastIndex) accent else color, point(a), point(b), 4f * scale, androidx.compose.ui.graphics.StrokeCap.Round)
+            }
         }
     }
 }

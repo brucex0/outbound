@@ -363,13 +363,39 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.DistanceBucket to distanceBucket(current.distanceMeters),
         )))
     }
-    fun trackStretchEvent(name: String, kind: ActivityKind, routineId: String?, result: String?) {
+    suspend fun fetchStretchAudio(cue: String, locale: String): ByteArray? {
+        val token = accessTokens.validAccessToken() ?: return null
+        return try {
+            val response = planningApi.stretchAudio("Bearer $token", com.plainstride.outbound.core.network.StretchAudioRequest(cue, locale))
+            if (!response.isSuccessful) {
+                Log.w("StretchAudio", "Fetch failed status=${response.code()} cue=$cue")
+                null
+            } else response.body()?.use { body ->
+                if (body.contentType()?.toString()?.startsWith("audio/wav") != true || body.contentLength() > 512 * 1024) {
+                    Log.w("StretchAudio", "Invalid audio response cue=$cue")
+                    null
+                } else body.bytes().let { bytes ->
+                    if (bytes.size in 44..512 * 1024) bytes else {
+                        Log.w("StretchAudio", "Invalid audio size cue=$cue")
+                        null
+                    }
+                }
+            }
+        } catch (error: kotlinx.coroutines.CancellationException) { throw error }
+        catch (error: Exception) {
+            Log.w("StretchAudio", "Fetch failed cue=$cue type=${error.javaClass.simpleName}")
+            null
+        }
+    }
+
+    fun trackStretchEvent(name: String, kind: ActivityKind, routineId: String?, result: String?, seconds: Int? = null) {
         val routine = PostWorkoutStretchCatalog.routines(kind).orEmpty().firstOrNull { it.id == routineId } ?: return
         val properties = mutableMapOf<AnalyticsProperty, Any>(
             AnalyticsProperty.ActivityType to kind.name.lowercase(),
             AnalyticsProperty.RoutineId to routine.id,
         )
         result?.let { properties[AnalyticsProperty.Result] = it }
+        seconds?.let { properties[AnalyticsProperty.CountBucket] = when { it == 0 -> "zero"; it < 20 -> "under_20"; it < 60 -> "20_to_59"; else -> "60_plus" } }
         if (name.startsWith("post_workout_stretch_")) analytics.record(AnalyticsEvent(name, properties))
     }
 
