@@ -5,6 +5,7 @@ Open this when validating changes, installing on device, editing signing setting
 ## Signing And Entitlements
 
 - Bundle ID: `plainstride.outbound`.
+- Watch background modes: `WKBackgroundModes = [workout-processing]` and `UIBackgroundModes = [location]`. Keep location out of `WKBackgroundModes`; App Store validation rejects it there. Both declarations are needed for workout processing and standalone background route recording.
 - Watch app bundle ID: `plainstride.outbound.watchkitapp`; its companion bundle ID is `plainstride.outbound`.
 - Development team in the project: Plainstride Labs Inc. (`WT54K7D7VH`).
 - Current iOS deployment target in Xcode: `18.0`.

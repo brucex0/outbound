@@ -8,7 +8,7 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
 - Version: `1.7.8`
-- Build: `59`
+- Build: `60`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -54,12 +54,12 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
+- [iOS] Correct Watch background location declaration for App Store
+- [iOS] Prepare Plainstride 1.7.8 build 59 for public release
 - [iOS] Add Watch and phone-only flow regression tests
 - [iOS] Stabilize stretch audio setup after saving an activity
 - [iOS] Replace stretch countdown speech with clock ticks
-- [iOS] Add Apple Workout coexistence and standalone Watch running
-- [iOS] Improve guided stretch timing and posture previews
-- Plus 85 more fixes and improvements
+- Plus 87 more fixes and improvements
 
 ### App Store What's New
 
@@ -180,6 +180,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.7.8 (59)`, validate, and upload from Xcode Organizer.
+- Archive `1.7.8 (60)`, validate, and upload from Xcode Organizer.
 - After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.
