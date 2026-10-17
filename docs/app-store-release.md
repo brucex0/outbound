@@ -5,11 +5,11 @@ Open this when preparing a TestFlight or App Store build.
 ## Repository Readiness
 
 - Customer-facing app name: **Plainstride**. The existing internal target, scheme, bundle IDs, backend identifiers, and migration-safe storage names remain `Outbound` where changing them would break integrations or continuity.
-- Public version `1.1 (35)` is released. The current release candidate is `1.2 (36)`.
+- Prepared version/build are recorded in `docs/testflight-1.0.md`; App Store Connect is the authority for the published version.
 - App bundle ID: `plainstride.outbound`.
 - Live Activity extension bundle ID: `plainstride.outbound.liveactivity`.
 - Version 1 supports iPhone only. `TARGETED_DEVICE_FAMILY` is `1` for every target and the plist has no iPad orientation declaration.
-- Version and build number come from `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in the Xcode project. Increment the build number before every upload.
+- Version and build number come from `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in the Xcode project. Increment the build number for changed app content; retry an unchanged signed IPA with the same build number.
 - Release uses the Plainstride Labs Inc. team (`WT54K7D7VH`) and automatic signing.
 - `PrivacyInfo.xcprivacy` declares the app's `UserDefaults` required-reason API use. Keep it current when adding covered APIs.
 - `ITSAppUsesNonExemptEncryption` is `false` because the app relies on exempt operating-system and HTTPS encryption and does not implement proprietary cryptography. Reassess this if cryptography is added.
@@ -49,7 +49,7 @@ Run the repository helper from a clean tracked worktree:
 ./scripts/publish-testflight.sh
 ```
 
-The helper keeps the iPhone app, Live Activity extension, and embedded Watch app on the same version and build number, generates brief release notes from product commits after the latest release-preparation commit, saves them in `docs/testflight-1.0.md`, runs the unsigned Release compile check, commits the verified metadata, creates a signed archive in Xcode Organizer's standard archive folder, and uploads it to App Store Connect with external TestFlight eligibility. It then waits for Apple to process the build, copies the generated notes into the English (U.S.) **What to Test** field, and assigns the build to the app's sole internal TestFlight group. It stops before upload if another commit lands during archiving. It does not run tests, and its default mode does not publish the app publicly.
+The helper keeps the iPhone app, Live Activity extension, and embedded Watch app on the same version and build number, generates brief release notes from product commits after the last change to the submission sheet’s build identity, saves them in `docs/testflight-1.0.md`, runs the unsigned Release compile check, commits the verified metadata, creates a signed archive in Xcode Organizer's standard archive folder, and uploads it to App Store Connect with external TestFlight eligibility. It then waits for Apple to process the build, copies the generated notes into the English (U.S.) **What to Test** field, and assigns the build to the app's sole internal TestFlight group. It stops before upload if another commit lands during archiving. It does not run tests, and its default mode does not publish the app publicly.
 
 Release notes use the newest five commit subjects that touch `ios/Outbound`,
 `backend`, or `Package.swift`. When more changes exist, the final bullet reports
@@ -89,87 +89,139 @@ exact App Store Connect name:
 The same value can be supplied as `BETA_GROUP`. `BETA_LOCALE` overrides the
 release-note locale, and `ASC_PROCESSING_TIMEOUT` / `ASC_POLL_INTERVAL` tune the
 default one-hour processing wait and 30-second polling interval. Assigning an
-external group does not bypass Apple's Beta App Review. The upload/export
-phase is bounded by `ASC_UPLOAD_TIMEOUT` (default 900 seconds per attempt).
-With an API key, the script checks App Store Connect before uploading. It
-resets one `AWAITING_UPLOAD` reservation older than 30 minutes only when no
-build or app binary exists and no `altool` process is running. If `altool`
-fails or times out, it waits briefly, checks whether Apple accepted the build,
-and makes at most one more upload attempt using the same signed IPA. It can
-also reset the reservation created by its own failed attempt. An accepted
-build is never reset or uploaded again. The archive and IPA are preserved if
-recovery cannot finish.
+external group does not bypass Apple's Beta App Review. The API-key workflow exports the signed IPA, runs packaged-bundle preflight,
+and uses Apple's supported **Build Upload API** to upload the IPA directly.
+The native local analysis-description/SPI transfer is not part of this path.
+`ASC_UPLOAD_METHOD=altool` selects the older uploader explicitly; its attempts
+and IPA export use `ASC_UPLOAD_TIMEOUT` (900 seconds by default).
 
-### Recover a stalled upload
+### Reliable delivery and recovery
 
-Keep the signed IPA printed by the script after an upload failure. Inspect
-Apple's latest upload records before trying again:
+With an App Manager/Admin key authorized to manage App Store versions, the public-release command remains:
 
 ```sh
-ruby scripts/testflight-upload-status.rb --latest
+./scripts/publish-testflight.sh --public-release
 ```
 
-Use the version and build of the intended IPA to inspect its upload files:
+A fresh build checks Xcode first-launch/license readiness before changing local
+version metadata. The workflow never accepts legal agreements automatically.
+Prepared-IPA and setup-only retries skip build-only prerequisites.
+
+The public command creates or reconciles the App Store draft before compiling or
+uploading, so a missing create-version permission fails early. Bruce’s default
+Developer key supports binary upload and TestFlight setup, but **not public
+version management**. With that key, prepare/upload the intended marketing version
+without `--public-release`, then finish in the signed-in App Store Connect UI:
+
+```sh
+./scripts/publish-testflight.sh --version "$VERSION"
+```
+
+In Distribution, create that version, attach the processed build, copy the saved
+**App Store What’s New**, choose automatic release after approval, save, add for
+review, and submit the draft. Verify **Waiting for Review**. Do not claim a
+TestFlight upload is a public submission. For unattended public submission, the
+owner must provide a suitable App Manager/Admin API key through the existing
+`ASC_KEY_*` variables; the workflow never broadens key permissions itself.
+
+Delivery preserves `Outbound.ipa`, `upload.json`, and sanitized `events.jsonl`
+under `~/Library/Application Support/Plainstride/Releases/VERSION-BUILD/`.
+`ASC_RELEASE_ROOT` overrides that directory. The checkpoint records the IPA's
+SHA-256, identity, size, Apple upload/file IDs, and completed chunks. New archives
+also record the source commit and archive path. Never edit the checkpoint or
+replace an IPA under an existing build identity.
+
+The shell workflow runs from an immutable temporary snapshot, so editing or
+merging the script cannot corrupt commands read after a long network wait.
+
+The uploader checks ZIP integrity, matching app/Watch/extension versions, and
+known Watch background-mode values before network delivery. It uploads Apple's
+specified byte ranges sequentially, checkpoints each successful chunk, and
+retries only transient chunk failures (up to three retries, with backoff).
+Requests have connection/read/write timeouts. It verifies the full IPA checksum
+again before finalizing. Credentials and signed upload URLs are never written
+to the checkpoint or event log.
+
+**Do not rebuild after a delivery failure.** Rerun the preserved IPA:
+
+```sh
+./scripts/publish-testflight.sh --public-release \
+  --upload-only "$HOME/Library/Application Support/Plainstride/Releases/VERSION-BUILD/Outbound.ipa"
+```
+
+The API uploader locks repository-managed delivery, reconciles uncertain API
+responses, resumes its own existing reservation, and skips completed chunks.
+It refuses a changed IPA or an upload owned by another client. Once Apple has
+received the binary, reruns do not upload it again. POST requests are not blindly
+retried after unknown responses; rerunning reconciles server state first.
+
+When upload has succeeded and only processing, beta setup, or public submission
+remains, use the prepared identity without any compile or upload:
+
+```sh
+./scripts/publish-testflight.sh --public-release --setup-only \
+  --version "$VERSION" --build-number "$BUILD"
+```
+
+Uploading, Apple processing, and App Review are separate stages. A delivered
+binary is not a public release. The workflow reports each stage and submits
+for automatic release after approval only after processing succeeds.
+
+### Recover an older Transporter/altool reservation
+
+First stop the delivery and close Transporter, Xcode, and any `altool` or
+Transporter CLI process. Never reset a record while another client is using it.
+Read the exact identity and file states:
 
 ```sh
 ruby scripts/testflight-upload-status.rb --version "$VERSION" --build-number "$BUILD"
 ```
 
-Both status commands are read-only. The detailed command reports whether a
-build record exists and which upload files are still waiting. `AWAITING_UPLOAD`
-with an incomplete `ASSET_SPI` file means the transfer of Apple's SPI analysis
-has not finished; rebuilding the app does not address that transfer failure.
-Repeated `NSURLErrorDomain -1005` or checksum mismatches in Xcode's
-ContentDelivery logs locate the failure in transfer to Apple's object storage.
-Those logs alone cannot distinguish a local network problem from a stuck Apple
-upload reservation. For build 1.7.4 (48), the old reservation remained pending
-after multiple clients failed. Clearing it and sending the same IPA on the
-same network succeeded, even though `altool` still retried two transient
-connection errors. That result implicates the stale reservation but does not
-prove the network was fault-free.
-
-The Swift 6 concurrency messages in the build log were warnings. The archive
-and IPA export succeeded; they were not the cause of this upload failure.
-
-The publish script now performs this guarded recovery automatically when it
-uses the App Store Connect API key. If Apple has a recent pending upload that
-the script did not create, it stops and leaves the record intact. Do not start
-Xcode, Transporter, and the script uploads for the same build concurrently.
-Changing the IPA without changing its build number does not clear a pending
-reservation; upload the intended signed IPA after the stale record is reset.
-Once Apple accepts a build number, use a new number for changed app content.
-
-After all Xcode, Transporter, and `altool` uploads for the build have stopped,
-an abandoned `AWAITING_UPLOAD` reservation can be removed explicitly. Copy the
-exact ID printed by the status command:
+If there is no build record and the matching upload is `AWAITING_UPLOAD` with
+no app binary attached, clear only the exact abandoned ID printed above:
 
 ```sh
 ruby scripts/testflight-upload-status.rb \
-  --version "$VERSION" --build-number "$BUILD" \
-  --delete-awaiting "$UPLOAD_ID"
+  --version "$VERSION" --build-number "$BUILD" --delete-awaiting "$UPLOAD_ID"
 ```
 
-The manual helper refuses to delete a record when a build record exists, when the
-identity does not match, or when the record is no longer `AWAITING_UPLOAD`. The
-next upload can then create a fresh reservation. Do not delete a record while
-an uploader is active. A fresh reservation may succeed on the same connection;
-individual transient part retries can still occur.
+The helper refuses mismatched IDs, accepted builds, attached app binaries, or
+open upload clients (including GUI clients, treated conservatively as active).
+The new API uploader does **not** automatically delete another client's upload.
+After clearing the legacy reservation, deliver the preserved IPA with
+`--upload-only`. Use `--latest` on the status helper for a read-only overview.
 
-Retry the preserved IPA without another compile, archive, version change, or
-metadata commit:
+### Incident lessons retained
 
-```sh
-./scripts/publish-testflight.sh \
-  --upload-only /path/to/Outbound.ipa
-```
+- **September 29, 2026 — 1.7.4 (48):** multiple clients remained stuck on an
+  old reservation. Clearing it and resending the same IPA on the same network
+  succeeded. `NSURLErrorDomain -1005` and checksum retry messages did not prove
+  that the local network was the root cause.
+- **October 16, 2026 — 1.7.8 (60):** altool and Transporter repeatedly stalled
+  on local analysis-description/SPI uploads despite fresh reservations. The
+  supported binary-upload API delivered the same 31,107,303-byte IPA in six
+  chunks in about 20 seconds. Broken-pipe errors on chunks 4 and 6 recovered
+  through bounded per-chunk retries. A second delivery run recognized Apple's
+  `PROCESSING` record and sent no chunks. This validates the new path for this
+  incident; it does not establish that Apple or the network can never fail.
+  Build 60 processed successfully, was assigned to the internal TestFlight team,
+  and was submitted through the signed-in App Store Connect UI with automatic
+  release after approval. Confirmed state: **Waiting for Review**. The Developer
+  API key returned 403 when creating the public version; this is a permissions
+  issue, not a reason to rebuild or re-upload. A complete `--public-release
+  --upload-only` rerun then recognized the accepted build and existing
+  `WAITING_FOR_REVIEW` submission without another binary upload or submission.
+- Packaged validation is separate from compilation. Build 59 compiled but Apple
+  rejected `location` in Watch `WKBackgroundModes`; build 60 uses the correct
+  `UIBackgroundModes` declaration. The uploader now catches that known failure
+  locally, and validation errors are not treated as transient transfer errors.
+- A basic Transporter diagnostic can pass TCP checks, report an empty web-service
+  response, and still exit zero. Read its results; do not treat exit zero as
+  proof that delivery is healthy. Do not share raw ContentDelivery logs publicly:
+  they can contain signed URLs. Use the sanitized release events for triage.
 
-The script reads the IPA's bundle ID, version, and build number. If the IPA is
-older than the prepared project metadata, pass `--skip-beta-setup` to avoid
-applying notes for another build. On a successful transfer of the current
-prepared build, the script continues with processing and TestFlight setup. If
-the build was already accepted, run `--setup-only` instead. If a fresh
-reservation still stalls, try another network, check Apple's system status,
-and give Apple Developer Support the upload ID and ContentDelivery logs.
+Apple references: [Build Upload API walkthrough](https://developer.apple.com/videos/play/wwdc2025/324/)
+and [upload/build statuses](https://developer.apple.com/help/app-store-connect/reference/app-uploads/build-upload-statuses/).
 
 Preview the next build number without changing files:
 

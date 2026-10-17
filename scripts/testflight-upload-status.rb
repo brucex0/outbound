@@ -17,6 +17,14 @@ DEFAULT_KEY_ID = "8F64X54A9C"
 DEFAULT_ISSUER_ID = "fe8791ac-9cbb-424a-8491-233753db92a7"
 STALE_UPLOAD_AGE_SECONDS = 1800
 
+def active_upload_clients
+  clients = %w[altool Transporter Xcode].select do |name|
+    system("pgrep", "-x", name, out: File::NULL, err: File::NULL)
+  end
+  clients << "Transporter CLI" if system("pgrep", "-f", "java.*com.apple.transporter.launcher", out: File::NULL, err: File::NULL)
+  clients
+end
+
 options = {}
 OptionParser.new do |parser|
   parser.banner = "Usage: #{$PROGRAM_NAME} --latest | --version VERSION --build-number NUMBER [--prepare-upload | --delete-awaiting ID]"
@@ -197,8 +205,9 @@ if options[:prepare_upload]
     puts "Pending reservation is only #{age_seconds.to_i}s old; wait or inspect it before retrying."
     exit 4
   end
-  if system("pgrep", "-x", "altool", out: File::NULL, err: File::NULL)
-    puts "altool is still running; refusing to reset its upload."
+  clients = active_upload_clients
+  unless clients.empty?
+    puts "Close upload clients before resetting: #{clients.join(", ")}. An open GUI client is treated conservatively as active."
     exit 4
   end
   request.call(:delete, "/v1/buildUploads/#{upload.fetch('id')}")
@@ -213,7 +222,8 @@ if options[:delete_id]
   abort "upload ID does not match" unless upload.fetch("id") == options[:delete_id]
   abort "only AWAITING_UPLOAD records can be deleted" unless upload.dig("attributes", "state", "state") == "AWAITING_UPLOAD"
   abort "app binary is already attached; refusing to delete" if upload.dig("relationships", "assetFile", "data", "id")
-  abort "altool is still running; stop it before deleting the upload" if system("pgrep", "-x", "altool", out: File::NULL, err: File::NULL)
+  clients = active_upload_clients
+  abort "Close upload clients before deleting: #{clients.join(", ")}" unless clients.empty?
   request.call(:delete, "/v1/buildUploads/#{options[:delete_id]}")
   puts "Deleted pending upload #{options[:delete_id]}. The next upload can create a fresh reservation."
 end

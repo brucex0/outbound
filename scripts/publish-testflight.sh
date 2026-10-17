@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Bash can read later commands from a changed file after a long network wait.
+# Execute an immutable snapshot so edits/merges cannot corrupt an active release.
+if [[ -z "${PLAINSTRIDE_PUBLISH_ROOT:-}" ]]; then
+  export PLAINSTRIDE_PUBLISH_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  publish_snapshot_dir="$(mktemp -d /tmp/plainstride-publish.XXXXXX)"
+  publish_snapshot="${publish_snapshot_dir}/publish-testflight.sh"
+  cp "${BASH_SOURCE[0]}" "$publish_snapshot"
+  exec bash -c 'snapshot="$1"; shift; trap '\''rm -f "$snapshot"; rmdir "$(dirname "$snapshot")"'\'' EXIT; bash "$snapshot" "$@"' _ "$publish_snapshot" "$@"
+fi
+ROOT_DIR="$PLAINSTRIDE_PUBLISH_ROOT"
 PROJECT_PATH="ios/Outbound/Outbound.xcodeproj"
 PROJECT_FILE="${PROJECT_PATH}/project.pbxproj"
 SCHEME="Outbound"
@@ -29,6 +38,7 @@ app_store_locale="${APP_STORE_LOCALE:-en-US}"
 asc_processing_timeout="${ASC_PROCESSING_TIMEOUT:-3600}"
 asc_poll_interval="${ASC_POLL_INTERVAL:-30}"
 asc_upload_timeout="${ASC_UPLOAD_TIMEOUT:-900}"
+asc_upload_method="${ASC_UPLOAD_METHOD:-api}"
 
 timestamp() {
   date '+%H:%M:%S'
@@ -96,7 +106,10 @@ Environment:
   APP_STORE_LOCALE  App Store What's New locale. Defaults to en-US.
   ASC_PROCESSING_TIMEOUT  Seconds to wait for processing. Defaults to 3600.
   ASC_POLL_INTERVAL      Poll interval in seconds. Defaults to 30.
-  ASC_UPLOAD_TIMEOUT     Seconds to allow each IPA export or upload attempt.
+  ASC_UPLOAD_METHOD      api (default, resumable binary chunks) or altool (legacy).
+  ASC_RELEASE_ROOT       Durable IPA/checkpoint directory for API delivery.
+                         Defaults to ~/Library/Application Support/Plainstride/Releases.
+  ASC_UPLOAD_TIMEOUT     Seconds to allow each IPA export or legacy upload attempt.
                          Defaults to 900; signed output is preserved on timeout.
                          A failed altool upload gets one guarded retry.
 
@@ -179,6 +192,7 @@ done
   fail "ASC_POLL_INTERVAL must be a positive integer"
 [[ "$asc_upload_timeout" =~ ^[1-9][0-9]*$ ]] || \
   fail "ASC_UPLOAD_TIMEOUT must be a positive integer"
+[[ "$asc_upload_method" == api || "$asc_upload_method" == altool ]] || fail "ASC_UPLOAD_METHOD must be api or altool"
 [[ "$APP_APPLE_ID" =~ ^[0-9]+$ ]] || \
   fail "APP_APPLE_ID must be the numeric App Store Connect Apple ID"
 if [[ "$configure_beta" == true ]]; then
@@ -361,11 +375,7 @@ release_notes_generated=false
 if [[ "$beta_setup_only" == true || -n "$upload_only_ipa" ]] || (( next_build == current_build )); then
   release_notes="$documented_release_notes"
 else
-  last_release_commit="$(git log \
-    --extended-regexp \
-    --grep='^(Bump TestFlight build to [0-9]+|Prepare Plainstride [0-9]+(\.[0-9]+){0,2} build [0-9]+)$' \
-    --format='%H' \
-    -1)"
+  last_release_commit="$(git log -1 --format='%H' -G '^- Build: `' -- "$RELEASE_DOC")"
   [[ -n "$last_release_commit" ]] || fail "could not find the previous TestFlight release commit"
 
   release_subjects="$(git log \
@@ -434,12 +444,116 @@ else
   log "Release notes: using the saved notes for build ${next_build}"
 fi
 
+asc_token() {
+  ASC_KEY_PATH="$asc_key_path" ASC_KEY_ID="$asc_key_id" ASC_ISSUER_ID="$asc_issuer_id" ruby <<'RUBY'
+require "base64"
+require "json"
+require "openssl"
+
+def base64url(value)
+  Base64.urlsafe_encode64(value).delete("=")
+end
+
+now = Time.now.to_i
+header = { alg: "ES256", kid: ENV.fetch("ASC_KEY_ID"), typ: "JWT" }
+claims = {
+  iss: ENV.fetch("ASC_ISSUER_ID"),
+  iat: now,
+  exp: now + 15 * 60,
+  aud: "appstoreconnect-v1"
+}
+signing_input = "#{base64url(JSON.generate(header))}.#{base64url(JSON.generate(claims))}"
+key = OpenSSL::PKey::EC.new(File.read(ENV.fetch("ASC_KEY_PATH")))
+der_signature = key.dsa_sign_asn1(OpenSSL::Digest::SHA256.digest(signing_input))
+sequence = OpenSSL::ASN1.decode(der_signature)
+raw_signature = sequence.value.map do |integer|
+  hex = integer.value.to_i.to_s(16).rjust(64, "0")
+  abort "unexpected App Store Connect signature size" if hex.length > 64
+  [hex].pack("H*")
+end.join
+puts "#{signing_input}.#{base64url(raw_signature)}"
+RUBY
+}
+
+asc_request() {
+  local method="$1"
+  local path="$2"
+  local payload="${3:-}"
+  local token response_path http_status error_summary
+  token="$(asc_token)"
+  response_path="$(mktemp /tmp/plainstride-asc-response.XXXXXX)"
+
+  local -a curl_args=(
+    --silent
+    --show-error
+    --connect-timeout 10
+    --max-time 60
+    --request "$method"
+    --header "Authorization: Bearer ${token}"
+    --header "Accept: application/json"
+    --output "$response_path"
+    --write-out '%{http_code}'
+  )
+  if [[ "$method" == GET ]]; then
+    curl_args+=(--retry 3 --retry-delay 2 --retry-max-time 180)
+  fi
+  if [[ -n "$payload" ]]; then
+    curl_args+=(--header "Content-Type: application/json" --data "$payload")
+  fi
+
+  if ! http_status="$(curl "${curl_args[@]}" "${ASC_API_BASE_URL}${path}")"; then
+    rm -f "$response_path"
+    fail "App Store Connect API request failed: ${method} ${path}"
+  fi
+
+  if [[ "$http_status" =~ ^2[0-9][0-9]$ ]]; then
+    cat "$response_path"
+    rm -f "$response_path"
+    return 0
+  fi
+
+  error_summary="$(jq -r '[.errors[]? | [.status, .code, .title, .detail] | map(select(. != null and . != "")) | join(" ")] | join("; ")' "$response_path" 2>/dev/null || true)"
+  rm -f "$response_path"
+  [[ -n "$error_summary" ]] || error_summary="HTTP ${http_status}"
+  fail "App Store Connect API ${method} ${path}: ${error_summary}"
+}
+
+urlencode() {
+  jq -rn --arg value "$1" '$value | @uri'
+}
+
 if [[ "$dry_run" == true ]]; then
   log "Dry run complete; no files changed"
   exit 0
 fi
 
-if [[ "$beta_setup_only" == false && "$use_asc_api_key" == true ]]; then
+if [[ "$beta_setup_only" == false && -z "$upload_only_ipa" ]]; then
+  log "Checking Xcode first-launch/license readiness before changing build metadata..."
+  xcodebuild -checkFirstLaunchStatus || fail "Xcode setup or license acceptance is required before building; prepared IPA retries and --setup-only do not need a rebuild"
+fi
+
+# Create/reconcile the public draft before spending time compiling or uploading.
+# A Developer key can deliver builds but cannot create App Store versions.
+if [[ "$submit_public_release" == true && "$beta_setup_only" == false ]]; then
+  log "Checking public-release access and preparing the App Store version before building..."
+  preflight_apps="$(asc_request GET "/v1/apps?filter%5BbundleId%5D=${APP_BUNDLE_ID}&limit=2")"
+  [[ "$(jq '.data | length' <<<"$preflight_apps")" == 1 ]] || fail "expected one App Store Connect app"
+  preflight_app_id="$(jq -r '.data[0].id' <<<"$preflight_apps")"
+  preflight_versions="$(asc_request GET "/v1/apps/${preflight_app_id}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=200")"
+  preflight_count="$(jq --arg version "$marketing_version" '[.data[] | select(.attributes.versionString == $version)] | length' <<<"$preflight_versions")"
+  if [[ "$preflight_count" == 0 ]]; then
+    log "Creating public versions requires an App Manager/Admin key; the default Developer key supports upload/TestFlight only"
+    preflight_release_type="AFTER_APPROVAL"
+    [[ "$manual_release" == false ]] || preflight_release_type="MANUAL"
+    preflight_payload="$(jq -cn --arg app_id "$preflight_app_id" --arg version "$marketing_version" --arg release_type "$preflight_release_type" \
+      '{data:{type:"appStoreVersions",attributes:{platform:"IOS",versionString:$version,releaseType:$release_type},relationships:{app:{data:{type:"apps",id:$app_id}}}}}')"
+    asc_request POST "/v1/appStoreVersions" "$preflight_payload" >/dev/null || \
+      fail "Public-release preflight failed before build changes. Use an App Manager/Admin API key, or upload with --version and finish submission in App Store Connect."
+    log "Prepared App Store version ${marketing_version}"
+  fi
+fi
+
+if [[ "$beta_setup_only" == false && "$use_asc_api_key" == true && "$asc_upload_method" == altool ]]; then
   if pgrep -x altool >/dev/null 2>&1; then
     fail "another altool upload is still running; stop it before publishing this build"
   fi
@@ -548,9 +662,9 @@ if [[ "$commit_changes" == true ]]; then
     log "Build metadata is already committed"
   else
     if [[ "$submit_public_release" == true || "$marketing_version" != "$current_marketing_version" ]]; then
-      git commit -m "Prepare Plainstride ${marketing_version} build ${next_build}"
+      git commit -m "[iOS] Prepare Plainstride ${marketing_version} build ${next_build}"
     else
-      git commit -m "Bump TestFlight build to ${next_build}"
+      git commit -m "[iOS] Bump TestFlight build to ${next_build}"
     fi
     log "Committed verified build metadata"
   fi
@@ -690,6 +804,16 @@ if [[ "$use_asc_api_key" == true ]]; then
   [[ -n "$ipa_path" ]] || fail "Xcode export did not produce an IPA in $export_path"
   fi
   upload_status=1
+  if [[ "$asc_upload_method" == api ]]; then
+    log "Delivering the preserved IPA with Apple's resumable Build Upload API..."
+    if ASC_KEY_PATH="$asc_key_path" ASC_KEY_ID="$asc_key_id" ASC_ISSUER_ID="$asc_issuer_id" \
+      ASC_SOURCE_COMMIT="${archive_source_commit:-}" ASC_ARCHIVE_PATH="${archive_path:-}" \
+      ruby scripts/asc-upload-ipa.rb --ipa "$ipa_path"; then
+      upload_status=0
+    else
+      upload_status=$?
+    fi
+  else
   for upload_attempt in 1 2; do
     log "Uploading build ${next_build} with altool (attempt ${upload_attempt}/2, timeout: ${asc_upload_timeout}s)..."
     upload_started_at="$(date -u +%s)"
@@ -740,6 +864,7 @@ if [[ "$use_asc_api_key" == true ]]; then
         ;;
     esac
   done
+  fi
 else
   log "Uploading build ${next_build} to App Store Connect (timeout: ${asc_upload_timeout}s)..."
   upload_status=0
@@ -785,79 +910,6 @@ if [[ "$configure_beta" == false && "$submit_public_release" == false ]]; then
   log "Skipped App Store Connect post-upload setup"
   exit 0
 fi
-
-asc_token() {
-  ASC_KEY_PATH="$asc_key_path" ASC_KEY_ID="$asc_key_id" ASC_ISSUER_ID="$asc_issuer_id" ruby <<'RUBY'
-require "base64"
-require "json"
-require "openssl"
-
-def base64url(value)
-  Base64.urlsafe_encode64(value).delete("=")
-end
-
-now = Time.now.to_i
-header = { alg: "ES256", kid: ENV.fetch("ASC_KEY_ID"), typ: "JWT" }
-claims = {
-  iss: ENV.fetch("ASC_ISSUER_ID"),
-  iat: now,
-  exp: now + 15 * 60,
-  aud: "appstoreconnect-v1"
-}
-signing_input = "#{base64url(JSON.generate(header))}.#{base64url(JSON.generate(claims))}"
-key = OpenSSL::PKey::EC.new(File.read(ENV.fetch("ASC_KEY_PATH")))
-der_signature = key.dsa_sign_asn1(OpenSSL::Digest::SHA256.digest(signing_input))
-sequence = OpenSSL::ASN1.decode(der_signature)
-raw_signature = sequence.value.map do |integer|
-  hex = integer.value.to_i.to_s(16).rjust(64, "0")
-  abort "unexpected App Store Connect signature size" if hex.length > 64
-  [hex].pack("H*")
-end.join
-puts "#{signing_input}.#{base64url(raw_signature)}"
-RUBY
-}
-
-asc_request() {
-  local method="$1"
-  local path="$2"
-  local payload="${3:-}"
-  local token response_path http_status error_summary
-  token="$(asc_token)"
-  response_path="$(mktemp /tmp/plainstride-asc-response.XXXXXX)"
-
-  local -a curl_args=(
-    --silent
-    --show-error
-    --request "$method"
-    --header "Authorization: Bearer ${token}"
-    --header "Accept: application/json"
-    --output "$response_path"
-    --write-out '%{http_code}'
-  )
-  if [[ -n "$payload" ]]; then
-    curl_args+=(--header "Content-Type: application/json" --data "$payload")
-  fi
-
-  if ! http_status="$(curl "${curl_args[@]}" "${ASC_API_BASE_URL}${path}")"; then
-    rm -f "$response_path"
-    fail "App Store Connect API request failed: ${method} ${path}"
-  fi
-
-  if [[ "$http_status" =~ ^2[0-9][0-9]$ ]]; then
-    cat "$response_path"
-    rm -f "$response_path"
-    return 0
-  fi
-
-  error_summary="$(jq -r '[.errors[]? | [.status, .code, .title, .detail] | map(select(. != null and . != "")) | join(" ")] | join("; ")' "$response_path" 2>/dev/null || true)"
-  rm -f "$response_path"
-  [[ -n "$error_summary" ]] || error_summary="HTTP ${http_status}"
-  fail "App Store Connect API ${method} ${path}: ${error_summary}"
-}
-
-urlencode() {
-  jq -rn --arg value "$1" '$value | @uri'
-}
 
 log "Waiting for App Store Connect to process build ${next_build}..."
 encoded_bundle_id="$(urlencode "$APP_BUNDLE_ID")"
