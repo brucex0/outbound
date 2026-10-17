@@ -1,4 +1,4 @@
-# TestFlight and App Store 1.7.7 Submission Sheet
+# TestFlight and App Store 1.7.8 Submission Sheet
 
 Open this for the current TestFlight upload and public App Store release. Product behavior and release mechanics remain in `docs/app-store-release.md`.
 
@@ -7,8 +7,8 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - App Store name: `Plainstride` (confirm availability in App Store Connect).
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
-- Version: `1.7.7`
-- Build: `58`
+- Version: `1.7.8`
+- Build: `59`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -54,19 +54,18 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- [iOS] Harden recording lifecycle and live session accessibility
-- [iOS] Restore fixed countdown audio cue lookup
-- [iOS] Share steps-per-minute labels with Android
-- [iOS] Label running cadence as steps per minute
-- [iOS] Record and display running cadence
-- Plus 78 more fixes and improvements
+- [iOS] Add Watch and phone-only flow regression tests
+- [iOS] Stabilize stretch audio setup after saving an activity
+- [iOS] Replace stretch countdown speech with clock ticks
+- [iOS] Add Apple Workout coexistence and standalone Watch running
+- [iOS] Improve guided stretch timing and posture previews
+- Plus 85 more fixes and improvements
 
 ### App Store What's New
 
-- More reliable activity recording, recovery, and live-session controls.
-- Clearer live coaching with fewer false pace-change alerts and restored countdown sounds.
-- Running cadence shown in steps per minute, plus correctly oriented activity photos.
-- Improved group invitations, activity participation, and live map sharing.
+- Record runs on Apple Watch, including phone-free workouts, with improved Apple Workout integration.
+- Follow guided post-workout stretches with clearer posture previews, smoother audio, and gentle countdown ticks.
+- Enjoy more reliable activity recording, live coaching, group invitations, and live map sharing.
 
 ### How to Report Feedback
 
@@ -181,6 +180,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.7.7 (58)`, validate, and upload from Xcode Organizer.
+- Archive `1.7.8 (59)`, validate, and upload from Xcode Organizer.
 - After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.
