@@ -159,6 +159,21 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
         hasTrackedConnectionAttempt = true
         hasTrackedWorkoutOrigin = true
 
+#if DEBUG && targetEnvironment(simulator)
+        if let uiTestWatchMode {
+            uiTestWatchLaunchCount += 1
+            if uiTestWatchMode == "timeout" {
+                startPreparationTimeout()
+            } else if uiTestWatchMode == "unavailable" {
+                fallback(errorCategory: "watch_unavailable")
+            } else {
+                isWatchAvailable = true
+                uiTestReceiveWatchMessage(.startReadiness, identity: pendingIdentity, lifecycle: .active)
+                uiTestReceiveWatchMessage(.liveMetrics, metrics: Self.uiTestMetrics)
+            }
+            return
+        }
+#endif
         healthStore.startWatchApp(with: Self.configuration(activityType, isIndoor: isIndoor)) { success, error in
             Task { @MainActor in
                 let coordinator = PhoneWorkoutSessionCoordinator.shared
@@ -440,6 +455,22 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
         identity: PlainstrideWorkoutIdentity? = nil,
         connection: PlainstrideWorkoutConnection? = nil
     ) {
+#if DEBUG && targetEnvironment(simulator)
+        if let uiTestWatchMode {
+            guard ["connected", "save_failure"].contains(uiTestWatchMode) else { return }
+            uiTestOutboundControls.append(kind.rawValue)
+            if kind == .finishRequest {
+                Task { @MainActor in
+                    // Deliver completion asynchronously like a remote Watch, after
+                    // RecordView has had a chance to produce its phone summary.
+                    await Task.yield()
+                    uiTestReceiveWatchMessage(.savedWorkout, lifecycle: uiTestWatchMode == "save_failure" ? .failed : .finished,
+                        externalReference: uiTestWatchMode == "save_failure" ? nil : "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE")
+                }
+            }
+            return
+        }
+#endif
         guard let mirroredSession, let currentSessionUUID else { return }
         nextSequence &+= 1
         let message = PlainstrideWorkoutMessage(
@@ -530,6 +561,73 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
         guard let analyticsManager else { return }
         Task { await analyticsManager.track(.init(name, properties: properties)) }
     }
+
+#if DEBUG && targetEnvironment(simulator)
+    // Explicit seeded UI-test transport. No simulator fixture or entry point is
+    // compiled into physical-device or Release builds.
+    private var uiTestWatchMode: String?
+    private var uiTestRemoteSequence: UInt64 = 0
+    private(set) var uiTestSessionUUID: UUID?
+    @Published private(set) var uiTestWatchLaunchCount = 0
+    @Published private(set) var uiTestOutboundControls: [String] = []
+
+    func configureWatchFlowUITest(recorder: ActivityRecorder) {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard arguments.contains("-OutboundUITestSeedData"),
+              let index = arguments.firstIndex(of: "-OutboundUITestWatchScenario"),
+              arguments.indices.contains(index + 1),
+              ["connected", "unavailable", "timeout", "apple_workout", "save_failure"].contains(arguments[index + 1]) else { return }
+        resetTransientState()
+        uiTestWatchMode = arguments[index + 1]
+        uiTestRemoteSequence = 0
+        uiTestWatchLaunchCount = 0
+        uiTestOutboundControls = []
+        bind(recorder: recorder)
+        preparePhoneFirst(activityType: .running, isIndoor: true, useAppleWorkout: uiTestWatchMode == "apple_workout")
+        uiTestSessionUUID = currentSessionUUID
+        if let metadata = recordingMetadata() { recorder.updateRecordingSessionMetadata(metadata) }
+        markPhoneRecorderStarted()
+    }
+
+    var watchFlowUITestReport: String {
+        "connection=\(connection.rawValue);lifecycle=\(lifecycle.rawValue);ownership=\(recordingMetadata()?.healthKitOwnership.rawValue ?? "none");heart=\(latestMetrics?.currentBPM ?? 0);phone_heart=\(recorder?.heartRate ?? 0);launches=\(uiTestWatchLaunchCount);reference=\(savedWorkoutExternalReference == nil ? "none" : "saved");outbound=\(uiTestOutboundControls.joined(separator: ","))"
+    }
+
+    func watchFlowUITestAction(_ action: String) {
+        guard uiTestWatchMode != nil else { return }
+        switch action {
+        case "pause": uiTestReceiveWatchMessage(.pause)
+        case "resume": uiTestReceiveWatchMessage(.resume)
+        case "disconnect": uiTestReceiveWatchMessage(.connectionState, connection: .disconnected)
+        case "reconnect": uiTestReceiveWatchMessage(.connectionState, connection: .connected)
+        case "stale":
+            // An old sequence and a different session must both be rejected.
+            uiTestReceiveWatchMessage(.pause, sequence: uiTestRemoteSequence)
+            uiTestReceiveWatchMessage(.pause, sessionID: UUID())
+        default: break
+        }
+    }
+
+    private static var uiTestMetrics: PlainstrideLiveMetrics {
+        PlainstrideLiveMetrics(currentBPM: 166, sampledAt: Date(), averageBPM: 160, maximumBPM: 178,
+            currentZone: 4, effort: .hard, timeInZones: [.init(zone: 4, seconds: 600)],
+            elapsedTime: 2753, distanceMeters: 7820, activeEnergyKilocalories: 500)
+    }
+
+    private func uiTestReceiveWatchMessage(_ kind: PlainstrideWorkoutMessageKind,
+        identity: PlainstrideWorkoutIdentity? = nil, metrics: PlainstrideLiveMetrics? = nil,
+        lifecycle: PlainstrideWorkoutLifecycle? = nil, connection: PlainstrideWorkoutConnection? = nil,
+        externalReference: String? = nil, sequence: UInt64? = nil, sessionID: UUID? = nil) {
+        guard let currentSessionUUID else { return }
+        uiTestRemoteSequence += 1
+        let message = PlainstrideWorkoutMessage(sessionUUID: sessionID ?? currentSessionUUID,
+            sequenceNumber: sequence ?? uiTestRemoteSequence, originDevice: .appleWatch, kind: kind,
+            identity: identity, metrics: metrics, lifecycle: lifecycle, connection: connection,
+            externalWorkoutReference: externalReference)
+        do { process([try PlainstrideWorkoutCodec.encode(message)]) }
+        catch { preconditionFailure("Invalid seeded Watch message encoding") }
+    }
+#endif
 
     private static func configuration(_ activityType: ActivityType, isIndoor: Bool) -> HKWorkoutConfiguration {
         let configuration = HKWorkoutConfiguration()

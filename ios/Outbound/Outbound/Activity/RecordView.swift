@@ -252,6 +252,14 @@ struct RecordView: View {
             }
         }
         .background { recordBackground }
+#if DEBUG && targetEnvironment(simulator)
+        .overlay(alignment: .top) {
+            if isVisible, ProcessInfo.processInfo.arguments.contains("-OutboundUITestWatchScenario") {
+                WatchWorkoutFlowUITestControls(coordinator: phoneWorkoutCoordinator,
+                    allowsControls: recorder.state != .idle, phase: String(describing: sessionController.phase))
+            }
+        }
+#endif
         .onReceive(recorder.$liveSnapshot) { snapshot in
             guide.ingest(snapshot)
             liveShareStore.ingest(snapshot)
@@ -1304,6 +1312,9 @@ struct RecordView: View {
               !didSeedLiveRunForUITest
         else { return }
 
+#if targetEnvironment(simulator)
+        guard WatchWorkoutFlowUITestControls.claimRecordingSeed() else { return }
+#endif
         didSeedLiveRunForUITest = true
         let intent = SessionIntent(
             id: "ui-test-live-10k",
@@ -1323,6 +1334,9 @@ struct RecordView: View {
         pendingActivity = nil
         presentLiveSurface()
         recorder.seedLiveRunForUITest()
+#if targetEnvironment(simulator)
+        phoneWorkoutCoordinator.configureWatchFlowUITest(recorder: recorder)
+#endif
 #endif
     }
 

@@ -128,6 +128,21 @@ This suite covers the primary shell and navigation, installed iOS guide voice pr
 - Add a focused test to `UIFlowTests.swift` with stable accessibility identifiers and meaningful visible-state assertions, then register its name in the script's `case` list. Keep fixture setup in launch arguments and retain screenshots at key transitions. Do not map a flow to the entire suite.
 - Run one command at a time; runners share `/tmp/plainstride-ui-flow-derived` to reuse build products.
 
+### Watch And Phone-Only Regression Flows
+
+```sh
+./scripts/run-watch-flow-tests.sh
+# Or an existing iPhone simulator (never a personal device):
+./scripts/run-watch-flow-tests.sh 'platform=iOS Simulator,id=SIMULATOR_UUID'
+```
+
+- Verified on an unpaired iOS 26.5 iPhone 17 Pro simulator: six passed, zero failed or skipped (2026-10-16).
+- Runs only `WatchWorkoutFlowUITests`: unavailable Watch, preparation timeout, connected phone controls, remote controls/disconnect/reconnect/stale messages, Apple Workout coexistence, and Watch save failure.
+- Each flow records a seeded eligible activity, pauses/resumes/finishes, saves through the real review screen, checks exactly one activity with the expected Health ownership/reference, and exits the celebration through Done without starting another recording. The explicit simulator fixture clears its recording recovery journal on launch so failed scenarios cannot contaminate the next case.
+- The default creates and removes an isolated iPhone 17 Pro simulator. Results and screenshots remain in the printed `/tmp/plainstride-watch-flows.*` directory. Run one instance at a time because the build cache is shared.
+- Uses a DEBUG simulator-only transport behind both seeded-data and explicit scenario flags. Messages pass through the real codec/coordinator; only Watch launch and outgoing transport are replaced. No fixture code is compiled into Release or physical-device builds.
+- These checks establish phone lifecycle, message ordering, fallback, Health persistence ownership, and visible save completion under the fixture. They do not establish physical Watch installation, real HealthKit mirroring, sensor/GPS accuracy, Health sync, haptics, or battery life. Keep paired-device validation above as a separate release gate.
+
 ### Seeded Live 10K
 
 The focused automated test is `OutboundUITests.testSeededLive10KRunMetricsAndLifecycle`. It runs on a simulator with local UI-test authentication, not a Firebase test account:

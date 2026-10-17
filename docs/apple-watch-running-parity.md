@@ -52,8 +52,10 @@ Open this for Apple Workout coexistence, standalone Watch recording, and the run
 
 ## Verification
 
+- Automated simulator flow coverage and the repeatable runner are documented in `docs/build-test-device.md` under **Watch And Phone-Only Regression Flows**.
+
 - Do not run tests unless explicitly requested. Use build-only commands in `docs/build-test-device.md`.
 - Paired-device acceptance still required: Apple Workout already active when phone recording starts; independent pause/finish; repeated imports; phone left at home; Watch airplane mode; GPS denial; pause/resume route gaps; process recovery; finish without connectivity; late Health route arrival; miles/km; laps/goals/haptics; and battery behavior on a long run.
-- Build verification: standalone `Plainstride Watch` generic watchOS build and combined `Outbound` generic iOS build with signing disabled. Plist lint, localization catalog coverage, and `git diff --check` also passed. No test suite was run.
+- Build verification: standalone `Plainstride Watch` generic watchOS build and combined `Outbound` generic iOS build with signing disabled. Plist lint, localization catalog coverage, and `git diff --check` also passed. The focused Watch/phone flow suite now passes all six cases on an iOS 26.5 iPhone simulator; no broader suite was run.
 - Source review covered phone-first session-ID adoption, Watch-only import, repeated imports, route-before/after-workout delivery, phone-left-home distance reconciliation, pause/finish checkpoints, and suppression of discarded/deleted sessions. Manual activity edits remain authoritative during Health enrichment.
 - Compilation and source review establish API/type correctness and review the intended paths; they do not establish GPS, Health delivery timing, ring credit, or real-device reliability.

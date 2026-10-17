@@ -51,6 +51,9 @@ struct OutboundApp: App {
     @State private var isConsumingPendingInvite = false
 
     init() {
+#if DEBUG && targetEnvironment(simulator)
+        WatchWorkoutFlowUITestControls.resetRecordingIfRequested()
+#endif
         let isFirebaseConfigured = FirebaseBootstrap.configureIfAvailable()
         let manager = AnalyticsManager(providers: [
             isFirebaseConfigured ? FirebaseAnalyticsProvider() : NoOpAnalyticsProvider()
