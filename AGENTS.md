@@ -61,6 +61,7 @@ Treat documents like code:
 ## Fast Start
 
 - Product and doc map: `docs/INDEX.md`
+- Before any iOS publish, upload retry, or stalled-delivery recovery, read `docs/app-store-release.md`, including its retained incident lessons. Update that runbook and relevant script guards when a new release incident teaches us something.
 - iOS architecture and file map: `docs/ios-architecture.md`
 - Firebase and Google Cloud setup: `docs/firebase.md`
 - Build, test, signing, and device commands: `docs/build-test-device.md`

@@ -220,6 +220,21 @@ After clearing the legacy reservation, deliver the preserved IPA with
   proof that delivery is healthy. Do not share raw ContentDelivery logs publicly:
   they can contain signed URLs. Use the sanitized release events for triage.
 
+### Keep release lessons current
+
+- Before publishing or recovering a stalled upload, read this runbook and inspect
+  the saved release checkpoint and sanitized events for the exact version/build.
+- After an incident, record the failing stage, version/build, upload ID, IPA
+  SHA-256, safe error details, recovery action, and verified Apple state. Keep
+  credentials, signed URLs, and raw delivery logs out of repository documents.
+- Distinguish observed facts from suspected causes. Record whether retrying the
+  same IPA worked and whether a rerun avoided duplicate upload/submission.
+- Convert repeatable prevention or recovery into script checks in the same
+  change. Verify with syntax checks and existing artifacts; do not trigger a new
+  upload just to verify documentation or diagnostics.
+- Keep operational details here; `AGENTS.md` and the index route future release
+  tasks here so recovery does not depend on conversation history.
+
 Apple references: [Build Upload API walkthrough](https://developer.apple.com/videos/play/wwdc2025/324/)
 and [upload/build statuses](https://developer.apple.com/help/app-store-connect/reference/app-uploads/build-upload-statuses/).
 

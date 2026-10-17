@@ -78,8 +78,8 @@ Options:
                          equal the current build to publish prepared metadata.
   --upload-only IPA_PATH Retry an existing signed IPA without rebuilding or
                          changing version metadata. Reads its version and build
-                         from the IPA; explicit values must match. One abandoned
-                         Apple upload is reset when safe before retrying.
+                         from the IPA; explicit values must match. API delivery
+                         resumes its checkpoint; legacy reset is guarded.
   --beta-group NAME      Assign the build to this exact TestFlight group name.
                          If omitted, the sole internal group is selected.
   --setup-only           Configure an existing uploaded build without
@@ -887,7 +887,7 @@ if (( upload_status != 0 )); then
   else
     printf '\nUpload failed, but the verified Organizer archive was preserved:\n  %s\n\n' "$archive_path" >&2
   fi
-  if [[ -z "$upload_only_ipa" ]]; then
+  if [[ -z "$upload_only_ipa" && ( "$use_asc_api_key" == false || "$asc_upload_method" == altool ) ]]; then
     printf 'Open Xcode > Window > Organizer, select Plainstride %s (%s), then choose Distribute App > App Store Connect.\n' "$marketing_version" "$next_build" >&2
   fi
   if [[ "$use_asc_api_key" == false ]]; then
@@ -896,7 +896,21 @@ if (( upload_status != 0 )); then
   if [[ "$use_asc_api_key" == true ]]; then
     printf 'The signed IPA is preserved at:\n  %s\n' "$ipa_path" >&2
     printf 'Inspect the pending upload with scripts/testflight-upload-status.rb --version %s --build-number %s.\n' "$marketing_version" "$next_build" >&2
-    printf 'After the transfer issue is resolved, retry this IPA with --upload-only.\n' >&2
+    if [[ "$asc_upload_method" == api ]]; then
+      printf 'Resume the same IPA with the command below; completed chunks and accepted builds are reconciled automatically. Do not rebuild or delete its API reservation.\n' >&2
+    else
+      printf 'For a stalled legacy reservation, follow the exact-ID recovery procedure in docs/app-store-release.md before retrying.\n' >&2
+    fi
+    printf 'Retry command: ' >&2
+    printf '%q ' "$ROOT_DIR/scripts/publish-testflight.sh" >&2
+    if [[ "$submit_public_release" == true ]]; then
+      printf '%q ' --public-release >&2
+      [[ "$manual_release" == false ]] || printf '%q ' --manual-release >&2
+    fi
+    [[ -z "$beta_group_name" ]] || printf '%q %q ' --beta-group "$beta_group_name" >&2
+    [[ "$configure_beta" == true ]] || printf '%q ' --skip-beta-setup >&2
+    printf '%q %q\n' --upload-only "$ipa_path" >&2
+    printf 'Release runbook and retained lessons: %s/docs/app-store-release.md\n' "$ROOT_DIR" >&2
   fi
   exit 1
 fi
