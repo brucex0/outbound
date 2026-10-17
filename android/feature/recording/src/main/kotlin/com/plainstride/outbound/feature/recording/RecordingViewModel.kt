@@ -394,6 +394,7 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.ActivityType to kind.name.lowercase(),
             AnalyticsProperty.RoutineId to routine.id,
         )
+        if (name == "post_workout_stretch_started") properties[AnalyticsProperty.Control] = "clock_tick"
         result?.let { properties[AnalyticsProperty.Result] = it }
         seconds?.let { properties[AnalyticsProperty.CountBucket] = when { it == 0 -> "zero"; it < 20 -> "under_20"; it < 60 -> "20_to_59"; else -> "60_plus" } }
         if (name.startsWith("post_workout_stretch_")) analytics.record(AnalyticsEvent(name, properties))

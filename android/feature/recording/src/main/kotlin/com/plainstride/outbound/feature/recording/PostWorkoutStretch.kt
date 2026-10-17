@@ -225,7 +225,7 @@ fun PostWorkoutStretchRoute(
         }
         while (running && !complete) {
             if (phase == StretchPhase.HOLD && secondsLeft in 1..5 && speaks) {
-                audio.play(listOf("one", "two", "three", "four", "five")[secondsLeft - 1])
+                audio.tick()
             }
             delay(1_000)
             if (phase == StretchPhase.HOLD) { stepHeld += 1; totalHeld += 1 }

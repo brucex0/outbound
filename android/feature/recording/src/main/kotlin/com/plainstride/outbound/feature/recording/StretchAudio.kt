@@ -12,14 +12,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /** Cache-only playback keeps network latency out of hold and transition timing. */
-internal class StretchAudio(context: Context) {
+internal class StretchAudio(private val context: Context) {
     private val directory = File(context.cacheDir, "stretch-audio-v1")
     private val locale = when (Locale.getDefault().language) { "zh" -> "zh-Hans"; "es" -> "es"; else -> "en" }
     private val files = mutableMapOf<String, File>()
     private var player: MediaPlayer? = null
 
     suspend fun preload(cues: List<String>, fetch: suspend (String, String) -> ByteArray?) {
-        for (cue in cues + listOf("release", "five", "four", "three", "two", "one")) {
+        for (cue in cues + listOf("release")) {
             val file = File(directory, "$locale-plainstride_warm_1-$cue.wav")
             val cached = withContext(Dispatchers.IO) { file.isFile && file.length() in 44..512 * 1024 }
             if (cached) { files[cue] = file; continue }
@@ -38,12 +38,22 @@ internal class StretchAudio(context: Context) {
     }
 
     fun play(cue: String) {
+        val file = files[cue] ?: run { stop(); Log.w("StretchAudio", "Cached cue unavailable cue=$cue"); return }
+        startPlayback { it.setDataSource(file.absolutePath) }
+    }
+
+    fun tick() = startPlayback { next ->
+        context.resources.openRawResourceFd(R.raw.stretch_tick).use { resource ->
+            next.setDataSource(resource.fileDescriptor, resource.startOffset, resource.length)
+        }
+    }
+
+    private fun startPlayback(configure: (MediaPlayer) -> Unit) {
         stop()
-        val file = files[cue] ?: run { Log.w("StretchAudio", "Cached cue unavailable cue=$cue"); return }
         val next = MediaPlayer()
         try {
             next.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
-            next.setDataSource(file.absolutePath)
+            configure(next)
             next.setOnCompletionListener { if (player === it) { it.release(); player = null } }
             next.setOnErrorListener { value, what, extra ->
                 Log.w("StretchAudio", "Playback failed code=$what extra=$extra")
