@@ -73,6 +73,15 @@ xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme 'Plainstride 
 
 The Watch scheme requires the matching watchOS platform component in Xcode. If the host has SDK headers but reports that watchOS is not installed, install the watchOS device platform in Xcode Settings > Components before relying on the scheme build. A compiler-only fallback can type-check the Watch and shared Swift sources against the installed SDK, but it does not validate embedding or signing.
 
+## Xcode 27.1 And iPhone Duo
+
+- Xcode 27.1 uses **Device Hub** at `/Applications/Xcode.app/Contents/Applications/DeviceHub.app`; an older running Simulator interface can retain stale device/runtime lists after an update.
+- Confirm setup with `xcodebuild -version`, `xcodebuild -checkFirstLaunchStatus`, `xcrun simctl list runtimes`, and `xcrun simctl list devicetypes` before selecting a Duo destination. First launch may require accepting the Xcode/SDK agreement and installing platform components.
+- Use a fresh Duo simulator with local synthetic fixtures for layout checks. Device Hub exposes Closed, Partially Open, Open, and rotation controls. Check state retention across transitions, vertical bars, asymmetric safe areas, sheets, keyboard avoidance, and scrolling; a build alone does not establish readiness.
+- `xcrun simctl io SIMULATOR_UUID enumerate` identifies display names. Capture the active outer display with `screenshot --display=primary OUTPUT.png` and inner display with `screenshot --display=primary-1 OUTPUT.png`. An inactive display can capture as black; inspect pixels and actual dimensions before treating a capture as evidence.
+- Expected App Store dimensions are outer `1398 × 2034` and inner `2007 × 2853`, or reversed for landscape. Recheck [Apple screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications) before preparing assets. Submitting Duo screenshots triggers an optimized-for-Duo badge, so Debug fixture captures and build success are not sufficient release evidence.
+- Manual English checks on 2026-10-17 reached activity setup, Cheer Me On, plan text entry, Progress, group activity detail, and synthetic recording/pause/finish/save/stretch with fold transitions. This was partial coverage: full onboarding, software keyboard avoidance, reliable scroll reachability, all poses/orientations, and two-participant live sharing remain unverified. No Duo readiness claim or store screenshot submission was made.
+
 ## Apple Watch Paired-Device Validation
 
 - In Xcode, select a paired iPhone + Apple Watch destination and run the `Outbound` scheme; confirm `Plainstride Watch.app` is embedded and installs on the watch.
