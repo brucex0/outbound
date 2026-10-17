@@ -274,3 +274,54 @@ version is already waiting for review.
   cd backend
   npm run db:rebuild
   ```
+
+## Header, Search Creative, And First Three Screenshots
+
+Generate the coordinated static asset set from existing local captures and the
+repository's coastal-trail photo (no app build or test run required):
+
+```sh
+swift -module-cache-path /tmp/plainstride-creative-module-cache \
+  scripts/generate-app-store-creative.swift "$PWD" \
+  "$PWD/artifacts/app-store-creative"
+```
+
+The first argument is the checkout containing `artifacts/app-store-screenshots`.
+When working in an isolated worktree, supply the main checkout's absolute path.
+The generator stops if a required source cannot be read or text exceeds its box.
+It preserves screenshot contents and aspect ratios, and exports opaque sRGB PNGs:
+
+- `header.png`: 3840 × 1646; one brand promise over green and coastal photography.
+- `search.png`: 1920 × 1280; next-run promise beside the actual Today capture.
+- `01-screenshot.png` through `03-screenshot.png`: 1284 × 2778; Today,
+  workout explanation/adjustment entry, and Progress Records.
+- `en-US`, `es`, and `zh-Hans` directories contain independently composed captions.
+  Spanish and Chinese exports currently retain English app UI and are review
+  drafts until matching localized captures replace the three inputs.
+
+These are review assets, not proof of release readiness. The existing capture
+README identifies Debug demo data. Before uploading, recapture the corresponding
+release-equivalent screens with synthetic data and consistent status bars.
+The current Today image has an overly broad map and workout interval labels
+that do not match its descriptions; the assistant image shows an explanation,
+not a completed plan adjustment. Replace those captures before submission.
+Do not fabricate or edit app UI to hide these problems. Progress copy deliberately
+promises best efforts and records rather than an unshown trend or AI insight.
+Confirm the coastal photo's marketing usage rights before publishing.
+
+Validate pixel dimensions, opacity, legibility, and crops locally, then check
+Apple's device previews and template safe areas in App Store Connect. Upload
+creative assets through Asset Library and submit for approval; applying them to
+the live page remains a separate publishing action. These files do not include
+Duo captures or establish Duo layout support.
+
+Apple references (checked October 16, 2026):
+
+- [Creative asset specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/creative-assets-specifications)
+- [Asset best practices and safe-area templates](https://developer.apple.com/app-store/asset-best-practices/)
+- [Manage assets and preview placements](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-your-app-store-assets)
+
+After enough traffic accumulates, compare a second headline using product page
+optimization. Review App Store conversion alongside onboarding, first activity,
+and second activity within seven days. Avoid declaring a winner from a small
+sample; the existing launch scorecard remains the measurement authority.
