@@ -770,6 +770,7 @@ struct RecordView: View {
                         PostWorkoutStretchView(
                             context: postSaveStretchContext,
                             activity: postSaveCelebrationActivity,
+                            voiceProfileID: guideCatalog.selectedVoice.id,
                             onExit: finishPostSaveStretch
                         )
                     } else {

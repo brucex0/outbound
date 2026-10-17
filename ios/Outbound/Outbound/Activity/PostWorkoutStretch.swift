@@ -209,7 +209,7 @@ struct PostWorkoutStretchView: View {
     @Environment(\.scenePhase) private var phase
     @Environment(\.analyticsManager) private var analytics
     @StateObject private var timer: PostWorkoutStretchTimer
-    @State private var narrator = StretchNarrator()
+    @StateObject private var narrator: StretchNarrator
     let context: PostSavedStretchContext
     let activity: SavedActivity
     let onExit: () -> Void
@@ -219,11 +219,12 @@ struct PostWorkoutStretchView: View {
     @State private var speaksInstructions = true
     @State private var transitionFeedback = false
 
-    init(context: PostSavedStretchContext, activity: SavedActivity, onExit: @escaping () -> Void) {
+    init(context: PostSavedStretchContext, activity: SavedActivity, voiceProfileID: String, onExit: @escaping () -> Void) {
         self.context = context
         self.activity = activity
         self.onExit = onExit
         _timer = StateObject(wrappedValue: PostWorkoutStretchTimer(routine: context.routines[0]))
+        _narrator = StateObject(wrappedValue: StretchNarrator(voice: voiceProfileID))
     }
 
     var body: some View {
@@ -471,7 +472,7 @@ struct PostWorkoutStretchView: View {
 }
 
 @MainActor
-private final class StretchNarrator {
+private final class StretchNarrator: ObservableObject {
     private let player = GuideAudioPlayer()
     var isPlaying: Bool { player.isSpeaking }
     private var clips: [String: Data] = [:]
@@ -493,7 +494,11 @@ private final class StretchNarrator {
             ActivityDiagnosticLog.error(.lifecycle, "Stretch clock tick playback failed")
         }
     }
-    private let voice = GuideCatalogStore().selectedVoice.id
+    private let voice: String
+
+    init(voice: String) {
+        self.voice = voice
+    }
     private var locale: String { AppLanguage.currentIdentifier }
     private var directory: URL { FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("StretchAudio-v1") }
 
