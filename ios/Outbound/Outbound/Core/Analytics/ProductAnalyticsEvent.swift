@@ -362,7 +362,7 @@ enum ProductAnalyticsSchema {
         .activitySaved: [.activityType, .goalType, .durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket, .musicEnabled, .routeSelected, .shoeSelected, .groupRunEnabled, .indoor, .dogCompanionEnabled],
         .activitySaveIneligibleShown: [.activityType, .durationBucket, .distanceBucket],
         .postWorkoutStretchOffered: [.activityType, .routineID],
-        .postWorkoutStretchStarted: [.activityType, .routineID],
+        .postWorkoutStretchStarted: [.activityType, .routineID, .control],
         .postWorkoutStretchProgramSelected: [.activityType, .routineID],
         .postWorkoutStretchStepEnded: [.activityType, .routineID, .result, .countBucket],
         .postWorkoutStretchCompleted: [.activityType, .routineID, .result, .countBucket],

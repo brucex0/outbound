@@ -315,7 +315,7 @@ struct PostWorkoutStretchView: View {
         .task(id: timer.routine.id) { await narrator.preload(timer.routine.movements.map(\.cue)) }
         .onChange(of: timer.remaining) { _, seconds in
             guard chosen, timer.running, timer.phase == .holding, (1...5).contains(seconds) else { return }
-            if speaksInstructions { narrator.play(["one", "two", "three", "four", "five"][seconds - 1]) }
+            if speaksInstructions { narrator.tick() }
         }
         .onChange(of: phase) { _, value in
             if value != .active {
@@ -463,6 +463,7 @@ struct PostWorkoutStretchView: View {
             .activityType: .string(context.activityType.rawValue),
             .routineID: .string(routineID ?? timer.routine.id)
         ]
+        if event == .postWorkoutStretchStarted { properties[.control] = .string("clock_tick") }
         if let result { properties[.result] = .string(result) }
         if let seconds { properties[.countBucket] = .string(seconds == 0 ? "zero" : seconds < 20 ? "under_20" : seconds < 60 ? "20_to_59" : "60_plus") }
         Task { await analytics?.track(.init(event, properties: properties)) }
@@ -474,13 +475,31 @@ private final class StretchNarrator {
     private let player = GuideAudioPlayer()
     var isPlaying: Bool { player.isSpeaking }
     private var clips: [String: Data] = [:]
+    private lazy var tickData: Data? = {
+        guard let url = Bundle.main.url(forResource: "stretch_tick", withExtension: "wav") else {
+            ActivityDiagnosticLog.error(.lifecycle, "Stretch clock tick resource missing")
+            return nil
+        }
+        do { return try Data(contentsOf: url) }
+        catch {
+            ActivityDiagnosticLog.error(.lifecycle, "Stretch clock tick load failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+            return nil
+        }
+    }()
+
+    func tick() {
+        guard let tickData else { return }
+        if !player.play(tickData, interrupt: true) {
+            ActivityDiagnosticLog.error(.lifecycle, "Stretch clock tick playback failed")
+        }
+    }
     private let voice = GuideCatalogStore().selectedVoice.id
     private var locale: String { AppLanguage.currentIdentifier }
     private var directory: URL { FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("StretchAudio-v1") }
 
     func preload(_ movementCues: [String]) async {
         var seen = Set<String>()
-        let cues = (movementCues + ["release", "five", "four", "three", "two", "one"]).filter { seen.insert($0).inserted }
+        let cues = (movementCues + ["release"]).filter { seen.insert($0).inserted }
         for cue in cues {
             guard !Task.isCancelled else { return }
             let url = directory.appendingPathComponent("\(locale)-\(voice)-\(cue).wav")
