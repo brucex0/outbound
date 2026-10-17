@@ -12,6 +12,9 @@ struct ImportedWorkout: Identifiable, Equatable {
     let energyBurnedKilocalories: Double?
     let activityType: ActivityType
 
+    var plainstrideSessionUUID: UUID? = nil
+    var sourceBundleIdentifier: String? = nil
+
     var isRunning: Bool { activityType == .running }
 
     var summaryLine: String {
@@ -141,12 +144,15 @@ final class HealthImportStore: ObservableObject {
 
         do {
             let initialStart = Calendar.current.date(byAdding: .weekOfYear, value: -8, to: Date()) ?? .distantPast
-            let lastCheck = defaults.object(forKey: lastCheckKey) as? Date
-            let overlapStart = lastCheck?.addingTimeInterval(-60 * 60 * 24)
-            let data = try await service.fetchPersonalizationData(since: overlapStart ?? initialStart)
+            // A Watch can stay offline for days; its workout may arrive much
+            // later than its end date. UUID filtering makes this bounded rescan safe.
+            let data = try await service.fetchPersonalizationData(since: initialStart)
             let dismissedIDs = Set(defaults.stringArray(forKey: dismissedIDsKey) ?? [])
+            let suppressedSessions = Set(defaults.stringArray(forKey: "watch.suppressedSessionIDs") ?? [])
             importCandidates = data.recentWorkouts.filter {
-                !existingExternalIDs.contains($0.id) && !dismissedIDs.contains($0.id)
+                !existingExternalIDs.contains($0.id) && !dismissedIDs.contains($0.id) &&
+                    ($0.plainstrideSessionUUID.map { suppressedSessions.contains($0.uuidString) } != true) &&
+                    ($0.plainstrideSessionUUID == nil || $0.plainstrideSessionUUID != PhoneWorkoutSessionCoordinator.shared.currentSessionUUID)
             }
             lastErrorMessage = nil
             if presentWhenFound, !importCandidates.isEmpty {
@@ -180,5 +186,17 @@ final class HealthImportStore: ObservableObject {
     private static func message(for error: Error) -> String {
         (error as? LocalizedError)?.errorDescription
             ?? String(localized: "health.import.load_error", defaultValue: "Apple Health workouts could not be loaded.")
+    }
+}
+
+/// Local deletion/discard must not be undone by delayed Watch Health sync.
+@MainActor
+enum WatchWorkoutImportSuppression {
+    static func remember(_ metadata: ActivityRecordingSessionMetadata?) {
+        guard let metadata, metadata.healthKitOwnership == .appleWatchPrimary else { return }
+        let key = "watch.suppressedSessionIDs"
+        let previous = UserDefaults.standard.stringArray(forKey: key) ?? []
+        guard !previous.contains(metadata.sessionUUID.uuidString) else { return }
+        UserDefaults.standard.set(previous + [metadata.sessionUUID.uuidString], forKey: key)
     }
 }

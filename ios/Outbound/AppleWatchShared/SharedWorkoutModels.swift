@@ -85,6 +85,7 @@ struct PlainstrideFinalWorkoutMetrics: Codable, Equatable, Sendable {
 
 enum PlainstrideWorkoutMessageKind: String, Codable, Sendable {
     case handshake
+    case controlUsed
     case sessionIdentity
     case startReadiness
     case liveMetrics

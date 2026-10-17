@@ -121,6 +121,19 @@ enum HealthKitServiceError: LocalizedError {
     }
 }
 
+struct HealthWorkoutDetails {
+    let locations: [CLLocation]
+    let health: ActivityHealthMetrics?
+    let distanceMeters: Double?
+    let segmentStarts: Set<Int>
+    var route: SavedRoute? {
+        locations.count > 1 ? SavedRoute(points: locations.enumerated().map {
+            SavedRoutePoint(location: $0.element, startsNewSegment: segmentStarts.contains($0.offset))
+        }) : nil
+    }
+    static let empty = HealthWorkoutDetails(locations: [], health: nil, distanceMeters: nil, segmentStarts: [])
+}
+
 struct HealthKitService: HealthKitServing {
 #if canImport(HealthKit)
     private let healthStore = HKHealthStore()
@@ -226,6 +239,54 @@ struct HealthKitService: HealthKitServing {
         throw HealthKitServiceError.unavailable
 #endif
     }
+
+    func workoutDetails(id: String) async throws -> HealthWorkoutDetails {
+#if canImport(HealthKit)
+        guard let uuid = UUID(uuidString: id) else { return .empty }
+        let workouts: [HKWorkout] = try await samples(type: .workoutType(), predicate: HKQuery.predicateForObject(with: uuid))
+        guard let workout = workouts.first else { return .empty }
+        let routes: [HKWorkoutRoute] = try await samples(type: HKSeriesType.workoutRoute(), predicate: HKQuery.predicateForObjects(from: workout))
+        var locations: [CLLocation] = []
+        for route in routes {
+            let points: [CLLocation] = try await withCheckedThrowingContinuation { continuation in
+                var result: [CLLocation] = []
+                healthStore.execute(HKWorkoutRouteQuery(route: route) { _, batch, done, error in
+                    if let error { continuation.resume(throwing: error); return }
+                    result.append(contentsOf: batch ?? [])
+                    if done { continuation.resume(returning: result) }
+                })
+            }
+            locations.append(contentsOf: points)
+        }
+        let type = HKQuantityType(.heartRate)
+        let heart: [HKQuantitySample] = try await samples(type: type, predicate: HKQuery.predicateForObjects(from: workout))
+        let values = heart.map { $0.quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute())) }
+        let health = values.isEmpty ? nil : ActivityHealthMetrics(
+            averageHeartRateBPM: Int((values.reduce(0, +) / Double(values.count)).rounded()),
+            maxHeartRateBPM: values.max().map { Int($0.rounded()) }, heartRateSampleCount: values.count)
+        let sorted = locations.sorted { $0.timestamp < $1.timestamp }
+        let pauses = (workout.workoutEvents ?? []).filter { $0.type == .pause }.map { $0.dateInterval.start }
+        let starts = Set(sorted.indices.filter { index in
+            index == 0 || sorted[index].timestamp.timeIntervalSince(sorted[index - 1].timestamp) > 30 ||
+                pauses.contains { $0 >= sorted[index - 1].timestamp && $0 < sorted[index].timestamp }
+        })
+        return HealthWorkoutDetails(locations: sorted, health: health,
+            distanceMeters: workout.totalDistance?.doubleValue(for: .meter()), segmentStarts: starts)
+#else
+        return .empty
+#endif
+    }
+
+#if canImport(HealthKit)
+    private func samples<T: HKSample>(type: HKSampleType, predicate: NSPredicate) async throws -> [T] {
+        try await withCheckedThrowingContinuation { continuation in
+            healthStore.execute(HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume(returning: samples as? [T] ?? []) }
+            })
+        }
+    }
+#endif
 
     func saveWorkout(_ activity: SavedActivity, sport: SportType, energyKilocalories: Double?) async throws {
 #if canImport(HealthKit)
@@ -380,7 +441,7 @@ private extension HealthKitService {
                 }
 
                 let workouts: [ImportedWorkout] = (samples as? [HKWorkout] ?? [])
-                    .filter { !isOutboundWorkout($0) }
+                    .filter { !isOutboundWorkout($0) || $0.metadata?["ai.plainstride.session_uuid"] != nil }
                     .compactMap { workout -> ImportedWorkout? in
                         guard let activityType = workout.workoutActivityType.outboundActivityType else { return nil }
                         return ImportedWorkout(
@@ -392,7 +453,9 @@ private extension HealthKitService {
                         durationSeconds: Int(workout.duration.rounded()),
                         distanceMeters: workout.totalDistance?.doubleValue(for: .meter()),
                         energyBurnedKilocalories: energyBurnedKilocalories(for: workout),
-                        activityType: activityType
+                        activityType: activityType,
+                        plainstrideSessionUUID: (workout.metadata?["ai.plainstride.session_uuid"] as? String).flatMap(UUID.init(uuidString:)),
+                        sourceBundleIdentifier: workout.sourceRevision.source.bundleIdentifier
                         )
                     }
 

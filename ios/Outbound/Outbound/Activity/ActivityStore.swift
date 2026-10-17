@@ -14,6 +14,8 @@ final class ActivityStore: ObservableObject {
     private let analyticsManager: AnalyticsManager?
     private var activityRevision = 0
     private var elevationCorrectionIDs = Set<UUID>()
+    private var healthImportInFlight = false
+    private var healthRouteRefreshInFlight = false
     private var watchAutoSaveInFlight = Set<UUID>()
 
     var pendingActivityCount: Int {
@@ -106,13 +108,44 @@ final class ActivityStore: ObservableObject {
     }
 
     func importHealthWorkouts(_ workouts: [ImportedWorkout]) async -> Set<String> {
+        guard !healthImportInFlight else { return [] }
+        healthImportInFlight = true
+        defer { healthImportInFlight = false }
+        if !hasLoadedActivities { await loadActivities() }
         ActivityDiagnosticLog.notice(
             .healthKit,
             "Health import persistence started candidates=\(ActivityDiagnosticLog.countBucket(workouts.count))"
         )
         var importedIDs: Set<String> = []
-        let existingIDs = Set(activities.compactMap(\.source.externalID))
-        for workout in workouts where !existingIDs.contains(workout.id) {
+        for workout in workouts where !importedHealthExternalIDs.contains(workout.id) {
+            // Only reconcile explicitly linked sessions, or a unique high-overlap
+            // phone recording that deliberately selected Apple Workout ownership.
+            let matches = activities.filter { activity in
+                if let uuid = workout.plainstrideSessionUUID,
+                   activity.recordingSession?.sessionUUID == uuid { return true }
+                guard workout.sourceBundleIdentifier?.hasPrefix("com.apple.") == true,
+                      activity.recordingSession?.healthKitOwnership == .externalAppleWorkout,
+                      activity.recordingSession?.healthKitWorkoutExternalReference == nil,
+                      activity.activityType == workout.activityType else { return false }
+                let overlap = min(activity.endedAt, workout.endedAt).timeIntervalSince(max(activity.startedAt, workout.startedAt))
+                let longest = max(activity.endedAt.timeIntervalSince(activity.startedAt), workout.endedAt.timeIntervalSince(workout.startedAt))
+                return longest > 0 && overlap / longest >= 0.8
+            }
+            if matches.count == 1, let uuid = matches.first?.recordingSession?.sessionUUID {
+                await attachHealthKitWorkoutReference(sessionUUID: uuid, externalReference: workout.id)
+                if importedHealthExternalIDs.contains(workout.id) {
+                    await reconcileHealthDetails(id: workout.id, energy: workout.energyBurnedKilocalories.map { Int($0.rounded()) })
+                    importedIDs.insert(workout.id)
+                }
+                continue
+            }
+            let details: HealthWorkoutDetails
+            do { details = try await HealthKitService().workoutDetails(id: workout.id) }
+            catch {
+                ActivityDiagnosticLog.error(.healthKit, "Health workout details failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                // Keep the candidate retryable; do not persist a silently incomplete import.
+                continue
+            }
             let distance = max(0, workout.distanceMeters ?? 0)
             let duration = max(1, workout.durationSeconds)
             let summary = ActivitySummary(
@@ -124,7 +157,14 @@ final class ActivityStore: ObservableObject {
                     durationSeconds: Double(duration),
                     distanceMeters: distance
                 ),
-                trackPoints: []
+                healthMetrics: details.health,
+                sessionMetadata: workout.plainstrideSessionUUID.map {
+                    ActivityRecordingSessionMetadata(sessionUUID: $0, origin: .appleWatch,
+                        recordingDevice: .appleWatch, healthKitOwnership: .appleWatchPrimary,
+                        healthKitWorkoutExternalReference: workout.id)
+                },
+                trackPoints: details.locations,
+                trackSegmentStartIndices: details.segmentStarts
             )
             do {
                 _ = try await save(
@@ -140,7 +180,8 @@ final class ActivityStore: ObservableObject {
                         deviceName: nil,
                         externalID: workout.id,
                         importedAt: Date()
-                    )
+                    ),
+                    recordingSession: summary.sessionMetadata
                 )
                 importedIDs.insert(workout.id)
             } catch {
@@ -156,6 +197,60 @@ final class ActivityStore: ObservableObject {
             "Health import persistence completed imported=\(ActivityDiagnosticLog.countBucket(importedIDs.count))"
         )
         return importedIDs
+    }
+
+    private func markHealthUpdatePending(_ activity: SavedActivity) -> SavedActivity {
+        copy(activity, photos: activity.photos, sync: SavedActivitySyncState(
+            clientActivityId: activity.sync?.clientActivityId ?? activity.id.uuidString,
+            serverActivityId: activity.sync?.serverActivityId, lastAttemptAt: activity.sync?.lastAttemptAt,
+            syncedAt: nil, lastError: nil, localUpdatedAt: Date()))
+    }
+
+    private func reconcileHealthDetails(id: String, energy: Int?) async {
+        do {
+            let details = try await HealthKitService().workoutDetails(id: id)
+            guard let index = activities.firstIndex(where: { $0.recordingSession?.healthKitWorkoutExternalReference == id }) else { return }
+            let changed = activities[index].withImportedHealth(health: details.health, energy: energy,
+                route: details.route, distance: details.distanceMeters)
+            let updated = markHealthUpdatePending(changed)
+            try await persistence.replace(updated)
+            activities[index] = updated
+            activityRevision += 1
+            Task { await syncActivityIfPossible(id: updated.id) }
+        } catch {
+            ActivityDiagnosticLog.error(.healthKit, "Linked Health metrics reconciliation failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+        }
+    }
+
+    /// Health routes may sync after their workout. Revisit recent linked records
+    /// without a route; UUID ownership prevents creating a second activity.
+    func refreshPendingHealthRoutes() async {
+        guard !healthRouteRefreshInFlight else { return }
+        healthRouteRefreshInFlight = true
+        defer { healthRouteRefreshInFlight = false }
+        let cutoff = Date().addingTimeInterval(-8 * 7 * 24 * 60 * 60)
+        let pending = activities.filter {
+            $0.startedAt > cutoff && ($0.routePoints.isEmpty || $0.healthMetrics?.hasHeartRateData != true ||
+                $0.recordingSession?.healthKitOwnership == .appleWatchPrimary) &&
+                ($0.source.kind == .appleHealth || $0.recordingSession?.healthKitWorkoutExternalReference != nil)
+        }
+        for activity in pending {
+            guard let id = activity.recordingSession?.healthKitWorkoutExternalReference ?? activity.source.externalID else { continue }
+            do {
+                let details = try await HealthKitService().workoutDetails(id: id)
+                guard let index = activities.firstIndex(where: { $0.id == activity.id }) else { continue }
+                let changed = activities[index].withImportedHealth(health: details.health, energy: nil,
+                    route: details.route, distance: details.distanceMeters)
+                guard changed.route != activities[index].route || changed.healthMetrics != activities[index].healthMetrics else { continue }
+                let updated = markHealthUpdatePending(changed)
+                try await persistence.replace(updated)
+                activities[index] = updated
+                activityRevision += 1
+                Task { await syncActivityIfPossible(id: updated.id) }
+            } catch {
+                ActivityDiagnosticLog.error(.healthKit, "Delayed Health route reconciliation failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+            }
+        }
     }
 
     // MARK: - Strava export import
@@ -404,6 +499,7 @@ final class ActivityStore: ObservableObject {
             _ = try await api.deleteActivity(id: remoteID)
         }
         try await persistence.delete(activity)
+        WatchWorkoutImportSuppression.remember(activity.recordingSession)
         activityRevision += 1
         activities.removeAll { $0.id == activity.id }
     }

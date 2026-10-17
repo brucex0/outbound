@@ -112,6 +112,7 @@ struct RecordView: View {
     @State private var countdownTask: Task<Void, Never>?
     @State private var didApplySmartGoalDefault = false
     @State private var didApplyDefaultSessionShoe = false
+    @AppStorage("watch.useAppleWorkout") private var useAppleWorkout = false
     @State private var isIndoorSession = false
     @State private var companionType: ActivityCompanionType?
     @State private var isStartingActivity = false
@@ -1435,14 +1436,16 @@ struct RecordView: View {
             phoneWorkoutCoordinator.preparePhoneFirst(
                 activityType: activeIntent?.resolvedActivityType ?? .running,
                 isIndoor: isIndoorSession,
-                companionType: isCompanionContextEligible ? companionType : nil
+                companionType: isCompanionContextEligible ? companionType : nil,
+                useAppleWorkout: useAppleWorkout
             )
         }
 #else
         phoneWorkoutCoordinator.preparePhoneFirst(
             activityType: activeIntent?.resolvedActivityType ?? .running,
             isIndoor: isIndoorSession,
-            companionType: isCompanionContextEligible ? companionType : nil
+            companionType: isCompanionContextEligible ? companionType : nil,
+            useAppleWorkout: useAppleWorkout
         )
 #endif
         beginStartCountdown()
@@ -1937,7 +1940,7 @@ struct RecordView: View {
         }
         _ = socialStore.consumeRecordingActivityEventID()
 
-        if savedActivity.recordingSession?.healthKitOwnership != .appleWatchPrimary {
+        if savedActivity.recordingSession?.healthKitOwnership == .phoneWriteBack || savedActivity.recordingSession == nil {
             Task {
                 try? await HealthKitService().saveWorkout(
                     savedActivity,
@@ -2010,6 +2013,7 @@ struct RecordView: View {
 
     private func discardPendingActivity() {
         if let pendingActivity {
+            WatchWorkoutImportSuppression.remember(resolvedRecordingSession(for: pendingActivity.summary))
             var properties = outcomeProperties(for: pendingActivity.summary)
             properties[.photoCountBucket] = .string(ProductAnalyticsBucket.count(pendingActivity.photos.count))
             track(.init(.activityDiscarded, properties: properties))
@@ -2351,6 +2355,7 @@ struct RecordView: View {
                         launchCheerMeOnControl
                         launchShoeControl
                         launchCompanionControl
+                        launchWatchRecorderControl
                         launchEnvironmentControl
                         launchAutoPauseControl
                     }
@@ -2435,6 +2440,35 @@ struct RecordView: View {
             text: String(localized: "tooltip.cheer_me_on", defaultValue: "Invite loved ones to follow along and cheer you on"),
             arrowEdge: .bottom
         ))
+    }
+
+    private var launchWatchRecorderControl: some View {
+        Menu {
+            Button(String(localized: "watch.recorder.plainstride", defaultValue: "Plainstride Watch")) {
+                setAppleWorkoutMode(false)
+            }
+            Button(String(localized: "watch.recorder.apple", defaultValue: "Apple Workout")) {
+                setAppleWorkoutMode(true)
+            }
+            Text(String(localized: "watch.recorder.help", defaultValue: "With Apple Workout, start and finish on both devices. Watch heart rate appears after import. Completed Apple workouts sync when you reopen Plainstride."))
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: "applewatch")
+                Text(useAppleWorkout
+                    ? String(localized: "watch.recorder.apple", defaultValue: "Apple Workout")
+                    : String(localized: "watch.recorder.plainstride", defaultValue: "Plainstride Watch"))
+                    .font(.caption)
+            }
+        }
+    }
+
+    private func setAppleWorkoutMode(_ enabled: Bool) {
+        useAppleWorkout = enabled
+        if enabled { UserDefaults.standard.set(Date(), forKey: "watch.appleWorkoutEnabledAt") }
+        track(.init(.activityConfigurationChanged, properties: [
+            .changeType: .string("watch_recorder"),
+            .selectionType: .string(enabled ? "apple_workout" : "plainstride")
+        ]))
     }
 
     private var launchEnvironmentControl: AnyView {

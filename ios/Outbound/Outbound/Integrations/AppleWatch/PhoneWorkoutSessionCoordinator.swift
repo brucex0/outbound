@@ -51,6 +51,8 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
         super.init()
     }
 
+    private var usesAppleWorkout = false
+
     var canonicalStartDate: Date? { pendingIdentity?.canonicalStartDate }
 
     func recordingMetadata(externalReference: String? = nil) -> ActivityRecordingSessionMetadata? {
@@ -60,7 +62,7 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
             sessionUUID: sessionUUID,
             origin: sessionOrigin,
             recordingDevice: watchOwnsHealthKitPersistence ? .appleWatch : .phoneOnly,
-            healthKitOwnership: watchOwnsHealthKitPersistence ? .appleWatchPrimary : .phoneWriteBack,
+            healthKitOwnership: usesAppleWorkout ? .externalAppleWorkout : (watchOwnsHealthKitPersistence ? .appleWatchPrimary : .phoneWriteBack),
             healthKitWorkoutExternalReference: externalReference ?? savedWorkoutExternalReference
         )
     }
@@ -83,6 +85,9 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
 
     func bind(recorder: ActivityRecorder) {
         self.recorder = recorder
+        if let metadata = recorder.recordingSessionMetadata {
+            usesAppleWorkout = metadata.healthKitOwnership == .externalAppleWorkout
+        }
         if currentSessionUUID == nil,
            let metadata = recorder.recordingSessionMetadata,
            metadata.healthKitOwnership == .appleWatchPrimary {
@@ -122,9 +127,19 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
         activityType: ActivityType,
         isIndoor: Bool,
         companionType: ActivityCompanionType? = nil,
-        sessionUUID: UUID = UUID()
+        sessionUUID: UUID = UUID(),
+        useAppleWorkout: Bool = false
     ) {
         resetForNewSession(sessionUUID: sessionUUID)
+        usesAppleWorkout = useAppleWorkout
+        if useAppleWorkout {
+            pendingIdentity = nil
+            connection = .unavailable
+            origin = .iPhone
+            lifecycle = .ready
+            track(.watchWorkoutOrigin, [.sourceType: .string("apple_workout")])
+            return
+        }
         origin = .iPhone
         pendingIdentity = PlainstrideWorkoutIdentity(
             activity: PlainstrideWorkoutActivity(activityType),
@@ -266,6 +281,12 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
             }
 
             switch message.kind {
+            case .controlUsed:
+                let allowed = ["lap", "auto_lap", "goal_reached", "zone_alert", "pace_alert"]
+                if let control = message.errorCategory, allowed.contains(control) {
+                    track(.watchControlUsed, [.sourceType: .string("apple_watch"), .control: .string(control)])
+                }
+
             case .sessionIdentity, .startReadiness:
                 guard let identity = message.identity else { continue }
                 pendingIdentity = identity
@@ -466,6 +487,7 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
     }
 
     private func resetForNewSession(sessionUUID: UUID) {
+        usesAppleWorkout = false
         preparationTimeoutTask?.cancel()
         currentSessionUUID = sessionUUID
         nextSequence = 0
@@ -482,6 +504,7 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
     }
 
     private func resetTransientState() {
+        usesAppleWorkout = false
         preparationTimeoutTask?.cancel()
         preparationTimeoutTask = nil
         mirroredSession?.delegate = nil

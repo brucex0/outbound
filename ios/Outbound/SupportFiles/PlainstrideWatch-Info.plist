@@ -22,11 +22,14 @@
 	<string>Plainstride reads live heart rate, distance, and energy to show your workout and effort on Apple Watch and iPhone.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Plainstride saves the workout recorded by Apple Watch to Apple Health.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Plainstride records your outdoor workout route even when your iPhone is not with you.</string>
 	<key>WKApplication</key>
 	<true/>
 	<key>WKBackgroundModes</key>
 	<array>
 		<string>workout-processing</string>
+		<string>location</string>
 	</array>
 	<key>WKCompanionAppBundleIdentifier</key>
 	<string>plainstride.outbound</string>

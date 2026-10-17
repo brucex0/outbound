@@ -1,0 +1,72 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "watch.recorder.plainstride": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plainstride Watch"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plainstride Watch"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plainstride 手表"
+          }
+        }
+      }
+    },
+    "watch.recorder.apple": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Workout"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entreno de Apple"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple 体能训练"
+          }
+        }
+      }
+    },
+    "watch.recorder.help": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "With Apple Workout, start and finish on both devices. Watch heart rate appears after import. Completed Apple workouts sync when you reopen Plainstride."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Con Entreno de Apple, inicia y termina en ambos dispositivos. La frecuencia cardíaca aparece tras importar. Los entrenamientos de Apple se sincronizan al volver a abrir Plainstride."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用 Apple 体能训练时，请在两台设备上分别开始和结束。导入后可查看手表心率。重新打开 Plainstride 时会同步已完成的 Apple 训练。"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

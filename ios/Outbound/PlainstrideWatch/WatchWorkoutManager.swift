@@ -1,6 +1,8 @@
 import Combine
 import Foundation
 import HealthKit
+import WatchKit
+import OSLog
 
 @MainActor
 final class WatchWorkoutManager: NSObject, ObservableObject {
@@ -11,6 +13,19 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
     @Published private(set) var metrics: PlainstrideLiveMetrics?
     @Published private(set) var errorCategory: String?
     @Published private(set) var savedWorkoutSucceeded: Bool?
+
+    @Published private(set) var currentPaceSecondsPerKilometer: Double?
+    @Published private(set) var laps: [WatchLap] = []
+    @Published private(set) var goalReached = false
+    private let routeRecorder = WatchRouteRecorder()
+    private let log = Logger(subsystem: "plainstride.outbound.watchkitapp", category: "workout")
+    private var clock: Timer?
+    private var paceSamples: [(time: TimeInterval, distance: Double)] = []
+    private var lapStartTime: TimeInterval = 0
+    private var lapStartDistance: Double = 0
+    private var nextSplitDistance: Double = 0
+    private var lastAlertAt = Date.distantPast
+    private var lastZone: Int?
 
     private let healthStore = HKHealthStore()
     private var session: HKWorkoutSession?
@@ -74,6 +89,7 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
         guard lifecycle == .active else { return }
         lifecycle = .paused
         persistState()
+        routeRecorder.pause()
         session?.pause()
         if notifyPhone { send(kind: .pause) }
     }
@@ -82,12 +98,16 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
         guard lifecycle == .paused else { return }
         lifecycle = .active
         persistState()
+        paceSamples = []
+        routeRecorder.resume()
         session?.resume()
         if notifyPhone { send(kind: .resume) }
     }
 
     func finish(notifyPhone: Bool = true) {
         guard !finishStarted, session != nil else { return }
+        routeRecorder.stop()
+        clock?.invalidate()
         finishStarted = true
         lifecycle = .finishing
         persistState()
@@ -135,6 +155,13 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
             workoutBuilder.delegate = self
 
             sessionUUID = UUID()
+            laps = []
+            goalReached = false
+            currentPaceSecondsPerKilometer = nil
+            paceSamples = []
+            lapStartTime = 0
+            lapStartDistance = 0
+            nextSplitDistance = WatchRunningSettings.splitMeters
             identity = PlainstrideWorkoutIdentity(
                 activity: activity,
                 isIndoor: isIndoor,
@@ -150,6 +177,8 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
             builderFinishStarted = false
             persistState()
 
+            routeRecorder.begin(sessionID: sessionUUID!, outdoor: !isIndoor && [.running, .walking, .cycling, .hiking].contains(activity))
+            startClock()
             workoutSession.startActivity(with: startedAt)
             try await workoutBuilder.beginCollection(at: startedAt)
             do {
@@ -160,6 +189,7 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
             } catch {
                 // Mirroring is additive. The Watch-owned workout must continue even
                 // when no companion phone is currently reachable.
+                log.error("Workout mirroring start failed category=\(Self.errorCategory(error), privacy: .public)")
                 connection = .unavailable
                 errorCategory = Self.errorCategory(error)
                 persistState()
@@ -183,6 +213,11 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
             origin: .appleWatch,
             canonicalStartDate: nil
         )
+        laps = persisted?.laps ?? []
+        lapStartTime = persisted?.lapStartTime ?? 0
+        lapStartDistance = persisted?.lapStartDistance ?? 0
+        nextSplitDistance = persisted?.nextSplitDistance ?? WatchRunningSettings.splitMeters
+        goalReached = persisted?.goalReached ?? false
         nextSequence = persisted?.nextSequence ?? 0
         lastRemoteSequence = persisted?.lastRemoteSequence ?? 0
         effortEngine = persisted?.effortEngine ?? HeartRateEffortEngine()
@@ -194,7 +229,12 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
         session = recovered
         builder = recoveredBuilder
         connection = .connecting
-        lifecycle = recovered.state == .paused ? .paused : .recovering
+        lifecycle = recovered.state == .paused ? .paused : .active
+        if let sessionUUID, let identity {
+            routeRecorder.begin(sessionID: sessionUUID, outdoor: !identity.isIndoor && [.running, .walking, .cycling, .hiking].contains(identity.activity))
+            if lifecycle == .paused { routeRecorder.pause() }
+        }
+        startClock()
         persistState()
         Task {
             do {
@@ -203,6 +243,7 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
                 send(kind: .sessionIdentity, identity: identity)
                 send(kind: .lifecycleState, lifecycle: lifecycle)
             } catch {
+                log.error("Recovered workout mirroring failed category=\(Self.errorCategory(error), privacy: .public)")
                 connection = .disconnected
             }
         }
@@ -217,7 +258,7 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
             HKQuantityType.quantityType(forIdentifier: .distanceSwimming),
             HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)
         ].compactMap { $0 })
-        try await healthStore.requestAuthorization(toShare: [workout], read: readable)
+        try await healthStore.requestAuthorization(toShare: [workout, HKSeriesType.workoutRoute()], read: readable.union([workout, HKSeriesType.workoutRoute()]))
     }
 
     private func finishBuilder(at endDate: Date) {
@@ -245,6 +286,7 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
                         try await builder.addMetadata(["ai.plainstride.session_uuid": sessionUUID.uuidString])
                     }
                     let workout = try await builder.finishWorkout()
+                    if let workout { await self.routeRecorder.finish(workout: workout, healthStore: self.healthStore) }
                     let snapshot = self.effortEngine.snapshot
                     let final = PlainstrideFinalWorkoutMetrics(
                         averageBPM: snapshot.averageBPM,
@@ -277,6 +319,7 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
                     )
                     self.resetAfterFinish(success: workout != nil)
                 } catch {
+                    self.log.error("Workout save failed category=\(Self.errorCategory(error), privacy: .public)")
                     self.send(kind: .recoverableError, errorCategory: "save")
                     self.send(
                         kind: .savedWorkout,
@@ -290,6 +333,8 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
     }
 
     private func resetAfterFinish(success: Bool) {
+        clock?.invalidate()
+        routeRecorder.stop()
         savedWorkoutSucceeded = success
         lifecycle = success ? .finished : .failed
         connection = .unavailable
@@ -325,11 +370,97 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
             activeEnergyKilocalories: quantity(.activeEnergyBurned, from: builder)
         )
         metrics = updated
+        updateRunningMetrics(updated)
         persistState()
         let now = Date()
         guard lastMetricsSentAt.map({ now.timeIntervalSince($0) >= 2 }) ?? true else { return }
         lastMetricsSentAt = now
         send(kind: .liveMetrics, metrics: updated)
+    }
+
+    var routePermissionDenied: Bool { identity?.isIndoor == false && routeRecorder.permissionDenied }
+
+    func retryPendingRoutes() async { await routeRecorder.retryPending(healthStore: healthStore) }
+
+    private func startClock() {
+        clock?.invalidate()
+        clock = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor [weak self] in
+                guard let self, self.lifecycle == .active, let builder = self.builder else { return }
+                self.updateMetrics(from: builder, collectedTypes: [])
+            }
+        }
+    }
+
+    var lapPaceSecondsPerKilometer: Double? {
+        guard let metrics, let distance = metrics.distanceMeters, distance - lapStartDistance > 10 else { return nil }
+        return (metrics.elapsedTime - lapStartTime) * 1_000 / (distance - lapStartDistance)
+    }
+
+    func markLap() {
+        guard lifecycle == .active, let metrics, let distance = metrics.distanceMeters else { return }
+        closeLap(time: metrics.elapsedTime, distance: distance, automatic: false)
+    }
+
+    private func closeLap(time: TimeInterval, distance: Double, automatic: Bool) {
+        guard time > lapStartTime, distance >= lapStartDistance else { return }
+        laps.append(WatchLap(seconds: time - lapStartTime, meters: distance - lapStartDistance, automatic: automatic))
+        lapStartTime = time
+        lapStartDistance = distance
+        WKInterfaceDevice.current().play(.click)
+        if let builder {
+            let event = HKWorkoutEvent(type: .lap, dateInterval: DateInterval(start: Date(), duration: 0), metadata: ["ai.plainstride.lap_seconds": laps.last?.seconds ?? 0, "ai.plainstride.lap_meters": laps.last?.meters ?? 0])
+            Task {
+                do { try await builder.addWorkoutEvents([event]) }
+                catch { log.error("Lap event save failed category=\(Self.errorCategory(error), privacy: .public)") }
+            }
+        }
+        persistState()
+        send(kind: .controlUsed, errorCategory: automatic ? "auto_lap" : "lap")
+    }
+
+    private func updateRunningMetrics(_ value: PlainstrideLiveMetrics) {
+        guard lifecycle == .active else { return }
+        if let distance = value.distanceMeters {
+            paceSamples.append((value.elapsedTime, distance))
+            paceSamples.removeAll { value.elapsedTime - $0.time > 15 }
+            if let first = paceSamples.first, value.elapsedTime - first.time >= 5, distance - first.distance > 2 {
+                currentPaceSecondsPerKilometer = (value.elapsedTime - first.time) * 1_000 / (distance - first.distance)
+            } else { currentPaceSecondsPerKilometer = nil }
+            if WatchRunningSettings.autoSplits {
+                while nextSplitDistance > 0, distance >= nextSplitDistance {
+                    let previous = paceSamples.dropLast().last
+                    let splitTime: TimeInterval
+                    if let previous, distance > previous.distance {
+                        let fraction = min(1, max(0, (nextSplitDistance - previous.distance) / (distance - previous.distance)))
+                        splitTime = previous.time + fraction * (value.elapsedTime - previous.time)
+                    } else { splitTime = value.elapsedTime }
+                    closeLap(time: splitTime, distance: nextSplitDistance, automatic: true)
+                    nextSplitDistance += WatchRunningSettings.splitMeters
+                }
+            }
+        }
+        let goal = WatchRunningSettings.goalValue
+        let progress = WatchRunningSettings.goalIsTime ? value.elapsedTime : (value.distanceMeters ?? 0)
+        if goal > 0, progress >= goal, !goalReached {
+            goalReached = true
+            WKInterfaceDevice.current().play(.success)
+            send(kind: .controlUsed, errorCategory: "goal_reached")
+        }
+        if WatchRunningSettings.zoneAlerts, let zone = value.currentZone, let previous = lastZone,
+           zone != previous, Date().timeIntervalSince(lastAlertAt) > 30 {
+            WKInterfaceDevice.current().play(.directionUp)
+            lastAlertAt = Date()
+            send(kind: .controlUsed, errorCategory: "zone_alert")
+        }
+        lastZone = value.currentZone
+        if WatchRunningSettings.paceTarget > 0, let pace = currentPaceSecondsPerKilometer,
+           abs(pace - WatchRunningSettings.paceTarget) > 30, Date().timeIntervalSince(lastAlertAt) > 60 {
+            WKInterfaceDevice.current().play(.notification)
+            lastAlertAt = Date()
+            send(kind: .controlUsed, errorCategory: "pace_alert")
+        }
     }
 
     private func quantity(_ identifier: HKQuantityTypeIdentifier, from builder: HKLiveWorkoutBuilder) -> Double? {
@@ -349,6 +480,7 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
                identity?.origin == .iPhone,
                sessionUUID != message.sessionUUID {
                 sessionUUID = message.sessionUUID
+                routeRecorder.adoptWorkoutSessionID(message.sessionUUID)
                 send(kind: .sessionIdentity, identity: identity)
             }
             guard message.sessionUUID == sessionUUID else { continue }
@@ -397,6 +529,9 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
     }
 
     private func fail(_ category: String) {
+        clock?.invalidate()
+        routeRecorder.stop()
+        log.error("Watch workout failed category=\(category, privacy: .public)")
         errorCategory = category
         lifecycle = .failed
         connection = .unavailable
@@ -410,6 +545,11 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
         let nextSequence: UInt64
         let lastRemoteSequence: UInt64
         let effortEngine: HeartRateEffortEngine
+        var laps: [WatchLap]? = nil
+        var lapStartTime: TimeInterval? = nil
+        var lapStartDistance: Double? = nil
+        var nextSplitDistance: Double? = nil
+        var goalReached: Bool? = nil
     }
 
     private func persistState() {
@@ -419,7 +559,9 @@ final class WatchWorkoutManager: NSObject, ObservableObject {
             identity: identity,
             nextSequence: nextSequence,
             lastRemoteSequence: lastRemoteSequence,
-            effortEngine: effortEngine
+            effortEngine: effortEngine,
+            laps: laps, lapStartTime: lapStartTime, lapStartDistance: lapStartDistance,
+            nextSplitDistance: nextSplitDistance, goalReached: goalReached
         )
         if let data = try? JSONEncoder().encode(value) {
             UserDefaults.standard.set(data, forKey: persistenceKey)
@@ -487,9 +629,11 @@ extension WatchWorkoutManager: HKWorkoutSessionDelegate {
             switch toState {
             case .running:
                 lifecycle = .active
+                routeRecorder.resume()
                 send(kind: .lifecycleState, lifecycle: .active)
             case .paused:
                 lifecycle = .paused
+                routeRecorder.pause()
                 send(kind: .lifecycleState, lifecycle: .paused)
             case .ended:
                 lifecycle = .finishing

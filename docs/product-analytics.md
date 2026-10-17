@@ -336,3 +336,7 @@ Historical dashboards do not migrate automatically just because the client adapt
 - iOS and Android running cadence use `feature_exposed` with only `feature=running_cadence_live` or `running_cadence_summary` when those surfaces appear. Recording quality reports availability only; cadence values, step counts, samples, timestamps, and activity IDs are excluded.
 
 - Android recording emits `activity_recording_quality` with only `running_cadence_available` for motion coverage. Optional motion permission uses the canonical requested/completed events and a bounded result, without step timestamps or counts.
+
+## Apple Watch running parity
+
+Recorder selection, automatic Watch imports, and allowlisted lap/goal/alert controls reuse the existing typed events. See `docs/apple-watch-running-parity.md` for exact values and offline limits. No exact health metrics, route points, session IDs, or target values enter these events.

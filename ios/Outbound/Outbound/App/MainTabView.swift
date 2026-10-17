@@ -109,6 +109,9 @@ struct MainTabView: View {
                 defaultValue: "Outdoor activities need location to map your route and record pace. Grant access to start, or turn it on in Settings if it was denied before."
             ))
         }
+        .onChange(of: activitySessionState) { _, state in
+            if state == .idle { checkForHealthWorkouts(presentWhenFound: false) }
+        }
         .onChange(of: selectedAppTab) { _, tab in
             guard tab == SimplifiedAppTab.today else { return }
             guard activitySessionState == .idle else { return }
@@ -231,11 +234,30 @@ struct MainTabView: View {
     }
 
     private func checkForHealthWorkouts(presentWhenFound: Bool) {
+        guard activitySessionState == .idle, !healthImportStore.isReviewPresented else { return }
         Task {
             await healthImportStore.checkForNewWorkouts(
                 existingExternalIDs: activityStore.importedHealthExternalIDs,
-                presentWhenFound: presentWhenFound
+                presentWhenFound: false
             )
+            let automatic = healthImportStore.importCandidates.filter {
+                $0.plainstrideSessionUUID != nil ||
+                    (UserDefaults.standard.bool(forKey: "watch.useAppleWorkout") &&
+                     $0.startedAt >= (UserDefaults.standard.object(forKey: "watch.appleWorkoutEnabledAt") as? Date ?? Date()) &&
+                     $0.sourceBundleIdentifier?.hasPrefix("com.apple.") == true)
+            }
+            let imported = await activityStore.importHealthWorkouts(automatic)
+            await activityStore.refreshPendingHealthRoutes()
+            healthImportStore.finishImport(importedIDs: imported)
+            if !automatic.isEmpty {
+                await analyticsManager?.track(.init(.healthImportCompleted, properties: [
+                    .sourceType: .string("apple_health"),
+                    .result: .string(imported.isEmpty ? "failure" : "success"),
+                    .selectionType: .string("automatic_watch"),
+                    .countBucket: .string(ProductAnalyticsBucket.count(imported.count))
+                ]))
+            }
+            healthImportStore.isReviewPresented = presentWhenFound && !healthImportStore.importCandidates.isEmpty
         }
     }
 

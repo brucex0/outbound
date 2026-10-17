@@ -475,6 +475,7 @@ nonisolated struct ActivityRecordingSessionMetadata: Codable, Hashable {
 
     enum HealthKitOwnership: String, Codable, Hashable {
         case phoneWriteBack = "phone_write_back"
+        case externalAppleWorkout = "external_apple_workout"
         case appleWatchPrimary = "apple_watch_primary"
     }
 
@@ -737,6 +738,45 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
 }
 
 nonisolated extension SavedActivity {
+    func withImportedHealth(health: ActivityHealthMetrics?, energy: Int?, route importedRoute: SavedRoute?, distance: Double? = nil) -> SavedActivity {
+        let watchRouteIsMoreComplete = manualEdits == nil && recordingSession?.healthKitOwnership == .appleWatchPrimary &&
+            importedRoute != nil && distance.map { distanceM < $0 * 0.8 } == true
+        let replaceRoute = routePoints.isEmpty || watchRouteIsMoreComplete
+        let resolvedDistance = watchRouteIsMoreComplete ? (distance ?? distanceM) : distanceM
+        return SavedActivity(
+            id: id,
+            activityType: activityType,
+            title: title,
+            guideNudge: guideNudge,
+            reflection: reflection,
+            createdAt: createdAt,
+            startedAt: startedAt,
+            endedAt: endedAt,
+            durationSecs: durationSecs,
+            distanceM: resolvedDistance,
+            avgPace: watchRouteIsMoreComplete ? activityType.plausibleAveragePace(durationSeconds: Double(durationSecs), distanceMeters: resolvedDistance) : avgPace,
+            elevationGainM: elevationGainM,
+            walkingStepCount: walkingStepCount,
+            healthMetrics: manualEdits == nil ? (health ?? healthMetrics) : healthMetrics,
+            goal: goal,
+            energyKilocalories: manualEdits == nil ? (energy ?? energyKilocalories) : energyKilocalories,
+            companionType: companionType,
+            source: source,
+            gear: gear,
+            manualEdits: manualEdits,
+            indoor: indoor,
+            cadence: cadence,
+            heartRateZones: heartRateZones,
+            recordingSession: recordingSession,
+            activityEventID: activityEventID,
+            followedRoute: followedRoute,
+            recognitionBadgeIDs: recognitionBadgeIDs,
+            route: replaceRoute ? (importedRoute ?? route) : route,
+            photos: photos,
+            sync: sync
+        )
+    }
+
     func withHealthKitWorkoutReference(_ externalReference: String) -> SavedActivity {
         guard let recordingSession else { return self }
         return SavedActivity(

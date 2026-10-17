@@ -4,6 +4,11 @@ struct WatchWorkoutView: View {
     @EnvironmentObject private var workout: WatchWorkoutManager
     @State private var selectedActivity: PlainstrideWorkoutActivity = .running
     @State private var isIndoor = false
+    @State private var showsSettings = false
+    @State private var confirmsFinish = false
+    @AppStorage("watch.miles") private var miles = false
+    @AppStorage("watch.showPace") private var showPace = true
+    @AppStorage("watch.showHeart") private var showHeart = true
 
     var body: some View {
         Group {
@@ -13,6 +18,11 @@ struct WatchWorkoutView: View {
                 activityPicker
             }
         }
+        .sheet(isPresented: $showsSettings) { WatchRunningSettingsView() }
+        .confirmationDialog(String(localized: "watch.finish.confirm", defaultValue: "Finish workout?"), isPresented: $confirmsFinish) {
+            Button(String(localized: "watch.finish", defaultValue: "Finish"), role: .destructive) { workout.finish() }
+        }
+        .task { await workout.retryPendingRoutes() }
     }
 
     private var activityPicker: some View {
@@ -36,71 +46,112 @@ struct WatchWorkoutView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.orange)
                 .accessibilityHint(String(localized: "watch.start.hint", defaultValue: "Starts one synchronized Plainstride workout"))
+
+                Button(String(localized: "watch.settings", defaultValue: "Running settings")) { showsSettings = true }
             }
         }
         .navigationTitle(String(localized: "watch.app.title", defaultValue: "Plainstride"))
     }
 
     private var workoutSurface: some View {
-        ScrollView {
-            VStack(spacing: 8) {
-                Text(statusText)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(statusColor)
-                    .accessibilityLabel(statusAccessibilityLabel)
-
-                TimelineView(.periodic(from: .now, by: 1)) { _ in
-                    Text(durationText)
-                        .font(.system(.title2, design: .rounded, weight: .bold))
-                        .monospacedDigit()
-                }
-
-                HStack(spacing: 12) {
-                    metric(workout.metrics?.currentBPM.map(String.init) ?? "—", String(localized: "watch.bpm", defaultValue: "BPM"))
-                    metric(zoneText, String(localized: "watch.effort", defaultValue: "Effort"))
-                    if let distance = workout.metrics?.distanceMeters {
-                        metric(String(format: "%.2f", distance / 1_000), String(localized: "watch.km", defaultValue: "km"))
+        TabView {
+            ScrollView {
+                VStack(spacing: 8) {
+                    Text(statusText).font(.caption).foregroundStyle(statusColor)
+                    Text(durationText).font(.system(.title2, design: .rounded, weight: .bold)).monospacedDigit()
+                    metric(distanceText, miles
+                        ? String(localized: "watch.mi", defaultValue: "mi")
+                        : String(localized: "watch.km", defaultValue: "km"))
+                    if let energy = workout.metrics?.activeEnergyKilocalories {
+                        metric(String(Int(energy.rounded())), String(localized: "watch.calories", defaultValue: "Active kcal"))
                     }
-                }
-
-                if workout.lifecycle == .finished || workout.lifecycle == .failed {
-                    HStack(spacing: 12) {
-                        metric(workout.metrics?.averageBPM.map(String.init) ?? "—", String(localized: "watch.average", defaultValue: "Average"))
-                        metric(workout.metrics?.maximumBPM.map(String.init) ?? "—", String(localized: "watch.maximum", defaultValue: "Maximum"))
+                    if workout.routePermissionDenied {
+                        Text(String(localized: "watch.route.permission", defaultValue: "Route unavailable. Allow Location in Settings."))
+                            .font(.caption).foregroundStyle(.orange)
                     }
-
-                    Button {
-                        workout.dismissResult()
-                    } label: {
-                        Text(String(localized: "watch.done", defaultValue: "Done"))
-                            .frame(maxWidth: .infinity, minHeight: 44)
+                    if WatchRunningSettings.goalValue > 0, !workout.goalReached {
+                        ProgressView(value: goalProgress)
+                            .accessibilityLabel(String(localized: "watch.goal", defaultValue: "Goal"))
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.orange)
-                }
-
-                if workout.lifecycle == .active || workout.lifecycle == .paused {
-                    HStack {
-                        Button {
-                            workout.lifecycle == .paused ? workout.resume() : workout.pause()
-                        } label: {
-                            Image(systemName: workout.lifecycle == .paused ? "play.fill" : "pause.fill")
-                                .frame(minWidth: 44, minHeight: 44)
+                    if workout.goalReached {
+                        Label(String(localized: "watch.goal.reached", defaultValue: "Goal reached"), systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                    }
+                    if workout.lifecycle == .active || workout.lifecycle == .paused {
+                        HStack {
+                            Button { workout.lifecycle == .paused ? workout.resume() : workout.pause() } label: {
+                                Image(systemName: workout.lifecycle == .paused ? "play.fill" : "pause.fill").frame(minWidth: 44, minHeight: 44)
+                            }
+                            .accessibilityLabel(workout.lifecycle == .paused
+                                ? String(localized: "watch.resume", defaultValue: "Resume")
+                                : String(localized: "watch.pause", defaultValue: "Pause"))
+                            Button(role: .destructive) { confirmsFinish = true } label: {
+                                Image(systemName: "stop.fill").frame(minWidth: 44, minHeight: 44)
+                            }
+                            .accessibilityLabel(String(localized: "watch.finish", defaultValue: "Finish"))
                         }
-                        .tint(.orange)
-                        .accessibilityLabel(workout.lifecycle == .paused
-                            ? String(localized: "watch.resume", defaultValue: "Resume")
-                            : String(localized: "watch.pause", defaultValue: "Pause"))
-
-                        Button(role: .destructive) { workout.finish() } label: {
-                            Image(systemName: "stop.fill")
-                                .frame(minWidth: 44, minHeight: 44)
+                        if workout.lifecycle == .active {
+                            Button(String(localized: "watch.lap", defaultValue: "Lap")) { workout.markLap() }
                         }
-                        .accessibilityLabel(String(localized: "watch.finish", defaultValue: "Finish"))
+                    } else if workout.lifecycle == .finished || workout.lifecycle == .failed {
+                        Button(String(localized: "watch.done", defaultValue: "Done")) { workout.dismissResult() }
+                    }
+                }
+            }
+            if showPace {
+                ScrollView {
+                    VStack(spacing: 12) {
+                        metric(paceText(workout.currentPaceSecondsPerKilometer), String(localized: "watch.pace.current", defaultValue: "Current pace"))
+                        metric(paceText(averagePace), String(localized: "watch.pace.average", defaultValue: "Average pace"))
+                        metric(paceText(workout.lapPaceSecondsPerKilometer), String(localized: "watch.pace.lap", defaultValue: "Lap pace"))
+                        ForEach(workout.laps.suffix(5)) { lap in
+                            let number = (workout.laps.firstIndex { $0.id == lap.id } ?? 0) + 1
+                            Text(String(format: String(localized: "watch.lap.pace.format", defaultValue: "Lap %d · %@"), number, paceText(lap.pace)))
+                                .font(.caption).monospacedDigit()
+                        }
+                    }
+                }
+            }
+            if showHeart {
+                ScrollView {
+                    VStack(spacing: 10) {
+                        metric(workout.metrics?.currentBPM.map(String.init) ?? "—", String(localized: "watch.bpm", defaultValue: "BPM"))
+                        metric(zoneText, String(localized: "watch.effort", defaultValue: "Effort"))
+                        if let zone = workout.metrics?.currentZone {
+                            Text(String(format: String(localized: "watch.zone.format", defaultValue: "Zone %d"), zone))
+                        }
+                        HStack {
+                            metric(workout.metrics?.averageBPM.map(String.init) ?? "—", String(localized: "watch.average", defaultValue: "Average"))
+                            metric(workout.metrics?.maximumBPM.map(String.init) ?? "—", String(localized: "watch.maximum", defaultValue: "Maximum"))
+                        }
+                        ForEach(workout.metrics?.timeInZones ?? [], id: \.zone) { zone in
+                            Text(String(format: String(localized: "watch.zone.duration", defaultValue: "Zone %d · %d min"), zone.zone, Int(zone.seconds / 60)))
+                                .font(.caption)
+                        }
                     }
                 }
             }
         }
+        .tabViewStyle(.page)
+    }
+
+    private var goalProgress: Double {
+        let value = WatchRunningSettings.goalIsTime ? (workout.metrics?.elapsedTime ?? 0) : (workout.metrics?.distanceMeters ?? 0)
+        return min(1, max(0, value / WatchRunningSettings.goalValue))
+    }
+
+    private var distanceText: String {
+        guard let distance = workout.metrics?.distanceMeters else { return "—" }
+        return String(format: "%.2f", distance / (miles ? 1609.344 : 1000))
+    }
+    private var averagePace: Double? {
+        guard let metrics = workout.metrics, let distance = metrics.distanceMeters, distance > 10 else { return nil }
+        return metrics.elapsedTime * 1000 / distance
+    }
+    private func paceText(_ secondsPerKilometer: Double?) -> String {
+        guard let pace = secondsPerKilometer, pace.isFinite, pace > 0 else { return "—" }
+        let seconds = Int((pace * (miles ? 1.609344 : 1)).rounded())
+        let unit = miles ? String(localized: "watch.pace.mi", defaultValue: "/mi") : String(localized: "watch.pace.km", defaultValue: "/km")
+        return String(format: "%d:%02d", seconds / 60, seconds % 60) + unit
     }
 
     private func metric(_ value: String, _ label: String) -> some View {
