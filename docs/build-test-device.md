@@ -146,8 +146,8 @@ This suite covers the primary shell and navigation, installed iOS guide voice pr
 ./scripts/run-watch-flow-tests.sh 'platform=iOS Simulator,id=SIMULATOR_UUID'
 ```
 
-- Verified on an unpaired iOS 26.5 iPhone 17 Pro simulator: six passed, zero failed or skipped (2026-10-16).
-- Runs only `WatchWorkoutFlowUITests`: unavailable Watch, preparation timeout, connected phone controls, remote controls/disconnect/reconnect/stale messages, Apple Workout coexistence, and Watch save failure.
+- Historical recorder-selector baseline on an unpaired iOS 26.5 iPhone 17 Pro simulator: six passed, zero failed or skipped (2026-10-16). The revised Watch app off fixture and Health-save policy have not been rerun; tests require an explicit user request.
+- Runs only `WatchWorkoutFlowUITests`: unavailable Watch, preparation timeout, connected phone controls, remote controls/disconnect/reconnect/stale messages, Watch app off with phone Health write-back ownership, and Watch save failure.
 - Each flow records a seeded eligible activity, pauses/resumes/finishes, saves through the real review screen, checks exactly one activity with the expected Health ownership/reference, and exits the celebration through Done without starting another recording. The explicit simulator fixture clears its recording recovery journal on launch so failed scenarios cannot contaminate the next case.
 - The default creates and removes an isolated iPhone 17 Pro simulator. Results and screenshots remain in the printed `/tmp/plainstride-watch-flows.*` directory. Run one instance at a time because the build cache is shared.
 - Uses a DEBUG simulator-only transport behind both seeded-data and explicit scenario flags. Messages pass through the real codec/coordinator; only Watch launch and outgoing transport are replaced. No fixture code is compiled into Release or physical-device builds.

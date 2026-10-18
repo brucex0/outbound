@@ -51,8 +51,6 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
         super.init()
     }
 
-    private var usesAppleWorkout = false
-
     var canonicalStartDate: Date? { pendingIdentity?.canonicalStartDate }
 
     func recordingMetadata(externalReference: String? = nil) -> ActivityRecordingSessionMetadata? {
@@ -62,9 +60,23 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
             sessionUUID: sessionUUID,
             origin: sessionOrigin,
             recordingDevice: watchOwnsHealthKitPersistence ? .appleWatch : .phoneOnly,
-            healthKitOwnership: usesAppleWorkout ? .externalAppleWorkout : (watchOwnsHealthKitPersistence ? .appleWatchPrimary : .phoneWriteBack),
+            healthKitOwnership: watchOwnsHealthKitPersistence ? .appleWatchPrimary : .phoneWriteBack,
             healthKitWorkoutExternalReference: externalReference ?? savedWorkoutExternalReference
         )
+    }
+
+    /// References come only from a successful Watch save acknowledgement or an
+    /// exact session-UUID Health import, never from sport/time overlap guesses.
+    func hasConfirmedWatchHealthSave(for metadata: ActivityRecordingSessionMetadata?) -> Bool {
+        guard let metadata else { return false }
+        if metadata.healthKitOwnership == .appleWatchPrimary,
+           let reference = metadata.healthKitWorkoutExternalReference,
+           UUID(uuidString: reference) != nil {
+            return true
+        }
+        // Include an acknowledgement that arrived after the local activity save.
+        return currentSessionUUID == metadata.sessionUUID
+            && savedWorkoutExternalReference.flatMap(UUID.init(uuidString:)) != nil
     }
 
     func configureAnalytics(_ manager: AnalyticsManager) {
@@ -85,9 +97,6 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
 
     func bind(recorder: ActivityRecorder) {
         self.recorder = recorder
-        if let metadata = recorder.recordingSessionMetadata {
-            usesAppleWorkout = metadata.healthKitOwnership == .externalAppleWorkout
-        }
         if currentSessionUUID == nil,
            let metadata = recorder.recordingSessionMetadata,
            metadata.healthKitOwnership == .appleWatchPrimary {
@@ -128,16 +137,15 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
         isIndoor: Bool,
         companionType: ActivityCompanionType? = nil,
         sessionUUID: UUID = UUID(),
-        useAppleWorkout: Bool = false
+        startWatchApp: Bool = true
     ) {
         resetForNewSession(sessionUUID: sessionUUID)
-        usesAppleWorkout = useAppleWorkout
-        if useAppleWorkout {
+        if !startWatchApp {
             pendingIdentity = nil
             connection = .unavailable
             origin = .iPhone
             lifecycle = .ready
-            track(.watchWorkoutOrigin, [.sourceType: .string("apple_workout")])
+            track(.watchWorkoutOrigin, [.sourceType: .string("iphone")])
             return
         }
         origin = .iPhone
@@ -518,7 +526,6 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
     }
 
     private func resetForNewSession(sessionUUID: UUID) {
-        usesAppleWorkout = false
         preparationTimeoutTask?.cancel()
         currentSessionUUID = sessionUUID
         nextSequence = 0
@@ -535,7 +542,6 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
     }
 
     private func resetTransientState() {
-        usesAppleWorkout = false
         preparationTimeoutTask?.cancel()
         preparationTimeoutTask = nil
         mirroredSession?.delegate = nil
@@ -576,14 +582,14 @@ final class PhoneWorkoutSessionCoordinator: NSObject, ObservableObject {
         guard arguments.contains("-OutboundUITestSeedData"),
               let index = arguments.firstIndex(of: "-OutboundUITestWatchScenario"),
               arguments.indices.contains(index + 1),
-              ["connected", "unavailable", "timeout", "apple_workout", "save_failure"].contains(arguments[index + 1]) else { return }
+              ["connected", "unavailable", "timeout", "phone_only", "save_failure"].contains(arguments[index + 1]) else { return }
         resetTransientState()
         uiTestWatchMode = arguments[index + 1]
         uiTestRemoteSequence = 0
         uiTestWatchLaunchCount = 0
         uiTestOutboundControls = []
         bind(recorder: recorder)
-        preparePhoneFirst(activityType: .running, isIndoor: true, useAppleWorkout: uiTestWatchMode == "apple_workout")
+        preparePhoneFirst(activityType: .running, isIndoor: true, startWatchApp: uiTestWatchMode != "phone_only")
         uiTestSessionUUID = currentSessionUUID
         if let metadata = recordingMetadata() { recorder.updateRecordingSessionMetadata(metadata) }
         markPhoneRecorderStarted()

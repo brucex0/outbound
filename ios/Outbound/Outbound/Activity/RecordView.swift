@@ -112,7 +112,7 @@ struct RecordView: View {
     @State private var countdownTask: Task<Void, Never>?
     @State private var didApplySmartGoalDefault = false
     @State private var didApplyDefaultSessionShoe = false
-    @AppStorage("watch.useAppleWorkout") private var useAppleWorkout = false
+    @AppStorage("watch.startWatchApp") private var startWatchApp = true
     @State private var isIndoorSession = false
     @State private var companionType: ActivityCompanionType?
     @State private var isStartingActivity = false
@@ -1452,7 +1452,7 @@ struct RecordView: View {
                 activityType: activeIntent?.resolvedActivityType ?? .running,
                 isIndoor: isIndoorSession,
                 companionType: isCompanionContextEligible ? companionType : nil,
-                useAppleWorkout: useAppleWorkout
+                startWatchApp: startWatchApp
             )
         }
 #else
@@ -1460,7 +1460,7 @@ struct RecordView: View {
             activityType: activeIntent?.resolvedActivityType ?? .running,
             isIndoor: isIndoorSession,
             companionType: isCompanionContextEligible ? companionType : nil,
-            useAppleWorkout: useAppleWorkout
+            startWatchApp: startWatchApp
         )
 #endif
         beginStartCountdown()
@@ -1955,13 +1955,33 @@ struct RecordView: View {
         }
         _ = socialStore.consumeRecordingActivityEventID()
 
-        if savedActivity.recordingSession?.healthKitOwnership == .phoneWriteBack || savedActivity.recordingSession == nil {
-            Task {
-                try? await HealthKitService().saveWorkout(
+        // Snapshot confirmation before clearing the completed coordinator below.
+        // Ownership alone is not proof of a successful same-session Watch save.
+        let watchSaveConfirmed = phoneWorkoutCoordinator.hasConfirmedWatchHealthSave(for: savedActivity.recordingSession)
+        Task {
+            if watchSaveConfirmed {
+                ActivityDiagnosticLog.notice(.healthKit, "Health workout write-back skipped result=watch_save_confirmed")
+                track(.init(.healthWorkoutWriteBack, properties: [
+                    .sourceType: .string("apple_watch"), .result: .string("skipped_confirmed_save")
+                ]))
+                return
+            }
+            do {
+                try await HealthKitService().saveWorkout(
                     savedActivity,
                     sport: savedSport,
                     energyKilocalories: energyKilocalories.map(Double.init)
                 )
+                track(.init(.healthWorkoutWriteBack, properties: [
+                    .sourceType: .string("iphone"), .result: .string("success")
+                ]))
+            } catch {
+                let category = ActivityDiagnosticLog.errorCategory(error)
+                ActivityDiagnosticLog.error(.healthKit, "Post-run Health workout write-back failed error=\(category)")
+                track(.init(.healthWorkoutWriteBack, properties: [
+                    .sourceType: .string("iphone"), .result: .string("failure"),
+                    .errorCategory: .string(category)
+                ]))
             }
         }
 
@@ -2458,30 +2478,24 @@ struct RecordView: View {
     }
 
     private var launchWatchRecorderControl: some View {
-        Menu {
-            Button(String(localized: "watch.recorder.plainstride", defaultValue: "Plainstride Watch")) {
-                setAppleWorkoutMode(false)
-            }
-            Button(String(localized: "watch.recorder.apple", defaultValue: "Apple Workout")) {
-                setAppleWorkoutMode(true)
-            }
+        Button {
+            startWatchApp.toggle()
+            track(.init(.activityConfigurationChanged, properties: [
+                .changeType: .string("watch_app"),
+                .selectionType: .string(startWatchApp ? "enabled" : "disabled")
+            ]))
         } label: {
             utilityButtonLabel(
-                useAppleWorkout
-                    ? String(localized: "watch.recorder.apple", defaultValue: "Apple Workout")
-                    : String(localized: "watch.recorder.plainstride", defaultValue: "Plainstride Watch"),
-                isConfigured: true
+                String(localized: "watch.app.toggle", defaultValue: "Watch app"),
+                isConfigured: startWatchApp
             )
         }
-    }
-
-    private func setAppleWorkoutMode(_ enabled: Bool) {
-        useAppleWorkout = enabled
-        if enabled { UserDefaults.standard.set(Date(), forKey: "watch.appleWorkoutEnabledAt") }
-        track(.init(.activityConfigurationChanged, properties: [
-            .changeType: .string("watch_recorder"),
-            .selectionType: .string(enabled ? "apple_workout" : "plainstride")
-        ]))
+        .buttonStyle(.plain)
+        .accessibilityValue(startWatchApp
+            ? String(localized: "common.on", defaultValue: "On")
+            : String(localized: "common.off", defaultValue: "Off"))
+        .accessibilityHint(String(localized: "watch.app.toggle.hint", defaultValue: "Start Plainstride on Apple Watch when you start an activity."))
+        .accessibilityAddTraits(startWatchApp ? .isSelected : [])
     }
 
     private var launchEnvironmentControl: AnyView {
@@ -4458,21 +4472,21 @@ struct RecordView: View {
     }
 
     private func resolvedRecordingSession(for summary: ActivitySummary) -> ActivityRecordingSessionMetadata? {
-        guard var metadata = phoneWorkoutCoordinator.recordingMetadata()
-            ?? summary.sessionMetadata else {
-            return nil
+        let currentMetadata = phoneWorkoutCoordinator.recordingMetadata()
+        guard let metadata = summary.sessionMetadata else { return nil }
+        // A newer Watch session must never supply ownership or save confirmation
+        // for a previously completed phone recording.
+        guard let currentMetadata, currentMetadata.sessionUUID == metadata.sessionUUID else {
+            return metadata
         }
-        if metadata.healthKitOwnership == .appleWatchPrimary {
-            metadata = ActivityRecordingSessionMetadata(
-                sessionUUID: metadata.sessionUUID,
-                origin: metadata.origin,
-                recordingDevice: metadata.recordingDevice,
-                healthKitOwnership: metadata.healthKitOwnership,
-                healthKitWorkoutExternalReference: phoneWorkoutCoordinator.savedWorkoutExternalReference
-                    ?? metadata.healthKitWorkoutExternalReference
-            )
-        }
-        return metadata
+        return ActivityRecordingSessionMetadata(
+            sessionUUID: metadata.sessionUUID,
+            origin: currentMetadata.origin,
+            recordingDevice: currentMetadata.recordingDevice,
+            healthKitOwnership: currentMetadata.healthKitOwnership,
+            healthKitWorkoutExternalReference: currentMetadata.healthKitWorkoutExternalReference
+                ?? metadata.healthKitWorkoutExternalReference
+        )
     }
 
     private func sessionGoalCard(for intent: SessionIntent) -> some View {

@@ -67,6 +67,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case watchControlUsed = "watch_control_used"
     case watchWorkoutSaveResult = "watch_workout_save_result"
     case watchPhoneOnlyFallback = "watch_phone_only_fallback"
+    case healthWorkoutWriteBack = "health_workout_write_back"
     case paginatedListPageLoaded = "paginated_list_page_loaded"
     case meDestinationOpened = "me_destination_opened"
     case progressSurfaceOpened = "progress_surface_opened"
@@ -406,6 +407,7 @@ enum ProductAnalyticsSchema {
         .watchControlUsed: [.sourceType, .control],
         .watchWorkoutSaveResult: [.sourceType, .result, .errorCategory],
         .watchPhoneOnlyFallback: [.sourceType, .result, .errorCategory],
+        .healthWorkoutWriteBack: [.sourceType, .result, .errorCategory],
         .paginatedListPageLoaded: [.sourceType, .countBucket, .pageDepthBucket],
         .meDestinationOpened: [.destination, .entrySource],
         .progressSurfaceOpened: [.entrySource, .countBucket],

@@ -1,46 +1,46 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "watch.recorder.plainstride": {
+    "watch.app.toggle": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plainstride Watch"
+            "value": "Watch app"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plainstride Watch"
+            "value": "App del reloj"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Plainstride 手表"
+            "value": "手表应用"
           }
         }
       }
     },
-    "watch.recorder.apple": {
+    "watch.app.toggle.hint": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Workout"
+            "value": "Start Plainstride on Apple Watch when you start an activity."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entreno de Apple"
+            "value": "Inicia Plainstride en el Apple Watch al comenzar una actividad."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple 体能训练"
+            "value": "开始活动时，在 Apple Watch 上启动 Plainstride。"
           }
         }
       }

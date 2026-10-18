@@ -242,11 +242,10 @@ struct MainTabView: View {
                 existingExternalIDs: activityStore.importedHealthExternalIDs,
                 presentWhenFound: false
             )
+            // Only our session UUID proves identity. Apple and other external
+            // workouts remain available through the existing import review.
             let automatic = healthImportStore.importCandidates.filter {
-                $0.plainstrideSessionUUID != nil ||
-                    (UserDefaults.standard.bool(forKey: "watch.useAppleWorkout") &&
-                     $0.startedAt >= (UserDefaults.standard.object(forKey: "watch.appleWorkoutEnabledAt") as? Date ?? Date()) &&
-                     $0.sourceBundleIdentifier?.hasPrefix("com.apple.") == true)
+                $0.plainstrideSessionUUID != nil
             }
             let imported = await activityStore.importHealthWorkouts(automatic)
             await activityStore.refreshPendingHealthRoutes()

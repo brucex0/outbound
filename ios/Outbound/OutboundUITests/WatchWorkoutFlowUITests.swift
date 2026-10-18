@@ -58,13 +58,13 @@ final class WatchWorkoutFlowUITests: XCTestCase {
     }
 
     @MainActor
-    func testAppleWorkoutModeNeverLaunchesPlainstrideWatch() throws {
-        let app = launch("apple_workout")
-        expect(app, "ownership=external_apple_workout")
+    func testPhoneOnlyModeNeverLaunchesPlainstrideWatch() throws {
+        let app = launch("phone_only")
+        expect(app, "ownership=phone_write_back")
         expect(app, "launches=0")
         expect(app, "heart=0")
         try pauseResumeFinish(app)
-        try saveAndExit(app, ownership: "external_apple_workout")
+        try saveAndExit(app)
     }
 
     @MainActor

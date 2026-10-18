@@ -46,7 +46,8 @@ Learn a different manual mode default per sport only after the same available `F
 
 Configure launch options from the dock:
 
-- Music, Live Track, Shoes, and the Watch recorder choice use compact text-only pills that open focused overlays and return the chosen value to the dock.
+- Music, Live Track, and Shoes use compact text-only pills that open focused overlays and return the chosen value to the dock.
+- `Watch app` is a text-only toggle with selected/unselected styling, defaulting on. It controls automatic Plainstride Watch launch; off records on the phone without assuming Apple Workout is running. See `docs/apple-watch-running-parity.md` for Health-save confirmation and import behavior.
 - The current `Indoor` or `Outdoor` choice and Voice Guide use the same text-only pill treatment and toggle directly. Voice Guide defaults on for a new install and continues to honor an existing saved choice.
 - Photo stays outside the settings scroller in the top-right overflow menu. Before capture its menu action opens the camera; afterward the toolbar label becomes the captured thumbnail and the menu action opens the preview with Retake and Remove.
 - Find Route uses the same overflow menu. Selecting a route fits its full highlighted polyline on the Today map, shows start/finish markers, and replaces the planned/event peer slot with a compact route name/distance card offering Change and Remove. An eligible Circle remains visible above the route card, positioned from the route/goal overlay's measured height. The menu action changes from Find Route to Change Route while selected.

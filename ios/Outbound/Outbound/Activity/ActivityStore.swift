@@ -118,18 +118,11 @@ final class ActivityStore: ObservableObject {
         )
         var importedIDs: Set<String> = []
         for workout in workouts where !importedHealthExternalIDs.contains(workout.id) {
-            // Only reconcile explicitly linked sessions, or a unique high-overlap
-            // phone recording that deliberately selected Apple Workout ownership.
+            // Only an exact Plainstride session UUID proves these are the same
+            // workout. External Apple workouts use the normal import flow.
             let matches = activities.filter { activity in
-                if let uuid = workout.plainstrideSessionUUID,
-                   activity.recordingSession?.sessionUUID == uuid { return true }
-                guard workout.sourceBundleIdentifier?.hasPrefix("com.apple.") == true,
-                      activity.recordingSession?.healthKitOwnership == .externalAppleWorkout,
-                      activity.recordingSession?.healthKitWorkoutExternalReference == nil,
-                      activity.activityType == workout.activityType else { return false }
-                let overlap = min(activity.endedAt, workout.endedAt).timeIntervalSince(max(activity.startedAt, workout.startedAt))
-                let longest = max(activity.endedAt.timeIntervalSince(activity.startedAt), workout.endedAt.timeIntervalSince(workout.startedAt))
-                return longest > 0 && overlap / longest >= 0.8
+                guard let uuid = workout.plainstrideSessionUUID else { return false }
+                return activity.recordingSession?.sessionUUID == uuid
             }
             if matches.count == 1, let uuid = matches.first?.recordingSession?.sessionUUID {
                 await attachHealthKitWorkoutReference(sessionUUID: uuid, externalReference: workout.id)
