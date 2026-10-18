@@ -1,0 +1,24 @@
+<resources>
+    <string name="group_plan_title_hint">Entrenamiento del sábado por la mañana</string>
+    <string name="group_plan_type">Actividad</string>
+    <string name="group_plan_running">Correr</string>
+    <string name="group_plan_cycling">Ciclismo</string>
+    <string name="group_plan_hiking">Senderismo</string>
+    <string name="group_plan_walking">Caminar</string>
+    <string name="group_plan_swimming">Natación</string>
+    <string name="group_plan_strength">Fuerza</string>
+    <string name="group_plan_mobility">Movilidad</string>
+    <string name="group_plan_datetime">Fecha y hora</string>
+    <string name="group_plan_duration">Duración (opcional)</string>
+    <string name="group_plan_duration_default">Predeterminada · 1 h</string>
+    <string name="group_plan_minutes">%1$d min</string>
+    <string name="group_plan_location_hint">Busca un lugar o una dirección</string>
+    <string name="group_plan_search_failed">No se encontraron lugares. Prueba otra búsqueda o elige en el mapa.</string>
+    <string name="group_plan_map">Elegir en el mapa</string>
+    <string name="group_plan_map_help">Toca el mapa para elegir el punto de encuentro.</string>
+    <string name="group_plan_note">Plan / nota</string>
+    <string name="group_plan_note_hint">Paseo, bici, gimnasio… lo que te apetezca</string>
+    <string name="group_plan_virtual">Participar a distancia</string>
+    <string name="group_plan_virtual_help">Se puede participar sin acudir al lugar indicado.</string>
+    <string name="group_plan_create">Crear actividad</string>
+</resources>

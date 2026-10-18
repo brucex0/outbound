@@ -1,0 +1,24 @@
+<resources>
+    <string name="group_plan_title_hint">周六晨练</string>
+    <string name="group_plan_type">活动类型</string>
+    <string name="group_plan_running">跑步</string>
+    <string name="group_plan_cycling">骑行</string>
+    <string name="group_plan_hiking">徒步</string>
+    <string name="group_plan_walking">步行</string>
+    <string name="group_plan_swimming">游泳</string>
+    <string name="group_plan_strength">力量训练</string>
+    <string name="group_plan_mobility">灵活性训练</string>
+    <string name="group_plan_datetime">日期和时间</string>
+    <string name="group_plan_duration">时长（可选）</string>
+    <string name="group_plan_duration_default">默认 · 1 小时</string>
+    <string name="group_plan_minutes">%1$d 分钟</string>
+    <string name="group_plan_location_hint">搜索地点或地址</string>
+    <string name="group_plan_search_failed">未找到地点。请换个关键词，或在地图上选择。</string>
+    <string name="group_plan_map">在地图上选择</string>
+    <string name="group_plan_map_help">轻点地图以选择集合地点。</string>
+    <string name="group_plan_note">计划 / 备注</string>
+    <string name="group_plan_note_hint">散步、骑行、健身，选你喜欢的方式</string>
+    <string name="group_plan_virtual">允许远程参与</string>
+    <string name="group_plan_virtual_help">无需前往集合地点，也能参加活动。</string>
+    <string name="group_plan_create">创建活动</string>
+</resources>

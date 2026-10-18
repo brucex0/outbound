@@ -45,7 +45,7 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 @Serializable data class BlocksResponse(val blocks: List<BlockedAccount> = emptyList())
 @Serializable data class NotificationsResponse(val notifications: List<SocialNotification> = emptyList())
 @Serializable data class PresenceBody(val clientSessionId: String)
-@Serializable data class CreateEventBody(val title:String,val startsAt:String,val durationMinutes:Int=60,val locationName:String?=null,val latitude:Double?=null,val longitude:Double?=null,val note:String?=null,val groupId:String?=null)
+@Serializable data class CreateEventBody(val title:String,val startsAt:String,val durationMinutes:Int=60,val locationName:String?=null,val latitude:Double?=null,val longitude:Double?=null,val note:String?=null,val groupId:String?=null,val activityType:String="running",val participationMode:String="hybrid")
 @Serializable data class EventInviteBatchBody(val recipientUserIds:List<String>)
 @Serializable data class LinkActivityBody(val activityId:String)
 

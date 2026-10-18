@@ -1,0 +1,24 @@
+<resources>
+    <string name="group_plan_title_hint">Saturday morning workout</string>
+    <string name="group_plan_type">Activity</string>
+    <string name="group_plan_running">Running</string>
+    <string name="group_plan_cycling">Cycling</string>
+    <string name="group_plan_hiking">Hiking</string>
+    <string name="group_plan_walking">Walking</string>
+    <string name="group_plan_swimming">Swimming</string>
+    <string name="group_plan_strength">Strength</string>
+    <string name="group_plan_mobility">Mobility</string>
+    <string name="group_plan_datetime">Date and time</string>
+    <string name="group_plan_duration">Duration (optional)</string>
+    <string name="group_plan_duration_default">Default · 1 hr</string>
+    <string name="group_plan_minutes">%1$d min</string>
+    <string name="group_plan_location_hint">Search for a place or address</string>
+    <string name="group_plan_search_failed">No places found. Try another search or choose on the map.</string>
+    <string name="group_plan_map">Choose on map</string>
+    <string name="group_plan_map_help">Tap the map to choose a meeting point.</string>
+    <string name="group_plan_note">Plan / note</string>
+    <string name="group_plan_note_hint">Walk, ride, gym session—anything that feels good</string>
+    <string name="group_plan_virtual">Join virtually</string>
+    <string name="group_plan_virtual_help">People can join without meeting at the listed location.</string>
+    <string name="group_plan_create">Create activity</string>
+</resources>

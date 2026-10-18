@@ -555,9 +555,9 @@ sealed interface ConnectionEffect {
     )))
     fun inviteToGroup(group:GroupSummary,members:List<SocialPerson>,idempotencyKey:String)=mutate("group_invitation_sent"){repository.inviteToGroup(group.id,members.map{it.id},idempotencyKey).getOrThrow();openGroup(group)}
     fun setGroupFocus(group:GroupSummary,mode:String,target:Int?,nextWeek:Boolean)=mutate("group_focus_changed"){repository.setGroupFocus(group.id,mode,target,nextWeek).getOrThrow();openGroup(group)}
-    fun createGroupActivity(group: GroupSummary, title: String, location: String?) = mutate("group_activity_created") {
-        val startsAt = java.time.OffsetDateTime.now().plusDays(1).withHour(9).withMinute(0).withSecond(0).withNano(0).toString()
-        repository.createEvent(CreateEventBody(title = title.trim(), startsAt = startsAt, locationName = location?.trim()?.takeIf { it.isNotEmpty() }, groupId = group.id)).getOrThrow()
+    fun trackGroupActivityLocation(source: String) = analytics.record(AnalyticsEvent("activity_event_location_selected", mapOf(AnalyticsProperty.SourceType to source)))
+    fun createGroupActivity(group: GroupSummary, body: CreateEventBody, completed: (Boolean) -> Unit) = mutate("group_activity_created", feedback = completed) {
+        repository.createEvent(body.copy(groupId = group.id)).getOrThrow()
         openGroup(group)
     }
     fun setGroupArchived(group:GroupSummary,archived:Boolean)=mutate("group_lifecycle_changed"){repository.setGroupArchived(group.id,archived).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
