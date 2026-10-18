@@ -27,6 +27,11 @@ The build must not require Firebase files, signing secrets, provider credentials
 
 ## Variants
 
+Android 12+ uses `plainstride_splash_icon` with proportional padding to keep the
+complete fox inside the system's circular splash mask. Keep this separate from
+the launcher foreground, whose fixed insets serve a different canvas. For visual
+verification, cold-launch on a device and capture the splash before the app loads.
+
 - `debug`: uses the production API URL by default and permits explicit debug identity tooling.
 - `release`: uses the production API URL, disables debug identity tooling, enables code shrinking, and contains no debug credentials or endpoints.
 
