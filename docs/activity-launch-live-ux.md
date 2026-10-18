@@ -60,6 +60,8 @@ The contextual center Start action immediately enters a cancelable countdown, th
 
 When Voice Guide is enabled, initialize local speech before displaying the countdown so `3`, `2`, `1`, and the localized `Go` cue stay synchronized with the countdown instead of spilling into the live screen. Canceling the countdown stops queued speech and returns to Today. During an active or paused activity, system Back must use the same finish-confirmation flow as the visible Finish control; it must never reveal a retained countdown or setup screen.
 
+Android clears the retained recording ViewModel’s start-request flag after saving an activity, so the next Today launch can configure and start normally. The post-save celebration and stretch state remain available until dismissed. Repeated starts continue to emit the existing `activity_started` analytics event.
+
 Android records `activity_countdown_voice_prepared` with only a bounded `success` or `unavailable` result so delayed or missing device TTS initialization can be diagnosed without collecting spoken content.
 
 The live map represents the current athlete with a theme-colored, activity-specific companion for running, cycling, hiking, walking, or swimming instead of a generic location dot. Run, walk, and hike companions use an articulated figure whose arms and legs move with activity-specific cadence and stride; other sports retain their activity symbol. The companion follows valid GPS course, moves only while recording, and remains still when paused or Reduce Motion is enabled. Its exposure uses the privacy-safe `feature_exposed` event without location or pace data.

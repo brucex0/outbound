@@ -419,7 +419,14 @@ class RecordingViewModel @Inject constructor(
         mapOf(AnalyticsProperty.Result to if (expanded) "expanded" else "compact"),
     ))
     fun newCommandId(): String = UUID.randomUUID().toString()
-    fun markSaved(){client.markSaved(newCommandId());clearLaunch()}
+    fun markSaved() {
+        client.markSaved(newCommandId())
+        clearLaunch()
+        // This ViewModel survives navigation back to Today. Release the previous start
+        // request so the next launch can configure its choices and begin its countdown.
+        mutableState.value = mutableState.value.copy(startRequested = false)
+        debugLog("saved_activity_start_request_cleared")
+    }
     fun configureSimulatedRun(enabled: Boolean) {
         if (!BuildConfig.DEBUG || snapshot.value.status != RecordingStatus.IDLE) return
         val current = mutableState.value.launch
