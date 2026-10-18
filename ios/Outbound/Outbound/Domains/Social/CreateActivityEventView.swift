@@ -80,8 +80,8 @@ struct CreateActivityEventView: View {
             ActivityEventMapPicker(
                 initialCoordinate: selectedLocationCoordinate,
                 initialName: selectedLocationName
-            ) { place in
-                apply(place, source: "map")
+            ) { place, source in
+                apply(place, source: source)
             }
         }
     }

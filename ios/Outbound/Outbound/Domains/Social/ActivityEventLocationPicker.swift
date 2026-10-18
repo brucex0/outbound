@@ -1,6 +1,7 @@
 import Combine
 import CoreLocation
 import MapKit
+import OSLog
 import SwiftUI
 
 struct ActivityEventPlace {
@@ -19,6 +20,8 @@ extension MKLocalSearchCompletion {
 final class ActivityEventLocationSearchModel: NSObject, ObservableObject {
     @Published private(set) var completions: [MKLocalSearchCompletion] = []
 
+    private let logger = Logger(subsystem: "plainstride.outbound", category: "ActivityEventLocation")
+    private var query = ""
     private let completer: MKLocalSearchCompleter
 
     override init() {
@@ -29,16 +32,24 @@ final class ActivityEventLocationSearchModel: NSObject, ObservableObject {
         completer.delegate = self
     }
 
+    func setRegion(_ region: MKCoordinateRegion) {
+        completer.region = region
+    }
+
     func update(query: String) {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             clear()
             return
         }
+        if self.query != trimmed { completions = [] }
+        self.query = trimmed
         completer.queryFragment = trimmed
     }
 
     func clear() {
+        query = ""
+        completer.cancel()
         completer.queryFragment = ""
         completions = []
     }
@@ -51,8 +62,14 @@ final class ActivityEventLocationSearchModel: NSObject, ObservableObject {
 
         do {
             let request = MKLocalSearch.Request(completion: completion)
-            let response = try await MKLocalSearch(request: request).start()
+            let search = MKLocalSearch(request: request)
+            let response = try await withTaskCancellationHandler {
+                try await search.start()
+            } onCancel: {
+                search.cancel()
+            }
             guard let mapItem = response.mapItems.first else {
+                logger.error("Place search resolve returned no map items")
                 return ActivityEventPlace(displayName: fallbackName, coordinate: nil)
             }
 
@@ -64,6 +81,10 @@ final class ActivityEventLocationSearchModel: NSObject, ObservableObject {
                 coordinate: mapItem.placemark.coordinate
             )
         } catch {
+            if !Task.isCancelled {
+                let failure = error as NSError
+                logger.error("Place search resolve failed domain=\(failure.domain, privacy: .public) code=\(failure.code, privacy: .public)")
+            }
             return ActivityEventPlace(displayName: fallbackName, coordinate: nil)
         }
     }
@@ -71,6 +92,7 @@ final class ActivityEventLocationSearchModel: NSObject, ObservableObject {
 
 extension ActivityEventLocationSearchModel: MKLocalSearchCompleterDelegate {
     func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+        guard !query.isEmpty, completer.queryFragment == query else { return }
         var unique: [MKLocalSearchCompletion] = []
         var seen = Set<String>()
         for result in completer.results {
@@ -83,14 +105,24 @@ extension ActivityEventLocationSearchModel: MKLocalSearchCompleterDelegate {
 
     func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
         completions = []
+        let failure = error as NSError
+        guard failure.code != NSURLErrorCancelled else { return }
+        logger.error("Place autocomplete failed domain=\(failure.domain, privacy: .public) code=\(failure.code, privacy: .public)")
     }
 }
 
 struct ActivityEventMapPicker: View {
     @Environment(\.dismiss) private var dismiss
 
-    let onSelect: (ActivityEventPlace) -> Void
+    let onSelect: (ActivityEventPlace, String) -> Void
 
+    @StateObject private var search = ActivityEventLocationSearchModel()
+    @State private var searchQuery = ""
+    @FocusState private var searchFocused: Bool
+    @State private var searchTask: Task<Void, Never>?
+    @State private var searchGeneration = 0
+    @State private var isSearching = false
+    @State private var selectionSource = "map"
     @State private var position: MapCameraPosition
     @State private var selectedCoordinate: CLLocationCoordinate2D?
     @State private var selectedPlace: ActivityEventPlace?
@@ -107,7 +139,7 @@ struct ActivityEventMapPicker: View {
     init(
         initialCoordinate: CLLocationCoordinate2D?,
         initialName: String? = nil,
-        onSelect: @escaping (ActivityEventPlace) -> Void
+        onSelect: @escaping (ActivityEventPlace, String) -> Void
     ) {
         self.onSelect = onSelect
         _selectedCoordinate = State(initialValue: initialCoordinate)
@@ -137,45 +169,65 @@ struct ActivityEventMapPicker: View {
             }
             .mapStyle(.standard(elevation: .realistic))
             .onMapCameraChange(frequency: .continuous) { context in
-                invalidateSelectionIfNeeded(for: context.region.center)
+                if position.positionedByUser {
+                    searchGeneration += 1
+                    searchTask?.cancel()
+                    isSearching = false
+                    invalidateSelectionIfNeeded(for: context.region.center)
+                }
             }
             .onMapCameraChange(frequency: .onEnd) { context in
+                search.setRegion(context.region)
                 settleCamera(at: context.region)
             }
             .overlay {
                 centerPin
             }
             .overlay(alignment: .top) {
-                HStack(alignment: .top, spacing: 10) {
-                    Label(
-                        String(
-                            localized: "social.event.location.map.instructions",
-                            defaultValue: "Pan or zoom the map to choose a meetup point."
-                        ),
-                        systemImage: "hand.draw"
-                    )
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(.regularMaterial, in: Capsule())
-
-                    Spacer(minLength: 0)
-
-                    Button {
-                        freezesNextUserLocation = true
-                        position = .userLocation(fallback: .automatic)
-                    } label: {
-                        Image(systemName: "location.fill")
-                            .frame(width: 24, height: 24)
-                            .padding(8)
-                            .background(.regularMaterial, in: Circle())
-                    }
-                    .accessibilityLabel(
-                        String(
-                            localized: "social.event.location.map.current",
-                            defaultValue: "Go to my location"
+                VStack(spacing: 10) {
+                    searchPanel
+                    HStack(alignment: .top, spacing: 10) {
+                        Label(
+                            String(
+                                localized: "social.event.location.map.instructions",
+                                defaultValue: "Pan or zoom the map to choose a meetup point."
+                            ),
+                            systemImage: "hand.draw"
                         )
-                    )
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(.regularMaterial, in: Capsule())
+
+                        Spacer(minLength: 0)
+
+                        Button {
+                            searchGeneration += 1
+                            searchTask?.cancel()
+                            isSearching = false
+                            resolutionGeneration += 1
+                            resolutionTask?.cancel()
+                            resolutionTimeoutTask?.cancel()
+                            reverseGeocoder.cancelGeocode()
+                            selectedCoordinate = nil
+                            selectedPlace = nil
+                            hasResolutionError = false
+                            isResolving = false
+                            freezesNextUserLocation = true
+                            position = .userLocation(fallback: .automatic)
+                        } label: {
+                            Image(systemName: "location.fill")
+                                .frame(width: 24, height: 24)
+                                .padding(8)
+                                .background(.regularMaterial, in: Circle())
+                        }
+                        .accessibilityLabel(
+                            String(
+                                localized: "social.event.location.map.current",
+                                defaultValue: "Go to my location"
+                            )
+                        )
+                    }
                 }
                 .padding()
             }
@@ -200,10 +252,107 @@ struct ActivityEventMapPicker: View {
                 beginResolution(for: coordinate)
             }
             .onDisappear {
+                searchTask?.cancel()
+                search.clear()
                 resolutionTask?.cancel()
                 resolutionTimeoutTask?.cancel()
                 reverseGeocoder.cancelGeocode()
             }
+            .onChange(of: searchQuery) { _, query in
+                searchGeneration += 1
+                searchTask?.cancel()
+                isSearching = false
+                search.update(query: query)
+            }
+        }
+    }
+
+    private var searchPanel: some View {
+        VStack(spacing: 0) {
+            TextField(
+                String(localized: "social.event.location.placeholder", defaultValue: "Search for a place or address"),
+                text: $searchQuery
+            )
+            .textInputAutocapitalization(.words)
+            .autocorrectionDisabled()
+            .focused($searchFocused)
+            .submitLabel(.search)
+            .onSubmit {
+                if let completion = search.completions.first {
+                    selectSearchResult(completion)
+                } else {
+                    searchFocused = false
+                }
+            }
+            .padding(12)
+
+            if searchFocused && !search.completions.isEmpty {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(search.completions, id: \.suggestionID) { completion in
+                            Button {
+                                selectSearchResult(completion)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(completion.title).foregroundStyle(.primary).lineLimit(1)
+                                    if !completion.subtitle.isEmpty {
+                                        Text(completion.subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(12)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .frame(maxHeight: 200)
+            }
+        }
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func selectSearchResult(_ completion: MKLocalSearchCompletion) {
+        searchGeneration += 1
+        let generation = searchGeneration
+        searchTask?.cancel()
+        searchFocused = false
+        search.clear()
+        resolutionGeneration += 1
+        resolutionTask?.cancel()
+        resolutionTimeoutTask?.cancel()
+        reverseGeocoder.cancelGeocode()
+        selectedCoordinate = nil
+        selectedPlace = nil
+        hasResolutionError = false
+        isResolving = false
+        isSearching = true
+        searchTask = Task { @MainActor in
+            let place = await search.resolve(completion)
+            guard !Task.isCancelled, generation == searchGeneration else { return }
+            isSearching = false
+            guard let coordinate = place.coordinate else {
+                hasResolutionError = true
+                return
+            }
+            // Cancel old center geocoding before moving the camera. Matching center
+            // callbacks retain the resolved search label instead of reverse-geocoding it.
+            resolutionGeneration += 1
+            resolutionTask?.cancel()
+            resolutionTimeoutTask?.cancel()
+            reverseGeocoder.cancelGeocode()
+            freezesNextUserLocation = false
+            selectedCoordinate = coordinate
+            selectedPlace = place
+            selectionSource = "autocomplete"
+            isResolving = false
+            hasResolutionError = false
+            position = .region(MKCoordinateRegion(
+                center: coordinate,
+                latitudinalMeters: 1_500,
+                longitudinalMeters: 1_500
+            ))
         }
     }
 
@@ -224,7 +373,7 @@ struct ActivityEventMapPicker: View {
 
     private var selectionCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if isResolving {
+            if isResolving || isSearching {
                 HStack(spacing: 10) {
                     ProgressView()
                     Text(
@@ -262,7 +411,7 @@ struct ActivityEventMapPicker: View {
 
             Button {
                 guard let selectedPlace else { return }
-                onSelect(selectedPlace)
+                onSelect(selectedPlace, selectionSource)
                 dismiss()
             } label: {
                 Text(
@@ -275,7 +424,7 @@ struct ActivityEventMapPicker: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(OutboundPalette.companion)
-            .disabled(selectedPlace == nil || isResolving)
+            .disabled(selectedPlace == nil || isResolving || isSearching)
         }
         .padding()
         .background(.regularMaterial)
@@ -298,6 +447,7 @@ struct ActivityEventMapPicker: View {
     }
 
     private func settleCamera(at region: MKCoordinateRegion) {
+        guard !isSearching else { return }
         if freezesNextUserLocation {
             // User-location mode follows every GPS refinement. Freeze its first settled
             // region so small location updates cannot continuously restart geocoding.
@@ -311,6 +461,7 @@ struct ActivityEventMapPicker: View {
         // Camera callbacks can repeat the same settled center. Avoid restarting a valid
         // request, which would otherwise make CLGeocoder more likely to be throttled.
         guard !coordinatesMatch(selectedCoordinate, coordinate) else { return }
+        selectionSource = "map"
         selectedCoordinate = coordinate
         beginResolution(for: coordinate)
     }
