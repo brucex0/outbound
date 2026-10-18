@@ -170,14 +170,20 @@ try:
         raise ValueError("result.devices is not an array")
     targets = []
     for device in devices:
-        hardware = device.get("hardwareProperties", {})
-        if hardware.get("deviceType") != "iPhone" or hardware.get("reality") != "physical":
+        properties = device.get("properties", {})
+        hardware = properties.get("hardware", device.get("hardwareProperties", {}))
+        connection = properties.get("connection", device.get("connectionProperties", {}))
+        state = properties.get("state", device.get("deviceProperties", {}))
+        # Physical phones can omit reality; simulators explicitly identify themselves.
+        if (hardware.get("deviceType") != "iPhone"
+                or hardware.get("reality") not in (None, "physical")
+                or device.get("visibilityClass") == "simulators"
+                or connection.get("transportType") == "sameMachine"):
             continue
-        connection = device.get("connectionProperties", {})
-        name = " ".join(device.get("deviceProperties", {}).get("name", "iPhone").split())
+        name = " ".join(state.get("name", "iPhone").split())
         pairing = connection.get("pairingState")
         transport = connection.get("transportType")
-        tunnel = connection.get("tunnelState")
+        tunnel = connection.get("state", connection.get("tunnelState"))
         reachable = transport in ("usb", "wired", "localNetwork") or tunnel == "connected"
         if pairing != "paired" or not reachable or tunnel == "connecting":
             print(f"Skipping {name}: pairing={pairing}, transport={transport}, tunnel={tunnel}", file=sys.stderr)

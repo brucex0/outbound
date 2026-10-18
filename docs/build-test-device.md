@@ -254,7 +254,11 @@ Build once and install the same signed app on every available paired iPhone:
 `--all-devices` discovers physical iPhones through CoreDevice before building,
 including USB and local-network connections. It skips unpaired, unavailable,
 and connecting phones; simulators, iPads, and Apple Watches are not direct install
-targets. If no eligible phones are found, it exits before building. Device names
+targets. CoreDevice can omit `reality` for physical phones; discovery accepts that
+while excluding simulator markers. `available (paired)` phones with USB or
+local-network transport are eligible even before their developer tunnel connects.
+Discovery reads the current `properties` JSON fields with legacy-field fallback.
+If no eligible phones are found, it exits before building. Device names
 and IDs are printed before the build. `CORE_DEVICE_ID` and `TARGET_DEVICE_NAME`
 are ignored in this mode. It requires `python3` to read CoreDevice's JSON inventory.
 
