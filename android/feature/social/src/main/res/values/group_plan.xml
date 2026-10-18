@@ -15,10 +15,12 @@
     <string name="group_plan_location_hint">Search for a place or address</string>
     <string name="group_plan_search_failed">No places found. Try another search or choose on the map.</string>
     <string name="group_plan_map">Choose on map</string>
-    <string name="group_plan_map_help">Tap the map to choose a meeting point.</string>
+    <string name="group_plan_map_help">Drag or tap the map to choose a meeting point. Pinch or use + and − to zoom.</string>
     <string name="group_plan_note">Plan / note</string>
     <string name="group_plan_note_hint">Walk, ride, gym session—anything that feels good</string>
     <string name="group_plan_virtual">Join virtually</string>
     <string name="group_plan_virtual_help">People can join without meeting at the listed location.</string>
     <string name="group_plan_create">Create activity</string>
+    <string name="group_plan_map_search">Search for a place or address</string>
+    <string name="group_plan_map_pin">Meeting point</string>
 </resources>

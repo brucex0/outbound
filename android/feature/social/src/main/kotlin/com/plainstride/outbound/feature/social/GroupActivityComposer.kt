@@ -16,9 +16,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +30,7 @@ import java.util.Locale
 fun GroupActivityComposer(
     close: () -> Unit,
     locationSelected: (String) -> Unit,
+    mapOpened: () -> Unit,
     create: (CreateEventBody, (Boolean) -> Unit) -> Unit,
 ) {
     var title by rememberSaveable { mutableStateOf("") }
@@ -96,7 +95,7 @@ fun GroupActivityComposer(
                         val name = address.getAddressLine(0) ?: address.featureName.orEmpty()
                         TextButton({ selectLocation(name, address.latitude, address.longitude, "autocomplete") }) { Text(name) }
                     }
-                    TextButton({ mapOpen = true }) { Text(stringResource(R.string.group_plan_map)) }
+                    TextButton({ mapOpened(); mapOpen = true }) { Text(stringResource(R.string.group_plan_map)) }
                     OutlinedTextField(note, { note = it.take(240) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.group_plan_note)) }, placeholder = { Text(stringResource(R.string.group_plan_note_hint)) }, minLines = 2, maxLines = 4)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(stringResource(R.string.group_plan_virtual), Modifier.weight(1f)); Switch(virtual, { virtual = it })
@@ -113,35 +112,24 @@ fun GroupActivityComposer(
         }
     }
     if (mapOpen) {
-        var point by remember { mutableStateOf(latitude?.let { LatLng(it, longitude!!) }) }
-        val camera = rememberCameraPositionState { position = CameraPosition.fromLatLngZoom(point ?: LatLng(0.0, 0.0), if (point == null) 2f else 14f) }
-        Dialog(onDismissRequest = { mapOpen = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-            Surface(Modifier.fillMaxSize()) { Column {
-                Text(stringResource(R.string.group_plan_map_help), Modifier.padding(16.dp))
-                GoogleMap(Modifier.weight(1f), cameraPositionState = camera, onMapClick = { point = it }) { point?.let { Marker(state = MarkerState(position = it)) } }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TextButton({ mapOpen = false }) { Text(stringResource(R.string.social_cancel)) }
-                    TextButton({ point?.let { selected ->
-                        val fallback = String.format(Locale.ROOT, "%.5f, %.5f", selected.latitude, selected.longitude)
-                        selectLocation(fallback, selected.latitude, selected.longitude, "map")
-                        val revision = searchRevision
-                        mapOpen = false
-                        scope.launch {
-                            try {
-                                val name = withContext(Dispatchers.IO) {
-                                    @Suppress("DEPRECATION")
-                                    Geocoder(context, Locale.getDefault()).getFromLocation(selected.latitude, selected.longitude, 1)?.firstOrNull()?.getAddressLine(0)
-                                }
-                                if (revision == searchRevision && name != null) location = name.take(120)
-                            } catch (error: Exception) {
-                                if (error is CancellationException) throw error
-                                // The selected coordinates remain valid when no address is available.
-                                Log.w("PlainstrideSocial", "Activity meetup reverse geocoding failed (type=${error.javaClass.simpleName})")
-                            }
-                        }
-                    } }, enabled = point != null) { Text(stringResource(R.string.social_done)) }
+        GroupActivityMapPicker(latitude?.let { LatLng(it, longitude!!) }, location, { mapOpen = false }) { selected, selectedName, source ->
+            val fallback = String.format(Locale.ROOT, "%.5f, %.5f", selected.latitude, selected.longitude)
+            selectLocation(selectedName ?: fallback, selected.latitude, selected.longitude, source)
+            val revision = searchRevision
+            mapOpen = false
+            if (selectedName == null) scope.launch {
+                try {
+                    val name = withContext(Dispatchers.IO) {
+                        @Suppress("DEPRECATION")
+                        Geocoder(context, Locale.getDefault()).getFromLocation(selected.latitude, selected.longitude, 1)?.firstOrNull()?.getAddressLine(0)
+                    }
+                    if (revision == searchRevision && name != null) location = name.take(120)
+                } catch (error: Exception) {
+                    if (error is CancellationException) throw error
+                    // Coordinates remain valid when an address cannot be resolved.
+                    Log.w("PlainstrideSocial", "Activity meetup reverse geocoding failed (type=${error.javaClass.simpleName})")
                 }
-            } }
+            }
         }
     }
 }

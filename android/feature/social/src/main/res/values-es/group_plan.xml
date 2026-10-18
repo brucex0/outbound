@@ -15,10 +15,12 @@
     <string name="group_plan_location_hint">Busca un lugar o una dirección</string>
     <string name="group_plan_search_failed">No se encontraron lugares. Prueba otra búsqueda o elige en el mapa.</string>
     <string name="group_plan_map">Elegir en el mapa</string>
-    <string name="group_plan_map_help">Toca el mapa para elegir el punto de encuentro.</string>
+    <string name="group_plan_map_help">Arrastra o toca el mapa para elegir el punto de encuentro. Pellizca o usa + y − para acercar o alejar.</string>
     <string name="group_plan_note">Plan / nota</string>
     <string name="group_plan_note_hint">Paseo, bici, gimnasio… lo que te apetezca</string>
     <string name="group_plan_virtual">Participar a distancia</string>
     <string name="group_plan_virtual_help">Se puede participar sin acudir al lugar indicado.</string>
     <string name="group_plan_create">Crear actividad</string>
+    <string name="group_plan_map_search">Buscar un lugar o una dirección</string>
+    <string name="group_plan_map_pin">Punto de encuentro</string>
 </resources>

@@ -15,10 +15,12 @@
     <string name="group_plan_location_hint">搜索地点或地址</string>
     <string name="group_plan_search_failed">未找到地点。请换个关键词，或在地图上选择。</string>
     <string name="group_plan_map">在地图上选择</string>
-    <string name="group_plan_map_help">轻点地图以选择集合地点。</string>
+    <string name="group_plan_map_help">拖动或轻点地图选择集合地点，双指缩放或使用 + 和 − 调整地图。</string>
     <string name="group_plan_note">计划 / 备注</string>
     <string name="group_plan_note_hint">散步、骑行、健身，选你喜欢的方式</string>
     <string name="group_plan_virtual">允许远程参与</string>
     <string name="group_plan_virtual_help">无需前往集合地点，也能参加活动。</string>
     <string name="group_plan_create">创建活动</string>
+    <string name="group_plan_map_search">搜索地点或地址</string>
+    <string name="group_plan_map_pin">集合地点</string>
 </resources>

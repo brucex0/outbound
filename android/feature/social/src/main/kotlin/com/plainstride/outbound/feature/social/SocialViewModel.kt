@@ -555,6 +555,8 @@ sealed interface ConnectionEffect {
     )))
     fun inviteToGroup(group:GroupSummary,members:List<SocialPerson>,idempotencyKey:String)=mutate("group_invitation_sent"){repository.inviteToGroup(group.id,members.map{it.id},idempotencyKey).getOrThrow();openGroup(group)}
     fun setGroupFocus(group:GroupSummary,mode:String,target:Int?,nextWeek:Boolean)=mutate("group_focus_changed"){repository.setGroupFocus(group.id,mode,target,nextWeek).getOrThrow();openGroup(group)}
+    fun trackGroupActivityMapOpened() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "activity_event_location_picker")))
+
     fun trackGroupActivityLocation(source: String) = analytics.record(AnalyticsEvent("activity_event_location_selected", mapOf(AnalyticsProperty.SourceType to source)))
     fun createGroupActivity(group: GroupSummary, body: CreateEventBody, completed: (Boolean) -> Unit) = mutate("group_activity_created", feedback = completed) {
         repository.createEvent(body.copy(groupId = group.id)).getOrThrow()
