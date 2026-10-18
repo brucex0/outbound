@@ -2467,13 +2467,12 @@ struct RecordView: View {
             }
             Text(String(localized: "watch.recorder.help", defaultValue: "With Apple Workout, start and finish on both devices. Watch heart rate appears after import. Completed Apple workouts sync when you reopen Plainstride."))
         } label: {
-            VStack(spacing: 4) {
-                Image(systemName: "applewatch")
-                Text(useAppleWorkout
+            utilityButtonLabel(
+                useAppleWorkout
                     ? String(localized: "watch.recorder.apple", defaultValue: "Apple Workout")
-                    : String(localized: "watch.recorder.plainstride", defaultValue: "Plainstride Watch"))
-                    .font(.caption)
-            }
+                    : String(localized: "watch.recorder.plainstride", defaultValue: "Plainstride Watch"),
+                isConfigured: true
+            )
         }
     }
 

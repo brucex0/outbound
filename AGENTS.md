@@ -29,6 +29,8 @@ Outbound has shipped publicly but with very few users. Do not spend implementati
 
 ## UI Feedback
 
+- Launch dock options/settings use text-only pills; sport-type selectors use icons only with localized accessibility labels. Follow `docs/activity-launch-live-ux.md` when changing these controls.
+
 - Show transient API results, such as save success or failure, with temporary toast-style feedback instead of inserting status text into the page layout. Use inline status only when the result must remain visible or requires an action from the user.
 
 ## Error Diagnostics
