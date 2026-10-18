@@ -10,4 +10,5 @@
     <string name="stretch_instruction_standing_hamstring">Adelanta un poco el talón del lado indicado y eleva los dedos. Flexiona la otra rodilla e inclínate suavemente desde las caderas, con la espalda alargada y las manos sobre el muslo flexionado.</string>
     <string name="stretch_movement_soleus">Estiramiento de pantorrilla con rodilla flexionada</string>
     <string name="stretch_instruction_soleus">Lleva atrás la pierna indicada, mantén el talón apoyado y flexiona suavemente ambas rodillas. Mantente erguido y usa una pared o barandilla firme si necesitas equilibrio.</string>
+    <string name="stretch_transition">Cambio de postura</string>
 </resources>

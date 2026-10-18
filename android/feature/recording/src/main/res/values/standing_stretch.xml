@@ -10,4 +10,5 @@
     <string name="stretch_instruction_standing_hamstring">Place the named heel a short step forward with toes up. Bend the other knee and hinge gently at the hips with a long back; rest hands on the bent thigh.</string>
     <string name="stretch_movement_soleus">Bent-knee calf stretch</string>
     <string name="stretch_instruction_soleus">Step the named leg back, keep its heel down, and soften both knees. Stay upright and use a stable wall or railing if you need balance.</string>
+    <string name="stretch_transition">Transition</string>
 </resources>

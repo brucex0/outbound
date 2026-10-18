@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -42,10 +44,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.Role
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 data class StretchMovement(
     val id: String,
@@ -239,29 +244,31 @@ fun PostWorkoutStretchRoute(
     }
     LaunchedEffect(speaks) { if (!speaks) audio.stop() }
     LaunchedEffect(running, movementIndex, selectedRoutine.id, phase, speaks) {
-        if (running && phase != StretchPhase.HOLD) {
-            if (feedback && phase == StretchPhase.TRANSITION) {
-                view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
-                view.playSoundEffect(android.view.SoundEffectConstants.CLICK)
-            }
-            if (speaks) {
-                val started = android.os.SystemClock.elapsedRealtime()
-                audio.playAndWait(movement.id.substringAfter('_'), phase == StretchPhase.TRANSITION)
-                secondsLeft = maxOf(1, secondsLeft - ((android.os.SystemClock.elapsedRealtime() - started) / 1000).toInt())
-            }
-        }
-        while (running && !complete) {
-            if (phase == StretchPhase.HOLD && secondsLeft in 1..5 && speaks) {
-                audio.tick()
-            }
-            delay(1_000)
-            if (phase == StretchPhase.HOLD) { stepHeld += 1; totalHeld += 1 }
-            if (secondsLeft <= 1) {
-                if (phase != StretchPhase.HOLD) {
-                    phase = StretchPhase.HOLD
-                    secondsLeft = movement.seconds
+        coroutineScope {
+            val intervalPhase = phase
+            // Narration and visible preparation time advance together. Never
+            // subtract speech duration afterward: that makes 0:05 jump to 0:01.
+            val announcement = if (running && intervalPhase != StretchPhase.HOLD) launch {
+                if (feedback && intervalPhase == StretchPhase.TRANSITION) {
+                    view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                    view.playSoundEffect(android.view.SoundEffectConstants.CLICK)
+                }
+                if (speaks) audio.playAndWait(movement.id.substringAfter('_'), intervalPhase == StretchPhase.TRANSITION)
+            } else null
+            while (running && !complete && phase == intervalPhase) {
+                if (intervalPhase == StretchPhase.HOLD && secondsLeft in 1..5 && speaks) audio.tick()
+                delay(1_000)
+                if (intervalPhase == StretchPhase.HOLD) { stepHeld += 1; totalHeld += 1 }
+                if (secondsLeft > 1) secondsLeft -= 1
+                else if (intervalPhase != StretchPhase.HOLD) {
+                    // Keep the last preparation second visible if a long title
+                    // is still playing; a hold must never overlap narration.
+                    if (announcement?.isActive != true) {
+                        phase = StretchPhase.HOLD
+                        secondsLeft = movement.seconds
+                    }
                 } else advance(false)
-            } else secondsLeft -= 1
+            }
         }
     }
 
@@ -282,6 +289,7 @@ fun PostWorkoutStretchRoute(
     Column(
         modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp).then(if (chosen && !complete) Modifier.verticalScroll(rememberScrollState()) else Modifier),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         if (!chosen) {
             Column(
@@ -321,22 +329,20 @@ fun PostWorkoutStretchRoute(
 
                 TextButton(onClick = { preview = !preview }) { Text(stringResource(R.string.stretch_preview)) }
                 if (preview) selectedRoutine.movements.forEach { step ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
                         StretchIllustration(step.id, Modifier.size(56.dp))
-                        Column {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(stringResource(step.title) + " · " + (step.side?.let { stringResource(it) } ?: ""))
                             Text(stringResource(step.instruction), style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.Switch(checked = speaks, onCheckedChange = { speaks = it })
-                    Text(stringResource(R.string.stretch_voice))
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.Switch(checked = feedback, onCheckedChange = { feedback = it })
-                    Text(stringResource(R.string.stretch_feedback))
-                }
+                StretchSettingToggle(stringResource(R.string.stretch_voice), speaks) { speaks = it }
+                StretchSettingToggle(stringResource(R.string.stretch_feedback), feedback) { feedback = it }
                 Button(
                     onClick = {
                         secondsLeft = 3
@@ -369,7 +375,7 @@ fun PostWorkoutStretchRoute(
         } else {
             Spacer(Modifier.weight(1f))
             StretchIllustration(movement.id, Modifier.size(150.dp))
-            if (phase != StretchPhase.HOLD) Text(stringResource(R.string.stretch_get_ready))
+            if (phase != StretchPhase.HOLD) Text(stringResource(if (phase == StretchPhase.TRANSITION) R.string.stretch_transition else R.string.stretch_get_ready))
             Text(stringResource(movement.title), style = MaterialTheme.typography.headlineMedium)
             movement.side?.let { Text(stringResource(it), style = MaterialTheme.typography.titleMedium) }
             Text(stringResource(movement.instruction))
@@ -404,10 +410,7 @@ fun PostWorkoutStretchRoute(
                 val next = selectedRoutine.movements[movementIndex + 1]
                 Text(stringResource(R.string.stretch_up_next) + ": " + stringResource(next.title) + " · " + (next.side?.let { stringResource(it) } ?: ""))
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                androidx.compose.material3.Switch(checked = speaks, onCheckedChange = { speaks = it })
-                Text(stringResource(R.string.stretch_voice))
-            }
+            StretchSettingToggle(stringResource(R.string.stretch_voice), speaks) { speaks = it }
             TextButton(onClick = { if (running) confirmEnd = true else finish("ended_early") }) {
                 Text(stringResource(R.string.stretch_end))
             }
@@ -429,6 +432,21 @@ fun PostWorkoutStretchRoute(
                 TextButton(onClick = { confirmEnd = false }) { Text(stringResource(R.string.recording_cancel)) }
             },
         )
+    }
+}
+
+/** One accessible switch target with an explicit control-to-label gap. */
+@Composable
+private fun StretchSettingToggle(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        androidx.compose.material3.Switch(checked = checked, onCheckedChange = null)
+        Text(label, modifier = Modifier.weight(1f))
     }
 }
 

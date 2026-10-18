@@ -10,4 +10,5 @@
     <string name="stretch_instruction_standing_hamstring">将指定侧脚跟向前迈一小步，脚尖抬起。另一侧膝盖微屈，背部自然伸展，从髋部轻轻前倾，双手扶在屈膝侧大腿上。</string>
     <string name="stretch_movement_soleus">屈膝小腿拉伸</string>
     <string name="stretch_instruction_soleus">指定侧腿向后迈，脚跟保持着地，双膝自然微屈。身体保持挺直，需要时可扶稳墙壁或栏杆。</string>
+    <string name="stretch_transition">切换动作</string>
 </resources>
