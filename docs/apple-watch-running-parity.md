@@ -13,7 +13,7 @@ Open this for Apple Workout coexistence, standalone Watch recording, and the run
 
 ## P0: Apple Workout mode
 
-- The activity setup dock offers `Plainstride Watch` or `Apple Workout`; the selection persists.
+- The activity setup dock offers `Plainstride Watch` or `Apple Workout`; the selection persists. The popup contains only the two app choices, without the Apple Workout instruction paragraph.
 - Plainstride mode retains mirrored start/pause/resume/finish and live heart rate.
 - Apple Workout mode does not launch a Plainstride Watch session. Start/finish Apple Workout on Watch and Plainstride on iPhone independently; phone route, photos, and coaching continue normally. Watch heart rate is available after Health import, not live.
 - Apple Workout mode suppresses phone Health write-back to avoid two Health workouts.
