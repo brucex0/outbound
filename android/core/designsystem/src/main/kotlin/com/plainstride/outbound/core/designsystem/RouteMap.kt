@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
+import com.google.android.gms.maps.LocationSource
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
@@ -51,6 +52,20 @@ data class MapRouteMarker(
     val rotationDegrees: Float = 0f,
 )
 
+private class SuppliedMapLocationSource : LocationSource {
+    private var listener: LocationSource.OnLocationChangedListener? = null
+    private var location: android.location.Location? = null
+    fun update(value: android.location.Location?) {
+        location = value
+        value?.let { listener?.onLocationChanged(it) }
+    }
+    override fun activate(value: LocationSource.OnLocationChangedListener) {
+        listener = value
+        location?.let(value::onLocationChanged)
+    }
+    override fun deactivate() { listener = null }
+}
+
 /** Shared route renderer. Missing credentials fail closed to an accessible non-map state. */
 @Composable
 @SuppressLint("MissingPermission")
@@ -74,6 +89,8 @@ fun PlainstrideRouteMap(
     followTiltDegrees: Float = 0f,
     followZoom: Float = 16f,
     onMapLoadedCallback: (() -> Unit)? = null,
+    useSuppliedUserLocation: Boolean = false,
+    suppliedUserLocation: android.location.Location? = null,
 ) {
     val context = LocalContext.current
     val description = stringResource(R.string.route_map_description)
@@ -87,6 +104,8 @@ fun PlainstrideRouteMap(
         Box(modifier, contentAlignment = Alignment.Center) { Text(stringResource(R.string.route_map_unavailable), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         return
     }
+    val suppliedSource = remember { SuppliedMapLocationSource() }
+    LaunchedEffect(suppliedUserLocation) { suppliedSource.update(suppliedUserLocation) }
     val camera = rememberCameraPositionState {
         // A ready start should open at its known location, without flying in
         // from the map SDK's default world view during the countdown.
@@ -104,7 +123,7 @@ fun PlainstrideRouteMap(
     var didFocusOnUser by remember { mutableStateOf(false) }
     var didFocusRoute by remember { mutableStateOf(false) }
     var didFocusSelectedMarker by remember { mutableStateOf(false) }
-    LaunchedEffect(focusOnUser, preciseLocationGranted, mapLoaded) {
+    LaunchedEffect(focusOnUser, preciseLocationGranted, mapLoaded, useSuppliedUserLocation, suppliedUserLocation) {
         if (!mapLoaded) return@LaunchedEffect
         if (focusOnUser && preciseLocationGranted && !didFocusOnUser) {
             val client = LocationServices.getFusedLocationProviderClient(context)
@@ -114,7 +133,9 @@ fun PlainstrideRouteMap(
                     camera.move(CameraUpdateFactory.newLatLngZoom(LatLng(location.latitude, location.longitude), 15f))
                 }
             }
-            client.lastLocation
+            if (useSuppliedUserLocation) {
+                focus(suppliedUserLocation)
+            } else client.lastLocation
                 .addOnSuccessListener { location ->
                     if (location != null) focus(location)
                     else client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, CancellationTokenSource().token).addOnSuccessListener(::focus)
@@ -163,6 +184,7 @@ fun PlainstrideRouteMap(
     GoogleMap(
         modifier = modifier.semantics { contentDescription = description },
         cameraPositionState = camera,
+        locationSource = suppliedSource.takeIf { useSuppliedUserLocation },
         properties = MapProperties(isMyLocationEnabled = showUserLocation && preciseLocationGranted),
         onMapLoaded = { mapLoaded = true; onMapLoadedCallback?.invoke() },
         contentPadding = PaddingValues(bottom = bottomContentPadding),

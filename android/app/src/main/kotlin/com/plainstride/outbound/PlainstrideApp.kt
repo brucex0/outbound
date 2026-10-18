@@ -773,7 +773,9 @@ private fun SignedInApp(
                     if (destination == TopLevelDestination.Today) {
                         val todayViewModel: TodayViewModel = hiltViewModel()
                         ActivityStartWarmup(recordingViewModel)
+                        val startLocation by recordingViewModel.startLocationUpdates.collectAsStateWithLifecycle()
                         TodayRoute(
+                            mapLocation = startLocation,
                             accountId = requireNotNull(accountId),
                             localeTag = resources.configuration.locales[0].toLanguageTag(),
                             viewModel = todayViewModel,

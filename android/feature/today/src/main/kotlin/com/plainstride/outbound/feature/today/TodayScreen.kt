@@ -188,6 +188,7 @@ fun TodayRoute(
     groupActivityContent: (@Composable () -> Unit)? = null,
     startRequest: Int = 0,
     refreshRequest: Int = 0,
+    mapLocation: android.location.Location? = null,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -264,6 +265,7 @@ fun TodayRoute(
         startRequest = startRequest,
         initialWorkoutId = initialWorkoutId,
         locationGranted = locationGranted,
+        mapLocation = mapLocation,
         onRequestLocationAccess = {
             if (locationGranted) viewModel.refreshWeather()
             else showsLocationPermission = true
@@ -327,6 +329,7 @@ fun TodayScreen(
     startRequest: Int = 0,
     initialWorkoutId: String? = null,
     locationGranted: Boolean = false,
+    mapLocation: android.location.Location? = null,
     onRequestLocationAccess: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -391,6 +394,8 @@ fun TodayScreen(
                 points = selectedRoute?.let { if (it.reverse) it.points.reversed() else it.points }.orEmpty(),
                 modifier = Modifier.fillMaxSize(),
                 showUserLocation = locationGranted,
+                useSuppliedUserLocation = true,
+                suppliedUserLocation = mapLocation,
                 preciseLocationGranted = locationGranted,
                 focusOnUser = true,
                 bottomContentPadding = mapOverlayBottomPadding,

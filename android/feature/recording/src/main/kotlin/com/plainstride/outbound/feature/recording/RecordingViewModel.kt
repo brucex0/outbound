@@ -91,8 +91,44 @@ class RecordingViewModel @Inject constructor(
     private var recoveryAccountId: String? = null
     private var preparingCountdown = false
     private var savedSessionCompleted = false
-    private var startLocation: android.location.Location? = null
-    fun updateStartLocation(location: android.location.Location) { startLocation = location }
+    private val mutableStartLocation = MutableStateFlow<android.location.Location?>(null)
+    val startLocationUpdates = mutableStartLocation.asStateFlow()
+    private var startLocation: android.location.Location?
+        get() = mutableStartLocation.value
+        set(value) { mutableStartLocation.value = value }
+    fun updateStartLocation(location: android.location.Location) {
+        val age = android.os.SystemClock.elapsedRealtimeNanos() - location.elapsedRealtimeNanos
+        if (!location.hasAccuracy() || location.accuracy > 80f || age !in 0..15_000_000_000L) return
+        val current = recentStartLocation()
+        if (current != null) {
+            if (location.elapsedRealtimeNanos < current.elapsedRealtimeNanos) return
+            val currentAge = android.os.SystemClock.elapsedRealtimeNanos() - current.elapsedRealtimeNanos
+            // Keep a fresh, more accurate fix when the difference is within
+            // uncertainty, but follow meaningful movement rather than freezing
+            // the map at an older position with a smaller accuracy radius.
+            val movedBeyondUncertainty = current.distanceTo(location) > maxOf(25f, current.accuracy + location.accuracy)
+            if (currentAge <= 10_000_000_000L && current.accuracy < location.accuracy && !movedBeyondUncertainty) return
+        }
+        startLocation = android.location.Location(location)
+    }
+    fun hasAccurateStartLocation(): Boolean {
+        val location = recentStartLocation() ?: return false
+        val age = android.os.SystemClock.elapsedRealtimeNanos() - location.elapsedRealtimeNanos
+        return location.accuracy <= 25f && age <= 10_000_000_000L
+    }
+    fun startWarmupRefreshDelayMillis(): Long {
+        val location = recentStartLocation() ?: return 250L
+        val ageMillis = (android.os.SystemClock.elapsedRealtimeNanos() - location.elapsedRealtimeNanos) / 1_000_000L
+        return (10_000L - ageMillis).coerceIn(250L, 10_000L)
+    }
+    fun trackStartWarmupResult() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(
+        AnalyticsProperty.Feature to "adaptive_start_location_warmup",
+        AnalyticsProperty.Result to when {
+            hasAccurateStartLocation() -> "accurate"
+            hasRecentStartLocation() -> "usable"
+            else -> "unavailable"
+        },
+    )))
     fun recentStartLocation(): android.location.Location? = startLocation?.takeIf { hasRecentStartLocation() }
     fun hasRecentStartLocation(): Boolean {
         val location = startLocation ?: return false
