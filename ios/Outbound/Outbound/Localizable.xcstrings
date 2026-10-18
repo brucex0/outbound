@@ -1,6 +1,236 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "post_workout_stretch.instruction.soleus": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step the named leg back, keep its heel down, and soften both knees. Stay upright and use a stable wall or railing if you need balance."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "指定侧腿向后迈，脚跟保持着地，双膝自然微屈。身体保持挺直，需要时可扶稳墙壁或栏杆。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lleva atrás la pierna indicada, mantén el talón apoyado y flexiona suavemente ambas rodillas. Mantente erguido y usa una pared o barandilla firme si necesitas equilibrio."
+          }
+        }
+      }
+    },
+    "post_workout_stretch.movement.soleus": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bent-knee calf stretch"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "屈膝小腿拉伸"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estiramiento de pantorrilla con rodilla flexionada"
+          }
+        }
+      }
+    },
+    "post_workout_stretch.instruction.standing_hamstring": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Place the named heel a short step forward with toes up. Bend the other knee and hinge gently at the hips with a long back; rest hands on the bent thigh."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将指定侧脚跟向前迈一小步，脚尖抬起。另一侧膝盖微屈，背部自然伸展，从髋部轻轻前倾，双手扶在屈膝侧大腿上。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adelanta un poco el talón del lado indicado y eleva los dedos. Flexiona la otra rodilla e inclínate suavemente desde las caderas, con la espalda alargada y las manos sobre el muslo flexionado."
+          }
+        }
+      }
+    },
+    "post_workout_stretch.movement.standing_hamstring": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standing hamstring stretch"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "站姿大腿后侧拉伸"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estiramiento de isquiotibiales de pie"
+          }
+        }
+      }
+    },
+    "post_workout_stretch.requirements.mat": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Floor space & mat · Wall helpful for balance"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需地面空间与垫子 · 可扶墙保持平衡"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suelo y colchoneta · Pared útil para el equilibrio"
+          }
+        }
+      }
+    },
+    "post_workout_stretch.requirements.standing_standard": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No floor · Stable wall or railing for quad stretch"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无需坐地 · 大腿前侧拉伸需扶稳墙壁或栏杆"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De pie · Pared o barandilla firme para cuádriceps"
+          }
+        }
+      }
+    },
+    "post_workout_stretch.requirements.standing_quick": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No floor · No equipment · Calves & hamstrings"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无需坐地 · 无需器材 · 小腿与大腿后侧"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De pie · Sin equipo · Pantorrillas e isquiotibiales"
+          }
+        }
+      }
+    },
+    "post_workout_stretch.more_routines": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "More routines · Mat options"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更多方案 · 垫上拉伸"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más rutinas · Con colchoneta"
+          }
+        }
+      }
+    },
+    "post_workout_stretch.routine.standing_standard": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standing stretch"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "站姿拉伸"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estiramientos de pie"
+          }
+        }
+      }
+    },
+    "post_workout_stretch.routine.standing_quick": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standing reset"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "站姿放松"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausa de pie"
+          }
+        }
+      }
+    },
     "post_workout_stretch.preview": {
       "extractionState": "manual",
       "localizations": {
@@ -480,19 +710,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Standard · Lower body"
+            "value": "Mat · Lower body"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Estándar · Tren inferior"
+            "value": "Colchoneta · Tren inferior"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "标准 · 下肢拉伸"
+            "value": "垫上 · 下肢拉伸"
           }
         }
       }
@@ -526,19 +756,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quick · Hips & hamstrings"
+            "value": "Mat · Hips & hamstrings"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rápida · Caderas e isquiotibiales"
+            "value": "Colchoneta · Caderas e isquiotibiales"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "快速 · 髋部与大腿后侧"
+            "value": "垫上 · 髋部与大腿后侧"
           }
         }
       }
@@ -2113,19 +2343,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose a gentle lower-body routine. A floor or mat and a wall for balance may help."
+            "value": "Stay on your feet for an easy outdoor reset, or choose a mat routine when you have a comfortable space."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Elige una rutina suave para el tren inferior. Puedes usar una colchoneta y una pared para apoyarte."
+            "value": "Relájate de pie al aire libre o elige una rutina con colchoneta cuando tengas un espacio cómodo."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择一组轻柔的下肢拉伸。可准备垫子，并在墙边保持平衡。"
+            "value": "户外运动后可直接站姿放松；有舒适的地面空间时，也可选择垫上拉伸。"
           }
         }
       }
@@ -2467,19 +2697,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Shoulder and upper-back reach"
+            "value": "Standing shoulder stretch"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hombros y espalda alta"
+            "value": "Estiramiento de hombro de pie"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "肩部和上背部伸展"
+            "value": "站姿肩部拉伸"
           }
         }
       }
@@ -2582,19 +2812,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stand supported and gently lean into the stretch."
+            "value": "Step the named leg back, keep that knee straight without locking it, and its heel down. Bend the front knee gently. Use a stable wall or railing if needed."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apóyate y entra suavemente en el estiramiento."
+            "value": "Lleva atrás la pierna indicada, con la rodilla extendida sin bloquearla y el talón apoyado. Flexiona suavemente la rodilla delantera. Usa una pared o barandilla firme si lo necesitas."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "扶稳身体，轻轻进入拉伸。"
+            "value": "指定侧腿向后迈，膝盖自然伸直但不锁死，脚跟保持着地。前侧膝盖轻轻弯曲，需要时可扶稳墙壁或栏杆。"
           }
         }
       }
@@ -2605,19 +2835,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hold a wall or chair and keep your knees close."
+            "value": "Hold a stable wall or railing. Bend the named knee and gently bring that heel toward your bottom, keeping knees close. Skip if support is unavailable or balance feels difficult."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sujeta una pared o silla y mantén las rodillas juntas."
+            "value": "Sujétate a una pared o barandilla firme. Flexiona la rodilla indicada y acerca suavemente el talón al glúteo, manteniendo las rodillas juntas. Omite el movimiento si no tienes apoyo o te cuesta mantener el equilibrio."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "扶住墙或椅子，保持膝盖靠近。"
+            "value": "扶稳墙壁或栏杆，弯曲指定侧膝盖，轻轻将脚跟靠近臀部，双膝保持靠近。没有稳固支撑或难以保持平衡时，请跳过。"
           }
         }
       }
@@ -2649,19 +2879,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reach softly and let your breathing stay relaxed."
+            "value": "Stand with both feet grounded. Bring the named arm across your chest and gently support it above or below the elbow; keep the shoulder relaxed."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alcanza suavemente y respira con calma."
+            "value": "Apoya ambos pies. Cruza el brazo indicado por delante del pecho y sujétalo suavemente por encima o debajo del codo, manteniendo el hombro relajado."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "轻柔伸展，保持呼吸放松。"
+            "value": "双脚站稳，将指定侧手臂横放于胸前，另一只手轻扶肘部上方或下方，肩膀保持放松。"
           }
         }
       }

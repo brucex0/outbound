@@ -25,6 +25,15 @@ struct StretchRoutine: Sendable, Identifiable {
     let id: String
     let title: String
     let durationLabel: String
+    var isStanding: Bool { id.contains("_standing_") }
+    var preferenceID: String {
+        if id.contains("_standing_quick_") { return "standing_quick" }
+        if isStanding { return "standing_standard" }
+        return id.contains("_hips_hamstrings_") ? "mat_quick" : "mat_standard"
+    }
+    var requirements: String {
+        stretchText(isStanding ? (preferenceID == "standing_quick" ? "post_workout_stretch.requirements.standing_quick" : "post_workout_stretch.requirements.standing_standard") : "post_workout_stretch.requirements.mat", "")
+    }
     let movements: [StretchMovement]
     var totalSeconds: Int { movements.reduce(0) { $0 + $1.duration } + 3 + max(0, movements.count - 1) * 5 }
     var calculatedDuration: String { "≈ " + Duration.seconds(totalSeconds).formatted(.time(pattern: .minuteSecond)) }
@@ -48,7 +57,17 @@ enum PostWorkoutStretchCatalog {
             + bilateralSteps(prefix: prefix, id: "hamstring", titleKey: "hamstring", instructionKey: "hamstring", seconds: 20, icon: "figure.flexibility")
             + bilateralSteps(prefix: prefix, id: "glute", titleKey: "glute", instructionKey: "glute", seconds: 20, icon: "figure.flexibility")
 
+        let quickStanding = ["calf", "soleus", "standing_hamstring"].flatMap {
+            bilateralSteps(prefix: prefix, id: $0, titleKey: $0, instructionKey: $0, seconds: 15, icon: "figure.stand")
+        }
+        let standardStanding = ["calf", "soleus", "standing_hamstring", "quad", "shoulder"].flatMap {
+            bilateralSteps(prefix: prefix, id: $0, titleKey: $0, instructionKey: $0, seconds: 25, icon: "figure.stand")
+        }
         return [
+            StretchRoutine(id: "post_save_\(prefix)_standing_quick_v1",
+                title: stretchText("post_workout_stretch.routine.standing_quick", "Standing reset"), durationLabel: "", movements: quickStanding),
+            StretchRoutine(id: "post_save_\(prefix)_standing_standard_v1",
+                title: stretchText("post_workout_stretch.routine.standing_standard", "Standing stretch"), durationLabel: "", movements: standardStanding),
             StretchRoutine(
                 id: "post_save_\(prefix)_cooldown_v2",
                 title: stretchText("activity.post_save.program.full_body", "Full-body cooldown"),
@@ -62,6 +81,11 @@ enum PostWorkoutStretchCatalog {
                 movements: hipsAndHamstrings
             )
         ]
+    }
+
+    static func initialRoutine(_ routines: [StretchRoutine], isIndoor: Bool, lastRoutine: String?, lastStanding: String?) -> StretchRoutine {
+        let preference = isIndoor ? lastRoutine : lastStanding
+        return routines.first { $0.preferenceID == preference && (isIndoor || $0.isStanding) } ?? routines[0]
     }
 
     private static func bilateralSteps(
@@ -218,12 +242,18 @@ struct PostWorkoutStretchView: View {
     @State private var completedTracked = false
     @State private var speaksInstructions = true
     @State private var transitionFeedback = false
+    @State private var showMoreRoutines = false
 
     init(context: PostSavedStretchContext, activity: SavedActivity, voiceProfileID: String, onExit: @escaping () -> Void) {
         self.context = context
         self.activity = activity
         self.onExit = onExit
-        _timer = StateObject(wrappedValue: PostWorkoutStretchTimer(routine: context.routines[0]))
+        let initial = PostWorkoutStretchCatalog.initialRoutine(context.routines,
+            isIndoor: activity.indoor?.isIndoor == true,
+            lastRoutine: UserDefaults.standard.string(forKey: "stretch_last_routine_v1"),
+            lastStanding: UserDefaults.standard.string(forKey: "stretch_last_standing_routine_v1"))
+        _timer = StateObject(wrappedValue: PostWorkoutStretchTimer(routine: initial))
+        _showMoreRoutines = State(initialValue: !initial.isStanding)
         _narrator = StateObject(wrappedValue: StretchNarrator(voice: voiceProfileID))
     }
 
@@ -251,8 +281,13 @@ struct PostWorkoutStretchView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text(String(localized: "activity.post_save.program.title", defaultValue: "Choose a stretch"))
                                 .font(.headline)
-                            ForEach(context.routines) { routine in
+                            ForEach(context.routines.filter(\.isStanding)) { routine in
                                 stretchProgramOption(routine)
+                            }
+                            DisclosureGroup(stretchText("post_workout_stretch.more_routines", "More routines"), isExpanded: $showMoreRoutines) {
+                                ForEach(context.routines.filter { !$0.isStanding }) { routine in
+                                    stretchProgramOption(routine)
+                                }
                             }
                         }
 
@@ -272,6 +307,10 @@ struct PostWorkoutStretchView: View {
 
                         Toggle(stretchText("post_workout_stretch.feedback", "Transition sound & haptics"), isOn: $transitionFeedback)
                         Button(stretchText("post_workout_stretch.start", "Start stretching")) {
+                            UserDefaults.standard.set(timer.routine.preferenceID, forKey: "stretch_last_routine_v1")
+                            if timer.routine.isStanding {
+                                UserDefaults.standard.set(timer.routine.preferenceID, forKey: "stretch_last_standing_routine_v1")
+                            }
                             chosen = true
                             track(.postWorkoutStretchStarted)
                             timer.start()
@@ -416,6 +455,7 @@ struct PostWorkoutStretchView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(routine.title).font(.subheadline.weight(.semibold))
                     Text(routine.calculatedDuration).font(.caption).foregroundStyle(.secondary)
+                    Text(routine.requirements).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 8)
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
@@ -562,11 +602,14 @@ private struct StretchPostureIllustration: View {
     }
     private func posturePoints(_ cue: String) -> [[CGPoint]] {
         let raw: [[(Double, Double)]]
-        if cue.hasPrefix("glute") { raw = [[(15,75),(35,75),(55,60),(75,60)],[(35,75),(45,45),(60,55)],[(45,45),(70,40),(75,60)],[(55,60),(55,80),(80,80)]] }
+        if cue.hasPrefix("standing_hamstring") { raw = [[(65,30),(50,55)],[(60,40),(45,60),(35,75)],[(50,55),(35,75),(35,90)],[(50,55),(80,90),(88,82)]] }
+        else if cue.hasPrefix("shoulder") { raw = [[(50,20),(50,60)],[(50,60),(35,90)],[(50,60),(65,90)],[(35,35),(55,50),(50,40)],[(65,35),(30,40)]] }
+        else if cue.hasPrefix("soleus") { raw = [[(60,20),(50,55)],[(60,30),(70,50),(72,70)],[(50,55),(72,70),(80,90),(90,90)],[(50,55),(25,70),(20,90),(10,90)]] }
+        else if cue.hasPrefix("glute") { raw = [[(15,75),(35,75),(55,60),(75,60)],[(35,75),(45,45),(60,55)],[(45,45),(70,40),(75,60)],[(55,60),(55,80),(80,80)]] }
         else if cue.hasPrefix("hamstring") { raw = [[(15,80),(45,80)],[(30,80),(50,55),(57,50)],[(45,80),(80,80)],[(45,80),(60,35)]] }
         else if cue.hasPrefix("inner") { raw = [[(50,20),(50,55)],[(50,35),(30,60)],[(50,55),(30,80),(50,75)],[(50,55),(70,80),(50,75)]] }
-        else if cue.hasPrefix("calf") { raw = [[(65,20),(50,55)],[(60,30),(85,35)],[(50,55),(70,75),(85,75)],[(50,55),(25,85),(15,85)]] }
-        else if cue.hasPrefix("quad") { raw = [[(50,15),(50,55)],[(50,55),(50,90)],[(50,30),(30,55),(35,65)],[(50,55),(25,80),(35,65)]] }
+        else if cue.hasPrefix("calf") { raw = [[(65,20),(50,55)],[(60,30),(70,50),(70,70)],[(50,55),(70,70),(80,90),(90,90)],[(50,55),(20,90),(10,90)]] }
+        else if cue.hasPrefix("quad") { raw = [[(50,20),(50,55)],[(50,55),(50,90)],[(50,30),(20,35)],[(20,25),(20,90)],[(50,35),(70,55),(70,65)],[(50,55),(80,85),(70,65)]] }
         else { raw = [[(50,15),(50,55)],[(50,35),(70,55)],[(50,55),(70,60),(70,85)],[(50,55),(30,85),(15,85)]] }
         return raw.map { $0.map { x, y in CGPoint(x: cue.hasSuffix("right") ? 100 - x : x, y: y) } }
     }
