@@ -120,7 +120,9 @@ struct MainTabView: View {
         }
         .onChange(of: defaultTodayIntent) { previousIntent, intent in
             guard selectedAppTab == SimplifiedAppTab.today else { return }
-            guard activitySessionState == .idle else { return }
+            // Review and post-save are recorder-idle too. Keep their owning
+            // RecordView alive when saving refreshes today's recommendation.
+            guard activitySessionState == .idle, !isActivityFullscreenVisible else { return }
             let activeIntent = activeLaunch?.intent
             guard activeIntent == nil || activeIntent == previousIntent else { return }
             guard activeIntent != intent else { return }
