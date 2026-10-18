@@ -126,6 +126,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -204,6 +205,9 @@ fun RecordingRoute(
     var permissionRevision by remember { mutableIntStateOf(0) }
     var locationWaitJob by remember { mutableStateOf<Job?>(null) }
     var showGpsWait by remember { mutableStateOf(false) }
+    DisposableEffect(Unit) {
+        onDispose { locationWaitJob?.cancel() }
+    }
     var pendingStartAfterSettings by remember { mutableStateOf(false) }
     var pendingResume by remember { mutableStateOf(false) }
     var showLocationEducation by remember { mutableStateOf(false) }
@@ -223,6 +227,9 @@ fun RecordingRoute(
     val eventGroupSharing = eventGroupRun?.participants?.any { participant ->
         participant.userId == eventGroupRun.currentUserId && participant.status in setOf("active", "stale")
     } == true
+    LaunchedEffect(showGpsWait) {
+        if (showGpsWait) viewModel.trackStartPreflight()
+    }
     LaunchedEffect(eventGroupSharing) { viewModel.setLiveGroupSharing(eventGroupSharing) }
     val otherActiveGroupRun = groupRun?.takeIf { run ->
         run.status == "active" && run.activityEventId != launch.activityEventId && run.participants.any { participant ->
@@ -310,22 +317,33 @@ fun RecordingRoute(
             return ageNanos in 0..15_000_000_000L
         }
 
-        runCatching { client.lastLocation.await() }.getOrNull().takeIf(::isUsable)?.let { return true }
+        (try { client.lastLocation.await() } catch (error: CancellationException) { throw error } catch (error: Exception) {
+            Log.w("RecordingStart", "location_preflight_last_fix_failed type=${error.javaClass.simpleName}")
+            null
+        }).takeIf(::isUsable)?.let { viewModel.updateStartLocation(it); return true }
         while (true) {
             val permission = recordingLocationPermission(context, LocationPermissionAccess.wasRequestedBefore(context))
             if (permission != LocationPermissionState.PRECISE && permission != LocationPermissionState.APPROXIMATE) return false
             val current = withTimeoutOrNull(12_000L) {
-                runCatching {
+                val cancellation = CancellationTokenSource()
+                try {
                     client.getCurrentLocation(
                         CurrentLocationRequest.Builder()
                             .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
                             .setDurationMillis(10_000L)
                             .build(),
-                        CancellationTokenSource().token,
+                        cancellation.token,
                     ).await()
-                }.getOrNull()
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    Log.w("RecordingStart", "location_preflight_current_fix_failed type=${error.javaClass.simpleName}")
+                    null
+                } finally {
+                    cancellation.cancel()
+                }
             }
-            if (isUsable(current)) return true
+            if (isUsable(current)) { viewModel.updateStartLocation(requireNotNull(current)); return true }
             delay(500L)
         }
     }
@@ -345,8 +363,10 @@ fun RecordingRoute(
     }
 
     fun beginCountdown() {
-        if (ui.launch.activityKind == ActivityKind.RUNNING &&
-            !(BuildConfig.DEBUG && ui.launch.simulatedRunEnabled) && android.os.Build.VERSION.SDK_INT >= 29 &&
+        val startState = viewModel.state.value
+        val configuration = startState.launch
+        if (configuration.activityKind in setOf(ActivityKind.RUNNING, ActivityKind.WALKING) &&
+            !(BuildConfig.DEBUG && configuration.simulatedRunEnabled) && android.os.Build.VERSION.SDK_INT >= 29 &&
             !motionRequested && context.checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED &&
             context.getSystemService(android.hardware.SensorManager::class.java)?.getDefaultSensor(android.hardware.Sensor.TYPE_STEP_DETECTOR) != null
         ) {
@@ -358,30 +378,43 @@ fun RecordingRoute(
         }
         pendingResume = false
         onPrepareActivityStart()
-        if (BuildConfig.DEBUG && ui.launch.simulatedRunEnabled) {
-            val permission = permissionState()
-            if (permission == LocationPermissionState.PRECISE || permission == LocationPermissionState.APPROXIMATE) {
-                scope.launch { viewModel.beginCountdown() }
-            } else showLocationRequired()
+        if (locationWaitJob?.isActive == true || startState.startRequested || startState.countdown != null) return
+        val permission = permissionState()
+        val simulated = BuildConfig.DEBUG && configuration.simulatedRunEnabled
+        if (permission != LocationPermissionState.PRECISE && permission != LocationPermissionState.APPROXIMATE) {
+            showLocationRequired()
             return
         }
-        val permission = permissionState()
-        if (permission == LocationPermissionState.PRECISE || permission == LocationPermissionState.APPROXIMATE) {
-            if (ui.launch.indoor) {
-                scope.launch { viewModel.beginCountdown() }
-            } else {
-                locationWaitJob?.cancel()
-                locationWaitJob = scope.launch {
-                    showGpsWait = true
-                    val ready = runCatching { waitForUsableLocation() }.getOrDefault(false)
-                    showGpsWait = false
-                    locationWaitJob = null
-                    if (ready && permissionState().let { it == LocationPermissionState.PRECISE || it == LocationPermissionState.APPROXIMATE }) {
-                        viewModel.beginCountdown()
-                    } else if (permissionState() == LocationPermissionState.DENIED) showLocationRequired()
+        locationWaitJob = scope.launch {
+            try {
+                if (!configuration.indoor && !simulated) {
+                    showGpsWait = !viewModel.hasRecentStartLocation()
+                    if (!waitForUsableLocation()) {
+                        showLocationRequired()
+                        return@launch
+                    }
                 }
+                showGpsWait = false
+                if (configuration.activityKind in setOf(ActivityKind.WALKING, ActivityKind.HIKING)) {
+                    viewModel.start(accountId, permissionState())
+                } else {
+                    viewModel.beginCountdown()
+                }
+            } finally {
+                showGpsWait = false
+                locationWaitJob = null
             }
-        } else showLocationRequired()
+        }
+    }
+
+    fun cancelStart() {
+        locationWaitJob?.cancel()
+        locationWaitJob = null
+        showGpsWait = false
+        pendingMotionStart = false
+        pendingStartAfterSettings = false
+        viewModel.cancelCountdown()
+        onExit()
     }
 
     LaunchedEffect(pendingMotionStart) {
@@ -491,7 +524,7 @@ fun RecordingRoute(
             } else {
                 if (!ui.launch.indoor && !(BuildConfig.DEBUG && ui.launch.simulatedRunEnabled)) {
                     showGpsWait = true
-                    val ready = runCatching { waitForUsableLocation() }.getOrDefault(false)
+                    val ready = waitForUsableLocation()
                     showGpsWait = false
                     if (!ready) {
                         viewModel.clearCountdown()
@@ -547,8 +580,7 @@ fun RecordingRoute(
             RecordingStatus.AWAITING_SAVE -> closeReview()
             RecordingStatus.IDLE -> {
                 if (!ui.startRequested) {
-                    viewModel.cancelCountdown()
-                    onExit()
+                    cancelStart()
                 }
             }
         }
@@ -639,17 +671,23 @@ fun RecordingRoute(
                 onStopActivityLiveMap = onStopActivityLiveMap,
             )
             ui.countdown != null -> CountdownScreen(
+                startLocation = viewModel.recentStartLocation()?.let { MapCoordinate(it.latitude, it.longitude) },
                 value = ui.countdown!!,
                 snapshot = snapshot,
                 configuration = ui.launch,
                 locationPermission = permissionState(),
                 runSimulation = snapshot.runSimulation,
                 onCancel = {
-                    viewModel.cancelCountdown()
-                    onExit()
+                    cancelStart()
                 },
             )
-            launch.startImmediately || ui.launch.startImmediately -> StartingActivityScreen()
+            launch.startImmediately || ui.launch.startImmediately || locationWaitJob != null || ui.startRequested -> ActivityStartSurface(
+                configuration = ui.launch,
+                permission = permissionState(),
+                acquiringLocation = showGpsWait,
+                canCancel = !ui.startRequested,
+                onCancel = ::cancelStart,
+            )
             else -> ActivitySetupScreen(
                 configuration = ui.launch,
                 activityLiveMapEnabled = eventGroupSharing,
@@ -722,25 +760,6 @@ fun RecordingRoute(
         }
         sessionEffect(snapshot)
     }
-
-    if (showGpsWait) AlertDialog(
-        onDismissRequest = {
-            locationWaitJob?.cancel()
-            locationWaitJob = null
-            showGpsWait = false
-            viewModel.cancelCountdown()
-            if (launch.startImmediately || ui.launch.startImmediately) onExit()
-        },
-        title = { Text(stringResource(R.string.recording_acquiring_location)) },
-        text = { CircularProgressIndicator() },
-        confirmButton = { TextButton(onClick = {
-            locationWaitJob?.cancel()
-            locationWaitJob = null
-            showGpsWait = false
-            viewModel.cancelCountdown()
-            if (launch.startImmediately || ui.launch.startImmediately) onExit()
-        }) { Text(stringResource(R.string.recording_cancel)) } },
-    )
 
     if (showLocationEducation) LocationPermissionEducationDialog(
         onEnable = {
@@ -954,6 +973,7 @@ private fun ActivitySetupScreen(
 
 @Composable
 private fun CountdownScreen(
+    startLocation: MapCoordinate?,
     value: Int,
     snapshot: RecordingSnapshot,
     configuration: RecordingLaunchConfiguration,
@@ -964,7 +984,7 @@ private fun CountdownScreen(
     val progress = (4 - value.coerceIn(0, 3)) / 4f
     val label = if (value == 0) stringResource(R.string.recording_go) else value.toString()
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        TrackMap(snapshot, configuration, Modifier.fillMaxSize())
+        TrackMap(snapshot, configuration, Modifier.fillMaxSize(), startLocation = startLocation)
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.42f)))
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Box(Modifier.size(188.dp), contentAlignment = Alignment.Center) {
@@ -1003,12 +1023,38 @@ private fun CountdownScreen(
 }
 
 @Composable
-private fun StartingActivityScreen() {
-    Box(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary),
-        contentAlignment = Alignment.Center,
-    ) {
-        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
+private fun ActivityStartSurface(
+    configuration: RecordingLaunchConfiguration,
+    permission: LocationPermissionState,
+    acquiringLocation: Boolean,
+    canCancel: Boolean,
+    onCancel: () -> Unit,
+) {
+    Box(Modifier.fillMaxSize()) {
+        PlainstrideRouteMap(
+            points = configuration.followedRoute?.points.orEmpty().map { MapCoordinate(it.latitude, it.longitude) },
+            modifier = Modifier.fillMaxSize(),
+            showUserLocation = permission == LocationPermissionState.PRECISE || permission == LocationPermissionState.APPROXIMATE,
+            preciseLocationGranted = permission == LocationPermissionState.PRECISE,
+            focusOnUser = true,
+            bottomContentPadding = 128.dp,
+        )
+        if (acquiringLocation) Surface(
+            modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+            shadowElevation = 6.dp,
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                Text(stringResource(R.string.recording_acquiring_location), Modifier.weight(1f))
+                if (canCancel) TextButton(onClick = onCancel) { Text(stringResource(R.string.recording_cancel)) }
+            }
+        }
     }
 }
 
@@ -1230,6 +1276,7 @@ private fun TrackMap(
     modifier: Modifier = Modifier,
     groupRun: SharedLiveRun? = null,
     focusedParticipant: String? = null,
+    startLocation: MapCoordinate? = null,
     onFocus: (String?) -> Unit = {},
 ) {
     val recorded = snapshot.track.map { MapCoordinate(it.latitude, it.longitude) }
@@ -1252,7 +1299,7 @@ private fun TrackMap(
         recordedRoute = recorded,
         plannedRoute = planned,
         recordedRouteSegments = recordedSegments,
-        runnerLocation = snapshot.latestLocation?.let { MapCoordinate(it.latitude, it.longitude) },
+        runnerLocation = snapshot.latestLocation?.let { MapCoordinate(it.latitude, it.longitude) } ?: startLocation,
         modifier = modifier,
         showRunnerMascot = true,
         runnerMoving = snapshot.status == RecordingStatus.ACTIVE,
@@ -1260,7 +1307,7 @@ private fun TrackMap(
         bottomContentPadding = 128.dp,
     )
     Box(modifier, contentAlignment = Alignment.Center) {
-        if (snapshot.latestLocation == null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        if (snapshot.latestLocation == null && startLocation == null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Default.MyLocation, null)
             Text(stringResource(R.string.recording_acquiring_location))
         }

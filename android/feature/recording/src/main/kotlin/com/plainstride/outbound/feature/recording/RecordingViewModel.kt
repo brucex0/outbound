@@ -90,6 +90,22 @@ class RecordingViewModel @Inject constructor(
     )
     private var recoveryAccountId: String? = null
     private var preparingCountdown = false
+    private var savedSessionCompleted = false
+    private var startLocation: android.location.Location? = null
+    fun updateStartLocation(location: android.location.Location) { startLocation = location }
+    fun recentStartLocation(): android.location.Location? = startLocation?.takeIf { hasRecentStartLocation() }
+    fun hasRecentStartLocation(): Boolean {
+        val location = startLocation ?: return false
+        val age = android.os.SystemClock.elapsedRealtimeNanos() - location.elapsedRealtimeNanos
+        return location.hasAccuracy() && location.accuracy <= 80f && age in 0..15_000_000_000L
+    }
+    fun warmStartVoice() = viewModelScope.launch {
+        try { voice.prepare() } catch (error: kotlinx.coroutines.CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            logError("start_voice_warmup_failed type=${error.javaClass.simpleName}")
+        }
+    }
     private var liveGroupSharing = false
     private var startedWithGroup = false
     fun setLiveGroupSharing(enabled: Boolean) { liveGroupSharing = enabled }
@@ -146,7 +162,10 @@ class RecordingViewModel @Inject constructor(
                 HarvestRunSimulation.route.copy(reverse = configuration.followedRoute.reverse)
             } else base.followedRoute,
         )
-        mutableState.value = mutableState.value.copy(launch = effective)
+        mutableState.value = if (savedSessionCompleted && snapshot.value.status == RecordingStatus.IDLE) {
+            savedSessionCompleted = false
+            RecordingUiState(launch = effective)
+        } else mutableState.value.copy(launch = effective)
         if (isDebugHarvestLaunch) analytics.record(AnalyticsEvent("activity_configuration_changed", mapOf(
             AnalyticsProperty.ChangeType to "run_simulation",
             AnalyticsProperty.SelectionType to "enabled",
@@ -170,9 +189,12 @@ class RecordingViewModel @Inject constructor(
         debugLog("countdown_begin voiceEnabled=$voiceGuideEnabled indoor=${mutableState.value.launch.indoor} source=${mutableState.value.launch.entrySource}")
         try {
             val voiceReady = if (voiceGuideEnabled) {
-                runCatching { voice.prepare() }.onFailure {
-                    logError("countdown_voice_prepare_exception type=${it.javaClass.simpleName}")
-                }.getOrDefault(false)
+                try { voice.prepare() } catch (error: kotlinx.coroutines.CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    logError("countdown_voice_prepare_exception type=${error.javaClass.simpleName}")
+                    false
+                }
             } else false
             debugLog("countdown_voice_ready enabled=$voiceGuideEnabled ready=$voiceReady")
             if (mutableState.value.startRequested || snapshot.value.status != RecordingStatus.IDLE) return
@@ -400,6 +422,10 @@ class RecordingViewModel @Inject constructor(
         if (name.startsWith("post_workout_stretch_")) analytics.record(AnalyticsEvent(name, properties))
     }
 
+    fun trackStartPreflight() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(
+        AnalyticsProperty.Feature to "activity_start_preflight",
+    )))
+
     fun trackPostSaveCelebrationExposed() {
         analytics.record(AnalyticsEvent("feature_exposed", mapOf(
             AnalyticsProperty.Feature to "activity_post_save_celebration",
@@ -420,6 +446,7 @@ class RecordingViewModel @Inject constructor(
     ))
     fun newCommandId(): String = UUID.randomUUID().toString()
     fun markSaved() {
+        savedSessionCompleted = true
         client.markSaved(newCommandId())
         clearLaunch()
         // This ViewModel survives navigation back to Today. Release the previous start

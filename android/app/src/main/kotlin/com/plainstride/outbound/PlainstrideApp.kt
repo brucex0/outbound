@@ -146,13 +146,15 @@ import com.plainstride.outbound.feature.settings.MeInsight
 import com.plainstride.outbound.feature.settings.MeMilestone
 import com.plainstride.outbound.feature.settings.SettingsGroupTitle
 import com.plainstride.outbound.feature.settings.R as SettingsR
-import com.plainstride.outbound.feature.recording.ActivityKind
 import com.plainstride.outbound.feature.recording.ActivityPhotoAlbumExportResult
 import com.plainstride.outbound.feature.recording.RecordedActivityReview
 import com.plainstride.outbound.feature.recording.RecordingGoal
 import com.plainstride.outbound.feature.recording.RecordingGoalType
 import com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration
 import com.plainstride.outbound.feature.recording.RecordingRoute
+import com.plainstride.outbound.feature.recording.ActivityStartWarmup
+import com.plainstride.outbound.feature.recording.RecordingViewModel
+import com.plainstride.outbound.feature.recording.ActivityKind
 import com.plainstride.outbound.feature.recording.ActiveRecordingViewModel
 import com.plainstride.outbound.feature.recording.FollowedRouteConfiguration
 import com.plainstride.outbound.feature.recording.RecordingRoutePoint
@@ -316,6 +318,8 @@ private fun SignedInApp(
     var trackedAssistantAnimation by remember { mutableStateOf(false) }
     var cheerPickerVisible by remember { mutableStateOf(false) }
     var addShoeSheetVisible by remember { mutableStateOf(false) }
+    val recordingViewModel: RecordingViewModel = hiltViewModel()
+    var todayStartJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val activeRecordingViewModel:ActiveRecordingViewModel=hiltViewModel()
     val hasActiveSession by activeRecordingViewModel.active.collectAsStateWithLifecycle()
     var suppressRecordingRecovery by remember { mutableStateOf(false) }
@@ -460,6 +464,42 @@ private fun SignedInApp(
     LaunchedEffect(currentDestination?.route, pushPermissionGranted) {
         if (currentDestination?.route == TopLevelDestination.Social.route && !pushPermissionGranted) {
             integrationViewModel.trackPushPermissionPromptExposed("social")
+        }
+    }
+    fun launchTodayRecording() {
+        if (todayStartJob?.isActive == true) return
+        val configuration = recordingLaunch
+        todayStartJob = scope.launch {
+            try {
+                recordingViewModel.configure(configuration, measurementUnitSystem)
+                val permission = recordingLocationPermission(context)
+                val hasPermission = permission == LocationPermissionState.PRECISE || permission == LocationPermissionState.APPROXIMATE
+                val needsMotion = configuration.activityKind in setOf(ActivityKind.RUNNING, ActivityKind.WALKING) &&
+                    android.os.Build.VERSION.SDK_INT >= 29 &&
+                    !context.getSharedPreferences("motion_permission", android.content.Context.MODE_PRIVATE).getBoolean("requested", false) &&
+                    context.checkSelfPermission(android.Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED &&
+                    context.getSystemService(android.hardware.SensorManager::class.java)?.getDefaultSensor(android.hardware.Sensor.TYPE_STEP_DETECTOR) != null
+                if (!needsMotion && hasPermission && (configuration.indoor || recordingViewModel.hasRecentStartLocation())) {
+                    cheerPickerViewModel.applyTrustedContactDefault()
+                    // Resolve recovery before a direct Walk/Hike start so entering
+                    // the recording route cannot recover the new session as paused.
+                    recordingViewModel.recover(requireNotNull(accountId), permission)
+                    if (configuration.activityKind in setOf(ActivityKind.WALKING, ActivityKind.HIKING)) {
+                        recordingViewModel.start(requireNotNull(accountId), permission)
+                    } else recordingViewModel.beginCountdown()
+                }
+                recordingLaunch = configuration
+                navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
+            } finally { todayStartJob = null }
+        }
+    }
+    androidx.activity.compose.BackHandler(enabled = todayStartJob?.isActive == true) {
+        todayStartJob?.cancel()
+        recordingViewModel.cancelCountdown()
+    }
+    LaunchedEffect(currentDestination?.route) {
+        if (currentDestination?.route != TopLevelDestination.Today.route && currentDestination?.route != RECORDING_ROUTE) {
+            todayStartJob?.cancel()
         }
     }
     LaunchedEffect(accountId) { accountId?.let { integrationViewModel.start(it, resources.configuration.locales[0].toLanguageTag());cycleViewModel.start(it);healthViewModel.start(it) } }
@@ -732,6 +772,7 @@ private fun SignedInApp(
                 composable(destination.route) {
                     if (destination == TopLevelDestination.Today) {
                         val todayViewModel: TodayViewModel = hiltViewModel()
+                        ActivityStartWarmup(recordingViewModel)
                         TodayRoute(
                             accountId = requireNotNull(accountId),
                             localeTag = resources.configuration.locales[0].toLanguageTag(),
@@ -746,7 +787,7 @@ private fun SignedInApp(
                             completedToday = integration.completedToday,
                             onStartWorkout = { intent, options ->
                                 recordingLaunch = intent.toRecordingLaunch().copy(gearId = selectedTodayShoeIdForLaunch,privateTrainingSignal=cycleState.currentSignal.takeIf{cycleState.enabled&&it!=CycleTrainingSignal.NO_ADJUSTMENT}?.wireValue,startImmediately=true,indoor=options.indoor,voiceGuideEnabled=options.voiceGuideEnabled,companionType=options.companionType).withTodayRoute(todaySelectedRoute, todayRouteReversed)
-                                navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
+                                launchTodayRecording()
                             },
                             onStartFreestyle = { options ->
                                 recordingLaunch = RecordingLaunchConfiguration(
@@ -757,14 +798,14 @@ private fun SignedInApp(
                                     voiceGuideEnabled = options.voiceGuideEnabled,
                                     companionType = options.companionType,
                                 ).withTodayRoute(todaySelectedRoute, todayRouteReversed)
-                                navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
+                                launchTodayRecording()
                             },
                             onReturnToSession = { navController.navigate(RECORDING_ROUTE) { launchSingleTop = true } },
                             onSetUpPlan = { planBuilderSource = PlanBuilderSource.PlannedButton },
                             onBuildPlan = { planBuilderSource = PlanBuilderSource.AllPlans },
                             onStartManual = { setup ->
                                 recordingLaunch = setup.toRecordingLaunch(selectedTodayShoeIdForLaunch).withTodayRoute(todaySelectedRoute, todayRouteReversed)
-                                navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
+                                launchTodayRecording()
                             },
                             shoes = activeShoes.map { com.plainstride.outbound.feature.today.TodayShoeOption(it.id.toString(), it.displayName) },
                             selectedShoeId = selectedTodayShoeIdForLaunch,
@@ -1076,6 +1117,7 @@ private fun SignedInApp(
             }
             composable(RECORDING_ROUTE) {
                 RecordingRoute(
+                    viewModel = recordingViewModel,
                     accountId = requireNotNull(accountId) { "Authenticated session is missing its account identifier." },
                     launch = recordingLaunch,
                     onPrepareActivityStart = cheerPickerViewModel::applyTrustedContactDefault,

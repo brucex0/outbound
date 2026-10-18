@@ -87,7 +87,18 @@ fun PlainstrideRouteMap(
         Box(modifier, contentAlignment = Alignment.Center) { Text(stringResource(R.string.route_map_unavailable), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         return
     }
-    val camera = rememberCameraPositionState()
+    val camera = rememberCameraPositionState {
+        // A ready start should open at its known location, without flying in
+        // from the map SDK's default world view during the countdown.
+        followCoordinate?.let { coordinate ->
+            position = CameraPosition.Builder()
+                .target(LatLng(coordinate.latitude, coordinate.longitude))
+                .zoom(followZoom)
+                .bearing(followBearingDegrees ?: 0f)
+                .tilt(followTiltDegrees)
+                .build()
+        }
+    }
     var mapLoaded by remember { mutableStateOf(false) }
     val fitRoutePaddingPx = with(androidx.compose.ui.platform.LocalDensity.current) { fitRoutePadding.toPx().toInt() }
     var didFocusOnUser by remember { mutableStateOf(false) }
