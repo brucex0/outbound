@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stretch_routine_standing_quick">站姿放松</string>
+    <string name="stretch_routine_standing_standard">站姿拉伸</string>
+    <string name="stretch_more_routines">更多方案 · 垫上拉伸</string>
+    <string name="stretch_requirements_standing_quick">无需坐地 · 无需器材 · 小腿与大腿后侧</string>
+    <string name="stretch_requirements_standing_standard">无需坐地 · 大腿前侧拉伸需扶稳墙壁或栏杆</string>
+    <string name="stretch_requirements_mat">需地面空间与垫子 · 可扶墙保持平衡</string>
+    <string name="stretch_movement_standing_hamstring">站姿大腿后侧拉伸</string>
+    <string name="stretch_instruction_standing_hamstring">将指定侧脚跟向前迈一小步，脚尖抬起。另一侧膝盖微屈，背部自然伸展，从髋部轻轻前倾，双手扶在屈膝侧大腿上。</string>
+    <string name="stretch_movement_soleus">屈膝小腿拉伸</string>
+    <string name="stretch_instruction_soleus">指定侧腿向后迈，脚跟保持着地，双膝自然微屈。身体保持挺直，需要时可扶稳墙壁或栏杆。</string>
+</resources>

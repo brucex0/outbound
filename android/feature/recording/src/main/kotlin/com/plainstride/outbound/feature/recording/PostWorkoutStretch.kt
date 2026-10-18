@@ -62,7 +62,18 @@ data class StretchRoutine(
     val title: Int,
     val durationLabel: Int,
     val movements: List<StretchMovement>,
-)
+) {
+    val isStanding: Boolean get() = id.contains("_standing_")
+    val preferenceId: String get() = when {
+        id.contains("_standing_quick_") -> "standing_quick"
+        isStanding -> "standing_standard"
+        id.contains("_hips_hamstrings_") -> "mat_quick"
+        else -> "mat_standard"
+    }
+    val requirements: Int get() = if (!isStanding) R.string.stretch_requirements_mat
+        else if (preferenceId == "standing_quick") R.string.stretch_requirements_standing_quick
+        else R.string.stretch_requirements_standing_standard
+}
 
 object PostWorkoutStretchCatalog {
     fun routines(kind: ActivityKind): List<StretchRoutine>? {
@@ -83,7 +94,11 @@ object PostWorkoutStretchCatalog {
             bilateral(prefix, "hamstring", 20) +
             bilateral(prefix, "glute", 20)
 
+        val quickStanding = listOf("calf", "soleus", "standing_hamstring").flatMap { bilateral(prefix, it, 15) }
+        val standardStanding = listOf("calf", "soleus", "standing_hamstring", "quad", "shoulder").flatMap { bilateral(prefix, it, 25) }
         return listOf(
+            StretchRoutine("post_save_${prefix}_standing_quick_v1", R.string.stretch_routine_standing_quick, R.string.recording_post_save_program_hips_hamstrings_duration, quickStanding),
+            StretchRoutine("post_save_${prefix}_standing_standard_v1", R.string.stretch_routine_standing_standard, R.string.recording_post_save_program_full_body_duration, standardStanding),
             StretchRoutine(
                 id = "post_save_${prefix}_cooldown_v2",
                 title = R.string.recording_post_save_program_full_body,
@@ -106,6 +121,9 @@ object PostWorkoutStretchCatalog {
 
     private fun movement(prefix: String, id: String, side: String, seconds: Int): StretchMovement {
         val title = when (id) {
+            "standing_hamstring" -> R.string.stretch_movement_standing_hamstring
+            "soleus" -> R.string.stretch_movement_soleus
+            "shoulder" -> R.string.stretch_movement_shoulder
             "calf" -> R.string.recording_stretch_movement_calf
             "glute" -> R.string.recording_stretch_movement_glute
             "hamstring" -> R.string.recording_stretch_movement_hamstring
@@ -114,6 +132,9 @@ object PostWorkoutStretchCatalog {
             else -> R.string.recording_stretch_movement_quad
         }
         val instruction = when (id) {
+            "standing_hamstring" -> R.string.stretch_instruction_standing_hamstring
+            "soleus" -> R.string.stretch_instruction_soleus
+            "shoulder" -> R.string.stretch_instruction_shoulder
             "calf" -> R.string.recording_stretch_instruction_calf
             "glute" -> R.string.recording_stretch_instruction_glute
             "hamstring" -> R.string.recording_stretch_instruction_hamstring
@@ -138,9 +159,15 @@ fun PostWorkoutStretchRoute(
     onDone: () -> Unit,
     onEvent: (String, String?, String?, Int?) -> Unit,
     fetchAudio: suspend (String, String) -> ByteArray?,
+    isIndoor: Boolean = false,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val preferences = remember { context.getSharedPreferences("stretch_preferences_v1", android.content.Context.MODE_PRIVATE) }
     val routines = remember(kind) { PostWorkoutStretchCatalog.routines(kind) }
-    val initialRoutine = routines?.firstOrNull()
+    val initialRoutine = remember(kind, isIndoor) {
+        val remembered = preferences.getString(if (isIndoor) "last_routine" else "last_standing_routine", null)
+        routines?.firstOrNull { it.preferenceId == remembered && (isIndoor || it.isStanding) } ?: routines?.firstOrNull()
+    }
     if (initialRoutine == null) {
         onDone()
         return
@@ -160,7 +187,7 @@ fun PostWorkoutStretchRoute(
     var skipped by remember { mutableIntStateOf(0) }
     var stepHeld by remember { mutableIntStateOf(0) }
     var totalHeld by remember { mutableIntStateOf(0) }
-    val context = androidx.compose.ui.platform.LocalContext.current
+    var moreRoutines by remember { mutableStateOf(!initialRoutine.isStanding) }
     val audio = remember { StretchAudio(context) }
     val view = LocalView.current
     val owner = LocalLifecycleOwner.current
@@ -276,16 +303,20 @@ fun PostWorkoutStretchRoute(
                 Text(stringResource(R.string.stretch_offer_body))
                 Text(stringResource(R.string.recording_post_save_program_title), style = MaterialTheme.typography.titleMedium)
 
-                routines.orEmpty().forEach { routine ->
-                    StretchRoutineOption(
-                        routine = routine,
-                        selected = selectedRoutine.id == routine.id,
-                        onClick = {
-                            selectedRoutine = routine
-                            movementIndex = 0
-                            onEvent("post_workout_stretch_program_selected", routine.id, null, null)
-                        },
-                    )
+                routines.orEmpty().filter { it.isStanding }.forEach { routine ->
+                    StretchRoutineOption(routine, selectedRoutine.id == routine.id) {
+                        selectedRoutine = routine
+                        movementIndex = 0
+                        onEvent("post_workout_stretch_program_selected", routine.id, null, null)
+                    }
+                }
+                TextButton(onClick = { moreRoutines = !moreRoutines }) { Text(stringResource(R.string.stretch_more_routines)) }
+                if (moreRoutines) routines.orEmpty().filterNot { it.isStanding }.forEach { routine ->
+                    StretchRoutineOption(routine, selectedRoutine.id == routine.id) {
+                        selectedRoutine = routine
+                        movementIndex = 0
+                        onEvent("post_workout_stretch_program_selected", routine.id, null, null)
+                    }
                 }
 
                 TextButton(onClick = { preview = !preview }) { Text(stringResource(R.string.stretch_preview)) }
@@ -310,6 +341,8 @@ fun PostWorkoutStretchRoute(
                     onClick = {
                         secondsLeft = 3
                         phase = StretchPhase.SETUP
+                        preferences.edit().putString("last_routine", selectedRoutine.preferenceId).apply()
+                        if (selectedRoutine.isStanding) preferences.edit().putString("last_standing_routine", selectedRoutine.preferenceId).apply()
                         chosen = true
                         running = true
                         view.keepScreenOn = true
@@ -417,6 +450,7 @@ private fun StretchRoutineOption(routine: StretchRoutine, selected: Boolean, onC
                 Text(stringResource(routine.title), style = MaterialTheme.typography.titleSmall)
                 val duration = routine.movements.sumOf { it.seconds } + 3 + (routine.movements.size - 1) * 5
                 Text("≈ ${duration / 60}:${(duration % 60).toString().padStart(2, '0')}", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(routine.requirements), style = MaterialTheme.typography.bodySmall)
             }
             Spacer(Modifier.width(8.dp))
             RadioButton(selected = selected, onClick = onClick)
@@ -431,11 +465,14 @@ private fun StretchIllustration(id: String, modifier: Modifier) {
     androidx.compose.foundation.Canvas(modifier) {
         val cue = id.substringAfter('_')
         val lines = when {
+            cue.startsWith("standing_hamstring") -> listOf(listOf(65f to 30f,50f to 55f),listOf(60f to 40f,45f to 60f,35f to 75f),listOf(50f to 55f,35f to 75f,35f to 90f),listOf(50f to 55f,80f to 90f,88f to 82f))
+            cue.startsWith("shoulder") -> listOf(listOf(50f to 20f,50f to 60f),listOf(50f to 60f,35f to 90f),listOf(50f to 60f,65f to 90f),listOf(35f to 35f,55f to 50f,50f to 40f),listOf(65f to 35f,30f to 40f))
+            cue.startsWith("soleus") -> listOf(listOf(60f to 20f,50f to 55f),listOf(60f to 30f,70f to 50f,72f to 70f),listOf(50f to 55f,72f to 70f,80f to 90f,90f to 90f),listOf(50f to 55f,25f to 70f,20f to 90f,10f to 90f))
             cue.startsWith("glute") -> listOf(listOf(15f to 75f,35f to 75f,55f to 60f,75f to 60f),listOf(35f to 75f,45f to 45f,60f to 55f),listOf(45f to 45f,70f to 40f,75f to 60f),listOf(55f to 60f,55f to 80f,80f to 80f))
             cue.startsWith("hamstring") -> listOf(listOf(15f to 80f,45f to 80f),listOf(30f to 80f,50f to 55f,57f to 50f),listOf(45f to 80f,80f to 80f),listOf(45f to 80f,60f to 35f))
             cue.startsWith("inner") -> listOf(listOf(50f to 20f,50f to 55f),listOf(50f to 35f,30f to 60f),listOf(50f to 55f,30f to 80f,50f to 75f),listOf(50f to 55f,70f to 80f,50f to 75f))
-            cue.startsWith("calf") -> listOf(listOf(65f to 20f,50f to 55f),listOf(60f to 30f,85f to 35f),listOf(50f to 55f,70f to 75f,85f to 75f),listOf(50f to 55f,25f to 85f,15f to 85f))
-            cue.startsWith("quad") -> listOf(listOf(50f to 15f,50f to 55f),listOf(50f to 55f,50f to 90f),listOf(50f to 30f,30f to 55f,35f to 65f),listOf(50f to 55f,25f to 80f,35f to 65f))
+            cue.startsWith("calf") -> listOf(listOf(65f to 20f,50f to 55f),listOf(60f to 30f,70f to 50f,70f to 70f),listOf(50f to 55f,70f to 70f,80f to 90f,90f to 90f),listOf(50f to 55f,20f to 90f,10f to 90f))
+            cue.startsWith("quad") -> listOf(listOf(50f to 20f,50f to 55f),listOf(50f to 55f,50f to 90f),listOf(50f to 30f,20f to 35f),listOf(20f to 25f,20f to 90f),listOf(50f to 35f,70f to 55f,70f to 65f),listOf(50f to 55f,80f to 85f,70f to 65f))
             else -> listOf(listOf(50f to 15f,50f to 55f),listOf(50f to 35f,70f to 55f),listOf(50f to 55f,70f to 60f,70f to 85f),listOf(50f to 55f,30f to 85f,15f to 85f))
         }
         val scale = minOf(size.width, size.height) / 100f

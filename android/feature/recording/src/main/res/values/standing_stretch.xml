@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stretch_routine_standing_quick">Standing reset</string>
+    <string name="stretch_routine_standing_standard">Standing stretch</string>
+    <string name="stretch_more_routines">More routines · Mat options</string>
+    <string name="stretch_requirements_standing_quick">No floor · No equipment · Calves &amp; hamstrings</string>
+    <string name="stretch_requirements_standing_standard">No floor · Stable wall or railing for quad stretch</string>
+    <string name="stretch_requirements_mat">Floor space &amp; mat · Wall helpful for balance</string>
+    <string name="stretch_movement_standing_hamstring">Standing hamstring stretch</string>
+    <string name="stretch_instruction_standing_hamstring">Place the named heel a short step forward with toes up. Bend the other knee and hinge gently at the hips with a long back; rest hands on the bent thigh.</string>
+    <string name="stretch_movement_soleus">Bent-knee calf stretch</string>
+    <string name="stretch_instruction_soleus">Step the named leg back, keep its heel down, and soften both knees. Stay upright and use a stable wall or railing if you need balance.</string>
+</resources>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stretch_routine_standing_quick">Pausa de pie</string>
+    <string name="stretch_routine_standing_standard">Estiramientos de pie</string>
+    <string name="stretch_more_routines">Más rutinas · Con colchoneta</string>
+    <string name="stretch_requirements_standing_quick">De pie · Sin equipo · Pantorrillas e isquiotibiales</string>
+    <string name="stretch_requirements_standing_standard">De pie · Pared o barandilla firme para cuádriceps</string>
+    <string name="stretch_requirements_mat">Suelo y colchoneta · Pared útil para el equilibrio</string>
+    <string name="stretch_movement_standing_hamstring">Estiramiento de isquiotibiales de pie</string>
+    <string name="stretch_instruction_standing_hamstring">Adelanta un poco el talón del lado indicado y eleva los dedos. Flexiona la otra rodilla e inclínate suavemente desde las caderas, con la espalda alargada y las manos sobre el muslo flexionado.</string>
+    <string name="stretch_movement_soleus">Estiramiento de pantorrilla con rodilla flexionada</string>
+    <string name="stretch_instruction_soleus">Lleva atrás la pierna indicada, mantén el talón apoyado y flexiona suavemente ambas rodillas. Mantente erguido y usa una pared o barandilla firme si necesitas equilibrio.</string>
+</resources>

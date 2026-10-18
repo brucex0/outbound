@@ -210,6 +210,7 @@ fun RecordingRoute(
     var showCameraEducation by remember { mutableStateOf(false) }
     var pendingPhotoAlbumSave by remember { mutableStateOf<RecordedActivityReview?>(null) }
     var postSaveStretchKind by remember { mutableStateOf<ActivityKind?>(null) }
+    var postSaveIndoor by remember { mutableStateOf(false) }
     var postSaveReview by remember { mutableStateOf<RecordedActivityReview?>(null) }
     var postSavePhotoAlbumExport by remember { mutableStateOf<ActivityPhotoAlbumExportResult?>(null) }
     var postSaveCelebrationReview by remember { mutableStateOf<RecordedActivityReview?>(null) }
@@ -267,6 +268,7 @@ fun RecordingRoute(
             scope.launch {
                 val result = viewModel.saveFinished(review, exportPhoto, weightKilograms)
                 if (result.saved) {
+                    postSaveIndoor = ui.launch.indoor
                     viewModel.markSaved()
                     onSavedSideEffects(review)
                     postSaveReview = review
@@ -674,6 +676,7 @@ fun RecordingRoute(
             val export = postSavePhotoAlbumExport
             PostWorkoutStretchRoute(
                 fetchAudio = viewModel::fetchStretchAudio,
+                isIndoor = postSaveIndoor,
                 kind = requireNotNull(postSaveStretchKind),
                 track = review.snapshot.track,
                 sessionKey = review.snapshot.sessionId ?: review.snapshot.recordedAtEpochMilliseconds.toString(),
