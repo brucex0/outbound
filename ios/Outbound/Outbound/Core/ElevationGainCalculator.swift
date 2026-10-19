@@ -17,6 +17,7 @@ enum ElevationGainCalculator {
         private var climbFloorAltitude: Double?
         private var climbPeakAltitude: Double?
         private var committedGainMeters: Double = 0
+        private var isClimbing = false
 
         private(set) var rangeMeters: Double = 0
         private(set) var gainMeters: Double = 0
@@ -30,13 +31,14 @@ enum ElevationGainCalculator {
                 0,
                 (climbPeakAltitude ?? 0) - (climbFloorAltitude ?? 0)
             )
-            if activeClimb >= ElevationGainCalculator.minimumClimbMeters {
+            if isClimbing, activeClimb >= ElevationGainCalculator.minimumClimbMeters {
                 committedGainMeters += activeClimb
             }
             previousAcceptedLocation = nil
             altitudeWindow = []
             climbFloorAltitude = nil
             climbPeakAltitude = nil
+            isClimbing = false
             gainMeters = committedGainMeters
         }
 
@@ -75,22 +77,22 @@ enum ElevationGainCalculator {
                 return
             }
 
-            if altitude > peak {
+            if !isClimbing {
+                let nextFloor = min(floor, altitude)
+                climbFloorAltitude = nextFloor
+                climbPeakAltitude = altitude
+                isClimbing = altitude - nextFloor >= minimumClimbMeters
+            } else if altitude > peak {
                 climbPeakAltitude = altitude
             } else if peak - altitude >= minimumClimbMeters {
-                let completedClimb = peak - floor
-                if completedClimb >= minimumClimbMeters {
-                    committedGainMeters += completedClimb
-                }
+                committedGainMeters += peak - floor
                 climbFloorAltitude = altitude
                 climbPeakAltitude = altitude
-            } else if altitude < floor {
-                climbFloorAltitude = altitude
-                climbPeakAltitude = max(peak, altitude)
+                isClimbing = false
             }
 
             let activeClimb = max(0, (climbPeakAltitude ?? altitude) - (climbFloorAltitude ?? altitude))
-            gainMeters = committedGainMeters + (activeClimb >= minimumClimbMeters ? activeClimb : 0)
+            gainMeters = committedGainMeters + (isClimbing ? activeClimb : 0)
         }
     }
 

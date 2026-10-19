@@ -1760,7 +1760,7 @@ struct RecordView: View {
                 guard !Task.isCancelled else { return originalSummary }
                 track(.init(.activityElevationCorrectionCompleted, properties: [
                     .result: .string("success"),
-                    .sourceType: .string("mapzen_terrain"),
+                    .sourceType: .string("mapzen_terrain_v2"),
                     .latencyBucket: .string(ProductAnalyticsBucket.latency(milliseconds: Date().timeIntervalSince(startedAt) * 1_000))
                 ]))
                 if let current = pendingActivity, current.id == activityID {
@@ -1776,6 +1776,8 @@ struct RecordView: View {
                 return corrected
             } catch {
                 guard !Task.isCancelled else { return originalSummary }
+                ActivityDiagnosticLog.error(.persistence,
+                    "Post-run terrain correction failed error=\(ActivityDiagnosticLog.errorCategory(error))")
                 track(.init(.activityElevationCorrectionCompleted, properties: [
                     .result: .string("fallback"),
                     .sourceType: .string("on_device"),

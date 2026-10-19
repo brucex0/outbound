@@ -61,6 +61,10 @@ actor ActivityPersistence {
         try LocalActivityStore.delete(activity)
     }
 
+    func preserveOriginalElevationRoute(_ route: SavedRoute, for activityID: UUID) throws {
+        try LocalActivityStore.preserveOriginalElevationRoute(route, for: activityID)
+    }
+
     func replace(_ activity: SavedActivity) throws {
         try LocalActivityStore.replace(activity)
     }
@@ -136,6 +140,10 @@ private nonisolated enum LocalActivityStore {
             points: SavedRoutePoint.simplified(from: summary.trackSegments),
             elevationMetadata: summary.elevationMetadata
         )
+        if let original = summary.originalElevationRoute
+            ?? (summary.elevationMetadata == nil ? SavedRoute.original(from: summary.trackSegments) : nil) {
+            try preserveOriginalElevationRoute(original, for: activityId)
+        }
         try saveRoute(route, for: activityId)
 
         let activity = SavedActivity(
@@ -355,6 +363,14 @@ private nonisolated enum LocalActivityStore {
 
     private static let routeFileName = "route.bin"
     private static let routeMetadataFileName = "route.meta.json"
+
+    // Local-only source data: never sync/share it or replace it with corrected terrain.
+    static func preserveOriginalElevationRoute(_ route: SavedRoute, for activityID: UUID) throws {
+        guard route.points.count >= 2 else { return }
+        let url = try directory(for: activityID).appendingPathComponent("route.original.bin")
+        guard !FileManager.default.fileExists(atPath: url.path) else { return }
+        try RouteSidecarCodec.encode(route.points).write(to: url, options: .atomic)
+    }
 
     private static func saveRoute(_ route: SavedRoute?, for activityID: UUID) throws {
         let directory = try self.directory(for: activityID)
@@ -942,6 +958,14 @@ nonisolated struct SavedActivitySyncState: Codable, Hashable {
 nonisolated struct SavedRoute: Codable, Hashable {
     let points: [SavedRoutePoint]
     let elevationMetadata: ActivityElevationMetadata?
+
+    static func original(from segments: [[CLLocation]]) -> SavedRoute {
+        SavedRoute(points: segments.flatMap { segment in
+            segment.enumerated().map {
+                SavedRoutePoint(location: $0.element, startsNewSegment: $0.offset == 0)
+            }
+        })
+    }
 
     init(points: [SavedRoutePoint], elevationMetadata: ActivityElevationMetadata? = nil) {
         self.points = points

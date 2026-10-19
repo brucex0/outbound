@@ -2,11 +2,12 @@ import CoreLocation
 import Foundation
 
 enum TerrainElevationCorrector {
+    static let algorithmVersion = "terrain-v2"
     private static let maximumRequestPoints = 450
     private static let minimumSampleSpacingMeters = 20.0
 
     static func correct(_ summary: ActivitySummary) async throws -> ActivitySummary {
-        let sampled = sampledLocations(from: summary.trackSegments)
+        let sampled = try sampledLocations(from: summary.trackSegments)
         guard sampled.locations.count >= 2 else { return summary }
 
         let response = try await APIClient.shared.correctTerrainElevation(
@@ -20,7 +21,9 @@ enum TerrainElevationCorrector {
         )
         guard response.elevationsMeters.count == sampled.locations.count,
               response.elevationGainMeters.isFinite,
-              response.elevationGainMeters >= 0
+              response.elevationGainMeters >= 0,
+              response.elevationsMeters.allSatisfy({ $0.isFinite }),
+              response.algorithmVersion == algorithmVersion
         else {
             throw TerrainElevationCorrectionError.invalidResponse
         }
@@ -50,6 +53,8 @@ enum TerrainElevationCorrector {
                 attributionURL: response.attribution.url,
                 modified: response.attribution.modified
             ),
+            originalElevationRoute: summary.originalElevationRoute ?? (summary.elevationMetadata == nil
+                ? SavedRoute.original(from: summary.trackSegments) : nil),
             walkingStepCount: summary.walkingStepCount,
             cadence: summary.cadence,
             healthMetrics: summary.healthMetrics,
@@ -61,62 +66,59 @@ enum TerrainElevationCorrector {
         )
     }
 
-    private static func sampledLocations(from segments: [[CLLocation]]) -> SampledTrack {
-        let nonemptySegments = segments.filter { !$0.isEmpty }
-        let totalDistance = nonemptySegments.reduce(0.0) { total, segment in
-            total + zip(segment, segment.dropFirst()).reduce(0.0) {
-                $0 + $1.0.distance(from: $1.1)
-            }
+    private static func sampledLocations(from segments: [[CLLocation]]) throws -> SampledTrack {
+        let segments = segments.filter { !$0.isEmpty }
+        let reservedEndpoints = segments.reduce(0) { $0 + min(2, $1.count) }
+        guard reservedEndpoints <= maximumRequestPoints else {
+            throw TerrainElevationCorrectionError.tooManySegments
         }
-        let availableIntervals = max(1, maximumRequestPoints - nonemptySegments.count * 2)
-        let spacing = max(minimumSampleSpacingMeters, totalDistance / Double(availableIntervals))
+        let totalDistance = segments.reduce(0.0) { total, segment in
+            total + zip(segment, segment.dropFirst()).reduce(0.0) { $0 + $1.0.distance(from: $1.1) }
+        }
+        let intervals = max(1, maximumRequestPoints - reservedEndpoints)
+        let spacing = max(minimumSampleSpacingMeters, totalDistance / Double(intervals))
         var locations: [CLLocation] = []
-        var segmentStarts = Set<Int>()
-
-        for segment in nonemptySegments {
-            segmentStarts.insert(locations.count)
+        var starts = Set<Int>()
+        for segment in segments {
+            starts.insert(locations.count)
             locations.append(segment[0])
-            var distanceSinceLastSample = 0.0
+            var traversed = 0.0
+            var nextSample = spacing
             for index in 1..<segment.count {
-                distanceSinceLastSample += segment[index - 1].distance(from: segment[index])
-                let isLast = index == segment.indices.last
-                if distanceSinceLastSample >= spacing || isLast {
-                    if locations.last?.timestamp != segment[index].timestamp {
-                        locations.append(segment[index])
-                    }
-                    distanceSinceLastSample = 0
+                let a = segment[index - 1]
+                let b = segment[index]
+                let length = a.distance(from: b)
+                while length > 0, nextSample < traversed + length {
+                    let fraction = (nextSample - traversed) / length
+                    let longitudeDelta = (b.coordinate.longitude - a.coordinate.longitude + 540)
+                        .truncatingRemainder(dividingBy: 360) - 180
+                    let longitude = (a.coordinate.longitude + longitudeDelta * fraction + 540)
+                        .truncatingRemainder(dividingBy: 360) - 180
+                    locations.append(CLLocation(
+                        coordinate: CLLocationCoordinate2D(
+                            latitude: a.coordinate.latitude + (b.coordinate.latitude - a.coordinate.latitude) * fraction,
+                            longitude: longitude
+                        ),
+                        altitude: a.altitude + (b.altitude - a.altitude) * fraction,
+                        horizontalAccuracy: max(a.horizontalAccuracy, b.horizontalAccuracy),
+                        verticalAccuracy: max(a.verticalAccuracy, b.verticalAccuracy),
+                        course: a.course,
+                        speed: a.speed >= 0 && b.speed >= 0
+                            ? a.speed + (b.speed - a.speed) * fraction : -1,
+                        timestamp: a.timestamp.addingTimeInterval(b.timestamp.timeIntervalSince(a.timestamp) * fraction)
+                    ))
+                    nextSample += spacing
                 }
+                traversed += length
             }
+            if segment.count > 1 { locations.append(segment[segment.count - 1]) }
         }
-
         guard locations.count <= maximumRequestPoints else {
-            return evenlyThinned(locations, segmentStarts: segmentStarts)
+            throw TerrainElevationCorrectionError.tooManySegments
         }
-        return SampledTrack(locations: locations, segmentStartIndices: segmentStarts)
+        return SampledTrack(locations: locations, segmentStartIndices: starts)
     }
 
-    private static func evenlyThinned(
-        _ locations: [CLLocation],
-        segmentStarts: Set<Int>
-    ) -> SampledTrack {
-        let mandatory = segmentStarts.union([locations.indices.last].compactMap { $0 })
-        let remainingSlots = max(0, maximumRequestPoints - mandatory.count)
-        let candidates = locations.indices.filter { !mandatory.contains($0) }
-        let selectedCandidates: [Int]
-        if remainingSlots == 0 || candidates.isEmpty {
-            selectedCandidates = []
-        } else {
-            selectedCandidates = (0..<remainingSlots).map { slot in
-                candidates[min(candidates.count - 1, slot * candidates.count / remainingSlots)]
-            }
-        }
-        let selected = mandatory.union(selectedCandidates).sorted()
-        let indexMap = Dictionary(uniqueKeysWithValues: selected.enumerated().map { ($0.element, $0.offset) })
-        return SampledTrack(
-            locations: selected.map { locations[$0] },
-            segmentStartIndices: Set(segmentStarts.compactMap { indexMap[$0] })
-        )
-    }
 }
 
 private struct SampledTrack {
@@ -126,4 +128,5 @@ private struct SampledTrack {
 
 private enum TerrainElevationCorrectionError: Error {
     case invalidResponse
+    case tooManySegments
 }

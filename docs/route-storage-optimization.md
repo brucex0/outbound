@@ -4,7 +4,7 @@
 
 Routes are time-series data and are stored independently from activity metadata.
 
-- **iOS local store:** `activities.json` contains activity metadata only. Each activity owns `UUID/route.bin`, a compact versioned binary sidecar. Photos remain in the same activity directory.
+- **iOS local store:** `activities.json` contains activity metadata only. Each activity owns `UUID/route.bin`, a compact versioned binary sidecar. Photos remain in the same activity directory. New recordings also retain available original pre-correction samples in local-only `route.original.bin`; see `docs/activity-detail.md` for the elevation lifecycle.
 - **Android local store:** Room already stores route points in `activity_track_points`, separate from the activity row.
 - **Backend:** `Activity.routeBlob` is a compact versioned binary payload and `Activity.routeMetadata` contains only visibility/elevation attribution. The old `Activity.route` JSON column is removed by the migration.
 - **API:** uploads may use the readable `{ route: { points } }` contract; the server immediately encodes it. Activity downloads expand the blob to that contract. The Social feed returns a shape-only encoded-polyline preview, while GeoJSON is reserved for exports and explicit interoperability boundaries.

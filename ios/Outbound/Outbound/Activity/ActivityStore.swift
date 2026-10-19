@@ -528,7 +528,8 @@ final class ActivityStore: ObservableObject {
               let activity = activity(id: activityID),
               activity.source.kind == .outbound,
               activity.indoor?.isIndoor != true,
-              activity.route?.elevationMetadata == nil,
+              (activity.route?.elevationMetadata == nil
+                || activity.route?.elevationMetadata?.algorithmVersion == "terrain-v1"),
               let route = activity.route,
               route.points.count >= 2
         else { return }
@@ -607,6 +608,9 @@ final class ActivityStore: ObservableObject {
                     localUpdatedAt: Date()
                 )
             )
+            if activity.route?.elevationMetadata == nil, let route = activity.route {
+                try await persistence.preserveOriginalElevationRoute(route, for: activityID)
+            }
             try await persistence.replace(updated)
             activityRevision += 1
             if let index = activities.firstIndex(where: { $0.id == updated.id }) {
@@ -614,7 +618,7 @@ final class ActivityStore: ObservableObject {
             }
             await analyticsManager?.track(.init(.activityElevationCorrectionCompleted, properties: [
                 .result: .string("success"),
-                .sourceType: .string("mapzen_backfill"),
+                .sourceType: .string(activity.route?.elevationMetadata == nil ? "mapzen_backfill" : "mapzen_upgrade_v2"),
                 .latencyBucket: .string(ProductAnalyticsBucket.latency(milliseconds: Date().timeIntervalSince(startedAt) * 1_000))
             ]))
             Task { await syncActivityIfPossible(id: updated.id) }

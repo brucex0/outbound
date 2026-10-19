@@ -965,6 +965,7 @@ final class ActivityRecorder: ObservableObject {
             ),
             elevationGainM: summary.elevationGainM,
             elevationMetadata: summary.elevationMetadata,
+            originalElevationRoute: summary.originalElevationRoute,
             walkingStepCount: summary.walkingStepCount,
             cadence: summary.cadence,
             healthMetrics: ActivityHealthMetrics(
@@ -1063,6 +1064,7 @@ struct ActivitySummary {
     let avgPace: Double?
     let elevationGainM: Double
     let elevationMetadata: ActivityElevationMetadata?
+    let originalElevationRoute: SavedRoute?
     let walkingStepCount: Int?
     let cadence: ActivityCadenceSummary?
     let healthMetrics: ActivityHealthMetrics?
@@ -1096,6 +1098,7 @@ struct ActivitySummary {
         avgPace: Double?,
         elevationGainM: Double = 0,
         elevationMetadata: ActivityElevationMetadata? = nil,
+        originalElevationRoute: SavedRoute? = nil,
         walkingStepCount: Int? = nil,
         cadence: ActivityCadenceSummary? = nil,
         healthMetrics: ActivityHealthMetrics? = nil,
@@ -1112,6 +1115,7 @@ struct ActivitySummary {
         self.avgPace = avgPace
         self.elevationGainM = elevationGainM
         self.elevationMetadata = elevationMetadata
+        self.originalElevationRoute = originalElevationRoute
         self.walkingStepCount = walkingStepCount
         self.cadence = cadence
         self.healthMetrics = healthMetrics
