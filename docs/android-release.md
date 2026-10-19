@@ -85,14 +85,18 @@ Data is not sold. Social publishing, live sharing, Health Connect, microphone, n
 ### October 2026 Preparation
 
 - Play package: `com.plainstride.outbound`; signed version `1.0` (3) was built, signature-verified, uploaded, and saved on the existing Alpha closed-testing track as a draft on October 18. The next upload must use a higher version code.
-- English icon and feature graphic are prepared under ignored `artifacts/play-store/en-US/` and saved in the Play listing draft. Phone screenshots remain required.
+- The English listing is **Ready to send for review** in Play Console. Its icon, feature graphic, and four 1440×2560 phone screenshots are saved. Assets live under ignored `artifacts/play-store/en-US/`; raw Android captures are in `artifacts/play-store/raw/`.
+- Screenshots show workout setup, Progress Now, Insights, and Trends. The demo emulator contains 60 synthetic local-only runs; fixture insertion added no sync outbox entries. Captures preserve the app image and aspect ratio inside a 9:16 promotional canvas. No real account identity, contacts, routes, or health history appears in the assets.
+- The feature graphic is labeled as AI-generated, confirmed by the source manifest in `artifacts/app-store-creative/upload-en-US/asset-manifest.json`. Direct app captures are not labeled as AI artwork.
 - Advertising ID is declared for Analytics because Firebase's merged release manifest includes `com.google.android.gms.permission.AD_ID`. This does not mean the app displays ads.
 - Foreground location (activity recording and explicit live sharing) and media playback (coaching audio) require reviewer-accessible demonstration video links before their Play declarations can be saved.
+- A 70-second synthetic recording demonstration is retained at ignored `artifacts/play-store/foreground-recording-demo.mp4` and uploaded to Drive as file `1cstpdniJp1KIK8zSMRYGJSON9oEZpcrP`. It remains private until the owner approves link sharing. It does not establish background survival or audible media playback; verify those separately before using it to substantiate those claims.
 - Play's privacy policy URL now points at `https://plainstride.ai/privacy`, rather than the homepage. The live policy must include Android/Health Connect disclosures; on October 18 the live page still showed the older iPhone policy despite newer source in `backend/src/routes/marketing.ts`.
 - Reviewer access remains incomplete: the saved instructions say any Google test account works but provide no dedicated credentials. Play explicitly says reviewers cannot create or use their own accounts; supply a dedicated review account with access to paid features before submission. Never commit its credentials.
 - Release shrinking suppresses only Ably's compile-time `lombok.Generated` annotation and SLF4J's optional `StaticLoggerBinder`; SLF4J retains its existing no-binding fallback. Do not suppress general missing-class warnings.
 - Verification: signed `:app:bundleRelease` (including release configuration checks, vital lint, and R8), Play edit validation/commit, listing character limits, and diff whitespace checks succeeded. No tests were run. Device runtime behavior, recording survival, audio playback, and the full Data safety reconciliation remain unverified; a successful build and draft upload do not clear those release gates.
 - Local release evidence lives under ignored `artifacts/play-store/release-1.0-3/` (AAB, mapping, dependency report, and Play confirmation). Store assets and screenshots are kept out of source commits.
+- Screenshot capture used the current debug build with the production API and synthetic emulator location. `:app:assembleDebug` succeeded; recording start, synthetic movement, pause, finish, and unsaved discard were exercised manually. This is focused capture verification, not the full release verification gate.
 
 ## Dependencies And Notices
 
