@@ -82,12 +82,24 @@ Data is not sold. Social publishing, live sharing, Health Connect, microphone, n
 - A native speaker must review Spanish and Simplified Chinese listing copy and screenshots before upload.
 - Complete the content rating, target audience, ads declaration, Health apps declaration, foreground-service declarations, account deletion URL, privacy policy URL, and Data safety form in Play Console.
 
+### October 2026 Preparation
+
+- Play package: `com.plainstride.outbound`; signed version `1.0` (3) was built, signature-verified, uploaded, and saved on the existing Alpha closed-testing track as a draft on October 18. The next upload must use a higher version code.
+- English icon and feature graphic are prepared under ignored `artifacts/play-store/en-US/` and saved in the Play listing draft. Phone screenshots remain required.
+- Advertising ID is declared for Analytics because Firebase's merged release manifest includes `com.google.android.gms.permission.AD_ID`. This does not mean the app displays ads.
+- Foreground location (activity recording and explicit live sharing) and media playback (coaching audio) require reviewer-accessible demonstration video links before their Play declarations can be saved.
+- Play's privacy policy URL now points at `https://plainstride.ai/privacy`, rather than the homepage. The live policy must include Android/Health Connect disclosures; on October 18 the live page still showed the older iPhone policy despite newer source in `backend/src/routes/marketing.ts`.
+- Reviewer access remains incomplete: the saved instructions say any Google test account works but provide no dedicated credentials. Play explicitly says reviewers cannot create or use their own accounts; supply a dedicated review account with access to paid features before submission. Never commit its credentials.
+- Release shrinking suppresses only Ably's compile-time `lombok.Generated` annotation and SLF4J's optional `StaticLoggerBinder`; SLF4J retains its existing no-binding fallback. Do not suppress general missing-class warnings.
+- Verification: signed `:app:bundleRelease` (including release configuration checks, vital lint, and R8), Play edit validation/commit, listing character limits, and diff whitespace checks succeeded. No tests were run. Device runtime behavior, recording survival, audio playback, and the full Data safety reconciliation remain unverified; a successful build and draft upload do not clear those release gates.
+- Local release evidence lives under ignored `artifacts/play-store/release-1.0-3/` (AAB, mapping, dependency report, and Play confirmation). Store assets and screenshots are kept out of source commits.
+
 ## Dependencies And Notices
 
 - Generate the release dependency graph with `./gradlew :app:dependencies --configuration releaseRuntimeClasspath` and archive it with the release.
 - Direct dependencies are AndroidX/Jetpack, Kotlin/coroutines/serialization, Dagger/Hilt, Retrofit/OkHttp, Google Identity/Location, and Health Connect. Review their upstream license files and Play SDK disclosures before launch.
 - Do not add an SDK with advertising, fingerprinting, or data-broker behavior without updating privacy review, consent UX, Data safety, and this document.
-- Current product analytics uses a no-op sink. Enabling a production analytics/crash SDK requires a separate privacy-reviewed change and updated disclosures.
+- Product analytics uses `FirebaseAnalyticsSink`, enables collection after sign-in, and uses the product analytics allowlist. Reconcile Firebase's SDK data and device-identifier disclosures with Data safety; adding another analytics/crash SDK requires updated privacy review and disclosures.
 
 ## Baseline Profile And Performance Gate
 

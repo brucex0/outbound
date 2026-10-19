@@ -1,3 +1,23 @@
 Title: Plainstride
-Short description: Personal training, activity recording, and progress for every stride.
-Full description: Build a practical plan, record runs and walks, follow timely coaching, and see progress without turning every activity into a competition. Plainstride keeps health connections, social sharing, live safety links, and coaching controls optional and explicit.
+Short description: Adaptive running plans, live coaching, GPS activity tracking and progress.
+Full description: Find your stride with a running companion that helps you decide what to do today, guides you through your activity, and makes your progress easier to understand.
+
+TRAIN WITH A PLAN THAT FITS YOUR LIFE
+Build a practical training plan around your goals and experience. See your next workout, understand its purpose, and adjust as your training and feedback evolve.
+
+RECORD YOUR ACTIVITIES
+Track runs, walks, hikes, and bike rides with GPS. Follow your time, distance, and pace, save your activity history, and add photos to remember the moments along the way.
+
+GET GUIDANCE AS YOU MOVE
+Choose timely spoken coaching and activity guidance. Keep coaching controls in your hands and focus on your next step.
+
+SEE YOUR PROGRESS
+Explore training trends, personal bests, and recent activity highlights. Turn your history into a clearer picture of how your training is developing.
+
+STAY CONNECTED
+Connect with other runners, share the activities you choose, and organize activities together. Optional live sharing lets invited people follow your activity and send encouragement.
+
+YOUR CHOICES COME FIRST
+Location, health connections, camera, microphone, notifications, social sharing, and live sharing are optional and requested in context. You choose what to connect and share.
+
+Plainstride supports fitness and general wellness. It does not provide medical advice or replace professional care.

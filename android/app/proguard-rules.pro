@@ -9,3 +9,9 @@
 -keep,allowoptimization,allowshrinking interface * { @retrofit2.http.* <methods>; }
 -keepclasseswithmembers,allowshrinking,allowoptimization,includedescriptorclasses class * { @retrofit2.http.* <methods>; }
 -dontwarn org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement
+
+# Ably's generated Java classes reference a compile-time-only Lombok annotation.
+-dontwarn lombok.Generated
+# SLF4J 1.7 explicitly falls back to its NOP logger when no binding is installed.
+# Keep that existing behavior instead of adding a release-only logging backend.
+-dontwarn org.slf4j.impl.StaticLoggerBinder
