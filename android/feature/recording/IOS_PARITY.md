@@ -35,11 +35,19 @@
 - Save is disabled below the shared iOS threshold of five minutes or 500 meters. Closing an eligible unsaved review requires destructive confirmation; an ineligible review closes directly, matching iOS.
 - A successful local save shows the shared activity postcard before the activity-surface exit. For Run, Bike, Hike, and Swim, the postcard and message sit above the same two optional stretch choices as iOS: a full-body cooldown and a focused hips-and-hamstrings routine. Other activity types show the postcard on its own. The postcard traces the saved route (or fixed doodle path without a route), uses the shared vector runner and sundae burst, fades the sundae after a short pause, stays open until the runner chooses Done, and respects Android animator-duration scale. Analytics records the existing `feature_exposed/activity_post_save_celebration` exposure and stretch funnel with stable routine IDs only.
 
+## Elevation Correction
+
+- Live/offline elevation now uses the current iOS directional accumulator, retaining accuracy/spike filters and a conservative 10 m climb threshold. Descents do not create ascent; pause boundaries commit active climbs without counting the gap.
+- Save commits the activity, original samples, and outbox locally before any terrain request. Sync attempts correction within a 15-second batch budget before upload; unavailable/unsupported providers leave the saved result intact, with retry available when detail opens. Terrain requests use equal-distance samples, preserve segment endpoints, and remain within the shared 450-point budget.
+- Room schema 5 adds nullable correction metadata and a separate local-only original-route blob table. Android is unreleased: a schema-versioned database name opens clean local Room data without copying old databases. Backend data is unchanged and can sync back down. No migration is run. Original samples are gzip-compressed JSON, never added to relations/uploads, retained only once, and removed on local/remote activity deletion or account-data clearing. Previously overwritten source altitude cannot be recovered.
+- The correction implementation is in `core/data/TerrainElevationCorrector.kt`, sampling/directional logic in `core/model/activity`, and lifecycle/sync guards in `core/data/ActivityRepository.kt`. Shared algorithm details and deployment ordering remain in `docs/activity-detail.md`.
+
 ## Resources, Analytics, And Accessibility
 
 - Visible strings use generated shared localization resources in `src/main/res`.
 - Setup is tracked only when its screen is shown. Start, pause, resume, finish, save eligibility, discard, surface, media, dashboard-state, and Auto Pause configuration events use the canonical sanitized iOS event names and Android platform property.
 - Debug builds log direct-launch Voice Guide precedence, TTS engine initialization and locale selection, countdown cue enqueue results, and TTS playback callbacks under `RecordingStart` and `RecordingVoice`; logs never include spoken text.
+- Terrain correction emits the shared `activity_elevation_correction_completed` event with bounded source/result/latency/error only; coordinates, altitude, gain, timestamps, and activity IDs are excluded. Cancellation is not logged as an error; other failures log the operation, exception type, category, and HTTP status without response bodies.
 - The debug simulator uses `activity_configuration_changed`, `activity_simulation_started`, and `activity_simulation_control_used` with the iOS allowlisted property names and coarse speed/distance values.
 - Controls expose semantic labels, retain 48dp-or-larger primary targets, and do not rely on color alone. Reduced motion shows the completed route and fully formed sundae without tracing or flying sprinkles, then fades the sundae after a short pause.
 

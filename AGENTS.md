@@ -23,6 +23,13 @@ When user ask questions or brain storm, always answer in concise bullet points
 - Keep unrelated user files, generated artifacts, temporary directories, and agent metadata out of the commit.
 - If verification or committing is blocked, report the blocker instead of claiming the task is complete.
 
+## Android Release Status And Compatibility
+
+- Android has **not released**. Keep this policy in force until Bruce explicitly says Android has released; release-build variants, internal testing, or Play setup do not change that status.
+- Do not add or retain Android app-version compatibility layers, schema/data migrations, legacy payload readers, or obsolete storage adapters. Use the current model and reset/reseed local databases, preferences, journals, or caches when their shape changes.
+- Use a schema-versioned local database name, keep only the current exported Room schema, and document resets. Do not migrate or copy data from older Android app versions.
+- Current backend/iOS interoperability, supported Android OS APIs, normal offline fallback, and genuinely optional sensor data remain product requirements, not historical Android app compatibility.
+
 ## Pre-Publish Data Policy
 
 Outbound has shipped publicly but with very few users. Do not spend implementation effort preserving backward compatibility for training plans, seed data, local files, caches, or local/backend database rows unless the user explicitly requests it. Prefer the cleanest current model even when adopting it requires destructive migration or data loss. It is acceptable to reset, reseed, or rebuild the local/backend database when schemas, plan IDs, template shape, or seed content changes, as long as the change is documented and the required rebuild command is clear.

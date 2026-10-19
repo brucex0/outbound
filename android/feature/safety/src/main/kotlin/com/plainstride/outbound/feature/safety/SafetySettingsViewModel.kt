@@ -41,7 +41,6 @@ import java.time.Instant
  /** Server pulls (screen open / account change) flow through here so the list survives reinstall. */
  fun onAccountActivated(accountId:String?)=viewModelScope.launch{
   activeAccountId=accountId
-  contacts.migrateToServerBackedContacts()
   if(accountId==null){mutableDefaultSharing.value=false;return@launch}
   mutableDefaultSharing.value=contacts.sharesWithTrustedContactsByDefault(accountId)
   contacts.pull(accountId)
@@ -59,7 +58,7 @@ import java.time.Instant
  }
  fun remove(contact:TrustedContact)=viewModelScope.launch{contacts.remove(contact.id);contacts.push();reload()}
  fun setTrusted(person:SocialPerson,isTrusted:Boolean)=viewModelScope.launch{
-  if(isTrusted)contacts.save(TrustedContact(person.id,person.displayName,"push","",false)) else contacts.remove(person.id)
+  if(isTrusted)contacts.save(TrustedContact(person.id,person.displayName,false)) else contacts.remove(person.id)
   contacts.push()
   reload()
   analytics.record(com.plainstride.outbound.core.analytics.AnalyticsEvent("preference_changed",mapOf(

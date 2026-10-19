@@ -6,6 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.withTransaction
 
+private const val DATABASE_SCHEMA_VERSION = 5
+
 @Database(
     entities = [
         AccountCacheEntity::class,
@@ -13,13 +15,14 @@ import androidx.room.withTransaction
         ActiveSessionJournalEntity::class,
         ActivityEntity::class,
         ActivityTrackPointEntity::class,
+        ActivityOriginalRouteEntity::class,
         ActivitySplitEntity::class,
         ActivityPhotoEntity::class,
         GearEntity::class,
         CyclePreferenceEntity::class,
         CycleWellbeingEntity::class,
     ],
-    version = 4,
+    version = DATABASE_SCHEMA_VERSION,
     exportSchema = true,
 )
 abstract class PlainstrideDatabase : RoomDatabase() {
@@ -31,9 +34,9 @@ abstract class PlainstrideDatabase : RoomDatabase() {
     abstract fun cycleWellbeingDao(): CycleWellbeingDao
 }
 
-/** Single construction surface for DI. Database schema upgrades intentionally reset pre-release data. */
+/** Unreleased Android uses a fresh database per schema version; no migration readers. */
 object PlainstrideDatabaseFactory {
-    const val DATABASE_NAME = "plainstride.db"
+    const val DATABASE_NAME = "plainstride-v$DATABASE_SCHEMA_VERSION.db"
 
     fun create(context: Context): PlainstrideDatabase =
         Room.databaseBuilder(
@@ -41,7 +44,6 @@ object PlainstrideDatabaseFactory {
             PlainstrideDatabase::class.java,
             DATABASE_NAME,
         )
-            .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
 }
 
@@ -60,6 +62,7 @@ class AccountDatabaseOperations(
             database.accountCacheDao().deleteForAccount(accountId)
             database.syncOutboxDao().deleteForAccount(accountId)
             database.activeSessionJournalDao().deleteForAccount(accountId)
+            database.activityDao().deleteAllOriginalRoutes(accountId)
             database.activityDao().deleteAllTrack(accountId)
             database.activityDao().deleteAllSplits(accountId)
             database.activityDao().deleteAllPhotos(accountId)

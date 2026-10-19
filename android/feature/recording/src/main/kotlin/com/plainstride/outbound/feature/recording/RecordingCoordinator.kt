@@ -237,6 +237,7 @@ class RecordingCoordinator internal constructor(
         autoResumeCandidateStartedAtNanos = null
         resetAutoPauseProbe()
         filter = LocationTrackFilter(_snapshot.value.activityKind)
+        elevation.startNewSegment()
         _snapshot.value = nextSnapshot(
             status = RecordingStatus.ACTIVE,
             autoPaused = false,
@@ -541,6 +542,7 @@ class RecordingCoordinator internal constructor(
         }
         val snapshot = _snapshot.value
         val startIndex = snapshot.track.size
+        elevation.startNewSegment()
         if (samples.isNotEmpty()) {
             val track = snapshot.track + samples
             val distance = snapshot.distanceMeters + autoPauseProbeDistanceMeters
@@ -588,7 +590,13 @@ class RecordingCoordinator internal constructor(
         cadenceTracker.restore(snapshot.cadenceState)
         filter = LocationTrackFilter(snapshot.activityKind)
         elevation = ElevationGainAccumulator()
-        snapshot.track.forEach { filter.ingest(it).sample?.let(elevation::ingest) }
+        snapshot.track.forEachIndexed { index, point ->
+            if (index > 0 && index in snapshot.trackSegmentStartIndices) {
+                filter = LocationTrackFilter(snapshot.activityKind)
+                elevation.startNewSegment()
+            }
+            filter.ingest(point).sample?.let(elevation::ingest)
+        }
     }
 
     private fun freezeElapsed() {

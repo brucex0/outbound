@@ -587,7 +587,7 @@ private fun ActivityDetailScreen(
                                 cadence, Modifier.fillMaxWidth().padding(20.dp), onCadenceExposure,
                             )
                         }
-                        if (elevationPoints.size > 1) item { ElevationProfileSection(elevationPoints, unitSystem) }
+                        if (elevationPoints.size > 1) item { ElevationProfileSection(elevationPoints, unitSystem, activity.elevationMetadata?.attributionText) }
                         if (splits.isNotEmpty()) item { ActivitySplitsSection(splits, unitSystem) }
                         item { CompanionReflectionCard(activity) }
                         item {
@@ -800,7 +800,7 @@ private fun MetadataRow(icon: androidx.compose.ui.graphics.vector.ImageVector, t
 }
 
 @Composable
-private fun ElevationProfileSection(points: List<DetailElevationPoint>, unitSystem: MeasurementUnitSystem) {
+private fun ElevationProfileSection(points: List<DetailElevationPoint>, unitSystem: MeasurementUnitSystem, attribution: String?) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().animateContentSize()) {
         DisclosureHeader(
@@ -810,7 +810,11 @@ private fun ElevationProfileSection(points: List<DetailElevationPoint>, unitSyst
             toggle = { expanded = !expanded },
         )
         AnimatedVisibility(expanded, enter = fadeIn(), exit = fadeOut()) {
-            ElevationProfileChart(points, Modifier.fillMaxWidth().height(132.dp).padding(horizontal = 16.dp, vertical = 10.dp))
+            Column {
+                ElevationProfileChart(points, Modifier.fillMaxWidth().height(132.dp).padding(horizontal = 16.dp, vertical = 10.dp))
+                attribution?.let { Text(it, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp)) }
+            }
         }
     }
 }

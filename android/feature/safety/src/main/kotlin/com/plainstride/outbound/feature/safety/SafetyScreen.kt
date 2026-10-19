@@ -28,7 +28,6 @@ interface TrustedContactStore {
  suspend fun remove(id:String)
  suspend fun sharesWithTrustedContactsByDefault(accountId:String):Boolean
  suspend fun setSharesWithTrustedContactsByDefault(accountId:String,enabled:Boolean)
- suspend fun migrateToServerBackedContacts()
  suspend fun pull(accountId:String)
  suspend fun push()
 }
@@ -385,7 +384,7 @@ fun TrustedConnectionPickerDialog(
                             SocialAvatar(person)
                             Spacer(Modifier.width(12.dp))
                             Text(person.displayName, Modifier.weight(1f))
-                            TextButton({ confirm(TrustedContact(person.id, person.displayName, "push", "", false)) }) {
+                            TextButton({ confirm(TrustedContact(person.id, person.displayName, false)) }) {
                                 Text(stringResource(R.string.safety_add_contact))
                             }
                         }

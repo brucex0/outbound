@@ -121,6 +121,8 @@ New saves retain the full available pre-correction route locally in `route.origi
 
 The profile is hidden when no per-point altitude exists. Current verification covers synthetic flat/noisy/rolling/steep/downhill/segmented profiles and sampling-density comparisons; controlled routes with independently measured ascent remain necessary before claiming absolute accuracy.
 
+Android uses the same `terrain-v2` endpoint and version-refresh policy. Its Room metadata and upload/restore models retain correction attribution/version. Android keeps full saved geometry and interpolates returned heights onto its original points; original altitude is retained separately in a local-only Room table. Local save does not wait for correction, and sync gives enrichment a bounded budget before uploading the last available result. See `android/feature/recording/IOS_PARITY.md` for Android storage/reset details.
+
 ### Splits Computation
 
 Splits are computed on-the-fly by iterating route-point edges and allocating their distance and active time into exact km/mile buckets. Edges that end at a `startsNewSegment` point are pause/resume gaps, so their timestamp and apparent map distance are excluded. This keeps split totals aligned with the saved moving time instead of elapsed wall-clock time. No model changes are needed because `SavedRoutePoint` already has timestamps and segment boundaries.

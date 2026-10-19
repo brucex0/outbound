@@ -27,3 +27,7 @@
 
 - Active, ended, missing/unauthorized, initial-loading, refresh-failure, route-present, route-empty, metric-missing, metric/imperial, entitlement-locked, all Cheer receipt states, microphone-granted, microphone-denied, record-release, send-failure, playback-failure, and runner acknowledgment states.
 - TalkBack labels, 48 dp controls, light/dark themes, supported locales, and font scaling remain manual device checks.
+
+## Pre-Release Local Storage
+
+- Trusted contacts use the current server-backed cache (`server_trusted_contacts`): connection user ID, display name, and default selection only. The phone-book migration, migration marker, and obsolete channel/address fields are removed. Server pull restores contacts after a local reset; previous Android cache formats are not read.

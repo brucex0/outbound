@@ -16,8 +16,6 @@ import com.plainstride.outbound.BuildConfig
 import com.plainstride.outbound.core.analytics.AnalyticsSink
 import com.plainstride.outbound.core.analytics.ProductAnalytics
 import com.plainstride.outbound.core.analytics.SanitizedAnalyticsEvent
-import com.plainstride.outbound.core.database.DataStoreDurableStateStore
-import com.plainstride.outbound.core.database.DurableStateStore
 import com.plainstride.outbound.core.database.AccountCacheDao
 import com.plainstride.outbound.core.database.AccountDatabaseOperations
 import com.plainstride.outbound.core.database.PlainstrideDatabase
@@ -108,11 +106,6 @@ object FoundationModule {
         PreferenceDataStoreFactory.create {
             context.preferencesDataStoreFile("plainstride_foundation")
         }
-
-    @Provides
-    @Singleton
-    fun durableStateStore(dataStore: DataStore<Preferences>): DurableStateStore =
-        DataStoreDurableStateStore(dataStore)
 
     @Provides @Singleton fun database(@ApplicationContext context: Context): PlainstrideDatabase =
         PlainstrideDatabaseFactory.create(context)
@@ -214,7 +207,10 @@ object FoundationModule {
         accessTokens: AccessTokenProvider,
         mediaStore: ActivityMediaStore,
         analytics: ProductAnalytics,
-    ): ActivityRepository = OfflineFirstActivityRepository(database, api, accessTokens, mediaStore, analytics)
+        sessions: SessionCoordinator,
+    ): ActivityRepository = OfflineFirstActivityRepository(database, api, accessTokens, mediaStore, analytics,
+        currentAccountId = { (sessions.state.value as? com.plainstride.outbound.core.auth.SessionState.SignedIn)?.accountId },
+    )
 
     @Provides @Singleton fun weatherApi(client: OkHttpClient): WeatherApiService =
         createWeatherApi(BuildConfig.API_BASE_URL, client)

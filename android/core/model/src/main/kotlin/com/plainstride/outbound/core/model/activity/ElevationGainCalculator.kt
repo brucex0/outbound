@@ -17,6 +17,7 @@ data class ElevationLocation(
 )
 
 object ElevationGainCalculator {
+    private const val MINIMUM_CLIMB_METERS = 10.0
     private const val MAXIMUM_VERTICAL_ACCURACY_METERS = 20.0
     private const val MAXIMUM_VERTICAL_SPEED_METERS_PER_SECOND = 3.0
     private const val MINIMUM_DISTANCE_FOR_GRADE_CHECK_METERS = 3.0
@@ -31,6 +32,7 @@ object ElevationGainCalculator {
         private var climbFloorAltitude: Double? = null
         private var climbPeakAltitude: Double? = null
         private var committedGainMeters = 0.0
+        private var isClimbing = false
 
         var rangeMeters: Double = 0.0
             private set
@@ -45,17 +47,19 @@ object ElevationGainCalculator {
             climbFloorAltitude = null
             climbPeakAltitude = null
             committedGainMeters = 0.0
+            isClimbing = false
             rangeMeters = 0.0
             gainMeters = 0.0
         }
 
         fun startNewSegment() {
             val activeClimb = max(0.0, (climbPeakAltitude ?: 0.0) - (climbFloorAltitude ?: 0.0))
-            if (activeClimb >= 2.5) committedGainMeters += activeClimb
+            if (isClimbing && activeClimb >= MINIMUM_CLIMB_METERS) committedGainMeters += activeClimb
             previousAcceptedLocation = null
             altitudeWindow.clear()
             climbFloorAltitude = null
             climbPeakAltitude = null
+            isClimbing = false
             gainMeters = committedGainMeters
         }
 
@@ -81,19 +85,21 @@ object ElevationGainCalculator {
                 climbPeakAltitude = altitude
                 return
             }
-            if (altitude > peak) {
+            if (!isClimbing) {
+                val nextFloor = min(floor, altitude)
+                climbFloorAltitude = nextFloor
                 climbPeakAltitude = altitude
-            } else if (peak - altitude >= 2.5) {
-                val completedClimb = peak - floor
-                if (completedClimb >= 2.5) committedGainMeters += completedClimb
+                isClimbing = altitude - nextFloor >= MINIMUM_CLIMB_METERS
+            } else if (altitude > peak) {
+                climbPeakAltitude = altitude
+            } else if (peak - altitude >= MINIMUM_CLIMB_METERS) {
+                committedGainMeters += peak - floor
                 climbFloorAltitude = altitude
                 climbPeakAltitude = altitude
-            } else if (altitude < floor) {
-                climbFloorAltitude = altitude
-                climbPeakAltitude = max(peak, altitude)
+                isClimbing = false
             }
             val activeClimb = max(0.0, (climbPeakAltitude ?: altitude) - (climbFloorAltitude ?: altitude))
-            gainMeters = committedGainMeters + if (activeClimb >= 2.5) activeClimb else 0.0
+            gainMeters = committedGainMeters + if (isClimbing && activeClimb >= MINIMUM_CLIMB_METERS) activeClimb else 0.0
         }
     }
 

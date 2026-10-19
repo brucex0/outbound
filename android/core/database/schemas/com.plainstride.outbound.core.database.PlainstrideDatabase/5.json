@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 2,
-    "identityHash": "2a31494ddd7ffc842fcf80c6e51c7db0",
+    "version": 5,
+    "identityHash": "8c4a7d44f1466214613b5fcc931c6fb8",
     "entities": [
       {
         "tableName": "account_cache",
@@ -254,7 +254,7 @@
       },
       {
         "tableName": "activities",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`activityId` TEXT NOT NULL, `accountId` TEXT NOT NULL, `serverActivityId` TEXT, `type` TEXT NOT NULL, `title` TEXT NOT NULL, `guideNudge` TEXT NOT NULL, `reflectionJson` TEXT, `createdAtEpochMs` INTEGER NOT NULL, `startedAtEpochMs` INTEGER NOT NULL, `endedAtEpochMs` INTEGER NOT NULL, `durationSecs` INTEGER NOT NULL, `distanceM` REAL NOT NULL, `averagePaceSecsPerKm` REAL, `elevationGainM` REAL, `walkingStepCount` INTEGER, `averageHeartRateBpm` INTEGER, `maximumHeartRateBpm` INTEGER, `heartRateSampleCount` INTEGER, `energyKilocalories` INTEGER, `sourceJson` TEXT NOT NULL, `gearJson` TEXT, `goalJson` TEXT, `indoorJson` TEXT, `cadenceJson` TEXT, `heartRateZonesJson` TEXT, `activityEventId` TEXT, `followedRouteId` TEXT, `followedRouteCompleted` INTEGER NOT NULL, `recognitionBadgeIdsJson` TEXT NOT NULL, `localUpdatedAtEpochMs` INTEGER NOT NULL, `serverUpdatedAtEpochMs` INTEGER, `deletedAtEpochMs` INTEGER, PRIMARY KEY(`activityId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`activityId` TEXT NOT NULL, `accountId` TEXT NOT NULL, `serverActivityId` TEXT, `type` TEXT NOT NULL, `title` TEXT NOT NULL, `guideNudge` TEXT NOT NULL, `reflectionJson` TEXT, `createdAtEpochMs` INTEGER NOT NULL, `startedAtEpochMs` INTEGER NOT NULL, `endedAtEpochMs` INTEGER NOT NULL, `durationSecs` INTEGER NOT NULL, `distanceM` REAL NOT NULL, `averagePaceSecsPerKm` REAL, `elevationGainM` REAL, `walkingStepCount` INTEGER, `averageHeartRateBpm` INTEGER, `maximumHeartRateBpm` INTEGER, `heartRateSampleCount` INTEGER, `energyKilocalories` INTEGER, `sourceJson` TEXT NOT NULL, `gearJson` TEXT, `goalJson` TEXT, `indoorJson` TEXT, `cadenceJson` TEXT, `heartRateZonesJson` TEXT, `activityEventId` TEXT, `followedRouteId` TEXT, `followedRouteCompleted` INTEGER NOT NULL, `recognitionBadgeIdsJson` TEXT NOT NULL, `localUpdatedAtEpochMs` INTEGER NOT NULL, `serverUpdatedAtEpochMs` INTEGER, `deletedAtEpochMs` INTEGER, `companionType` TEXT, `elevationMetadataJson` TEXT, PRIMARY KEY(`activityId`))",
         "fields": [
           {
             "fieldPath": "activityId",
@@ -429,6 +429,16 @@
             "fieldPath": "deletedAtEpochMs",
             "columnName": "deletedAtEpochMs",
             "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "companionType",
+            "columnName": "companionType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "elevationMetadataJson",
+            "columnName": "elevationMetadataJson",
+            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -554,6 +564,37 @@
             "createSql": "CREATE INDEX IF NOT EXISTS `index_activity_track_points_activityId` ON `${TABLE_NAME}` (`activityId`)"
           }
         ]
+      },
+      {
+        "tableName": "activity_original_routes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `activityId` TEXT NOT NULL, `encodedPoints` BLOB NOT NULL, PRIMARY KEY(`accountId`, `activityId`))",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activityId",
+            "columnName": "activityId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "encodedPoints",
+            "columnName": "encodedPoints",
+            "affinity": "BLOB",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId",
+            "activityId"
+          ]
+        }
       },
       {
         "tableName": "activity_splits",
@@ -753,11 +794,195 @@
             "createSql": "CREATE INDEX IF NOT EXISTS `index_activity_photos_remotePhotoId` ON `${TABLE_NAME}` (`remotePhotoId`)"
           }
         ]
+      },
+      {
+        "tableName": "gear",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `gearId` TEXT NOT NULL, `purpose` TEXT NOT NULL, `name` TEXT NOT NULL, `brand` TEXT NOT NULL, `model` TEXT NOT NULL, `startedAtEpochMs` INTEGER NOT NULL, `retiredAtEpochMs` INTEGER, `distanceLimitMeters` REAL NOT NULL, `notes` TEXT NOT NULL, `isDefault` INTEGER NOT NULL, PRIMARY KEY(`accountId`, `gearId`))",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gearId",
+            "columnName": "gearId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "purpose",
+            "columnName": "purpose",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "brand",
+            "columnName": "brand",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "model",
+            "columnName": "model",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAtEpochMs",
+            "columnName": "startedAtEpochMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "retiredAtEpochMs",
+            "columnName": "retiredAtEpochMs",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "distanceLimitMeters",
+            "columnName": "distanceLimitMeters",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isDefault",
+            "columnName": "isDefault",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId",
+            "gearId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_gear_accountId",
+            "unique": false,
+            "columnNames": [
+              "accountId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_gear_accountId` ON `${TABLE_NAME}` (`accountId`)"
+          },
+          {
+            "name": "index_gear_accountId_isDefault",
+            "unique": false,
+            "columnNames": [
+              "accountId",
+              "isDefault"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_gear_accountId_isDefault` ON `${TABLE_NAME}` (`accountId`, `isDefault`)"
+          }
+        ]
+      },
+      {
+        "tableName": "cycle_preferences",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `enabled` INTEGER NOT NULL, PRIMARY KEY(`accountId`))",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enabled",
+            "columnName": "enabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId"
+          ]
+        }
+      },
+      {
+        "tableName": "cycle_wellbeing",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `logId` TEXT NOT NULL, `recordedAtEpochMs` INTEGER NOT NULL, `bleeding` INTEGER NOT NULL, `energy` INTEGER NOT NULL, `discomfort` INTEGER NOT NULL, PRIMARY KEY(`accountId`, `logId`))",
+        "fields": [
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "logId",
+            "columnName": "logId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordedAtEpochMs",
+            "columnName": "recordedAtEpochMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bleeding",
+            "columnName": "bleeding",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "energy",
+            "columnName": "energy",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "discomfort",
+            "columnName": "discomfort",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "accountId",
+            "logId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cycle_wellbeing_accountId_recordedAtEpochMs",
+            "unique": false,
+            "columnNames": [
+              "accountId",
+              "recordedAtEpochMs"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cycle_wellbeing_accountId_recordedAtEpochMs` ON `${TABLE_NAME}` (`accountId`, `recordedAtEpochMs`)"
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2a31494ddd7ffc842fcf80c6e51c7db0')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8c4a7d44f1466214613b5fcc931c6fb8')"
     ]
   }
 }

@@ -1,5 +1,7 @@
 package com.plainstride.outbound.feature.recording
 
+import com.plainstride.outbound.core.model.activity.ElevationGainCalculator
+import com.plainstride.outbound.core.model.activity.ElevationLocation
 import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -91,53 +93,18 @@ internal class LocationTrackFilter(private val activityKind: ActivityKind) {
 }
 
 internal class ElevationGainAccumulator {
-    private var previousAccepted: RecordedLocationSample? = null
-    private val altitudeWindow = ArrayDeque<Double>()
-    private var climbFloorAltitude: Double? = null
-    private var climbPeakAltitude: Double? = null
-    private var committedGainMeters = 0.0
-    var gainMeters: Double = 0.0
-        private set
+    private val accumulator = ElevationGainCalculator.StreamingRangeAccumulator()
+    val gainMeters: Double get() = accumulator.gainMeters
+
+    fun startNewSegment() = accumulator.startNewSegment()
 
     fun ingest(sample: RecordedLocationSample) {
-        val altitude = sample.altitudeMeters?.takeIf { it.isFinite() } ?: return
-        val verticalAccuracy = sample.verticalAccuracyMeters?.takeIf { it.isFinite() && it >= 0 } ?: return
-        if (verticalAccuracy > 20.0) return
-        previousAccepted?.let { previous ->
-            val previousAltitude = previous.altitudeMeters ?: return@let
-            val altitudeDelta = kotlin.math.abs(altitude - previousAltitude)
-            val seconds = (sample.capturedAtEpochMilliseconds - previous.capturedAtEpochMilliseconds) / 1_000.0
-            if (seconds > 0 && altitudeDelta / seconds > 3.0) return
-            val distance = distanceMeters(previous, sample)
-            if (distance >= 3.0 && altitudeDelta / distance > 0.5) return
-        }
-        previousAccepted = sample
-        altitudeWindow.addLast(altitude)
-        if (altitudeWindow.size > 5) altitudeWindow.removeFirst()
-        ingestFilteredAltitude(altitudeWindow.sorted()[altitudeWindow.size / 2])
-    }
-
-    private fun ingestFilteredAltitude(altitude: Double) {
-        val floor = climbFloorAltitude
-        val peak = climbPeakAltitude
-        if (floor == null || peak == null) {
-            climbFloorAltitude = altitude
-            climbPeakAltitude = altitude
-            return
-        }
-        if (altitude > peak) {
-            climbPeakAltitude = altitude
-        } else if (peak - altitude >= 2.5) {
-            val completedClimb = peak - floor
-            if (completedClimb >= 2.5) committedGainMeters += completedClimb
-            climbFloorAltitude = altitude
-            climbPeakAltitude = altitude
-        } else if (altitude < floor) {
-            climbFloorAltitude = altitude
-            climbPeakAltitude = max(peak, altitude)
-        }
-        val activeClimb = max(0.0, (climbPeakAltitude ?: altitude) - (climbFloorAltitude ?: altitude))
-        gainMeters = committedGainMeters + if (activeClimb >= 2.5) activeClimb else 0.0
+        accumulator.ingest(ElevationLocation(
+            latitude = sample.latitude, longitude = sample.longitude,
+            altitudeMeters = sample.altitudeMeters ?: return,
+            verticalAccuracyMeters = sample.verticalAccuracyMeters ?: return,
+            timestampMillis = sample.capturedAtEpochMilliseconds,
+        ))
     }
 }
 

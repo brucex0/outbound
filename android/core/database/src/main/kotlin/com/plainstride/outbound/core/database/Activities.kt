@@ -54,7 +54,12 @@ data class ActivityEntity(
     val serverUpdatedAtEpochMs: Long?,
     val deletedAtEpochMs: Long?,
     val companionType: String?,
+    val elevationMetadataJson: String? = null,
 )
+
+/** Local-only, first available pre-correction samples; never included in activity relations/uploads. */
+@Entity(tableName = "activity_original_routes", primaryKeys = ["accountId", "activityId"])
+data class ActivityOriginalRouteEntity(val accountId: String, val activityId: String, val encodedPoints: ByteArray)
 
 @Entity(
     tableName = "activity_track_points",
@@ -165,6 +170,18 @@ interface ActivityDao {
 
     @Query("UPDATE activities SET deletedAtEpochMs = :deletedAtEpochMs, localUpdatedAtEpochMs = :deletedAtEpochMs WHERE accountId = :accountId AND activityId = :activityId")
     suspend fun tombstone(accountId: String, activityId: String, deletedAtEpochMs: Long): Int
+
+    @Query("SELECT EXISTS(SELECT 1 FROM activity_original_routes WHERE accountId = :accountId AND activityId = :activityId)")
+    suspend fun hasOriginalRoute(accountId: String, activityId: String): Boolean
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun preserveOriginalRoute(route: ActivityOriginalRouteEntity)
+
+    @Query("DELETE FROM activity_original_routes WHERE accountId = :accountId AND activityId = :activityId")
+    suspend fun deleteOriginalRoute(accountId: String, activityId: String)
+
+    @Query("DELETE FROM activity_original_routes WHERE accountId = :accountId")
+    suspend fun deleteAllOriginalRoutes(accountId: String)
 
     @Query("DELETE FROM activity_track_points WHERE accountId = :accountId")
     suspend fun deleteAllTrack(accountId: String)

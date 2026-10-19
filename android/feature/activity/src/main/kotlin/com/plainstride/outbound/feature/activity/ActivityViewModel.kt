@@ -31,6 +31,7 @@ import com.plainstride.outbound.core.analytics.ProductAnalytics
 import com.plainstride.outbound.core.data.ActivityExporter
 import com.plainstride.outbound.core.data.ActivityMediaStore
 import com.plainstride.outbound.core.data.ActivityRepository
+import com.plainstride.outbound.core.data.ActivitySyncScheduler
 import com.plainstride.outbound.core.data.ManualActivityFactory
 import com.plainstride.outbound.core.data.ManualActivityInput
 import com.plainstride.outbound.core.model.activity.ActivityPage
@@ -62,6 +63,7 @@ data class ActivityUiState(
 class ActivityViewModel @Inject constructor(
     private val groups: com.plainstride.outbound.core.data.GroupActivityRepository,
     private val repository: ActivityRepository,
+    private val syncScheduler: ActivitySyncScheduler,
     private val mediaStore: ActivityMediaStore,
     private val analytics: ProductAnalytics,
     @param:ApplicationContext private val context: Context,
@@ -107,6 +109,15 @@ class ActivityViewModel @Inject constructor(
             val activity = repository.activity(accountId, activityId)
             mutableState.value = mutableState.value.copy(selected = activity, loading = false, groupAttribution = null)
             if (activity != null) analytics.record(AnalyticsEvent("activity_detail_opened", mapOf(AnalyticsProperty.Source to "history")))
+            if (activity != null) launch {
+                if (repository.correctElevationIfNeeded(accountId, activity.id)) {
+                    syncScheduler.schedule(accountId)
+                    val refreshed = repository.activity(accountId, activity.id)
+                    if (account.value == accountId && mutableState.value.selected?.id == activity.id) {
+                        mutableState.value = mutableState.value.copy(selected = refreshed)
+                    }
+                }
+            }
             activity?.activityEventId?.let { event ->
                 val detail = groups.detail(event)
                 if (account.value == accountId && mutableState.value.selected?.id == activity.id) {
@@ -132,7 +143,10 @@ class ActivityViewModel @Inject constructor(
         val current = mutableState.value.selected ?: return@mutate
         val updated = current.copy(title = title.trim(), localUpdatedAt = Instant.now().toString())
         repository.edit(updated)
-        mutableState.value = mutableState.value.copy(selected = updated)
+        val persisted = repository.activity(current.accountId, current.id)
+        if (account.value == current.accountId && mutableState.value.selected?.id == current.id) {
+            mutableState.value = mutableState.value.copy(selected = persisted)
+        }
         analytics.record(AnalyticsEvent("activity_edited", mapOf(AnalyticsProperty.Result to "success")))
     }
 

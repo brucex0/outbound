@@ -28,7 +28,7 @@ import com.plainstride.outbound.core.network.apiCall
  private val api:SafetyApi,
  private val tokens:AccessTokenProvider,
 ):TrustedContactStore{
- private val preferences=context.getSharedPreferences("trusted_contacts",Context.MODE_PRIVATE)
+ private val preferences=context.getSharedPreferences("server_trusted_contacts",Context.MODE_PRIVATE)
  private val lock=Mutex()
  override suspend fun contacts()=withContext(Dispatchers.IO){decode()}
  override suspend fun save(contact:TrustedContact)=withContext(Dispatchers.IO){
@@ -39,23 +39,13 @@ import com.plainstride.outbound.core.network.apiCall
  override suspend fun sharesWithTrustedContactsByDefault(accountId:String)=withContext(Dispatchers.IO){preferences.getBoolean(defaultShareKey(accountId),false)}
  override suspend fun setSharesWithTrustedContactsByDefault(accountId:String,enabled:Boolean)=withContext(Dispatchers.IO){preferences.edit().putBoolean(defaultShareKey(accountId),enabled).commit();Unit}
 
- /**
-  * One-time migration from the pre-server phone-book store: those rows held
-  * device-local name/phone pairs with random ids, which can never match
-  * connection user ids, so they are dropped before the first server pull.
-  */
- override suspend fun migrateToServerBackedContacts()=withContext(Dispatchers.IO){
-  if(preferences.getBoolean(MIGRATED,false))return@withContext
-  preferences.edit().remove(KEY).putBoolean(MIGRATED,true).commit();Unit
- }
-
  /** Pull the server list into the cache, preserving last-known display names. */
  override suspend fun pull(accountId:String){lock.withLock{
   val remote=authenticated{apiCall{api.trustedContacts(it)}}.getOrNull()?:return@withLock
   val cached=decode().associateBy{it.id}
   val merged=remote.contactUserIds.map{id->
    val known=cached[id]
-   TrustedContact(id,known?.displayName.orEmpty(),CHANNEL_PUSH,known?.address.orEmpty(),id==remote.defaultContactUserId)
+   TrustedContact(id,known?.displayName.orEmpty(),id==remote.defaultContactUserId)
   }
   withContext(Dispatchers.IO){preferences.edit().putString(KEY,PlainstrideJson.encodeToString(ListSerializer,merged)).commit()}
  }}
@@ -69,7 +59,7 @@ import com.plainstride.outbound.core.network.apiCall
  private suspend fun<T:Any>authenticated(call:suspend(String)->ApiResult<T>):Result<T>{val token=tokens.validAccessToken()?:return Result.failure(IllegalStateException("signed_out"));return when(val value=call("Bearer $token")){is ApiResult.Success->Result.success(value.value);is ApiResult.Failure->Result.failure(IllegalStateException(value.error.code.name))}}
  private fun decode()=preferences.getString(KEY,null)?.let{runCatching{PlainstrideJson.decodeFromString(ListSerializer,it)}.getOrNull()}.orEmpty()
  private fun defaultShareKey(accountId:String)="default_share_$accountId"
- private companion object{const val KEY="contacts";const val MIGRATED="server_backed_migrated_v1";const val CHANNEL_PUSH="push";val ListSerializer=kotlinx.serialization.builtins.ListSerializer(TrustedContact.serializer())}
+ private companion object{const val KEY="contacts";val ListSerializer=kotlinx.serialization.builtins.ListSerializer(TrustedContact.serializer())}
 }
 
 @Module @InstallIn(SingletonComponent::class) abstract class TrustedContactModule{

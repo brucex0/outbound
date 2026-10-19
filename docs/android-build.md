@@ -14,6 +14,18 @@ The fixed iOS/shared-server comparison point is stored in `android/ios-baseline.
 
 Set `ANDROID_HOME` or create an untracked `android/local.properties` with the local SDK path. Never commit a machine-specific SDK path.
 
+## Unreleased Android Data Policy
+
+Android remains unreleased until Bruce explicitly confirms release. Follow `AGENTS.md`: use only current models, with no app-version migration or historical-payload compatibility code. Room opens `plainstride-v<schema-version>.db`; a schema change creates clean local data and does not copy an older database. Only the current schema export is retained.
+
+For an explicit full development reset (also clears login/preferences/media):
+
+```sh
+adb shell pm clear com.plainstride.outbound.debug
+```
+
+Backend data is not reset and can synchronize after sign-in. Supported Android OS API handling and current backend/iOS contracts still apply.
+
 ## Build-Only Verification
 
 Run from `android/`:

@@ -1,10 +1,20 @@
 package com.plainstride.outbound.core.model.activity
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 
-@Serializable data class ActivitySource(val kind: String = "outbound", val displayName: String = "Plainstride", val deviceName: String? = null, val externalId: String? = null, val importedAt: String? = null)
+@Serializable data class ActivitySource(val kind: String = "outbound", val displayName: String = "Plainstride", val deviceName: String? = null, @SerialName("externalID") val externalId: String? = null, val importedAt: String? = null)
 @Serializable data class ActivityReflection(val title: String, val body: String, val highlight: String, val progressNote: String? = null)
 @Serializable data class ActivityTrackPoint(val timestamp: String, val latitude: Double, val longitude: Double, val altitude: Double? = null, val verticalAccuracy: Double? = null, val startsNewSegment: Boolean = false)
+
+@Serializable
+data class ActivityElevationMetadata(
+    val algorithmVersion: String,
+    val provider: String,
+    val attributionText: String,
+    val attributionURL: String,
+    val modified: Boolean,
+)
 
 data class SharedLiveParticipant(
     val id: String,
@@ -72,6 +82,7 @@ data class SavedActivity(
     val serverUpdatedAt: String? = null,
     val deletedAt: String? = null,
     val companionType: ActivityCompanionType? = null,
+    val elevationMetadata: ActivityElevationMetadata? = null,
 )
 
 data class ActivityPage(val activities: List<SavedActivity>, val offset: Int, val limit: Int, val hasMore: Boolean)

@@ -9,7 +9,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.plainstride.outbound.core.network.PlainstrideJson
 
-@Serializable data class TrustedContact(val id:String,val displayName:String,val channel:String,val address:String,val isDefault:Boolean=false)
+@Serializable data class TrustedContact(val id:String,val displayName:String,val isDefault:Boolean=false)
 @Serializable data class DeliveryTarget(val channel:String,val label:String?=null,val address:String?=null)
 @Serializable data class SyncedTrustedContacts(val contractVersion:Int=1,val contactUserIds:List<String> = emptyList(),val defaultContactUserId:String?=null,val updatedAt:String?=null)
 @Serializable data class PutTrustedContactsRequest(val contactUserIds:List<String>,val defaultContactUserId:String?=null)

@@ -1,6 +1,17 @@
 package com.plainstride.outbound.core.data
 
 import android.util.Base64
+import android.util.Log
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
+import java.util.zip.GZIPOutputStream
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.SerializationException
+import com.plainstride.outbound.core.database.ActivityOriginalRouteEntity
+import com.plainstride.outbound.core.model.activity.ActivityElevationMetadata
+import com.plainstride.outbound.core.model.activity.TerrainElevationSampling
 import androidx.room.withTransaction
 import java.time.Instant
 import java.util.UUID
@@ -9,7 +20,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -60,6 +70,7 @@ interface ActivityRepository {
     fun observePendingSyncCount(accountId: String): Flow<Int>
     suspend fun activity(accountId: String, activityId: String): SavedActivity?
     suspend fun save(activity: SavedActivity)
+    suspend fun correctElevationIfNeeded(accountId: String, activityId: String): Boolean
     suspend fun edit(activity: SavedActivity)
     suspend fun delete(accountId: String, activityId: String, deletedAt: Instant = Instant.now())
     suspend fun synchronize(accountId: String): ActivitySyncResult
@@ -81,9 +92,12 @@ class OfflineFirstActivityRepository(
     private val accessTokens: AccessTokenProvider,
     private val mediaStore: ActivityMediaStore,
     private val analytics: ProductAnalytics,
+    private val currentAccountId: () -> String?,
     private val now: () -> Instant = Instant::now,
 ) : ActivityRepository {
     private val dao: ActivityDao get() = database.activityDao()
+    private val elevationCorrector = TerrainElevationCorrector(api)
+    private val elevationCorrections = ConcurrentHashMap.newKeySet<Pair<String, String>>()
 
     override fun observeAll(accountId: String): Flow<List<SavedActivity>> = dao.observeAll(accountId).map { rows -> rows.map { it.toDomain() } }
 
@@ -103,11 +117,109 @@ class OfflineFirstActivityRepository(
 
     override suspend fun save(activity: SavedActivity) = persistAndEnqueue(activity.copy(deletedAt = null))
 
-    override suspend fun edit(activity: SavedActivity) = persistAndEnqueue(activity.copy(localUpdatedAt = now().toString()))
+    override suspend fun edit(activity: SavedActivity) = database.withTransaction {
+        val latest = dao.get(activity.accountId, activity.id)?.toDomain()
+        // Title/gear edits may originate from a detail snapshot opened before enrichment.
+        // Keep the newer terrain result when the edit has not changed route geometry.
+        val sameGeometry = latest != null && latest.track.size == activity.track.size && activity.track.indices.all { index ->
+            val a = activity.track[index]
+            val b = latest.track[index]
+            a.timestamp == b.timestamp && a.latitude == b.latitude && a.longitude == b.longitude && a.startsNewSegment == b.startsNewSegment
+        }
+        val updated = if (latest?.elevationMetadata != null && sameGeometry) activity.copy(
+            track = latest.track, elevationGainM = latest.elevationGainM, elevationMetadata = latest.elevationMetadata,
+        ) else activity
+        persistAndEnqueue(updated.copy(localUpdatedAt = now().toString()))
+    }
+
+    override suspend fun correctElevationIfNeeded(accountId: String, activityId: String): Boolean {
+        val key = accountId to activityId
+        if (currentAccountId() != accountId || !elevationCorrections.add(key)) return false
+        val started = System.nanoTime()
+        var source = "existing_on_device"
+        try {
+            val original = activity(accountId, activityId) ?: return false
+            if (!original.needsElevationCorrection()) return false
+            source = when {
+                original.elevationMetadata != null -> "mapzen_upgrade_v2"
+                original.serverActivityId == null -> "mapzen_terrain_v2"
+                else -> "mapzen_backfill"
+            }
+            val token = accessTokens.validAccessToken() ?: return false
+            if (currentAccountId() != accountId) return false
+            val corrected = elevationCorrector.correct(original, "Bearer $token")
+            val applied = database.withTransaction {
+                val latest = activity(accountId, activityId) ?: return@withTransaction false
+                // Do not resurrect deleted routes, overwrite edits, or write after an account switch.
+                if (currentAccountId() != accountId || latest.deletedAt != null
+                    || latest.localUpdatedAt != original.localUpdatedAt || latest.track != original.track
+                    || latest.elevationMetadata != original.elevationMetadata || latest.source != original.source
+                    || latest.indoorJson != original.indoorJson) return@withTransaction false
+                preserveOriginalElevationRoute(original)
+                val revision = maxOf(now().toEpochMilli(), parseEpoch(original.localUpdatedAt) + 1)
+                persistAndEnqueue(latest.copy(
+                    elevationGainM = corrected.elevationGainM, elevationMetadata = corrected.elevationMetadata,
+                    track = corrected.track, localUpdatedAt = instant(revision),
+                ))
+                true
+            }
+            if (applied) trackElevation("success", source, started)
+            return applied
+        } catch (error: CancellationException) {
+            throw error // Leaving detail / stopping a worker is normal control flow.
+        } catch (error: Exception) {
+            val category = when (error) {
+                is TerrainElevationCorrectionException -> error.category
+                is IOException -> "network_unavailable"
+                is SerializationException -> "invalid_response"
+                is IllegalArgumentException -> "invalid_route"
+                else -> "storage_or_unknown"
+            }
+            val status = (error as? TerrainElevationCorrectionException)?.httpStatus
+            Log.w("ActivityElevation", "Terrain correction failed category=$category http_status=${status ?: 0} type=${error.javaClass.simpleName}")
+            trackElevation("fallback", source, started, category)
+            return false // Existing totals/route/outbox remain usable offline.
+        } finally {
+            elevationCorrections.remove(key)
+        }
+    }
+
+    private fun SavedActivity.needsElevationCorrection(): Boolean {
+        if (deletedAt != null || source.kind != "outbound" || track.size < 2) return false
+        val metadata = elevationMetadata
+        if (metadata != null && metadata.algorithmVersion != "terrain-v1") return false
+        val indoor = indoorJson?.let { PlainstrideJson.parseToJsonElement(it).jsonObject }
+        return indoor?.bool("indoor") != true && indoor?.bool("isIndoor") != true
+    }
+
+    private suspend fun preserveOriginalElevationRoute(activity: SavedActivity) {
+        if (activity.elevationMetadata != null || !activity.needsElevationCorrection()
+            || dao.hasOriginalRoute(activity.accountId, activity.id)) return
+        val buffer = ByteArrayOutputStream()
+        GZIPOutputStream(buffer).use { it.write(PlainstrideJson.encodeToString(activity.track).toByteArray(Charsets.UTF_8)) }
+        dao.preserveOriginalRoute(ActivityOriginalRouteEntity(activity.accountId, activity.id, buffer.toByteArray()))
+    }
+
+    private fun trackElevation(result: String, source: String, started: Long, errorCategory: String? = null) {
+        val milliseconds = (System.nanoTime() - started) / 1_000_000
+        val latency = when {
+            milliseconds < 250 -> "under_250ms"
+            milliseconds < 1_000 -> "250ms_1s"
+            milliseconds < 3_000 -> "1s_3s"
+            milliseconds < 8_000 -> "3s_8s"
+            else -> "8s_plus"
+        }
+        val properties = mutableMapOf<AnalyticsProperty, Any>(
+            AnalyticsProperty.Result to result, AnalyticsProperty.SourceType to source, AnalyticsProperty.LatencyBucket to latency,
+        )
+        errorCategory?.let { properties[AnalyticsProperty.ErrorCategory] = it }
+        analytics.record(AnalyticsEvent("activity_elevation_correction_completed", properties))
+    }
 
     override suspend fun delete(accountId: String, activityId: String, deletedAt: Instant) {
         database.withTransaction {
             if (dao.tombstone(accountId, activityId, deletedAt.toEpochMilli()) == 0) return@withTransaction
+            dao.deleteOriginalRoute(accountId, activityId)
             enqueue(accountId, activityId, DELETE, deletedAt.toString(), "{}")
         }
     }
@@ -115,6 +227,14 @@ class OfflineFirstActivityRepository(
     override suspend fun synchronize(accountId: String): ActivitySyncResult {
         val token = accessTokens.validAccessToken() ?: return ActivitySyncResult(0, 0, pendingCount(accountId), "authentication_required")
         val authorization = "Bearer $token"
+        // Save has already committed locally. Enrich a bounded set before building the
+        // upload batch; provider/auth failures never block normal activity synchronization.
+        // Budget expiry intentionally falls back to uploading existing data; detail can retry.
+        withTimeoutOrNull(15_000) {
+            database.syncOutboxDao().pending(accountId, now().toEpochMilli(), 100)
+                .filter { it.operationType == UPSERT }.map { it.aggregateId }.distinct()
+                .forEach { correctElevationIfNeeded(accountId, it) }
+        }
         var uploaded = 0
         var photosUploaded = 0
         var failure: String? = null
@@ -123,7 +243,7 @@ class OfflineFirstActivityRepository(
             val result = when (operation.operationType) {
                 UPSERT -> apiCall {
                     val request = PlainstrideJson.decodeFromString<ActivityUploadRequest>(operation.payloadJson)
-                    api.upload(authorization, request.copy(followedRouteCompleted = request.followedRouteCompleted ?: false))
+                    api.upload(authorization, request)
                 }
                 DELETE -> apiCall { api.delete(authorization, operation.aggregateId) }
                 else -> null
@@ -235,8 +355,20 @@ class OfflineFirstActivityRepository(
             )
             uploaded++
         }
-        if (synchronizedPhotos != activity.photos) {
-            persist(activity.copy(photos = synchronizedPhotos), enqueue = false)
+        if (synchronizedPhotos != activity.photos) database.withTransaction {
+            // Photo transfer can overlap detail enrichment; update only photo metadata
+            // on the latest activity instead of restoring its previous elevation/route.
+            val latest = dao.get(activity.accountId, activity.id)?.toDomain()
+            if (latest != null && latest.deletedAt == null) {
+                val transferred = synchronizedPhotos.associateBy { it.id }
+                persist(latest.copy(photos = latest.photos.map { photo ->
+                    val remote = transferred[photo.id]
+                    if (remote?.remotePhotoId != null && photo.remotePhotoId == null) photo.copy(
+                        remotePhotoId = remote.remotePhotoId, remoteUpdatedAt = remote.remoteUpdatedAt,
+                        byteSize = remote.byteSize, sha256 = remote.sha256,
+                    ) else photo
+                }), enqueue = false)
+            }
         }
         return PhotoSyncResult(uploaded, failed)
     }
@@ -244,6 +376,7 @@ class OfflineFirstActivityRepository(
     private suspend fun persistAndEnqueue(activity: SavedActivity) {
         val payload = PlainstrideJson.encodeToString(activity.toUploadRequest())
         database.withTransaction {
+            preserveOriginalElevationRoute(activity)
             persist(activity, enqueue = false)
             enqueue(activity.accountId, activity.id, UPSERT, activity.localUpdatedAt, payload)
         }
@@ -263,18 +396,21 @@ class OfflineFirstActivityRepository(
         }
     }
 
-    private suspend fun mergeRemote(accountId: String, remote: RemoteActivityDto): Boolean {
-        val clientId = remote.clientActivityId ?: return false
+    private suspend fun mergeRemote(accountId: String, remote: RemoteActivityDto): Boolean = database.withTransaction {
+        val clientId = remote.clientActivityId ?: return@withTransaction false
         val local = dao.get(accountId, clientId)?.toDomain()
         val remoteUpdated = parseEpoch(remote.clientUpdatedAt ?: remote.updatedAt)
-        if (local != null && parseEpoch(local.localUpdatedAt) > remoteUpdated) return false
+        if (local != null && parseEpoch(local.localUpdatedAt) > remoteUpdated) return@withTransaction false
         val remoteDeletedAt = remote.deletedAt
         if (remoteDeletedAt != null) {
-            dao.tombstone(accountId, clientId, parseEpoch(remoteDeletedAt))
-            return true
+            database.withTransaction {
+                dao.tombstone(accountId, clientId, parseEpoch(remoteDeletedAt))
+                dao.deleteOriginalRoute(accountId, clientId)
+            }
+            return@withTransaction true
         }
-        val snapshot = remote.clientData ?: JsonObject(emptyMap())
-        val decoded = snapshot.toDomain(accountId, remote) ?: return false
+        val snapshot = remote.clientData
+        val decoded = snapshot.toDomain(accountId, remote) ?: return@withTransaction false
         // Keep private local files attached when a server refresh supplies metadata only.
         val localPhotos = local?.photos.orEmpty()
         val remotePhotoIds = decoded.photos.mapTo(mutableSetOf()) { it.id }
@@ -282,7 +418,7 @@ class OfflineFirstActivityRepository(
             remotePhoto.copy(localRelativePath = localPhotos.firstOrNull { it.id == remotePhoto.id }?.localRelativePath)
         } + localPhotos.filterNot { it.id in remotePhotoIds }
         persist(decoded.copy(photos = mergedPhotos), enqueue = false)
-        return true
+        return@withTransaction true
     }
 
     private suspend fun enqueue(accountId: String, activityId: String, operation: String, revision: String, payload: String) {
@@ -329,7 +465,7 @@ private fun SavedActivity.toUploadRequest(): ActivityUploadRequest {
         avgPace = averagePaceSecsPerKm, avgHeartRate = averageHeartRateBpm,
         energyKilocalories = energyKilocalories, activityEventId = activityEventId,
         followedRouteId = followedRouteId, followedRouteCompleted = followedRouteCompleted,
-        route = track.takeIf { it.size > 1 }?.let { points -> ActivityRouteDto(points.map { ActivityRoutePointDto(it.timestamp, it.latitude, it.longitude, it.altitude, it.verticalAccuracy, it.startsNewSegment) }) },
+        route = track.takeIf { it.size > 1 }?.let { points -> ActivityRouteDto(points.map { ActivityRoutePointDto(it.timestamp, it.latitude, it.longitude, it.altitude, it.verticalAccuracy, it.startsNewSegment) }, elevationMetadata = elevationMetadata) },
         splits = PlainstrideJson.encodeToJsonElement(ListSerializer(ActivitySplit.serializer()), splits),
         reflection = reflection?.let { ActivityReflectionDto(it.title, it.body, it.highlight, it.progressNote) },
         companionType = companionType?.name,
@@ -344,6 +480,7 @@ private fun SavedActivity.toEntity() = ActivityEntity(
     PlainstrideJson.encodeToString(source), gearJson, goalJson, indoorJson, cadenceJson, heartRateZonesJson, activityEventId,
     followedRouteId, followedRouteCompleted, PlainstrideJson.encodeToString(recognitionBadgeIds), parseEpoch(localUpdatedAt),
     serverUpdatedAt?.let(::parseEpoch), deletedAt?.let(::parseEpoch), companionType?.name,
+    elevationMetadata?.let { PlainstrideJson.encodeToString(it) },
 )
 
 private fun ActivityTrackPoint.toEntity(activity: SavedActivity, index: Int) = ActivityTrackPointEntity(activity.accountId, activity.id, index, parseEpoch(timestamp), latitude, longitude, altitude, verticalAccuracy, startsNewSegment)
@@ -362,67 +499,54 @@ private fun ActivityWithDetails.toDomain(): SavedActivity = with(activity) {
         photos.sortedBy { it.takenAtEpochMs }.map { ActivityPhoto(it.photoId, instant(it.takenAtEpochMs), it.paceAtShot, it.heartRateAtShot, it.distanceAtShotM, it.latitude, it.longitude, it.captureContext, it.localRelativePath, it.remotePhotoId, it.remoteUpdatedAtEpochMs?.let(::instant), it.byteSize, it.sha256) },
         instant(localUpdatedAtEpochMs), serverUpdatedAtEpochMs?.let(::instant), deletedAtEpochMs?.let(::instant),
         companionType?.let { value -> runCatching { ActivityCompanionType.valueOf(value) }.getOrNull() },
+        elevationMetadata = elevationMetadataJson?.let { PlainstrideJson.decodeFromString<ActivityElevationMetadata>(it) },
     )
 }
 
 private fun JsonObject.toDomain(accountId: String, remote: RemoteActivityDto): SavedActivity? = runCatching {
-    fun element(key: String): JsonElement? = this[key] ?: when (key) {
-        "activityType" -> JsonPrimitive(remote.activityType)
-        "title" -> JsonPrimitive(remote.title)
-        "startedAt" -> remote.startedAt?.let(::JsonPrimitive)
-        "endedAt" -> remote.endedAt?.let(::JsonPrimitive)
-        "durationSecs" -> JsonPrimitive(remote.durationSecs)
-        "distanceM" -> JsonPrimitive(remote.distanceM)
-        "avgPace" -> remote.avgPace?.let(::JsonPrimitive)
-        "elevationGainM" -> remote.elevationGainM?.let(::JsonPrimitive)
-        else -> null
-    }
-    fun stringValue(key: String) = element(key)?.takeUnless { it is JsonNull }?.jsonPrimitive?.contentOrNull
-    fun doubleValue(key: String) = element(key)?.jsonPrimitive?.doubleOrNull
-    fun intValue(key: String) = element(key)?.jsonPrimitive?.intOrNull
-    fun boolValue(key: String) = element(key)?.jsonPrimitive?.booleanOrNull
-    fun objectValue(key: String) = element(key)?.takeUnless { it is JsonNull }?.let { runCatching { it.jsonObject }.getOrNull() }
-    fun rawValue(key: String) = element(key)?.takeUnless { it is JsonNull }?.toString()
-    val routePoints = remote.route?.get("points")?.jsonArray?.mapNotNull(::trackPoint)
-        ?: (this["track"] as? JsonArray)?.mapNotNull(::trackPoint).orEmpty()
+    fun stringValue(key: String) = string(key)
+    fun intValue(key: String) = int(key)
+    fun boolValue(key: String) = bool(key)
+    fun objectValue(key: String) = obj(key)
+    fun rawValue(key: String) = raw(key)
+    val routePoints = remote.route?.get("points")?.jsonArray?.mapNotNull(::trackPoint).orEmpty()
     val health = objectValue("healthMetrics")
     SavedActivity(
         id = remote.clientActivityId!!, accountId = accountId, serverActivityId = remote.id,
-        type = ActivityType.valueOf(stringValue("activityType") ?: "running"),
-        title = stringValue("title") ?: "Activity", guideNudge = stringValue("guideNudge") ?: "",
-        reflection = remote.reflection?.let { ActivityReflection(it.title, it.body, it.highlight, it.progressNote) }
-            ?: objectValue("reflection")?.let { ActivityReflection(it.string("title") ?: "", it.string("body") ?: "", it.string("highlight") ?: "", it.string("progressNote")) },
-        createdAt = remote.createdAt, startedAt = stringValue("startedAt") ?: remote.createdAt,
-        endedAt = stringValue("endedAt") ?: stringValue("startedAt") ?: remote.createdAt,
-        durationSecs = intValue("durationSecs") ?: 0, distanceM = doubleValue("distanceM") ?: 0.0,
-        averagePaceSecsPerKm = doubleValue("averagePaceSecsPerKm") ?: doubleValue("avgPace"),
-        elevationGainM = doubleValue("elevationGainM") ?: doubleValue("elevationM"), walkingStepCount = intValue("walkingStepCount"),
-        averageHeartRateBpm = health?.int("averageHeartRateBPM") ?: intValue("averageHeartRateBpm"),
-        maximumHeartRateBpm = health?.int("maxHeartRateBPM") ?: intValue("maximumHeartRateBpm"),
-        heartRateSampleCount = health?.int("heartRateSampleCount") ?: intValue("heartRateSampleCount"),
+        type = ActivityType.valueOf(remote.activityType),
+        title = remote.title, guideNudge = stringValue("guideNudge") ?: "",
+        reflection = remote.reflection?.let { ActivityReflection(it.title, it.body, it.highlight, it.progressNote) },
+        createdAt = remote.createdAt, startedAt = remote.startedAt,
+        endedAt = remote.endedAt,
+        durationSecs = remote.durationSecs, distanceM = remote.distanceM,
+        averagePaceSecsPerKm = remote.avgPace,
+        elevationGainM = remote.elevationGainM, walkingStepCount = intValue("walkingStepCount"),
+        averageHeartRateBpm = health?.int("averageHeartRateBPM"),
+        maximumHeartRateBpm = health?.int("maxHeartRateBPM"),
+        heartRateSampleCount = health?.int("heartRateSampleCount"),
         energyKilocalories = intValue("energyKilocalories"),
-        source = objectValue("source")?.let { ActivitySource(it.string("kind") ?: "outbound", it.string("displayName") ?: "Plainstride", it.string("deviceName"), it.string("externalId") ?: it.string("externalID"), it.string("importedAt")) } ?: ActivitySource(),
+        source = objectValue("source")?.let { ActivitySource(it.string("kind") ?: "outbound", it.string("displayName") ?: "Plainstride", it.string("deviceName"), it.string("externalID"), it.string("importedAt")) } ?: ActivitySource(),
         gearJson = rawValue("gear"), goalJson = rawValue("goal"), indoorJson = rawValue("indoor"), cadenceJson = rawValue("cadence"), heartRateZonesJson = rawValue("heartRateZones"),
-        activityEventId = stringValue("activityEventId") ?: stringValue("activityEventID"), followedRouteId = stringValue("followedRouteId"),
+        activityEventId = stringValue("activityEventID"), followedRouteId = stringValue("followedRouteId"),
         followedRouteCompleted = boolValue("followedRouteCompleted") ?: false,
-        recognitionBadgeIds = array("recognitionBadgeIds")?.mapNotNull { it.jsonPrimitive.contentOrNull }
-            ?: array("recognitionBadgeIDs")?.mapNotNull { it.jsonPrimitive.contentOrNull }.orEmpty(),
-        track = routePoints, splits = array("splits")?.mapIndexedNotNull(::split).orEmpty(),
+        recognitionBadgeIds = array("recognitionBadgeIDs")?.mapNotNull { it.jsonPrimitive.contentOrNull }.orEmpty(),
+        elevationMetadata = remote.route?.get("elevationMetadata")?.takeUnless { it is JsonNull }
+            ?.let { PlainstrideJson.decodeFromJsonElement(ActivityElevationMetadata.serializer(), it) },
+        track = routePoints,
         photos = remote.photos.map { ActivityPhoto(it.clientPhotoId ?: it.id, it.takenAt, it.paceAtShot, it.hrAtShot, it.distAtShot, it.latitude, it.longitude, it.captureContext, null, it.id, it.updatedAt, it.byteSize, it.sha256) },
         companionType = remote.companionType?.let { value -> runCatching { ActivityCompanionType.valueOf(value.lowercase()) }.getOrNull() },
         localUpdatedAt = remote.clientUpdatedAt ?: remote.updatedAt, serverUpdatedAt = remote.updatedAt,
     )
-}.getOrNull()
+}.getOrElse { error ->
+    Log.w("ActivitySync", "Activity restore decoding failed type=${error.javaClass.simpleName}")
+    null
+}
 
 private fun trackPoint(element: JsonElement): ActivityTrackPoint? = runCatching { element.jsonObject }.getOrNull()?.let { p ->
     val timestamp = p.string("timestamp") ?: return null
     val latitude = p.double("latitude") ?: return null
     val longitude = p.double("longitude") ?: return null
     ActivityTrackPoint(timestamp, latitude, longitude, p.double("altitude"), p.double("verticalAccuracy"), p.bool("startsNewSegment") ?: false)
-}
-
-private fun split(index: Int, element: JsonElement): ActivitySplit? = runCatching { element.jsonObject }.getOrNull()?.let { p ->
-    ActivitySplit(p.int("index") ?: index, p.double("distanceM") ?: return null, p.int("durationSecs") ?: return null, p.double("paceSecsPerKm") ?: p.double("pace"), p.double("elevationGainM"), p.int("averageHeartRateBpm"))
 }
 
 private fun JsonObject.string(key: String) = this[key]?.takeUnless { it is JsonNull }?.jsonPrimitive?.contentOrNull

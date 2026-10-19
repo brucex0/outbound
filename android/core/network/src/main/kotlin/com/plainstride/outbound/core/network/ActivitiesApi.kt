@@ -1,5 +1,6 @@
 package com.plainstride.outbound.core.network
 
+import com.plainstride.outbound.core.model.activity.ActivityElevationMetadata
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -27,7 +28,22 @@ data class ActivityRoutePointDto(
     val startsNewSegment: Boolean = false,
 )
 
-@Serializable data class ActivityRouteDto(val points: List<ActivityRoutePointDto>, val visibility: String = "private")
+@Serializable data class ActivityRouteDto(
+    val points: List<ActivityRoutePointDto>,
+    val visibility: String = "private",
+    val elevationMetadata: ActivityElevationMetadata? = null,
+)
+
+@Serializable data class TerrainElevationPoint(val latitude: Double, val longitude: Double, val startsNewSegment: Boolean)
+@Serializable data class TerrainElevationRequest(val points: List<TerrainElevationPoint>)
+@Serializable data class TerrainElevationAttribution(val provider: String, val text: String, val url: String, val modified: Boolean)
+@Serializable data class TerrainElevationResponse(
+    val elevationGainMeters: Double,
+    val elevationsMeters: List<Double>,
+    val algorithmVersion: String,
+    val approximateResolutionMeters: Double,
+    val attribution: TerrainElevationAttribution,
+)
 @Serializable data class ActivityReflectionDto(val title: String, val body: String, val highlight: String, val progressNote: String? = null)
 
 @Serializable
@@ -46,7 +62,7 @@ data class ActivityUploadRequest(
     val energyKilocalories: Int? = null,
     val activityEventId: String? = null,
     val followedRouteId: String? = null,
-    val followedRouteCompleted: Boolean? = null,
+    val followedRouteCompleted: Boolean = false,
     val route: ActivityRouteDto? = null,
     val splits: JsonElement? = null,
     val reflection: ActivityReflectionDto? = null,
@@ -114,14 +130,14 @@ data class ActivityPhotoUploadResponse(
 data class RemoteActivityDto(
     val id: String,
     val clientActivityId: String? = null,
-    val clientData: JsonObject? = null,
-    val activityType: String = "running",
-    val title: String = "Restored Run",
+    val clientData: JsonObject,
+    val activityType: String,
+    val title: String,
     val reflection: ActivityReflectionDto? = null,
-    val startedAt: String? = null,
-    val endedAt: String? = null,
-    val durationSecs: Int = 0,
-    val distanceM: Double = 0.0,
+    val startedAt: String,
+    val endedAt: String,
+    val durationSecs: Int,
+    val distanceM: Double,
     val avgPace: Double? = null,
     val elevationGainM: Double? = null,
     val route: JsonObject? = null,
@@ -139,6 +155,12 @@ data class RemoteActivityDto(
 @Serializable data class GroupActivityStartRequest(val startedAt: String)
 
 interface ActivitiesApiService {
+    @POST("v1/elevation/correct")
+    suspend fun correctTerrainElevation(
+        @Header("Authorization") authorization: String,
+        @Body body: TerrainElevationRequest,
+    ): Response<TerrainElevationResponse>
+
     @GET("v1/social/activity-events/{id}") suspend fun groupActivity(@Header("Authorization") auth: String, @Path("id") id: String): Response<com.plainstride.outbound.core.model.activity.GroupActivityDetail>
     @POST("v1/social/activity-events/{id}/start") suspend fun startGroupActivity(@Header("Authorization") auth: String, @Path("id") id: String, @Body body: GroupActivityStartRequest): Response<Unit>
     @POST("v1/social/activity-events/{id}/no-recording") suspend fun finishGroupActivityWithoutRecording(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
