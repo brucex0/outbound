@@ -1,22 +1,18 @@
 import { PNG } from "pngjs";
+import { resampleTerrainRoute, smoothTerrainProfile, terrainElevationGain } from "./terrainElevationProfile.js";
+import type { TerrainRoutePoint } from "./terrainElevationProfile.js";
+export type { TerrainRoutePoint } from "./terrainElevationProfile.js";
 
 const TERRAIN_TILE_ZOOM = 14;
 const TILE_SIZE = 256;
 const MAX_TILE_CACHE_ENTRIES = 256;
 const MAX_TILES_PER_REQUEST = 96;
 const TERRAIN_TILE_BASE_URL = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium";
-const MINIMUM_CLIMB_PROMINENCE_METERS = 10;
-
-export type TerrainRoutePoint = {
-  latitude: number;
-  longitude: number;
-  startsNewSegment: boolean;
-};
 
 export type TerrainElevationCorrection = {
   elevationGainMeters: number;
   elevationsMeters: number[];
-  algorithmVersion: "terrain-v1";
+  algorithmVersion: "terrain-v2";
   approximateResolutionMeters: number;
   attribution: {
     provider: "Mapzen Terrain Tiles";
@@ -35,7 +31,8 @@ export async function correctTerrainElevation(
 ): Promise<TerrainElevationCorrection> {
   if (points.length < 2) throw new Error("terrain_route_too_short");
 
-  const pixelLocations = points.map((point) => globalPixel(point.latitude, point.longitude));
+  const sampled = resampleTerrainRoute(points);
+  const pixelLocations = sampled.points.map((point) => globalPixel(point.latitude, point.longitude));
   const requiredTiles = new Set<string>();
   for (const pixel of pixelLocations) {
     for (const sample of interpolationSamples(pixel.x, pixel.y)) {
@@ -55,11 +52,13 @@ export async function correctTerrainElevation(
     return top * (1 - yFraction) + bottom * yFraction;
   }));
 
-  const smoothedElevations = smoothBySegment(terrainElevations, points);
+  const smoothedElevations = smoothTerrainProfile(terrainElevations, sampled.points);
   return {
-    elevationGainMeters: round(calculateProminentGain(smoothedElevations, points), 1),
-    elevationsMeters: smoothedElevations.map((value) => round(value, 1)),
-    algorithmVersion: "terrain-v1",
+    elevationGainMeters: round(terrainElevationGain(smoothedElevations, sampled.points), 1),
+    elevationsMeters: sampled.positions.map(({ lower, upper, fraction }) => round(
+      smoothedElevations[lower] * (1 - fraction) + smoothedElevations[upper] * fraction, 1,
+    )),
+    algorithmVersion: "terrain-v2",
     approximateResolutionMeters: round(approximateResolution(points), 1),
     attribution: {
       provider: "Mapzen Terrain Tiles",
@@ -140,69 +139,6 @@ function pruneTileCache() {
     if (!oldest) return;
     tileCache.delete(oldest);
   }
-}
-
-function smoothBySegment(elevations: number[], points: TerrainRoutePoint[]) {
-  const result: number[] = [];
-  let start = 0;
-  for (let index = 1; index <= points.length; index += 1) {
-    if (index < points.length && !points[index].startsNewSegment) continue;
-    const segment = elevations.slice(start, index);
-    const median = rollingMedian(segment, 5);
-    result.push(...weightedAverage(median));
-    start = index;
-  }
-  return result;
-}
-
-function rollingMedian(values: number[], windowSize: number) {
-  const radius = Math.floor(windowSize / 2);
-  return values.map((_, index) => {
-    const window = values.slice(Math.max(0, index - radius), Math.min(values.length, index + radius + 1))
-      .sort((left, right) => left - right);
-    return window[Math.floor(window.length / 2)];
-  });
-}
-
-function weightedAverage(values: number[]) {
-  if (values.length < 3) return values;
-  return values.map((value, index) => {
-    const previous = values[Math.max(0, index - 1)];
-    const next = values[Math.min(values.length - 1, index + 1)];
-    return previous * 0.25 + value * 0.5 + next * 0.25;
-  });
-}
-
-function calculateProminentGain(elevations: number[], points: TerrainRoutePoint[]) {
-  let total = 0;
-  let start = 0;
-  for (let index = 1; index <= points.length; index += 1) {
-    if (index < points.length && !points[index].startsNewSegment) continue;
-    total += prominentGain(elevations.slice(start, index));
-    start = index;
-  }
-  return total;
-}
-
-function prominentGain(elevations: number[]) {
-  if (elevations.length < 2) return 0;
-  let floor = elevations[0];
-  let peak = elevations[0];
-  let committed = 0;
-  for (const elevation of elevations.slice(1)) {
-    if (elevation > peak) {
-      peak = elevation;
-    } else if (peak - elevation >= MINIMUM_CLIMB_PROMINENCE_METERS) {
-      if (peak - floor >= MINIMUM_CLIMB_PROMINENCE_METERS) committed += peak - floor;
-      floor = elevation;
-      peak = elevation;
-    } else if (elevation < floor) {
-      floor = elevation;
-      peak = Math.max(peak, elevation);
-    }
-  }
-  if (peak - floor >= MINIMUM_CLIMB_PROMINENCE_METERS) committed += peak - floor;
-  return committed;
 }
 
 function approximateResolution(points: TerrainRoutePoint[]) {
