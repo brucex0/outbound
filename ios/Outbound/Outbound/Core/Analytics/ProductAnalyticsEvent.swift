@@ -560,7 +560,7 @@ enum ProductAnalyticsSchema {
         .liveGuidanceAudioFirstByte: [.sourceType, .latencyBucket],
         .liveGuidanceAudioPlaybackRoute: [.sourceType],
         .liveGuidanceVoiceSelected: [.selectionType, .sourceType],
-        .liveGuidanceEligibilityResolved: [.activityType, .result],
+        .liveGuidanceEligibilityResolved: [.activityType, .result, .sourceType],
         .pushNotificationOpened: [.sourceType, .selectionType],
         .pushNotificationPromptExposed: [.entrySource],
         .pushNotificationPromptActionSelected: [.entrySource, .selectionType],

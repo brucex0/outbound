@@ -427,6 +427,10 @@ struct RecordView: View {
         }
     }
 
+    private var effectiveCoachingProfile: GuideProfile? {
+        guideStore.coachingProfile(activities: activityStore.activities, persona: guideCatalog.selectedPersona)
+    }
+
     private var coachingPreparationKey: Int? {
         guard isVisible, recorder.state == .idle, voiceGuideSpeechEnabled,
               plannedIntent?.sport == .run, guideCatalog.selectedPersona.coachingContract != .quiet else { return nil }
@@ -440,7 +444,9 @@ struct RecordView: View {
         key.combine(guideCatalog.selection.voiceProfileId)
         key.combine(guideCatalog.selection.coachingContract.rawValue)
         key.combine(measurementPreferences.unitSystem.rawValue)
-        key.combine(guideStore.profile?.version)
+        let coachingProfile = effectiveCoachingProfile
+        key.combine(coachingProfile?.version)
+        key.combine(coachingProfile?.athlete.preferredPaceSecs)
         key.combine(personalizationStore.snapshot.modelVersion)
         key.combine(weatherStore.snapshot?.fetchedAt)
         key.combine(isIndoorSession)
@@ -451,7 +457,7 @@ struct RecordView: View {
         guard isVisible, recorder.state == .idle, voiceGuideSpeechEnabled,
               plannedIntent?.sport == .run, guideCatalog.selectedPersona.coachingContract != .quiet else { return nil }
         return LiveCoachSessionController.makeRequest(
-            profile: guideStore.profile, persona: guideCatalog.selectedPersona, intent: plannedIntent, companionBrief: nil,
+            profile: effectiveCoachingProfile, persona: guideCatalog.selectedPersona, intent: plannedIntent, companionBrief: nil,
             unitSystem: measurementPreferences.unitSystem, weatherSnapshot: weatherStore.snapshot, isIndoor: isIndoorSession
         )
     }
@@ -1320,7 +1326,7 @@ struct RecordView: View {
         ActivityDiagnosticLog.notice(.recovery, "Recovery presentation rendered stage=recording")
         guide.setSpeechEnabled(voiceGuideSpeechEnabled)
         guide.activate(
-            with: guideStore.profile,
+            with: effectiveCoachingProfile,
             persona: guideCatalog.selectedPersona,
             sessionIntent: activeIntent,
             unitSystem: measurementPreferences.unitSystem,
@@ -1469,7 +1475,7 @@ struct RecordView: View {
 #endif
         guide.setSpeechEnabled(voiceGuideSpeechEnabled)
         guide.activate(
-            with: guideStore.profile,
+            with: effectiveCoachingProfile,
             persona: guideCatalog.selectedPersona,
             sessionIntent: activeIntent,
             companionBrief: companionBrief,
@@ -1877,7 +1883,7 @@ struct RecordView: View {
         presentLiveSurface()
         guide.setSpeechEnabled(voiceGuideSpeechEnabled)
         guide.activate(
-            with: guideStore.profile,
+            with: effectiveCoachingProfile,
             persona: guideCatalog.selectedPersona,
             sessionIntent: activeIntent,
             unitSystem: measurementPreferences.unitSystem,
@@ -3642,7 +3648,8 @@ struct RecordView: View {
         case .eligibilityResolved(let activityType, let result):
             track(.init(.liveGuidanceEligibilityResolved, properties: [
                 .activityType: .string(activityType),
-                .result: .string(result)
+                .result: .string(result),
+                .sourceType: .string(guideStore.coachingReferenceSource)
             ]))
         case .momentSuppressed(let reason):
             track(.init(.liveGuidanceMomentSuppressed, properties: [.result: .string(reason)]))

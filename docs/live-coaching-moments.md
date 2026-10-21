@@ -175,3 +175,10 @@ The roadmap reflects normal coaching concerns rather than only what the phone cu
 5. **Course and environment:** route lookahead, surface, weather, air quality, race strategy, and field validation.
 
 Every phase needs replayable sensor fixtures, false-positive review across hills/stops/intervals, locale/audio review, analytics privacy review, and outdoor dogfooding before rollout.
+
+## Local Reference Fallback
+
+- iOS loads the cached guide profile before fetching the server and accepts equal-version server responses into memory. Fetch failures log only a normalized error category.
+- When the guide profile has no valid pace reference, coaching uses the median valid pace of up to ten saved runs from the last 30 days, each at least five minutes and 500 m. Missing average pace may be derived from recorded moving time and distance. Future-dated, stale, non-running, short, and invalid-pace activities are excluded.
+- This fallback is held in memory for coaching only; it does not overwrite the server profile or its cached version. No eligible history means no invented reference or target. Workout offsets, terrain, confidence, persistence, and cooldown gates remain unchanged.
+- Preparation keys include the effective reference pace so changed local evidence invalidates a pending preparation.
