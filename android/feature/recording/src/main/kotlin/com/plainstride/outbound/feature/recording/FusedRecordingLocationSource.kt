@@ -76,7 +76,7 @@ class FusedRecordingLocationSource(
         }
         val request = LocationRequest.Builder(priority, 1_000L)
             .setMinUpdateIntervalMillis(500L)
-            .setMinUpdateDistanceMeters(1f)
+            .setMinUpdateDistanceMeters(0f) // Stops still need observations; route filtering removes jitter.
             .setWaitForAccurateLocation(permission == LocationPermissionState.PRECISE)
             .build()
         try {

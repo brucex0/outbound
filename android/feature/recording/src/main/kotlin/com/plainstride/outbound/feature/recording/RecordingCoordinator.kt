@@ -72,7 +72,6 @@ class RecordingCoordinator internal constructor(
     private var autoResumeCandidateStartedAtNanos: Long? = null
     private var latestReliableSpeedMetersPerSecond: Double? = null
     private var latestSpeedObservedAtNanos: Long? = null
-    private var movingTimeSpeedMetersPerSecond: Double? = null
     private var autoPauseProbeFilter: LocationTrackFilter? = null
     private val autoPauseProbeSamples = mutableListOf<RecordedLocationSample>()
     private var autoPauseProbeDistanceMeters = 0.0
@@ -115,6 +114,7 @@ class RecordingCoordinator internal constructor(
         accountId: String,
         activityKind: ActivityKind,
         autoPauseEnabled: Boolean = AutoPauseDefaults.enabled(activityKind),
+        movingTimeDetectionEnabled: Boolean = true,
         sessionId: String = UUID.randomUUID().toString(),
         companionType: ActivityCompanionType? = null,
         simulatedRun: Boolean = false,
@@ -171,6 +171,7 @@ class RecordingCoordinator internal constructor(
             activityKind = activityKind,
             status = RecordingStatus.ACTIVE,
             autoPauseEnabled = autoPauseEnabled,
+            movingTimeTracker = MovingTimeTracker(enabled = movingTimeDetectionEnabled),
             revision = 1,
             startedAtEpochMilliseconds = nowUtc,
             recordedAtEpochMilliseconds = nowUtc,
@@ -272,6 +273,7 @@ class RecordingCoordinator internal constructor(
                 "activity_recording_finished",
                 mapOf(
                     AnalyticsProperty.DurationBucket to durationBucket(finished.movingSeconds),
+                    AnalyticsProperty.MovingTimeMethod to "gps_observations_v2",
                     AnalyticsProperty.ElapsedDurationBucket to durationBucket(((finished.recordedAtEpochMilliseconds - (finished.startedAtEpochMilliseconds ?: finished.recordedAtEpochMilliseconds)) / 1000).coerceAtLeast(finished.movingSeconds)),
                     AnalyticsProperty.DistanceBucket to distanceBucket(finished.distanceMeters),
                 ),
@@ -407,10 +409,9 @@ class RecordingCoordinator internal constructor(
             it.isFinite() && it >= 0.0 && speedAccuracy != null && speedAccuracy.isFinite() && speedAccuracy in 0.0..3.0
         }
         latestSpeedObservedAtNanos = raw.capturedAtElapsedRealtimeNanos
-        movingTimeSpeedMetersPerSecond = raw.speedMetersPerSecond?.takeIf {
-            it.isFinite() && it >= 0 && speedAccuracy != null && speedAccuracy in 0.0..0.5 &&
-                raw.horizontalAccuracyMeters in 0.0..20.0
-        }
+        // Every raw observation participates, including stationary fixes the
+        // route filter intentionally omits from geometry.
+        if (_snapshot.value.status == RecordingStatus.ACTIVE) recordMovingTime(raw)
         when {
             _snapshot.value.status == RecordingStatus.ACTIVE -> evaluateAutoPause(raw.capturedAtElapsedRealtimeNanos)
             _snapshot.value.status == RecordingStatus.PAUSED && _snapshot.value.autoPaused -> {
@@ -420,7 +421,11 @@ class RecordingCoordinator internal constructor(
         }
         if (_snapshot.value.status != RecordingStatus.ACTIVE) return
         val output = filter.ingest(raw)
-        val accepted = output.sample ?: return
+        val accepted = output.sample ?: run {
+            _snapshot.value = nextSnapshot()
+            persist(force = false)
+            return
+        }
         elevation.ingest(accepted)
         val distance = _snapshot.value.distanceMeters + output.distanceIncrementMeters
         val elapsed = elapsedSeconds()
@@ -477,6 +482,23 @@ class RecordingCoordinator internal constructor(
         } else {
             autoResumeCandidateStartedAtNanos = null
         }
+    }
+
+    private fun recordMovingTime(raw: RecordedLocationSample) {
+        if (_snapshot.value.runSimulation != null) return
+        val segmentStart = activeSegmentStartedElapsedNanos ?: return
+        val sampleNanos = raw.capturedAtElapsedRealtimeNanos
+        if (sampleNanos < segmentStart || sampleNanos - clock.elapsedRealtimeNanos() > 5 * NANOS_PER_SECOND) return
+        val threshold = when (_snapshot.value.activityKind) {
+            ActivityKind.RUNNING -> 0.65
+            ActivityKind.WALKING, ActivityKind.HIKING -> 0.35
+            ActivityKind.CYCLING -> 1.0
+            else -> return
+        }
+        val sampleActiveSeconds = (accumulatedElapsedNanos + sampleNanos - segmentStart) / NANOS_PER_SECOND
+        _snapshot.value = _snapshot.value.copy(
+            movingTimeTracker = _snapshot.value.movingTimeTracker.observe(sampleActiveSeconds, raw, threshold),
+        )
     }
 
     private fun currentReliableSpeed(nowNanos: Long): Double? {
@@ -633,20 +655,7 @@ class RecordingCoordinator internal constructor(
         runSimulation: RunSimulationState? = _snapshot.value.runSimulation,
     ): RecordingSnapshot {
         val previous = _snapshot.value
-        val threshold = when (previous.activityKind) {
-            ActivityKind.RUNNING -> 0.3
-            ActivityKind.WALKING, ActivityKind.HIKING -> 0.15
-            ActivityKind.CYCLING -> 0.5
-            else -> null
-        }
-        val nowNanos = clock.elapsedRealtimeNanos()
-        val speed = latestSpeedObservedAtNanos
-            ?.takeIf { nowNanos - it in 0..5 * NANOS_PER_SECOND }
-            ?.let { movingTimeSpeedMetersPerSecond }
         var moving = previous.movingTimeTracker
-        if (previous.status == RecordingStatus.ACTIVE && runSimulation == null) {
-            moving = moving.update(elapsedSeconds, threshold?.let { limit -> speed?.let { it < limit } })
-        }
         if (status != RecordingStatus.ACTIVE) moving = moving.suspend()
         return previous.copy(
             movingTimeTracker = moving,

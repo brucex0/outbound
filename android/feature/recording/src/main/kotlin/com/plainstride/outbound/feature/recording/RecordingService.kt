@@ -79,6 +79,7 @@ class RecordingService : Service() {
                         EXTRA_AUTO_PAUSE_ENABLED,
                         AutoPauseDefaults.enabled(intent.activityKindExtra()),
                     ),
+                    movingTimeDetectionEnabled = intent.getBooleanExtra(EXTRA_MOVING_TIME_DETECTION_ENABLED, true),
                     sessionId = intent.getStringExtra(EXTRA_SESSION_ID) ?: UUID.randomUUID().toString(),
                     companionType = intent.getStringExtra(EXTRA_COMPANION_TYPE)?.let { raw ->
                         runCatching { ActivityCompanionType.valueOf(raw) }.getOrNull()
@@ -201,6 +202,7 @@ class RecordingService : Service() {
         private const val EXTRA_SESSION_ID = "recording.session_id"
         private const val EXTRA_ACTIVITY_KIND = "recording.activity_kind"
         private const val EXTRA_AUTO_PAUSE_ENABLED = "recording.auto_pause_enabled"
+        private const val EXTRA_MOVING_TIME_DETECTION_ENABLED = "recording.moving_time_detection_enabled"
         private const val EXTRA_PERMISSION = "recording.permission"
         private const val EXTRA_COMPANION_TYPE = "recording.companion_type"
         private const val EXTRA_SIMULATED_RUN = "recording.simulated_run"
@@ -223,6 +225,7 @@ class RecordingService : Service() {
             commandId: String = UUID.randomUUID().toString(),
             sessionId: String = UUID.randomUUID().toString(),
             autoPauseEnabled: Boolean = AutoPauseDefaults.enabled(activityKind),
+            movingTimeDetectionEnabled: Boolean = true,
             companionType: ActivityCompanionType? = null,
             simulatedRun: Boolean = false,
             simulatedRoute: FollowedRouteConfiguration? = null,
@@ -235,6 +238,7 @@ class RecordingService : Service() {
             putExtra(EXTRA_PERMISSION, permission.name)
             putExtra(EXTRA_SESSION_ID, sessionId)
             putExtra(EXTRA_AUTO_PAUSE_ENABLED, autoPauseEnabled)
+            putExtra(EXTRA_MOVING_TIME_DETECTION_ENABLED, movingTimeDetectionEnabled)
             companionType?.let { putExtra(EXTRA_COMPANION_TYPE, it.name) }
             if (simulatedRun && BuildConfig.DEBUG) {
                 putExtra(EXTRA_SIMULATED_RUN, true)

@@ -958,7 +958,7 @@ private fun PostCard(post: SocialPost, unitSystem: MeasurementUnitSystem, loadPh
                     ) {
                         Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                             ActivityStat(formatDistance(activity.distanceM, unitSystem), stringResource(R.string.social_distance))
-                            ActivityStat(formatDuration(activity.durationSecs), stringResource(R.string.social_time))
+                            ActivityStat(formatDuration(activity.durationSecs), stringResource(ActivityR.string.activity_metric_moving_time))
                             ActivityStat(formatPace(activity.averagePaceSecsPerKm, unitSystem), stringResource(R.string.social_pace))
                         }
                     }
@@ -1221,7 +1221,7 @@ private fun SocialActivityDetail(
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(formatDuration(activity.durationSecs), fontWeight = FontWeight.Bold)
-                                Text(stringResource(R.string.social_time), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(ActivityR.string.activity_metric_moving_time), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }

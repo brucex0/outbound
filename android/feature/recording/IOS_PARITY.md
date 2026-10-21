@@ -85,3 +85,5 @@
 - Phone Run/Walk/Hike/Bike keep `elapsedSeconds` as the internal active workout clock and checkpoint a separate stop ledger; the public saved `durationSecs` is moving time. Wall-clock elapsed duration comes from the existing start/end timestamps.
 - Shared thresholds, confidence rules, UI semantics, source limits, and outdoor acceptance checks: `docs/activity-detail.md`, Moving And Elapsed Time.
 - The journal payload adds current stop-accounting state; Room tables and database version are unchanged. No local data reset is required. Confirmed stops survive process recovery; an interrupted candidate is cleared.
+
+- Stop accounting consumes raw fused-location observation timestamps before the route filter drops stationary fixes. UI ticks only publish the accumulated result. A zero distance minimum keeps stationary observations available; source confidence and the 30-second gap bound match iOS.

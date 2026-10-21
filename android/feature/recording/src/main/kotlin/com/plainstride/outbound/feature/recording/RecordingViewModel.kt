@@ -267,6 +267,7 @@ class RecordingViewModel @Inject constructor(
             permission,
             newCommandId(),
             autoPauseEnabled = launch.autoPauseEnabled ?: AutoPauseDefaults.enabled(launch.activityKind),
+            movingTimeDetectionEnabled = !launch.indoor,
             companionType = launch.companionType,
             simulatedRun = BuildConfig.DEBUG && launch.simulatedRunEnabled,
             simulatedRoute = launch.followedRoute,
@@ -319,6 +320,7 @@ class RecordingViewModel @Inject constructor(
         val current = snapshot.value
         analytics.record(AnalyticsEvent("activity_finished", mapOf(
             AnalyticsProperty.ActivityType to current.activityKind.name.lowercase(),
+            AnalyticsProperty.MovingTimeMethod to "gps_observations_v2",
             AnalyticsProperty.ElapsedDurationBucket to durationBucket(((current.recordedAtEpochMilliseconds - (current.startedAtEpochMilliseconds ?: current.recordedAtEpochMilliseconds)) / 1000).coerceAtLeast(current.movingSeconds)),
             AnalyticsProperty.DurationBucket to durationBucket(current.movingSeconds),
             AnalyticsProperty.DistanceBucket to distanceBucket(current.distanceMeters),
@@ -683,7 +685,8 @@ class RecordingViewModel @Inject constructor(
                 AnalyticsProperty.ActivityType to snapshot.activityKind.name.lowercase(),
                 AnalyticsProperty.GoalType to (if (currentLaunch.raceIntent != null) "race" else currentLaunch.goal.type.name.lowercase()),
                 AnalyticsProperty.DurationBucket to durationBucket(snapshot.movingSeconds),
-                AnalyticsProperty.ElapsedDurationBucket to durationBucket(((snapshot.recordedAtEpochMilliseconds - (snapshot.startedAtEpochMilliseconds ?: snapshot.recordedAtEpochMilliseconds)) / 1000).coerceAtLeast(snapshot.movingSeconds)),
+                AnalyticsProperty.MovingTimeMethod to "gps_observations_v2",
+            AnalyticsProperty.ElapsedDurationBucket to durationBucket(((snapshot.recordedAtEpochMilliseconds - (snapshot.startedAtEpochMilliseconds ?: snapshot.recordedAtEpochMilliseconds)) / 1000).coerceAtLeast(snapshot.movingSeconds)),
                 AnalyticsProperty.DistanceBucket to distanceBucket(snapshot.distanceMeters),
                 AnalyticsProperty.PhotoCountBucket to photoCountBucket(review.photoPaths.size),
                 AnalyticsProperty.RouteSelected to (currentLaunch.followedRoute != null),
