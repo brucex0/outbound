@@ -214,7 +214,7 @@ struct GearSettingsCard: View {
 
     private var selectedShoeSummary: String {
         if let defaultShoe = gearStore.defaultShoe {
-            return "Selected: \(defaultShoe.displayName)"
+            return String(localized: "Selected: \(defaultShoe.displayName)")
         }
         return gearStore.shoes.isEmpty ? "No shoe selected" : "\(gearStore.activeShoes.count) active"
     }
@@ -656,7 +656,7 @@ struct AssistantView: View {
 
     private var voiceStatusLine: String? {
         if voiceCommandStore.isRecording {
-            return voiceCommandStore.liveTranscript.isEmpty ? "Listening..." : "Listening"
+            return voiceCommandStore.liveTranscript.isEmpty ? String(localized: "Listening...") : String(localized: "Listening")
         }
         return voiceCommandStore.statusMessage
     }

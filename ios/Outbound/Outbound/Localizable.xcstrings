@@ -20753,13 +20753,13 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld mín."
+            "value": "%lld min"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld 分钟"
+            "value": "%lld分钟"
           }
         }
       }
@@ -64836,6 +64836,2399 @@
           "stringUnit": {
             "state": "translated",
             "value": "最高 %d 步/分钟"
+          }
+        }
+      }
+    },
+    "Cheer me on": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为我加油"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anímame"
+          }
+        }
+      }
+    },
+    "trusted_contacts.default_share": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cheer me on by default"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "默认邀请为我加油"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invitar a animarme por defecto"
+          }
+        }
+      }
+    },
+    "Make this workout easier": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "降低这次训练的难度"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz este entrenamiento más fácil"
+          }
+        }
+      }
+    },
+    "Make today’s workout easier": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "降低今天训练的难度"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz el entrenamiento de hoy más fácil"
+          }
+        }
+      }
+    },
+    "Why is this the right workout for me today?": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为什么今天适合做这次训练？"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Por qué este entrenamiento es adecuado para mí hoy?"
+          }
+        }
+      }
+    },
+    "Recovery run": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复跑"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carrera de recuperación"
+          }
+        }
+      }
+    },
+    "Walk-run": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑走交替"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caminar y correr"
+          }
+        }
+      }
+    },
+    "Tempo": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "节奏跑"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ritmo tempo"
+          }
+        }
+      }
+    },
+    "Intervals": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "间歇跑"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intervalos"
+          }
+        }
+      }
+    },
+    "Fartlek": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "法特莱克变速跑"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fartlek"
+          }
+        }
+      }
+    },
+    "Hills": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "坡跑"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuestas"
+          }
+        }
+      }
+    },
+    "Long run": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "长距离跑"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tirada larga"
+          }
+        }
+      }
+    },
+    "Cross-train": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "交叉训练"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrenamiento cruzado"
+          }
+        }
+      }
+    },
+    "Race prep": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "赛前准备"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparación de carrera"
+          }
+        }
+      }
+    },
+    "Race day": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "比赛日"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Día de carrera"
+          }
+        }
+      }
+    },
+    "Navigate": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找功能"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Navegar"
+          }
+        }
+      }
+    },
+    "Support": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "帮助"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayuda"
+          }
+        }
+      }
+    },
+    "Brainstorm": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一起想点子"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explorar ideas"
+          }
+        }
+      }
+    },
+    "Learn what Plainstride can do for you.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "了解Plainstride能为你做些什么。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descubre lo que Plainstride puede hacer por ti."
+          }
+        }
+      }
+    },
+    "Find the right tab, flow, or setting fast.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速找到需要的页面、操作或设置。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encuentra rápidamente la pestaña, el proceso o el ajuste que necesitas."
+          }
+        }
+      }
+    },
+    "Get help with setup and stuck moments.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置遇到困难或操作卡住时，随时寻求帮助。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recibe ayuda con la configuración y los problemas que surjan."
+          }
+        }
+      }
+    },
+    "Shape ideas for training and social loops.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一起探索训练和社交互动的新点子。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explora ideas para entrenar y conectar con otras personas."
+          }
+        }
+      }
+    },
+    "Shape ideas for training and motivation loops.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一起探索训练和保持动力的新点子。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explora ideas para entrenar y mantener la motivación."
+          }
+        }
+      }
+    },
+    "Turn loose goals into a doable week.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "把模糊的目标变成一周可执行的安排。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Convierte tus objetivos en una semana de actividad a tu alcance."
+          }
+        }
+      }
+    },
+    "What should I try first?": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我应该先试试什么？"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué debería probar primero?"
+          }
+        }
+      }
+    },
+    "I’m new here. What should I try first in Plainstride?": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我刚开始使用Plainstride，应该先试试什么？"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soy nuevo en Plainstride. ¿Qué debería probar primero?"
+          }
+        }
+      }
+    },
+    "Help me set up": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "帮我完成设置"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayúdame a configurarlo"
+          }
+        }
+      }
+    },
+    "Help me understand the main setup steps and where to fix things if something feels off.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "帮我了解主要设置步骤，以及遇到问题时该去哪里调整。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explícame los pasos principales de configuración y dónde corregir algo si no funciona bien."
+          }
+        }
+      }
+    },
+    "Brainstorm ideas": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一起想点子"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explorar ideas"
+          }
+        }
+      }
+    },
+    "Brainstorm a few ways this app could better support motivation, exploration, and sharing.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一起想想，这款应用还可以怎样更好地帮助我保持动力、探索和分享。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Propón algunas ideas para que esta app apoye mejor la motivación, la exploración y el intercambio."
+          }
+        }
+      }
+    },
+    "Plan my week": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安排我的一周"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Organiza mi semana"
+          }
+        }
+      }
+    },
+    "Use what you know about my activity and help me make a simple plan for this week.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "根据你对我运动情况的了解，帮我简单安排本周的活动。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa lo que sabes de mi actividad para ayudarme a organizar un plan sencillo para esta semana."
+          }
+        }
+      }
+    },
+    "assistant.welcome": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I can help with discovery, navigation, support, brainstorming, and simple planning."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我可以帮你发现功能、找到页面、解决使用问题、一起想点子，也可以简单安排训练。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puedo ayudarte a descubrir funciones, orientarte por la app, resolver dudas, explorar ideas y hacer planes sencillos."
+          }
+        }
+      }
+    },
+    "I couldn’t apply that change, so your original workout is unchanged.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未能应用这次调整，原训练保持不变。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No pude aplicar el cambio, así que tu entrenamiento original sigue igual."
+          }
+        }
+      }
+    },
+    "Kept the original workout.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已保留原训练。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se ha conservado el entrenamiento original."
+          }
+        }
+      }
+    },
+    "No active weekly goal yet.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前还没有本周目标。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no tienes un objetivo semanal activo."
+          }
+        }
+      }
+    },
+    "You do not have saved activity yet, so the best plan is to create an easy first win.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你还没有保存过运动，先轻松完成一次，迈出第一步。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todavía no tienes actividades guardadas. Lo mejor es empezar con una primera sesión sencilla."
+          }
+        }
+      }
+    },
+    "Moderate": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中等强度"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moderado"
+          }
+        }
+      }
+    },
+    "Easy endurance": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松耐力"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resistencia suave"
+          }
+        }
+      }
+    },
+    "Easy": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suave"
+          }
+        }
+      }
+    },
+    "A longer aerobic session.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一次较长的有氧训练。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una sesión aeróbica más larga."
+          }
+        }
+      }
+    },
+    "Controlled faster running with easy support.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可控的较快跑步，搭配轻松跑。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carrera rápida y controlada con tramos suaves."
+          }
+        }
+      }
+    },
+    "Shorter quality work with full control.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "时长较短、全程可控的质量训练。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una sesión de calidad más corta y totalmente controlada."
+          }
+        }
+      }
+    },
+    "A lighter session to absorb the week.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "降低强度，帮助身体消化本周训练。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una sesión más ligera para asimilar el trabajo de la semana."
+          }
+        }
+      }
+    },
+    "Mobility and easy movement.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "灵活性练习和轻松活动。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Movilidad y movimiento suave."
+          }
+        }
+      }
+    },
+    "Strength support for the plan.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为训练计划提供力量支持。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trabajo de fuerza para complementar el plan."
+          }
+        }
+      }
+    },
+    "A steady aerobic session.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一次稳定的有氧训练。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una sesión aeróbica constante."
+          }
+        }
+      }
+    },
+    "Build durable aerobic capacity.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "建立扎实、持久的有氧能力。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desarrolla una capacidad aeróbica duradera."
+          }
+        }
+      }
+    },
+    "Raise sustainable effort without overreaching.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "循序提升可持续强度，避免过度训练。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mejora el esfuerzo sostenible sin excederte."
+          }
+        }
+      }
+    },
+    "Touch faster mechanics while keeping the dose small.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用少量快速跑练习跑姿。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Practica la técnica a mayor velocidad con una dosis pequeña."
+          }
+        }
+      }
+    },
+    "Protect consistency while lowering strain.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "降低负担，同时保持训练连续性。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén la constancia reduciendo la carga."
+          }
+        }
+      }
+    },
+    "Support resilience for future sessions.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为今后的训练打好身体基础。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refuerza tu resistencia para futuras sesiones."
+          }
+        }
+      }
+    },
+    "Keep the plan moving with manageable aerobic work.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用可承受的有氧训练稳步推进计划。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avanza en el plan con trabajo aeróbico manejable."
+          }
+        }
+      }
+    },
+    "Smooth and controlled beats forcing it today.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天重在流畅、可控，不必硬撑。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoy es mejor mantener la fluidez y el control que forzar."
+          }
+        }
+      }
+    },
+    "Stay patient early so the finish still feels composed.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前段耐心些，结束时依然从容。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza con paciencia para terminar con control."
+          }
+        }
+      }
+    },
+    "Let this feel restorative from the first minute.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从第一分钟起就以恢复为主。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Busca una sensación de recuperación desde el primer minuto."
+          }
+        }
+      }
+    },
+    "Keep it conversational and leave a little in reserve.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持能自在交谈的强度，留一点余力。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén un esfuerzo que permita conversar y guarda algo de energía."
+          }
+        }
+      }
+    },
+    "Comfortably hard, never strained.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "适度吃力，不要硬撑。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exigente pero cómodo, sin forzar."
+          }
+        }
+      }
+    },
+    "Fast but relaxed.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速但放松。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rápido pero relajado."
+          }
+        }
+      }
+    },
+    "Easy enough to repeat next week.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松到下周还愿意再来一次。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo bastante suave como para repetirlo la próxima semana."
+          }
+        }
+      }
+    },
+    "Light and restorative.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻柔、帮助恢复。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suave y reparador."
+          }
+        }
+      }
+    },
+    "Conversational effort.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "能自在交谈的强度。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esfuerzo que permite conversar."
+          }
+        }
+      }
+    },
+    "social.groups.yours": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your groups"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的群组"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus grupos"
+          }
+        }
+      }
+    },
+    "social.groups.search": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search Groups by name or city"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按名称或城市搜索群组"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar grupos por nombre o ciudad"
+          }
+        }
+      }
+    },
+    "group.community": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Community Group"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "社区群组"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grupo comunitario"
+          }
+        }
+      }
+    },
+    "social.notification.request": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ wants to connect."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@想添加你为跑友。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ quiere conectar contigo."
+          }
+        }
+      }
+    },
+    "social.notification.connected": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ accepted your connection request."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@接受了你的跑友请求。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ aceptó tu solicitud de conexión."
+          }
+        }
+      }
+    },
+    "social.notification.invitation_accepted": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ accepted your activity invitation."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@接受了你的活动邀请。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ aceptó tu invitación a la actividad."
+          }
+        }
+      }
+    },
+    "social.notification.cheered": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ cheered your activity."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@为你的运动加油了。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ animó tu actividad."
+          }
+        }
+      }
+    },
+    "social.notification.commented": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ commented on your activity."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@评论了你的运动。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ comentó tu actividad."
+          }
+        }
+      }
+    },
+    "social.notification.live_cheer": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ invited you to cheer them on."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@邀请你为其加油。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ te invitó a animarle."
+          }
+        }
+      }
+    },
+    "social.notification.joined": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ joined %@."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@加入了%2$@。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ se unió a %2$@."
+          }
+        }
+      }
+    },
+    "social.connections.title": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connections"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑友"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conexiones"
+          }
+        }
+      }
+    },
+    "social.connections.find": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find people"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查找跑友"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar personas"
+          }
+        }
+      }
+    },
+    "social.connections.workout_in_progress": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout in progress"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在运动"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrenamiento en curso"
+          }
+        }
+      }
+    },
+    "watch.app.toggle": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Watch app"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "手表应用"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App del reloj"
+          }
+        }
+      }
+    },
+    "watch.app.toggle.hint": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start Plainstride on Apple Watch when you start an activity."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始运动时，在Apple Watch上启动Plainstride。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicia Plainstride en el Apple Watch al comenzar una actividad."
+          }
+        }
+      }
+    },
+    "Selected: %@": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已选择：%@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleccionado: %@"
+          }
+        }
+      }
+    },
+    "Focused on Today: %@ · %@": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前关注：%1$@ · %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enfoque de hoy: %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "Helping with %@": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在协助：%@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayuda con %@"
+          }
+        }
+      }
+    },
+    "Opening %@.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在打开%@。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abriendo %@."
+          }
+        }
+      }
+    },
+    "%lldm %llds": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld分%2$lld秒"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld min %2$lld s"
+          }
+        }
+      }
+    },
+    "You already have %lld saved activities, so the plan can build on real momentum.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你已经保存了%lld次运动，可以在已有积累上继续安排。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ya tienes %lld actividades guardadas, así que el plan puede aprovechar ese impulso."
+          }
+        }
+      }
+    },
+    "workout.duration_title": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d min %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d分钟%2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d min de %2$@"
+          }
+        }
+      }
+    },
+    "Taper": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "赛前减量"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reducción de carga"
+          }
+        }
+      }
+    },
+    "Build": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提升期"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desarrollo"
+          }
+        }
+      }
+    },
+    "Base": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "基础期"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Base"
+          }
+        }
+      }
+    },
+    "Recovery": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复期"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperación"
+          }
+        }
+      }
+    },
+    "Peak": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "巅峰期"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pico"
+          }
+        }
+      }
+    },
+    "Race": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "比赛期"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Competición"
+          }
+        }
+      }
+    },
+    "Easy run + strides": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑＋加速跑"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carrera suave con progresivos"
+          }
+        }
+      }
+    },
+    "easy run + strides": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑＋加速跑"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "carrera suave con progresivos"
+          }
+        }
+      }
+    },
+    "easy run": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "carrera suave"
+          }
+        }
+      }
+    },
+    "recovery run": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复跑"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "carrera de recuperación"
+          }
+        }
+      }
+    },
+    "recovery walk": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复步行"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "caminata de recuperación"
+          }
+        }
+      }
+    },
+    "brisk walk": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快走"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "caminata rápida"
+          }
+        }
+      }
+    },
+    "walk-run return": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑走交替恢复训练"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vuelta a caminar y correr"
+          }
+        }
+      }
+    },
+    "easy ride": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松骑行"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ciclismo suave"
+          }
+        }
+      }
+    },
+    "recovery spin": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复骑行"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pedaleo de recuperación"
+          }
+        }
+      }
+    },
+    "Easy with relaxed speed": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑，搭配放松加速"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suave con aceleraciones relajadas"
+          }
+        }
+      }
+    },
+    "Smooth aerobic": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平稳有氧"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aeróbico fluido"
+          }
+        }
+      }
+    },
+    "Conversational": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可自在交谈"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conversacional"
+          }
+        }
+      }
+    },
+    "Gentle": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻柔"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ligero"
+          }
+        }
+      }
+    },
+    "very easy": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "非常轻松"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "muy suave"
+          }
+        }
+      }
+    },
+    "Warmup": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "热身"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calentamiento"
+          }
+        }
+      }
+    },
+    "Cooldown": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "放松"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelta a la calma"
+          }
+        }
+      }
+    },
+    "Main": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主训练"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bloque principal"
+          }
+        }
+      }
+    },
+    "I cannot browse or show live outside listings from inside Plainstride yet.\n\nIf you are planning time around Vancouver, I can still help turn that into an active outing: pick a walk, run, or ride window, then use the orange activity button when you are ready to record it.": {
+      "comment": "[platform:ios] Offline assistant reply.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我目前还不能在Plainstride里浏览或展示外部实时信息。\n\n如果你正计划在温哥华附近活动，我仍可以帮你安排一次户外运动：选好步行、跑步或骑行的时间，准备好后用橙色运动按钮开始记录。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no puedo navegar ni mostrar listados externos en directo dentro de Plainstride.\n\nSi planeas pasar tiempo por Vancouver, puedo ayudarte a organizar una salida activa: elige un momento para caminar, correr o pedalear y usa el botón naranja cuando quieras registrarla."
+          }
+        }
+      }
+    },
+    "Start with three loops: the motivation dashboard on Me, the orange activity button for a quick session, and Social for squad energy.\n\nIf you want the best first experience, choose your companion style, try one suggested session, and save one activity so Plainstride has momentum to build on.": {
+      "comment": "[platform:ios] Offline assistant reply.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可以先试试三个入口：“我”里的动力面板、快速开始运动的橙色按钮，以及与跑友互动的“社交”页面。\n\n想获得更好的初次体验，可以先选择喜欢的跑步伙伴风格，尝试一次推荐训练，再保存一次运动，让Plainstride逐渐了解你的节奏。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza con tres opciones: el panel de motivación en Yo, el botón naranja para una sesión rápida y Social para conectar con tu grupo.\n\nPara una buena primera experiencia, elige el estilo de tu compañero, prueba una sesión sugerida y guarda una actividad para empezar a crear impulso."
+          }
+        }
+      }
+    },
+    "Start with three loops: the motivation dashboard on Me, the orange activity button for a quick session, and your saved activity history.\n\nIf you want the best first experience, choose your companion style, try one suggested session, and save one activity so Plainstride has momentum to build on.": {
+      "comment": "[platform:ios] Offline assistant reply.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可以先试试三个入口：“我”里的动力面板、快速开始运动的橙色按钮，以及已保存的运动记录。\n\n想获得更好的初次体验，可以先选择喜欢的跑步伙伴风格，尝试一次推荐训练，再保存一次运动，让Plainstride逐渐了解你的节奏。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza con tres opciones: el panel de motivación en Yo, el botón naranja para una sesión rápida y tu historial de actividades guardadas.\n\nPara una buena primera experiencia, elige el estilo de tu compañero, prueba una sesión sugerida y guarda una actividad para empezar a crear impulso."
+          }
+        }
+      }
+    },
+    "Here’s the fastest map:\nMe is where you check motivation, tune your companion, review activities, and open Settings.\nSocial is for Groups, rivals, and lightweight community loops.\nThe floating orange activity button starts or resumes a live session from either tab.\n\nIf you tell me what you want to do, I can point to the exact screen.": {
+      "comment": "[platform:ios] Offline assistant reply.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速找到你需要的功能：\n在“我”里查看动力状态、调整跑步伙伴、回顾运动并打开设置。\n“社交”页面提供群组、跑友互动和轻松的社区活动。\n悬浮的橙色运动按钮可以从任一页面开始或继续运动。\n\n告诉我你想做什么，我可以帮你找到具体页面。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquí tienes el camino más rápido:\nEn Yo puedes revisar tu motivación, ajustar tu compañero, consultar actividades y abrir Ajustes.\nSocial reúne grupos, rivales e interacciones con la comunidad.\nEl botón naranja flotante inicia o reanuda una sesión desde cualquier pestaña.\n\nDime qué quieres hacer y te indicaré la pantalla exacta."
+          }
+        }
+      }
+    },
+    "Here’s the fastest map:\nMe is where you check motivation, tune your companion, review activities, and open Settings.\nActivity history lives on Me, and the floating orange activity button starts or resumes a live session.\n\nIf you tell me what you want to do, I can point to the exact screen.": {
+      "comment": "[platform:ios] Offline assistant reply.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速找到你需要的功能：\n在“我”里查看动力状态、调整跑步伙伴、回顾运动并打开设置。\n运动历史也在“我”里，悬浮的橙色运动按钮可以开始或继续运动。\n\n告诉我你想做什么，我可以帮你找到具体页面。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquí tienes el camino más rápido:\nEn Yo puedes revisar tu motivación, ajustar tu compañero, consultar actividades y abrir Ajustes.\nEl historial está en Yo y el botón naranja flotante inicia o reanuda una sesión.\n\nDime qué quieres hacer y te indicaré la pantalla exacta."
+          }
+        }
+      }
+    },
+    "The main support checkpoints are account setup, guide preferences, Apple Health or Music permissions, and making sure the start flow feels clear.\n\nIf something feels broken, tell me the exact step and what you expected to happen. I’ll turn it into a short troubleshooting path instead of generic advice.": {
+      "comment": "[platform:ios] Offline assistant reply.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主要可以检查账号设置、跑步伙伴偏好、Apple健康或音乐权限，以及开始运动的操作是否清楚。\n\n如果遇到问题，告诉我具体卡在哪一步、原本期待发生什么，我会帮你整理简明的排查步骤。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los puntos principales que conviene revisar son la cuenta, las preferencias del compañero, los permisos de Salud de Apple o Música y los pasos para empezar una actividad.\n\nSi algo falla, dime el paso exacto y qué esperabas que ocurriera. Te propondré una guía breve para resolverlo."
+          }
+        }
+      }
+    },
+    "A strong direction would be to make the assistant feel like a concierge, not just a chatbot.\n\nGood ideas to explore:\nGive it guided prompts for finding features, choosing a guide vibe, and building a comeback plan.\nLet it turn vague intent like “I only have 20 minutes” into a suggested session.\nUse it in Social to suggest Groups, challenges, or rivalry nudges based on recent activity.": {
+      "comment": "[platform:ios] Offline assistant reply.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一个值得探索的方向，是让助手像贴心的服务伙伴，而不只是聊天工具。\n\n可以尝试这些点子：\n通过引导式提问发现功能、选择伙伴风格、制定重返训练的计划。\n把“我只有20分钟”这样的想法变成一次推荐训练。\n根据近期运动，在“社交”里推荐群组、挑战或跑友互动。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una buena dirección sería que el asistente se sintiera como un acompañante atento, además de un chat.\n\nIdeas para explorar:\nOfrecer preguntas guiadas para descubrir funciones, elegir el estilo del compañero y preparar un plan de vuelta al entrenamiento.\nConvertir ideas como «solo tengo 20 minutos» en una sesión sugerida.\nSugerir grupos, retos o interacciones en Social según la actividad reciente."
+          }
+        }
+      }
+    },
+    "A strong direction would be to make the assistant feel like a concierge, not just a chatbot.\n\nGood ideas to explore:\nGive it guided prompts for finding features, choosing a guide vibe, and building a comeback plan.\nLet it turn vague intent like “I only have 20 minutes” into a suggested session.\nUse it to explain progress, route history, and the next realistic training step from recent activity.": {
+      "comment": "[platform:ios] Offline assistant reply.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一个值得探索的方向，是让助手像贴心的服务伙伴，而不只是聊天工具。\n\n可以尝试这些点子：\n通过引导式提问发现功能、选择伙伴风格、制定重返训练的计划。\n把“我只有20分钟”这样的想法变成一次推荐训练。\n根据近期运动解释进步、路线历史，以及下一步切实可行的训练。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una buena dirección sería que el asistente se sintiera como un acompañante atento, además de un chat.\n\nIdeas para explorar:\nOfrecer preguntas guiadas para descubrir funciones, elegir el estilo del compañero y preparar un plan de vuelta al entrenamiento.\nConvertir ideas como «solo tengo 20 minutos» en una sesión sugerida.\nExplicar el progreso, el historial de rutas y el siguiente paso realista según la actividad reciente."
+          }
+        }
+      }
+    },
+    "Here’s a simple starting plan.\n%@\nCurrent goal: %@\n\nTry one light session, one slightly more intentional session, and one open-ended session you can start quickly from the orange activity button. Keep the week realistic enough that repeating it still feels possible.": {
+      "comment": "[platform:ios] Offline assistant reply.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先从一个简单的安排开始。\n%1$@\n当前目标：%2$@\n\n尝试一次轻松训练、一次稍有针对性的训练，再留一次灵活活动，随时用橙色运动按钮开始。本周安排要切合实际，让你觉得下周也能继续。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquí tienes un plan sencillo para empezar.\n%1$@\nObjetivo actual: %2$@\n\nPrueba una sesión ligera, otra con un poco más de intención y una sesión flexible que puedas iniciar con el botón naranja. Mantén una semana realista que te apetezca repetir."
+          }
+        }
+      }
+    },
+    "record.setup.cheer_me_on": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cheer me on"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为我加油"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anímame"
+          }
+        }
+      }
+    },
+    "assistant.welcome.context": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your current companion is %@, you have %lld saved activities, and your week is at %.1f km."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你当前的跑步伙伴是%1$@，已保存%2$lld次运动，本周已完成%3$.1f公里。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu compañero actual es %1$@, tienes %2$lld actividades guardadas y esta semana llevas %3$.1f km."
+          }
+        }
+      }
+    },
+    "assistant.welcome.context.single": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your current companion is %@, you have %lld saved activity, and your week is at %.1f km."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你当前的跑步伙伴是%1$@，已保存%2$lld次运动，本周已完成%3$.1f公里。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu compañero actual es %1$@, tienes %2$lld actividad guardada y esta semana llevas %3$.1f km."
+          }
+        }
+      }
+    },
+    "social.notification.weekly_complete": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ completed this week’s focus."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@完成了本周目标。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ completó el enfoque de esta semana."
+          }
+        }
+      }
+    },
+    "See today's suggested workout, readiness, and quick start.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看今天的推荐训练、身体状态和快速开始入口。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consulta el entrenamiento sugerido, tu disposición y el inicio rápido de hoy."
+          }
+        }
+      }
+    },
+    "Find connections, groups, invitations, and shared activities.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查找跑友、群组、邀请和分享的活动。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Encuentra contactos, grupos, invitaciones y actividades compartidas."
+          }
+        }
+      }
+    },
+    "Review your profile, progress, recent runs, and personal settings.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看个人资料、进步、近期跑步和个人设置。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa tu perfil, tu progreso, las carreras recientes y tus ajustes personales."
+          }
+        }
+      }
+    },
+    "Manage account, appearance, integrations, and app preferences.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "管理账号、外观、服务连接和应用偏好。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gestiona tu cuenta, la apariencia, las integraciones y las preferencias de la app."
+          }
+        }
+      }
+    },
+    "Change the app's appearance mode or color theme.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更改应用的显示模式或配色主题。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambia el modo de apariencia o el tema de color de la app."
+          }
+        }
+      }
+    },
+    "Review completed and saved activities.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回顾已完成并保存的运动。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa las actividades completadas y guardadas."
+          }
+        }
+      }
+    },
+    "Choose voice, coaching tone, and spoken update frequency.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择伙伴声音、陪跑风格和语音播报频率。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige la voz, el tono del compañero y la frecuencia de los avisos hablados."
+          }
+        }
+      }
+    },
+    "Manage Apple Health permissions and workout integration.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "管理Apple健康权限和运动数据连接。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gestiona los permisos de Salud de Apple y la integración de entrenamientos."
+          }
+        }
+      }
+    },
+    "Learn where to connect and choose music for an activity.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "了解如何连接音乐服务并为运动选择音乐。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descubre dónde conectar y elegir música para una actividad."
+          }
+        }
+      }
+    },
+    "Live Guidance settings": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步伙伴设置"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustes del compañero en directo"
+          }
+        }
+      }
+    },
+    "Opening %@ with the goal already set. Tap Start when you are ready.": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在打开%1$@，目标已设好。准备好后轻点“开始”。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abriendo %1$@ con el objetivo listo. Toca Iniciar cuando quieras empezar."
+          }
+        }
+      }
+    },
+    "Listening...": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在聆听…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuchando…"
+          }
+        }
+      }
+    },
+    "Listening": {
+      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在聆听"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuchando"
           }
         }
       }

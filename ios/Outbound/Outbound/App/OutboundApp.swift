@@ -749,17 +749,17 @@ enum TrainingPlanWorkoutKind: String, Codable, Hashable {
 
     var displayName: String {
         switch self {
-        case .easy: return "Easy run"
-        case .recovery: return "Recovery run"
-        case .walkRun: return "Walk-run"
-        case .tempo: return "Tempo"
-        case .interval: return "Intervals"
-        case .fartlek: return "Fartlek"
-        case .hill: return "Hills"
-        case .longRun: return "Long run"
-        case .crossTrain: return "Cross-train"
-        case .racePrep: return "Race prep"
-        case .race: return "Race day"
+        case .easy: return String(localized: "Easy run")
+        case .recovery: return String(localized: "Recovery run")
+        case .walkRun: return String(localized: "Walk-run")
+        case .tempo: return String(localized: "Tempo")
+        case .interval: return String(localized: "Intervals")
+        case .fartlek: return String(localized: "Fartlek")
+        case .hill: return String(localized: "Hills")
+        case .longRun: return String(localized: "Long run")
+        case .crossTrain: return String(localized: "Cross-train")
+        case .racePrep: return String(localized: "Race prep")
+        case .race: return String(localized: "Race day")
         }
     }
 }
@@ -809,9 +809,9 @@ struct TrainingPlanWorkoutStep: Identifiable, Codable, Hashable {
 
     private static func formatDuration(_ seconds: Int) -> String {
         if seconds % 60 == 0 {
-            return "\(seconds / 60) min"
+            return String(localized: "\(seconds / 60) min")
         }
-        return "\(seconds / 60)m \(seconds % 60)s"
+        return String(localized: "\(seconds / 60)m \(seconds % 60)s")
     }
 }
 
@@ -869,9 +869,9 @@ struct TrainingPlanWorkout: Identifiable, Codable, Hashable {
 
     var durationLabel: String {
         if durationSeconds % 60 == 0 {
-            return "\(durationSeconds / 60) min"
+            return String(localized: "\(durationSeconds / 60) min")
         }
-        return "\(durationSeconds / 60)m \(durationSeconds % 60)s"
+        return String(localized: "\(durationSeconds / 60)m \(durationSeconds % 60)s")
     }
 
     var stepSummary: [String] {
@@ -1910,34 +1910,34 @@ enum AssistantCapability: String, CaseIterable, Codable, Identifiable {
     var title: String {
         switch self {
         case .discover:
-            "Discover"
+            String(localized: "Discover")
         case .navigate:
-            "Navigate"
+            String(localized: "Navigate")
         case .support:
-            "Support"
+            String(localized: "Support")
         case .brainstorm:
-            "Brainstorm"
+            String(localized: "Brainstorm")
         case .plan:
-            "Plan"
+            String(localized: "Plan")
         }
     }
 
     var subtitle: String {
         switch self {
         case .discover:
-            "Learn what Plainstride can do for you."
+            String(localized: "Learn what Plainstride can do for you.")
         case .navigate:
-            "Find the right tab, flow, or setting fast."
+            String(localized: "Find the right tab, flow, or setting fast.")
         case .support:
-            "Get help with setup and stuck moments."
+            String(localized: "Get help with setup and stuck moments.")
         case .brainstorm:
 #if OUTBOUND_ENABLE_SOCIAL
-            "Shape ideas for training and social loops."
+            String(localized: "Shape ideas for training and social loops.")
 #else
-            "Shape ideas for training and motivation loops."
+            String(localized: "Shape ideas for training and motivation loops.")
 #endif
         case .plan:
-            "Turn loose goals into a doable week."
+            String(localized: "Turn loose goals into a doable week.")
         }
     }
 
@@ -1988,15 +1988,15 @@ struct AssistantDestinationDefinition: Hashable {
 /// Adding a page requires metadata here plus a destination renderer at the app composition root.
 enum AssistantDestinationRegistry {
     static let destinations: [AssistantDestinationDefinition] = [
-        .init(id: .today, title: "Today", summary: "See today's suggested workout, readiness, and quick start.", searchTerms: ["today", "workout", "readiness", "quick run", "start run"], defaultAnchorID: "today.primary-action"),
-        .init(id: .social, title: "Social", summary: "Find connections, groups, invitations, and shared activities.", searchTerms: ["social", "friends", "connections", "groups", "invitations"], defaultAnchorID: nil),
-        .init(id: .me, title: "Me", summary: "Review your profile, progress, recent runs, and personal settings.", searchTerms: ["me", "profile", "progress", "personal"], defaultAnchorID: nil),
-        .init(id: .settings, title: "Settings", summary: "Manage account, appearance, integrations, and app preferences.", searchTerms: ["settings", "preferences", "account"], defaultAnchorID: nil),
-        .init(id: .appearance, title: String(localized: "Appearance"), summary: "Change the app's appearance mode or color theme.", searchTerms: ["appearance", "app theme", "theme", "color theme", "light mode", "dark mode"], defaultAnchorID: nil),
-        .init(id: .activityHistory, title: "Activity history", summary: "Review completed and saved activities.", searchTerms: ["activity history", "my activities", "past activities", "saved runs", "recent runs"], defaultAnchorID: "activity-history.content"),
-        .init(id: .guideSettings, title: "Live Guidance settings", summary: "Choose voice, coaching tone, and spoken update frequency.", searchTerms: ["guide", "companion settings", "voice", "coaching tone", "spoken updates"], defaultAnchorID: "guide-settings.content"),
-        .init(id: .settingsAppleHealth, title: "Apple Health", summary: "Manage Apple Health permissions and workout integration.", searchTerms: ["health", "apple health", "healthkit", "health permission"], defaultAnchorID: "apple-health.content"),
-        .init(id: .settingsAppleMusic, title: "Apple Music", summary: "Learn where to connect and choose music for an activity.", searchTerms: ["music", "apple music", "playlist", "music permission"], defaultAnchorID: "apple-music.content")
+        .init(id: .today, title: String(localized: "Today"), summary: String(localized: "See today's suggested workout, readiness, and quick start."), searchTerms: ["today", "workout", "readiness", "quick run", "start run"], defaultAnchorID: "today.primary-action"),
+        .init(id: .social, title: String(localized: "Social"), summary: String(localized: "Find connections, groups, invitations, and shared activities."), searchTerms: ["social", "friends", "connections", "groups", "invitations"], defaultAnchorID: nil),
+        .init(id: .me, title: String(localized: "Me"), summary: String(localized: "Review your profile, progress, recent runs, and personal settings."), searchTerms: ["me", "profile", "progress", "personal"], defaultAnchorID: nil),
+        .init(id: .settings, title: String(localized: "Settings"), summary: String(localized: "Manage account, appearance, integrations, and app preferences."), searchTerms: ["settings", "preferences", "account"], defaultAnchorID: nil),
+        .init(id: .appearance, title: String(localized: "Appearance"), summary: String(localized: "Change the app's appearance mode or color theme."), searchTerms: ["appearance", "app theme", "theme", "color theme", "light mode", "dark mode"], defaultAnchorID: nil),
+        .init(id: .activityHistory, title: String(localized: "Activity history"), summary: String(localized: "Review completed and saved activities."), searchTerms: ["activity history", "my activities", "past activities", "saved runs", "recent runs"], defaultAnchorID: "activity-history.content"),
+        .init(id: .guideSettings, title: String(localized: "Live Guidance settings"), summary: String(localized: "Choose voice, coaching tone, and spoken update frequency."), searchTerms: ["guide", "companion settings", "voice", "coaching tone", "spoken updates"], defaultAnchorID: "guide-settings.content"),
+        .init(id: .settingsAppleHealth, title: String(localized: "Apple Health"), summary: String(localized: "Manage Apple Health permissions and workout integration."), searchTerms: ["health", "apple health", "healthkit", "health permission"], defaultAnchorID: "apple-health.content"),
+        .init(id: .settingsAppleMusic, title: String(localized: "Apple Music"), summary: String(localized: "Learn where to connect and choose music for an activity."), searchTerms: ["music", "apple music", "playlist", "music permission"], defaultAnchorID: "apple-music.content")
     ]
 
     static func definition(for id: AssistantDestinationID) -> AssistantDestinationDefinition {
@@ -2191,26 +2191,26 @@ final class AssistantStore: ObservableObject {
         AssistantSuggestion(
             id: "discover-best-parts",
             capability: .discover,
-            title: "What should I try first?",
-            prompt: "I’m new here. What should I try first in Plainstride?"
+            title: String(localized: "What should I try first?"),
+            prompt: String(localized: "I’m new here. What should I try first in Plainstride?")
         ),
         AssistantSuggestion(
             id: "support-setup",
             capability: .support,
-            title: "Help me set up",
-            prompt: "Help me understand the main setup steps and where to fix things if something feels off."
+            title: String(localized: "Help me set up"),
+            prompt: String(localized: "Help me understand the main setup steps and where to fix things if something feels off.")
         ),
         AssistantSuggestion(
             id: "brainstorm-features",
             capability: .brainstorm,
-            title: "Brainstorm ideas",
-            prompt: "Brainstorm a few ways this app could better support motivation, exploration, and sharing."
+            title: String(localized: "Brainstorm ideas"),
+            prompt: String(localized: "Brainstorm a few ways this app could better support motivation, exploration, and sharing.")
         ),
         AssistantSuggestion(
             id: "plan-week",
             capability: .plan,
-            title: "Plan my week",
-            prompt: "Use what you know about my activity and help me make a simple plan for this week."
+            title: String(localized: "Plan my week"),
+            prompt: String(localized: "Use what you know about my activity and help me make a simple plan for this week.")
         )
     ]
 
@@ -2223,15 +2223,29 @@ final class AssistantStore: ObservableObject {
     }
 
     func ensureSeedMessage(context: AssistantContext) {
+        let contextFormat = context.activityCount == 1
+            ? String(localized: "assistant.welcome.context.single", defaultValue: "Your current companion is %@, you have %lld saved activity, and your week is at %.1f km.")
+            : String(localized: "assistant.welcome.context", defaultValue: "Your current companion is %@, you have %lld saved activities, and your week is at %.1f km.")
+        let welcome = String(localized: "assistant.welcome", defaultValue: "I can help with discovery, navigation, support, brainstorming, and simple planning.")
+            + "\n\n" + String(format: contextFormat, locale: .autoupdatingCurrent,
+                                context.guideName, context.activityCount, context.weeklyDistanceKilometers)
+        if let first = messages.first, first.author == .assistant,
+           first.text.hasPrefix("I can help with discovery, navigation, support, brainstorming, and simple planning.") {
+            messages[0] = AssistantMessage(
+                id: first.id,
+                author: .assistant,
+                text: welcome,
+                createdAt: first.createdAt,
+                capability: first.capability,
+                navigationTarget: first.navigationTarget
+            )
+            persistMessages()
+        }
         guard messages.isEmpty else { return }
         messages = [
             AssistantMessage(
                 author: .assistant,
-                text: """
-                I can help with discovery, navigation, support, brainstorming, and simple planning.
-
-                I already know your current guide is \(context.guideName), you have \(context.activityCount) saved activit\(context.activityCount == 1 ? "y" : "ies"), and your week is at \(String(format: "%.1f", context.weeklyDistanceKilometers)) km.
-                """,
+                text: welcome,
                 capability: .discover
             )
         ]
@@ -2281,7 +2295,7 @@ final class AssistantStore: ObservableObject {
             persistMessages()
         } catch {
             Self.logger.error("Companion action decision failed: \(error.localizedDescription, privacy: .public)")
-            messages.append(AssistantMessage(author: .assistant, text: "I couldn’t apply that change, so your original workout is unchanged.", capability: .plan))
+            messages.append(AssistantMessage(author: .assistant, text: String(localized: "I couldn’t apply that change, so your original workout is unchanged."), capability: .plan))
             pendingCompanionConfirmation = nil
             persistMessages()
         }
@@ -2303,7 +2317,7 @@ final class AssistantStore: ObservableObject {
         messages.append(
             AssistantMessage(
                 author: .assistant,
-                text: "Opening \(intent.title) with the goal already set. Tap Start when you are ready.",
+                text: String(localized: "Opening \(intent.title) with the goal already set. Tap Start when you are ready."),
                 capability: .plan
             )
         )
@@ -2455,7 +2469,7 @@ final class AssistantStore: ObservableObject {
     ) -> CompanionTask {
         if context.isRecordingActive { return .liveGuidance }
         if context.currentScreen?.localizedCaseInsensitiveContains("Today") == true { return .adaptToday }
-        let normalized = prompt.lowercased()
+        let normalized = routingPrompt(for: prompt).lowercased()
         if normalized.contains("today") || normalized.contains("short on time") || normalized.contains("tired") || normalized.contains("sore") {
             return .adaptToday
         }
@@ -2472,89 +2486,89 @@ final class AssistantStore: ObservableObject {
         context: AssistantContext
     ) -> String {
         if Self.looksLikeExternalDiscoveryRequest(prompt) {
-            return """
+            return String(localized: """
             I cannot browse or show live outside listings from inside Plainstride yet.
 
             If you are planning time around Vancouver, I can still help turn that into an active outing: pick a walk, run, or ride window, then use the orange activity button when you are ready to record it.
-            """
+            """)
         }
 
         switch capability {
         case .discover:
 #if OUTBOUND_ENABLE_SOCIAL
-            return """
+            return String(localized: """
             Start with three loops: the motivation dashboard on Me, the orange activity button for a quick session, and Social for squad energy.
 
             If you want the best first experience, choose your companion style, try one suggested session, and save one activity so Plainstride has momentum to build on.
-            """
+            """)
 #else
-            return """
+            return String(localized: """
             Start with three loops: the motivation dashboard on Me, the orange activity button for a quick session, and your saved activity history.
 
             If you want the best first experience, choose your companion style, try one suggested session, and save one activity so Plainstride has momentum to build on.
-            """
+            """)
 #endif
         case .navigate:
 #if OUTBOUND_ENABLE_SOCIAL
-            return """
+            return String(localized: """
             Here’s the fastest map:
             Me is where you check motivation, tune your companion, review activities, and open Settings.
             Social is for Groups, rivals, and lightweight community loops.
             The floating orange activity button starts or resumes a live session from either tab.
 
             If you tell me what you want to do, I can point to the exact screen.
-            """
+            """)
 #else
-            return """
+            return String(localized: """
             Here’s the fastest map:
             Me is where you check motivation, tune your companion, review activities, and open Settings.
             Activity history lives on Me, and the floating orange activity button starts or resumes a live session.
 
             If you tell me what you want to do, I can point to the exact screen.
-            """
+            """)
 #endif
         case .support:
-            return """
+            return String(localized: """
             The main support checkpoints are account setup, guide preferences, Apple Health or Music permissions, and making sure the start flow feels clear.
 
             If something feels broken, tell me the exact step and what you expected to happen. I’ll turn it into a short troubleshooting path instead of generic advice.
-            """
+            """)
         case .brainstorm:
 #if OUTBOUND_ENABLE_SOCIAL
-            return """
+            return String(localized: """
             A strong direction would be to make the assistant feel like a concierge, not just a chatbot.
 
             Good ideas to explore:
             Give it guided prompts for finding features, choosing a guide vibe, and building a comeback plan.
             Let it turn vague intent like “I only have 20 minutes” into a suggested session.
             Use it in Social to suggest Groups, challenges, or rivalry nudges based on recent activity.
-            """
+            """)
 #else
-            return """
+            return String(localized: """
             A strong direction would be to make the assistant feel like a concierge, not just a chatbot.
 
             Good ideas to explore:
             Give it guided prompts for finding features, choosing a guide vibe, and building a comeback plan.
             Let it turn vague intent like “I only have 20 minutes” into a suggested session.
             Use it to explain progress, route history, and the next realistic training step from recent activity.
-            """
+            """)
 #endif
         case .plan:
-            let goalLine = context.currentGoalSummary ?? "No active weekly goal yet."
+            let goalLine = context.currentGoalSummary ?? String(localized: "No active weekly goal yet.")
             let activityLine: String
             if context.activityCount == 0 {
-                activityLine = "You do not have saved activity yet, so the best plan is to create an easy first win."
+                activityLine = String(localized: "You do not have saved activity yet, so the best plan is to create an easy first win.")
             } else {
-                activityLine = "You already have \(context.activityCount) saved activities, so the plan can build on real momentum."
+                activityLine = String(localized: "You already have \(context.activityCount) saved activities, so the plan can build on real momentum.")
             }
 
-            return """
+            return String(localized: """
             Here’s a simple starting plan.
             \(activityLine)
             Current goal: \(goalLine)
 
             Try one light session, one slightly more intentional session, and one open-ended session you can start quickly from the orange activity button. Keep the week realistic enough that repeating it still feels possible.
-            """
+            """)
         }
     }
 
@@ -2564,7 +2578,7 @@ final class AssistantStore: ObservableObject {
     }
 
     private static func navigationReply(for target: AssistantNavigationTarget) -> String {
-        "Opening \(target.definition.title)."
+        String(localized: "Opening \(target.definition.title).")
     }
 
     private static func groundedProductPrompt(
@@ -2590,8 +2604,24 @@ final class AssistantStore: ObservableObject {
         }
     }
 
+    // Localized suggestion text stays visible in the conversation and goes to
+    // the model unchanged; deterministic classification keeps its original route.
+    private static func routingPrompt(for prompt: String) -> String {
+        let presets = [
+            "I’m new here. What should I try first in Plainstride?",
+            "Help me understand the main setup steps and where to fix things if something feels off.",
+            "Brainstorm a few ways this app could better support motivation, exploration, and sharing.",
+            "Use what you know about my activity and help me make a simple plan for this week.",
+            "Make today’s workout easier",
+            "Why is this the right workout for me today?"
+        ]
+        return presets.first {
+            prompt == NSLocalizedString($0, bundle: .main, value: $0, comment: "Assistant preset routing")
+        } ?? prompt
+    }
+
     private static func inferCapability(from prompt: String) -> AssistantCapability {
-        let lowercased = prompt.lowercased()
+        let lowercased = routingPrompt(for: prompt).lowercased()
 
         if lowercased.contains("where") || lowercased.contains("find") || lowercased.contains("go to") || lowercased.contains("navigate") {
             return .navigate

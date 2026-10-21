@@ -1,0 +1,4692 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Guided 1.5K": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1.5公里引导跑"
+          }
+        }
+      }
+    },
+    "A short, focused effort that builds toward a strong final 300 metres.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "短程专项训练，逐步加力，在最后300米有力收尾。"
+          }
+        }
+      }
+    },
+    "1.5 km · Fast and controlled": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1.5公里 · 快而可控"
+          }
+        }
+      }
+    },
+    "Run · 1.5 km · controlled hard effort": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步 · 1.5公里 · 高强度但可控"
+          }
+        }
+      }
+    },
+    "Find control before speed, hold your form through the middle, then build into the finish.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先稳住再提速，中段保持姿态，最后逐步加力。"
+          }
+        }
+      }
+    },
+    "Start Guided 1.5K": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始1.5公里引导跑"
+          }
+        }
+      }
+    },
+    "Run an evenly controlled 1500 metres and reserve the hardest sustainable effort for the closing segment.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以均匀、可控的强度跑完1500米，把最强且能维持的发力留给最后一段。"
+          }
+        }
+      }
+    },
+    "Warm up with easy running, then add a few relaxed accelerations.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先轻松跑热身，再做几次放松的加速跑。"
+          }
+        }
+      }
+    },
+    "Choose an effort you can control for the full distance; this is not an all-out sprint.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择全程都能掌控的强度，这不是全力冲刺。"
+          }
+        }
+      }
+    },
+    "Quick but contained": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速而克制"
+          }
+        }
+      }
+    },
+    "Accelerate smoothly, settle your breathing, and avoid spending the first minute chasing pace.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "平稳加速，稳住呼吸，第一分钟不要急着追配速。"
+          }
+        }
+      }
+    },
+    "Quick and calm. Leave room to build.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快而从容，留出加力的余地。"
+          }
+        }
+      }
+    },
+    "If the start already feels strained, ease back immediately and rebuild your rhythm.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果一开始就感到吃力，立即减速，重新找回节奏。"
+          }
+        }
+      }
+    },
+    "Hard, rhythmic, and repeatable": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "强度高、节奏稳、可重复"
+          }
+        }
+      }
+    },
+    "Hold a tall posture, relaxed shoulders, and an even rhythm through the longest section.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在最长的中段保持身体挺拔、肩膀放松、节奏均匀。"
+          }
+        }
+      }
+    },
+    "Stay tall. Hold the rhythm.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "身体挺拔，守住节奏。"
+          }
+        }
+      }
+    },
+    "Shorten your stride slightly rather than forcing the pace.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "略微缩短步幅，不要硬追配速。"
+          }
+        }
+      }
+    },
+    "Hard with control": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高强度但可控"
+          }
+        }
+      }
+    },
+    "Begin a gradual build while keeping your arms compact and your stride underneath you.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始逐步加力，摆臂紧凑，落脚保持在身体下方。"
+          }
+        }
+      }
+    },
+    "Start the build. Smooth first, faster second.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始加力，先跑顺，再跑快。"
+          }
+        }
+      }
+    },
+    "If form is fading, hold the current effort instead of accelerating.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果姿态开始走样，保持当前强度，不再加速。"
+          }
+        }
+      }
+    },
+    "Strongest sustainable finish": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以能维持的最强力度收尾"
+          }
+        }
+      }
+    },
+    "Lift your cadence and commit to the line without tightening your face or shoulders.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提高步频，朝终点坚定前进，面部和肩膀保持放松。"
+          }
+        }
+      }
+    },
+    "Two hundred to go. Fast feet, relaxed shoulders.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还剩200米，脚步轻快，肩膀放松。"
+          }
+        }
+      }
+    },
+    "Keep the best form you can and carry the effort steadily to the finish.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尽量保持良好姿态，以稳定的强度跑到终点。"
+          }
+        }
+      }
+    },
+    "Keep moving easily for several minutes after the distance ends.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成距离后继续轻松活动几分钟。"
+          }
+        }
+      }
+    },
+    "Note whether the opening pace left enough control for the final 300 metres.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "回顾起跑配速是否为最后300米留足了余力。"
+          }
+        }
+      }
+    },
+    "Stop for sharp or increasing pain, dizziness, chest discomfort, confusion, or any symptom that feels unsafe.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如有尖锐或加重的疼痛、头晕、胸部不适、意识模糊或任何让你感到不安全的症状，请停止运动。"
+          }
+        }
+      }
+    },
+    "Guided 3K": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3公里引导跑"
+          }
+        }
+      }
+    },
+    "Three focused kilometres with a patient start and progressive finish.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "专注跑完3公里，从容起步，逐步加力收尾。"
+          }
+        }
+      }
+    },
+    "3 km · Controlled": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3公里 · 可控强度"
+          }
+        }
+      }
+    },
+    "Run · 3 km · steady-to-hard effort": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步 · 3公里 · 从稳定到高强度"
+          }
+        }
+      }
+    },
+    "Let the first kilometre come to you, lock into the middle, and build only when control is secure.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第一公里从容起步，中段锁定节奏，完全掌控后再加力。"
+          }
+        }
+      }
+    },
+    "Start Guided 3K": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始3公里引导跑"
+          }
+        }
+      }
+    },
+    "Complete 3K with even mechanics and a controlled negative progression rather than an aggressive start.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以稳定的跑姿完成3公里，逐步提速，避免起步过猛。"
+          }
+        }
+      }
+    },
+    "Warm up until easy running feels fluid.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "热身到轻松跑感觉流畅。"
+          }
+        }
+      }
+    },
+    "Decide whether today is a steady benchmark or a harder time trial and keep the opening effort consistent with that choice.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先决定今天是稳定强度的基准跑，还是更高强度的计时跑，起步强度要与目标一致。"
+          }
+        }
+      }
+    },
+    "Purposeful and contained": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "积极而克制"
+          }
+        }
+      }
+    },
+    "Settle into efficient steps and let other runners or early pace changes go.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找到高效的脚步节奏，不跟跑他人，也不随早期配速波动而加速。"
+          }
+        }
+      }
+    },
+    "Settle first. The work comes later.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先稳下来，后面再发力。"
+          }
+        }
+      }
+    },
+    "Back off until breathing and form feel coordinated.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "减速到呼吸与跑姿重新协调。"
+          }
+        }
+      }
+    },
+    "Firm, even rhythm": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有力、均匀的节奏"
+          }
+        }
+      }
+    },
+    "Keep your gaze forward, arms quiet, and pace even through the central kilometre and a half.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中间1.5公里保持目视前方、摆臂稳定、配速均匀。"
+          }
+        }
+      }
+    },
+    "One rhythm. Relax into the work.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "守住一个节奏，放松地投入。"
+          }
+        }
+      }
+    },
+    "Reduce pace slightly and protect form if the effort spikes early.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果过早感到吃力，稍微减速，优先保持姿态。"
+          }
+        }
+      }
+    },
+    "Hard and deliberate": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高强度、有意识地发力"
+          }
+        }
+      }
+    },
+    "Increase pressure gradually without reaching for a longer stride.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "逐步加力，不要刻意增大步幅。"
+          }
+        }
+      }
+    },
+    "One kilometre left. Build with cadence.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还剩1公里，用步频带动提速。"
+          }
+        }
+      }
+    },
+    "Hold the current rhythm if a build would compromise form.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果加力会影响姿态，就保持当前节奏。"
+          }
+        }
+      }
+    },
+    "Strong finish": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有力收尾"
+          }
+        }
+      }
+    },
+    "Commit to the final 400 metres and keep your shoulders loose as cadence rises.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最后400米坚定发力，提高步频时肩膀依然放松。"
+          }
+        }
+      }
+    },
+    "Four hundred to go. Commit and stay relaxed.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还剩400米，坚定向前，保持放松。"
+          }
+        }
+      }
+    },
+    "Run strongly to the line at the best sustainable effort available today.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以今天能维持的最佳强度有力跑到终点。"
+          }
+        }
+      }
+    },
+    "Jog or walk easily until breathing settles.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松慢跑或步行，直到呼吸平稳。"
+          }
+        }
+      }
+    },
+    "Record whether the second half felt as controlled as the first.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记录后半程是否和前半程一样可控。"
+          }
+        }
+      }
+    },
+    "Guided 5K": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5公里引导跑"
+          }
+        }
+      }
+    },
+    "A steady 5K with patient pacing and distance-based focus cues.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从容配速跑完5公里，按距离获得专注提示。"
+          }
+        }
+      }
+    },
+    "5 km · Steady": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "5公里 · 稳定强度"
+          }
+        }
+      }
+    },
+    "Run · 5 km · steady effort": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步 · 5公里 · 稳定强度"
+          }
+        }
+      }
+    },
+    "Settle in early, stay smooth through the middle, and finish with control.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前段稳住，中段流畅，最后从容收尾。"
+          }
+        }
+      }
+    },
+    "Start Guided 5K": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始5公里引导跑"
+          }
+        }
+      }
+    },
+    "Cover 5K at a sustainable effort, using the final kilometre to finish stronger only when the first four remain controlled.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以能维持的强度完成5公里；前4公里始终可控时，才在最后1公里加强发力。"
+          }
+        }
+      }
+    },
+    "Decide whether this is an easy completion run, a steady benchmark, or a race effort.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先决定这是轻松完赛跑、稳定强度的基准跑，还是比赛强度跑。"
+          }
+        }
+      }
+    },
+    "Begin more conservatively than your first impulse.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "起步比直觉再保守一些。"
+          }
+        }
+      }
+    },
+    "Patient and controlled": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从容、可控"
+          }
+        }
+      }
+    },
+    "Use the first kilometre to settle breathing, cadence, and posture.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用第一公里稳住呼吸、步频和姿态。"
+          }
+        }
+      }
+    },
+    "Patient first kilometre. Find your rhythm.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第一公里别着急，找到节奏。"
+          }
+        }
+      }
+    },
+    "Slow down or add a brief walk break before effort becomes strained.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在感到吃力之前减速，或短暂步行恢复。"
+          }
+        }
+      }
+    },
+    "Steady and repeatable": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "稳定、可重复"
+          }
+        }
+      }
+    },
+    "Hold the effort you chose, scan for relaxed shoulders, and avoid unnecessary surges.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持选定的强度，留意肩膀放松，避免不必要的加速。"
+          }
+        }
+      }
+    },
+    "Smooth through the middle. One steady gear.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中段跑顺，守住稳定节奏。"
+          }
+        }
+      }
+    },
+    "Choose a pace you could maintain for another kilometre beyond the finish.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择一种过了终点还能再跑1公里的配速。"
+          }
+        }
+      }
+    },
+    "Focused and controlled": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "专注、可控"
+          }
+        }
+      }
+    },
+    "If you still feel composed, gradually increase pressure; otherwise keep the same steady effort.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果仍然从容，逐步加力；否则保持原有的稳定强度。"
+          }
+        }
+      }
+    },
+    "One and a half to go. Build only if you own the pace.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还剩1.5公里，掌控配速后再加力。"
+          }
+        }
+      }
+    },
+    "Maintain rather than accelerate if breathing or form is deteriorating.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果呼吸或姿态开始失控，保持强度，不再加速。"
+          }
+        }
+      }
+    },
+    "Lift cadence, keep your face and hands relaxed, and run through the distance target.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提高步频，面部和双手放松，跑过目标距离。"
+          }
+        }
+      }
+    },
+    "Five hundred left. Strong form to the line.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还剩500米，保持有力姿态跑到终点。"
+          }
+        }
+      }
+    },
+    "Hold a proud, steady finish without sprinting.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "稳稳地跑完，无需冲刺。"
+          }
+        }
+      }
+    },
+    "Walk or jog easily for a few minutes.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松步行或慢跑几分钟。"
+          }
+        }
+      }
+    },
+    "Save one note about pacing: too quick, even, or room to build.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记下一条配速感受：起步太快、全程均匀，还是仍有余力。"
+          }
+        }
+      }
+    },
+    "Guided 10K": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10公里引导跑"
+          }
+        }
+      }
+    },
+    "Patient pacing and progressive focus across ten kilometres.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用从容的配速和逐段聚焦的提示跑完10公里。"
+          }
+        }
+      }
+    },
+    "10 km · Endurance": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10公里 · 耐力"
+          }
+        }
+      }
+    },
+    "Run · 10 km · aerobic effort": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步 · 10公里 · 有氧强度"
+          }
+        }
+      }
+    },
+    "Keep the first half patient and let your rhythm carry you home.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前半程保持耐心，让节奏带你完成后半程。"
+          }
+        }
+      }
+    },
+    "Start Guided 10K": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始10公里引导跑"
+          }
+        }
+      }
+    },
+    "Cover 10K with even effort, avoiding early surges and preserving enough control to run the final two kilometres well.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以均匀强度跑完10公里，避免前段突然加速，为最后2公里留足掌控力。"
+          }
+        }
+      }
+    },
+    "Pick an effort that matches today's purpose and conditions.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "根据今天的目标和环境选择合适的强度。"
+          }
+        }
+      }
+    },
+    "Use familiar hydration if conditions or duration call for it; do not experiment during a goal effort.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "根据天气和时长按熟悉的方式补水；目标跑中不要尝试新的补给方式。"
+          }
+        }
+      }
+    },
+    "Patient and aerobic": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从容、有氧"
+          }
+        }
+      }
+    },
+    "Start below the effort you expect to hold later and let your body warm into the distance.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "起步强度低于后段计划，让身体逐渐适应距离。"
+          }
+        }
+      }
+    },
+    "Two patient kilometres. Save the work for later.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前2公里耐心些，把发力留给后面。"
+          }
+        }
+      }
+    },
+    "Ease off or add an early walk break if breathing rises too quickly.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果呼吸上升太快，减速或提前短暂步行。"
+          }
+        }
+      }
+    },
+    "Even, economical rhythm": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "均匀、省力的节奏"
+          }
+        }
+      }
+    },
+    "Hold an economical pace, check posture periodically, and take the route one kilometre at a time.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持省力的配速，定期检查姿态，一公里一公里地跑。"
+          }
+        }
+      }
+    },
+    "Cruise the middle. Quiet arms, steady feet.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中段顺畅巡航，摆臂稳，脚步匀。"
+          }
+        }
+      }
+    },
+    "Reduce effort until you can speak a short sentence without gasping.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "降低强度，直到能不喘气地说完一句短句。"
+          }
+        }
+      }
+    },
+    "Focused and purposeful": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "专注、有目标"
+          }
+        }
+      }
+    },
+    "Stay present as fatigue grows; build gently only if pace and form remain under control.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "疲劳增加时保持专注，只有配速和姿态仍然可控时才轻轻加力。"
+          }
+        }
+      }
+    },
+    "Three kilometres left. Focus, do not force.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还剩3公里，专注就好，不要硬撑。"
+          }
+        }
+      }
+    },
+    "Hold steady or use a short walk reset rather than letting form unravel.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持稳定，或用短暂步行重整状态，不要让姿态散掉。"
+          }
+        }
+      }
+    },
+    "Strong controlled close": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有力、可控地收尾"
+          }
+        }
+      }
+    },
+    "Use the final kilometre progressively: first hold form, then lift cadence toward the finish.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最后1公里逐步加力：先守住姿态，再提高步频冲向终点。"
+          }
+        }
+      }
+    },
+    "One kilometre. Build in control and finish proud.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最后1公里，稳稳加力，自信完赛。"
+          }
+        }
+      }
+    },
+    "Keep the current effort and run evenly through the line.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持当前强度，均匀跑过终点。"
+          }
+        }
+      }
+    },
+    "Walk or jog until your breathing has clearly settled.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步行或慢跑，直到呼吸明显平稳。"
+          }
+        }
+      }
+    },
+    "Compare the feel of the first two and final two kilometres before judging the result.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先对比最初2公里和最后2公里的感受，再评价成绩。"
+          }
+        }
+      }
+    },
+    "Guided Half Marathon": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "半程马拉松引导跑"
+          }
+        }
+      }
+    },
+    "A prepared runner's 21.1K guide with patient pacing and familiar fueling.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "面向已有准备的跑者，以从容配速和熟悉补给完成21.1公里。"
+          }
+        }
+      }
+    },
+    "21.1 km · Endurance": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "21.1公里 · 耐力"
+          }
+        }
+      }
+    },
+    "Run · 21.1 km · prepared endurance effort": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步 · 21.1公里 · 需具备耐力基础"
+          }
+        }
+      }
+    },
+    "Break the distance into calm sections, follow your practiced fueling plan, and protect the first half.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "把距离分成从容的小段，遵循练习过的补给计划，前半程保持克制。"
+          }
+        }
+      }
+    },
+    "Start Guided Half Marathon": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始半程马拉松引导跑"
+          }
+        }
+      }
+    },
+    "Help a prepared runner complete 21.0975K with restrained early effort, even middle kilometres, and a finish based on actual readiness.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "帮助已有准备的跑者完成21.0975公里：前段克制、中段均匀，最后根据真实状态决定如何收尾。"
+          }
+        }
+      }
+    },
+    "Confirm the route, conditions, water access, and practiced fueling plan before starting.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始前确认路线、环境、饮水点及练习过的补给计划。"
+          }
+        }
+      }
+    },
+    "Set an effort ceiling for the first 10K and commit not to chase early pace.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为前10公里设定强度上限，不追逐早期配速。"
+          }
+        }
+      }
+    },
+    "Deliberately restrained": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刻意保留余力"
+          }
+        }
+      }
+    },
+    "Let the field or watch go if needed; establish relaxed breathing and an economical stride.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "必要时不跟随人群或手表配速，建立放松的呼吸和省力的步幅。"
+          }
+        }
+      }
+    },
+    "Three patient kilometres. Protect the day.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前3公里耐心些，为全程留余地。"
+          }
+        }
+      }
+    },
+    "Slow down early; small corrections now are cheaper than large corrections later.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尽早减速；现在的小调整，胜过后面的被迫大调整。"
+          }
+        }
+      }
+    },
+    "Comfortably sustainable": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "舒适、可持续"
+          }
+        }
+      }
+    },
+    "Lock into a repeatable rhythm and follow your practiced hydration and fueling timing.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "锁定能重复的节奏，按练习过的时间补水、补给。"
+          }
+        }
+      }
+    },
+    "Settle and fuel as practiced. Nothing new today.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "稳住节奏，照常补给，今天不尝试新方法。"
+          }
+        }
+      }
+    },
+    "Walk briefly at an aid point or reduce pace if fueling, heat, or hills raise the effort.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果补给、炎热或坡度让强度升高，在补给点短暂步行或减速。"
+          }
+        }
+      }
+    },
+    "Steady concentration": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "稳定、专注"
+          }
+        }
+      }
+    },
+    "Run kilometre to kilometre, keep fueling familiar, and make posture the priority when fatigue appears.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一公里一公里地跑，沿用熟悉的补给方式，疲劳时优先照顾姿态。"
+          }
+        }
+      }
+    },
+    "Past halfway. Keep the rhythm honest and simple.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已过半程，守住简单、稳定的节奏。"
+          }
+        }
+      }
+    },
+    "Shift to a planned run-walk pattern before fatigue becomes a crisis.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在疲劳变得难以应付前，切换到预定的跑走交替模式。"
+          }
+        }
+      }
+    },
+    "Focused late-race work": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "后程专注发力"
+          }
+        }
+      }
+    },
+    "Hold effort on hills and into wind; build only if breathing, form, and fueling all remain stable.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上坡、逆风时维持强度；只有呼吸、姿态和补给都稳定时才加力。"
+          }
+        }
+      }
+    },
+    "Five kilometres left. Focus first, build second.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还剩5公里，先专注，再加力。"
+          }
+        }
+      }
+    },
+    "Maintain or add short walk breaks; finishing safely is the priority.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持强度或加入短暂步行；安全完成最重要。"
+          }
+        }
+      }
+    },
+    "Best safe finish available": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以安全范围内的最佳状态收尾"
+          }
+        }
+      }
+    },
+    "Run the final 1.1K with compact form and increase effort only as the finish becomes certain.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最后1.1公里保持紧凑姿态，确定能顺利完成后再增加强度。"
+          }
+        }
+      }
+    },
+    "Final 1.1K. Strong, compact, and all the way through.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最后1.1公里，有力、紧凑，一直向前。"
+          }
+        }
+      }
+    },
+    "Keep moving safely at the best sustainable effort available.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以能维持的最佳强度安全前进。"
+          }
+        }
+      }
+    },
+    "Keep walking after the finish and begin your practiced recovery routine.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "冲线后继续步行，开始练习过的恢复流程。"
+          }
+        }
+      }
+    },
+    "Do not make immediate training decisions; review pacing and fueling after recovery.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不要立刻决定后续训练，恢复后再回顾配速和补给。"
+          }
+        }
+      }
+    },
+    "Stop and use event or emergency support for chest discomfort, faintness, confusion, severe shortness of breath, loss of coordination, or any symptom that feels unsafe.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如有胸部不适、濒临晕厥感、意识模糊、严重气短、协调能力下降或任何让你感到不安全的症状，请停止运动并寻求赛事支援或紧急救助。"
+          }
+        }
+      }
+    },
+    "Stop for sharp or worsening pain rather than trying to finish through it.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出现尖锐或加重的疼痛时请停止，不要忍痛坚持完赛。"
+          }
+        }
+      }
+    },
+    "Guided Marathon": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全程马拉松引导跑"
+          }
+        }
+      }
+    },
+    "A prepared runner's 42.2K guide for even pacing, familiar fuel, and safe decisions.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "面向已有准备的跑者，以均匀配速、熟悉补给和安全决策完成42.2公里。"
+          }
+        }
+      }
+    },
+    "42.2 km · Endurance": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "42.2公里 · 耐力"
+          }
+        }
+      }
+    },
+    "Run · 42.2 km · prepared marathon effort": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步 · 42.2公里 · 需具备马拉松基础"
+          }
+        }
+      }
+    },
+    "Start slower than excitement suggests, follow the plan you practiced, and make patient decisions deep into the distance.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "起步比兴奋时想跑的更慢，执行练习过的计划，后程始终耐心判断。"
+          }
+        }
+      }
+    },
+    "Start Guided Marathon": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始全程马拉松引导跑"
+          }
+        }
+      }
+    },
+    "Help a prepared runner complete 42.195K through even pacing, practiced fueling, and conservative choices when conditions or symptoms change.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "帮助已有准备的跑者完成42.195公里，保持均匀配速、熟悉的补给方式，并在环境或症状变化时采取保守选择。"
+          }
+        }
+      }
+    },
+    "Confirm route support, weather, emergency contacts, location sharing, aid access, and your practiced fuel and hydration plan.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确认路线保障、天气、紧急联系人、位置共享、补给点，以及练习过的补给和补水计划。"
+          }
+        }
+      }
+    },
+    "Commit to a conservative first 10K and to adjusting effort for heat, hills, wind, or unexpected symptoms.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前10公里保持保守，遇到炎热、坡道、风或意外症状时及时调整强度。"
+          }
+        }
+      }
+    },
+    "Almost too easy": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松到几乎觉得太慢"
+          }
+        }
+      }
+    },
+    "Let excitement pass through without turning it into pace; establish calm breathing and clear space around you.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "让兴奋自然过去，不把它变成速度；稳住呼吸，留出周围空间。"
+          }
+        }
+      }
+    },
+    "Five protected kilometres. Easy is the assignment.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前5公里保护体力，轻松就是任务。"
+          }
+        }
+      }
+    },
+    "Slow down immediately if the start does not feel restrained.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果起步感觉不够克制，立即减速。"
+          }
+        }
+      }
+    },
+    "Economical and routine": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "省力、熟悉"
+          }
+        }
+      }
+    },
+    "Settle into repeatable mechanics and begin the exact fueling and hydration routine practiced in training.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "稳定重复跑姿，开始严格执行训练中练习过的补给和补水流程。"
+          }
+        }
+      }
+    },
+    "Make it routine. Easy rhythm, familiar fuel.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按熟悉的方式来：轻松节奏，熟悉补给。"
+          }
+        }
+      }
+    },
+    "Use aid-station walk breaks or reduce pace before small issues compound.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在小问题累积之前，利用补给站步行休息或减速。"
+          }
+        }
+      }
+    },
+    "Steady patience": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "稳定、耐心"
+          }
+        }
+      }
+    },
+    "Take the course in small sections, keep fueling familiar, and resist any urge to race before 30K.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "把赛道分成小段，沿用熟悉的补给方式，30公里之前抵住提速比赛的冲动。"
+          }
+        }
+      }
+    },
+    "Patient through thirty. Keep stacking calm kilometres.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "耐心跑过30公里，一公里一公里从容积累。"
+          }
+        }
+      }
+    },
+    "Adjust for heat, hills, stomach issues, or rising effort; the original pace is no longer the goal if conditions have changed.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "根据炎热、坡度、肠胃问题或强度上升调整；环境变了，就不要固守原配速。"
+          }
+        }
+      }
+    },
+    "Deep, controlled work": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深入发力、保持可控"
+          }
+        }
+      }
+    },
+    "Focus on posture, compact steps, and the next landmark; hold effort rather than forcing pace.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "专注姿态、紧凑脚步和下一个路标，保持强度，不硬追配速。"
+          }
+        }
+      }
+    },
+    "This is the work. Short horizon, steady form.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "现在进入关键段，目标放近，姿态稳住。"
+          }
+        }
+      }
+    },
+    "Adopt a deliberate run-walk pattern and use course support before the situation becomes unsafe.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在情况变得不安全前，主动采用跑走交替并寻求赛道支援。"
+          }
+        }
+      }
+    },
+    "Best safe effort available": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安全范围内的最佳强度"
+          }
+        }
+      }
+    },
+    "Keep decisions simple: form, direction, aid, next kilometre. Increase effort only when your condition is stable and the finish is close.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "把决策简化为姿态、方向、补给和下一公里。状态稳定且接近终点时才增加强度。"
+          }
+        }
+      }
+    },
+    "Five kilometres left. Stay safe, stay compact, keep moving forward.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还剩5公里，注意安全，脚步紧凑，继续向前。"
+          }
+        }
+      }
+    },
+    "Walk, stop at aid, or end the attempt if symptoms or conditions make continuing unsafe.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果症状或环境让继续前进变得不安全，请步行、到补给点停下或结束尝试。"
+          }
+        }
+      }
+    },
+    "Keep walking through the finish area and accept support if you feel unwell or unsteady.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通过终点区时继续步行；如感到不适或站立不稳，请接受帮助。"
+          }
+        }
+      }
+    },
+    "Begin the recovery routine you prepared, and delay analysis until you are warm, fed, hydrated, and settled.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始准备好的恢复流程，等到保暖、进食、补水且状态平稳后再分析表现。"
+          }
+        }
+      }
+    },
+    "Stop when weather, route conditions, loss of supplies, or loss of support makes continuing unsafe.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果天气、路线、补给或支援条件使继续前进变得不安全，请停止运动。"
+          }
+        }
+      }
+    },
+    "First Run-Walk": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "初次跑走交替"
+          }
+        }
+      }
+    },
+    "Short running intervals with generous walking recoveries.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "短时跑步搭配充分的步行恢复。"
+          }
+        }
+      }
+    },
+    "29 min · Run-walk": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "29分钟 · 跑走交替"
+          }
+        }
+      }
+    },
+    "Run · 29 min · beginner intervals": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步 · 29分钟 · 入门间歇"
+          }
+        }
+      }
+    },
+    "Keep every run gentle, use the full walk recovery, and finish feeling that you could do more.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每段跑步都放轻松，用足步行恢复时间，结束时仍留有余力。"
+          }
+        }
+      }
+    },
+    "Start First Run-Walk": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始初次跑走交替"
+          }
+        }
+      }
+    },
+    "Warm-up walk": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步行热身"
+          }
+        }
+      }
+    },
+    "Walk easily and let your body warm up": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松步行，让身体逐渐热起来"
+          }
+        }
+      }
+    },
+    "Gentle run 1": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑1"
+          }
+        }
+      }
+    },
+    "Easy jogging, not a sprint": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松慢跑，不要冲刺"
+          }
+        }
+      }
+    },
+    "Walk 1": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步行1"
+          }
+        }
+      }
+    },
+    "Recover fully": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "充分恢复"
+          }
+        }
+      }
+    },
+    "Gentle run 2": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑2"
+          }
+        }
+      }
+    },
+    "Match the first easy effort": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持与第一段相同的轻松强度"
+          }
+        }
+      }
+    },
+    "Walk 2": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步行2"
+          }
+        }
+      }
+    },
+    "Relax your breathing": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "放松呼吸"
+          }
+        }
+      }
+    },
+    "Gentle run 3": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑3"
+          }
+        }
+      }
+    },
+    "Small, comfortable steps": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "小步、舒适地跑"
+          }
+        }
+      }
+    },
+    "Walk 3": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步行3"
+          }
+        }
+      }
+    },
+    "Use all of the recovery": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用足恢复时间"
+          }
+        }
+      }
+    },
+    "Gentle run 4": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑4"
+          }
+        }
+      }
+    },
+    "Stay relaxed": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持放松"
+          }
+        }
+      }
+    },
+    "Walk 4": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步行4"
+          }
+        }
+      }
+    },
+    "Let your breathing settle": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "让呼吸平稳下来"
+          }
+        }
+      }
+    },
+    "Gentle run 5": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑5"
+          }
+        }
+      }
+    },
+    "Keep the effort easy": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持轻松强度"
+          }
+        }
+      }
+    },
+    "Walk 5": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步行5"
+          }
+        }
+      }
+    },
+    "No need to rush": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不用着急"
+          }
+        }
+      }
+    },
+    "Gentle run 6": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑6"
+          }
+        }
+      }
+    },
+    "Light feet and relaxed hands": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "脚步轻盈，双手放松"
+          }
+        }
+      }
+    },
+    "Walk 6": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步行6"
+          }
+        }
+      }
+    },
+    "Gentle run 7": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑7"
+          }
+        }
+      }
+    },
+    "Same calm effort": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持同样从容的强度"
+          }
+        }
+      }
+    },
+    "Walk 7": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步行7"
+          }
+        }
+      }
+    },
+    "Settle before the final run": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最后一段跑之前先稳下来"
+          }
+        }
+      }
+    },
+    "Final gentle run": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最后一段轻松跑"
+          }
+        }
+      }
+    },
+    "Finish with control": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从容收尾"
+          }
+        }
+      }
+    },
+    "Cooldown walk": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步行放松"
+          }
+        }
+      }
+    },
+    "Walk easily until breathing settles": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松步行，直到呼吸平稳"
+          }
+        }
+      }
+    },
+    "Introduce running through eight one-minute easy efforts separated by full walking recoveries.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通过8组1分钟轻松跑开始跑步，每组之间充分步行恢复。"
+          }
+        }
+      }
+    },
+    "Wear comfortable shoes and choose a route that lets you stop safely.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "穿舒适的鞋，选择方便安全停下的路线。"
+          }
+        }
+      }
+    },
+    "Plan to repeat this workout on another day rather than making it harder today.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "计划改天重复这次训练，不必今天就增加难度。"
+          }
+        }
+      }
+    },
+    "Easy walking": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松步行"
+          }
+        }
+      }
+    },
+    "Walk naturally and let your breathing and joints warm gradually.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自然步行，让呼吸和关节逐渐适应。"
+          }
+        }
+      }
+    },
+    "Easy walk. No rush to run.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松走，不急着跑。"
+          }
+        }
+      }
+    },
+    "Continue walking if your body does not feel ready to jog.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果身体还没准备好慢跑，就继续步行。"
+          }
+        }
+      }
+    },
+    "Gentle jog, full walking recovery": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松慢跑、充分步行恢复"
+          }
+        }
+      }
+    },
+    "Jog each minute gently, then use the entire ninety-second walk to recover.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每分钟跑得轻松些，随后用足90秒步行恢复。"
+          }
+        }
+      }
+    },
+    "Easy run, easier walk. Repeat with control.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑得轻松，走得更轻松，从容重复。"
+          }
+        }
+      }
+    },
+    "Walk any run interval or end the running portion early; completing every repeat is optional.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "任何一段跑步都可以改成步行，也可以提前结束跑步部分；无需完成所有组数。"
+          }
+        }
+      }
+    },
+    "Relaxed walking": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "放松步行"
+          }
+        }
+      }
+    },
+    "Walk easily until breathing settles and finish without rushing.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松步行到呼吸平稳，不急着结束。"
+          }
+        }
+      }
+    },
+    "You did the work. Walk it down gently.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "训练完成了，慢慢走下来。"
+          }
+        }
+      }
+    },
+    "Stop in a safe place if walking is uncomfortable.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果步行也不舒服，请在安全地点停下。"
+          }
+        }
+      }
+    },
+    "Finish feeling capable of doing a little more.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "结束时应感觉自己还能再做一点。"
+          }
+        }
+      }
+    },
+    "Take at least one recovery day before repeating if this was a new effort.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果这是新的训练强度，再次尝试前至少恢复一天。"
+          }
+        }
+      }
+    },
+    "Easy 30": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30分钟轻松跑"
+          }
+        }
+      }
+    },
+    "Thirty conversational minutes with a gentle start and finish.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30分钟能自在交谈的跑步，起步和收尾都放轻松。"
+          }
+        }
+      }
+    },
+    "30 min · Easy": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30分钟 · 轻松"
+          }
+        }
+      }
+    },
+    "Run · 30 min · conversational effort": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步 · 30分钟 · 可自在交谈的强度"
+          }
+        }
+      }
+    },
+    "Let pace be the outcome, not the target; keep the whole run conversational.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "让配速随状态自然形成，不追目标，全程都能自在交谈。"
+          }
+        }
+      }
+    },
+    "Start Easy 30": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始30分钟轻松跑"
+          }
+        }
+      }
+    },
+    "Gentle start": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻柔起步"
+          }
+        }
+      }
+    },
+    "Very easy running or brisk walking": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "非常轻松地跑或快走"
+          }
+        }
+      }
+    },
+    "Easy running": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑"
+          }
+        }
+      }
+    },
+    "Comfortable conversation effort": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "能舒适交谈的强度"
+          }
+        }
+      }
+    },
+    "Ease down": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "逐渐放慢"
+          }
+        }
+      }
+    },
+    "Easy jog or walk": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松慢跑或步行"
+          }
+        }
+      }
+    },
+    "Accumulate thirty low-stress aerobic minutes while reinforcing relaxed, repeatable running.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "积累30分钟低负担有氧运动，练习放松、可重复的跑姿。"
+          }
+        }
+      }
+    },
+    "Choose a route that makes it easy to keep effort low.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择容易保持低强度的路线。"
+          }
+        }
+      }
+    },
+    "Leave pace alerts off unless they help you slow down.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "除非配速提醒能帮助你慢下来，否则请关闭它。"
+          }
+        }
+      }
+    },
+    "Very easy": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "非常轻松"
+          }
+        }
+      }
+    },
+    "Begin slower than your eventual easy rhythm and let your stride loosen naturally.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "起步比平时的轻松节奏再慢一些，让步幅自然舒展。"
+          }
+        }
+      }
+    },
+    "Start softer than you think you need.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "起步比你认为需要的再轻松些。"
+          }
+        }
+      }
+    },
+    "Walk until your body feels ready to jog.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先步行，直到身体准备好慢跑。"
+          }
+        }
+      }
+    },
+    "Conversational and sustainable": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "能交谈、可持续"
+          }
+        }
+      }
+    },
+    "Run at a pace that allows full-sentence conversation and relaxed shoulders.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以能说完整句子的速度跑，肩膀保持放松。"
+          }
+        }
+      }
+    },
+    "Easy enough to repeat tomorrow.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松到明天还愿意再跑。"
+          }
+        }
+      }
+    },
+    "Slow down or insert a walk break until conversation feels easy again.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "减速或插入步行休息，直到交谈重新变得轻松。"
+          }
+        }
+      }
+    },
+    "Easing down": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "逐渐放松"
+          }
+        }
+      }
+    },
+    "Reduce pace gradually and finish calmer than the middle of the run.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "逐步减速，结束时比中段更从容。"
+          }
+        }
+      }
+    },
+    "Ease it down. No finish-line surge.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "慢慢放下来，不用冲线加速。"
+          }
+        }
+      }
+    },
+    "Walk the final minutes.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最后几分钟步行。"
+          }
+        }
+      }
+    },
+    "You should finish with energy in reserve.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "结束时应该仍有余力。"
+          }
+        }
+      }
+    },
+    "If the run felt harder than conversational, log that rather than forcing the easy label.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果跑得比能轻松交谈的强度更累，请如实记录，不必勉强称为轻松跑。"
+          }
+        }
+      }
+    },
+    "Recovery 20": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "20分钟恢复跑"
+          }
+        }
+      }
+    },
+    "A short reset with permission to jog, walk, or mix both.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "短暂重整状态，慢跑、步行或两者交替都可以。"
+          }
+        }
+      }
+    },
+    "20 min · Recovery": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "20分钟 · 恢复"
+          }
+        }
+      }
+    },
+    "Run or walk · 20 min · very easy": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步或步行 · 20分钟 · 非常轻松"
+          }
+        }
+      }
+    },
+    "Make recovery the goal: move gently, ignore pace, and finish fresher than you started.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "把恢复作为目标：温和活动，不看配速，结束时比开始更轻快。"
+          }
+        }
+      }
+    },
+    "Start Recovery 20": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始20分钟恢复跑"
+          }
+        }
+      }
+    },
+    "Settle in": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "进入状态"
+          }
+        }
+      }
+    },
+    "Relaxed walk or shuffle": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "放松步行或小步慢跑"
+          }
+        }
+      }
+    },
+    "Gentle movement": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "温和活动"
+          }
+        }
+      }
+    },
+    "Easy jog, walk, or a mix": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松慢跑、步行或交替进行"
+          }
+        }
+      }
+    },
+    "Walk it down": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "慢慢走下来"
+          }
+        }
+      }
+    },
+    "Use gentle movement as a readiness check and finish without adding meaningful training stress.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "用温和活动检查身体状态，结束时不增加明显的训练负担。"
+          }
+        }
+      }
+    },
+    "Choose rest instead if walking already feels painful or unusually difficult.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果步行已经疼痛或异常困难，请改为休息。"
+          }
+        }
+      }
+    },
+    "Remove pace and distance expectations.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "放下对配速和距离的要求。"
+          }
+        }
+      }
+    },
+    "Effortless movement": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "毫不费力地活动"
+          }
+        }
+      }
+    },
+    "Walk and notice whether your body loosens, stays the same, or feels worse.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "步行时留意身体是逐渐放松、没有变化，还是感觉更差。"
+          }
+        }
+      }
+    },
+    "Check in. Recovery is the whole job.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "感受身体，恢复就是全部目标。"
+          }
+        }
+      }
+    },
+    "End the session if movement increases pain or fatigue.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果活动使疼痛或疲劳加重，请结束训练。"
+          }
+        }
+      }
+    },
+    "Very easy jog or walk": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "非常轻松的慢跑或步行"
+          }
+        }
+      }
+    },
+    "Jog only if it feels smoother than walking; switch freely between both.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "只有慢跑比步行更顺畅时才跑，两者可以随时切换。"
+          }
+        }
+      }
+    },
+    "Gentle enough to feel restorative.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻柔到能帮助恢复。"
+          }
+        }
+      }
+    },
+    "Walk or stop; there is nothing to complete at the expense of recovery.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可以步行或停止；没有任何目标值得牺牲恢复。"
+          }
+        }
+      }
+    },
+    "Walk easily and finish as soon as you feel settled.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松步行，感觉平稳后就结束。"
+          }
+        }
+      }
+    },
+    "Bring it down and keep the recovery win.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "慢下来，守住恢复的收获。"
+          }
+        }
+      }
+    },
+    "Stop early in a safe place.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提前在安全地点结束。"
+          }
+        }
+      }
+    },
+    "You should feel the same or better than when you began.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "结束时应与开始时一样，或感觉更好。"
+          }
+        }
+      }
+    },
+    "If you feel worse, prioritize rest and reconsider the next hard session.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果感觉更差，请优先休息，并重新考虑下一次高强度训练。"
+          }
+        }
+      }
+    },
+    "Stop if movement increases pain, changes your gait, or produces dizziness, chest discomfort, confusion, or any symptom that feels unsafe.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果活动使疼痛加重、步态改变，或出现头晕、胸部不适、意识模糊及任何让你感到不安全的症状，请停止运动。"
+          }
+        }
+      }
+    },
+    "Speed Run": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "速度跑"
+          }
+        }
+      }
+    },
+    "Four controlled two-minute repeats with complete guidance.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4组可控的2分钟快速跑，全程提供引导。"
+          }
+        }
+      }
+    },
+    "30 min · Intervals": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30分钟 · 间歇"
+          }
+        }
+      }
+    },
+    "Run · 30 min · 4 × 2 min fast": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步 · 30分钟 · 4组2分钟快速跑"
+          }
+        }
+      }
+    },
+    "Run each fast repeat with control and use every recovery.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每组快速跑都保持可控，用足每次恢复时间。"
+          }
+        }
+      }
+    },
+    "Start Speed Run": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始速度跑"
+          }
+        }
+      }
+    },
+    "Easy warm-up": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松热身"
+          }
+        }
+      }
+    },
+    "Relaxed conversational running": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "放松地跑，能自在交谈"
+          }
+        }
+      }
+    },
+    "Fast repeat 1": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速跑1"
+          }
+        }
+      }
+    },
+    "Quick and controlled": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速、可控"
+          }
+        }
+      }
+    },
+    "Easy recovery 1": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松恢复1"
+          }
+        }
+      }
+    },
+    "Jog or walk until settled": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "慢跑或步行，直到状态平稳"
+          }
+        }
+      }
+    },
+    "Fast repeat 2": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速跑2"
+          }
+        }
+      }
+    },
+    "Match the first repeat": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持与第一组相同的强度"
+          }
+        }
+      }
+    },
+    "Easy recovery 2": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松恢复2"
+          }
+        }
+      }
+    },
+    "Let your breathing come down": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "让呼吸缓下来"
+          }
+        }
+      }
+    },
+    "Fast repeat 3": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速跑3"
+          }
+        }
+      }
+    },
+    "Stay tall and relaxed": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "身体挺拔、保持放松"
+          }
+        }
+      }
+    },
+    "Easy recovery 3": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松恢复3"
+          }
+        }
+      }
+    },
+    "Fast repeat 4": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速跑4"
+          }
+        }
+      }
+    },
+    "Finish fast, not strained": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑得快，不要硬撑"
+          }
+        }
+      }
+    },
+    "Cooldown": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "放松"
+          }
+        }
+      }
+    },
+    "Easy running or walking": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑或步行"
+          }
+        }
+      }
+    },
+    "Complete four consistent two-minute fast repeats with enough control that the final repeat matches the first.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成4组均匀的2分钟快速跑，强度始终可控，让最后一组与第一组一致。"
+          }
+        }
+      }
+    },
+    "Choose a flat, interruption-free route or track.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择平坦、无中断的路线或跑道。"
+          }
+        }
+      }
+    },
+    "Fast means controlled hard running, not sprinting.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速跑是可控的高强度跑，不是冲刺。"
+          }
+        }
+      }
+    },
+    "Easy and gradually warmer": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松、逐渐热身"
+          }
+        }
+      }
+    },
+    "Run easily and let cadence rise naturally near the end without forcing pace.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑，接近热身结束时让步频自然提升，不强迫提速。"
+          }
+        }
+      }
+    },
+    "Warm first. Speed comes after eight minutes.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先热身，8分钟后再提速。"
+          }
+        }
+      }
+    },
+    "Extend the easy running or convert the workout to Easy 30 if you do not feel ready.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果还没准备好，延长轻松跑，或改做30分钟轻松跑。"
+          }
+        }
+      }
+    },
+    "Fast, repeatable efforts with easy recoveries": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可重复的快速跑与轻松恢复交替"
+          }
+        }
+      }
+    },
+    "Run each work block at the fastest pace you can repeat evenly; jog or walk every recovery until breathing settles.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每个快速段都采用能均匀重复的最快配速；每次恢复都慢跑或步行，直到呼吸平稳。"
+          }
+        }
+      }
+    },
+    "Fast and repeatable. Recovery is part of the workout.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快而可重复，恢复也是训练的一部分。"
+          }
+        }
+      }
+    },
+    "Slow the next repeat, shorten it, or skip it if form or control does not return.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果姿态或掌控力未恢复，下一组减速、缩短或跳过。"
+          }
+        }
+      }
+    },
+    "Reduce effort immediately and keep moving gently until breathing settles.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即降低强度，温和活动到呼吸平稳。"
+          }
+        }
+      }
+    },
+    "The fast work is done. Bring everything down.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速段结束了，全面放松下来。"
+          }
+        }
+      }
+    },
+    "Walk the full cooldown.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "整个放松段都可以步行。"
+          }
+        }
+      }
+    },
+    "The fourth fast repeat should look and feel similar to the first.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第4组快速跑的姿态和感受应与第1组相近。"
+          }
+        }
+      }
+    },
+    "Follow with easy training or recovery rather than another hard session.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "之后安排轻松训练或恢复，不紧接另一场高强度训练。"
+          }
+        }
+      }
+    },
+    "End the fast work if your form breaks down or you cannot regain control during recovery.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果姿态失控，或恢复段也无法重新掌控，请结束快速跑。"
+          }
+        }
+      }
+    },
+    "Tempo 35": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "35分钟节奏跑"
+          }
+        }
+      }
+    },
+    "A single controlled fifteen-minute tempo between easy running.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑之间加入一段15分钟的可控节奏跑。"
+          }
+        }
+      }
+    },
+    "35 min · Tempo": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "35分钟 · 节奏跑"
+          }
+        }
+      }
+    },
+    "Run · 35 min · 15 min controlled tempo": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步 · 35分钟 · 15分钟可控节奏跑"
+          }
+        }
+      }
+    },
+    "Let comfortably hard stay comfortable enough to hold; finish the tempo with the same form you started.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持适度吃力且能维持的强度，节奏段结束时姿态应与开始时一样。"
+          }
+        }
+      }
+    },
+    "Start Tempo 35": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始35分钟节奏跑"
+          }
+        }
+      }
+    },
+    "Conversational running": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "能自在交谈的跑步"
+          }
+        }
+      }
+    },
+    "Controlled tempo": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可控节奏跑"
+          }
+        }
+      }
+    },
+    "Comfortably hard; short phrases, never straining": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "适度吃力，能说短句，不要硬撑"
+          }
+        }
+      }
+    },
+    "Easy cooldown": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松放松跑"
+          }
+        }
+      }
+    },
+    "Hold fifteen minutes of comfortably hard running without drifting into a race effort.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "维持15分钟适度吃力的跑步，不逐渐变成比赛强度。"
+          }
+        }
+      }
+    },
+    "Choose effort by feel rather than a pace that ignores terrain or weather.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "根据体感选择强度，不用忽视地形和天气的固定配速。"
+          }
+        }
+      }
+    },
+    "Tempo should finish controlled, not depleted.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "节奏跑结束时应仍然可控，而非筋疲力尽。"
+          }
+        }
+      }
+    },
+    "Easy and conversational": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松、能交谈"
+          }
+        }
+      }
+    },
+    "Warm gradually and wait for the timed transition before increasing effort.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "逐步热身，等计时切换后再增加强度。"
+          }
+        }
+      }
+    },
+    "Ten easy minutes. Save the tempo.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先轻松跑10分钟，把发力留给节奏段。"
+          }
+        }
+      }
+    },
+    "Stay easy for the whole run if you do not feel ready after ten minutes.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "10分钟后仍没准备好，就全程保持轻松。"
+          }
+        }
+      }
+    },
+    "Comfortably hard and even": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "适度吃力、均匀"
+          }
+        }
+      }
+    },
+    "Lift to an effort where short phrases are possible, then hold without surging.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提升到还能说短句的强度，随后保持稳定，不突然加速。"
+          }
+        }
+      }
+    },
+    "Firm and even. Fifteen minutes, not a time trial.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有力、均匀地跑15分钟，不是计时赛。"
+          }
+        }
+      }
+    },
+    "Reduce to steady running if breathing becomes ragged or pace keeps fading.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果呼吸紊乱或配速不断下降，降低到稳定强度跑。"
+          }
+        }
+      }
+    },
+    "Easy recovery": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松恢复"
+          }
+        }
+      }
+    },
+    "Drop effort immediately and jog or walk until calm.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即降低强度，慢跑或步行，直到平静。"
+          }
+        }
+      }
+    },
+    "Tempo complete. Easy all the way home.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "节奏段完成，后面全程放轻松。"
+          }
+        }
+      }
+    },
+    "Walk if easy jogging does not feel restorative.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果轻松慢跑也不能帮助恢复，就改为步行。"
+          }
+        }
+      }
+    },
+    "The tempo should feel like work you could have continued briefly.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "节奏段应让你感觉付出了努力，但还能短暂继续。"
+          }
+        }
+      }
+    },
+    "Allow easy recovery before the next quality workout.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下次质量训练前安排轻松恢复。"
+          }
+        }
+      }
+    },
+    "End the tempo block if controlled breathing and sound form cannot be restored by slowing down.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果减速后仍无法恢复可控的呼吸和良好姿态，请结束节奏段。"
+          }
+        }
+      }
+    },
+    "Fartlek Pyramid": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "金字塔法特莱克跑"
+          }
+        }
+      }
+    },
+    "One-, two-, and three-minute surges that rise and fall in a playful pyramid.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按1、2、3、2、1分钟起落的趣味变速训练。"
+          }
+        }
+      }
+    },
+    "33 min · Fartlek": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "33分钟 · 法特莱克"
+          }
+        }
+      }
+    },
+    "Run · 33 min · 1-2-3-2-1 min surges": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步 · 33分钟 · 1-2-3-2-1分钟加速段"
+          }
+        }
+      }
+    },
+    "Change effort, not form; every surge should leave you ready for the next one.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "改变强度，不改变姿态；每次加速都要为下一组留余力。"
+          }
+        }
+      }
+    },
+    "Start Fartlek Pyramid": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始金字塔法特莱克跑"
+          }
+        }
+      }
+    },
+    "Fast 1 min": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速跑1分钟"
+          }
+        }
+      }
+    },
+    "Quick and relaxed": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速、放松"
+          }
+        }
+      }
+    },
+    "Easy 1 min": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑1分钟"
+          }
+        }
+      }
+    },
+    "Jog gently": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻柔慢跑"
+          }
+        }
+      }
+    },
+    "Fast 2 min": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速跑2分钟"
+          }
+        }
+      }
+    },
+    "Controlled speed": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可控速度"
+          }
+        }
+      }
+    },
+    "Easy 2 min": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑2分钟"
+          }
+        }
+      }
+    },
+    "Fast 3 min": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "快速跑3分钟"
+          }
+        }
+      }
+    },
+    "Strong but sustainable": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有力但可持续"
+          }
+        }
+      }
+    },
+    "Let breathing settle": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "让呼吸平稳"
+          }
+        }
+      }
+    },
+    "Smooth and slightly quicker": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "流畅地稍微提速"
+          }
+        }
+      }
+    },
+    "Fast feet, relaxed upper body": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "脚步轻快，上身放松"
+          }
+        }
+      }
+    },
+    "Practice controlled changes of effort through a symmetrical 1-2-3-2-1 minute pyramid.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通过对称的1-2-3-2-1分钟金字塔练习可控的强度切换。"
+          }
+        }
+      }
+    },
+    "Choose effort by feel and terrain rather than chasing identical pace on every surge.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "根据体感和地形选择强度，不追求每段加速都达到相同配速。"
+          }
+        }
+      }
+    },
+    "The three-minute surge should be strong but sustainable, not the fastest.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3分钟加速段应有力且能维持，无需跑得最快。"
+          }
+        }
+      }
+    },
+    "Warm up gradually and identify safe landmarks for the faster blocks.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "逐步热身，为快速段留意安全的路标。"
+          }
+        }
+      }
+    },
+    "Easy first. Read the route ahead.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先放轻松，观察前方路线。"
+          }
+        }
+      }
+    },
+    "Keep the entire workout easy if the route or body does not feel ready.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果路线或身体状态不合适，就全程轻松跑。"
+          }
+        }
+      }
+    },
+    "Playful controlled surges": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松有趣、可控的加速"
+          }
+        }
+      }
+    },
+    "Let short surges be quicker and long surges more measured; make every recovery genuinely easy.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "短段可以快一些，长段更克制；每次恢复都真正放轻松。"
+          }
+        }
+      }
+    },
+    "Change gears, keep the same relaxed form.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切换速度，保持同样放松的姿态。"
+          }
+        }
+      }
+    },
+    "Reduce the next surge or skip it if the recovery does not restore control.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果恢复后仍未重新掌控，降低下一段加速强度或跳过。"
+          }
+        }
+      }
+    },
+    "Run or walk easily with no final surge.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑或步行，最后不再加速。"
+          }
+        }
+      }
+    },
+    "Pyramid complete. Float it home.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "金字塔完成，轻松跑回去。"
+          }
+        }
+      }
+    },
+    "Walk the cooldown.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "放松段步行。"
+          }
+        }
+      }
+    },
+    "The final one-minute surge should feel crisp, not desperate.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最后1分钟加速应轻快利落，而非勉强硬撑。"
+          }
+        }
+      }
+    },
+    "Allow easy recovery before another quality session.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下一次质量训练前安排轻松恢复。"
+          }
+        }
+      }
+    },
+    "End the surges if form becomes uncontrolled or the route becomes unsafe.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果姿态失控或路线变得不安全，请结束加速段。"
+          }
+        }
+      }
+    },
+    "Hill Six": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "六组坡跑"
+          }
+        }
+      }
+    },
+    "Six short uphill efforts with full easy recoveries.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6组短距离上坡跑，每组之间充分轻松恢复。"
+          }
+        }
+      }
+    },
+    "32 min · Hills": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "32分钟 · 坡跑"
+          }
+        }
+      }
+    },
+    "Run · 32 min · 6 × 45 sec uphill": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步 · 32分钟 · 6组45秒上坡"
+          }
+        }
+      }
+    },
+    "Run tall into the hill, recover all the way down, and keep every repeat technically clean.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上坡保持挺拔，下坡充分恢复，每组动作都要干净利落。"
+          }
+        }
+      }
+    },
+    "Start Hill Six": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始六组坡跑"
+          }
+        }
+      }
+    },
+    "Easy running toward a moderate hill": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑向一段适中坡道"
+          }
+        }
+      }
+    },
+    "Uphill 1": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上坡1"
+          }
+        }
+      }
+    },
+    "Strong, tall, controlled": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有力、挺拔、可控"
+          }
+        }
+      }
+    },
+    "Walk or jog back safely": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安全地步行或慢跑返回"
+          }
+        }
+      }
+    },
+    "Uphill 2": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上坡2"
+          }
+        }
+      }
+    },
+    "Compact steps": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "脚步紧凑"
+          }
+        }
+      }
+    },
+    "Uphill 3": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上坡3"
+          }
+        }
+      }
+    },
+    "Drive arms without tensing": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "积极摆臂，不要紧绷"
+          }
+        }
+      }
+    },
+    "Recover completely": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "充分恢复"
+          }
+        }
+      }
+    },
+    "Uphill 4": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上坡4"
+          }
+        }
+      }
+    },
+    "Match the first three": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持与前3组相同的强度"
+          }
+        }
+      }
+    },
+    "Easy recovery 4": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松恢复4"
+          }
+        }
+      }
+    },
+    "Uphill 5": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上坡5"
+          }
+        }
+      }
+    },
+    "Fast feet and tall hips": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "脚步轻快，髋部挺起"
+          }
+        }
+      }
+    },
+    "Easy recovery 5": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松恢复5"
+          }
+        }
+      }
+    },
+    "Uphill 6": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上坡6"
+          }
+        }
+      }
+    },
+    "Strong, not all-out": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有力，不要全力冲刺"
+          }
+        }
+      }
+    },
+    "Easy recovery 6": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松恢复6"
+          }
+        }
+      }
+    },
+    "Build strength and technique with six consistent 45-second uphill efforts and complete recoveries.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通过6组均匀的45秒上坡与充分恢复，提升力量和技术。"
+          }
+        }
+      }
+    },
+    "Inspect the hill and recovery path before the first repeat.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第一组前检查坡道和恢复路线。"
+          }
+        }
+      }
+    },
+    "Run by effort; uphill pace is not comparable to flat pace.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按体感跑；上坡配速不能与平地配速直接比较。"
+          }
+        }
+      }
+    },
+    "Run easily and confirm that the hill and footing are safe.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑，并确认坡道和落脚处安全。"
+          }
+        }
+      }
+    },
+    "Warm up and inspect the hill.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "热身并检查坡道。"
+          }
+        }
+      }
+    },
+    "Choose flat easy running if conditions are unsafe.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果环境不安全，就选择平地轻松跑。"
+          }
+        }
+      }
+    },
+    "Strong uphill, complete recovery": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有力上坡、充分恢复"
+          }
+        }
+      }
+    },
+    "Use compact steps, a slight lean from the ankles, and active arms; walk or jog the recovery safely.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "脚步紧凑，从脚踝处略微前倾，积极摆臂；安全地步行或慢跑恢复。"
+          }
+        }
+      }
+    },
+    "Tall hips, compact feet, full recovery.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "髋部挺起，脚步紧凑，充分恢复。"
+          }
+        }
+      }
+    },
+    "End a repeat early, walk down, or stop the set if footing or form becomes unreliable.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果落脚或姿态不稳，可提前结束该组、步行下坡或停止整组训练。"
+          }
+        }
+      }
+    },
+    "Move easily away from the hill and let effort fall gradually.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松离开坡道，让强度逐渐下降。"
+          }
+        }
+      }
+    },
+    "Hill work done. Easy from here.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "坡跑完成，从这里开始放轻松。"
+          }
+        }
+      }
+    },
+    "All six repeats should look technically similar.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6组动作应基本一致。"
+          }
+        }
+      }
+    },
+    "Stop the hill set if footing, traffic, visibility, or downhill recovery becomes unsafe.": {
+      "comment": "Original curated workout editorial copy. Preserve all numbers and safety meaning.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "如果落脚、交通、能见度或下坡恢复变得不安全，请停止坡跑。"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

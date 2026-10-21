@@ -240,7 +240,7 @@ struct TrainingPlanRecommendationDetailView: View {
                 .font(.headline)
             ForEach(recommendation.template.weeks.prefix(2)) { week in
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Week \(week.index): \(week.focus)")
+                    Text("Week \(week.index): \(BuiltinWorkoutText.localized(week.focus))")
                         .font(.subheadline.weight(.semibold))
                     Text(week.summary)
                         .font(.subheadline)
@@ -264,9 +264,9 @@ struct TrainingPlanRecommendationDetailView: View {
                 .foregroundStyle(accentColor)
                 .frame(width: 32, alignment: .leading)
             VStack(alignment: .leading, spacing: 3) {
-                Text(workout.title)
+                Text(BuiltinWorkoutText.localized(workout.title))
                     .font(.subheadline.weight(.semibold))
-                Text("\(workout.durationLabel) • \(workout.effortLabel)")
+                Text("\(workout.durationLabel) • \(BuiltinWorkoutText.localized(workout.effortLabel))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -314,7 +314,7 @@ struct ActiveTrainingPlanDetailView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("This week")
                         .font(.headline)
-                    Text(week.focus)
+                    Text(BuiltinWorkoutText.localized(week.focus))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(accentColor)
                     Text(week.summaryLine)
@@ -384,7 +384,7 @@ struct ActiveTrainingPlanDetailView: View {
                     ForEach(week.scheduledWorkouts) { workout in
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
-                                Text("\(workout.dayLabel) • \(workout.title)")
+                                Text("\(workout.dayLabel) • \(BuiltinWorkoutText.localized(workout.title))")
                                     .font(.subheadline.weight(.semibold))
                                 if workout.isOptional {
                                     Spacer()
@@ -393,7 +393,7 @@ struct ActiveTrainingPlanDetailView: View {
                                         .foregroundStyle(.secondary)
                                 }
                             }
-                            Text("\(workout.durationLabel) • \(workout.effortLabel)")
+                            Text("\(workout.durationLabel) • \(BuiltinWorkoutText.localized(workout.effortLabel))")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(accentColor)
                             Text(workout.summary)

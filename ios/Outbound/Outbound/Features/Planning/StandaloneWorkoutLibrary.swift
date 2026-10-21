@@ -45,10 +45,42 @@ struct StandaloneWorkout: Identifiable, Hashable, Codable {
         )
     }
 
+    // Only catalog-authored prose is localized. IDs, triggers, targets and versions
+    // remain untouched, and the persisted response stays in its original language.
     func withCatalogVersion(_ version: Int) -> StandaloneWorkout {
-        var copy = self
-        copy.catalogVersion = version
-        return copy
+        func text(_ value: String) -> String {
+            NSLocalizedString(value, tableName: "CuratedWorkouts", bundle: .main, value: value, comment: "Curated workout copy")
+        }
+        return StandaloneWorkout(
+            id: id, title: text(title), subtitle: text(subtitle),
+            durationLabel: text(durationLabel), systemImage: systemImage, sport: sport,
+            detail: text(detail), guideLine: text(guideLine), startLabel: text(startLabel),
+            targetDistanceMeters: targetDistanceMeters, targetDurationSeconds: targetDurationSeconds,
+            steps: steps.map {
+                SessionIntentStep(
+                    id: $0.id, label: text($0.label), durationSeconds: $0.durationSeconds,
+                    detail: $0.detail.map(text), coachingTarget: $0.coachingTarget,
+                    transitionInstruction: $0.transitionInstruction.map(text),
+                    transitionLeadSeconds: $0.transitionLeadSeconds,
+                    transitionCountdown: $0.transitionCountdown
+                )
+            },
+            coachingTarget: coachingTarget,
+            guideInstructions: GuideInstructions(
+                objective: text(guideInstructions.objective),
+                beforeStart: guideInstructions.beforeStart.map(text),
+                segments: guideInstructions.segments.map {
+                    SessionWorkoutCue(
+                        id: $0.id, trigger: $0.trigger,
+                        effort: .init(rpeMin: $0.effort.rpeMin, rpeMax: $0.effort.rpeMax, feel: text($0.effort.feel)),
+                        instruction: text($0.instruction), cue: text($0.cue), fallback: text($0.fallback)
+                    )
+                },
+                finish: guideInstructions.finish.map(text),
+                stopConditions: guideInstructions.stopConditions.map(text)
+            ),
+            catalogVersion: version
+        )
     }
 }
 

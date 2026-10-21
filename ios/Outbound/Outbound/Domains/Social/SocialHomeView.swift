@@ -2906,7 +2906,7 @@ private struct SocialRunInvitationActionView: View {
     var body: some View {
         List {
             Section {
-                Label(notification.message, systemImage: "figure.run")
+                Label(localizedGroupNotificationMessage(notification), systemImage: "figure.run")
                 LabeledContent("Received", value: notification.createdAt.formatted(date: .abbreviated, time: .shortened))
             }
             Section {
@@ -4742,6 +4742,29 @@ extension Text {
 private func localizedGroupNotificationMessage(_ notification: SocialNotificationDTO) -> String {
     let actorName = notification.actor?.displayName ?? String(localized: "group.notification.someone", defaultValue: "Someone")
     switch notification.type {
+    case "connectionRequest":
+        return String(format: String(localized: "social.notification.request", defaultValue: "%@ wants to connect."), actorName)
+    case "connectionAccepted":
+        return String(format: String(localized: "social.notification.connected", defaultValue: "%@ accepted your connection request."), actorName)
+    case "invitationAccepted":
+        return String(format: String(localized: "social.notification.invitation_accepted", defaultValue: "%@ accepted your activity invitation."), actorName)
+    case "cheer":
+        return String(format: String(localized: "social.notification.cheered", defaultValue: "%@ cheered your activity."), actorName)
+    case "comment":
+        return String(format: String(localized: "social.notification.commented", defaultValue: "%@ commented on your activity."), actorName)
+    case "liveCheerInvitation":
+        return String(format: String(localized: "social.notification.live_cheer", defaultValue: "%@ invited you to cheer them on."), actorName)
+    case "activityEventJoined":
+        // The current API stores the event title inside its message. Strip only
+        // the known envelope; never translate the participant or event name.
+        let prefix = "\(notification.actor?.displayName ?? "") joined "
+        if notification.actor != nil, notification.message.hasPrefix(prefix) {
+            var title = String(notification.message.dropFirst(prefix.count))
+            if title.hasSuffix(".") { title.removeLast() }
+            return String(format: String(localized: "social.notification.joined", defaultValue: "%@ joined %@."), actorName, title)
+        }
+        // Preserve the original event information when an older envelope cannot be parsed.
+        return notification.message
     case "groupInvitation":
         return String(format: String(localized: "group.notification.invitation", defaultValue: "%@ invited you to a Group."), actorName)
     case "groupInvitationAccepted":
@@ -4749,6 +4772,11 @@ private func localizedGroupNotificationMessage(_ notification: SocialNotificatio
     case "groupCheer":
         return String(format: String(localized: "group.notification.cheer", defaultValue: "%@ sent you a Cheer."), actorName)
     case "groupWeeklyGoalCompleted":
+        let suffix = " completed this week’s focus."
+        if notification.message.hasSuffix(suffix) {
+            let groupName = String(notification.message.dropLast(suffix.count))
+            return String(format: String(localized: "social.notification.weekly_complete", defaultValue: "%@ completed this week’s focus."), groupName)
+        }
         return String(localized: "group.notification.weekly_complete", defaultValue: "Your Group completed this week’s theme.")
     case "groupOwnershipTransferred":
         return String(format: String(localized: "group.notification.ownership", defaultValue: "%@ made you the Group owner."), actorName)

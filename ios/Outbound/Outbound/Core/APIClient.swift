@@ -1330,7 +1330,7 @@ private extension PlanningAPIStateResponse {
             progressPercent: progressPercent,
             summaryLine: "\(completedSessions) of \(targetSessions) sessions, \(completedMinutes) of \(targetMinutes) min this week",
             guideLine: guideLine(fallbackFocus: focus),
-            focus: plan.currentPhase.capitalized,
+            focus: BuiltinWorkoutText.localized(plan.currentPhase.capitalized),
             weekSummary: currentVersion?.summary ?? "This week is being generated from your current training data.",
             scheduledWorkouts: scheduledWorkouts,
             notes: latestAdjustment.map { [$0.message] } ?? []
@@ -1486,7 +1486,7 @@ private extension PlanningAPIWorkout {
                 TrainingPlanWorkoutStep(
                     id: "\(id)-main",
                     kind: stimulus.stepKind,
-                    label: title,
+                    label: BuiltinWorkoutText.localized(title),
                     durationSeconds: durationSeconds,
                     detail: stimulus.stepDetail
                 )
@@ -1496,7 +1496,7 @@ private extension PlanningAPIWorkout {
         return TrainingPlanWorkout(
             id: id,
             scheduledDate: APIDateParser.planningDate(from: scheduledDate),
-            title: title,
+            title: BuiltinWorkoutText.localized(title),
             kind: stimulus.workoutKind,
             dayLabel: overrideDayLabel ?? APIDateParser.planningWeekdayLabel(from: scheduledDate),
             summary: stimulus.summaryLabel,
@@ -1519,7 +1519,7 @@ private extension PlanningAPIWorkoutBlock {
                 TrainingPlanWorkoutStep(
                     id: "\(workoutID)-\(blockType)",
                     kind: stimulus.stepKind,
-                    label: blockType.capitalized,
+                    label: BuiltinWorkoutText.localized(blockType.capitalized),
                     durationSeconds: durationSeconds,
                     detail: stimulus.stepDetail
                 )
@@ -1530,9 +1530,9 @@ private extension PlanningAPIWorkoutBlock {
             TrainingPlanWorkoutStep(
                 id: step.id,
                 kind: step.kind.stepKind,
-                label: step.label,
+                label: BuiltinWorkoutText.localized(step.label),
                 durationSeconds: step.durationSeconds ?? durationSeconds ?? 0,
-                detail: step.detail ?? step.kind.stepDetail
+                detail: step.detail.map(BuiltinWorkoutText.localized) ?? step.kind.stepDetail
             )
         }
     }
@@ -1654,52 +1654,52 @@ private extension String {
 
     var effortLabel: String {
         switch self {
-        case "threshold", "speed": return "Moderate"
-        case "longEndurance": return "Easy endurance"
-        case "recovery", "mobility": return "Very easy"
-        default: return "Easy"
+        case "threshold", "speed": return String(localized: "Moderate")
+        case "longEndurance": return String(localized: "Easy endurance")
+        case "recovery", "mobility": return String(localized: "Very easy")
+        default: return String(localized: "Easy")
         }
     }
 
     var summaryLabel: String {
         switch self {
-        case "longEndurance": return "A longer aerobic session."
-        case "threshold": return "Controlled faster running with easy support."
-        case "speed": return "Shorter quality work with full control."
-        case "recovery": return "A lighter session to absorb the week."
-        case "mobility": return "Mobility and easy movement."
-        case "strength", "hypertrophy": return "Strength support for the plan."
-        default: return "A steady aerobic session."
+        case "longEndurance": return String(localized: "A longer aerobic session.")
+        case "threshold": return String(localized: "Controlled faster running with easy support.")
+        case "speed": return String(localized: "Shorter quality work with full control.")
+        case "recovery": return String(localized: "A lighter session to absorb the week.")
+        case "mobility": return String(localized: "Mobility and easy movement.")
+        case "strength", "hypertrophy": return String(localized: "Strength support for the plan.")
+        default: return String(localized: "A steady aerobic session.")
         }
     }
 
     var purposeLabel: String {
         switch self {
-        case "longEndurance": return "Build durable aerobic capacity."
-        case "threshold": return "Raise sustainable effort without overreaching."
-        case "speed": return "Touch faster mechanics while keeping the dose small."
-        case "recovery", "mobility": return "Protect consistency while lowering strain."
-        case "strength", "hypertrophy": return "Support resilience for future sessions."
-        default: return "Keep the plan moving with manageable aerobic work."
+        case "longEndurance": return String(localized: "Build durable aerobic capacity.")
+        case "threshold": return String(localized: "Raise sustainable effort without overreaching.")
+        case "speed": return String(localized: "Touch faster mechanics while keeping the dose small.")
+        case "recovery", "mobility": return String(localized: "Protect consistency while lowering strain.")
+        case "strength", "hypertrophy": return String(localized: "Support resilience for future sessions.")
+        default: return String(localized: "Keep the plan moving with manageable aerobic work.")
         }
     }
 
     var guideCue: String {
         switch self {
-        case "threshold", "speed": return "Smooth and controlled beats forcing it today."
-        case "longEndurance": return "Stay patient early so the finish still feels composed."
-        case "recovery", "mobility": return "Let this feel restorative from the first minute."
-        default: return "Keep it conversational and leave a little in reserve."
+        case "threshold", "speed": return String(localized: "Smooth and controlled beats forcing it today.")
+        case "longEndurance": return String(localized: "Stay patient early so the finish still feels composed.")
+        case "recovery", "mobility": return String(localized: "Let this feel restorative from the first minute.")
+        default: return String(localized: "Keep it conversational and leave a little in reserve.")
         }
     }
 
     var stepDetail: String {
         switch self {
-        case "threshold": return "Comfortably hard, never strained."
-        case "speed": return "Fast but relaxed."
-        case "longEndurance": return "Easy enough to repeat next week."
-        case "recovery", "mobility": return "Light and restorative."
-        default: return "Conversational effort."
+        case "threshold": return String(localized: "Comfortably hard, never strained.")
+        case "speed": return String(localized: "Fast but relaxed.")
+        case "longEndurance": return String(localized: "Easy enough to repeat next week.")
+        case "recovery", "mobility": return String(localized: "Light and restorative.")
+        default: return String(localized: "Conversational effort.")
         }
     }
 }
@@ -1953,18 +1953,18 @@ extension ActivitySuggestionPayload {
                 kind: stimulus.stepKind,
                 label: step,
                 durationSeconds: stepDuration,
-                detail: effortLabel
+                detail: BuiltinWorkoutText.localized(effortLabel)
             )
         }
         let workout = TrainingPlanWorkout(
             id: plannedWorkoutId ?? id,
-            title: title,
+            title: BuiltinWorkoutText.localized(title),
             kind: stimulus.workoutKind,
             dayLabel: "Today",
             summary: why,
             purpose: why,
             guideCue: guideLine,
-            effortLabel: effortLabel,
+            effortLabel: BuiltinWorkoutText.localized(effortLabel),
             durationSeconds: durationSeconds,
             distanceLabel: distanceMeters.map { APIDateParser.distanceLabel(meters: $0) },
             targetCalories: targetCalories,
@@ -1976,7 +1976,7 @@ extension ActivitySuggestionPayload {
                         kind: stimulus.stepKind,
                         label: title,
                         durationSeconds: durationSeconds,
-                        detail: effortLabel
+                        detail: BuiltinWorkoutText.localized(effortLabel)
                     )
                 ]
                 : workoutSteps,
@@ -1985,9 +1985,9 @@ extension ActivitySuggestionPayload {
         let suggestion = SuggestedSession(
             id: plannedWorkoutId ?? archetypeId ?? id,
             sport: sport,
-            title: title,
-            durationLabel: "\(durationMinutes) min",
-            activityLabel: effortLabel.lowercased(),
+            title: BuiltinWorkoutText.localized(title),
+            durationLabel: String(localized: "\(durationMinutes) min"),
+            activityLabel: BuiltinWorkoutText.localized(effortLabel).lowercased(),
             framing: why,
             guideLine: guideLine,
             startLabel: startLabel,
@@ -2001,8 +2001,8 @@ extension ActivitySuggestionPayload {
         )
 
         return TodayTrainingSuggestion(
-            title: title,
-            detail: calorieDetail ?? "\(durationMinutes) min • \(effortLabel)",
+            title: BuiltinWorkoutText.localized(title),
+            detail: calorieDetail ?? "\(String(localized: "\(durationMinutes) min")) • \(BuiltinWorkoutText.localized(effortLabel))",
             guideLine: guideLine,
             adjustmentLine: optional ? "Optional" : nil,
             suggestedSession: suggestion,

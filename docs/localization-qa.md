@@ -2,6 +2,15 @@
 
 Open this for rendered-app localization findings and release blockers. The supported-language contract lives in `localization.md`.
 
+## 2026-10-20 Chinese Content Fixes
+
+- Covers the reported cheer/Watch setup labels, Groups search and labels, Me connections, plan phase/effort/duration labels, assistant defaults and offline replies, shoe selection, and inbox notification templates.
+- `CuratedWorkouts.xcstrings` covers all 426 distinct editorial strings in the 13 current curated workouts, including coaching and stop conditions. Numeric tokens and interface format placeholders were checked against their source strings.
+- Both catalogs compile with `xcstringstool`; the Social-enabled iOS build-only check succeeds. A Foundation command-line smoke check confirmed Chinese plan vocabulary, duration-prefixed titles, shoe/context/notification interpolation, curated title lookup, English fallback, Spanish interface lookup, and unchanged unknown workout text. No test suite was run.
+- Cached and fresh curated responses use the same localization mapping while storing the original response. Workout IDs, timing, targets, triggers, and versions are preserved by the copy operation; rendered cached/offline flows still need device verification.
+- Pending manual QA: Chinese screen layout, existing inbox entries and actor/event names, all curated workout detail/start screens, assistant sheets, and gear selection. Existing conversation text remains unchanged except the product-authored English welcome.
+- Shared Android generation produces the same output before and after this change; existing checked-in Android resource drift was left untouched.
+
 ## 2026-08-13 Simulator Pass
 
 - Localization revision tested: `1a2e329`, immediately before merge to `main` in `b7250b5`.
