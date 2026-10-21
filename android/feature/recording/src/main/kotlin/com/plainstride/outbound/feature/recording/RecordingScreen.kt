@@ -1586,12 +1586,12 @@ private fun PrimaryGoalMetric(
 @Composable
 private fun ExpandedMetricGrid(snapshot: RecordingSnapshot, unitSystem: MeasurementUnitSystem) {
     val pace = if (snapshot.status == RecordingStatus.PAUSED && snapshot.distanceMeters > 0) {
-        snapshot.elapsedSeconds / (snapshot.distanceMeters / 1_000.0)
+        snapshot.movingSeconds / (snapshot.distanceMeters / 1_000.0)
     } else snapshot.currentPaceSecondsPerKilometer
     val metrics = listOf(
-        stringResource(R.string.recording_time) to formatDuration(snapshot.elapsedSeconds),
+        stringResource(R.string.recording_moving_time) to formatDuration(snapshot.movingSeconds),
         stringResource(R.string.recording_distance) to formatDistance(snapshot.distanceMeters, unitSystem),
-        stringResource(if (snapshot.status == RecordingStatus.PAUSED) R.string.recording_avg_pace else R.string.recording_pace) to formatPace(pace, unitSystem),
+        stringResource(if (snapshot.activityKind == ActivityKind.CYCLING) R.string.recording_speed else if (snapshot.status == RecordingStatus.PAUSED) R.string.recording_avg_pace else R.string.recording_pace) to (if (snapshot.activityKind == ActivityKind.CYCLING) formatCyclingSpeed(pace, unitSystem) else formatPace(pace, unitSystem)),
         stringResource(R.string.recording_elevation) to formatElevation(snapshot.elevationGainMeters, unitSystem),
     ) + if (snapshot.activityKind == ActivityKind.RUNNING) listOf(
         stringResource(com.plainstride.outbound.core.designsystem.R.string.running_cadence_live_label) to
@@ -1668,7 +1668,7 @@ private fun currentWorkoutStep(elapsedSeconds: Long, steps: List<StructuredWorko
 }
 
 private fun liveElapsedText(snapshot: RecordingSnapshot, goal: RecordingGoal): String {
-    val current = formatDuration(snapshot.elapsedSeconds)
+    val current = formatDuration(snapshot.movingSeconds)
     val target = goal.targetDurationSeconds?.takeIf {
         (goal.type == RecordingGoalType.TIME || goal.type == RecordingGoalType.WORKOUT) && it > 0
     } ?: return current
@@ -1740,7 +1740,7 @@ private fun ReflectionScreen(
     var selectedPhotos by remember(photoPaths) { mutableStateOf(emptySet<String>()) }
     var previewPhoto by remember { mutableStateOf<String?>(null) }
     val paceSecondsPerKm = snapshot.distanceMeters.takeIf { it > 0 }
-        ?.let { snapshot.elapsedSeconds / (it / 1_000.0) }
+        ?.let { snapshot.movingSeconds / (it / 1_000.0) }
     val calories = WorkoutCalorieEstimator.estimate(
         activityType = snapshot.activityKind.toActivityType(),
         distanceMeters = snapshot.distanceMeters,
@@ -1894,10 +1894,12 @@ private fun ReflectionScreen(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                         val distance = SessionFormatting.distance(snapshot.distanceMeters, unitSystem)
                         Metric(stringResource(R.string.recording_distance), "%.2f %s".format(distance.value, distance.unit.shortLabel))
-                        Metric(stringResource(R.string.recording_time), formatDuration(snapshot.elapsedSeconds))
-                        Metric(stringResource(R.string.recording_avg_pace), formatPace(paceSecondsPerKm, unitSystem))
+                        Metric(stringResource(R.string.recording_moving_time), formatDuration(snapshot.movingSeconds))
+                        Metric(stringResource(if (snapshot.activityKind == ActivityKind.CYCLING) R.string.recording_speed else R.string.recording_avg_pace), if (snapshot.activityKind == ActivityKind.CYCLING) formatCyclingSpeed(paceSecondsPerKm, unitSystem) else formatPace(paceSecondsPerKm, unitSystem))
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        val totalSeconds = ((snapshot.recordedAtEpochMilliseconds - (snapshot.startedAtEpochMilliseconds ?: snapshot.recordedAtEpochMilliseconds)) / 1000).coerceAtLeast(snapshot.movingSeconds)
+                        Metric(stringResource(R.string.recording_elapsed_time), formatDuration(totalSeconds))
                         val elevation = SessionFormatting.elevation(snapshot.elevationGainMeters, unitSystem)
                         Metric(stringResource(R.string.recording_elevation), "${elevation.value.toInt()} ${if (unitSystem == MeasurementUnitSystem.metric) "m" else "ft"}")
                         Metric(stringResource(R.string.recording_review_calories), calories.kilocalories?.toString() ?: "—")
@@ -2083,6 +2085,12 @@ private fun formatDistance(meters: Double, unitSystem: MeasurementUnitSystem): S
     return "%.2f %s".format(distance.value, distance.unit.shortLabel)
 }
 internal fun formatPace(seconds: Double?): String = seconds?.takeIf { it.isFinite() && it < 3_600 }?.let { "%d:%02d /km".format(it.toInt() / 60, it.toInt() % 60) } ?: "—"
+private fun formatCyclingSpeed(paceSecondsPerKm: Double?, unitSystem: MeasurementUnitSystem): String {
+    val pace = paceSecondsPerKm?.takeIf { it.isFinite() && it > 0 } ?: return "—"
+    val speed = 3600 / pace / if (unitSystem == MeasurementUnitSystem.imperial) 1.609344 else 1.0
+    return "%.1f %s".format(speed, if (unitSystem == MeasurementUnitSystem.imperial) "mi/h" else "km/h")
+}
+
 private fun formatPace(seconds: Double?, unitSystem: MeasurementUnitSystem): String = seconds
     ?.takeIf { it.isFinite() && it < 3_600 }
     ?.let { SessionFormatting.pace(it, unitSystem) }

@@ -18,6 +18,7 @@ enum class AnalyticsProperty(val wireName: String) {
     ParticipantCountBucket("participant_count_bucket"),
     GroupRunEnabled("group_run_enabled"),
     DurationBucket("duration_bucket"),
+    ElapsedDurationBucket("elapsed_duration_bucket"),
     DistanceBucket("distance_bucket"),
     PhotoCountBucket("photo_count_bucket"),
     PageDepthBucket("page_depth_bucket"),

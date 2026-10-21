@@ -94,4 +94,6 @@
     <string name="activity_type_swimming">Swim</string>
     <string name="activity_type_walking">Walk</string>
     <string name="activity_updated">Activity updated</string>
+    <string name="activity_metric_elapsed_time">Elapsed Time</string>
+    <string name="activity_metric_avg_speed">Avg Speed</string>
 </resources>

@@ -319,7 +319,8 @@ class RecordingViewModel @Inject constructor(
         val current = snapshot.value
         analytics.record(AnalyticsEvent("activity_finished", mapOf(
             AnalyticsProperty.ActivityType to current.activityKind.name.lowercase(),
-            AnalyticsProperty.DurationBucket to durationBucket(current.elapsedSeconds),
+            AnalyticsProperty.ElapsedDurationBucket to durationBucket(((current.recordedAtEpochMilliseconds - (current.startedAtEpochMilliseconds ?: current.recordedAtEpochMilliseconds)) / 1000).coerceAtLeast(current.movingSeconds)),
+            AnalyticsProperty.DurationBucket to durationBucket(current.movingSeconds),
             AnalyticsProperty.DistanceBucket to distanceBucket(current.distanceMeters),
         )))
     }
@@ -589,7 +590,7 @@ class RecordingViewModel @Inject constructor(
                     title = savedActivityTitle(mutableState.value.launch),
                     startedAtEpochMs = startedAt,
                     endedAtEpochMs = snapshot.recordedAtEpochMilliseconds,
-                    durationSecs = snapshot.elapsedSeconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                    durationSecs = snapshot.movingSeconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
                     distanceM = snapshot.distanceMeters,
                     elevationGainM = snapshot.elevationGainMeters,
                     energyKilocalories = WorkoutCalorieEstimator.estimate(
@@ -681,7 +682,8 @@ class RecordingViewModel @Inject constructor(
             analytics.record(AnalyticsEvent("activity_saved", mapOf(
                 AnalyticsProperty.ActivityType to snapshot.activityKind.name.lowercase(),
                 AnalyticsProperty.GoalType to (if (currentLaunch.raceIntent != null) "race" else currentLaunch.goal.type.name.lowercase()),
-                AnalyticsProperty.DurationBucket to durationBucket(snapshot.elapsedSeconds),
+                AnalyticsProperty.DurationBucket to durationBucket(snapshot.movingSeconds),
+                AnalyticsProperty.ElapsedDurationBucket to durationBucket(((snapshot.recordedAtEpochMilliseconds - (snapshot.startedAtEpochMilliseconds ?: snapshot.recordedAtEpochMilliseconds)) / 1000).coerceAtLeast(snapshot.movingSeconds)),
                 AnalyticsProperty.DistanceBucket to distanceBucket(snapshot.distanceMeters),
                 AnalyticsProperty.PhotoCountBucket to photoCountBucket(review.photoPaths.size),
                 AnalyticsProperty.RouteSelected to (currentLaunch.followedRoute != null),
@@ -806,7 +808,7 @@ class RecordingViewModel @Inject constructor(
             }
         }
         val averagePace = snapshot.distanceMeters.takeIf { it > 0.0 }
-            ?.let { snapshot.elapsedSeconds / (it / 1_000.0) }
+            ?.let { snapshot.movingSeconds / (it / 1_000.0) }
         return FinishPhotoMetadata(takenAt, averagePace, distanceAtShot, attachedCoordinate?.first, attachedCoordinate?.second, captureContext)
     }
 

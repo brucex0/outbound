@@ -83,6 +83,10 @@ data class SavedActivity(
     val deletedAt: String? = null,
     val companionType: ActivityCompanionType? = null,
     val elevationMetadata: ActivityElevationMetadata? = null,
-)
+) {
+    val elapsedDurationSecs: Int get() = maxOf(durationSecs,
+        java.time.Duration.between(java.time.Instant.parse(startedAt), java.time.Instant.parse(endedAt))
+            .seconds.coerceIn(0, Int.MAX_VALUE.toLong()).toInt())
+}
 
 data class ActivityPage(val activities: List<SavedActivity>, val offset: Int, val limit: Int, val hasMore: Boolean)

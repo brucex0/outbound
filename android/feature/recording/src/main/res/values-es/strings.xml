@@ -98,4 +98,7 @@
     <string name="stretch_start_now">Empezar ahora</string>
 <string name="stretch_offer_body">Relájate de pie al aire libre o elige una rutina con colchoneta cuando tengas un espacio cómodo.</string>
     <string name="stretch_preview">Ver movimientos</string>
+    <string name="recording_moving_time">Tiempo en movimiento</string>
+    <string name="recording_speed">Velocidad</string>
+    <string name="recording_elapsed_time">Tiempo total</string>
 </resources>

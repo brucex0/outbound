@@ -72,6 +72,7 @@ class RecordingCoordinator internal constructor(
     private var autoResumeCandidateStartedAtNanos: Long? = null
     private var latestReliableSpeedMetersPerSecond: Double? = null
     private var latestSpeedObservedAtNanos: Long? = null
+    private var movingTimeSpeedMetersPerSecond: Double? = null
     private var autoPauseProbeFilter: LocationTrackFilter? = null
     private val autoPauseProbeSamples = mutableListOf<RecordedLocationSample>()
     private var autoPauseProbeDistanceMeters = 0.0
@@ -97,8 +98,9 @@ class RecordingCoordinator internal constructor(
             status = if (recovered.status == RecordingStatus.AWAITING_SAVE) RecordingStatus.AWAITING_SAVE else RecordingStatus.PAUSED,
             autoPaused = false,
             revision = entity.revision,
-            recordedAtEpochMilliseconds = clock.utcMillis(),
+            recordedAtEpochMilliseconds = if (recovered.status == RecordingStatus.AWAITING_SAVE) recovered.recordedAtEpochMilliseconds else clock.utcMillis(),
             recovered = true,
+            movingTimeTracker = recovered.movingTimeTracker.suspend(),
             currentCadenceStepsPerMinute = null,
         )
         simulationSampler = restoredSimulationSampler(_snapshot.value)
@@ -136,6 +138,7 @@ class RecordingCoordinator internal constructor(
                     revision = existing.revision,
                     recordedAtEpochMilliseconds = clock.utcMillis(),
                     recovered = true,
+                    movingTimeTracker = recovered.movingTimeTracker.suspend(),
                     currentCadenceStepsPerMinute = null,
                 )
                 simulationSampler = restoredSimulationSampler(_snapshot.value)
@@ -268,7 +271,8 @@ class RecordingCoordinator internal constructor(
             AnalyticsEvent(
                 "activity_recording_finished",
                 mapOf(
-                    AnalyticsProperty.DurationBucket to durationBucket(finished.elapsedSeconds),
+                    AnalyticsProperty.DurationBucket to durationBucket(finished.movingSeconds),
+                    AnalyticsProperty.ElapsedDurationBucket to durationBucket(((finished.recordedAtEpochMilliseconds - (finished.startedAtEpochMilliseconds ?: finished.recordedAtEpochMilliseconds)) / 1000).coerceAtLeast(finished.movingSeconds)),
                     AnalyticsProperty.DistanceBucket to distanceBucket(finished.distanceMeters),
                 ),
             ),
@@ -403,6 +407,10 @@ class RecordingCoordinator internal constructor(
             it.isFinite() && it >= 0.0 && speedAccuracy != null && speedAccuracy.isFinite() && speedAccuracy in 0.0..3.0
         }
         latestSpeedObservedAtNanos = raw.capturedAtElapsedRealtimeNanos
+        movingTimeSpeedMetersPerSecond = raw.speedMetersPerSecond?.takeIf {
+            it.isFinite() && it >= 0 && speedAccuracy != null && speedAccuracy in 0.0..0.5 &&
+                raw.horizontalAccuracyMeters in 0.0..20.0
+        }
         when {
             _snapshot.value.status == RecordingStatus.ACTIVE -> evaluateAutoPause(raw.capturedAtElapsedRealtimeNanos)
             _snapshot.value.status == RecordingStatus.PAUSED && _snapshot.value.autoPaused -> {
@@ -623,22 +631,42 @@ class RecordingCoordinator internal constructor(
         trackSegmentStartIndices: Set<Int> = _snapshot.value.trackSegmentStartIndices,
         autoPaused: Boolean = _snapshot.value.autoPaused,
         runSimulation: RunSimulationState? = _snapshot.value.runSimulation,
-    ) = _snapshot.value.copy(
-        status = status,
-        revision = _snapshot.value.revision + 1,
-        recordedAtEpochMilliseconds = clock.utcMillis(),
-        elapsedSeconds = elapsedSeconds,
-        distanceMeters = distanceMeters,
-        elevationGainMeters = elevationGainMeters,
-        currentPaceSecondsPerKilometer = currentPaceSecondsPerKilometer,
-        latestLocation = latestLocation,
-        track = track,
-        trackSegmentStartIndices = trackSegmentStartIndices,
-        autoPaused = autoPaused,
-        runSimulation = runSimulation,
-        currentCadenceStepsPerMinute = if (status == RecordingStatus.ACTIVE) cadenceTracker.current(clock.elapsedRealtimeNanos()) else null,
-        cadenceState = if (_snapshot.value.activityKind == ActivityKind.RUNNING) cadenceTracker.state else null,
-    )
+    ): RecordingSnapshot {
+        val previous = _snapshot.value
+        val threshold = when (previous.activityKind) {
+            ActivityKind.RUNNING -> 0.3
+            ActivityKind.WALKING, ActivityKind.HIKING -> 0.15
+            ActivityKind.CYCLING -> 0.5
+            else -> null
+        }
+        val nowNanos = clock.elapsedRealtimeNanos()
+        val speed = latestSpeedObservedAtNanos
+            ?.takeIf { nowNanos - it in 0..5 * NANOS_PER_SECOND }
+            ?.let { movingTimeSpeedMetersPerSecond }
+        var moving = previous.movingTimeTracker
+        if (previous.status == RecordingStatus.ACTIVE && runSimulation == null) {
+            moving = moving.update(elapsedSeconds, threshold?.let { limit -> speed?.let { it < limit } })
+        }
+        if (status != RecordingStatus.ACTIVE) moving = moving.suspend()
+        return previous.copy(
+            movingTimeTracker = moving,
+            status = status,
+            revision = _snapshot.value.revision + 1,
+            recordedAtEpochMilliseconds = clock.utcMillis(),
+            elapsedSeconds = elapsedSeconds,
+            distanceMeters = distanceMeters,
+            elevationGainMeters = elevationGainMeters,
+            currentPaceSecondsPerKilometer = currentPaceSecondsPerKilometer,
+            latestLocation = latestLocation,
+            track = track,
+            trackSegmentStartIndices = trackSegmentStartIndices,
+            autoPaused = autoPaused,
+            runSimulation = runSimulation,
+            currentCadenceStepsPerMinute = if (status == RecordingStatus.ACTIVE) cadenceTracker.current(clock.elapsedRealtimeNanos()) else null,
+            cadenceState = if (_snapshot.value.activityKind == ActivityKind.RUNNING) cadenceTracker.state else null,
+        )
+
+    }
 
     suspend fun setRunSimulationTimeRate(rate: Int) = serialized("simulation_rate_${UUID.randomUUID()}") {
         if (!BuildConfig.DEBUG || rate !in listOf(1, 10, 60)) return@serialized

@@ -98,4 +98,7 @@
     <string name="stretch_start_now">立即开始</string>
 <string name="stretch_offer_body">户外运动后可直接站姿放松；有舒适的地面空间时，也可选择垫上拉伸。</string>
     <string name="stretch_preview">预览动作</string>
+    <string name="recording_moving_time">运动时间</string>
+    <string name="recording_speed">速度</string>
+    <string name="recording_elapsed_time">总用时</string>
 </resources>

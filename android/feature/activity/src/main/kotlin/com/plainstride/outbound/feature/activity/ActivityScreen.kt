@@ -668,7 +668,7 @@ private fun CollapsedActivitySummary(activity: SavedActivity, unitSystem: Measur
             Text(formatDistance(activity.distanceM, unitSystem), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(activity.title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        SummaryMetric(formatPace(activity.averagePaceSecsPerKm, unitSystem), stringResource(R.string.activity_avg_pace), Alignment.End)
+        SummaryMetric(if (activity.type == ActivityType.cycling) formatMovingSpeed(activity, unitSystem) else formatPace(activity.averagePaceSecsPerKm, unitSystem), stringResource(if (activity.type == ActivityType.cycling) R.string.activity_metric_avg_speed else R.string.activity_avg_pace), Alignment.End)
         SummaryMetric(formatDuration(activity.durationSecs), stringResource(R.string.activity_metric_moving_time), Alignment.End)
     }
 }
@@ -684,8 +684,9 @@ private fun ActivityStatsHero(
 ) {
     val stats = buildList {
         add(DetailActivityStat(stringResource(R.string.activity_distance), formatDistance(activity.distanceM, unitSystem)))
-        add(DetailActivityStat(stringResource(R.string.activity_avg_pace), formatPace(activity.averagePaceSecsPerKm, unitSystem)))
+        add(DetailActivityStat(stringResource(if (activity.type == ActivityType.cycling) R.string.activity_metric_avg_speed else R.string.activity_avg_pace), if (activity.type == ActivityType.cycling) formatMovingSpeed(activity, unitSystem) else formatPace(activity.averagePaceSecsPerKm, unitSystem)))
         add(DetailActivityStat(stringResource(R.string.activity_metric_moving_time), formatDuration(activity.durationSecs)))
+        add(DetailActivityStat(stringResource(R.string.activity_metric_elapsed_time), formatDuration(activity.elapsedDurationSecs)))
         if (activity.type == ActivityType.walking && activity.walkingStepCount != null) {
             add(DetailActivityStat(stringResource(R.string.activity_metric_steps), "%,d".format(activity.walkingStepCount)))
         }
@@ -1032,6 +1033,13 @@ private fun formatRecentDistance(meters: Double, unitSystem: MeasurementUnitSyst
     return "%.1f %s".format(distance.value, distanceUnit(unitSystem))
 }
 private fun formatDuration(seconds: Int) = if (seconds >= 3_600) "%d:%02d:%02d".format(seconds / 3_600, seconds / 60 % 60, seconds % 60) else "%d:%02d".format(seconds / 60, seconds % 60)
+private fun formatMovingSpeed(activity: SavedActivity, unitSystem: MeasurementUnitSystem): String {
+    if (activity.durationSecs <= 0) return "—"
+    val divisor = if (unitSystem == MeasurementUnitSystem.imperial) 1609.344 else 1000.0
+    val unit = if (unitSystem == MeasurementUnitSystem.imperial) "mi/h" else "km/h"
+    return "%.1f %s".format(activity.distanceM / divisor * 3600 / activity.durationSecs, unit)
+}
+
 private fun formatPace(seconds: Double?, unitSystem: MeasurementUnitSystem): String {
     val pace = seconds?.let { SessionFormatting.pace(it, unitSystem) } ?: return "—"
     return "%d:%02d /%s".format(pace.minutes, pace.seconds, distanceUnit(unitSystem))

@@ -45,6 +45,7 @@ data class RecordingSnapshot(
     val startedAtEpochMilliseconds: Long? = null,
     val recordedAtEpochMilliseconds: Long = 0,
     val elapsedSeconds: Long = 0,
+    val movingTimeTracker: MovingTimeTracker = MovingTimeTracker(),
     val distanceMeters: Double = 0.0,
     val elevationGainMeters: Double = 0.0,
     val currentPaceSecondsPerKilometer: Double? = null,
@@ -57,6 +58,8 @@ data class RecordingSnapshot(
     val currentCadenceStepsPerMinute: Int? = null,
     val cadenceState: RunningCadenceState? = null,
 ) {
+    val movingSeconds: Long get() = (elapsedSeconds - movingTimeTracker.stoppedSeconds).coerceAtLeast(0)
+
     val saveEligibility: ActivitySaveEligibility
         get() = ActivitySaveEligibility.evaluate(elapsedSeconds, distanceMeters)
 }

@@ -98,4 +98,7 @@
     <string name="stretch_start_now">Start now</string>
 <string name="stretch_offer_body">Stay on your feet for an easy outdoor reset, or choose a mat routine when you have a comfortable space.</string>
     <string name="stretch_preview">Preview movements</string>
+    <string name="recording_moving_time">Moving Time</string>
+    <string name="recording_speed">Speed</string>
+    <string name="recording_elapsed_time">Elapsed Time</string>
 </resources>
