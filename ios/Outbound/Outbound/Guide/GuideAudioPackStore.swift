@@ -4,7 +4,7 @@ import Foundation
 @MainActor
 final class GuideAudioPackStore {
     static let shared = GuideAudioPackStore()
-    static let sessionControlCueKeys = ["workout.pause", "workout.resume"]
+    static let sessionControlCueKeys = ["workout.pause", "workout.resume", "coach.settle", "coach.restore_rhythm"]
     static let countdownCueKeys = [
         "countdown.five", "countdown.four", "countdown.three", "countdown.two", "countdown.one", "countdown.go"
     ]

@@ -177,6 +177,7 @@ struct LiveGuidanceSessionReport: Equatable {
 
 enum LiveGuidanceTelemetryEvent: Equatable {
     case eligibilityResolved(activityType: String, result: String)
+    case speedChange(direction: String, result: String)
     case momentSuppressed(reason: String)
     case momentDetected(type: LiveGuidanceMomentType, contract: CoachingContract)
     case cueSpoken(type: LiveGuidanceMomentType, contract: CoachingContract)
@@ -199,6 +200,7 @@ struct DetectedLiveGuidanceMoment: Equatable {
     let baselinePaceSecondsPerKilometer: Double?
     let targetPaceSecondsPerKilometer: Double?
     let evaluationDelaySeconds: Int
+    let speedChangeDirection: Int?
     let preferredMessage: String?
     let instructionID: String?
     let remainingDistanceMeters: Double?
@@ -209,6 +211,7 @@ struct DetectedLiveGuidanceMoment: Equatable {
         baselinePaceSecondsPerKilometer: Double? = nil,
         targetPaceSecondsPerKilometer: Double? = nil,
         evaluationDelaySeconds: Int = 75,
+        speedChangeDirection: Int? = nil,
         preferredMessage: String? = nil,
         instructionID: String? = nil,
         remainingDistanceMeters: Double? = nil
@@ -218,6 +221,7 @@ struct DetectedLiveGuidanceMoment: Equatable {
         self.baselinePaceSecondsPerKilometer = baselinePaceSecondsPerKilometer
         self.targetPaceSecondsPerKilometer = targetPaceSecondsPerKilometer
         self.evaluationDelaySeconds = evaluationDelaySeconds
+        self.speedChangeDirection = speedChangeDirection
         self.preferredMessage = preferredMessage
         self.instructionID = instructionID
         self.remainingDistanceMeters = remainingDistanceMeters
@@ -247,6 +251,7 @@ func retainRecentLiveGuidanceHistory(
 
 @MainActor
 final class LiveGuidanceDirector {
+    private var speedChange = SuddenSpeedChangeDetector()
     private var contract: CoachingContract = .responsive
     private var challenge: LiveGuidanceChallenge = .off
     private var suppressedMomentTypes: Set<LiveGuidanceMomentType> = []
@@ -255,6 +260,7 @@ final class LiveGuidanceDirector {
     private var emittedOneShotMoments: Set<LiveGuidanceMomentType> = []
     private var emittedSegmentMoments: Set<String> = []
     private var lastMomentElapsedSeconds: Int?
+    private var lastSpeedChangeElapsedSeconds: Int?
     private var lastDriftElapsedSeconds: Int?
     private var instabilityCandidateSince: Int?
     private var instabilityLatched = false
@@ -272,6 +278,7 @@ final class LiveGuidanceDirector {
         challenge: LiveGuidanceChallenge,
         suppressedMomentTypes: Set<LiveGuidanceMomentType> = []
     ) {
+        speedChange = SuddenSpeedChangeDetector()
         self.contract = contract
         self.challenge = challenge
         self.suppressedMomentTypes = suppressedMomentTypes
@@ -280,6 +287,7 @@ final class LiveGuidanceDirector {
         emittedOneShotMoments = []
         emittedSegmentMoments = []
         lastMomentElapsedSeconds = nil
+        lastSpeedChangeElapsedSeconds = nil
         lastDriftElapsedSeconds = nil
         lastInstabilityElapsedSeconds = nil
         instabilityCandidateSince = nil
@@ -308,6 +316,24 @@ final class LiveGuidanceDirector {
         history.append(snapshot)
         retainRecentLiveGuidanceHistory(&history, through: snapshot.elapsedSeconds)
 
+        let segment = intent?.activeCoachingSegment(at: snapshot.elapsedSeconds)
+        let speedDirection = speedChange.ingest(
+            second: snapshot.elapsedSeconds,
+            evidence: snapshot.paceEvidenceTimestamp?.timeIntervalSince1970,
+            speed: snapshot.location?.speedMetersPerSecond,
+            segmentID: segment?.id, phase: segment?.target.phase.rawValue,
+            segmentSeconds: segment?.elapsedSeconds
+        )
+        if contract != .quiet, let direction = speedDirection,
+           lastMomentElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= 60 }) ?? true {
+            lastSpeedChangeElapsedSeconds = snapshot.elapsedSeconds
+            lastMomentElapsedSeconds = snapshot.elapsedSeconds
+            return LiveGuidanceDirectorUpdate(nextMoment: DetectedLiveGuidanceMoment(
+                type: .paceInstability, detectedAtElapsedSeconds: snapshot.elapsedSeconds,
+                speedChangeDirection: direction
+            ), evaluatedCues: [])
+        }
+
         let evaluation = evaluatePendingCues(at: snapshot)
         if let recovery = evaluation.recoveryMoment {
             return LiveGuidanceDirectorUpdate(nextMoment: recovery, evaluatedCues: evaluation.records)
@@ -330,7 +356,9 @@ final class LiveGuidanceDirector {
         let athleteReferencePace = athleteReferencePace(from: profile)
         let activeSegment = intent?.activeCoachingSegment(at: snapshot.elapsedSeconds)
         let gradePercent = rollingGradePercent(through: snapshot.elapsedSeconds)
-        if contract != .quiet, let raceDeviation = raceTargetDeviationMoment(
+        if contract != .quiet,
+           lastSpeedChangeElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= 60 }) ?? true,
+           let raceDeviation = raceTargetDeviationMoment(
             snapshot: snapshot,
             intent: intent,
             gradePercent: gradePercent
@@ -889,6 +917,7 @@ final class LiveGuidanceDirector {
     }
 
     func resetPaceEvidence() {
+        speedChange.resetEvidence()
         history = []
         instabilityCandidateSince = nil
         // Preserve the latch/cooldowns across gaps so a dropout cannot rearm noise.

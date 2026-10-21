@@ -361,3 +361,5 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 - Guide-profile recovery emits `guide_profile_resolution` diagnostics with bounded source/outcome. Activity completion emits `activity_completion_task` with operation/outcome and safe failure metadata only; no user IDs, prompts, activity bodies, or provider error bodies are logged.
 
 - Activity analysis and weekly reviews use shared `ai_attempt` / `ai_generation` diagnostics with operations `activity_analysis` / `weekly_review`. These retain the existing metadata-only privacy contract; no new client event or runner identifier is added.
+
+- iOS `live_guidance_speed_change` records `source_type=increase|decrease` and `result=detected|spoken|audio_unavailable` for independent local speed-change guidance. It excludes raw speed, pace, profile, locations, timestamps, and activity identifiers.

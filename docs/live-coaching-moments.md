@@ -7,7 +7,7 @@ Open this when adding, tuning, suppressing, localizing, or analyzing a live coac
 A coachable moment is not a sensor threshold by itself. The pipeline is:
 
 ```text
-trusted signal + workout target + recent personal baseline + enough persistence
+trusted signal + relevant workout context + baseline when needed + enough persistence
   -> semantic moment
   -> priority/cooldown decision
   -> dynamic wording or reviewed fixed cue
@@ -188,3 +188,13 @@ Every phase needs replayable sensor fixtures, false-positive review across hills
 - Catalog `athlete_reference` targets resolve at launch from the median pace of up to 10 most recent eligible local runs in 30 days (at least 5 minutes and 500 m), plus the catalog offset. Deleted, future, malformed, and implausible records are excluded.
 - Absolute workout/race targets remain authoritative; effort-only workouts and missing history do not invent a pace. The reference is account-scoped and in memory; no storage reset is needed.
 - `live_guidance_reference_resolved` and `PlainstrideLiveCoach` report only `local_history` or `unavailable`, without raw pace or history.
+
+## Independent Sudden Speed Changes (iOS)
+
+- Runs without a guide profile or target pace in Responsive and Coach Me; Quiet stays quiet. Uses distinct trusted GPS speed samples rather than the smoothed display pace.
+- Compares a 5-second speed median with a preceding stable 20-second baseline (at least 8 fixes spanning 14 seconds; each speed within 20% of its median). Requires a running baseline of at least 1.5 m/s, a change of both 40% and 3 km/h, then 5 seconds of persistence. A clean 1 Hz step change triggers after about 8 seconds.
+- Rejects missing/nonfinite/out-of-range speeds, repeated fixes, reversed timestamps, and gaps over 5 seconds. Recording reliability gates still apply. Pause/resume and segment changes clear evidence; the first 30 seconds of a typed segment are excluded. Slowdowns in warmup, recovery, cooldown, or walking are excluded.
+- Uses a 60-second detector cooldown and deduplicates against recent coaching. Changes during cooldown cannot produce a delayed stale alert. Target-dependent guidance remains separate.
+- Reuses the semantic `pace_instability` queue and existing reviewed `coach.settle` / `coach.restore_rhythm` clips, prewarmed for the selected voice and language. Local playback never requests AI or runtime synthesis. Missing matching audio is diagnosed and remains silent; route and workout audio retain priority.
+- `live_guidance_speed_change` records only `source_type=increase|decrease` and `result=detected|spoken|audio_unavailable`; existing cue analytics remain active. No raw speed, location, or history is recorded.
+- Verification: standalone Swift replays cover both sustained directions, single spikes, steady speed, repeated evidence, gaps/pause reset, recovery suppression, segment startup, and stale cooldown candidates. iOS simulator build passed. Device audibility is not covered by these replays.

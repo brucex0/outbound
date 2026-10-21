@@ -263,6 +263,9 @@ final class VirtualGuide: NSObject, ObservableObject {
         sessionReport = momentDirector.report(finalizing: false)
 
         if let moment = update.nextMoment {
+            if let direction = moment.speedChangeDirection {
+                guidanceEventHandler?(.speedChange(direction: direction > 0 ? "increase" : "decrease", result: "detected"))
+            }
             guidanceEventHandler?(.momentDetected(
                 type: moment.type,
                 contract: persona?.coachingContract ?? .responsive
@@ -391,6 +394,23 @@ final class VirtualGuide: NSObject, ObservableObject {
               canSpeakPendingMoment(moment, at: snapshot.elapsedSeconds)
         else { return }
 
+        if let direction = moment.speedChangeDirection {
+            let message = direction > 0
+                ? String(localized: "live_guidance.sudden_speed_increase", defaultValue: "Slow down until you can speak a full sentence.")
+                : String(localized: "live_guidance.sudden_speed_decrease", defaultValue: "Keep the effort easy; there is no need to make up lost time.")
+            let key = direction > 0 ? "coach.settle" : "coach.restore_rhythm"
+            let played = speak(message, urgency: .opportunity, role: .paceAdjustment, fixedCueKey: key)
+            guidanceEventHandler?(.speedChange(direction: direction > 0 ? "increase" : "decrease", result: played ? "spoken" : "audio_unavailable"))
+            if !played { ActivityDiagnosticLog.error(.lifecycle, "Sudden speed cue unavailable direction=\(direction > 0 ? "increase" : "decrease")") }
+            if played {
+                lastNudge = message
+                rememberGuideSpeech(at: snapshot.elapsedSeconds)
+                recordSpokenMoment(moment, spokenAtElapsedSeconds: snapshot.elapsedSeconds)
+            }
+            pendingMoment = nil
+            advancePendingMoment()
+            return
+        }
         pendingMoment = nil
         runAnalysis(for: snapshot, moment: moment)
     }
@@ -552,6 +572,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         _ moment: DetectedLiveGuidanceMoment,
         at elapsedSeconds: Int
     ) -> Bool {
+        if moment.speedChangeDirection != nil { return !audioPlayer.isSpeaking }
         if isWorkoutBoundaryMoment(moment.type) {
             // Countdown beats are fixed local clips, while the instruction for the
             // next segment is prepared independently. Keep the instruction queued
@@ -749,6 +770,9 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     private func enqueue(_ moment: DetectedLiveGuidanceMoment) {
         if pendingMoment == nil {
+            pendingMoment = moment
+        } else if moment.speedChangeDirection != nil, pendingMoment.map({ !isWorkoutBoundaryMoment($0.type) }) == true {
+            // Replace an older ordinary correction; workout instructions retain priority.
             pendingMoment = moment
         } else if isWorkoutBoundaryMoment(moment.type),
                   pendingMoment.map({ !isWorkoutBoundaryMoment($0.type) }) == true,

@@ -1,6 +1,50 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "live_guidance.sudden_speed_increase": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Slow down until you can speak a full sentence."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baja el ritmo hasta poder decir una frase completa."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "放慢到能说出一句完整的话。"
+          }
+        }
+      }
+    },
+    "live_guidance.sudden_speed_decrease": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep the effort easy; there is no need to make up lost time."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén un esfuerzo suave; no hace falta recuperar el tiempo perdido."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持轻松，不用追回刚才的时间。"
+          }
+        }
+      }
+    },
     "session.metric.speed": {
       "localizations": {
         "en": {

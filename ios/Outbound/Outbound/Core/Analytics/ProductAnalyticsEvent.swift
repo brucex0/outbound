@@ -209,6 +209,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case subscriptionCustomerCenterOpened = "subscription_customer_center_opened"
     case subscriptionReconciled = "subscription_reconciled"
     case liveGuidanceMomentSuppressed = "live_guidance_moment_suppressed"
+    case liveGuidanceSpeedChange = "live_guidance_speed_change"
     case liveGuidanceMomentDetected = "live_guidance_moment_detected"
     case liveGuidanceCueSpoken = "live_guidance_cue_spoken"
     case liveGuidanceCueEvaluated = "live_guidance_cue_evaluated"
@@ -550,6 +551,7 @@ enum ProductAnalyticsSchema {
         .groupRunJoined: [.participantCountBucket],
         .groupRunInviteShared: [.participantCountBucket],
         .liveGuidanceMomentSuppressed: [.result],
+        .liveGuidanceSpeedChange: [.sourceType, .result],
         .liveGuidanceMomentDetected: [.momentType, .coachingContract],
         .liveGuidanceCueSpoken: [.momentType, .coachingContract],
         .liveGuidanceCueEvaluated: [.momentType, .result],

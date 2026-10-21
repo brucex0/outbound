@@ -3651,6 +3651,8 @@ struct RecordView: View {
                 .result: .string(result),
                 .sourceType: .string(guideStore.coachingReferenceSource)
             ]))
+        case .speedChange(let direction, let result):
+            track(.init(.liveGuidanceSpeedChange, properties: [.sourceType: .string(direction), .result: .string(result)]))
         case .momentSuppressed(let reason):
             track(.init(.liveGuidanceMomentSuppressed, properties: [.result: .string(reason)]))
         case .momentDetected(let type, let contract):
