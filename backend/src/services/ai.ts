@@ -1,6 +1,5 @@
-import { generateStructuredAI } from "./aiReliability/structuredGeneration.js";
+import { generateStructuredAI, type AIOperation } from "./aiReliability/structuredGeneration.js";
 import { ThinkingLevel } from "@google/genai";
-import Anthropic from "@anthropic-ai/sdk";
 import { gpt4oMiniTranscribe } from "./ai-transcribe.js";
 import { parseUtteranceCommand } from "./commandParser.js";
 import type { AssistantActivityToolContext } from "./assistantActivityTools.js";
@@ -15,10 +14,8 @@ export async function runFinalTranscriptionAndParse({ audioUrl, language }: { au
   return { transcript, command };
 }
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-// Shared cached system prompt prefix for all guide operations
-const GUIDE_SYSTEM_CACHE_PREFIX = `You are an expert running and endurance sports guide AI.
+// Shared guide instruction across configured providers.
+const GUIDE_SYSTEM_INSTRUCTION = `You are an expert running and endurance sports guide AI.
 Your role is to analyze athlete data and produce actionable, personalized guidance insights.
 Be specific, data-driven, and empathetic. Never give generic advice — always reference the athlete's actual numbers.`;
 
@@ -46,55 +43,33 @@ type AssistantResponse = {
 
 export async function analyzeActivity(
   activityData: object,
-  guideContext: object
+  guideContext: object,
+  locale: SupportedLocale = "en"
 ): Promise<string> {
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 1024,
-    system: [
-      {
-        type: "text",
-        text: GUIDE_SYSTEM_CACHE_PREFIX,
-      },
-    ],
-    messages: [
-      {
-        role: "user",
-        content: `Analyze this activity and provide guidance insights.\n\nGuide context: ${JSON.stringify(guideContext)}\n\nActivity: ${JSON.stringify(activityData)}`,
-      },
-    ],
-  });
-
-  return response.content[0].type === "text" ? response.content[0].text : "";
+  const content = await generateMessageJSON(
+    `${GUIDE_SYSTEM_INSTRUCTION}\n${localeInstruction(locale)}\nReturn JSON only as {"message":"..."}.`,
+    `Analyze this activity and provide guidance insights.\n\nGuide context: ${JSON.stringify(guideContext)}\n\nActivity: ${JSON.stringify(activityData)}`,
+    1024, 0.3, "activity_analysis"
+  );
+  return (JSON.parse(content) as AssistantResponse).message.trim();
 }
 
 export async function generateWeeklyReview(
   userId: string,
   activities: object[],
-  guideProfile: object
+  guideProfile: object,
+  locale: SupportedLocale = "en"
 ): Promise<string> {
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 2048,
-    system: [
-      {
-        type: "text",
-        text: GUIDE_SYSTEM_CACHE_PREFIX,
-      },
-    ],
-    messages: [
-      {
-        role: "user",
-        content: `Write a weekly training review for this athlete.
+  const content = await generateMessageJSON(
+    `${GUIDE_SYSTEM_INSTRUCTION}\n${localeInstruction(locale)}\nReturn JSON only as {"message":"..."}.`,
+    `Write a weekly training review for this athlete.
 Include: what went well, what to improve, next week's focus, and one specific drill or workout recommendation.
 
 Guide profile: ${JSON.stringify(guideProfile)}
 This week's activities: ${JSON.stringify(activities)}`,
-      },
-    ],
-  });
-
-  return response.content[0].type === "text" ? response.content[0].text : "";
+    2048, 0.3, "weekly_review"
+  );
+  return (JSON.parse(content) as AssistantResponse).message.trim();
 }
 
 export async function generateAssistantReply(input: {
@@ -144,7 +119,7 @@ ${input.prompt}
 
 Respond in 2 to 4 short paragraphs. Keep it compact and actionable.`;
 
-  const content = await generateAssistantJSON(systemPrompt, userPrompt, 700, 0.3);
+  const content = await generateMessageJSON(systemPrompt, userPrompt, 700, 0.3);
   const parsed = JSON.parse(content) as AssistantResponse;
   return parsed.message?.trim() || "";
 }
@@ -175,16 +150,16 @@ Be warm, concise, and practical. ${localeInstruction(input.locale)} Return JSON 
     actionStatus: input.actionStatus ?? null,
     userRequest: input.prompt,
   };
-  const content = await generateAssistantJSON(systemPrompt, JSON.stringify(payload), 600, 0.2);
+  const content = await generateMessageJSON(systemPrompt, JSON.stringify(payload), 600, 0.2);
   const parsed = JSON.parse(content) as { message?: string };
   if (!parsed.message?.trim()) throw new Error("Companion model returned an invalid message");
   return parsed.message.trim();
 }
 
-// Keep the assistant prompt and JSON contract identical across configured providers.
-async function generateAssistantJSON(systemInstruction: string, contents: string, maxOutputTokens: number, temperature: number): Promise<string> {
+// Keep the message JSON contract identical across configured providers.
+async function generateMessageJSON(systemInstruction: string, contents: string, maxOutputTokens: number, temperature: number, operation: AIOperation = "assistant"): Promise<string> {
   const result = await generateStructuredAI({
-    operation: "assistant", model: process.env.APP_AI_MODEL || "gemini-3.8-flash", deadlineMilliseconds: 20_000,
+    operation, model: process.env.APP_AI_MODEL || "gemini-3.8-flash", deadlineMilliseconds: 20_000,
     parameters: {
       contents,
       config: {
@@ -198,7 +173,7 @@ async function generateAssistantJSON(systemInstruction: string, contents: string
       const content = response.text?.trim();
       if (!content) throw new Error("Empty assistant output");
       const parsed = JSON.parse(content) as AssistantResponse;
-      if (!parsed.message?.trim()) throw new Error("Invalid assistant message");
+      if (typeof parsed.message !== "string" || !parsed.message.trim()) throw new Error("Invalid AI message");
       return content;
     },
   });

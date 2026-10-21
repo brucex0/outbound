@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { getGuideProfile, rebuildGuideProfile } from "../services/guideProfile.js";
+import { getGuideProfile, getOrCreateGuideProfile, rebuildGuideProfile } from "../services/guideProfile.js";
 import { generateWeeklyReview } from "../services/ai.js";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
@@ -21,8 +21,7 @@ router.get("/profile", async (c) => {
     return c.json({ error: "Authentication required or user not registered." }, 401);
   }
 
-  const profile = await getGuideProfile(appUser.id);
-  if (!profile) return c.json({ error: "No guide profile yet" }, 404);
+  const profile = await getOrCreateGuideProfile(appUser.id);
   return c.json(profile);
 });
 
@@ -75,7 +74,7 @@ router.post(
 );
 
 // POST /v1/guide/weekly-review
-// Generate a full weekly review via Claude
+// Generate a full weekly review through the configured AI provider
 router.post("/weekly-review", async (c) => {
   const unavailable = requireDatabase(c);
   if (unavailable) return unavailable;
@@ -93,7 +92,7 @@ router.post("/weekly-review", async (c) => {
     }),
   ]);
   if (!profile) return c.json({ error: "No guide profile" }, 404);
-  const review = await generateWeeklyReview(userId, activities, profile);
+  const review = await generateWeeklyReview(userId, activities, profile, c.get("locale"));
   return c.json({ review });
 });
 

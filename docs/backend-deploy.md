@@ -7,7 +7,7 @@ Open this when deploying or reconfiguring the GCP backend for Outbound.
 - Backend source lives in `backend/`.
 - Runtime target is Google Cloud Run.
 - The backend is now built as a standard Node service from `backend/Dockerfile`.
-- Production assistant chat and live-coach planning use `gpt-6-luna` through the OpenAI Responses API, with `OPENAI_API_KEY` mounted from `outbound-openai-api-key`. The deploy helper preserves this production route; other environments default to Gemini. `APP_AI_MODEL` and `GEMINI_LIVE_COACH_PLANNER_MODEL` override the two workloads. Training-plan intake/adjustment stays on Gemini; Google TTS still uses runtime identity. Qualification and current revision: `docs/ai-reliability.md`.
+- Production assistant chat, activity analysis, weekly reviews, and live-coach planning use `gpt-6-luna` through the OpenAI Responses API, with `OPENAI_API_KEY` mounted from `outbound-openai-api-key`. The deploy helper preserves this production route; other environments default to Gemini. `APP_AI_MODEL` and `GEMINI_LIVE_COACH_PLANNER_MODEL` override the message and coaching workloads. Training-plan intake/adjustment stays on Gemini; Google TTS still uses runtime identity. Qualification and current revision: `docs/ai-reliability.md`.
 - Database-backed routes intentionally return `503` when `DATABASE_URL` is unset.
 - Repo-local npm installs should use the committed `.npmrc`, which points this repo at the public npm registry instead of a machine-level override.
 - Production Postgres lives on the dedicated, private Cloud SQL instance `outbound-494602:us-central1:outbound-db`.
@@ -439,3 +439,9 @@ If you want the IAM user to be able to change ownership or manage privileges cre
 - Cross-device settings add the one-to-one `UserPreferences` row and authenticated `GET`/`PUT /v1/auth/me/preferences`. Deploy the API and execute the pinned schema job before distributing the matching iOS build so a first client upload cannot reach a runtime with the old Prisma schema.
 
 Coaching preplanning adds `LiveCoachPreparation` and `LiveCoachSession.preparationId`. Deploy through the standard pinned schema job before installing the matching iOS build. Existing rows need no reset. Keep `outbound-planning-maintenance` pinned to the deployed image so it also purges expired preparations; see `docs/live-coach-operations.md` for the preparation protocol.
+
+## Deterministic Guide Profile Recovery
+
+- Authenticated `GET /v1/guide/profile` creates a missing guide profile from the account’s saved running history; existing profiles are returned unchanged. No AI credential is needed. Deleted activities are excluded, and empty history yields a finite empty snapshot without an invented pace.
+- New activity saves await independent profile rebuilding and planning-event enqueueing before returning. Optional activity analysis remains best effort; missing provider credentials cannot skip profile creation or planning. A failed completion task logs only its operation, outcome, numeric status when available, and error type.
+- `guide_profile_resolution` reports missing-profile repair success/failure without account identifiers or activity data. Rebuild responses use the persisted profile, preserving preferred pace and existing customization.

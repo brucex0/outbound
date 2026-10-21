@@ -1,7 +1,7 @@
 import { generateWithOpenAI, type StructuredAIResponse } from "./openaiGeneration.js";
 import { GoogleGenAI, type GenerateContentParameters } from "@google/genai";
 
-export type AIOperation = "assistant" | "live_coach" | "plan_intake" | "plan_adjustment";
+export type AIOperation = "assistant" | "activity_analysis" | "weekly_review" | "live_coach" | "plan_intake" | "plan_adjustment";
 export type AIFailureCategory = "rate_limited" | "timeout" | "server" | "network" | "authentication" | "invalid_request" | "invalid_output" | "circuit_open" | "quota_exhausted";
 type ValidationCategory = "json" | "schema" | "moment_coverage" | "instruction_coverage" | "distinct_phrases" | "phrase_bounds" | "product_validation" | "unsafe_pain" | "medical" | "guarantee" | "vague_form" | "abrupt_pace" | "unknown";
 export class AIGenerationError extends Error {

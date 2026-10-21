@@ -12,7 +12,7 @@ export async function rebuildGuideProfile(userId: string): Promise<GuideProfileP
       include: { guideProfile: true },
     }),
     prisma.activity.findMany({
-      where: { userId, type: "running" },
+      where: { userId, type: "running", deletedAt: null },
       orderBy: { startedAt: "desc" },
       take: 90,
     }),
@@ -52,10 +52,11 @@ export async function rebuildGuideProfile(userId: string): Promise<GuideProfileP
       date: a.startedAt.toISOString().split("T")[0],
       type: a.type,
       distanceKm: Math.round((a.distanceM ?? 0) / 100) / 10,
-      avgPaceSecs: a.avgPace ?? 0,
+      avgPaceSecs: a.avgPace && Number.isFinite(a.avgPace) && a.avgPace > 0
+        ? a.avgPace : (a.durationSecs ?? 0) / ((a.distanceM ?? 1) / 1000),
     })),
     weeklyVolumeKm: Math.round(weeklyVolumeM / 100) / 10,
-    longestRunKm: Math.round(Math.max(...recentRuns.map((a) => a.distanceM ?? 0)) / 100) / 10,
+    longestRunKm: Math.round(Math.max(0, ...recentRuns.map((a) => a.distanceM ?? 0)) / 100) / 10,
     consistencyScore: Math.min(recentRuns.length / 12, 1),
     recentInsight: "",
   };
@@ -71,7 +72,7 @@ export async function rebuildGuideProfile(userId: string): Promise<GuideProfileP
   const goals = ((existing?.goals ?? []) as unknown) as GoalItem[];
   const version = (existing?.version ?? 0) + 1;
 
-  await prisma.guideProfile.upsert({
+  const saved = await prisma.guideProfile.upsert({
     where: { userId },
     create: {
       userId,
@@ -94,28 +95,27 @@ export async function rebuildGuideProfile(userId: string): Promise<GuideProfileP
       records: records as Prisma.InputJsonValue,
       memorySnapshot: memorySnapshot as unknown as Prisma.InputJsonValue,
       lastBuiltAt: new Date(),
-      version,
+      version: { increment: 1 },
     },
   });
 
-  const payload: GuideProfilePayload = {
-    version,
-    guideName,
-    coachPersonaId,
-    voiceProfileId,
-    athlete: {
-      fitnessLevel: fitnessLevel as GuideProfilePayload["athlete"]["fitnessLevel"],
-      weeklyVolumeKm: memorySnapshot.weeklyVolumeKm,
-      strengths: existing?.strengths ?? [],
-      weaknesses: existing?.weaknesses ?? [],
-      records,
-    },
-    goals,
-    memorySnapshot,
-    builtAt: new Date().toISOString(),
-  };
+  return guideProfilePayload(saved);
+}
 
-  return payload;
+// Authenticated profile reads repair missing deterministic state from existing
+// history. Existing profiles are returned unchanged, without a model request.
+export async function getOrCreateGuideProfile(userId: string): Promise<GuideProfilePayload> {
+  const existing = await getGuideProfile(userId);
+  if (existing) return existing;
+  try {
+    const profile = await rebuildGuideProfile(userId);
+    console.info("guide_profile_resolution", { source: "rebuilt_missing", outcome: "success" });
+    return profile;
+  } catch (error) {
+    console.error("guide_profile_resolution", { source: "rebuilt_missing", outcome: "failure",
+      errorType: error instanceof Error ? error.name : "unknown" });
+    throw error;
+  }
 }
 
 export async function getGuideProfile(userId: string): Promise<GuideProfilePayload | null> {

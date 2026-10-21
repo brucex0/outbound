@@ -4,6 +4,8 @@ Open this for structured AI failures, model qualification, retry behavior, or AI
 
 ## Request policy
 
+- Activity analysis and weekly reviews use `APP_AI_MODEL` through the same validated message transport as the assistant, with a 20-second total deadline and the request app language. They return prose strings to existing consumers. Their distinct `activity_analysis` / `weekly_review` diagnostics contain no content; model failover remains limited to the separately qualified assistant/live-coach operations. No Anthropic credential is required.
+
 - Assistant, plan intake, and plan adjustment keep their existing 20-second total deadline; live-coach planning keeps 45 seconds.
 - SDK retries are disabled explicitly. Allow at most two primary attempts, retrying only transient network, 429, or server errors with 250–499 ms jitter. OpenAI `Retry-After` takes precedence; if it cannot fit the original deadline, skip the retry rather than wait beyond the deadline. A timeout proceeds to the alternate rather than retrying the same model.
 - Assistant/live-coach `AI_FALLBACK_VALIDATED=true` enables `AI_FALLBACK_MODEL` (default `gemini-3.6-flash`). Leave disabled until the real output contract passes qualification. Both models use identical prompts, context, locale, and validation. Plan intake/adjustment retain their configured primary plus deterministic fallback; they are outside the model-failover qualification scope.
