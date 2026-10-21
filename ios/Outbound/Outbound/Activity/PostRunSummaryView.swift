@@ -253,19 +253,25 @@ struct PostRunSummaryView: View {
                 )
                 Divider().frame(height: 48)
                 SummaryStatColumn(
-                    label: String(localized: "summary.stats.time", defaultValue: "Time"),
+                    label: String(localized: "activity.metric.moving_time", defaultValue: "Moving Time"),
                     value: summary.durationSecs.formatted(),
                     unit: ""
                 )
                 if let pace = summary.avgPace {
                     Divider().frame(height: 48)
-                    SummaryStatColumn(label: String(localized: "summary.stats.avg_pace", defaultValue: "Avg Pace"), value: pace.paceString(for: measurementPreferences.unitSystem), unit: "")
+                    SummaryStatColumn(label: activityType == .cycling ? String(localized: "activity.metric.avg_speed", defaultValue: "Avg Speed") : String(localized: "summary.stats.avg_pace", defaultValue: "Avg Pace"), value: activityType == .cycling ? measurementPreferences.unitSystem.speedString(meters: summary.distanceM, seconds: Double(summary.durationSecs)) : pace.paceString(for: measurementPreferences.unitSystem), unit: "")
                 }
             }
 
             Divider().padding(.vertical, 12)
 
             HStack(spacing: 0) {
+                SummaryStatColumn(
+                    label: String(localized: "activity.metric.elapsed_time", defaultValue: "Elapsed Time"),
+                    value: max(summary.durationSecs, Int(summary.endedAt.timeIntervalSince(summary.startedAt))).formatted(),
+                    unit: ""
+                )
+                Divider().frame(height: 48)
                 SummaryStatColumn(
                     label: String(localized: "summary.stats.elev_gain", defaultValue: "Elev Gain"),
                     value: measurementPreferences.unitSystem.elevationValueString(meters: summary.elevationGainM),

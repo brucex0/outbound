@@ -1673,7 +1673,7 @@ struct RecordView: View {
             if isSaveEligible {
                 guideCatalog.recordGuidanceReport(guidanceReport)
             }
-            track(.init(.activityFinished, properties: outcomeProperties(for: summary)))
+            track(.init(.activityFinished, properties: outcomeProperties(for: summary).merging([.elapsedDurationBucket: .string(ProductAnalyticsBucket.duration(seconds: max(summary.durationSecs, Int(summary.endedAt.timeIntervalSince(summary.startedAt)))))]) { _, new in new }))
             let locationDiagnostics = recorder.locationManager.recordingDiagnostics
             track(.init(.activityRecordingQuality, properties: [
                 .sourceType: .string(locationDiagnostics.deliveryMode),
@@ -1937,6 +1937,7 @@ struct RecordView: View {
         }
         ActivityDiagnosticLog.notice(.persistence, "Post-run save completed local_state=durable")
         var savedProperties = outcomeProperties(for: resolvedActivity.summary)
+        savedProperties[.elapsedDurationBucket] = .string(ProductAnalyticsBucket.duration(seconds: max(resolvedActivity.summary.durationSecs, Int(resolvedActivity.summary.endedAt.timeIntervalSince(resolvedActivity.summary.startedAt)))))
         savedProperties[.activityType] = .string(savedActivityType.rawValue)
         savedProperties[.goalType] = .string(analyticsGoalType)
         savedProperties[.photoCountBucket] = .string(ProductAnalyticsBucket.count(photos.count))

@@ -295,6 +295,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case autoStopAtGoal = "auto_stop_at_goal"
     case dogCompanionEnabled = "dog_companion_enabled"
     case durationBucket = "duration_bucket"
+    case elapsedDurationBucket = "elapsed_duration_bucket"
     case distanceBucket = "distance_bucket"
     case photoCountBucket = "photo_count_bucket"
     case participantCountBucket = "participant_count_bucket"
@@ -359,8 +360,8 @@ enum ProductAnalyticsSchema {
         .activityStarted: [.entrySource, .activityType, .goalType, .targetBucket, .musicEnabled, .routeSelected, .shoeSelected, .preRunPhotoAdded, .groupRunEnabled, .liveShareEnabled, .indoor, .voiceGuideEnabled, .autoPauseEnabled, .autoStopAtGoal, .dogCompanionEnabled, .participantCountBucket],
         .activityPaused: [.sourceType],
         .activityResumed: [.sourceType, .durationBucket],
-        .activityFinished: [.durationBucket, .distanceBucket, .goalCompletionBucket],
-        .activitySaved: [.activityType, .goalType, .durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket, .musicEnabled, .routeSelected, .shoeSelected, .groupRunEnabled, .indoor, .dogCompanionEnabled],
+        .activityFinished: [.elapsedDurationBucket, .durationBucket, .distanceBucket, .goalCompletionBucket],
+        .activitySaved: [.elapsedDurationBucket, .activityType, .goalType, .durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket, .musicEnabled, .routeSelected, .shoeSelected, .groupRunEnabled, .indoor, .dogCompanionEnabled],
         .activitySaveIneligibleShown: [.activityType, .durationBucket, .distanceBucket],
         .postWorkoutStretchOffered: [.activityType, .routineID],
         .postWorkoutStretchStarted: [.activityType, .routineID, .control],

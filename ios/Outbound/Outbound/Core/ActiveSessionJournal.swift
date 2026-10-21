@@ -5,6 +5,8 @@ import UIKit
 struct ActiveSessionJournal {
     let startedAt: Date
     let elapsedSeconds: Int
+    let movingTimeTracker: MovingTimeTracker?
+    let completedAt: Date?
     let wasPaused: Bool
     let activityType: ActivityType?
     let autoPauseEnabled: Bool?
@@ -26,6 +28,8 @@ struct ActiveSessionJournal {
     init(
         startedAt: Date,
         elapsedSeconds: Int,
+        movingTimeTracker: MovingTimeTracker? = nil,
+        completedAt: Date? = nil,
         wasPaused: Bool,
         activityType: ActivityType?,
         autoPauseEnabled: Bool? = nil,
@@ -46,6 +50,8 @@ struct ActiveSessionJournal {
     ) {
         self.startedAt = startedAt
         self.elapsedSeconds = elapsedSeconds
+        self.movingTimeTracker = movingTimeTracker
+        self.completedAt = completedAt
         self.wasPaused = wasPaused
         self.activityType = activityType
         self.autoPauseEnabled = autoPauseEnabled
@@ -73,6 +79,8 @@ struct ActiveSessionJournal {
             return ActiveSessionJournal(
                 startedAt: metadata.startedAt,
                 elapsedSeconds: metadata.elapsedSeconds,
+                movingTimeTracker: metadata.movingTimeTracker,
+                completedAt: metadata.completedAt,
                 wasPaused: metadata.wasPaused,
                 activityType: metadata.activityType,
                 autoPauseEnabled: metadata.autoPauseEnabled,
@@ -104,6 +112,8 @@ struct ActiveSessionJournal {
         let metadata = Metadata(
             startedAt: startedAt,
             elapsedSeconds: elapsedSeconds,
+            movingTimeTracker: movingTimeTracker,
+            completedAt: completedAt,
             wasPaused: wasPaused,
             activityType: activityType,
             autoPauseEnabled: autoPauseEnabled,
@@ -163,6 +173,8 @@ struct ActiveSessionJournal {
     nonisolated struct Metadata: Codable, Sendable {
         let startedAt: Date
         let elapsedSeconds: Int
+        let movingTimeTracker: MovingTimeTracker?
+        let completedAt: Date?
         let wasPaused: Bool
         let activityType: ActivityType?
         let autoPauseEnabled: Bool?

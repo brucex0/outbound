@@ -12,6 +12,7 @@ struct ActiveSessionSnapshot: Equatable {
     let location: SessionLocation?
     let isActive: Bool
     var paceEvidenceTimestamp: Date? = nil
+    var movingSeconds: Int? = nil
 
     static var empty: ActiveSessionSnapshot {
         ActiveSessionSnapshot(
@@ -33,7 +34,7 @@ struct ActiveSessionSnapshot: Equatable {
 
     var averagePaceSecsPerKm: Double? {
         activityType.plausibleAveragePace(
-            durationSeconds: Double(elapsedSeconds),
+            durationSeconds: Double(movingSeconds ?? elapsedSeconds),
             distanceMeters: distanceMeters
         )
     }

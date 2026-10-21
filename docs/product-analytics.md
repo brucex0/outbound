@@ -344,3 +344,8 @@ Historical dashboards do not migrate automatically just because the client adapt
 The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/goal/alert controls reuse the existing typed events. `health_workout_write_back` records phone write success/failure or a skip backed by a confirmed same-session Watch save, with only source, result, and normalized failure category. See `docs/apple-watch-running-parity.md` for exact values and offline limits. No exact health metrics, route points, session IDs, or target values enter these events.
 
 - Gemini assistant generation emits server diagnostics with success/failure and coarse latency; failures include only operation, numeric HTTP status when available, and a bounded category. Prompts, replies, runner context, and provider error bodies are excluded. Existing client assistant outcome events remain unchanged.
+
+### Activity duration semantics
+
+- New phone-recorded outdoor activities use moving time for the `activity_finished` / `activity_saved` `duration_bucket`. Both events also carry `elapsed_duration_bucket`, using the same coarse duration buckets over start-to-finish wall-clock time.
+- No coordinates, speed samples, exact durations, or stop locations enter analytics. Other event timing and workout-goal progress retain their existing clocks.

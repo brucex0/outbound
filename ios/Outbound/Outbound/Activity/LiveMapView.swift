@@ -310,9 +310,9 @@ struct LiveMapView: View {
             expandedHeight: expandedHeight,
             intent: intent,
             companionType: recorder.companionType,
-            elapsedText: recorder.elapsedSeconds.formatted(),
+            elapsedText: recorder.movingSeconds.formatted(),
             elapsedSeconds: recorder.elapsedSeconds,
-            paceLabel: recorder.state == .paused
+            paceLabel: recorder.activityType == .cycling ? (recorder.state == .paused ? String(localized: "activity.metric.avg_speed", defaultValue: "Avg Speed") : String(localized: "session.metric.speed", defaultValue: "Speed")) : recorder.state == .paused
                 ? String(localized: "session.metric.average_pace", defaultValue: "Avg. pace")
                 : String(localized: "session.metric.pace", defaultValue: "Pace"),
             paceText: sessionPaceText,
@@ -567,6 +567,13 @@ struct LiveMapView: View {
     }
 
     private var sessionPaceText: String {
+        if recorder.activityType == .cycling {
+            if recorder.state == .paused {
+                return measurementPreferences.unitSystem.speedString(meters: recorder.distanceMeters, seconds: Double(recorder.movingSeconds))
+            }
+            guard let pace = recorder.currentPace, pace > 0 else { return "—" }
+            return measurementPreferences.unitSystem.speedString(meters: 1000, seconds: pace)
+        }
         switch recorder.state {
         case .idle:
             return "--"

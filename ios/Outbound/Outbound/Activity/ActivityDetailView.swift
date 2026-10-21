@@ -115,13 +115,14 @@ struct ActivityDetailView: View {
         var stats = [
             DetailActivityStat(label: String(localized: "Distance"), value: primaryStat),
             DetailActivityStat(
-                label: String(localized: "activity.metric.avg_pace", defaultValue: "Avg Pace"),
-                value: currentActivity.activityType.plausibleAveragePace(
+                label: currentActivity.activityType == .cycling ? String(localized: "activity.metric.avg_speed", defaultValue: "Avg Speed") : String(localized: "activity.metric.avg_pace", defaultValue: "Avg Pace"),
+                value: currentActivity.activityType == .cycling ? unitSystem.speedString(meters: currentActivity.distanceM, seconds: Double(currentActivity.durationSecs)) : currentActivity.activityType.plausibleAveragePace(
                     durationSeconds: Double(currentActivity.durationSecs),
                     distanceMeters: currentActivity.distanceM
                 )?.paceString(for: unitSystem) ?? "—"
             ),
             DetailActivityStat(label: String(localized: "activity.metric.moving_time", defaultValue: "Moving Time"), value: currentActivity.durationSecs.formatted()),
+            DetailActivityStat(label: String(localized: "activity.metric.elapsed_time", defaultValue: "Elapsed Time"), value: currentActivity.elapsedDurationSecs.formatted()),
         ]
         if currentActivity.activityType == .walking,
            let walkingStepCount = currentActivity.walkingStepCount {

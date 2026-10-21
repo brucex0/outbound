@@ -186,6 +186,16 @@ final class LocationManager: NSObject, ObservableObject {
         return currentMotionSpeed
     }
 
+    /// Only fresh, accurate native speed can prove a stop. Position uncertainty
+    /// must not turn slow climbing or a GPS outage into stationary time.
+    func movingTimeSpeed(at now: Date) -> Double? {
+        guard let fix = previousMotionLocation,
+              (0...5).contains(now.timeIntervalSince(fix.timestamp)),
+              (0...20).contains(fix.horizontalAccuracy),
+              fix.speed >= 0, (0...0.5).contains(fix.speedAccuracy) else { return nil }
+        return fix.speed
+    }
+
     func requestPermission() {
         manager.requestWhenInUseAuthorization()
     }

@@ -190,3 +190,15 @@ Safe-area strategy:
 - `ActivityPhotoCacheTests.fullSizeDecodePreservesEXIFOrientation` encodes all eight EXIF orientations and checks full-size, memory-cache, and thumbnail paths against UIKit decoding. Run it when tests are explicitly requested.
 - Before shipping photo pipeline changes, compare EXIF-rotated portrait, landscape, and mirrored photos across feed, detail strip/map pin, and lightbox (including zoom, cold load, and cached reopen). Include local and remote media; verify orientation and aspect ratio agree. Already-normalized fixtures are insufficient.
 - Existing `photo_previewed` and `photo_zoomed` instrumentation remains in the viewer; this decoding correction adds no event or photo metadata.
+
+## Moving And Elapsed Time
+
+- New phone-recorded outdoor Run, Walk, Hike, and Bike activities save moving seconds in the existing `durationSecs` field. `startedAt` / `endedAt` retain elapsed wall-clock time, including manual/automatic pauses; no third duration or backend/Room schema change is needed.
+- Moving time excludes explicit pauses and confirmed stationary time while recording continues. Confirmation requires 10 seconds below 0.3 m/s for runs, 0.15 m/s for walks/hikes, or 0.5 m/s for cycling. The confirmed interval is removed retrospectively, so the live duration can adjust when a stop is confirmed.
+- Only native speed with speed accuracy at most 0.5 m/s, horizontal accuracy at most 20 m, and age at most 5 seconds can confirm a stop. Missing/uncertain observations, long background sampling gaps, and very short stops count toward moving time. These conservative thresholds need outdoor device validation, especially on slow technical climbs.
+- Main duration and average pace use moving time. Cycling activity details and live/review metrics show speed; its completed average is distance divided by moving time. Detail/review also show Elapsed Time.
+- Existing auto-pause controls, workout/coaching/goal clocks, cadence time axes, and route recording remain unchanged. Route-derived split/heatmap timing still uses route timestamps and explicit segment gaps; it is not a newly reconstructed per-split moving-time series.
+- Confirmed stopped duration is checkpointed with active-session recovery. Unsaved-review recovery preserves the completion timestamp. Watch heart-rate reconciliation retains phone moving duration when a phone route exists.
+- Existing activities, manual entries, imported activities, and standalone Watch/Wear recordings retain their supplied duration; this change does not infer historical moving time from sparse routes or add wearable stop detection.
+- Existing sync already transmits `durationSecs`, `startedAt`, and `endedAt`; no backend deployment, data reset, or migration is required. Editing duration retains the existing edit semantics.
+- Verification: Android phone Kotlin compile; iOS simulator build. No test suite run. Outdoor GPS behavior and real-device recovery remain manual acceptance checks before release.

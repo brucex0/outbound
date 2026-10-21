@@ -52,6 +52,11 @@ enum MeasurementUnitSystem: String, CaseIterable, Codable, Identifiable {
         )
     }
 
+    func speedString(meters: Double, seconds: Double) -> String {
+        guard seconds > 0, meters.isFinite, meters >= 0 else { return "—" }
+        return "\(decimalString(distanceValue(meters: meters) * 3600 / seconds, fractionDigits: 1)) \(distanceUnit)/h"
+    }
+
     var paceUnitSuffix: String {
         switch self {
         case .metric: return "/km"

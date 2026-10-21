@@ -69,8 +69,11 @@ final class ActivityRecorder: ObservableObject {
     private let autoPauseDurationSeconds: TimeInterval = 12
     private let autoResumeDurationSeconds: TimeInterval = 6
     private var startDate: Date?
+    private var completedAt: Date?
     private var currentSegmentStartDate: Date?
     private var accumulatedActiveDuration: TimeInterval = 0
+    private var movingTimeTracker = MovingTimeTracker()
+    @Published private(set) var movingSeconds = 0
     private var heartRateEngine = HeartRateEffortEngine()
     private var finalWatchHeartRateMetrics: PlainstrideFinalWorkoutMetrics?
     private var sessionMetadata: ActivityRecordingSessionMetadata?
@@ -81,7 +84,7 @@ final class ActivityRecorder: ObservableObject {
     private var goalDistanceAdjustmentMeters = 0.0
     var averagePace: Double? {
         activityType.plausibleAveragePace(
-            durationSeconds: Double(elapsedSeconds),
+            durationSeconds: Double(movingSeconds),
             distanceMeters: distanceMeters
         )
     }
@@ -169,6 +172,9 @@ final class ActivityRecorder: ObservableObject {
         recoveredWatchLifecycle = nil
         recoveredWatchMessageSequence = nil
         elapsedSeconds = 0
+        movingTimeTracker = MovingTimeTracker()
+        movingSeconds = 0
+        completedAt = nil
         distanceMeters = 0
         goalDistanceAdjustmentMeters = 0
         elevationGainMeters = 0
@@ -217,6 +223,7 @@ final class ActivityRecorder: ObservableObject {
         currentCadenceStepsPerMinute = nil
         autoPaused = autoTriggered
         state = .paused
+        movingTimeTracker.suspend()
         accumulatedActiveDuration = TimeInterval(elapsedSeconds)
         currentSegmentStartDate = nil
         autoPauseCandidateStart = nil
@@ -271,6 +278,7 @@ final class ActivityRecorder: ObservableObject {
         stopRunSimulationClock()
 #endif
         updateSessionMetrics(now: Date())
+        completedAt = completedAt ?? Date()
         // Finishing only commits the runner to the post-run review. Keep the
         // recovery journal durable until that review is saved or discarded.
         persistJournal(force: true, recoveryStage: .awaitingSave)
@@ -303,11 +311,11 @@ final class ActivityRecorder: ObservableObject {
         let finishedRouteGuidance = routeGuidanceSnapshot
         let summary = ActivitySummary(
             startedAt: startDate ?? Date(),
-            endedAt: Date(),
-            durationSecs: elapsedSeconds,
+            endedAt: completedAt ?? Date(),
+            durationSecs: movingSeconds,
             distanceM: finalDistanceMeters,
             avgPace: activityType.plausibleAveragePace(
-                durationSeconds: Double(elapsedSeconds),
+                durationSeconds: Double(movingSeconds),
                 distanceMeters: finalDistanceMeters
             ),
             elevationGainM: finalElevationGainMeters,
@@ -393,6 +401,9 @@ final class ActivityRecorder: ObservableObject {
         recoveredRouteGuidance = nil
         recoveredActivityType = nil
         elapsedSeconds = 0
+        movingTimeTracker = MovingTimeTracker()
+        movingSeconds = 0
+        completedAt = nil
         distanceMeters = 0
         goalDistanceAdjustmentMeters = 0
         elevationGainMeters = 0
@@ -554,6 +565,9 @@ final class ActivityRecorder: ObservableObject {
         accumulatedActiveDuration = TimeInterval(elapsedSeconds)
         currentSegmentStartDate = now
         self.elapsedSeconds = elapsedSeconds
+        self.movingSeconds = elapsedSeconds
+        movingTimeTracker = MovingTimeTracker()
+        completedAt = nil
         self.distanceMeters = distanceMeters
         self.elevationGainMeters = elevationGainMeters
         currentPace = currentPaceSecsPerKm
@@ -708,6 +722,19 @@ final class ActivityRecorder: ObservableObject {
 
     private func updateSessionMetrics(now: Date) {
         elapsedSeconds = currentElapsedSeconds(at: now)
+        if state == .active {
+            let threshold: Double? = switch activityType {
+            case .running: 0.3
+            case .walking, .hiking: 0.15
+            case .cycling: 0.5
+            default: nil
+            }
+            let stationary = threshold.flatMap { limit in
+                locationManager.movingTimeSpeed(at: now).map { $0 < limit }
+            }
+            movingTimeTracker.update(activeSeconds: Double(elapsedSeconds), stationary: stationary)
+        }
+        movingSeconds = movingTimeTracker.movingSeconds(activeSeconds: elapsedSeconds)
         distanceMeters = locationManager.totalDistanceMeters + goalDistanceAdjustmentMeters
         elevationGainMeters = locationManager.elevationGainMeters
         walkingStepCount = locationManager.walkingStepCount
@@ -739,9 +766,13 @@ final class ActivityRecorder: ObservableObject {
         })
         lastJournaledTrackPointCount = journal.trackPoints.count
         startDate = journal.startedAt
+        completedAt = journal.completedAt
         accumulatedActiveDuration = TimeInterval(journal.elapsedSeconds)
         currentSegmentStartDate = nil
         elapsedSeconds = journal.elapsedSeconds
+        movingTimeTracker = journal.movingTimeTracker ?? MovingTimeTracker()
+        movingTimeTracker.suspend()
+        movingSeconds = movingTimeTracker.movingSeconds(activeSeconds: elapsedSeconds)
         activityType = journal.activityType ?? .running
         cadenceTracker = journal.cadenceTracker ?? RunningCadenceTracker()
         cadenceTracker.suspend()
@@ -849,6 +880,8 @@ final class ActivityRecorder: ObservableObject {
         ActiveSessionJournal(
             startedAt: startDate,
             elapsedSeconds: elapsedSeconds,
+            movingTimeTracker: movingTimeTracker,
+            completedAt: completedAt,
             wasPaused: state == .paused,
             activityType: activityType,
             autoPauseEnabled: autoPauseEnabled,
@@ -896,7 +929,8 @@ final class ActivityRecorder: ObservableObject {
             heartRate: heartRate,
             location: locationManager.location.map(SessionLocation.init),
             isActive: isActive ?? (state == .active),
-            paceEvidenceTimestamp: locationManager.coachingPaceEvidenceTimestamp
+            paceEvidenceTimestamp: locationManager.coachingPaceEvidenceTimestamp,
+            movingSeconds: movingSeconds
         )
     }
 
@@ -957,10 +991,10 @@ final class ActivityRecorder: ObservableObject {
         return ActivitySummary(
             startedAt: summary.startedAt,
             endedAt: summary.endedAt,
-            durationSecs: max(summary.durationSecs, Int(metrics.elapsedTime.rounded())),
+            durationSecs: summary.trackPoints.isEmpty ? max(summary.durationSecs, Int(metrics.elapsedTime.rounded())) : summary.durationSecs,
             distanceM: reconciledDistance,
             avgPace: activityType.plausibleAveragePace(
-                durationSeconds: Double(max(summary.durationSecs, Int(metrics.elapsedTime.rounded()))),
+                durationSeconds: Double(summary.trackPoints.isEmpty ? max(summary.durationSecs, Int(metrics.elapsedTime.rounded())) : summary.durationSecs),
                 distanceMeters: reconciledDistance
             ),
             elevationGainM: summary.elevationGainM,

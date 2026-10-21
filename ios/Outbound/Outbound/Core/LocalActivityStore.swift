@@ -572,6 +572,9 @@ nonisolated struct SavedActivity: Codable, Identifiable, Hashable {
     let photos: [SavedPhoto]
     let sync: SavedActivitySyncState?
 
+    /// durationSecs is moving time; timestamps retain the complete outing.
+    var elapsedDurationSecs: Int { max(durationSecs, Int(endedAt.timeIntervalSince(startedAt))) }
+
     var routePoints: [SavedRoutePoint] { route?.points ?? [] }
     var routeCoordinates: [CLLocationCoordinate2D] { routePoints.map(\.coordinate) }
     var routeCoordinateSegments: [[CLLocationCoordinate2D]] {
