@@ -6,9 +6,9 @@ Open this when changing the Today launch dock, activity goal selection, countdow
 
 - Run setup exposes Race as a peer of Curated, Freestyle, Distance, Time, and Calories. Selecting it opens the race planner immediately.
 - V1 supports 5K, 10K, half marathon, and marathon efforts. The runner may use Plainstride's suggested finish time, edit it, or race by feel.
-- The suggestion uses up to 30 comparable saved runs, a Riegel distance projection, and a conservative four-percent buffer. It excludes runs shorter than 2 km, sessions shorter than ten minutes, and extrapolations beyond four times the source distance.
-- Without a responsible comparison, the planner defaults to an effort-based finish and does not invent a pace.
-- Applying a plan creates typed `RaceExecutionIntent`. Distance remains the saved activity goal; race goal mode, time/pace, strategy, and recommendation source remain live-guidance context.
+- The iOS and Android suggestion filters saved runs to at least 2 km and ten minutes, between 50% and 110% of the race distance, then takes the first 30 in recent-history order. It compares runs within 90% of the longest eligible distance and projects with Riegel exponent 1.08, allowing distance ratios from 0.9 through 2. Near-distance efforts (at least 95% of the race) cannot project faster than the recorded duration; shorter efforts receive a five-percent buffer. The fastest candidate is rounded to the nearest minute.
+- Without a responsible comparison, the recommendation is an effort-based finish. The current iOS planner seeds a two-hour editable time and Finish by feel strategy in this case; applying retains that time with no pace target and a manual source. Android matches this behavior. Time controls expose 0–23 hours and 0–59 minutes, with Apply disabled below five minutes. Choosing a new distance reseeds time and strategy; opening the planner starts from half marathon rather than the previously applied plan.
+- Applying a plan creates typed race context (`RaceExecutionIntent` on iOS, `RecordingRaceIntent` on Android). Distance remains the saved activity goal; race goal mode, time/pace, strategy, and recommendation source remain live-guidance context.
 - Training toward a future race date is deferred. This mode plans the race being started now.
 
 ## Navigation Decision

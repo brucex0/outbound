@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="race_planner_based_on_history">Según %1$d carreras recientes relevantes, empieza con paciencia e intenta lograr %2$s.</string>
+    <string name="race_planner_distance">Distancia de carrera</string>
+    <string name="race_planner_effort">Terminar por sensaciones</string>
+    <string name="race_planner_even">Esfuerzo uniforme</string>
+    <string name="race_planner_execution">Tu guía para la carrera</string>
+    <string name="race_planner_execution_negative_split">Primer cuarto: apunta a un ritmo cercano a %1$s. En la parte central, estabilízate cerca de %2$s. En el último cuarto, acelera poco a poco solo si el esfuerzo sigue bajo control.</string>
+    <string name="race_planner_execution_even">Empieza el primer kilómetro con control y luego estabilízate cerca de %1$s. Mantén un esfuerzo uniforme hasta la mitad; acelera en el último cuarto solo si aún te sientes fuerte.</string>
+    <string name="race_planner_execution_effort">Empieza con control durante el primer cuarto y mantén un ritmo sostenible hasta la mitad. Después, acelera poco a poco solo si aún te sientes fuerte.</string>
+    <string name="race_planner_finish_summary">%1$s · terminar por sensaciones</string>
+    <string name="race_planner_guide">Empieza con paciencia, sigue el plan y aumenta solo si mantienes el esfuerzo bajo control.</string>
+    <string name="race_planner_half">Media maratón</string>
+    <string name="race_planner_hours">Horas</string>
+    <string name="race_planner_marathon">Maratón</string>
+    <string name="race_planner_minutes">Minutos</string>
+    <string name="race_planner_mode">Competir</string>
+    <string name="race_planner_negative_split">Inicio paciente, final más fuerte</string>
+    <string name="race_planner_no_history">No hay suficiente historial comparable para recomendar un tiempo responsable. Compite por sensaciones y céntrate en terminar bien.</string>
+    <string name="race_planner_open">Abrir planificador</string>
+    <string name="race_planner_race_day">Día de carrera</string>
+    <string name="race_planner_recommendation">Recomendación de Plainstride</string>
+    <string name="race_planner_start">Planificar una carrera</string>
+    <string name="race_planner_start_race">Empezar carrera</string>
+    <string name="race_planner_strategy">Estrategia de ritmo</string>
+    <string name="race_planner_tap_change">Toca para ajustar la estrategia</string>
+    <string name="race_planner_title">Planificar esta carrera</string>
+    <string name="race_planner_use_plan">Usar plan</string>
+    <string name="race_planner_use_target">Meta de tiempo</string>
+    <string name="race_common_cancel">Cancelar</string>
+    <string name="race_distance_format">%1$.1f %2$s</string>
+</resources>

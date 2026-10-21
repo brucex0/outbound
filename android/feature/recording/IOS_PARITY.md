@@ -35,6 +35,14 @@
 - Save is disabled below the shared iOS threshold of five minutes or 500 meters. Closing an eligible unsaved review requires destructive confirmation; an ineligible review closes directly, matching iOS.
 - A successful local save shows the shared activity postcard before the activity-surface exit. For Run, Bike, Hike, and Swim, the postcard and message sit above the same two optional stretch choices as iOS: a full-body cooldown and a focused hips-and-hamstrings routine. Other activity types show the postcard on its own. The postcard traces the saved route (or fixed doodle path without a route), uses the shared vector runner and sundae burst, fades the sundae after a short pause, stays open until the runner chooses Done, and respects Android animator-duration scale. Analytics records the existing `feature_exposed/activity_post_save_celebration` exposure and stretch funnel with stable routine IDs only.
 
+## Ad-hoc Race Mode
+
+- Run alone exposes the text-only Race pill. Opening or canceling its planner does not replace the current setup; Apply installs the distance goal, localized Race day title, execution guidance, and typed race context. Route, shoes, companion, indoor, and voice choices remain independent. Switching to another sport leaves Race mode.
+- The planner matches `RacePlannerView.swift`: 5K/10K/half/marathon, half-marathon initial selection, recent-history recommendation, editable hour/minute time, negative split/even/effort strategies, and localized guidance in the selected measurement units. Reopening reseeds instead of editing the applied plan. Exact filters, rounding, and the iOS no-history two-hour default are documented in `docs/activity-launch-live-ux.md`.
+- Race remains a saved distance goal, with no Pause at goal. Guidance carries race distance, time, strategy, source, and optional pace through the existing serializable launch/recovery context and live-coach request. Targeted pacing uses iOS work phase, 15-second faster/20-second slower tolerance, and target-lock recognition.
+- Race configuration analytics use the shared event names, recommendation-source/strategy enums and coarse distance bucket; start/save report `goal_type=race`. No exact targets or training history enter analytics.
+- Verification: source-level comparison covers no/insufficient history, distance filters, comparable-distance selection, near-distance clamping, buffered projections, minute rounding, manual edits, by-feel pace removal, distance launch goals, and live-coach/recovery wiring. Device visual, rotation, real recording, and process-recovery verification remain pending; a build does not establish those behaviors.
+
 ## Elevation Correction
 
 - Live/offline elevation now uses the current iOS directional accumulator, retaining accuracy/spike filters and a conservative 10 m climb threshold. Descents do not create ascent; pause boundaries commit active climbs without counting the gap.

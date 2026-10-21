@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="race_planner_based_on_history">Based on %1$d relevant recent runs, start patiently and aim for %2$s.</string>
+    <string name="race_planner_distance">Race distance</string>
+    <string name="race_planner_effort">Finish by feel</string>
+    <string name="race_planner_even">Even effort</string>
+    <string name="race_planner_execution">Your race guide</string>
+    <string name="race_planner_execution_negative_split">First quarter: aim near %1$s. Middle: settle near %2$s. Final quarter: build gradually only if your effort stays controlled.</string>
+    <string name="race_planner_execution_even">Open the first kilometer controlled, then settle near %1$s. Hold an even effort through halfway; build in the final quarter only if you still feel strong.</string>
+    <string name="race_planner_execution_effort">Start controlled for the first quarter, settle into a sustainable rhythm through halfway, then build gradually only if you still feel strong.</string>
+    <string name="race_planner_finish_summary">%1$s · finish by feel</string>
+    <string name="race_planner_guide">Start patiently, execute your plan, and build only when the effort remains controlled.</string>
+    <string name="race_planner_half">Half marathon</string>
+    <string name="race_planner_hours">Hours</string>
+    <string name="race_planner_marathon">Marathon</string>
+    <string name="race_planner_minutes">Minutes</string>
+    <string name="race_planner_mode">Race</string>
+    <string name="race_planner_negative_split">Patient start, stronger finish</string>
+    <string name="race_planner_no_history">There isn’t enough comparable training history for a responsible time target. Race by effort and focus on finishing well.</string>
+    <string name="race_planner_open">Open race planner</string>
+    <string name="race_planner_race_day">Race day</string>
+    <string name="race_planner_recommendation">Plainstride recommendation</string>
+    <string name="race_planner_start">Plan a race effort</string>
+    <string name="race_planner_start_race">Start race</string>
+    <string name="race_planner_strategy">Pacing strategy</string>
+    <string name="race_planner_tap_change">Tap to adjust race strategy</string>
+    <string name="race_planner_title">Plan this race</string>
+    <string name="race_planner_use_plan">Use race plan</string>
+    <string name="race_planner_use_target">Time goal</string>
+    <string name="race_common_cancel">Cancel</string>
+    <string name="race_distance_format">%1$.1f %2$s</string>
+</resources>

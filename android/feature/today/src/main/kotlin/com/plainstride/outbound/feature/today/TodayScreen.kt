@@ -136,7 +136,7 @@ data class TodayRouteSelection(
 )
 
 enum class TodayActivityChoice { PLANNED, RUN, WALK, HIKE, BIKE }
-enum class TodayGoalChoice { CURATED, FREE, DISTANCE, TIME, CALORIES }
+enum class TodayGoalChoice { CURATED, RACE, FREE, DISTANCE, TIME, CALORIES }
 
 data class TodayManualLaunch(
     val activity: TodayActivityChoice,
@@ -150,6 +150,9 @@ data class TodayManualLaunch(
     val curatedWorkoutCatalogVersion: Int? = null,
     val companionType: com.plainstride.outbound.core.model.activity.ActivityCompanionType? = null,
     val autoStopAtGoal: Boolean = false,
+    val racePlan: TodayRacePlan? = null,
+    val raceTitle: String? = null,
+    val raceGuideline: String? = null,
 )
 data class TodayLaunchOptions(
     val indoor: Boolean,
@@ -180,6 +183,7 @@ fun TodayRoute(
     selectedRoute: TodayRouteSelection? = null,
     onRemoveRoute: () -> Unit = {},
     onRouteDirectionChanged: (Boolean) -> Unit = {},
+    unitSystem: com.plainstride.outbound.core.model.activity.MeasurementUnitSystem = com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric,
     useFahrenheit: Boolean,
     inboxCount: Int,
     onMessage: suspend (TodayMessage) -> Unit,
@@ -221,7 +225,10 @@ fun TodayRoute(
     }
     LaunchedEffect(activeSession, completedToday) { viewModel.updateSessionState(activeSession, completedToday) }
     LaunchedEffect(viewModel) { viewModel.messages.collect(onMessage) }
+    val raceHistory by viewModel.raceHistory.collectAsStateWithLifecycle()
     TodayScreen(
+        raceHistory = raceHistory,
+        unitSystem = unitSystem,
         state = state,
         groupActivityContent = groupActivityContent,
         weather = weather,
@@ -259,6 +266,8 @@ fun TodayRoute(
         onWorkoutDetailsOpened = viewModel::trackPlannedWorkoutDetailsOpened,
         onWeatherDetailsOpened = viewModel::trackWeatherDetailsOpened,
         onWeatherAttributionOpened = viewModel::trackWeatherAttributionOpened,
+        onRacePlanApplied = viewModel::trackRacePlanApplied,
+        onRacePlannerOpened = viewModel::trackRacePlannerOpened,
         onLaunchConfigurationChanged = viewModel::trackLaunchConfiguration,
         calorieEstimate = viewModel::calorieEstimate,
         guidanceContent = guidanceContent,
@@ -290,6 +299,7 @@ fun TodayRoute(
 @Composable
 fun TodayScreen(
     state: TodayUiState,
+    raceHistory: List<com.plainstride.outbound.core.model.activity.SavedActivity> = emptyList(),
     weather: WeatherGuidance?,
     onRefresh: () -> Unit,
     onStart: (ActivitySuggestion, String, TodayLaunchOptions) -> Unit,
@@ -314,6 +324,7 @@ fun TodayScreen(
     selectedRoute: TodayRouteSelection? = null,
     onRemoveRoute: () -> Unit = {},
     onRouteDirectionChanged: (Boolean) -> Unit = {},
+    unitSystem: com.plainstride.outbound.core.model.activity.MeasurementUnitSystem = com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric,
     useFahrenheit: Boolean = false,
     inboxCount: Int = 0,
     onSubmitConstraint: (TodayConstraint, String, String?) -> Unit,
@@ -322,6 +333,8 @@ fun TodayScreen(
     onWorkoutDetailsOpened: () -> Unit = {},
     onWeatherDetailsOpened: () -> Unit = {},
     onWeatherAttributionOpened: () -> Unit = {},
+    onRacePlanApplied: (TodayRacePlan) -> Unit = {},
+    onRacePlannerOpened: () -> Unit = {},
     onLaunchConfigurationChanged: (String, String) -> Unit = { _, _ -> },
     calorieEstimate:suspend (TodayActivityChoice,Int)->PlannedCalorieEstimate?={_,_->null},
     guidanceContent: @Composable () -> Unit = {},
@@ -336,6 +349,11 @@ fun TodayScreen(
     var showsDetail by rememberSaveable { mutableStateOf(false) }
     var showsChange by rememberSaveable { mutableStateOf(false) }
     var showsWeather by rememberSaveable { mutableStateOf(false) }
+    var showsRacePlanner by rememberSaveable { mutableStateOf(false) }
+    var racePlan by rememberSaveable(saver = androidx.compose.runtime.saveable.listSaver<androidx.compose.runtime.MutableState<TodayRacePlan?>, Any>(
+        save = { state -> state.value?.let { listOf(it.distanceMeters, it.goalTimeSeconds ?: -1, it.targetPaceSecondsPerKilometer ?: -1.0, it.pacingStrategy, it.recommendationSource) } ?: emptyList() },
+        restore = { values -> mutableStateOf(if (values.isEmpty()) null else TodayRacePlan(values[0] as Double, (values[1] as Int).takeIf { it >= 0 }, (values[2] as Double).takeIf { it >= 0 }, values[3] as String, values[4] as String)) },
+    )) { mutableStateOf<TodayRacePlan?>(null) }
     var showsCatalog by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val displayPreferences = remember(context) { context.getSharedPreferences("today_display", android.content.Context.MODE_PRIVATE) }
@@ -368,13 +386,16 @@ fun TodayScreen(
             null
         }
     }
-    val launchPreparedActivity = {
+    val raceTitle = stringResource(R.string.race_planner_race_day)
+    val raceGuideline = racePlan?.let { raceExecution(it, unitSystem) }
+    val launchPreparedActivity = launch@ {
         if (activityChoice == TodayActivityChoice.PLANNED) {
             suggestion?.let { onStart(it, "today_planned", TodayLaunchOptions(indoor, voiceGuideEnabled, companionType)) }
                 ?: onStartFreestyle(TodayLaunchOptions(indoor, voiceGuideEnabled, companionType))
         } else {
             val catalogVersion = (state.catalog as? CachedResource.Available)?.value?.version
-            onStartManual(TodayManualLaunch(activityChoice, goalChoice, distanceMeters, durationSeconds, calories, indoor, voiceGuideEnabled, curatedWorkout, catalogVersion, companionType, autoStopAtGoal))
+            if (goalChoice == TodayGoalChoice.RACE && racePlan == null) { showsRacePlanner = true; return@launch }
+            onStartManual(TodayManualLaunch(activityChoice, goalChoice, distanceMeters, durationSeconds, calories, indoor, voiceGuideEnabled, curatedWorkout, catalogVersion, companionType, autoStopAtGoal, racePlan.takeIf { goalChoice == TodayGoalChoice.RACE }, raceTitle.takeIf { goalChoice == TodayGoalChoice.RACE }, raceGuideline.takeIf { goalChoice == TodayGoalChoice.RACE }))
         }
     }
     LaunchedEffect(startRequest) {
@@ -462,8 +483,8 @@ fun TodayScreen(
                     )
                 }
                 if (activityChoice != TodayActivityChoice.PLANNED && goalChoice != TodayGoalChoice.FREE) {
-                    ManualGoalCard(goalChoice, curatedWorkout, distanceMeters, durationSeconds, calories,caloriePlan, autoStopAtGoal) {
-                        if (goalChoice == TodayGoalChoice.CURATED) showsCatalog = true else editingGoal = true
+                    ManualGoalCard(goalChoice, racePlan, unitSystem, curatedWorkout, distanceMeters, durationSeconds, calories,caloriePlan, autoStopAtGoal) {
+                        if (goalChoice == TodayGoalChoice.RACE) showsRacePlanner = true else if (goalChoice == TodayGoalChoice.CURATED) showsCatalog = true else editingGoal = true
                     }
                 }
                 guidanceContent()
@@ -494,8 +515,16 @@ fun TodayScreen(
                 indoor = indoor,
                 voiceGuideEnabled = voiceGuideEnabled,
                 companionType = companionType,
-                onActivityChoice = { activityChoice = it; onLaunchConfigurationChanged("activity_type", it.name.lowercase()) },
-                onGoalChoice = { goalChoice = it; if (it == TodayGoalChoice.CURATED) showsCatalog = true; onLaunchConfigurationChanged("goal", it.name.lowercase()) },
+                onActivityChoice = { activityChoice = it; if (it != TodayActivityChoice.RUN && goalChoice == TodayGoalChoice.RACE) goalChoice = TodayGoalChoice.FREE; onLaunchConfigurationChanged("activity_type", it.name.lowercase()) },
+                onGoalChoice = { choice ->
+                    if (choice == TodayGoalChoice.RACE) {
+                        showsRacePlanner = true
+                    } else {
+                        goalChoice = choice
+                        if (choice == TodayGoalChoice.CURATED) showsCatalog = true
+                        onLaunchConfigurationChanged("goal", choice.name.lowercase())
+                    }
+                },
                 onIndoorChanged = { indoor = it; onLaunchConfigurationChanged("environment", if (it) "indoor" else "outdoor") },
                 onVoiceGuideChanged = { voiceGuideEnabled = it; onLaunchConfigurationChanged("voice_guide", if (it) "on" else "off") },
                 onCompanionChanged = { enabled ->
@@ -559,6 +588,15 @@ fun TodayScreen(
             confirmButton = { TextButton(onClick = { showsWeather = false }) { Text(stringResource(R.string.today_done)) } },
         )
     }
+    LaunchedEffect(showsRacePlanner) { if (showsRacePlanner) onRacePlannerOpened() }
+    if (showsRacePlanner) RacePlannerDialog(raceHistory, unitSystem, onDismiss = { showsRacePlanner = false }, onUse = {
+        racePlan = it
+        distanceMeters = it.distanceMeters
+        curatedWorkout = null
+        goalChoice = TodayGoalChoice.RACE
+        showsRacePlanner = false
+        onRacePlanApplied(it)
+    })
     if (showsCatalog) CuratedWorkoutSheet(
         workouts = (state.catalog as? CachedResource.Available)?.value?.workouts.orEmpty()
             .filter { it.sport.lowercase() in activityChoice.catalogSportNames() },
@@ -753,19 +791,23 @@ private fun SelectedRouteCard(
 }
 
 @Composable
-private fun ManualGoalCard(goal: TodayGoalChoice, curatedWorkout: StandaloneWorkout?, distanceMeters: Double, durationSeconds: Long, calories: Int, caloriePlan: PlannedCalorieEstimate?, autoStopAtGoal: Boolean, onEdit: () -> Unit) {
+private fun ManualGoalCard(goal: TodayGoalChoice, racePlan: TodayRacePlan?, unitSystem: com.plainstride.outbound.core.model.activity.MeasurementUnitSystem, curatedWorkout: StandaloneWorkout?, distanceMeters: Double, durationSeconds: Long, calories: Int, caloriePlan: PlannedCalorieEstimate?, autoStopAtGoal: Boolean, onEdit: () -> Unit) {
     Card(onClick = onEdit, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .96f))) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(when (goal) {
                 TodayGoalChoice.CURATED -> curatedWorkout?.title ?: stringResource(goal.valueResource())
+                TodayGoalChoice.RACE -> {
+                    val distance = com.plainstride.outbound.core.model.activity.SessionFormatting.distance(racePlan?.distanceMeters ?: distanceMeters, unitSystem)
+                    stringResource(R.string.race_distance_format, distance.value, if (unitSystem == com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric) "km" else "mi") + " · " + (racePlan?.goalTimeSeconds?.let(::raceDuration) ?: stringResource(R.string.race_planner_start))
+                }
                 TodayGoalChoice.DISTANCE -> stringResource(R.string.today_distance_format, distanceMeters / 1_000)
                 TodayGoalChoice.TIME -> stringResource(R.string.today_time_format, durationSeconds / 60)
                 TodayGoalChoice.CALORIES -> stringResource(R.string.today_calories_format, calories)
                 TodayGoalChoice.FREE -> stringResource(goal.valueResource())
             }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             val pauseAtGoalEligible = autoStopAtGoal && goal in setOf(TodayGoalChoice.DISTANCE, TodayGoalChoice.TIME, TodayGoalChoice.CALORIES)
-            val editHint = if (goal == TodayGoalChoice.CALORIES && caloriePlan != null && !pauseAtGoalEligible) {
+            val editHint = if (goal == TodayGoalChoice.RACE) stringResource(R.string.race_planner_tap_change) else if (goal == TodayGoalChoice.CALORIES && caloriePlan != null && !pauseAtGoalEligible) {
                 "${stringResource(R.string.today_distance_format, caloriePlan.distanceMeters / 1_000)} · ${stringResource(R.string.today_time_format, caloriePlan.durationSeconds / 60)}"
             } else {
                 ""
@@ -915,7 +957,7 @@ private fun ActivityLaunchDock(
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         if (activityChoice != TodayActivityChoice.PLANNED) {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TodayGoalChoice.entries.filter { it != TodayGoalChoice.CALORIES || activityChoice == TodayActivityChoice.RUN || activityChoice == TodayActivityChoice.WALK }.forEach { choice ->
+                TodayGoalChoice.entries.filter { it != TodayGoalChoice.RACE || activityChoice == TodayActivityChoice.RUN }.filter { it != TodayGoalChoice.CALORIES || activityChoice == TodayActivityChoice.RUN || activityChoice == TodayActivityChoice.WALK }.forEach { choice ->
                     GoalPill(stringResource(choice.labelResource()), choice == goalChoice) { onGoalChoice(choice) }
                 }
             }
@@ -1081,6 +1123,7 @@ private fun TodayActivityChoice.labelResource() = when (this) {
 }
 
 private fun TodayGoalChoice.labelResource() = when (this) {
+    TodayGoalChoice.RACE -> R.string.race_planner_mode
     TodayGoalChoice.CURATED -> R.string.today_curated
     TodayGoalChoice.FREE -> R.string.today_free
     TodayGoalChoice.DISTANCE -> R.string.today_distance
@@ -1089,6 +1132,7 @@ private fun TodayGoalChoice.labelResource() = when (this) {
 }
 
 private fun TodayGoalChoice.valueResource() = when (this) {
+    TodayGoalChoice.RACE -> R.string.race_planner_mode
     TodayGoalChoice.CURATED -> R.string.today_curated_value
     TodayGoalChoice.FREE -> R.string.today_free
     TodayGoalChoice.DISTANCE -> R.string.today_distance_value

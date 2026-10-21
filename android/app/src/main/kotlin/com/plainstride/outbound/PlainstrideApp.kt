@@ -805,6 +805,7 @@ private fun SignedInApp(
                             onReturnToSession = { navController.navigate(RECORDING_ROUTE) { launchSingleTop = true } },
                             onSetUpPlan = { planBuilderSource = PlanBuilderSource.PlannedButton },
                             onBuildPlan = { planBuilderSource = PlanBuilderSource.AllPlans },
+                            unitSystem = measurementUnitSystem,
                             onStartManual = { setup ->
                                 recordingLaunch = setup.toRecordingLaunch(selectedTodayShoeIdForLaunch).withTodayRoute(todaySelectedRoute, todayRouteReversed)
                                 launchTodayRecording()
@@ -1490,11 +1491,13 @@ private fun WorkoutLaunchIntent.toRecordingLaunch(): RecordingLaunchConfiguratio
 }
 
 private fun TodayManualLaunch.toRecordingLaunch(defaultGearId: String?): RecordingLaunchConfiguration {
+    val workout = curatedWorkout.takeUnless { goal == TodayGoalChoice.RACE }
     val recordingGoal = when (goal) {
+        TodayGoalChoice.RACE -> RecordingGoal(RecordingGoalType.DISTANCE, targetDistanceMeters = requireNotNull(racePlan).distanceMeters)
         TodayGoalChoice.DISTANCE -> RecordingGoal(RecordingGoalType.DISTANCE, targetDistanceMeters = distanceMeters)
         TodayGoalChoice.TIME -> RecordingGoal(RecordingGoalType.TIME, targetDurationSeconds = durationSeconds)
         TodayGoalChoice.CALORIES -> RecordingGoal(RecordingGoalType.CALORIES, targetCalories = calories)
-        TodayGoalChoice.CURATED -> RecordingGoal(RecordingGoalType.WORKOUT, targetDurationSeconds = curatedWorkout?.targetDurationSeconds?.toLong() ?: durationSeconds)
+        TodayGoalChoice.CURATED -> RecordingGoal(RecordingGoalType.WORKOUT, targetDurationSeconds = workout?.targetDurationSeconds?.toLong() ?: durationSeconds)
         TodayGoalChoice.FREE -> RecordingGoal()
     }
     return RecordingLaunchConfiguration(
@@ -1504,9 +1507,13 @@ private fun TodayManualLaunch.toRecordingLaunch(defaultGearId: String?): Recordi
             TodayActivityChoice.BIKE -> ActivityKind.CYCLING
             else -> ActivityKind.RUNNING
         },
-        title = curatedWorkout?.title,
+        title = raceTitle ?: workout?.title,
+        raceIntent = racePlan.takeIf { goal == TodayGoalChoice.RACE }?.let {
+            com.plainstride.outbound.feature.recording.RecordingRaceIntent(it.distanceMeters, "target_time", it.goalTimeSeconds, it.targetPaceSecondsPerKilometer, it.pacingStrategy, it.recommendationSource)
+        },
         goal = recordingGoal,
-        workoutSteps = curatedWorkout?.steps?.map {
+        workoutGuideline = raceGuideline.takeIf { goal == TodayGoalChoice.RACE },
+        workoutSteps = workout?.steps?.map {
             StructuredWorkoutStep(
                 title = it.label,
                 detail = it.detail,
@@ -1519,14 +1526,14 @@ private fun TodayManualLaunch.toRecordingLaunch(defaultGearId: String?): Recordi
             )
         }.orEmpty(),
         entrySource = "today_manual",
-        standaloneWorkoutId = curatedWorkout?.id,
+        standaloneWorkoutId = workout?.id,
         standaloneWorkoutCatalogVersion = curatedWorkoutCatalogVersion,
         autoStopAtGoal = autoStopAtGoal && goal in setOf(TodayGoalChoice.DISTANCE, TodayGoalChoice.TIME, TodayGoalChoice.CALORIES),
-        workoutPhase = curatedWorkout?.coachingTarget?.phase,
-        workoutTargetPaceSecondsPerKilometer = curatedWorkout?.coachingTarget?.pace?.targetSecondsPerKilometer,
-        workoutFasterToleranceSeconds = curatedWorkout?.coachingTarget?.pace?.fasterToleranceSeconds,
-        workoutSlowerToleranceSeconds = curatedWorkout?.coachingTarget?.pace?.slowerToleranceSeconds,
-        workoutRecognizesTargetLock = curatedWorkout?.coachingTarget?.recognizesTargetLock == true,
+        workoutPhase = if (goal == TodayGoalChoice.RACE) "work" else workout?.coachingTarget?.phase,
+        workoutTargetPaceSecondsPerKilometer = racePlan.takeIf { goal == TodayGoalChoice.RACE }?.targetPaceSecondsPerKilometer ?: workout?.coachingTarget?.pace?.targetSecondsPerKilometer,
+        workoutFasterToleranceSeconds = if (goal == TodayGoalChoice.RACE && racePlan?.targetPaceSecondsPerKilometer != null) 15.0 else workout?.coachingTarget?.pace?.fasterToleranceSeconds,
+        workoutSlowerToleranceSeconds = if (goal == TodayGoalChoice.RACE && racePlan?.targetPaceSecondsPerKilometer != null) 20.0 else workout?.coachingTarget?.pace?.slowerToleranceSeconds,
+        workoutRecognizesTargetLock = if (goal == TodayGoalChoice.RACE) racePlan?.targetPaceSecondsPerKilometer != null else workout?.coachingTarget?.recognizesTargetLock == true,
         gearId = defaultGearId,
         indoor = indoor,
         voiceGuideEnabled = voiceGuideEnabled,

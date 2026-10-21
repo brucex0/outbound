@@ -117,6 +117,9 @@ class TodayViewModel @Inject constructor(
     private val mutablePlanPicker = MutableStateFlow(PlanPickerUiState())
     val planPicker = mutablePlanPicker
 
+    val raceHistory = accountScope.flatMapLatest { activities.observeAll(it.first) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     val state = combine(
         accountScope.flatMapLatest { repository.observePlanning(it.first, it.second) },
         accountScope.flatMapLatest { repository.observeSuggestion(it.first, it.second) },
@@ -278,6 +281,22 @@ class TodayViewModel @Inject constructor(
     fun trackWeatherAttributionOpened() = analytics.record(
         AnalyticsEvent("weather_attribution_opened", mapOf(AnalyticsProperty.Source to "today_weather_details")),
     )
+
+    fun trackRacePlannerOpened() = analytics.record(AnalyticsEvent("planning_surface_opened", mapOf(
+        AnalyticsProperty.SourceType to "race", AnalyticsProperty.EntrySource to "manual_mode_row",
+    )))
+
+    fun trackRacePlanApplied(plan: TodayRacePlan) = analytics.record(AnalyticsEvent("activity_configuration_changed", mapOf(
+        AnalyticsProperty.ChangeType to "race_plan",
+        AnalyticsProperty.GoalType to "race",
+        AnalyticsProperty.SourceType to plan.recommendationSource,
+        AnalyticsProperty.PacingStrategy to plan.pacingStrategy,
+        AnalyticsProperty.TargetBucket to when {
+            plan.distanceMeters < 10_000 -> "5k_10k"
+            plan.distanceMeters < 21_097.5 -> "10k_half"
+            else -> "half_plus"
+        },
+    )))
 
     fun trackLaunchConfiguration(changeType: String, selection: String) = analytics.record(
         AnalyticsEvent(

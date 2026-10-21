@@ -210,7 +210,7 @@ class RecordingViewModel @Inject constructor(
         if (!effective.startImmediately) analytics.record(AnalyticsEvent("activity_setup_viewed", mapOf(
                 AnalyticsProperty.Source to effective.entrySource,
                 AnalyticsProperty.ActivityType to effective.activityKind.name.lowercase(),
-                AnalyticsProperty.GoalType to effective.goal.type.name.lowercase(),
+                AnalyticsProperty.GoalType to (if (effective.raceIntent != null) "race" else effective.goal.type.name.lowercase()),
                 AnalyticsProperty.UnitSystem to unitSystem.name,
             )))
     }
@@ -274,7 +274,7 @@ class RecordingViewModel @Inject constructor(
         analytics.record(AnalyticsEvent("activity_started", mapOf(
             AnalyticsProperty.Source to launch.entrySource,
             AnalyticsProperty.ActivityType to launch.activityKind.name.lowercase(),
-            AnalyticsProperty.GoalType to launch.goal.type.name.lowercase(),
+            AnalyticsProperty.GoalType to (if (launch.raceIntent != null) "race" else launch.goal.type.name.lowercase()),
             AnalyticsProperty.Permission to permission.name.lowercase(),
             AnalyticsProperty.GroupRunEnabled to startedWithGroup,
             AnalyticsProperty.VoiceGuideEnabled to launch.voiceGuideEnabled,
@@ -680,7 +680,7 @@ class RecordingViewModel @Inject constructor(
             val currentLaunch = mutableState.value.launch
             analytics.record(AnalyticsEvent("activity_saved", mapOf(
                 AnalyticsProperty.ActivityType to snapshot.activityKind.name.lowercase(),
-                AnalyticsProperty.GoalType to currentLaunch.goal.type.name.lowercase(),
+                AnalyticsProperty.GoalType to (if (currentLaunch.raceIntent != null) "race" else currentLaunch.goal.type.name.lowercase()),
                 AnalyticsProperty.DurationBucket to durationBucket(snapshot.elapsedSeconds),
                 AnalyticsProperty.DistanceBucket to distanceBucket(snapshot.distanceMeters),
                 AnalyticsProperty.PhotoCountBucket to photoCountBucket(review.photoPaths.size),

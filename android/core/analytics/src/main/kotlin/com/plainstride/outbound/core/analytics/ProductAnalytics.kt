@@ -10,6 +10,8 @@ enum class AnalyticsProperty(val wireName: String) {
     Trigger("trigger"),
     ActivityType("activity_type"), RoutineId("routine_id"),
     GoalType("goal_type"),
+    PacingStrategy("pacing_strategy"),
+    TargetBucket("target_bucket"),
     Permission("permission"),
     ErrorCategory("error_category"),
     CountBucket("count_bucket"),
