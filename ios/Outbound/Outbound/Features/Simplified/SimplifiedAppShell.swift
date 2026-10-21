@@ -840,6 +840,7 @@ private struct SimplifiedTodayView: View {
     @State private var showsThemeChooser = false
     @State private var mapAttributionBottomInset: CGFloat = 0
     @State private var activityLaunchFloatingContentHeight: CGFloat = 0
+    @State private var activityLaunchMapControlsHeight: CGFloat = 0
     @State private var showsSocialInbox = false
     @State private var presentedAdjustmentID: String?
 
@@ -850,11 +851,17 @@ private struct SimplifiedTodayView: View {
                     ZStack(alignment: .bottom) {
                         OutboundPalette.background
                         if !isActivityFullscreenVisible {
-                            ActivityLaunchMap(
-                                locationManager: launchLocationManager,
-                                route: preActivityRoute,
-                                safeZone: ActivityMapSafeZone(bottomInset: mapAttributionBottomInset)
-                            )
+                            GeometryReader { geometry in
+                                ActivityLaunchMap(
+                                    locationManager: launchLocationManager,
+                                    route: preActivityRoute,
+                                    safeZone: ActivityMapSafeZone(bottomInset: max(
+                                        mapAttributionBottomInset,
+                                        activityLaunchMapControlsHeight + activityLaunchFloatingContentHeight
+                                    ) + 8)
+                                )
+                                .frame(width: geometry.size.width, height: geometry.size.height)
+                            }
                             .clipped()
                         }
 
@@ -886,6 +893,9 @@ private struct SimplifiedTodayView: View {
             }
             .onPreferenceChange(MapAttributionOcclusionHeightPreferenceKey.self) { height in
                 mapAttributionBottomInset = height
+            }
+            .onPreferenceChange(ActivityLaunchMapControlsHeightPreferenceKey.self) { height in
+                activityLaunchMapControlsHeight = height
             }
             .onPreferenceChange(ActivityLaunchFloatingContentHeightPreferenceKey.self) { height in
                 activityLaunchFloatingContentHeight = height
@@ -1195,7 +1205,7 @@ private struct SimplifiedTodayView: View {
     }
 
     private var todayPeerCardsBottomPadding: CGFloat {
-        let goalPillHeight = launchGoalMode == .planned ? 0 : ActivityLaunchLayout.goalPillRowHeight
+        let goalPillHeight = activityLaunchMapControlsHeight
         let hasAdjacentFloatingContent = goalPillHeight > 0 || activityLaunchFloatingContentHeight > 0
         let gap = hasAdjacentFloatingContent
             ? ActivityLaunchLayout.peerCardGap / 2

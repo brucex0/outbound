@@ -72,8 +72,18 @@ struct ActivitySetupView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
 
-            if showsManualGoalPills { goalPillRow.padding(.vertical, 10) }
-            if showsEnableLocationChip { enableLocationChip.padding(.bottom, 10) }
+            VStack(spacing: 0) {
+                if showsManualGoalPills { goalPillRow.padding(.vertical, 10) }
+                if showsEnableLocationChip { enableLocationChip.padding(.bottom, 10) }
+            }
+            .background {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: ActivityLaunchMapControlsHeightPreferenceKey.self,
+                        value: proxy.size.height
+                    )
+                }
+            }
             launchDock
         }
     }
