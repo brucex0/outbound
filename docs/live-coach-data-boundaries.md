@@ -66,7 +66,7 @@ Production model status and qualification results are in `docs/ai-reliability.md
 
 The planner must not repeat private bio, health, location, survey, or weather facts in spoken phrases. Those fields may influence safety, tone, focus, timing, and advice only. Readiness is current for planner purposes for 36 hours; weather must have been observed within three hours. A fresh illness/pain or unsafe-weather flag can force fixed-only audio; stale flags do not block dynamic planning.
 
-GPT routing is an optional server-side capability pending cloud qualification and approval of its credential-access boundary; local synthetic evaluation sends no runner data. When deployed, OpenAI credentials must be mounted from Secret Manager, never from ordinary Cloud Run environment values.
+GPT routing is an optional server-side capability pending cloud qualification. The owner approved the Secret Manager credential and runtime access; local and cloud synthetic evaluations send no runner data. When deployed, OpenAI credentials must be mounted from Secret Manager, never from ordinary Cloud Run environment values.
 
 Vertex AI uses the Cloud Run runtime identity. `GEMINI_API_KEY` is supported for controlled non-Vertex environments but must never enter the app or repository.
 

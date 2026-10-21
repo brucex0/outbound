@@ -75,7 +75,7 @@ gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.serv
 - Neither model qualifies as a validated alternate. `AI_FALLBACK_VALIDATED` remains **false**. First-attempt results are screening observations, not an estimated production SLA. Plan-intake/adjustment semantic behavior and real-device playback were not re-evaluated in this task.
 - OpenAI access probe with the owner-supplied local credential returned HTTP 429 with `insufficient_quota` / `credit_balance_exhausted`. The owner funded the API project; a subsequent access probe succeeded in 2.72 seconds. Local workload qualification follows separately. No OpenAI credential was copied into the repository or deployed.
 
-GPT follow-up candidate: [GPT-6 Luna](https://developers.openai.com/api/docs/models/gpt-6-luna), using Responses structured outputs and low or no reasoning. This is a candidate for measurement, not a claim of better application reliability. The owner supplied a local credential and resolved its initial credit-balance error. Cloud qualification and deployment require explicit approval to import the key into Secret Manager and grant the runtime access.
+GPT follow-up candidate: [GPT-6 Luna](https://developers.openai.com/api/docs/models/gpt-6-luna), using Responses structured outputs and low or no reasoning. This is a candidate for measurement, not a claim of better application reliability. The owner supplied a local credential and resolved its initial credit-balance error. The owner explicitly approved Secret Manager import and runtime access on 2026-10-20 (America/Los_Angeles); cloud qualification must pass before deployment.
 
 Deployment: `outbound-api-00168-lb9` serves 100% of traffic with failover disabled. Its matching additive Prisma schema job completed, planning maintenance uses the same image, and `/health` returned 200. All three AI alert policies use the existing API operator channel.
 
@@ -84,7 +84,7 @@ Deployment: `outbound-api-00168-lb9` serves 100% of traffic with failover disabl
 - `gpt-*` model IDs use the [Responses API with strict structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs), identical prompt/context and product validation, low reasoning for assistant/coaching, and `store: false`. Temperature is omitted with reasoning enabled, per [migration guidance](https://developers.openai.com/api/docs/guides/latest-model/gpt-6-astra.md#migration-quickstart).
 - Error bodies and output text are never logged. Billing exhaustion is classified as `quota_exhausted`, without a pointless same-model retry. A separately validated provider can recover provider-specific configuration failures.
 - Local comparison loads `OPENAI_API_KEY` from the existing owner-controlled file into the child process only. It does not upload the credential or change cloud IAM. Local latency does not establish Cloud Run latency.
-- A future cloud evaluation must use an approved Secret Manager reference. Deployment requires `OPENAI_API_KEY_SECRET` only when GPT is configured; this script does not grant IAM or import keys. Until approval and cloud qualification, production keeps its current Gemini route and failover disabled.
+- Cloud evaluations mount `OPENAI_API_KEY=outbound-openai-api-key:latest` from the owner-approved secret. Deployment requires `OPENAI_API_KEY_SECRET=outbound-openai-api-key` when GPT is configured; the deploy script does not grant IAM or import keys. Production keeps its current Gemini route and failover disabled until cloud qualification passes.
 
 Local GPT adapter checks passed: official endpoint, strict-schema mapping, low reasoning without unsupported temperature, `store: false`, output/usage normalization, incomplete-response rejection, billing-vs-rate-limit classification, same-provider billing fail-fast, server-directed retry delays within the total deadline, independent-provider recovery, and startup/deploy guards for missing credentials. No test suite was run.
 
@@ -101,8 +101,26 @@ Same synthetic prompts, strict schemas, product validators, three languages and 
 
 Proposed route: `APP_AI_MODEL=gpt-6-luna`, `GEMINI_LIVE_COACH_PLANNER_MODEL=gpt-6.1-sol` (the existing planner setting accepts GPT IDs), and `AI_FALLBACK_MODEL=gpt-6.1-sol`. With failover enabled after cloud qualification, assistant uses Sol as its alternate. Coaching deduplicates the identical primary/alternate model and retains reviewed deterministic guidance if generation fails; Luna is not qualified as a coach alternate. Training-plan intake/adjustment remains on its current configured Gemini primary with deterministic fallback.
 
-Automatic approval review rejected importing the local key into Secret Manager and granting runtime access because local comparison authorization did not establish authorization for persistent cloud credential access. No import or IAM grant was performed. Required approval: store the supplied key as `outbound-openai-api-key`, grant only `outbound-api-runtime` secret access, run cloud qualification for the proposed workload split and assistant failover, then deploy only if those checks pass. Production remains on the safeguard revision documented above until that approval and qualification.
+The owner approved storing the supplied credential as `outbound-openai-api-key` and granting secret-scoped `roles/secretmanager.secretAccessor` to `outbound-api-runtime@outbound-494602.iam.gserviceaccount.com`. Version 1 was imported via stdin without printing the key or copying it into the repository. Cloud qualification uses that reference; production model changes remain conditional on the workload and failover gates. This explicit approval resolved the earlier automatic-review rejection of persistent credential access.
 
 GPT-capable source image built successfully: `us-central1-docker.pkg.dev/outbound-494602/cloud-run-source-deploy/outbound-ai-reliability@sha256:7b0dbaa84dc447d3310e9bc068bbf36054dc53ec7f393cd1194bf11ac39a6ce9`. It contains source and dependencies only, with no OpenAI credential. Backend compile, controlled adapter/policy checks, configuration/deploy guards, and deploy-script syntax checks passed.
 
 Latest funded-key [rate-limit response headers](https://developers.openai.com/api/docs/guides/rate-limits#rate-limits-in-headers) on 2026-10-21 reported Luna at 30,000 requests/minute and 180M tokens/minute, and Sol at 15,000 requests/minute and 40M tokens/minute. Sol's earlier probe reported 5,000 / 1M before the later snapshot; quotas are not fixed availability guarantees. Project-token limit headers were absent in both probes. These are account-specific observations, not model-wide promises or a load test.
+
+
+## Cloud GPT screening (2026-10-20 America/Los_Angeles)
+
+The approved candidate ran with the production runtime identity and Secret Manager reference. Synthetic fixtures, validators, locales, first-attempt policy and gates matched the local screening. No runner data was used. All 36 direct calls completed without rate limits or timeouts.
+
+| Model / workload | Valid responses | Successful-call p95 | Direct screening |
+| --- | --- | --- | --- |
+| GPT-6 Luna / assistant | 9/9 | 3.06s | Passed |
+| GPT-6 Luna / coach | 9/9 | 13.48s | Passed this run; earlier local 7/9 still disqualifies coach routing |
+| GPT-6.1 Sol / assistant | 9/9 | 3.95s | Passed |
+| GPT-6.1 Sol / coach | 9/9 | 24.21s | Passed direct run; additional cloud rejection below blocks promotion |
+
+A separate forced-primary-404 run exercised the real Sol alternate: assistant 3/3, p95 5.22s; coach 2/3, successful-call p95 21.91s. Spanish coaching failed `product_validation` after 23.29s. No output text was logged, so the exact rejected phrase was not inspected. The failover job correctly returned failure. The direct job passed, but that does not erase the additional validation failure: Sol coaching was 11/12 across cloud calls (91.7%), below the 95% gate. Luna assistant and Sol assistant fallback passed their workload checks; the proposed complete split did not qualify.
+
+**Deployment decision:** no production model or traffic changes. Keep revision `outbound-api-00168-lb9` and failover disabled; do not promote the split based only on the passing direct run. Improve the coaching prompt while preserving its contract, then requalify before rollout. No prompt optimization was included in this credential/qualification task. The approved secret remains available for that follow-up. Both temporary qualification jobs were removed after collecting metadata. These small samples do not establish sustained availability or an SLA.
+
+Verification: documentation diff check passed; no application source changed and no test suite ran. Real-device playback was not verified.
