@@ -129,6 +129,7 @@ final class ActivityRecorder: ObservableObject {
 
     func start(
         activityType: ActivityType = .running,
+        movingTimeDetectionEnabled: Bool = true,
         autoPauseEnabled: Bool? = nil,
         routeGuidance: ActiveRouteGuidanceJournal? = nil,
         canonicalStartDate: Date? = nil,
@@ -172,7 +173,7 @@ final class ActivityRecorder: ObservableObject {
         recoveredWatchLifecycle = nil
         recoveredWatchMessageSequence = nil
         elapsedSeconds = 0
-        movingTimeTracker = MovingTimeTracker()
+        movingTimeTracker = MovingTimeTracker(isEnabled: movingTimeDetectionEnabled)
         movingSeconds = 0
         completedAt = nil
         distanceMeters = 0
@@ -330,7 +331,7 @@ final class ActivityRecorder: ObservableObject {
         )
         ActivityDiagnosticLog.notice(
             .lifecycle,
-            "Recording finished duration=\(ActivityDiagnosticLog.durationBucket(seconds: summary.durationSecs)) distance=\(ActivityDiagnosticLog.distanceBucket(meters: summary.distanceM)) track_points=\(ActivityDiagnosticLog.countBucket(summary.trackPoints.count)) segments=\(ActivityDiagnosticLog.countBucket(summary.trackSegmentStartIndices.count)) recovery_stage=awaiting_save"
+            "Recording finished moving_time_method=gps_observations_v2 stopped_duration=\(ActivityDiagnosticLog.durationBucket(seconds: max(0, elapsedSeconds - summary.durationSecs))) duration=\(ActivityDiagnosticLog.durationBucket(seconds: summary.durationSecs)) distance=\(ActivityDiagnosticLog.distanceBucket(meters: summary.distanceM)) track_points=\(ActivityDiagnosticLog.countBucket(summary.trackPoints.count)) segments=\(ActivityDiagnosticLog.countBucket(summary.trackSegmentStartIndices.count)) recovery_stage=awaiting_save"
         )
         liveSnapshot = makeSnapshot(isActive: false)
         startDate = nil
@@ -646,6 +647,7 @@ final class ActivityRecorder: ObservableObject {
 
     private func handleLocationUpdate(_ location: CLLocation?) {
         if state == .active, let location {
+            updateMovingTime(with: location)
             updateRouteGuidance(with: location)
         }
         switch state {
@@ -720,20 +722,30 @@ final class ActivityRecorder: ObservableObject {
         autoResumeCandidateStart = nil
     }
 
+    private func updateMovingTime(with location: CLLocation) {
+        guard let segmentStart = currentSegmentStartDate,
+              location.timestamp >= segmentStart,
+              location.timestamp.timeIntervalSinceNow <= 5 else { return }
+        let threshold: Double? = switch activityType {
+        case .running: 0.65
+        case .walking, .hiking: 0.35
+        case .cycling: 1.0
+        default: nil
+        }
+        guard let threshold else { return }
+        movingTimeTracker.observe(
+            activeSeconds: accumulatedActiveDuration + location.timestamp.timeIntervalSince(segmentStart),
+            latitude: location.coordinate.latitude,
+            longitude: location.coordinate.longitude,
+            horizontalAccuracy: location.horizontalAccuracy,
+            speed: location.speed,
+            speedAccuracy: location.speedAccuracy,
+            stationarySpeedThreshold: threshold
+        )
+    }
+
     private func updateSessionMetrics(now: Date) {
         elapsedSeconds = currentElapsedSeconds(at: now)
-        if state == .active {
-            let threshold: Double? = switch activityType {
-            case .running: 0.3
-            case .walking, .hiking: 0.15
-            case .cycling: 0.5
-            default: nil
-            }
-            let stationary = threshold.flatMap { limit in
-                locationManager.movingTimeSpeed(at: now).map { $0 < limit }
-            }
-            movingTimeTracker.update(activeSeconds: Double(elapsedSeconds), stationary: stationary)
-        }
         movingSeconds = movingTimeTracker.movingSeconds(activeSeconds: elapsedSeconds)
         distanceMeters = locationManager.totalDistanceMeters + goalDistanceAdjustmentMeters
         elevationGainMeters = locationManager.elevationGainMeters

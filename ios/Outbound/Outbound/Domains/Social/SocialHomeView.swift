@@ -1117,7 +1117,7 @@ struct SocialHomeView: View {
                             SocialRoutePreviewImage(activity: activity)
                             HStack(spacing: 0) {
                                 socialStat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", "Distance")
-                                socialStat(activity.durationSecs.map(socialDuration) ?? "—", "Time")
+                                socialStat(activity.durationSecs.map(socialDuration) ?? "—", "activity.metric.moving_time")
                                 socialStat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
                             }
                             .padding(.horizontal, 12)
@@ -2844,7 +2844,7 @@ private struct SocialNotificationActivityView: View {
                                     SocialRoutePreviewImage(activity: activity)
                                     HStack(spacing: 0) {
                                         stat(activity.distanceM.map { measurementPreferences.unitSystem.distanceString(meters: $0, fractionDigits: 1) } ?? "—", String(localized: "Distance"))
-                                        stat(activity.durationSecs.map(duration) ?? "—", String(localized: "Time"))
+                                        stat(activity.durationSecs.map(duration) ?? "—", String(localized: "activity.metric.moving_time", defaultValue: "Moving Time"))
                                         stat(activity.avgPace.map { $0.paceString(for: measurementPreferences.unitSystem) } ?? "—", "Pace")
                                     }
                                     .padding(.horizontal, 12)

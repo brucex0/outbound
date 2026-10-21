@@ -186,16 +186,6 @@ final class LocationManager: NSObject, ObservableObject {
         return currentMotionSpeed
     }
 
-    /// Only fresh, accurate native speed can prove a stop. Position uncertainty
-    /// must not turn slow climbing or a GPS outage into stationary time.
-    func movingTimeSpeed(at now: Date) -> Double? {
-        guard let fix = previousMotionLocation,
-              (0...5).contains(now.timeIntervalSince(fix.timestamp)),
-              (0...20).contains(fix.horizontalAccuracy),
-              fix.speed >= 0, (0...0.5).contains(fix.speedAccuracy) else { return nil }
-        return fix.speed
-    }
-
     func requestPermission() {
         manager.requestWhenInUseAuthorization()
     }
@@ -296,6 +286,9 @@ final class LocationManager: NSObject, ObservableObject {
         configureFilters(for: activityType)
         resetRecordingState(preserving: warmLocation)
         trackingStartedAt = Date()
+        // Stop detection needs observations even when no distance is covered.
+        // Route filtering still suppresses stationary points and GPS jitter.
+        manager.distanceFilter = kCLDistanceFilterNone
         wantsTracking = true
         isManuallyPaused = false
         isLocationDeliverySuspended = false
@@ -394,6 +387,7 @@ final class LocationManager: NSObject, ObservableObject {
     @discardableResult
     func resumeTracking(fromAutoPause: Bool = false) -> TimeInterval {
         guard wantsTracking else { return 0 }
+        manager.distanceFilter = kCLDistanceFilterNone
         isManuallyPaused = false
         let promotedActiveDuration: TimeInterval
         if fromAutoPause {
@@ -434,6 +428,7 @@ final class LocationManager: NSObject, ObservableObject {
         wantsPreparation = false
         isAutoPauseProbing = false
         trackingStartedAt = nil
+        manager.distanceFilter = 1
         manager.stopUpdatingLocation()
         stopPedometer()
 #if DEBUG
