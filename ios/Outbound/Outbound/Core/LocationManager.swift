@@ -546,8 +546,15 @@ final class LocationManager: NSObject, ObservableObject {
         // Controlled run simulations supply fresh synthetic pace on every tick.
         if testCurrentPaceSecsPerKm != nil { return Date() }
 #endif
-        guard let segment = locationSegments.last, let last = segment.last,
-              (0...5).contains(Date().timeIntervalSince(last.timestamp)) else { return nil }
+        guard let segment = locationSegments.last, let last = segment.last else { return nil }
+#if DEBUG
+        // Accelerated simulations timestamp fixes on the session clock. Wall time
+        // would reject every future-dated fix; duplicate ticks still share one ID.
+        let evidenceNow = isSimulatingLocations ? last.timestamp : Date()
+#else
+        let evidenceNow = Date()
+#endif
+        guard (0...5).contains(evidenceNow.timeIntervalSince(last.timestamp)) else { return nil }
         let recent = Array(segment.drop { last.timestamp.timeIntervalSince($0.timestamp) > paceWindowSeconds })
         guard recent.count >= 8, let first = recent.first,
               last.timestamp.timeIntervalSince(first.timestamp) >= 20,

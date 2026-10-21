@@ -51,6 +51,8 @@ Coaching additionally requires the latest GPS fix to be no older than 5 seconds,
 
 Pace values are accepted only from 60 through 3,600 seconds per kilometer. Rolling coaching pace needs at least eight distinct valid evidence samples with the coverage described above. The guide retains 240 active seconds of history so accelerated run simulations preserve the same detector windows as live sessions. Android delivers each simulated second through a buffered coaching stream because its UI state stream conflates rapid updates; its live-coach request omits absent optional fields so the server accepts the session and supplies the audio pack.
 
+iOS accelerated simulations evaluate fix freshness against their synthetic session clock. Physical GPS continues to use wall-clock freshness. Both paths retain the same accuracy, sample-count, coverage, and gap gates; repeated snapshots of one fix do not become new evidence.
+
 The instability detector waits for established pace because the first GPS pace estimate can include a pre-start location fix and is refreshed from overlapping 30-second windows. Counting eight one-second snapshots from that settling estimate caused false early pace-change cues.
 
 Android evaluates major pace instability within its ordinary coaching cooldown and carries an optional typed race intent from the recording launch into live-coach context. Android currently has no race-planner entry point, so that race-specific detector is active only when a launch supplies a validated race target; ordinary typed workout targets continue to use their segment-specific pace bands.
