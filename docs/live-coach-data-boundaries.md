@@ -62,7 +62,7 @@ Gemini receives:
 - selected coach-persona instructions in the system instruction;
 - a strict JSON response schema.
 
-The configured model is `gemini-3.8-flash` with high thinking. Planning has a 20-second deadline and happens once per session. The response must contain a summary, progress cadence, one to three short phrases for every reactive moment, and exactly one localized phrase for every required selected-workout instruction ID. Phrases should be distinct and grounded in the moment and workout; duplicates or unknown instruction IDs invalidate the response. Invalid, timed-out, disabled, or unavailable planning produces a deterministic local plan; workout start is not failed solely because Gemini failed.
+The configured model is `gemini-3.8-flash` with low thinking. Planning has a 45-second deadline and happens once per session. The response must contain a summary, progress cadence, one to three short phrases for every reactive moment, and exactly one localized phrase for every required selected-workout instruction ID. Phrases should be distinct and grounded in the moment and workout; duplicates or unknown instruction IDs invalidate the response. Invalid, timed-out, disabled, or unavailable planning produces a deterministic local plan; workout start is not failed solely because Gemini failed.
 
 Gemini must not repeat private bio, health, location, survey, or weather facts in spoken phrases. Those fields may influence safety, tone, focus, timing, and advice only. Readiness is current for planner purposes for 36 hours; weather must have been observed within three hours. A fresh illness/pain or unsafe-weather flag can force fixed-only audio; stale flags do not block dynamic planning.
 
@@ -113,3 +113,7 @@ The backend forwards Google audio chunks in a length-prefixed response with meta
 3. Confirm planner text cannot disclose private context in spoken output.
 4. Confirm logs/analytics still exclude raw context, transcript, audio, identifiers, and exact telemetry.
 5. Re-review App Store privacy disclosures and current Google retention/region terms before production rollout.
+
+- Planner response array counts are enforced after generation, rather than in the provider JSON schema: Gemini rejects the nested bounded-array schema with HTTP 400. Types, required fields, and enum IDs remain provider-constrained; all existing runtime bounds and semantic checks still apply.
+- Chinese and Spanish guided half-marathon fallback instructions preserve each distance section’s pacing, practiced fueling, and conditional finish advice instead of repeating a generic segment announcement.
+- The compact initial library asks for one phrase per supported moment and retains phase selection plus all output validation. Existing half-marathon fallback sessions resolve reviewed Chinese/Spanish instructions at playback using their unchanged instruction/phrase IDs; no session data is rewritten.

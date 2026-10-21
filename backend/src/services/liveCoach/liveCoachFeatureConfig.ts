@@ -81,7 +81,7 @@ export function loadLiveCoachFeatureConfig(env: NodeJS.ProcessEnv = process.env)
         || trimmed(env.GCLOUD_PROJECT),
       location: trimmed(env.GEMINI_VERTEX_LOCATION) || "global",
       apiKey: trimmed(env.GEMINI_API_KEY),
-      deadlineMilliseconds: boundedInteger(env.GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS, 20_000, 2_000, 60_000),
+      deadlineMilliseconds: boundedInteger(env.GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS, 45_000, 2_000, 60_000),
     },
   };
 }

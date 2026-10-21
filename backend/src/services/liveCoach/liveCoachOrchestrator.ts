@@ -292,10 +292,11 @@ function selectedPlanTranscript(
 ): string {
   const phase = input.liveState.workoutSegmentPhase;
   const selected = input.selectedPhraseId
-    ? phraseForPlan(session.guidancePlan, input.selectedPhraseId, input.moment, phase)
+    ? phraseForPlan(session.guidancePlan, input.selectedPhraseId, input.moment, phase, session.plannerStatus === "fallback")
     : null;
-  const first = session.guidancePlan.cues.find((cue) => cue.moment === input.moment
-    && (!phase || cue.phases.includes("any") || cue.phases.includes(phase)))?.phrases[0]?.text;
+  const firstPhrase = session.guidancePlan.cues.find((cue) => cue.moment === input.moment
+    && (!phase || cue.phases.includes("any") || cue.phases.includes(phase)))?.phrases[0];
+  const first = firstPhrase ? phraseForPlan(session.guidancePlan, firstPhrase.id, input.moment, phase, session.plannerStatus === "fallback") : null;
   const transcript = selected ?? first;
   if (!transcript) throw new AIProviderError("invalid_provider_output", "The selected coaching phrase is not in the session plan.");
   return transcript;

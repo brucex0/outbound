@@ -91,7 +91,7 @@ LIVE_COACH_PLANNER_ENABLED=true
 GEMINI_LIVE_COACH_PLANNER_MODEL=gemini-3.8-flash
 GEMINI_VERTEX_PROJECT_ID=outbound-494602
 GEMINI_VERTEX_LOCATION=global
-GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS=20000
+GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS=45000
 ALIBABA_AI_ENABLED=false
 ```
 
@@ -255,3 +255,9 @@ The database-backed `paywall_enabled` control overrides trial enforcement. While
 Production dynamic coaching is enabled after the Google APIs, runtime IAM, schema, signed fallback pack, Gemini strict-JSON response, and streamed TTS first chunk were verified. The remaining product-quality gate is a representative real-device benchmark with provider-result/fallback telemetry visible; the on-device deadline must continue to speak exact progress instead of `progress.steady` when cloud audio misses 1.5 seconds.
 
 Production now points at `2026-09-08.1` on revision `outbound-api-00116-jzf`. All 216 two-voice assets are generated through Google, signed, uploaded, and exposed through immutable HTTPS URLs; the locale gate enables the 144 English/Simplified-Chinese assets and keeps the 72 Spanish assets unavailable. The remaining quality work is listening QA for the owner-bulk-approved base pack plus the representative real-device latency benchmark above.
+
+## Planner Failure Diagnostics
+
+- `live_coach_planning_fallback` records the operation, numeric HTTP status when available, and a bounded timeout/provider/validation category. It excludes provider bodies, runner context, and generated phrases. A successful audio stream does not prove planning succeeded; inspect `plannerStatus` too.
+- The live planner uses low thinking to fit its 45-second start-planning deadline. Array bounds stay in runtime validation because nested bounded arrays caused Gemini 3.8 Flash to reject the schema with HTTP 400.
+- Verify the actual coaching planner with a synthetic selected workout before a model rollout; assistant-only JSON smoke checks do not exercise the coaching schema.

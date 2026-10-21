@@ -59,7 +59,7 @@ export class LiveCoachPhraseService {
       liveState: { elapsedSeconds: 0, distanceMeters: 0, routeGuidanceActive: false },
       recentCueSummaries: [],
       maximumSpokenWordsEquivalent: 36,
-      exactTranscript: phrase.text,
+      exactTranscript: phraseForPlan(session.guidancePlan, phraseId, cue.moment, undefined, session.plannerStatus === "fallback") ?? phrase.text,
       deadline: new Date(Date.now() + Math.max(8_000, config.providerDeadlineMilliseconds)),
     }, signal);
     return { audio: result.audio, transcript: result.transcript };
@@ -78,7 +78,8 @@ export class LiveCoachPhraseService {
       session.guidancePlan,
       input.selectedPhraseId,
       input.moment,
-      input.liveState.workoutSegmentPhase
+      input.liveState.workoutSegmentPhase,
+      session.plannerStatus === "fallback"
     );
     if (!transcript) throw new AIProviderError("not_eligible", "The planned cached phrase is invalid.");
     const created = await this.prisma.$transaction(async (tx) => {

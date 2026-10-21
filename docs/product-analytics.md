@@ -349,3 +349,5 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 
 - New phone-recorded outdoor activities use moving time for the `activity_finished` / `activity_saved` `duration_bucket`. Both events also carry `elapsed_duration_bucket`, using the same coarse duration buckets over start-to-finish wall-clock time.
 - No coordinates, speed samples, exact durations, or stop locations enter analytics. Other event timing and workout-goal progress retain their existing clocks.
+
+- Live-coach planning fallback diagnostics use only operation, numeric HTTP status, and bounded failure category, including timeouts. Existing moment/provider-result events remain unchanged; diagnostics never include runner context or generated phrases.

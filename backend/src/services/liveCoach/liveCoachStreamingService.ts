@@ -279,7 +279,8 @@ function exactTranscript(session: LiveCoachSessionSnapshot, input: RequestLiveCo
     session.guidancePlan,
     input.selectedPhraseId,
     input.moment,
-    input.liveState.workoutSegmentPhase
+    input.liveState.workoutSegmentPhase,
+    session.plannerStatus === "fallback"
   );
   if (!transcript) throw new AIProviderError("invalid_provider_output", "The selected phrase is not in this session plan.");
   return transcript;

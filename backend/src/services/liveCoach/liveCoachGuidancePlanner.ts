@@ -14,7 +14,7 @@ import {
   type LiveCoachMoment,
 } from "./liveCoachTypes.js";
 
-export const LIVE_COACH_PLANNER_PROMPT_VERSION = "2026-10-11.1";
+export const LIVE_COACH_PLANNER_PROMPT_VERSION = "2026-10-20.1";
 
 const phases = ["any", "warmup", "easy", "work", "recovery", "walk", "cooldown", "open"] as const;
 const plannerCueSchema = z.object({
@@ -38,6 +38,8 @@ const plannerOutputSchema = z.object({
   workoutInstructions: z.array(plannerWorkoutInstructionSchema).max(80),
 }).strict();
 
+// Gemini rejects the nested bounded-array schema. Keep array cardinality checks
+// in plannerOutputSchema; the provider schema still constrains types and IDs.
 const plannerJSONSchema = {
   type: "object",
   additionalProperties: false,
@@ -56,23 +58,20 @@ const plannerJSONSchema = {
     },
     cues: {
       type: "array",
-      minItems: LIVE_COACH_REACTIVE_MOMENTS.length,
-      maxItems: LIVE_COACH_REACTIVE_MOMENTS.length * 2,
       items: {
         type: "object",
         additionalProperties: false,
         required: ["moment", "phases", "cooldownSeconds", "phrases"],
         properties: {
           moment: { type: "string", enum: [...LIVE_COACH_REACTIVE_MOMENTS] },
-          phases: { type: "array", minItems: 1, maxItems: 8, items: { type: "string", enum: [...phases] } },
+          phases: { type: "array", items: { type: "string", enum: [...phases] } },
           cooldownSeconds: { type: "integer", minimum: 45, maximum: 900 },
-          phrases: { type: "array", minItems: 1, maxItems: 3, items: { type: "string", minLength: 2, maxLength: 180 } },
+          phrases: { type: "array", items: { type: "string", minLength: 2, maxLength: 180 } },
         },
       },
     },
     workoutInstructions: {
       type: "array",
-      maxItems: 80,
       items: {
         type: "object",
         additionalProperties: false,
@@ -130,7 +129,7 @@ export async function generateLiveCoachGuidancePlan(
         systemInstruction: plannerInstructions(context.locale, persona.instructions),
         responseMimeType: "application/json",
         responseJsonSchema: plannerJSONSchema,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         temperature: 0.45,
         maxOutputTokens: 8_192,
       },
@@ -143,10 +142,13 @@ export async function generateLiveCoachGuidancePlan(
       outputTokens: response.usageMetadata?.candidatesTokenCount,
     };
   } catch (error) {
-    // Deadline cancellation is expected; other failures need a safe diagnostic.
-    if (!controller.signal.aborted) {
-      console.warn("live_coach_planning_fallback", { errorType: error instanceof Error ? error.name : "unknown" });
-    }
+    const status = error instanceof Error && "status" in error && typeof error.status === "number" ? error.status : undefined;
+    console.warn("live_coach_planning_fallback", {
+      operation: "generate_guidance_plan", status,
+      category: controller.signal.aborted ? "timeout" : error instanceof z.ZodError ? "response_validation" : "provider_or_plan_validation",
+      errorType: error instanceof Error ? error.name : "unknown",
+      ...(error instanceof z.ZodError ? { validationPaths: error.issues.slice(0, 5).map((issue) => issue.path.join(".")) } : {}),
+    });
     return resultForPlan(fallback, "fallback", null);
   } finally {
     clearTimeout(timeout);
@@ -157,12 +159,19 @@ export function phraseForPlan(
   plan: LiveCoachGuidancePlan,
   phraseId: string,
   moment: LiveCoachMoment,
-  phase?: Exclude<LiveCoachGuidancePhase, "any">
+  phase?: Exclude<LiveCoachGuidancePhase, "any">,
+  useLocalizedWorkoutFallback = false
 ): string | null {
   for (const cue of plan.cues) {
     if (cue.moment !== moment || (phase && !cue.phases.includes("any") && !cue.phases.includes(phase))) continue;
     const phrase = cue.phrases.find((candidate) => candidate.id === phraseId);
-    if (phrase) return phrase.text;
+    if (phrase) {
+      // Existing fallback sessions retain their phrase IDs. Resolve the reviewed
+      // instruction at playback too, so their next boundary can benefit.
+      return useLocalizedWorkoutFallback && cue.instructionId
+        ? halfMarathonFallbackCue(cue.instructionId, plan.locale) ?? phrase.text
+        : phrase.text;
+    }
   }
   return null;
 }
@@ -287,9 +296,31 @@ function fallbackWorkoutInstructions(context: LiveCoachCompiledContext): LiveCoa
     cooldownSeconds: 45,
     phrases: [{
       id: `workout_instruction.${index}.0`,
-      text: generic ?? validatePhrase(segment.referenceCue, context.locale),
+      text: validatePhrase(halfMarathonFallbackCue(segment.id, context.locale) ?? generic ?? segment.referenceCue, context.locale),
     }],
   }));
+}
+
+// Reviewed distance-specific fallbacks keep guided half marathons useful even
+// when planning fails. IDs match the catalog; no live condition is assumed.
+function halfMarathonFallbackCue(instructionId: string, locale: string): string | undefined {
+  const cues: Record<string, Record<string, string>> = {
+    "zh-Hans": {
+      "guided-half-settle": "前3公里有意收住速度，保持呼吸从容，不追赶别人。",
+      "guided-half-rhythm": "保持能持续的强度，按训练中练过的安排喝水和补给。",
+      "guided-half-commit": "接下来一公里一公里地跑，继续按熟悉的安排补给，累了就放慢。",
+      "guided-half-late": "上坡和逆风时守住强度，只有呼吸和动作都稳定时才逐步提速。",
+      "guided-half-finish": "最后1.1公里保持步幅紧凑，感觉可控再逐步加力。",
+    },
+    es: {
+      "guided-half-settle": "Contén el ritmo durante los primeros tres kilómetros y mantén una respiración cómoda, sin perseguir a otros.",
+      "guided-half-rhythm": "Mantén un esfuerzo sostenible y sigue la hidratación y alimentación que ya practicaste.",
+      "guided-half-commit": "Avanza kilómetro a kilómetro, sigue tu plan habitual de alimentación y baja el ritmo si lo necesitas.",
+      "guided-half-late": "Controla el esfuerzo en cuestas y con viento; acelera gradualmente solo si mantienes una respiración y técnica estables.",
+      "guided-half-finish": "En los últimos 1,1 kilómetros, mantén una zancada compacta y aumenta el esfuerzo solo si sigues con control.",
+    },
+  };
+  return cues[locale]?.[instructionId];
 }
 
 function plannerInstructions(locale: string, personaInstructions: string): string {
@@ -310,7 +341,7 @@ function plannerInstructions(locale: string, personaInstructions: string): strin
     "Moment rules: finish_opportunity is conditional and controlled, never a sprint command. race_start_restraint follows the selected race strategy; race_pace_locked reinforces the validated target; race_halfway_assessment favors patient execution; race_late_fade helps restore sustainable target effort; race_late_strength permits only a gradual build when the target is controlled; race_final_kilometer supports the plan without assuming a kick is safe or available. challenge_start and challenge_complete apply only to the runner's explicitly selected challenge.",
     "For workoutInstructions, return exactly one item for every requiredWorkoutInstructionId, preserve each ID exactly, and turn that step's reference cue into a concrete instruction grounded in its actual purpose, effort, and work/recovery sequence. Use supplied prescribed targets when helpful; never invent live measurements. Never reduce an instruction to 'new segment' or generic encouragement. Return an empty array when there are no required IDs.",
     "Choose progress cadence that fits the selected goal and activity: distance goals should favor useful distance checkpoints, time goals should favor useful time checkpoints, and structured workouts should not be interrupted with redundant progress chatter. Do not use a running pace announcement for stationary activities.",
-    "Give two or three meaningfully different alternatives for moments that may recur. Do not repeat a phrase across different moments or alternatives.",
+    "Return at least one cue entry for every supportedMoments value, with one concise phrase per entry. Add separate entries only when different workout phases require different actions. Include every supported moment even if it is unlikely in this workout; the device decides when a moment occurs. Keep this initial library compact so it is ready before the run. Do not repeat a phrase across different moments.",
     "Each phrase must be one natural, immediately speakable sentence of at most 24 English/Spanish words or 48 Chinese characters. Prefer one short action over a list of tips.",
     "Do not include placeholders, invented metric values, markdown, medical diagnoses, commands to exceed the prescribed workout, or claims about facts not present in context. Do not infer pain, illness, fitness, or ability from demographics, missed sessions, or missing data.",
     "Never speak private biography, body measurements, health/readiness notes, exact location, survey answers, or weather details explicitly. Use only relevant information to choose safer timing, effort, focus, or wording. A fresh illness/pain or unsafe-weather flag may prevent dynamic generation; never work around that gate. Ignore stale weather and do not repeat a stale readiness concern as current.",
