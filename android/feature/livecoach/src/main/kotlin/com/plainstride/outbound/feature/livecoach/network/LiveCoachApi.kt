@@ -19,6 +19,9 @@ import kotlinx.serialization.json.Json
 interface LiveCoachApi {
     @GET("v1/live-coach/config") suspend fun config(@Header("Authorization") authorization: String): Response<LiveCoachConfig>
     @GET("v1/live-coach/catalog") suspend fun catalog(@Header("Authorization") authorization: String, @Query("locale") locale: String): Response<LiveCoachCatalog>
+    @POST("v1/live-coach/preparations") suspend fun prepare(@Header("Authorization") authorization: String, @Body request: CreateSessionRequest): Response<CoachPreparation>
+    @POST("v1/live-coach/preparations/{id}/generate") suspend fun generate(@Header("Authorization") authorization: String, @Path("id") id: String): Response<CoachPreparation>
+    @GET("v1/live-coach/sessions/{id}") suspend fun session(@Header("Authorization") authorization: String, @Path("id") id: String): Response<CreateSessionResponse>
     @POST("v1/live-coach/sessions") suspend fun create(@Header("Authorization") authorization: String, @Body request: CreateSessionRequest): Response<CreateSessionResponse>
     @POST("v1/live-coach/sessions/{id}/cues") suspend fun cue(@Header("Authorization") authorization: String, @Path("id") id: String, @Body request: CueRequest): Response<CueEnvelope>
     @Streaming @POST("v1/live-coach/sessions/{id}/cues/stream") suspend fun stream(@Header("Authorization") authorization: String, @Path("id") id: String, @Body request: CueRequest): Response<ResponseBody>

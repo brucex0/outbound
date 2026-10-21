@@ -8,6 +8,9 @@ import okhttp3.ResponseBody
 interface LiveCoachRepository {
     suspend fun config(token: String): ApiResult<LiveCoachConfig>
     suspend fun catalog(token: String, locale: String): ApiResult<LiveCoachCatalog>
+    suspend fun prepare(token: String, request: CreateSessionRequest): ApiResult<CoachPreparation>
+    suspend fun generate(token: String, id: String): ApiResult<CoachPreparation>
+    suspend fun session(token: String, id: String): ApiResult<CreateSessionResponse>
     suspend fun createSession(token: String, request: CreateSessionRequest): ApiResult<CreateSessionResponse>
     suspend fun requestCue(token: String, sessionId: String, request: CueRequest): ApiResult<CueEnvelope>
     suspend fun streamCue(token: String, sessionId: String, request: CueRequest): Result<ResponseBody>
@@ -20,6 +23,9 @@ class DefaultLiveCoachRepository @Inject constructor(private val api: LiveCoachA
     private fun auth(token: String) = "Bearer $token"
     override suspend fun config(token: String) = apiCall { api.config(auth(token)) }
     override suspend fun catalog(token: String, locale: String) = apiCall { api.catalog(auth(token), locale) }
+    override suspend fun prepare(token: String, request: CreateSessionRequest) = apiCall { api.prepare(auth(token), request) }
+    override suspend fun generate(token: String, id: String) = apiCall { api.generate(auth(token), id) }
+    override suspend fun session(token: String, id: String) = apiCall { api.session(auth(token), id) }
     override suspend fun createSession(token: String, request: CreateSessionRequest) = apiCall { api.create(auth(token), request) }
     override suspend fun requestCue(token: String, sessionId: String, request: CueRequest) = apiCall { api.cue(auth(token), sessionId, request) }
     override suspend fun streamCue(token: String, sessionId: String, request: CueRequest): Result<ResponseBody> = runCatching {

@@ -68,7 +68,7 @@ import kotlinx.serialization.Serializable
 @Serializable data class VoiceProfile(val id: String, val displayName: String, val description: String, val style: String, val presentation: String, val previewAssetId: String)
 
 @Serializable data class CreateSessionRequest(
-    val contractVersion: Int = 1, val clientSessionId: String, val workoutId: String? = null,
+    val contractVersion: Int = 1, val clientSessionId: String, val deferPlanning: Boolean = true, val preparationId: String? = null, val workoutId: String? = null,
     val workoutRef: WorkoutReference? = null, val locale: String, val coachPersonaId: String,
     val voiceProfileId: String, val coachingContract: CoachingContract, val measurementUnitSystem: String,
     val sessionIntent: SessionIntent, val clientWorkout: ClientWorkout? = null,
@@ -84,7 +84,7 @@ import kotlinx.serialization.Serializable
 @Serializable data class ApproximateLocation(val placeName: String? = null, val latitude: Double? = null, val longitude: Double? = null, val altitudeMeters: Double? = null)
 @Serializable data class Weather(val observedAt: String, val condition: String, val temperatureCelsius: Double, val apparentTemperatureCelsius: Double, val windKilometersPerHour: Double, val precipitationChance: Double, val impact: String, val headline: String, val guidance: String? = null, val bestWindow: String? = null)
 
-@Serializable data class CreateSessionResponse(val contractVersion: Int, val sessionId: String, val contextVersion: Int, val expiresAt: String, val effectiveMode: LiveCoachMode, val dynamicCoachingAvailable: Boolean, val access: Access, val audioPack: AudioPackRef, val limits: Limits, val guidancePlan: GuidancePlan, val guidancePlanHash: String, val planner: Planner)
+@Serializable data class CreateSessionResponse(val contractVersion: Int, val sessionId: String, val contextVersion: Int, val expiresAt: String, val effectiveMode: LiveCoachMode, val dynamicCoachingAvailable: Boolean, val access: Access, val audioPack: AudioPackRef, val limits: Limits, val guidancePlan: GuidancePlan, val guidancePlanHash: String, val planner: Planner, val preparation: SessionPreparation? = null)
 @Serializable data class Limits(val cueValidityMilliseconds: Int, val maximumDynamicCues: Int)
 @Serializable data class Planner(val status: String, val model: String? = null, val promptVersion: String)
 @Serializable data class GuidancePlan(val contractVersion: Int, val planVersion: String, val locale: String, val summary: String, val progressPolicy: ProgressPolicy, val cues: List<PlanCue>)
@@ -102,3 +102,6 @@ import kotlinx.serialization.Serializable
 @Serializable data class CueStreamCompletion(val byteCount: Int, val firstAudioAtUnixMilliseconds: Long? = null, val serverCompletedAtUnixMilliseconds: Long)
 @Serializable data class EndSessionRequest(val contractVersion: Int = 1, val spokenCueCount: Int, val helpfulCueCount: Int, val outcome: String)
 @Serializable data class Ack(val contractVersion: Int, val recorded: Boolean? = null, val ended: Boolean? = null)
+
+@Serializable data class SessionPreparation(val id: String)
+@Serializable data class CoachPreparation(val preparationId: String, val status: String, val expiresAt: String)

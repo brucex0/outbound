@@ -1,5 +1,6 @@
 package com.plainstride.outbound.feature.livecoach
 
+import android.util.Log
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.ContextCompat
@@ -9,6 +10,8 @@ import com.plainstride.outbound.core.analytics.AnalyticsEvent
 import com.plainstride.outbound.core.analytics.AnalyticsProperty
 import com.plainstride.outbound.core.analytics.ProductAnalytics
 import com.plainstride.outbound.core.model.activity.MeasurementUnitSystem
+import com.plainstride.outbound.core.auth.SessionCoordinator
+import com.plainstride.outbound.core.auth.SessionState
 import com.plainstride.outbound.core.network.AccessTokenProvider
 import com.plainstride.outbound.core.network.ApiResult
 import com.plainstride.outbound.feature.livecoach.audio.AudioPackSelection
@@ -18,6 +21,7 @@ import com.plainstride.outbound.feature.livecoach.audio.LiveCoachPlaybackCoordin
 import com.plainstride.outbound.feature.livecoach.audio.LiveCoachPlaybackService
 import com.plainstride.outbound.feature.livecoach.audio.LocalizedFallbackPhrases
 import com.plainstride.outbound.feature.livecoach.audio.PlannedAudioCache
+import com.plainstride.outbound.feature.livecoach.network.CoachPreparation
 import com.plainstride.outbound.feature.livecoach.network.ClientWorkout
 import com.plainstride.outbound.feature.livecoach.network.CoachingContract
 import com.plainstride.outbound.feature.livecoach.network.CreateSessionRequest
@@ -54,7 +58,16 @@ import java.time.ZoneId
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.merge
@@ -87,6 +100,7 @@ class LiveCoachViewModel @Inject constructor(
     private val preferencesRepository: LiveCoachPreferencesRepository,
     private val repository: LiveCoachRepository,
     private val tokens: AccessTokenProvider,
+    private val sessions: SessionCoordinator,
     private val packs: FixedAudioPackStore,
     private val plannedCache: PlannedAudioCache,
     private val playback: LiveCoachPlaybackCoordinator,
@@ -107,6 +121,13 @@ class LiveCoachViewModel @Inject constructor(
     private val pendingCues = ArrayDeque<PendingCue>()
     private val phraseUseCounts = mutableMapOf<String, Int>()
     private var observer: Job? = null
+    private var selectionJob: Job? = null
+    private var planRefreshJob: Job? = null
+    private var prewarmJob: Job? = null
+    private var selectedRequest: CreateSessionRequest? = null
+    private var selectedAccount: String? = null
+    private var prepared: CoachPreparation? = null
+    private val generations = mutableMapOf<String, Deferred<CoachPreparation?>>()
     private var serverSession: CreateSessionResponse? = null
     private var activeClientSessionId: String? = null
     private var startAttemptedForSessionId: String? = null
@@ -165,12 +186,13 @@ class LiveCoachViewModel @Inject constructor(
     }
 
     fun attachRecording(launch: RecordingLaunchConfiguration, unitSystem: MeasurementUnitSystem) {
-        if (observer != null) return
+        observer?.cancel()
         observer = viewModelScope.launch {
-            merge(
+            combine(merge(
                 client.snapshots.filter { it.runSimulation == null || it.status != RecordingStatus.ACTIVE },
                 client.simulationSnapshots,
-            ).collect { snapshot -> process(snapshot, launch, unitSystem) }
+            ), preferences, sessions.state) { snapshot, _, _ -> snapshot }
+                .collect { snapshot -> process(snapshot, launch, unitSystem) }
         }
     }
 
@@ -186,6 +208,9 @@ class LiveCoachViewModel @Inject constructor(
         }
         lastStatus = snapshot.status
         val prefs = preferences.value
+        if (snapshot.status == RecordingStatus.IDLE) {
+            prepareSelection(launch, unitSystem, prefs)
+        }
         if (!prefs.enabled) {
             if (activeClientSessionId != null) end("interrupted")
             return
@@ -405,13 +430,65 @@ class LiveCoachViewModel @Inject constructor(
                 ),
             ),
         )
+        val account = accountId()
         val token = tokens.validAccessToken()
-        if (token == null) {
+        currentCoroutineContext().ensureActive()
+        if (token == null || account == null || accountId() != account) {
             recordSessionStartFailure()
             return
         }
-        val request = CreateSessionRequest(
-            clientSessionId = snapshot.sessionId ?: return,
+        val base = makeRequest(snapshot.sessionId ?: return, launch, unitSystem, prefs)
+        val preparationId = prepared?.takeIf {
+            selectedAccount == accountId() && selectedRequest == base.copy(clientSessionId = SELECTION_SESSION_ID) &&
+                runCatching { Instant.parse(it.expiresAt).isAfter(Instant.now()) }.getOrDefault(false)
+        }?.preparationId
+        val request = base.copy(preparationId = preparationId)
+        when (val result = repository.createSession(token, request)) {
+            is ApiResult.Success -> {
+                if (!currentCoroutineContext().isActive || accountId() != account || activeClientSessionId != snapshot.sessionId) {
+                    withContext(NonCancellable) {
+                        val cleanup = repository.endSession(token, result.value.sessionId, EndSessionRequest(spokenCueCount = 0, helpfulCueCount = 0, outcome = "interrupted"))
+                        if (cleanup is ApiResult.Failure) Log.w("PlainstrideLiveCoach", "Canceled session cleanup status=${cleanup.error.httpStatus} code=${cleanup.error.code}")
+                    }
+                    currentCoroutineContext().ensureActive()
+                    return
+                }
+                serverSession = result.value
+                policy.reset()
+                schedule.reset()
+                pendingCues.clear()
+                phraseUseCounts.clear()
+                spokenCount = 0
+                preload(result.value, prefs, token)
+                preparationEvent("start", if (result.value.planner.status == "generated") "ready" else "fallback")
+                adoptPreparedPlan(result.value, prefs, account)
+                analytics.record(
+                    AnalyticsEvent(
+                        "live_coach_session_started",
+                        mapOf(
+                            AnalyticsProperty.Result to "success",
+                            AnalyticsProperty.AudioMode to result.value.effectiveMode.wireValue,
+                            AnalyticsProperty.AccessReason to result.value.access.reason,
+                        ),
+                    ),
+                )
+            }
+            is ApiResult.Failure -> {
+                currentCoroutineContext().ensureActive()
+                Log.w("PlainstrideLiveCoach", "Session create status=${result.error.httpStatus} code=${result.error.code}")
+                recordSessionStartFailure()
+            }
+        }
+    }
+
+    private fun makeRequest(
+        clientSessionId: String,
+        launch: RecordingLaunchConfiguration,
+        unitSystem: MeasurementUnitSystem,
+        prefs: LiveCoachPreferences,
+    ): CreateSessionRequest {
+        return CreateSessionRequest(
+            clientSessionId = clientSessionId,
             workoutId = launch.plannedWorkoutId,
             workoutRef = launch.standaloneWorkoutId?.let {
                 WorkoutReference(id = it, version = launch.standaloneWorkoutCatalogVersion)
@@ -441,28 +518,106 @@ class LiveCoachViewModel @Inject constructor(
                 indoor = launch.indoor,
             ),
         )
-        when (val result = repository.createSession(token, request)) {
-            is ApiResult.Success -> {
-                serverSession = result.value
-                policy.reset()
-                schedule.reset()
-                pendingCues.clear()
-                phraseUseCounts.clear()
-                spokenCount = 0
-                preload(result.value, prefs, token)
-                analytics.record(
-                    AnalyticsEvent(
-                        "live_coach_session_started",
-                        mapOf(
-                            AnalyticsProperty.Result to "success",
-                            AnalyticsProperty.AudioMode to result.value.effectiveMode.wireValue,
-                            AnalyticsProperty.AccessReason to result.value.access.reason,
-                        ),
-                    ),
-                )
+    }
+
+    private fun accountId(): String? = when (val state = sessions.state.value) {
+        is SessionState.SignedIn -> state.accountId
+        is SessionState.Refreshing -> state.accountId
+        else -> null
+    }
+
+    private fun prepareSelection(launch: RecordingLaunchConfiguration, units: MeasurementUnitSystem, prefs: LiveCoachPreferences) {
+        val account = accountId()
+        val request = if (account != null && launch.voiceGuideEnabled && prefs.enabled &&
+            prefs.contract != CoachingContract.Quiet && launch.activityKind == ActivityKind.RUNNING &&
+            (launch.plannedWorkoutId != null || launch.standaloneWorkoutId != null || launch.workoutSteps.isNotEmpty())) {
+            makeRequest(SELECTION_SESSION_ID, launch, units, prefs)
+        } else null
+        val unexpired = prepared?.let { runCatching { Instant.parse(it.expiresAt).isAfter(Instant.now()) }.getOrDefault(false) } == true
+        if (request == selectedRequest && account == selectedAccount && (request == null || selectionJob?.isActive == true || unexpired)) return
+        selectionJob?.cancel()
+        prepared = null
+        selectedAccount = account
+        selectedRequest = request
+        if (request == null) return
+        selectionJob = viewModelScope.launch {
+            delay(400)
+            val token = tokens.validAccessToken() ?: return@launch
+            if (accountId() != account) return@launch
+            val result = repository.prepare(token, request)
+            currentCoroutineContext().ensureActive()
+            when (result) {
+                is ApiResult.Success -> {
+                    if (selectedRequest != request || accountId() != account) return@launch
+                    prepared = result.value
+                    preparationEvent("selection", result.value.status)
+                    val ready = generatePreparation(result.value.preparationId, account)
+                    if (selectedRequest == request && accountId() == account && ready != null) prepared = ready
+                }
+                is ApiResult.Failure -> preparationFailure("selection", result)
             }
-            is ApiResult.Failure -> recordSessionStartFailure()
         }
+    }
+
+    private suspend fun generatePreparation(id: String, account: String?): CoachPreparation? {
+        val task = generations.getOrPut(id) {
+            viewModelScope.async {
+                val token = tokens.validAccessToken() ?: return@async null
+                if (account == null || accountId() != account) return@async null
+                val result = repository.generate(token, id)
+                currentCoroutineContext().ensureActive()
+                if (accountId() != account) return@async null
+                when (result) {
+                    is ApiResult.Success -> result.value.also { preparationEvent("generation", it.status) }
+                    is ApiResult.Failure -> { preparationFailure("generation", result); null }
+                }
+            }
+        }
+        return try { task.await() } finally { if (task.isCompleted) generations.remove(id, task) }
+    }
+
+    private fun adoptPreparedPlan(initial: CreateSessionResponse, prefs: LiveCoachPreferences, account: String?) {
+        planRefreshJob?.cancel()
+        val id = initial.preparation?.id ?: return
+        if (initial.planner.status == "generated") return
+        planRefreshJob = viewModelScope.launch {
+            val result = generatePreparation(id, account) ?: return@launch
+            if (result.status !in setOf("ready", "generating")) return@launch
+            repeat(30) {
+                if (serverSession?.sessionId != initial.sessionId || accountId() != account) return@launch
+                val token = tokens.validAccessToken() ?: return@launch
+                if (accountId() != account) return@launch
+                val refreshed = repository.session(token, initial.sessionId)
+                currentCoroutineContext().ensureActive()
+                when (refreshed) {
+                    is ApiResult.Success -> {
+                        if (serverSession?.sessionId != initial.sessionId || accountId() != account) return@launch
+                        if (refreshed.value.planner.status == "generated") {
+                            serverSession = refreshed.value
+                            phraseUseCounts.clear()
+                            preload(refreshed.value, prefs, token)
+                            preparationEvent("attachment", "ready")
+                            return@launch
+                        }
+                    }
+                    is ApiResult.Failure -> { preparationFailure("attachment", refreshed); return@launch }
+                }
+                delay(2_000)
+            }
+        }
+    }
+
+    private fun preparationEvent(source: String, status: String) {
+        val bounded = status.takeIf { it in setOf("pending", "generating", "ready", "fallback") } ?: "failure"
+        analytics.record(AnalyticsEvent("live_guidance_preparation_result", mapOf(
+            AnalyticsProperty.SourceType to source, AnalyticsProperty.Result to bounded,
+        )))
+    }
+
+    private fun preparationFailure(operation: String, result: ApiResult.Failure) {
+        if (result.error.code == com.plainstride.outbound.core.network.ApiErrorCode.Cancelled) return
+        Log.w("PlainstrideLiveCoach", "Preparation operation=$operation status=${result.error.httpStatus} code=${result.error.code}")
+        preparationEvent(operation, "failure")
     }
 
     private fun recordSessionStartFailure() {
@@ -505,7 +660,8 @@ class LiveCoachViewModel @Inject constructor(
         val reactivePhrases = preferredMoments.mapNotNull { moment ->
             session.guidancePlan.cues.firstOrNull { it.moment == moment }?.phrases?.firstOrNull()
         }
-        viewModelScope.launch {
+        prewarmJob?.cancel()
+        prewarmJob = viewModelScope.launch {
             (workoutPhrases + reactivePhrases).distinctBy(Phrase::id).take(MAX_PREWARM_PHRASES).forEach { phrase ->
                 if (plannedCache.audio(session.guidancePlanHash, prefs.voiceProfileId, phrase.id) != null) return@forEach
                 repository.phraseAudio(token, session.sessionId, phrase.id).getOrNull()?.let { audio ->
@@ -530,6 +686,8 @@ class LiveCoachViewModel @Inject constructor(
     }
 
     private suspend fun end(outcome: String) {
+        planRefreshJob?.cancel()
+        prewarmJob?.cancel()
         val session = serverSession
         serverSession = null
         if (session != null) {
@@ -582,6 +740,9 @@ class LiveCoachViewModel @Inject constructor(
 
     override fun onCleared() {
         observer?.cancel()
+        selectionJob?.cancel()
+        planRefreshJob?.cancel()
+        prewarmJob?.cancel()
         client.close()
         context.stopService(Intent(context, LiveCoachPlaybackService::class.java))
         super.onCleared()
@@ -611,6 +772,7 @@ class LiveCoachViewModel @Inject constructor(
     }
 
     private companion object {
+        const val SELECTION_SESSION_ID = "00000000-0000-4000-8000-000000000000"
         const val MAX_PENDING_CUES = 8
         const val MAX_PREWARM_PHRASES = 8
         val MANIFEST_KEYS = mapOf(

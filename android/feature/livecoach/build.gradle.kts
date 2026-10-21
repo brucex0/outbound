@@ -16,6 +16,7 @@ android {
 
 dependencies {
     implementation(project(":core:analytics"))
+    implementation(project(":core:auth"))
     implementation(project(":core:model"))
     implementation(project(":core:network"))
     implementation(project(":feature:recording"))
