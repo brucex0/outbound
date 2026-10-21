@@ -117,3 +117,7 @@ The backend forwards Google audio chunks in a length-prefixed response with meta
 - Planner response array counts are enforced after generation, rather than in the provider JSON schema: Gemini rejects the nested bounded-array schema with HTTP 400. Types, required fields, and enum IDs remain provider-constrained; all existing runtime bounds and semantic checks still apply.
 - Chinese and Spanish guided half-marathon fallback instructions preserve each distance section’s pacing, practiced fueling, and conditional finish advice instead of repeating a generic segment announcement.
 - The compact initial library asks for one phrase per supported moment and retains phase selection plus all output validation. Existing half-marathon fallback sessions resolve reviewed Chinese/Spanish instructions at playback using their unchanged instruction/phrase IDs; no session data is rewritten.
+
+## Preparation Lifetime
+
+The same bounded planner context may now be prepared on workout selection, before recording starts. Preparation does not add fields or send a second language. It stores an account-owned context/hash and validated result with a 15-minute expiry; fallback results expire after 30 seconds. Expired records cannot be attached or generated and are purged on account preparation or daily maintenance. Start recompiles context and applies current safety/access gates before reuse. Existing session retention remains unchanged.

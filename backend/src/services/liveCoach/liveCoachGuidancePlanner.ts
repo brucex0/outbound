@@ -14,7 +14,7 @@ import {
   type LiveCoachMoment,
 } from "./liveCoachTypes.js";
 
-export const LIVE_COACH_PLANNER_PROMPT_VERSION = "2026-10-20.1";
+export const LIVE_COACH_PLANNER_PROMPT_VERSION = "2026-10-20.2";
 
 const phases = ["any", "warmup", "easy", "work", "recovery", "walk", "cooldown", "open"] as const;
 const plannerCueSchema = z.object({
@@ -34,7 +34,7 @@ const plannerOutputSchema = z.object({
     announceEveryMeters: z.number().int().min(500).max(10_000),
     includePace: z.boolean(),
   }).strict(),
-  cues: z.array(plannerCueSchema).min(LIVE_COACH_REACTIVE_MOMENTS.length).max(LIVE_COACH_REACTIVE_MOMENTS.length * 2),
+  cues: z.array(plannerCueSchema).min(1).max(LIVE_COACH_REACTIVE_MOMENTS.length * 2),
   workoutInstructions: z.array(plannerWorkoutInstructionSchema).max(80),
 }).strict();
 
@@ -105,6 +105,7 @@ export async function generateLiveCoachGuidancePlan(
   const persona = findCoachPersona(coachPersonaId);
   if (!persona) return resultForPlan(fallback, "fallback", null);
 
+  const supportedMoments = relevantLiveCoachMoments(context);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.planner.deadlineMilliseconds);
   try {
@@ -120,7 +121,7 @@ export async function generateLiveCoachGuidancePlan(
       model: config.planner.model,
       contents: JSON.stringify({
         task: "Create the executable live-coaching phrase plan for this workout.",
-        supportedMoments: LIVE_COACH_REACTIVE_MOMENTS,
+        supportedMoments,
         requiredWorkoutInstructionIds: context.workoutExecution?.segments.map((segment) => segment.id) ?? [],
         runnerContext: context,
       }),
@@ -135,6 +136,10 @@ export async function generateLiveCoachGuidancePlan(
       },
     });
     const parsed = plannerOutputSchema.parse(JSON.parse(response.text ?? ""));
+    if (supportedMoments.some((moment) => !parsed.cues.some((cue) => cue.moment === moment))
+        || parsed.cues.some((cue) => !supportedMoments.includes(cue.moment))) {
+      throw new Error("Planner moments did not match the requested workout scope.");
+    }
     const plan = normalizeGeneratedPlan(parsed, context);
     return {
       ...resultForPlan(plan, "generated", response.modelVersion ?? config.planner.model),
@@ -153,6 +158,19 @@ export async function generateLiveCoachGuidancePlan(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export function relevantLiveCoachMoments(context: LiveCoachCompiledContext): typeof LIVE_COACH_REACTIVE_MOMENTS[number][] {
+  // Progress, pause/resume and unselected challenges use reviewed deterministic
+  // wording. Preserve fallback coverage for every moment in the normalized plan.
+  return LIVE_COACH_REACTIVE_MOMENTS.filter((moment) => {
+    if (["progress", "unexpected_stop", "resume_after_break", "challenge_start", "challenge_complete"].includes(moment)) return false;
+    if (moment.startsWith("race_")) return context.race != null;
+    if (moment === "segment_transition" || moment === "recovery_too_hard") {
+      return (context.clientWorkout?.steps.length ?? 0) > 0 || context.workout != null;
+    }
+    return true;
+  });
 }
 
 export function phraseForPlan(

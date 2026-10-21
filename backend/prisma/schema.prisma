@@ -100,6 +100,7 @@ model User {
   routesOwned                 Route[]
   usernameReservations        UsernameReservation[]
   routeBookmarks              RouteBookmark[]
+  liveCoachPreparations LiveCoachPreparation[]
   liveCoachSessions           LiveCoachSession[]
   featureEntitlements         FeatureEntitlement[]
   featureUsagePeriods         FeatureUsagePeriod[]
@@ -243,10 +244,29 @@ model GuideProfile {
   updatedAt DateTime @updatedAt
 }
 
+model LiveCoachPreparation {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cacheKey String @unique
+  contextHash String
+  compiledContext Json
+  coachPersonaId String
+  status String @default("pending")
+  generationStartedAt DateTime?
+  result Json?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  sessions LiveCoachSession[]
+  @@index([userId, expiresAt])
+}
+
 model LiveCoachSession {
   id                   String         @id @default(cuid())
   userId               String
   user                 User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preparationId String?
+  preparation LiveCoachPreparation? @relation(fields: [preparationId], references: [id], onDelete: SetNull)
   clientSessionId      String
   workoutId            String?
   status               String

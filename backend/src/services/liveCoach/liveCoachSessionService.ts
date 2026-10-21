@@ -12,6 +12,7 @@ import {
 } from "./liveCoachAccessPolicy.js";
 import { findCoachPersona, findVoiceProfile } from "./liveCoachCatalog.js";
 import { effectiveModeForUser, isLiveCoachLocaleEnabled, loadLiveCoachFeatureConfig, type LiveCoachFeatureConfig } from "./liveCoachFeatureConfig.js";
+import { LiveCoachPreparationService } from "./liveCoachPreparationService.js";
 import { generateLiveCoachGuidancePlan } from "./liveCoachGuidancePlanner.js";
 import type { CreateLiveCoachSessionInput, LiveCoachAccessDecision, LiveCoachSessionSnapshot } from "./liveCoachTypes.js";
 
@@ -95,15 +96,22 @@ export class LiveCoachSessionService {
     }
 
     const expiresAt = new Date(Date.now() + 4 * 60 * 60 * 1_000);
-    const planned = await generateLiveCoachGuidancePlan(compiled.context, persona.id, {
+    const preparation = input.deferPlanning && effectiveMode === "dynamic" && feature.planner.enabled
+      ? await new LiveCoachPreparationService(this.prisma).prepare(userId, input, compiled, true).catch((error) => {
+        console.warn("live_coach_preparation", { operation: "session_prepare", result: "fallback", errorType: error instanceof Error ? error.name : "unknown" });
+        return null;
+      }) : null;
+    const prepared = preparation?.status === "ready" ? LiveCoachPreparationService.result(preparation.result) : null;
+    const planned = prepared ?? await generateLiveCoachGuidancePlan(compiled.context, persona.id, {
       ...feature,
-      planner: { ...feature.planner, enabled: feature.planner.enabled && effectiveMode === "dynamic" },
+      planner: { ...feature.planner, enabled: !input.deferPlanning && feature.planner.enabled && effectiveMode === "dynamic" },
     });
     let session: LiveCoachSession;
     try {
       session = await this.prisma.liveCoachSession.create({ data: {
         userId,
         clientSessionId: input.clientSessionId,
+        preparationId: preparation?.id,
         workoutId: input.workoutId,
         status: "active",
         locale: input.locale,
@@ -142,6 +150,26 @@ export class LiveCoachSessionService {
       }
     }
     return this.createResponse(session, feature, access);
+  }
+
+  async refresh(userId: string, sessionId: string) {
+    await this.ownedActiveSession(userId, sessionId);
+    let row = await this.prisma.liveCoachSession.findUniqueOrThrow({ where: { id: sessionId } });
+    const preparation = row.preparationId ? await this.prisma.liveCoachPreparation.findFirst({
+      where: { id: row.preparationId, userId, contextHash: row.contextHash, status: "ready", expiresAt: { gt: new Date() } },
+    }) : null;
+    const result = preparation ? LiveCoachPreparationService.result(preparation.result) : null;
+    if (row.effectiveAudioMode === "dynamic" && row.plannerStatus !== "generated" && result?.status === "generated") {
+      const attached = await this.prisma.liveCoachSession.updateMany({ where: {
+        id: sessionId, userId, status: "active", expiresAt: { gt: new Date() }, plannerStatus: { not: "generated" },
+      }, data: {
+        guidancePlan: result.plan as unknown as Prisma.InputJsonValue, guidancePlanHash: result.planHash,
+        plannerStatus: result.status, plannerModel: result.model, plannerPromptVersion: result.promptVersion,
+      } });
+      row = await this.prisma.liveCoachSession.findUniqueOrThrow({ where: { id: sessionId } });
+      if (attached.count) console.info("live_coach_preparation", { operation: "attach", result: "ready" });
+    }
+    return this.createResponse(row);
   }
 
   async ownedActiveSession(userId: string, sessionId: string): Promise<LiveCoachSessionSnapshot> {
@@ -207,6 +235,7 @@ export class LiveCoachSessionService {
         cueValidityMilliseconds: feature.cueValidityMilliseconds,
         maximumDynamicCues: UNLIMITED_DYNAMIC_CUE_COMPATIBILITY_LIMIT,
       },
+      preparation: session.preparationId ? { id: session.preparationId } : null,
       guidancePlan: session.guidancePlan,
       guidancePlanHash: session.guidancePlanHash,
       planner: {

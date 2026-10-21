@@ -11,6 +11,7 @@ export interface PlanningMaintenanceResult {
 
 export async function runPlanningMaintenance(now: Date = new Date()): Promise<PlanningMaintenanceResult> {
   const prisma = getPrismaClient();
+  await prisma.liveCoachPreparation.deleteMany({ where: { expiresAt: { lte: now } } });
   const activeSince = addDays(now, -activeUserWindowDays());
   const today = startOfUtcDay(now);
   const plans = await prisma.trainingPlan.findMany({

@@ -13,6 +13,7 @@ import { publicLiveCoachCatalog } from "../services/liveCoach/liveCoachCatalog.j
 import { liveCoachCueRepository } from "../services/liveCoach/liveCoachCueRepository.js";
 import { loadLiveCoachFeatureConfig, effectiveModeForUser, isLiveCoachLocaleEnabled } from "../services/liveCoach/liveCoachFeatureConfig.js";
 import { LiveCoachOrchestrator } from "../services/liveCoach/liveCoachOrchestrator.js";
+import { LiveCoachPreparationService } from "../services/liveCoach/liveCoachPreparationService.js";
 import { LiveCoachSessionService } from "../services/liveCoach/liveCoachSessionService.js";
 import { LiveCoachStreamingService } from "../services/liveCoach/liveCoachStreamingService.js";
 import { LiveCoachPhraseService } from "../services/liveCoach/liveCoachPhraseService.js";
@@ -79,6 +80,8 @@ const environmentSchema = z.object({
 const createSessionSchema = z.object({
   contractVersion: z.literal(1),
   clientSessionId: identifier,
+  preparationId: z.string().min(1).max(120).optional(),
+  deferPlanning: z.boolean().optional(),
   workoutId: z.string().min(1).max(120).optional(),
   workoutRef: z.object({
     source: z.literal("standalone_catalog"),
@@ -203,6 +206,30 @@ router.post("/stretch/audio", zValidator("json", z.object({
   c.header("Content-Type", "audio/wav");
   c.header("Cache-Control", "private, max-age=86400");
   return c.body(Uint8Array.from(audio).buffer);
+});
+
+router.post("/preparations", zValidator("json", createSessionSchema), async (c) => {
+  const unavailable = requireDatabase(c); if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c);
+  if (!user) return c.json({ error: "Authentication required.", code: "authentication_required" }, 401);
+  const row = await new LiveCoachPreparationService(getPrismaClient()).prepare(user.id, c.req.valid("json"));
+  return c.json(LiveCoachPreparationService.response(row), 202);
+});
+
+router.post("/preparations/:id/generate", async (c) => {
+  const unavailable = requireDatabase(c); if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c);
+  if (!user) return c.json({ error: "Authentication required.", code: "authentication_required" }, 401);
+  const row = await new LiveCoachPreparationService(getPrismaClient()).generate(user.id, c.req.param("id"));
+  return c.json(LiveCoachPreparationService.response(row));
+});
+
+router.get("/sessions/:sessionId", async (c) => {
+  const unavailable = requireDatabase(c); if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c);
+  if (!user) return c.json({ error: "Authentication required.", code: "authentication_required" }, 401);
+  c.header("Cache-Control", "private, no-store");
+  return c.json(await new LiveCoachSessionService(getPrismaClient()).refresh(user.id, c.req.param("sessionId")));
 });
 
 router.post("/sessions", zValidator("json", createSessionSchema), async (c) => {

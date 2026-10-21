@@ -45,6 +45,8 @@ export type LiveCoachCueResult =
 export type CreateLiveCoachSessionInput = {
   contractVersion: 1;
   clientSessionId: string;
+  preparationId?: string;
+  deferPlanning?: boolean;
   workoutId?: string;
   workoutRef?: LiveCoachWorkoutReference;
   locale: SupportedAILocale;
