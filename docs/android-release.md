@@ -103,6 +103,15 @@ Data is not sold. Social publishing, live sharing, Health Connect, microphone, n
 - Local release evidence lives under ignored `artifacts/play-store/release-1.0-3/` (AAB, mapping, dependency report, and Play confirmation). Store assets and screenshots are kept out of source commits.
 - Screenshot capture used the current debug build with the production API and synthetic emulator location. `:app:assembleDebug` succeeded; recording start, synthetic movement, pause, finish, and unsaved discard were exercised manually. This is focused capture verification, not the full release verification gate.
 
+### October 20 Production Submission
+
+- Bruce authorized public publishing and explicitly selected the United States and Canada.
+- Alpha was already serving; the existing signed `1.0` (3) bundle was selected from Play's library for the first production release. No new binary was uploaded.
+- Production country selection was initially empty. US and Canada are now configured, and the release passed blocking validation. The existing optional native-symbol warning remains.
+- Production `1.0` (Start full rollout) and the two-country availability change were submitted together. Play shows **Changes in review**, with automated quick checks pending. Managed publishing is off, so approval will publish automatically; public availability is not yet confirmed.
+- The pending country review was restarted to include the production binary rollout. Do not mistake the earlier country-only submission for a submitted binary.
+- Evidence: ignored `artifacts/play-store/production-submitted-us-canada.jpg`. Continue treating Android as unreleased until Bruce explicitly confirms release, per `AGENTS.md`.
+
 ## Dependencies And Notices
 
 - Generate the release dependency graph with `./gradlew :app:dependencies --configuration releaseRuntimeClasspath` and archive it with the release.
