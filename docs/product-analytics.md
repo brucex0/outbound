@@ -351,3 +351,5 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 - No coordinates, speed samples, exact durations, or stop locations enter analytics. Other event timing and workout-goal progress retain their existing clocks.
 
 - Live-coach planning fallback diagnostics use only operation, numeric HTTP status, and bounded failure category, including timeouts. Existing moment/provider-result events remain unchanged; diagnostics never include runner context or generated phrases.
+
+- `live_guidance_preparation_result` permits only `source_type` (`selection`, `generation`, `start`, `attachment`) and bounded result (`pending`, `generating`, `ready`, `fallback`, `failure`). Backend `live_coach_preparation` diagnostics record cache reuse, readiness, attachment, and coarse generation latency. Neither includes preparation/session IDs, request fingerprints, prompts, context, phrases, or exact runner metrics.

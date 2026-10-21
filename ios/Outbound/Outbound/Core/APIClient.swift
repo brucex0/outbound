@@ -166,6 +166,18 @@ final class APIClient {
         try await get("/live-coach/catalog", queryItems: [URLQueryItem(name: "locale", value: locale)])
     }
 
+    func prepareLiveCoach(_ request: CreateLiveCoachSessionRequest) async throws -> LiveCoachPreparationDTO {
+        try await post("/live-coach/preparations", body: request)
+    }
+
+    func generateLiveCoachPreparation(id: String) async throws -> LiveCoachPreparationDTO {
+        try await post("/live-coach/preparations/\(id)/generate", body: EmptyBody())
+    }
+
+    func fetchLiveCoachSession(id: String) async throws -> CreateLiveCoachSessionResponse {
+        try await get("/live-coach/sessions/\(id)")
+    }
+
     func createLiveCoachSession(_ request: CreateLiveCoachSessionRequest) async throws -> CreateLiveCoachSessionResponse {
         try await post("/live-coach/sessions", body: request)
     }

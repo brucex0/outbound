@@ -707,12 +707,9 @@ final class VirtualGuide: NSObject, ObservableObject {
             guard state == .due else { continue }
             guard routeSpeechQuietUntil.map({ Date() >= $0 }) ?? true else { continue }
 
-            let fallback = AppLanguage.current == .english
-                ? cue.cue
-                : String(
-                    localized: "live_guidance.workout_instruction",
-                    defaultValue: "New segment. Settle into the prescribed effort."
-                )
+            // Catalog cues are already localized by withCatalogVersion. Keep the
+            // selected instruction useful while cloud preparation is pending.
+            let fallback = cue.cue
             let moment = DetectedLiveGuidanceMoment(
                 type: .workoutInstruction,
                 detectedAtElapsedSeconds: snapshot.elapsedSeconds,

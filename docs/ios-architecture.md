@@ -181,3 +181,5 @@ Verification: simulator build-only compile, source-path review, and manual seede
 - `RecordView`: has a pre-start `Share live run` toggle, selected/default trusted-recipient status, and a treadmill/indoor toggle; save attaches default shoe, source attribution, indoor metadata, and estimated HR-zone summary when HR exists.
 - `ActivityDetailView`: shows source, edited/manual, shoe, indoor, cadence, and HR-zone metadata and includes an edit sheet for title, date, distance, duration, and shoe corrections.
 - `docs/runner-utilities.md`: runner-utility roadmap for remaining import/export breadth, fuller HR/cadence ingestion, and device/source polish.
+
+- `Guide/LiveCoachPreparationStore.swift` starts account-scoped coaching preparation from the visible idle Run launch screen, deduplicates generation requests, and discards obsolete selection results. `LiveCoachSessionController` starts with a ready plan or immediate fallback, then adopts a matching completed plan without interrupting recording; see `docs/live-coach-operations.md` for API, cache, and lifetime rules.

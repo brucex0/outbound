@@ -427,6 +427,35 @@ struct RecordView: View {
         }
     }
 
+    private var coachingPreparationKey: Int? {
+        guard isVisible, recorder.state == .idle, voiceGuideSpeechEnabled,
+              plannedIntent?.sport == .run, guideCatalog.selectedPersona.coachingContract != .quiet else { return nil }
+        // Hash selection state here; build route summaries only when the task
+        // changes, rather than calculating route distances on every view render.
+        var key = Hasher()
+        key.combine(plannedIntent)
+        key.combine(AuthStore.currentUserId)
+        key.combine(AppLanguage.currentIdentifier)
+        key.combine(guideCatalog.selection.coachPersonaId)
+        key.combine(guideCatalog.selection.voiceProfileId)
+        key.combine(guideCatalog.selection.coachingContract.rawValue)
+        key.combine(measurementPreferences.unitSystem.rawValue)
+        key.combine(guideStore.profile?.version)
+        key.combine(personalizationStore.snapshot.modelVersion)
+        key.combine(weatherStore.snapshot?.fetchedAt)
+        key.combine(isIndoorSession)
+        return key.finalize()
+    }
+
+    private var coachingPreparationRequest: CreateLiveCoachSessionRequest? {
+        guard isVisible, recorder.state == .idle, voiceGuideSpeechEnabled,
+              plannedIntent?.sport == .run, guideCatalog.selectedPersona.coachingContract != .quiet else { return nil }
+        return LiveCoachSessionController.makeRequest(
+            profile: guideStore.profile, persona: guideCatalog.selectedPersona, intent: plannedIntent, companionBrief: nil,
+            unitSystem: measurementPreferences.unitSystem, weatherSnapshot: weatherStore.snapshot, isIndoor: isIndoorSession
+        )
+    }
+
     private var recordLifecycleSurface: some View {
         recordStateSurface
         .ignoresSafeArea(.keyboard, edges: .bottom)
@@ -445,6 +474,14 @@ struct RecordView: View {
             }
             guide.guidanceEventHandler = { event in
                 trackGuidanceEvent(event)
+            }
+        }
+        .task(id: coachingPreparationKey) {
+            LiveCoachPreparationStore.shared.eventHandler = { source, result in
+                track(.init(.liveGuidancePreparationResult, properties: [.sourceType: .string(source), .result: .string(result)]))
+            }
+            if let request = coachingPreparationRequest {
+                LiveCoachPreparationStore.shared.prepare(request, contextVersion: personalizationStore.snapshot.modelVersion)
             }
         }
         .onChange(of: scenePhase) { _, newPhase in

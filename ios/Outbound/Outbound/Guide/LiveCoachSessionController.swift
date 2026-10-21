@@ -8,6 +8,7 @@ final class LiveCoachSessionController {
     private var session: CreateLiveCoachSessionResponse?
     private var phraseUseCounts: [String: Int] = [:]
     private var prewarmTask: Task<Void, Never>?
+    private var planRefreshTask: Task<Void, Never>?
     private var voiceProfileID = ""
     private var sessionRequestedForEligibleSport = false
 
@@ -39,13 +40,62 @@ final class LiveCoachSessionController {
         voiceProfileID = persona.voice.id
         let expectedGeneration = generation
         let selectedVoiceID = persona.voice.id
+        var request = Self.makeRequest(profile: profile, persona: persona, intent: intent,
+            companionBrief: companionBrief, unitSystem: unitSystem, weatherSnapshot: weatherSnapshot, isIndoor: isIndoor)
+        request.preparationId = LiveCoachPreparationStore.shared.preparationID(for: request)
+        createTask = Task {
+            let response = try await APIClient.shared.createLiveCoachSession(request)
+            if Task.isCancelled || expectedGeneration != generation {
+                // The server may have created a session just before cancellation.
+                // End that specific response without attaching it to a new run.
+                Task {
+                    do {
+                        _ = try await APIClient.shared.endLiveCoachSession(
+                            sessionID: response.sessionId,
+                            request: .init(spokenCueCount: 0, helpfulCueCount: 0, outcome: "interrupted")
+                        )
+                    } catch is CancellationError {
+                        // Best-effort cleanup may be canceled at shutdown.
+                    } catch {
+                        ActivityDiagnosticLog.error(.lifecycle,
+                            "Canceled coach session cleanup failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                    }
+                }
+                throw CancellationError()
+            }
+            try validateGeneration(expectedGeneration)
+            session = response
+            LiveCoachPreparationStore.shared.eventHandler?("start", response.planner.status == "generated" ? "ready" : "fallback")
+            await GuideAudioPackStore.shared.refresh(
+                from: response.audioPack.manifestUrl,
+                expectedCatalogVersion: response.audioPack.manifestVersion
+            )
+            try validateGeneration(expectedGeneration)
+            await GuideAudioPackStore.shared.preloadAudio(
+                for: GuideAudioPackStore.sessionControlCueKeys + GuideAudioPackStore.countdownCueKeys
+            )
+            try validateGeneration(expectedGeneration)
+            prewarmTask = Task { [weak self] in
+                await self?.prewarmPlan(response, voiceProfileID: selectedVoiceID,
+                                       generation: expectedGeneration)
+            }
+            adoptPreparedPlan(response, generation: expectedGeneration)
+            return response
+        }
+    }
+
+    static func makeRequest(
+        profile: GuideProfile?, persona: GuidePersona, intent: SessionIntent?,
+        companionBrief: CompanionSessionBriefDTO?, unitSystem: MeasurementUnitSystem,
+        weatherSnapshot: RunningWeatherSnapshot?, isIndoor: Bool
+    ) -> CreateLiveCoachSessionRequest {
         let plannedWorkoutReference = intent?.workoutReference?.source == "planned_workout"
             ? intent?.workoutReference
             : nil
         let standaloneWorkoutReference = intent?.workoutReference?.source == "planned_workout"
             ? nil
             : intent?.workoutReference
-        let request = CreateLiveCoachSessionRequest(
+        return CreateLiveCoachSessionRequest(
             clientSessionId: UUID(),
             workoutId: plannedWorkoutReference?.id
                 ?? (standaloneWorkoutReference == nil ? companionBrief?.workout?.id : nil),
@@ -74,42 +124,38 @@ final class LiveCoachSessionController {
             clientWorkout: clientWorkout(for: intent, profile: profile),
             environment: environment(weatherSnapshot: weatherSnapshot, isIndoor: isIndoor)
         )
-        createTask = Task {
-            let response = try await APIClient.shared.createLiveCoachSession(request)
-            if Task.isCancelled || expectedGeneration != generation {
-                // The server may have created a session just before cancellation.
-                // End that specific response without attaching it to a new run.
-                Task {
-                    do {
-                        _ = try await APIClient.shared.endLiveCoachSession(
-                            sessionID: response.sessionId,
-                            request: .init(spokenCueCount: 0, helpfulCueCount: 0, outcome: "interrupted")
-                        )
-                    } catch is CancellationError {
-                        // Best-effort cleanup may be canceled at shutdown.
-                    } catch {
-                        ActivityDiagnosticLog.error(.lifecycle,
-                            "Canceled coach session cleanup failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+    }
+
+    private func adoptPreparedPlan(_ initial: CreateLiveCoachSessionResponse, generation expected: UUID) {
+        guard initial.planner.status != "generated", let preparationID = initial.preparation?.id else { return }
+        planRefreshTask = Task { [weak self] in
+            do {
+                let result = await LiveCoachPreparationStore.shared.generate(id: preparationID)
+                guard let result, result.status == "ready" || result.status == "generating" else { return }
+                for _ in 0..<30 {
+                    try Task.checkCancellation()
+                    guard let self else { return }
+                    try self.validateGeneration(expected)
+                    let updated = try await APIClient.shared.fetchLiveCoachSession(id: initial.sessionId)
+                    try self.validateGeneration(expected)
+                    if updated.planner.status == "generated" {
+                        self.session = updated
+                        self.phraseUseCounts = [:]
+                        self.prewarmTask?.cancel()
+                        self.prewarmTask = Task { [weak self] in
+                            await self?.prewarmPlan(updated, voiceProfileID: self?.voiceProfileID ?? "", generation: expected)
+                        }
+                        LiveCoachPreparationStore.shared.eventHandler?("attachment", "ready")
+                        ActivityDiagnosticLog.notice(.lifecycle, "Coach preparation attached result=ready")
+                        return
                     }
+                    try await Task.sleep(for: .seconds(2))
                 }
-                throw CancellationError()
+            } catch is CancellationError {
+                // Ending or replacing the run cancels plan adoption.
+            } catch {
+                ActivityDiagnosticLog.error(.lifecycle, "Coach preparation refresh failed error=\(ActivityDiagnosticLog.errorCategory(error))")
             }
-            try validateGeneration(expectedGeneration)
-            session = response
-            await GuideAudioPackStore.shared.refresh(
-                from: response.audioPack.manifestUrl,
-                expectedCatalogVersion: response.audioPack.manifestVersion
-            )
-            try validateGeneration(expectedGeneration)
-            await GuideAudioPackStore.shared.preloadAudio(
-                for: GuideAudioPackStore.sessionControlCueKeys + GuideAudioPackStore.countdownCueKeys
-            )
-            try validateGeneration(expectedGeneration)
-            prewarmTask = Task { [weak self] in
-                await self?.prewarmPlan(response, voiceProfileID: selectedVoiceID,
-                                       generation: expectedGeneration)
-            }
-            return response
         }
     }
 
@@ -200,6 +246,8 @@ final class LiveCoachSessionController {
         sessionRequestedForEligibleSport = false
         prewarmTask?.cancel()
         prewarmTask = nil
+        planRefreshTask?.cancel()
+        planRefreshTask = nil
         createTask?.cancel()
         createTask = nil
         guard let session else {
@@ -271,7 +319,7 @@ final class LiveCoachSessionController {
                 : "opportunity"
     }
 
-    private func activityType(for sport: SportType) -> String {
+    private static func activityType(for sport: SportType) -> String {
         switch sport {
         case .run: "running"
         case .bike: "cycling"
@@ -283,7 +331,7 @@ final class LiveCoachSessionController {
         }
     }
 
-    private func goalType(for intent: SessionIntent?) -> String {
+    private static func goalType(for intent: SessionIntent?) -> String {
         guard let intent else { return "freestyle" }
         if intent.raceIntent != nil { return "race" }
         if intent.resolvedTargetCalories != nil { return "calories" }
@@ -314,7 +362,7 @@ final class LiveCoachSessionController {
         return selected.id
     }
 
-    private func clientWorkout(
+    private static func clientWorkout(
         for intent: SessionIntent?,
         profile: GuideProfile?
     ) -> CreateLiveCoachSessionRequest.ClientWorkoutDTO? {
@@ -346,7 +394,7 @@ final class LiveCoachSessionController {
         )
     }
 
-    private func routeDTO(
+    private static func routeDTO(
         _ route: PreparedRoute?
     ) -> CreateLiveCoachSessionRequest.ClientWorkoutDTO.RouteDTO? {
         guard let route, let first = route.directedPoints.first else { return nil }
@@ -378,7 +426,7 @@ final class LiveCoachSessionController {
         )
     }
 
-    private func environment(
+    private static func environment(
         weatherSnapshot: RunningWeatherSnapshot?,
         isIndoor: Bool
     ) -> CreateLiveCoachSessionRequest.EnvironmentDTO {

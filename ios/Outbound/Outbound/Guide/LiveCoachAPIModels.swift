@@ -104,6 +104,8 @@ struct LiveCoachAudioPackDTO: Codable, Equatable {
 
 struct CreateLiveCoachSessionRequest: Encodable {
     let contractVersion = 1
+    var preparationId: String? = nil
+    var deferPlanning = true
     let clientSessionId: UUID
     let workoutId: String?
     let workoutRef: WorkoutReferenceDTO?
@@ -212,6 +214,9 @@ struct CreateLiveCoachSessionResponse: Decodable {
     let guidancePlan: LiveCoachGuidancePlanDTO
     let guidancePlanHash: String
     let planner: Planner
+    let preparation: Preparation?
+
+    struct Preparation: Decodable { let id: String }
 
     struct Limits: Decodable {
         let cueValidityMilliseconds: Int
@@ -392,4 +397,10 @@ struct EndLiveCoachSessionRequest: Encodable {
 struct EndLiveCoachSessionResponse: Decodable {
     let contractVersion: Int
     let ended: Bool
+}
+
+struct LiveCoachPreparationDTO: Decodable {
+    let preparationId: String
+    let status: String
+    let expiresAt: Date
 }
