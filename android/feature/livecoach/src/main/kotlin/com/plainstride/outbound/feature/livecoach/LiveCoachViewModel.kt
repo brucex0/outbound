@@ -285,6 +285,11 @@ class LiveCoachViewModel @Inject constructor(
         )
         scheduleUpdate.workoutCue?.let { enqueue(PendingCue(it.moment, it), priority = true, prefs.contract) }
         policyUpdate?.nextMoment?.let {
+            it.speedChangeDirection?.let { direction ->
+                analytics.record(AnalyticsEvent("live_guidance_speed_change", mapOf(
+                    AnalyticsProperty.SourceType to if (direction > 0) "increase" else "decrease",
+                    AnalyticsProperty.Result to "detected")))
+            }
             val promptPaceCorrection = it.moment in setOf(
                 LiveCoachMoment.EarlyOverpace,
                 LiveCoachMoment.PaceAboveTarget,
@@ -308,11 +313,20 @@ class LiveCoachViewModel @Inject constructor(
         coachSnapshot: CoachSnapshot,
     ) {
         val moment = pending.moment
+        if (moment.speedChangeDirection != null &&
+            (snapshot.elapsedSeconds - moment.detectedAtElapsedSeconds > 10 || coachSnapshot.paceEvidenceTimestamp == null)) {
+            analytics.record(AnalyticsEvent("live_guidance_speed_change", mapOf(
+                AnalyticsProperty.SourceType to if (moment.speedChangeDirection > 0) "increase" else "decrease",
+                AnalyticsProperty.Result to "stale")))
+            return
+        }
         val session = serverSession
-        val phrase = if (moment.moment == LiveCoachMoment.Progress) null else {
+        val phrase = if (moment.speedChangeDirection != null || moment.moment == LiveCoachMoment.Progress) null else {
             selectPhrase(session, moment, coachSnapshot.segmentPhase)
         }
         val fallback = when {
+            moment.speedChangeDirection != null -> LocalizedFallbackPhrases.speedChange(context, supportedLocale(), moment.speedChangeDirection)
+
             pending.scheduled?.goalMilestone != null -> LocalizedFallbackPhrases.goal(
                 context,
                 supportedLocale(),
@@ -344,11 +358,12 @@ class LiveCoachViewModel @Inject constructor(
             ),
         )
         val activeMode = when {
+            moment.speedChangeDirection != null -> LiveCoachMode.FixedOnly
             session == null || session.isExpired() -> LiveCoachMode.FixedOnly
             moment.moment != LiveCoachMoment.Progress && phrase == null -> LiveCoachMode.FixedOnly
             else -> session.effectiveMode
         }
-        val token = if (session == null) null else tokens.validAccessToken()
+        val token = if (session == null || moment.speedChangeDirection != null) null else tokens.validAccessToken()
         val result = playback.play(
             token = token,
             sessionId = session?.sessionId,
@@ -359,12 +374,19 @@ class LiveCoachViewModel @Inject constructor(
             accessReason = session?.access?.reason ?: "feature_disabled",
             selection = prefs.selection(),
             fallbackText = fallback,
+            localOnly = moment.speedChangeDirection != null,
             fixedCueKey = when {
+                moment.speedChangeDirection != null -> if (moment.speedChangeDirection > 0) "coach.settle" else "coach.restore_rhythm"
                 moment.fixedCueKey != null -> moment.fixedCueKey
                 moment.preferredText != null || moment.moment == LiveCoachMoment.Progress -> null
                 else -> FixedCueKeys.forMoment(moment.moment)
             },
         )
+        moment.speedChangeDirection?.let { direction ->
+            analytics.record(AnalyticsEvent("live_guidance_speed_change", mapOf(
+                AnalyticsProperty.SourceType to if (direction > 0) "increase" else "decrease",
+                AnalyticsProperty.Result to if (result.played) "spoken" else "audio_unavailable")))
+        }
         if (!result.played) return
         spokenCount++
         policy.recordSpoken(moment)
@@ -384,7 +406,15 @@ class LiveCoachViewModel @Inject constructor(
     private fun enqueue(cue: PendingCue, priority: Boolean, contract: CoachingContract) {
         val key = queueKey(cue)
         if (pendingCues.any { queueKey(it) == key }) return
-        if (priority) pendingCues.addFirst(cue) else pendingCues.addLast(cue)
+        if (cue.moment.speedChangeDirection != null) {
+            // Keep execution boundaries ahead of the local speed alert.
+            val boundaries = pendingCues.filter { it.moment.moment in setOf(LiveCoachMoment.WorkoutInstruction, LiveCoachMoment.SegmentTransition) }
+            val other = pendingCues.filterNot { it in boundaries }
+            pendingCues.clear()
+            pendingCues.addAll(boundaries)
+            pendingCues.addLast(cue)
+            pendingCues.addAll(other)
+        } else if (priority) pendingCues.addFirst(cue) else pendingCues.addLast(cue)
         while (pendingCues.size > MAX_PENDING_CUES) pendingCues.removeLast()
         analytics.record(
             AnalyticsEvent(
@@ -634,7 +664,7 @@ class LiveCoachViewModel @Inject constructor(
     }
 
     private fun preload(session: CreateSessionResponse, prefs: LiveCoachPreferences, token: String) {
-        val fixedKeys = session.guidancePlan.cues.map { FixedCueKeys.forMoment(it.moment) }.distinct()
+        val fixedKeys = (listOf("coach.settle", "coach.restore_rhythm") + session.guidancePlan.cues.map { FixedCueKeys.forMoment(it.moment) }).distinct()
         viewModelScope.launch {
             packs.refresh(session.audioPack.manifestUrl, session.audioPack.manifestVersion, MANIFEST_KEYS)
             packs.preload(fixedKeys, prefs.selection())
@@ -790,6 +820,7 @@ private fun RecordingSnapshot.toCoachSnapshot(launch: RecordingLaunchConfigurati
     return CoachSnapshot(
         elapsedSeconds = elapsedSeconds.toInt(),
         paceEvidenceTimestamp = coachingPaceEvidenceTimestamp(),
+        speedMetersPerSecond = location?.speedMetersPerSecond,
         recordedAtMilliseconds = recordedAtEpochMilliseconds,
         distanceMeters = distanceMeters,
         paceSecondsPerKilometer = currentPaceSecondsPerKilometer,

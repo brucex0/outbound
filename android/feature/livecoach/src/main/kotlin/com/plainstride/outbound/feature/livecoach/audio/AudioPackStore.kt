@@ -27,6 +27,7 @@ data class AudioPackSelection(val locale: String, val voiceProfileId: String, va
 interface FixedAudioPackStore {
     suspend fun refresh(manifestUrl: String, expectedCatalogVersion: String, publicKeysPem: Map<String, String>): Boolean
     suspend fun audio(cueKey: String, selection: AudioPackSelection, transcript: String? = null): ByteArray?
+    suspend fun cachedAudio(cueKey: String, selection: AudioPackSelection, transcript: String): ByteArray? = null
     suspend fun preload(cueKeys: Collection<String>, selection: AudioPackSelection)
 }
 
@@ -62,6 +63,10 @@ class VerifiedAudioPackStore @Inject constructor(
             }
             true
         }.getOrDefault(false)
+    }
+
+    override suspend fun cachedAudio(cueKey: String, selection: AudioPackSelection, transcript: String): ByteArray? = withContext(Dispatchers.IO) {
+        match(cueKey, selection, transcript)?.let(::local)
     }
 
     override suspend fun audio(cueKey: String, selection: AudioPackSelection, transcript: String?): ByteArray? = withContext(Dispatchers.IO) {

@@ -65,4 +65,6 @@
     <string name="live_coach_voice_gentle_detail">Calm and reassuring</string>
     <string name="live_coach_voice_composed">Composed</string>
     <string name="live_coach_voice_composed_detail">Clear and steady</string>
+    <string name="live_coach_sudden_speed_increase">Slow down until you can speak a full sentence.</string>
+    <string name="live_coach_sudden_speed_decrease">Keep the effort easy; there is no need to make up lost time.</string>
 </resources>

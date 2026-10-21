@@ -15,6 +15,7 @@ data class CoachSnapshot(
     val paceEvidenceTimestamp: Long? = null,
     val recordedAtMilliseconds: Long = 0,
     val distanceMeters: Double,
+    val speedMetersPerSecond: Double? = null,
     val paceSecondsPerKilometer: Double?,
     val targetPaceSecondsPerKilometer: Double? = null,
     val raceDistanceMeters: Double? = null,
@@ -44,6 +45,7 @@ data class DetectedMoment(
     val preferredText: String? = null,
     val instructionId: String? = null,
     val fixedCueKey: String? = null,
+    val speedChangeDirection: Int? = null,
 )
 
 enum class CueOutcome(val wireValue: String) {
@@ -69,11 +71,13 @@ class LiveCoachMomentPolicy {
         var outcome: CueOutcome,
     )
 
+    private var speedChange = SuddenSpeedChangeDetector()
     private val history = ArrayDeque<CoachSnapshot>()
     private val records = mutableListOf<CueRecord>()
     private val oneShots = mutableSetOf<LiveCoachMoment>()
     private val segmentMoments = mutableSetOf<String>()
     private var lastMomentAt: Int? = null
+    private var lastSpeedChangeAt: Int? = null
     private var lastDriftAt: Int? = null
     private var lastInstabilityAt: Int? = null
     private var instabilityCandidateSince: Int? = null
@@ -88,11 +92,13 @@ class LiveCoachMomentPolicy {
     val helpfulCueCount: Int get() = records.count { it.outcome == CueOutcome.Stabilized || it.outcome == CueOutcome.Improved }
 
     fun reset() {
+        speedChange = SuddenSpeedChangeDetector()
         history.clear()
         records.clear()
         oneShots.clear()
         segmentMoments.clear()
         lastMomentAt = null
+        lastSpeedChangeAt = null
         lastDriftAt = null
         lastInstabilityAt = null
         instabilityCandidateSince = null
@@ -119,12 +125,22 @@ class LiveCoachMomentPolicy {
         while (history.size > MAX_HISTORY) history.removeFirst()
         rollingGradePercent = terrainGrade(history.filter { it.elapsedSeconds >= snapshot.elapsedSeconds - 45 })
 
+        val direction = speedChange.ingest(snapshot.elapsedSeconds, snapshot.paceEvidenceTimestamp,
+            snapshot.speedMetersPerSecond, snapshot.segmentIndex?.toString() ?: snapshot.segmentPhase,
+            snapshot.segmentPhase, snapshot.segmentElapsedSeconds)
+        if (contract != CoachingContract.Quiet && direction != null && lastMomentAt?.let { snapshot.elapsedSeconds-it < 60 } != true) {
+            lastSpeedChangeAt = snapshot.elapsedSeconds
+            lastMomentAt = snapshot.elapsedSeconds
+            return PolicyUpdate(DetectedMoment(LiveCoachMoment.PaceInstability, snapshot.elapsedSeconds,
+                speedChangeDirection = direction), emptyList())
+        }
+
         val evaluation = evaluatePending(snapshot)
         evaluation.recovery?.let { return PolicyUpdate(it, evaluation.records) }
 
         if (contract != CoachingContract.Quiet) {
             val grade = rollingGradePercent
-            val priorityMoment = raceTargetDeviation(snapshot, grade)
+            val priorityMoment = if (lastSpeedChangeAt?.let { snapshot.elapsedSeconds-it < 60 } == true) null else raceTargetDeviation(snapshot, grade)
 
             if (priorityMoment != null) {
                 lastMomentAt = snapshot.elapsedSeconds
@@ -354,6 +370,7 @@ class LiveCoachMomentPolicy {
     }
 
     fun resetPaceEvidence() {
+        speedChange.resetEvidence()
         history.clear()
         instabilityCandidateSince = null
         records.filter { it.outcome == CueOutcome.Pending }.forEach { it.outcome = CueOutcome.NotMeasured }

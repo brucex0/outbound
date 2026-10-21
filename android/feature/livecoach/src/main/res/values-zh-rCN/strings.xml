@@ -65,4 +65,6 @@
     <string name="live_coach_voice_gentle_detail">&#x5E73;&#x9759;&#x800C;&#x5B89;&#x5FC3;</string>
     <string name="live_coach_voice_composed">&#x6C89;&#x7A33;</string>
     <string name="live_coach_voice_composed_detail">&#x6E05;&#x6670;&#x4E14;&#x7A33;&#x5B9A;</string>
+    <string name="live_coach_sudden_speed_increase">放慢到能说出一句完整的话。</string>
+    <string name="live_coach_sudden_speed_decrease">保持轻松，不用追回刚才的时间。</string>
 </resources>

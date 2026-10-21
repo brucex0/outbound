@@ -65,4 +65,6 @@
     <string name="live_coach_voice_gentle_detail">Tranquila y reconfortante</string>
     <string name="live_coach_voice_composed">Serena</string>
     <string name="live_coach_voice_composed_detail">Clara y constante</string>
+    <string name="live_coach_sudden_speed_increase">Baja el ritmo hasta poder decir una frase completa.</string>
+    <string name="live_coach_sudden_speed_decrease">Mantén un esfuerzo suave; no hace falta recuperar el tiempo perdido.</string>
 </resources>

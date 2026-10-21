@@ -189,7 +189,7 @@ Every phase needs replayable sensor fixtures, false-positive review across hills
 - Absolute workout/race targets remain authoritative; effort-only workouts and missing history do not invent a pace. The reference is account-scoped and in memory; no storage reset is needed.
 - `live_guidance_reference_resolved` and `PlainstrideLiveCoach` report only `local_history` or `unavailable`, without raw pace or history.
 
-## Independent Sudden Speed Changes (iOS)
+## Independent Sudden Speed Changes (iOS and Android)
 
 - Runs without a guide profile or target pace in Responsive and Coach Me; Quiet stays quiet. Uses distinct trusted GPS speed samples rather than the smoothed display pace.
 - Compares a 5-second speed median with a preceding stable 20-second baseline (at least 8 fixes spanning 14 seconds; each speed within 20% of its median). Requires a running baseline of at least 1.5 m/s, a change of both 40% and 3 km/h, then 5 seconds of persistence. A clean 1 Hz step change triggers after about 8 seconds.
@@ -198,3 +198,5 @@ Every phase needs replayable sensor fixtures, false-positive review across hills
 - Reuses the semantic `pace_instability` queue and existing reviewed `coach.settle` / `coach.restore_rhythm` clips, prewarmed for the selected voice and language. Local playback never requests AI or runtime synthesis. Missing matching audio is diagnosed and remains silent; route and workout audio retain priority.
 - `live_guidance_speed_change` records only `source_type=increase|decrease` and `result=detected|spoken|audio_unavailable`; existing cue analytics remain active. No raw speed, location, or history is recorded.
 - Verification: standalone Swift replays cover both sustained directions, single spikes, steady speed, repeated evidence, gaps/pause reset, recovery suppression, segment startup, and stale cooldown candidates. iOS simulator build passed. Device audibility is not covered by these replays.
+
+- Android applies the same detector thresholds and reset rules using reliable raw location speed, including buffered simulation samples. It preloads the same reviewed clips and uses cache-only playback for this path, preserving workout-boundary priority. An alert delayed over 10 active seconds or losing reliable evidence is dropped with `result=stale`. Android debug build and equivalent standalone Kotlin replays passed; device audibility remains unverified.

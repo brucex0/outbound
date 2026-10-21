@@ -243,7 +243,14 @@ class LiveCoachPlaybackCoordinator @Inject constructor(
         selection: AudioPackSelection,
         fallbackText: String,
         fixedCueKey: String? = FixedCueKeys.forMoment(request.moment),
+        localOnly: Boolean = false,
     ): PlaybackResult {
+        if (localOnly) {
+            val audio = packs.cachedAudio(fixedCueKey.orEmpty(), selection, fallbackText)
+            val played = audio != null && output.playWav(audio)
+            if (!played) android.util.Log.w("PlainstrideLiveCoach", "Sudden speed cue unavailable key=$fixedCueKey")
+            return result(if (played) PlaybackSource.FixedPack else PlaybackSource.None, played, request.moment)
+        }
         if (mode == LiveCoachMode.Disabled) return result(PlaybackSource.None, false, request.moment)
 
         if (planHash != null && phraseId != null) {

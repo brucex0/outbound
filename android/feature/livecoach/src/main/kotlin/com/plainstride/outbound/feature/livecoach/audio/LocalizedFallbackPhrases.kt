@@ -10,6 +10,10 @@ import kotlin.math.roundToInt
 
 /** Resolves reviewed local wording from the requested locale without persisting the transcript. */
 object LocalizedFallbackPhrases {
+    fun speedChange(context: Context, localeTag: String, direction: Int): String =
+        localizedContext(context, localeTag).getString(if (direction > 0)
+            R.string.live_coach_sudden_speed_increase else R.string.live_coach_sudden_speed_decrease)
+
     fun phrase(context: Context, localeTag: String, moment: LiveCoachMoment): String {
         val localized = localizedContext(context, localeTag)
         val resource = when (moment) {
