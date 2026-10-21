@@ -7,7 +7,7 @@ Open this when deploying or reconfiguring the GCP backend for Outbound.
 - Backend source lives in `backend/`.
 - Runtime target is Google Cloud Run.
 - The backend is now built as a standard Node service from `backend/Dockerfile`.
-- Assistant chat uses `gemini-3.8-flash` through Vertex runtime identity (or `GEMINI_API_KEY` locally). Set `APP_AI_MODEL` to override the assistant model.
+- Production assistant chat and live-coach planning use `gpt-6-luna` through the OpenAI Responses API, with `OPENAI_API_KEY` mounted from `outbound-openai-api-key`. The deploy helper preserves this production route; other environments default to Gemini. `APP_AI_MODEL` and `GEMINI_LIVE_COACH_PLANNER_MODEL` override the two workloads. Training-plan intake/adjustment stays on Gemini; Google TTS still uses runtime identity. Qualification and current revision: `docs/ai-reliability.md`.
 - Database-backed routes intentionally return `503` when `DATABASE_URL` is unset.
 - Repo-local npm installs should use the committed `.npmrc`, which points this repo at the public npm registry instead of a machine-level override.
 - Production Postgres lives on the dedicated, private Cloud SQL instance `outbound-494602:us-central1:outbound-db`.

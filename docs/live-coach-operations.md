@@ -6,9 +6,9 @@ Open this when generating or publishing live-coach audio, changing the Google TT
 
 Ad-hoc Race mode supplies typed race distance, goal mode, optional target time/pace, pacing strategy, and a bounded recommendation source to the start planner. Runtime detection remains on device. Race moments use the same planned-cache and streaming route as other semantic cues. Until a reviewed successor pack adds purpose-built race assets, fixed fallback reuses the closest reviewed early-settle, halfway, rebuild-rhythm, steady, and strong-finish assets; semantics and analytics remain race-specific.
 
-Live coaching uses Gemini once at workout start and Google Cloud Text-to-Speech for runtime exact-text cues, planned-audio prewarming, and reviewed fixed-pack generation:
+Live coaching uses the configured planner on workout selection or session start and Google Cloud Text-to-Speech for runtime exact-text cues, planned-audio prewarming, and reviewed fixed-pack generation:
 
-1. At session start, the backend compiles bounded profile, survey, recent training, workout, route-summary, readiness, location, and weather context. A standalone selection is sent as a catalog reference; the backend resolves its guide-relevant execution projection before Gemini returns a strict-JSON phase-aware and instruction-ID-aware phrase plan.
+1. At session start, the backend compiles bounded profile, survey, recent training, workout, route-summary, readiness, location, and weather context. A standalone selection is sent as a catalog reference; the backend resolves its guide-relevant execution projection before the planner returns a strict-JSON phase-aware and instruction-ID-aware phrase plan.
 2. iOS keeps semantic detection, selected-workout distance/time trigger crossings, and cooldowns local, selects a phrase ID from that plan, and sends bounded live state. For `progress`, the backend deterministically formats rounded distance, elapsed time, and pace.
    Final 300-meter/100-meter (or imperial-equivalent) countdowns use the same cloud coach voice with a bounded remaining-distance value. Missing generated or recorded audio remains silent; the app never switches to a system-synthesized voice.
 3. Google TTS receives only the finalized sentence, selected voice, language, and 24 kHz PCM settings.
@@ -43,13 +43,12 @@ Later that day, a simulated Responsive session showed why request duration must 
 
 ## Current Production Deployment
 
-- Revision: `outbound-api-00116-jzf`
-- Image digest: `sha256:0476362130c186a737147c86bb9e5ac33bbc718fb81d775892ee7608da7da6da`
+- Revision and image digest: see the current rollout in `docs/ai-reliability.md`
 - Traffic: 100%
 - Scaling: minimum 1 warm instance, maximum 3
 - Audio mode/rollout: `dynamic`, 100%, config version `2`
 - Access: `founding_trial`, first 1,000 accounts, three later trial runs
-- Planner: enabled, `gemini-3.8-flash`, Vertex `global`
+- Planner: enabled, `gpt-6-luna`, OpenAI Responses with low reasoning
 - TTS: enabled, Chirp 3 HD through `us-texttospeech.googleapis.com`
 - Locales/voices: English and Simplified Chinese; `plainstride_warm_1` and `plainstride_clear_1`
 - Fixed pack: signed `2026-09-08.1` manifest; 216 two-voice assets are published, while the enabled EN/ZH subset uses 144
@@ -88,16 +87,18 @@ GOOGLE_CLOUD_TTS_ENDPOINT_KEY=google-cloud-tts-us
 GOOGLE_CLOUD_TTS_DEPLOYMENT_REGION=us
 GOOGLE_CLOUD_TTS_MODEL=chirp3-hd
 LIVE_COACH_PLANNER_ENABLED=true
-GEMINI_LIVE_COACH_PLANNER_MODEL=gemini-3.8-flash
+GEMINI_LIVE_COACH_PLANNER_MODEL=gpt-6-luna
 GEMINI_VERTEX_PROJECT_ID=outbound-494602
 GEMINI_VERTEX_LOCATION=global
 GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS=45000
 ALIBABA_AI_ENABLED=false
 ```
 
+Production deployment uses `OPENAI_API_KEY_SECRET=outbound-openai-api-key`; the helper mounts it as `OPENAI_API_KEY`. Do not put the key in ordinary environment values.
+
 `GOOGLE_CLOUD_TTS_VOICE_MAP` is an emergency/experiment JSON override. Normally use the approved map in `backend/src/services/aiProviders/google/approvedLiveCoachConfiguration.ts`.
 
-Enable `texttospeech.googleapis.com` and Vertex AI in project `outbound-494602` before deployment. Cloud Run uses `outbound-api-runtime@outbound-494602.iam.gserviceaccount.com` for both; no mobile OAuth plist or TTS key is used. Keep `LIVE_COACH_PLANNER_ENABLED=false` until the data-boundary/privacy review and schema deployment are complete.
+Enable `texttospeech.googleapis.com` and Vertex AI in project `outbound-494602` before deployment. Cloud Run uses `outbound-api-runtime@outbound-494602.iam.gserviceaccount.com` for Google APIs and mounts the approved OpenAI key from Secret Manager for Luna; no mobile OAuth plist or TTS key is used. Keep `LIVE_COACH_PLANNER_ENABLED=false` until the data-boundary/privacy review and schema deployment are complete.
 
 For local generation, establish ADC outside the repository:
 
@@ -222,7 +223,7 @@ After publication, activate the pack with the guarded wrapper from the repositor
 ./scripts/redeploy-live-coach-voices.sh
 ```
 
-The wrapper verifies the ES256 signature against the iOS public-key map, then checks the version, approval state, exact catalog transcripts, enabled locale/voice matrix, WAV metadata, and HTTPS asset URLs. It deploys with no traffic, checks the tagged candidate, and only then moves production traffic. Its defaults retain the production dynamic rollout, Gemini planner, founding/trial access, one warm instance, and 1.5-second provider deadline.
+The wrapper verifies the ES256 signature against the iOS public-key map, then checks the version, approval state, exact catalog transcripts, enabled locale/voice matrix, WAV metadata, and HTTPS asset URLs. It deploys with no traffic, checks the tagged candidate, and only then moves production traffic. Its defaults retain the production dynamic rollout, configured planner, founding/trial access, one warm instance, and 1.5-second provider deadline.
 
 ## Rollout Meaning
 
@@ -230,7 +231,7 @@ The wrapper verifies the ES256 signature against the iOS public-key map, then ch
 | --- | --- |
 | `mode=fixed_only` | Every eligible runner uses reviewed, downloaded audio; no runtime Google TTS request. |
 | `mode=dynamic`, `percent=0` | Provider/auth/config validation is armed, but every runner remains fixed-only. |
-| `mode=dynamic`, `percent=N` | The deterministic cohort receives one Gemini start plan plus planned-cache/streaming Google TTS cues; everyone else uses the fixed pack. |
+| `mode=dynamic`, `percent=N` | The deterministic cohort receives one configured start plan plus planned-cache/streaming Google TTS cues; everyone else uses the fixed pack. |
 
 Use `fixed_only` for pack/cache/playback burn-in. Then arm the planner and `dynamic` at 0%, run a real Cloud Run/device first-audio benchmark, and explicitly set 100% only when the owner accepts the measured results. `founding_trial` grants the oldest 1,000 accounts permanently and gives later accounts three runs. Increment `LIVE_COACH_CONFIG_VERSION` only when a fresh cohort assignment is intended.
 
@@ -254,12 +255,12 @@ The database-backed `paywall_enabled` control overrides trial enforcement. While
 
 Production dynamic coaching is enabled after the Google APIs, runtime IAM, schema, signed fallback pack, Gemini strict-JSON response, and streamed TTS first chunk were verified. The remaining product-quality gate is a representative real-device benchmark with provider-result/fallback telemetry visible; the on-device deadline must continue to speak exact progress instead of `progress.steady` when cloud audio misses 1.5 seconds.
 
-Production now points at `2026-09-08.1` on revision `outbound-api-00116-jzf`. All 216 two-voice assets are generated through Google, signed, uploaded, and exposed through immutable HTTPS URLs; the locale gate enables the 144 English/Simplified-Chinese assets and keeps the 72 Spanish assets unavailable. The remaining quality work is listening QA for the owner-bulk-approved base pack plus the representative real-device latency benchmark above.
+Production retains pack `2026-09-08.1`; current service revision is recorded in `docs/ai-reliability.md`. All 216 two-voice assets are generated through Google, signed, uploaded, and exposed through immutable HTTPS URLs; the locale gate enables the 144 English/Simplified-Chinese assets and keeps the 72 Spanish assets unavailable. The remaining quality work is listening QA for the owner-bulk-approved base pack plus the representative real-device latency benchmark above.
 
 ## Planner Failure Diagnostics
 
 - `live_coach_planning_fallback` records the operation, numeric HTTP status when available, and a bounded timeout/provider/validation category. It excludes provider bodies, runner context, and generated phrases. A successful audio stream does not prove planning succeeded; inspect `plannerStatus` too.
-- The live planner uses low thinking to fit its 45-second start-planning deadline. Array bounds stay in runtime validation because nested bounded arrays caused Gemini 3.8 Flash to reject the schema with HTTP 400.
+- The live planner uses low reasoning (GPT) or low thinking (Gemini) within its 45-second planning deadline. Array bounds stay in runtime validation because nested bounded arrays caused Gemini 3.8 Flash to reject the schema with HTTP 400.
 - Verify the actual coaching planner with a synthetic selected workout before a model rollout; assistant-only JSON smoke checks do not exercise the coaching schema.
 
 ## Preplanning Before Start
@@ -270,5 +271,5 @@ Production now points at `2026-09-08.1` on revision `outbound-api-00116-jzf`. Al
 - iOS sends `deferPlanning=true` at Start. The server recompiles context and reevaluates eligibility/safety, attaches a matching ready preparation, or immediately creates a deterministic fallback session. Preparation never reserves a trial run; session creation remains the reservation boundary.
 - If generation is pending, iOS keeps the generation request open and fetches `GET /sessions/:sessionId` to adopt the ready plan. Attachment requires the same account and frozen session context hash; session-generation checks prevent results from attaching after another run starts. Audio caches remain keyed by the new plan hash.
 - Existing clients that omit `deferPlanning` retain synchronous session planning. No Android compatibility layer or data migration is added.
-- Gemini generates applicable reactive moments plus every selected-workout instruction in the app language only. Progress, pause/resume, unselected challenges, and race-only moments outside a typed race retain deterministic fallback coverage. Existing trigger timing, pace thresholds, safety gates, and cadence bounds are preserved.
+- The configured planner generates applicable reactive moments plus every selected-workout instruction in the app language only. Progress, pause/resume, unselected challenges, and race-only moments outside a typed race retain deterministic fallback coverage. Existing trigger timing, pace thresholds, safety gates, and cadence bounds are preserved.
 - Deploy backend/schema before distributing the matching iOS build: `./scripts/deploy-backend-gcloud.sh` pins and executes the schema job. This adds `LiveCoachPreparation` and an optional session reference; existing session rows require no reset.

@@ -79,7 +79,7 @@ gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.serv
 
 GPT follow-up candidate: [GPT-6 Luna](https://developers.openai.com/api/docs/models/gpt-6-luna), using Responses structured outputs and low or no reasoning. This is a candidate for measurement, not a claim of better application reliability. The owner supplied a local credential and resolved its initial credit-balance error. The owner explicitly approved Secret Manager import and runtime access on 2026-10-20 (America/Los_Angeles); cloud qualification must pass before deployment.
 
-Deployment: `outbound-api-00168-lb9` serves 100% of traffic with failover disabled. Its matching additive Prisma schema job completed, planning maintenance uses the same image, and `/health` returned 200. All three AI alert policies use the existing API operator channel.
+Safeguard deployment before the Luna rollout: `outbound-api-00168-lb9` served 100% of traffic with failover disabled. Its matching additive Prisma schema job completed, planning maintenance uses the same image, and `/health` returned 200. All three AI alert policies use the existing API operator channel.
 
 ## Optional GPT transport
 
@@ -146,4 +146,23 @@ All 17 completed Sol coaching responses passed the unchanged product validators;
 
 Luna coaching with the revised prompt passed 9/9 direct calls across the same three languages: p50 14.42s, p95 19.70s, no validation failures, timeouts, or 429s. This is a new prompt qualification; the old prompt's local Spanish failures remain historical evidence. Luna assistant's unchanged prompt previously passed 9/9 cloud calls (p95 3.06s). These are synthetic product-validator checks, not a full language-quality review or sustained-availability proof.
 
-The previously planned Sol coaching route remains blocked. A Luna assistant/coaching route is qualified for initial rollout with the existing bounded retries and reviewed deterministic fallback, without enabling an unqualified Sol coaching alternate. The owner was asked to choose Luna coaching versus retaining Sol as the target; production remains on revision `outbound-api-00168-lb9` until that choice. No prompt-output text or credentials entered source/logs. All temporary qualification jobs were removed after preserving metadata.
+The previously planned Sol coaching route remains blocked. A Luna assistant/coaching route is qualified for initial rollout with the existing bounded retries and reviewed deterministic fallback, without enabling an unqualified Sol coaching alternate. The owner selected Luna for assistant and coaching; the production rollout is recorded below. No prompt-output text or credentials entered source/logs. All temporary qualification jobs were removed after preserving metadata.
+
+
+## Production Luna rollout (2026-10-20 America/Los_Angeles)
+
+- Owner approved Luna for both workloads after the refined-prompt qualification. Revision `outbound-api-00233-boh` serves 100% of traffic using the exact qualified image above and prompt `2026-10-20.3`.
+- `APP_AI_MODEL=gpt-6-luna`; `GEMINI_LIVE_COACH_PLANNER_MODEL=gpt-6-luna`. `OPENAI_API_KEY` is a Secret Manager reference to `outbound-openai-api-key:latest`, never a plaintext environment value.
+- `AI_FALLBACK_VALIDATED=false`: bounded same-model transient retries and existing deterministic product fallbacks remain active; no unqualified Sol coaching alternate is enabled. Training-plan intake/adjustment remains on `gemini-3.8-flash`; TTS, access gates, locale rollout, and deadlines are unchanged.
+- The candidate was checked at zero traffic (`/health` 200); unrelated environment settings were compared and preserved. Exact-image schema execution `outbound-db-push-d24xf` succeeded before traffic switched. `outbound-planning-maintenance` uses the same image. The serving URL returned `/health` 200 after the switch, and the candidate tag was removed.
+- Deploy helper defaults now retain Luna for this production service, Gemini elsewhere, and the approved production secret reference. The voice redeploy helper inherits model defaults instead of resetting coaching to Gemini. Explicit model/secret overrides still work.
+- Shell syntax, production/nonproduction/default-override resolution, and diff checks passed. Existing `ai_attempt`/`ai_generation` events capture model routing and safe failure reasons under the analytics contract. No test suite ran; no real-device playback or sustained production reliability claim was made. Active sessions keep their stored plans; new generation uses the new model and prompt.
+
+Rollback if needed:
+
+```sh
+gcloud run services update-traffic outbound-api --project=outbound-494602 --region=us-central1 \
+  --to-revisions=outbound-api-00168-lb9=100
+```
+
+For a subsequent rebuild rollback, explicitly override both model settings to `gemini-3.8-flash`; the production helper now defaults to Luna. Retain monitoring: synthetic qualification is not an SLA.

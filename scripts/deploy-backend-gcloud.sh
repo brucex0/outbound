@@ -43,12 +43,13 @@ Environment overrides:
   LIVE_COACH_CUE_VALIDITY_MILLISECONDS default: 5000
   LIVE_COACH_PROVIDER_DEADLINE_MILLISECONDS default: 1500
   LIVE_COACH_PLANNER_ENABLED  default: true for production; false otherwise
-  GEMINI_LIVE_COACH_PLANNER_MODEL default: gemini-3.8-flash
+  APP_AI_MODEL                 default: gpt-6-luna for production; gemini-3.8-flash otherwise
+  GEMINI_LIVE_COACH_PLANNER_MODEL default: gpt-6-luna for production; gemini-3.8-flash otherwise
   GEMINI_VERTEX_PROJECT_ID    default: PROJECT_ID
   GEMINI_VERTEX_LOCATION      default: global
   AI_PLANNING_ENABLED         default: true for production; false otherwise (kill switch)
   AI_FALLBACK_VALIDATED       default: false; enable only after workload validation
-  OPENAI_API_KEY_SECRET       Secret Manager key reference required for configured GPT models
+  OPENAI_API_KEY_SECRET       default: outbound-openai-api-key for production; required for configured GPT models
   AI_FALLBACK_MODEL           default: gemini-3.6-flash (inactive until validated)
   AI_PLANNING_MODEL           default: gemini-3.8-flash
   AI_PLANNING_DEADLINE_MILLISECONDS default: 20000
@@ -110,6 +111,9 @@ if [[ "$production_profile" == "1" ]]; then
   default_live_coach_config_version=2
   default_live_coach_rollout_percent=100
   default_live_coach_planner_enabled=true
+  default_app_ai_model=gpt-6-luna
+  default_coach_ai_model=gpt-6-luna
+  default_openai_secret=outbound-openai-api-key
   default_ai_planning_enabled=true
   default_live_coach_pack_published=true
   default_live_coach_manifest_url="https://storage.googleapis.com/outbound-494602-live-coach-audio/live-coach/2026-09-08.1/manifest.json"
@@ -125,6 +129,9 @@ else
   default_live_coach_config_version=1
   default_live_coach_rollout_percent=0
   default_live_coach_planner_enabled=false
+  default_app_ai_model=gemini-3.8-flash
+  default_coach_ai_model=gemini-3.8-flash
+  default_openai_secret=""
   default_ai_planning_enabled=false
   default_live_coach_pack_published=false
   default_live_coach_manifest_url=""
@@ -161,14 +168,14 @@ LIVE_COACH_PAID_MODE_READY="${LIVE_COACH_PAID_MODE_READY:-false}"
 LIVE_COACH_CUE_VALIDITY_MILLISECONDS="${LIVE_COACH_CUE_VALIDITY_MILLISECONDS:-5000}"
 LIVE_COACH_PROVIDER_DEADLINE_MILLISECONDS="${LIVE_COACH_PROVIDER_DEADLINE_MILLISECONDS:-1500}"
 LIVE_COACH_PLANNER_ENABLED="${LIVE_COACH_PLANNER_ENABLED:-$default_live_coach_planner_enabled}"
-GEMINI_LIVE_COACH_PLANNER_MODEL="${GEMINI_LIVE_COACH_PLANNER_MODEL:-gemini-3.8-flash}"
+GEMINI_LIVE_COACH_PLANNER_MODEL="${GEMINI_LIVE_COACH_PLANNER_MODEL:-$default_coach_ai_model}"
 GEMINI_VERTEX_PROJECT_ID="${GEMINI_VERTEX_PROJECT_ID:-$PROJECT_ID}"
 GEMINI_VERTEX_LOCATION="${GEMINI_VERTEX_LOCATION:-global}"
 AI_PLANNING_ENABLED="${AI_PLANNING_ENABLED:-$default_ai_planning_enabled}"
-APP_AI_MODEL="${APP_AI_MODEL:-gemini-3.8-flash}"
+APP_AI_MODEL="${APP_AI_MODEL:-$default_app_ai_model}"
 AI_FALLBACK_VALIDATED="${AI_FALLBACK_VALIDATED:-false}"
 AI_FALLBACK_MODEL="${AI_FALLBACK_MODEL:-gemini-3.6-flash}"
-OPENAI_API_KEY_SECRET="${OPENAI_API_KEY_SECRET:-}"
+OPENAI_API_KEY_SECRET="${OPENAI_API_KEY_SECRET:-$default_openai_secret}"
 AI_PLANNING_MODEL="${AI_PLANNING_MODEL:-gemini-3.8-flash}"
 AI_PLANNING_DEADLINE_MILLISECONDS="${AI_PLANNING_DEADLINE_MILLISECONDS:-20000}"
 GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS="${GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS:-45000}"
