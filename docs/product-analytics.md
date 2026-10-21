@@ -356,3 +356,5 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 - iOS and Android `live_guidance_preparation_result` permits only `source_type` (`selection`, `generation`, `start`, `attachment`) and bounded result (`pending`, `generating`, `ready`, `fallback`, `failure`). Backend `live_coach_preparation` diagnostics record cache reuse, readiness, attachment, and coarse generation latency. Neither includes preparation/session IDs, request fingerprints, prompts, context, phrases, or exact runner metrics.
 
 - iOS coaching reference diagnostics report only a bounded source (`profile`, `local_history`, `unavailable`) when it changes. Pace values, activity IDs, dates, and runner data are excluded; `live_guidance_eligibility_resolved` includes this optional `source_type`; existing moment and provider-outcome events stay unchanged.
+
+- Android `live_guidance_reference_resolved` reports `source_type=local_history|unavailable` when starting a catalog workout that requests an athlete reference; it excludes pace, activity identifiers, and dates.

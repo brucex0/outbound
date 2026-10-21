@@ -8,6 +8,7 @@ import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import com.plainstride.outbound.core.model.activity.localCoachingReference
 import java.time.Instant
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -47,6 +48,7 @@ data class P0IntegrationState(
     val notifications: List<InboxNotification> = emptyList(),
     val progress: ProgressScreenState = ProgressScreenState(ProgressStatsEngine.snapshot(emptyList())),
     val completedToday: Boolean = false,
+    val coachingReferencePace: Double? = null,
     val defaultGearId: String? = null,
     val gearShoes: List<GearItem> = emptyList(),
     val gearMileage: List<GearMileageSummary> = emptyList(),
@@ -68,7 +70,13 @@ data class P0IntegrationState(
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val mutable = MutableStateFlow(P0IntegrationState(pushEnabled=context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES,Context.MODE_PRIVATE).getBoolean(PUSH_ENABLED,true))); val state = mutable.asStateFlow()
+    private var activityObservation: Job? = null
     private var accountId: String? = null; private var locale = "en"; private var routeObservation: Job? = null
+    fun trackCoachingReference(available: Boolean) {
+        val source = if (available) "local_history" else "unavailable"
+        android.util.Log.i("PlainstrideLiveCoach", "resolve athlete_reference source=$source")
+        analytics.record(AnalyticsEvent("live_guidance_reference_resolved", mapOf(AnalyticsProperty.SourceType to source)))
+    }
     fun trackProgressEvent(event: ProgressAnalyticsEvent) {
         val properties = buildMap {
             event.properties["entry_source"]?.let { put(AnalyticsProperty.EntrySource, it) }
@@ -83,7 +91,7 @@ data class P0IntegrationState(
         if (this.accountId == accountId && this.locale == locale) return
         this.accountId = accountId
         this.locale = locale
-        mutable.update { it.copy(weightKilograms = null, defaultGearId = null, gearShoes = emptyList(), gearMileage = emptyList()) }
+        mutable.update { it.copy(coachingReferencePace = null, weightKilograms = null, defaultGearId = null, gearShoes = emptyList(), gearMileage = emptyList()) }
         observeRoutes()
         reminderCoordinator.observe(viewModelScope, accountId, locale)
         viewModelScope.launch {
@@ -93,7 +101,8 @@ data class P0IntegrationState(
         viewModelScope.launch {
             today.trainingProfile().onSuccess { profile -> mutable.update { it.copy(weightKilograms = profile.weightKilograms) } }
         }
-        viewModelScope.launch {
+        activityObservation?.cancel()
+        activityObservation = viewModelScope.launch {
             activities.observeAll(accountId).collect { savedActivities ->
                 val items = savedActivities.mapNotNull { activity ->
                     runCatching {
@@ -138,6 +147,7 @@ data class P0IntegrationState(
                 }
                 mutable.update { state -> state.copy(
                     progress = ProgressScreenState(ProgressStatsEngine.snapshot(items), activities = items),
+                    coachingReferencePace = localCoachingReference(savedActivities),
                 ) }
                 refreshGearState()
             }

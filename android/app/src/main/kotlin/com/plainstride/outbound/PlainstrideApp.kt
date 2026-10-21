@@ -1,5 +1,7 @@
 package com.plainstride.outbound
 
+import com.plainstride.outbound.core.model.activity.resolveTarget
+
 import com.plainstride.outbound.feature.recording.recordingLaunch
 
 import androidx.annotation.StringRes
@@ -807,7 +809,11 @@ private fun SignedInApp(
                             onBuildPlan = { planBuilderSource = PlanBuilderSource.AllPlans },
                             unitSystem = measurementUnitSystem,
                             onStartManual = { setup ->
-                                recordingLaunch = setup.toRecordingLaunch(selectedTodayShoeIdForLaunch).withTodayRoute(todaySelectedRoute, todayRouteReversed)
+                                if (setup.curatedWorkout?.let { workout ->
+                                    workout.coachingTarget?.pace?.reference == "athlete_reference" ||
+                                        workout.steps.any { it.coachingTarget?.pace?.reference == "athlete_reference" }
+                                } == true) integrationViewModel.trackCoachingReference(integration.coachingReferencePace != null)
+                                recordingLaunch = setup.toRecordingLaunch(selectedTodayShoeIdForLaunch, integration.coachingReferencePace).withTodayRoute(todaySelectedRoute, todayRouteReversed)
                                 launchTodayRecording()
                             },
                             shoes = activeShoes.map { com.plainstride.outbound.feature.today.TodayShoeOption(it.id.toString(), it.displayName) },
@@ -1490,7 +1496,7 @@ private fun WorkoutLaunchIntent.toRecordingLaunch(): RecordingLaunchConfiguratio
     )
 }
 
-private fun TodayManualLaunch.toRecordingLaunch(defaultGearId: String?): RecordingLaunchConfiguration {
+private fun TodayManualLaunch.toRecordingLaunch(defaultGearId: String?, athleteReferencePace: Double?): RecordingLaunchConfiguration {
     val workout = curatedWorkout.takeUnless { goal == TodayGoalChoice.RACE }
     val recordingGoal = when (goal) {
         TodayGoalChoice.RACE -> RecordingGoal(RecordingGoalType.DISTANCE, targetDistanceMeters = requireNotNull(racePlan).distanceMeters)
@@ -1519,7 +1525,7 @@ private fun TodayManualLaunch.toRecordingLaunch(defaultGearId: String?): Recordi
                 detail = it.detail,
                 durationSeconds = it.durationSeconds,
                 phase = it.coachingTarget?.phase,
-                targetPaceSecondsPerKilometer = it.coachingTarget?.pace?.targetSecondsPerKilometer,
+                targetPaceSecondsPerKilometer = it.coachingTarget?.pace?.resolveTarget(athleteReferencePace),
                 fasterToleranceSeconds = it.coachingTarget?.pace?.fasterToleranceSeconds,
                 slowerToleranceSeconds = it.coachingTarget?.pace?.slowerToleranceSeconds,
                 recognizesTargetLock = it.coachingTarget?.recognizesTargetLock == true,
@@ -1530,7 +1536,7 @@ private fun TodayManualLaunch.toRecordingLaunch(defaultGearId: String?): Recordi
         standaloneWorkoutCatalogVersion = curatedWorkoutCatalogVersion,
         autoStopAtGoal = autoStopAtGoal && goal in setOf(TodayGoalChoice.DISTANCE, TodayGoalChoice.TIME, TodayGoalChoice.CALORIES),
         workoutPhase = if (goal == TodayGoalChoice.RACE) "work" else workout?.coachingTarget?.phase,
-        workoutTargetPaceSecondsPerKilometer = racePlan.takeIf { goal == TodayGoalChoice.RACE }?.targetPaceSecondsPerKilometer ?: workout?.coachingTarget?.pace?.targetSecondsPerKilometer,
+        workoutTargetPaceSecondsPerKilometer = racePlan.takeIf { goal == TodayGoalChoice.RACE }?.targetPaceSecondsPerKilometer ?: workout?.coachingTarget?.pace?.resolveTarget(athleteReferencePace),
         workoutFasterToleranceSeconds = if (goal == TodayGoalChoice.RACE && racePlan?.targetPaceSecondsPerKilometer != null) 15.0 else workout?.coachingTarget?.pace?.fasterToleranceSeconds,
         workoutSlowerToleranceSeconds = if (goal == TodayGoalChoice.RACE && racePlan?.targetPaceSecondsPerKilometer != null) 20.0 else workout?.coachingTarget?.pace?.slowerToleranceSeconds,
         workoutRecognizesTargetLock = if (goal == TodayGoalChoice.RACE) racePlan?.targetPaceSecondsPerKilometer != null else workout?.coachingTarget?.recognizesTargetLock == true,

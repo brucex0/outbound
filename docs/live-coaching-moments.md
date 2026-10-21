@@ -182,3 +182,9 @@ Every phase needs replayable sensor fixtures, false-positive review across hills
 - When the guide profile has no valid pace reference, coaching uses the median valid pace of up to ten saved runs from the last 30 days, each at least five minutes and 500 m. Missing average pace may be derived from recorded moving time and distance. Future-dated, stale, non-running, short, and invalid-pace activities are excluded.
 - This fallback is held in memory for coaching only; it does not overwrite the server profile or its cached version. No eligible history means no invented reference or target. Workout offsets, terrain, confidence, persistence, and cooldown gates remain unchanged.
 - Preparation keys include the effective reference pace so changed local evidence invalidates a pending preparation.
+
+### Android saved-run pace reference
+
+- Catalog `athlete_reference` targets resolve at launch from the median pace of up to 10 most recent eligible local runs in 30 days (at least 5 minutes and 500 m), plus the catalog offset. Deleted, future, malformed, and implausible records are excluded.
+- Absolute workout/race targets remain authoritative; effort-only workouts and missing history do not invent a pace. The reference is account-scoped and in memory; no storage reset is needed.
+- `live_guidance_reference_resolved` and `PlainstrideLiveCoach` report only `local_history` or `unavailable`, without raw pace or history.
