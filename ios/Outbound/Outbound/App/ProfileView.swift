@@ -636,29 +636,6 @@ struct AssistantView: View {
             }
 
             HStack(alignment: .bottom, spacing: 12) {
-                Button {
-                    if !voiceCommandStore.isRecording {
-                        hasHandledVoiceActivityCommand = false
-                        pendingVoiceCommandTask?.cancel()
-                        pendingVoiceCommandTask = nil
-                    }
-
-                    voiceCommandStore.toggleRecording { partialTranscript in
-                        assistantStore.draft = partialTranscript
-                        handleLiveVoiceTranscript(partialTranscript)
-                    } onFinalTranscript: { transcript in
-                        guard !hasHandledVoiceActivityCommand else { return }
-                        pendingVoiceCommandTask?.cancel()
-                        pendingVoiceCommandTask = nil
-                        handleVoiceTranscript(transcript)
-                    }
-                } label: {
-                    Image(systemName: voiceCommandStore.isRecording ? "mic.circle.fill" : "mic.circle")
-                        .font(.system(size: 30))
-                        .foregroundStyle(voiceCommandStore.isRecording ? Color.red : personaAccentColor)
-                }
-                .accessibilityLabel(voiceCommandStore.isRecording ? "Stop listening" : "Speak activity command")
-
                 TextField("Ask for help", text: $assistantStore.draft, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...4)
