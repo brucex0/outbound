@@ -47,6 +47,9 @@ Environment overrides:
   GEMINI_VERTEX_PROJECT_ID    default: PROJECT_ID
   GEMINI_VERTEX_LOCATION      default: global
   AI_PLANNING_ENABLED         default: true for production; false otherwise (kill switch)
+  AI_FALLBACK_VALIDATED       default: false; enable only after workload validation
+  OPENAI_API_KEY_SECRET       Secret Manager key reference required for configured GPT models
+  AI_FALLBACK_MODEL           default: gemini-3.6-flash (inactive until validated)
   AI_PLANNING_MODEL           default: gemini-3.8-flash
   AI_PLANNING_DEADLINE_MILLISECONDS default: 20000
   GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS default: 45000
@@ -163,6 +166,9 @@ GEMINI_VERTEX_PROJECT_ID="${GEMINI_VERTEX_PROJECT_ID:-$PROJECT_ID}"
 GEMINI_VERTEX_LOCATION="${GEMINI_VERTEX_LOCATION:-global}"
 AI_PLANNING_ENABLED="${AI_PLANNING_ENABLED:-$default_ai_planning_enabled}"
 APP_AI_MODEL="${APP_AI_MODEL:-gemini-3.8-flash}"
+AI_FALLBACK_VALIDATED="${AI_FALLBACK_VALIDATED:-false}"
+AI_FALLBACK_MODEL="${AI_FALLBACK_MODEL:-gemini-3.6-flash}"
+OPENAI_API_KEY_SECRET="${OPENAI_API_KEY_SECRET:-}"
 AI_PLANNING_MODEL="${AI_PLANNING_MODEL:-gemini-3.8-flash}"
 AI_PLANNING_DEADLINE_MILLISECONDS="${AI_PLANNING_DEADLINE_MILLISECONDS:-20000}"
 GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS="${GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS:-45000}"
@@ -253,6 +259,18 @@ secret_bindings=(
 if [[ "$ALIBABA_AI_ENABLED" == "true" && -n "$ALIBABA_AI_API_KEY_SECRET" ]]; then
   secret_bindings+=("ALIBABA_AI_API_KEY=$ALIBABA_AI_API_KEY_SECRET:latest")
 fi
+uses_openai=0
+for configured_model in "$APP_AI_MODEL" "$GEMINI_LIVE_COACH_PLANNER_MODEL" "$AI_PLANNING_MODEL"; do
+  if [[ "$configured_model" == gpt-* ]]; then uses_openai=1; fi
+done
+if [[ "$AI_FALLBACK_VALIDATED" == "true" && "$AI_FALLBACK_MODEL" == gpt-* ]]; then uses_openai=1; fi
+if [[ "$uses_openai" == "1" ]]; then
+  if [[ -z "$OPENAI_API_KEY_SECRET" ]]; then
+    echo "Configured GPT models require OPENAI_API_KEY_SECRET (a Secret Manager reference)." >&2
+    exit 1
+  fi
+  secret_bindings+=("OPENAI_API_KEY=$OPENAI_API_KEY_SECRET:latest")
+fi
 secret_vars="$(IFS=,; echo "${secret_bindings[*]}")"
 
 environment_bindings=(
@@ -286,6 +304,8 @@ environment_bindings=(
   "GEMINI_VERTEX_LOCATION=$GEMINI_VERTEX_LOCATION"
   "AI_PLANNING_ENABLED=$AI_PLANNING_ENABLED"
   "APP_AI_MODEL=$APP_AI_MODEL"
+  "AI_FALLBACK_VALIDATED=$AI_FALLBACK_VALIDATED"
+  "AI_FALLBACK_MODEL=$AI_FALLBACK_MODEL"
   "AI_PLANNING_MODEL=$AI_PLANNING_MODEL"
   "AI_PLANNING_DEADLINE_MILLISECONDS=$AI_PLANNING_DEADLINE_MILLISECONDS"
   "GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS=$GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS"

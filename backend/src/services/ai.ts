@@ -1,5 +1,5 @@
-
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { generateStructuredAI } from "./aiReliability/structuredGeneration.js";
+import { ThinkingLevel } from "@google/genai";
 import Anthropic from "@anthropic-ai/sdk";
 import { gpt4oMiniTranscribe } from "./ai-transcribe.js";
 import { parseUtteranceCommand } from "./commandParser.js";
@@ -181,42 +181,28 @@ Be warm, concise, and practical. ${localeInstruction(input.locale)} Return JSON 
   return parsed.message.trim();
 }
 
-// Match the planning provider: API key locally, runtime service identity on Vertex.
+// Keep the assistant prompt and JSON contract identical across configured providers.
 async function generateAssistantJSON(systemInstruction: string, contents: string, maxOutputTokens: number, temperature: number): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  const project = process.env.GEMINI_VERTEX_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT;
-  if (!apiKey && !project) throw new Error("Gemini assistant requires GEMINI_API_KEY or GEMINI_VERTEX_PROJECT_ID");
-  const gemini = apiKey ? new GoogleGenAI({ apiKey, apiVersion: "v1beta" }) : new GoogleGenAI({
-    vertexai: true, project, location: process.env.GEMINI_VERTEX_LOCATION || "global", apiVersion: "v1beta1",
-  });
-  const startedAt = Date.now();
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20_000);
-  try {
-    const response = await gemini.models.generateContent({
-      model: process.env.APP_AI_MODEL || "gemini-3.8-flash",
+  const result = await generateStructuredAI({
+    operation: "assistant", model: process.env.APP_AI_MODEL || "gemini-3.8-flash", deadlineMilliseconds: 20_000,
+    parameters: {
       contents,
       config: {
-        systemInstruction, abortSignal: controller.signal,
-        responseMimeType: "application/json",
+        systemInstruction, responseMimeType: "application/json",
         responseJsonSchema: { type: "object", properties: { message: { type: "string" } }, required: ["message"] },
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        // Thinking tokens share the output budget; reserve space for reasoning plus the reply.
         maxOutputTokens: maxOutputTokens + 4_096, temperature,
       },
-    });
-    const content = response.text?.trim();
-    if (!content) throw new Error("Gemini assistant returned empty content");
-    const parsed = JSON.parse(content) as AssistantResponse;
-    if (!parsed.message?.trim()) throw new Error("Gemini assistant returned an invalid message");
-    console.info("assistant_generation", { outcome: "success", latencyBucket: Date.now() - startedAt < 5_000 ? "under_5s" : "5s_or_more" });
-    return content;
-  } catch (error) {
-    // Never log provider messages/bodies: they may contain runner context.
-    const status = error instanceof Error && "status" in error && typeof error.status === "number" ? error.status : undefined;
-    console.error("assistant_generation", { outcome: "failure", operation: "gemini_generate_content", status, category: controller.signal.aborted ? "timeout" : "provider_or_response_error" });
-    throw new Error(`Gemini assistant generation failed${status ? ` (HTTP ${status})` : ""}`);
-  } finally { clearTimeout(timeout); }
+    },
+    validate: (response) => {
+      const content = response.text?.trim();
+      if (!content) throw new Error("Empty assistant output");
+      const parsed = JSON.parse(content) as AssistantResponse;
+      if (!parsed.message?.trim()) throw new Error("Invalid assistant message");
+      return content;
+    },
+  });
+  return result.value;
 }
 
 function formatActivityContextForPrompt(context: AssistantActivityToolContext | null | undefined): string {

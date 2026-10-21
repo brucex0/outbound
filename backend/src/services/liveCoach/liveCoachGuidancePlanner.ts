@@ -1,6 +1,7 @@
+import { aiFailure, generateStructuredAI } from "../aiReliability/structuredGeneration.js";
 import { validateLiveCoachOutput } from "./liveCoachOutputValidation.js";
 import { createHash } from "node:crypto";
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import type { LiveCoachCompiledContext } from "../aiProviders/types.js";
 import { findCoachPersona } from "./liveCoachCatalog.js";
@@ -106,57 +107,44 @@ export async function generateLiveCoachGuidancePlan(
   if (!persona) return resultForPlan(fallback, "fallback", null);
 
   const supportedMoments = relevantLiveCoachMoments(context);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), config.planner.deadlineMilliseconds);
   try {
-    const client = config.planner.apiKey
-      ? new GoogleGenAI({ apiKey: config.planner.apiKey, apiVersion: "v1beta" })
-      : new GoogleGenAI({
-          vertexai: true,
-          project: config.planner.projectId,
-          location: config.planner.location,
-          apiVersion: "v1beta1",
-        });
-    const response = await client.models.generateContent({
-      model: config.planner.model,
-      contents: JSON.stringify({
-        task: "Create the executable live-coaching phrase plan for this workout.",
-        supportedMoments,
-        requiredWorkoutInstructionIds: context.workoutExecution?.segments.map((segment) => segment.id) ?? [],
-        runnerContext: context,
-      }),
-      config: {
-        abortSignal: controller.signal,
-        systemInstruction: plannerInstructions(context.locale, persona.instructions),
-        responseMimeType: "application/json",
-        responseJsonSchema: plannerJSONSchema,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        temperature: 0.45,
-        maxOutputTokens: 8_192,
+    const generated = await generateStructuredAI({
+      operation: "live_coach", model: config.planner.model, deadlineMilliseconds: config.planner.deadlineMilliseconds,
+      connection: { apiKey: config.planner.apiKey, project: config.planner.projectId, location: config.planner.location },
+      parameters: {
+        contents: JSON.stringify({
+          task: "Create the executable live-coaching phrase plan for this workout.",
+          supportedMoments,
+          requiredWorkoutInstructionIds: context.workoutExecution?.segments.map((segment) => segment.id) ?? [],
+          runnerContext: context,
+        }),
+        config: {
+          systemInstruction: plannerInstructions(context.locale, persona.instructions),
+          responseMimeType: "application/json",
+          responseJsonSchema: plannerJSONSchema,
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          temperature: 0.45,
+          maxOutputTokens: 8_192,
+        },
+      },
+      validate: (response) => {
+        const parsed = plannerOutputSchema.parse(JSON.parse(response.text ?? ""));
+        if (supportedMoments.some((moment) => !parsed.cues.some((cue) => cue.moment === moment))
+            || parsed.cues.some((cue) => !supportedMoments.includes(cue.moment))) {
+          throw new Error("Planner moments did not match the requested workout scope.");
+        }
+        return normalizeGeneratedPlan(parsed, context);
       },
     });
-    const parsed = plannerOutputSchema.parse(JSON.parse(response.text ?? ""));
-    if (supportedMoments.some((moment) => !parsed.cues.some((cue) => cue.moment === moment))
-        || parsed.cues.some((cue) => !supportedMoments.includes(cue.moment))) {
-      throw new Error("Planner moments did not match the requested workout scope.");
-    }
-    const plan = normalizeGeneratedPlan(parsed, context);
     return {
-      ...resultForPlan(plan, "generated", response.modelVersion ?? config.planner.model),
-      inputTokens: response.usageMetadata?.promptTokenCount,
-      outputTokens: response.usageMetadata?.candidatesTokenCount,
+      ...resultForPlan(generated.value, "generated", generated.response.modelVersion ?? generated.model),
+      inputTokens: generated.response.usageMetadata?.promptTokenCount,
+      outputTokens: generated.response.usageMetadata?.candidatesTokenCount,
     };
   } catch (error) {
-    const status = error instanceof Error && "status" in error && typeof error.status === "number" ? error.status : undefined;
-    console.warn("live_coach_planning_fallback", {
-      operation: "generate_guidance_plan", status,
-      category: controller.signal.aborted ? "timeout" : error instanceof z.ZodError ? "response_validation" : "provider_or_plan_validation",
-      errorType: error instanceof Error ? error.name : "unknown",
-      ...(error instanceof z.ZodError ? { validationPaths: error.issues.slice(0, 5).map((issue) => issue.path.join(".")) } : {}),
-    });
+    const failure = aiFailure(error);
+    console.warn(JSON.stringify({ event: "live_coach_planning_fallback", operation: "live_coach", category: failure.category, status: failure.status }));
     return resultForPlan(fallback, "fallback", null);
-  } finally {
-    clearTimeout(timeout);
   }
 }
 

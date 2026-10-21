@@ -32,6 +32,7 @@ export class LiveCoachPreparationService {
     const cacheKey = createHash("sha256").update(JSON.stringify([
       userId, context.contextHash, input.coachPersonaId, persona.instructionVersion, input.voiceProfileId,
       input.coachingContract, feature.configVersion, feature.planner.model, LIVE_COACH_PLANNER_PROMPT_VERSION,
+      process.env.AI_FALLBACK_VALIDATED, process.env.AI_FALLBACK_MODEL,
     ])).digest("hex");
     await this.prisma.liveCoachPreparation.deleteMany({ where: { userId, expiresAt: { lte: new Date() } } });
     const existing = await this.prisma.liveCoachPreparation.findUnique({ where: { cacheKey } });

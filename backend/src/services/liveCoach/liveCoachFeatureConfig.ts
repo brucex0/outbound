@@ -143,11 +143,12 @@ export function assertLiveCoachConfiguration(env: NodeJS.ProcessEnv = process.en
         }
       }
     }
-    if (feature.planner.enabled && !feature.planner.apiKey && !feature.planner.projectId) {
-      throw new AIProviderError(
-        "not_configured",
-        "Gemini live-coach planning requires GEMINI_API_KEY or GEMINI_VERTEX_PROJECT_ID/GOOGLE_CLOUD_PROJECT."
-      );
+    if (feature.planner.enabled) {
+      if (feature.planner.model.startsWith("gpt-")) {
+        if (!trimmed(env.OPENAI_API_KEY)) throw new AIProviderError("not_configured", "GPT live-coach planning requires OPENAI_API_KEY.");
+      } else if (!feature.planner.apiKey && !feature.planner.projectId) {
+        throw new AIProviderError("not_configured", "Gemini live-coach planning requires GEMINI_API_KEY or GEMINI_VERTEX_PROJECT_ID/GOOGLE_CLOUD_PROJECT.");
+      }
     }
   }
 }

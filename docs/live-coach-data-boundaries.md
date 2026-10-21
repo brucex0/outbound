@@ -4,13 +4,13 @@ Open this when changing live-coach context, planner or speech providers, privacy
 
 ## Current Architecture
 
-Gemini plans the workout once when the live-coach session starts. It does not run in the per-cue path. During the workout, the iPhone detects a semantic event or crosses a selected-workout trigger, chooses an exact phrase from the signed-in runner's stored plan, and asks Plainstride to synthesize that phrase. Progress announcements are deterministic exact distance/time/pace sentences.
+The configured planner prepares a workout plan on selection when supported by the client, or at session start. Ready plans are reused only for the same runner and compiled context. It does not run in the per-cue path. During the workout, the iPhone detects a semantic event or crosses a selected-workout trigger, chooses an exact phrase from the signed-in runner's stored plan, and asks Plainstride to synthesize that phrase. Progress announcements are deterministic exact distance/time/pace sentences.
 
 ```text
 iPhone session context
   -> authenticated Plainstride session creation
   -> bounded backend context compiler
-  -> Gemini 3.8 Flash (one strict-JSON plan)
+  -> configured structured-JSON planner (see docs/ai-reliability.md)
   -> plan returned to iPhone
 
 iPhone moment detector + phrase ID + bounded live state
@@ -38,7 +38,7 @@ The client never sends an account/user ID. Plainstride derives identity from the
 
 ## Plainstride Context Compiler
 
-The backend adds only data for the authenticated runner and bounds every list/string before calling Gemini (compiled context version 4):
+The backend adds only data for the authenticated runner and bounds every list/string before calling the planner (compiled context version 4):
 
 - bio/survey: biography, age, sex at birth, height, weight, goal/schedule summaries, comfortable duration, recent/target frequency, preferred long-run day, guidance-detail preference, and declared constraints;
 - coaching profile: fitness level, weekly volume, preferred pace, strengths, weaknesses, goals, records, and bounded recent memory summary;
@@ -53,18 +53,20 @@ The compiler omits name, username, email, login-provider IDs, access tokens, dev
 
 The one-time planner creates a session-specific phrase library. The phone later selects a planned phrase from a detected semantic moment and workout phase; live cue delivery does not ask an LLM to reason over telemetry again. The planner prioritizes safety, typed targets and workout prescription, fresh readiness/environment, recent measured training and reported feedback, then confidence-ranked runner insights, beliefs, and preferences. It treats context text as data, distinguishes confirmed beliefs from hypotheses, weighs insight confidence/evidence count/update age, and ignores stale readiness/weather rather than speaking as if old information is current. Effort/recovery beliefs older than 28 days are historical unless current evidence confirms them; preferences may guide style until contradicted. Each generated cue must give one grounded action or execution focus, not generic encouragement. Repeating a phrase across moments or alternatives invalidates the plan and selects the deterministic fallback. Workout-step instructions preserve actual purpose, effort, and work/recovery sequence; explicit prescribed pace and duration targets may be spoken in the selected measurement units. Live measurements still come from deterministic device announcements; the start planner must not invent them. Local GPS evidence timestamps used by the detector are not added to provider context or product analytics.
 
-## Plainstride To Gemini
+## Plainstride To The Planner
 
-Gemini receives:
+The configured Gemini or GPT planner receives:
 
 - task, supported reactive semantic-moment enum, and the exact required instruction IDs for the selected workout;
 - the bounded compiled context above;
 - selected coach-persona instructions in the system instruction;
 - a strict JSON response schema.
 
-The configured model is `gemini-3.8-flash` with low thinking. Planning has a 45-second deadline and happens once per session. The response must contain a summary, progress cadence, one to three short phrases for every reactive moment, and exactly one localized phrase for every required selected-workout instruction ID. Phrases should be distinct and grounded in the moment and workout; duplicates or unknown instruction IDs invalidate the response. Invalid, timed-out, disabled, or unavailable planning produces a deterministic local plan; workout start is not failed solely because Gemini failed.
+Production model status and qualification results are in `docs/ai-reliability.md`. Gemini uses low thinking; the optional GPT Responses adapter uses low reasoning with `store: false`. Planning has a 45-second deadline and happens once per session. The response must contain a summary, progress cadence, one short phrase for each requested workout-relevant reactive moment, with phase-specific entries when needed, and exactly one localized phrase for every required selected-workout instruction ID. Phrases should be distinct and grounded in the moment and workout; duplicates or unknown instruction IDs invalidate the response. Invalid, timed-out, disabled, or unavailable planning produces a deterministic local plan; workout start is not failed solely because the planner failed.
 
-Gemini must not repeat private bio, health, location, survey, or weather facts in spoken phrases. Those fields may influence safety, tone, focus, timing, and advice only. Readiness is current for planner purposes for 36 hours; weather must have been observed within three hours. A fresh illness/pain or unsafe-weather flag can force fixed-only audio; stale flags do not block dynamic planning.
+The planner must not repeat private bio, health, location, survey, or weather facts in spoken phrases. Those fields may influence safety, tone, focus, timing, and advice only. Readiness is current for planner purposes for 36 hours; weather must have been observed within three hours. A fresh illness/pain or unsafe-weather flag can force fixed-only audio; stale flags do not block dynamic planning.
+
+GPT routing is an optional server-side capability pending cloud qualification and approval of its credential-access boundary; local synthetic evaluation sends no runner data. When deployed, OpenAI credentials must be mounted from Secret Manager, never from ordinary Cloud Run environment values.
 
 Vertex AI uses the Cloud Run runtime identity. `GEMINI_API_KEY` is supported for controlled non-Vertex environments but must never enter the app or repository.
 
