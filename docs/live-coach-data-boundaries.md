@@ -118,7 +118,7 @@ The backend forwards Google audio chunks in a length-prefixed response with meta
 
 - Planner response array counts are enforced after generation, rather than in the provider JSON schema: Gemini rejects the nested bounded-array schema with HTTP 400. Types, required fields, and enum IDs remain provider-constrained; all existing runtime bounds and semantic checks still apply.
 - Chinese and Spanish guided half-marathon fallback instructions preserve each distance section’s pacing, practiced fueling, and conditional finish advice instead of repeating a generic segment announcement.
-- The compact initial library asks for one phrase per supported moment and retains phase selection plus all output validation. Existing half-marathon fallback sessions resolve reviewed Chinese/Spanish instructions at playback using their unchanged instruction/phrase IDs; no session data is rewritten.
+- Prompt version `2026-10-20.3` makes vague rhythm/posture wording bans explicit in the selected language and favors shorter concrete actions. The compact initial library asks for one phrase per supported moment and retains phase selection plus all output validation. Existing half-marathon fallback sessions resolve reviewed Chinese/Spanish instructions at playback using their unchanged instruction/phrase IDs; no session data is rewritten.
 
 ## Preparation Lifetime
 

@@ -12,14 +12,18 @@ process.env.AI_FALLBACK_VALIDATED = mode === "failover" ? "true" : "false";
 // A deliberately nonexistent model exercises live alternate validation without
 // changing production routing or simulating successful provider responses.
 const models = (mode === "failover" ? "gemini-0.0-unavailable" : process.env.AI_RELIABILITY_MODELS || "gemini-3.8-flash,gemini-3.6-flash").split(",");
-const rounds = mode === "failover" ? 1 : Math.min(10, Math.max(1, Number(process.env.AI_RELIABILITY_ROUNDS || 3)));
+const operations = (process.env.AI_RELIABILITY_OPERATIONS || "assistant,live_coach").split(",");
+if (!operations.length || operations.some((operation) => !["assistant", "live_coach"].includes(operation))) {
+  throw new Error("AI_RELIABILITY_OPERATIONS must contain assistant and/or live_coach");
+}
+const rounds = Math.min(10, Math.max(1, Number(process.env.AI_RELIABILITY_ROUNDS || (mode === "failover" ? 1 : 3))));
 if (!Number.isInteger(rounds)) throw new Error("AI_RELIABILITY_ROUNDS must be an integer");
 const workout = standaloneWorkoutCatalog.workouts.find((item) => item.id === "standalone-guided-half-marathon")!;
 const instructions = workout.guideInstructions!;
 const samples: Array<{model: string; operation: string; locale: string; success: boolean; elapsed_ms: number}> = [];
 for (let round = 0; round < rounds; round++) {
   for (const locale of ["en", "zh-Hans", "es"] as const) {
-    for (const operation of ["assistant", "live_coach"] as const) {
+    for (const operation of operations) {
       for (const model of models) {
         process.env.APP_AI_MODEL = model;
         const start = Date.now();
@@ -65,7 +69,7 @@ for (let round = 0; round < rounds; round++) {
   }
 }
 for (const model of models) {
-  for (const operation of ["assistant", "live_coach"]) {
+  for (const operation of operations) {
     const group = samples.filter((sample) => sample.model === model && sample.operation === operation);
     const durations = group.filter((sample) => sample.success).map((sample) => sample.elapsed_ms).sort((a, b) => a - b);
     const percentile = (p: number) => durations.length ? durations[Math.ceil(durations.length * p) - 1] : null;

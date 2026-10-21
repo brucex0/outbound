@@ -3,7 +3,7 @@ import { GoogleGenAI, type GenerateContentParameters } from "@google/genai";
 
 export type AIOperation = "assistant" | "live_coach" | "plan_intake" | "plan_adjustment";
 export type AIFailureCategory = "rate_limited" | "timeout" | "server" | "network" | "authentication" | "invalid_request" | "invalid_output" | "circuit_open" | "quota_exhausted";
-type ValidationCategory = "json" | "schema" | "moment_coverage" | "instruction_coverage" | "distinct_phrases" | "phrase_bounds" | "product_validation" | "unknown";
+type ValidationCategory = "json" | "schema" | "moment_coverage" | "instruction_coverage" | "distinct_phrases" | "phrase_bounds" | "product_validation" | "unsafe_pain" | "medical" | "guarantee" | "vague_form" | "abrupt_pace" | "unknown";
 export class AIGenerationError extends Error {
   constructor(readonly category: AIFailureCategory, readonly status?: number, readonly validation?: ValidationCategory, readonly retryAfterMilliseconds?: number) {
     super(`AI generation failed (${category}${status ? `, HTTP ${status}` : ""})`);
@@ -38,9 +38,16 @@ function invalidOutput(error: unknown): AIGenerationError {
     "Planner workout instructions did not match the selected workout.": "instruction_coverage",
     "Live-coach planner repeated a phrase across moments.": "distinct_phrases",
     "Planner phrase failed semantic validation.": "phrase_bounds",
+    "Generated coaching output failed product validation (phrase_bounds).": "phrase_bounds",
+    "Generated coaching output failed product validation (unsafe_pain).": "unsafe_pain",
+    "Generated coaching output failed product validation (medical).": "medical",
+    "Generated coaching output failed product validation (guarantee).": "guarantee",
+    "Generated coaching output failed product validation (vague_form).": "vague_form",
+    "Generated coaching output failed product validation (abrupt_pace).": "abrupt_pace",
   };
   const validation = error instanceof SyntaxError ? "json"
     : error instanceof Error && error.name === "ZodError" ? "schema"
+    : error instanceof Error && known[error.message] ? known[error.message]
     : error instanceof Error && error.name === "AIProviderError" ? "product_validation"
     : error instanceof Error ? known[error.message] ?? "unknown" : "unknown";
   return new AIGenerationError("invalid_output", undefined, validation);

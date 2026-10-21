@@ -39,6 +39,8 @@ gcloud run jobs delete outbound-ai-reliability --project=outbound-494602 --regio
 
 The script interleaves the actual assistant and full half-marathon planner for English, Simplified Chinese, and Spanish, three rounds, with three seconds between requests. It disables retries, fallback, and circuits within that process (`AI_RELIABILITY_BENCHMARK=true`); never enable that flag on the API service. Runtime schema, supported moments, and exact workout instruction coverage remain enforced. Logs contain metadata only. Successful schema validation is not a complete language or coaching-quality review.
 
+Set `AI_RELIABILITY_OPERATIONS=live_coach` to qualify only coaching, or leave it unset for both workloads. `AI_RELIABILITY_ROUNDS` also applies to failover mode (default one round there, three for direct mode).
+
 Set `AI_RELIABILITY_MODE=failover` and `AI_FALLBACK_MODEL=gemini-3.6-flash` in a separate job execution to force a nonexistent primary and verify real alternate responses through both product validators in all three languages. This checks the shared failover path, not a simulated successful response. Controlled 429/timeout checks cover the error classification. Qualification scripts return nonzero when any screening group fails.
 
 Initial screening gates: at least 95% first-attempt success, assistant p95 ≤8 seconds, coach p95 ≤25 seconds, and a valid response for every operation/locale. Latency percentiles use successful requests only; failures are reported separately and never excluded from the success rate. This small sample cannot establish an SLA. An alternate also needs sufficient latency headroom for its reserved deadline. Use production observations over several days before concluding sustained reliability; if Gemini misses these gates, evaluate GPT with the same fixtures before selecting it. ChatGPT/Codex subscription access is not an application API credential.
@@ -124,3 +126,24 @@ A separate forced-primary-404 run exercised the real Sol alternate: assistant 3/
 **Deployment decision:** no production model or traffic changes. Keep revision `outbound-api-00168-lb9` and failover disabled; do not promote the split based only on the passing direct run. Improve the coaching prompt while preserving its contract, then requalify before rollout. No prompt optimization was included in this credential/qualification task. The approved secret remains available for that follow-up. Both temporary qualification jobs were removed after collecting metadata. These small samples do not establish sustained availability or an SLA.
 
 Verification: documentation diff check passed; no application source changed and no test suite ran. Real-device playback was not verified.
+
+
+## Coaching prompt refinement (2026-10-20 America/Los_Angeles)
+
+Prompt version `2026-10-20.3` adds locale-specific bans and concrete target-directed alternatives for vague rhythm/posture wording, including Spanish. It asks for 12–18 English/Spanish words or 24–36 Chinese characters while retaining the existing hard prompt limits, complete moment/instruction coverage, phase specialization, safety priorities, and output schema. Context, reasoning level, deadlines, product rejection patterns, and deterministic fallbacks are unchanged. The version change invalidates prepared-plan cache fingerprints; stored active-session plans are not rewritten.
+
+The prior Spanish rejection had only a generic product-validation label; its exact cause cannot be established retrospectively. New failures emit only a closed policy reason through existing `ai_attempt` diagnostics, never rejected wording. Twenty representative accepted/rejected/whitespace/length inputs matched the previous validator exactly. TypeScript compilation passed; no test suite ran.
+
+Cloud image `us-central1-docker.pkg.dev/outbound-494602/cloud-run-source-deploy/outbound-coach-refinement@sha256:d3bf125183e35c789cf938a47539dedb4da6159d2009a86448e2f4a3fdc1ad08` built successfully. Requalification used the approved runtime identity and secret, actual half-marathon contract, three languages and three rounds per mode.
+
+| Refined-prompt workload | Valid responses | Successful-call p50 / p95 | Gate |
+| --- | --- | --- | --- |
+| Sol / direct coach | 8/9 | 18.59s / 24.16s | Failed: one 45-second timeout |
+| Sol / forced-fallback coach | 9/9 | 20.80s / 25.83s | Passed fallback's 45-second latency budget |
+| Sol / forced-fallback assistant | 9/9 | 3.12s / 4.18s | Passed |
+
+All 17 completed Sol coaching responses passed the unchanged product validators; one timed out. There were no wording rejections or 429s in this run. Sol coaching was 17/18 overall (94.4%) and direct success was 8/9, so the original Sol-coaching route remains blocked by the 95% gate. Shorter phrasing did not establish a reliable latency improvement. No failures were excluded or retried away.
+
+Luna coaching with the revised prompt passed 9/9 direct calls across the same three languages: p50 14.42s, p95 19.70s, no validation failures, timeouts, or 429s. This is a new prompt qualification; the old prompt's local Spanish failures remain historical evidence. Luna assistant's unchanged prompt previously passed 9/9 cloud calls (p95 3.06s). These are synthetic product-validator checks, not a full language-quality review or sustained-availability proof.
+
+The previously planned Sol coaching route remains blocked. A Luna assistant/coaching route is qualified for initial rollout with the existing bounded retries and reviewed deterministic fallback, without enabling an unqualified Sol coaching alternate. The owner was asked to choose Luna coaching versus retaining Sol as the target; production remains on revision `outbound-api-00168-lb9` until that choice. No prompt-output text or credentials entered source/logs. All temporary qualification jobs were removed after preserving metadata.
