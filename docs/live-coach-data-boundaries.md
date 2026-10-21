@@ -10,7 +10,7 @@ Gemini plans the workout once when the live-coach session starts. It does not ru
 iPhone session context
   -> authenticated Plainstride session creation
   -> bounded backend context compiler
-  -> Gemini 3.1 Pro preview (one strict-JSON plan)
+  -> Gemini 3.8 Flash (one strict-JSON plan)
   -> plan returned to iPhone
 
 iPhone moment detector + phrase ID + bounded live state
@@ -62,7 +62,7 @@ Gemini receives:
 - selected coach-persona instructions in the system instruction;
 - a strict JSON response schema.
 
-The configured model is `gemini-3.1-pro-preview` with high thinking. Planning has a 20-second deadline and happens once per session. The response must contain a summary, progress cadence, one to three short phrases for every reactive moment, and exactly one localized phrase for every required selected-workout instruction ID. Phrases should be distinct and grounded in the moment and workout; duplicates or unknown instruction IDs invalidate the response. Invalid, timed-out, disabled, or unavailable planning produces a deterministic local plan; workout start is not failed solely because Gemini failed.
+The configured model is `gemini-3.8-flash` with high thinking. Planning has a 20-second deadline and happens once per session. The response must contain a summary, progress cadence, one to three short phrases for every reactive moment, and exactly one localized phrase for every required selected-workout instruction ID. Phrases should be distinct and grounded in the moment and workout; duplicates or unknown instruction IDs invalidate the response. Invalid, timed-out, disabled, or unavailable planning produces a deterministic local plan; workout start is not failed solely because Gemini failed.
 
 Gemini must not repeat private bio, health, location, survey, or weather facts in spoken phrases. Those fields may influence safety, tone, focus, timing, and advice only. Readiness is current for planner purposes for 36 hours; weather must have been observed within three hours. A fresh illness/pain or unsafe-weather flag can force fixed-only audio; stale flags do not block dynamic planning.
 

@@ -160,7 +160,7 @@ async function chooseWithGemini(context: unknown): Promise<z.infer<typeof output
   const timeout = setTimeout(() => controller.abort(), Number(process.env.AI_PLANNING_DEADLINE_MILLISECONDS) || 20_000);
   try {
     const response = await client.models.generateContent({
-      model: process.env.AI_PLANNING_MODEL || "gemini-3.1-pro-preview",
+      model: process.env.AI_PLANNING_MODEL || "gemini-3.8-flash",
       contents: JSON.stringify({
         task: "Select the safest useful near-term training-plan candidate and explain it without diagnosis. Weigh current safety/readiness, the deterministic plan-fit assessment, repeated recent activity, completion quality, perceived effort, and the upcoming workout sequence together. Do not treat one missed workout, one unusually strong activity, or an old plan prescription as decisive by itself.",
         evidenceRules: [

@@ -121,7 +121,7 @@ Conversation transcripts are not durable runner memory. The backend stores a bou
   - fall back again to deterministic local copy so the UI still works everywhere
 - Generic provider failure text such as `Sorry, something went wrong. Please try again.` is treated as unusable and falls through to deterministic local copy; backend transport errors are logged under the `Assistant` OSLog category for device debugging.
 - Backend chat keeps provider keys on the server rather than in the iOS app.
-- The current assistant backend path follows the BoatShare pattern: OpenAI-compatible server-side calls to DeepSeek with JSON-shaped responses for predictable parsing.
+- The assistant backend uses the Google GenAI SDK with `gemini-3.8-flash` (override with `APP_AI_MODEL`), low thinking, schema-constrained JSON, and a 20-second deadline. Authentication uses `GEMINI_API_KEY` locally or Vertex runtime identity via `GEMINI_VERTEX_PROJECT_ID`/`GOOGLE_CLOUD_PROJECT`; `APP_AI_KEY` and `APP_AI_BASE_URL` are no longer used for assistant calls. Existing bounded context, action permissions, and local fallbacks remain unchanged.
 - When Firebase auth and `DATABASE_URL` are available, the backend assistant route enriches each chat request with read-only, typed activity tools:
   - resolves the authenticated app user on the server
   - reads recent synced activity summaries through Prisma

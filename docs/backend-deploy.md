@@ -7,7 +7,7 @@ Open this when deploying or reconfiguring the GCP backend for Outbound.
 - Backend source lives in `backend/`.
 - Runtime target is Google Cloud Run.
 - The backend is now built as a standard Node service from `backend/Dockerfile`.
-- Assistant chat works without a database as long as `APP_AI_KEY` is configured.
+- Assistant chat uses `gemini-3.8-flash` through Vertex runtime identity (or `GEMINI_API_KEY` locally). Set `APP_AI_MODEL` to override the assistant model.
 - Database-backed routes intentionally return `503` when `DATABASE_URL` is unset.
 - Repo-local npm installs should use the committed `.npmrc`, which points this repo at the public npm registry instead of a machine-level override.
 - Production Postgres lives on the dedicated, private Cloud SQL instance `outbound-494602:us-central1:outbound-db`.
@@ -114,7 +114,7 @@ Useful overrides:
 
 The script runs a local backend build first, deploys `backend/` to Cloud Run with the dedicated identity, private VPC egress, Secret Manager bindings, and concurrency 100. A normal deploy explicitly routes production traffic to the latest ready revision before checking `/health`, preventing a stale pinned revision from making a new deploy look successful. Passing `--no-traffic` preserves candidate-only behavior for guarded rollout scripts. For the canonical production target (`outbound-494602/outbound-api`), its defaults are the approved production profile: one warm instance, a three-instance ceiling, dynamic live coaching at 100%, founding/trial access, planner enabled, and the published `2026-09-08.1` audio pack. Other project/service targets retain the fail-closed minimal-cost defaults: scale to zero, a one-instance ceiling, and live coaching disabled. Every setting remains explicitly overrideable. The health probe retries transient HTTP and connection failures five times at five-second intervals by default; override `HEALTH_CHECK_RETRIES` or `HEALTH_CHECK_RETRY_DELAY_SECONDS` when needed.
 
-Adaptive planning uses Vertex AI through the runtime service account. Production deploys explicitly set `AI_PLANNING_ENABLED=true`, `AI_PLANNING_MODEL=gemini-3.1-pro-preview`, `AI_PLANNING_DEADLINE_MILLISECONDS=20000`, `GEMINI_VERTEX_PROJECT_ID=outbound-494602`, and `GEMINI_VERTEX_LOCATION=global`. Redeploy with `AI_PLANNING_ENABLED=false ./scripts/deploy-backend-gcloud.sh` for the immediate AI-planning kill switch; deterministic planning remains available.
+Adaptive planning uses Vertex AI through the runtime service account. Production deploys explicitly set `AI_PLANNING_ENABLED=true`, `AI_PLANNING_MODEL=gemini-3.8-flash`, `AI_PLANNING_DEADLINE_MILLISECONDS=20000`, `GEMINI_VERTEX_PROJECT_ID=outbound-494602`, and `GEMINI_VERTEX_LOCATION=global`. Redeploy with `AI_PLANNING_ENABLED=false ./scripts/deploy-backend-gcloud.sh` for the immediate AI-planning kill switch; deterministic planning remains available.
 
 ## Daily Planning Maintenance
 
@@ -227,7 +227,7 @@ LIVE_COACH_FOUNDING_USER_LIMIT=1000 \
 LIVE_COACH_TRIAL_RUN_LIMIT=3 \
 LIVE_COACH_PAID_MODE_READY=false \
 LIVE_COACH_PLANNER_ENABLED=true \
-GEMINI_LIVE_COACH_PLANNER_MODEL=gemini-3.1-pro-preview \
+GEMINI_LIVE_COACH_PLANNER_MODEL=gemini-3.8-flash \
 GEMINI_VERTEX_PROJECT_ID=outbound-494602 \
 GEMINI_VERTEX_LOCATION=global \
 GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS=20000 \

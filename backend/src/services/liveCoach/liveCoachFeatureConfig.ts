@@ -75,7 +75,7 @@ export function loadLiveCoachFeatureConfig(env: NodeJS.ProcessEnv = process.env)
     deploymentRegion: trimmed(env.PLAINSTRIDE_DEPLOYMENT_REGION) || "us-central1",
     planner: {
       enabled: env.LIVE_COACH_PLANNER_ENABLED === "true",
-      model: trimmed(env.GEMINI_LIVE_COACH_PLANNER_MODEL) || "gemini-3.1-pro-preview",
+      model: trimmed(env.GEMINI_LIVE_COACH_PLANNER_MODEL) || "gemini-3.8-flash",
       projectId: trimmed(env.GEMINI_VERTEX_PROJECT_ID)
         || trimmed(env.GOOGLE_CLOUD_PROJECT)
         || trimmed(env.GCLOUD_PROJECT),

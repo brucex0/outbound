@@ -1,4 +1,5 @@
 
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import Anthropic from "@anthropic-ai/sdk";
 import { gpt4oMiniTranscribe } from "./ai-transcribe.js";
 import { parseUtteranceCommand } from "./commandParser.js";
@@ -39,7 +40,7 @@ type AssistantChatMessage = {
   capability?: AssistantCapability;
 };
 
-type DeepSeekAssistantResponse = {
+type AssistantResponse = {
   message: string;
 };
 
@@ -105,14 +106,6 @@ export async function generateAssistantReply(input: {
   activityContext?: AssistantActivityToolContext | null;
   locale: SupportedLocale;
 }): Promise<string> {
-  const apiKey = process.env.APP_AI_KEY;
-  const baseUrl = (process.env.APP_AI_BASE_URL || "https://api.deepseek.com").replace(/\/+$/, "");
-  const model = process.env.APP_AI_MODEL || "deepseek-chat";
-
-  if (!apiKey) {
-    throw new Error("APP_AI_KEY is not configured");
-  }
-
   const systemPrompt = `You are Plainstride's in-app assistant.
 You help with product discovery, navigation, support, brainstorming, and planning.
 Be concise, warm, and specific to Plainstride.
@@ -151,38 +144,8 @@ ${input.prompt}
 
 Respond in 2 to 4 short paragraphs. Keep it compact and actionable.`;
 
-  const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.3,
-      max_tokens: 700,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`DeepSeek assistant request failed: ${response.status} ${errorBody}`);
-  }
-
-  const payload = await response.json() as {
-    choices?: Array<{ message?: { content?: string | null } }>;
-  };
-  const content = payload.choices?.[0]?.message?.content?.trim();
-  if (!content) {
-    throw new Error("DeepSeek assistant returned empty content");
-  }
-
-  const parsed = JSON.parse(content) as DeepSeekAssistantResponse;
+  const content = await generateAssistantJSON(systemPrompt, userPrompt, 700, 0.3);
+  const parsed = JSON.parse(content) as AssistantResponse;
   return parsed.message?.trim() || "";
 }
 
@@ -193,11 +156,6 @@ export async function generateCompanionMessage(input: {
   actionStatus?: string | null;
   locale: SupportedLocale;
 }): Promise<string> {
-  const apiKey = process.env.APP_AI_KEY;
-  const baseUrl = (process.env.APP_AI_BASE_URL || "https://api.deepseek.com").replace(/\/+$/, "");
-  const model = process.env.APP_AI_MODEL || "deepseek-chat";
-  if (!apiKey) throw new Error("APP_AI_KEY is not configured");
-
   const systemPrompt = `You are Plainstride's single running companion.
 Use only the compiled, provenance-bearing context supplied below.
 Never claim an action happened unless actionStatus is executed.
@@ -217,27 +175,48 @@ Be warm, concise, and practical. ${localeInstruction(input.locale)} Return JSON 
     actionStatus: input.actionStatus ?? null,
     userRequest: input.prompt,
   };
-  const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model,
-      temperature: 0.2,
-      max_tokens: 600,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: JSON.stringify(payload) },
-      ],
-    }),
-  });
-  if (!response.ok) throw new Error(`Companion model request failed: ${response.status}`);
-  const responsePayload = await response.json() as { choices?: Array<{ message?: { content?: string | null } }> };
-  const content = responsePayload.choices?.[0]?.message?.content?.trim();
-  if (!content) throw new Error("Companion model returned empty content");
+  const content = await generateAssistantJSON(systemPrompt, JSON.stringify(payload), 600, 0.2);
   const parsed = JSON.parse(content) as { message?: string };
   if (!parsed.message?.trim()) throw new Error("Companion model returned an invalid message");
   return parsed.message.trim();
+}
+
+// Match the planning provider: API key locally, runtime service identity on Vertex.
+async function generateAssistantJSON(systemInstruction: string, contents: string, maxOutputTokens: number, temperature: number): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  const project = process.env.GEMINI_VERTEX_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT;
+  if (!apiKey && !project) throw new Error("Gemini assistant requires GEMINI_API_KEY or GEMINI_VERTEX_PROJECT_ID");
+  const gemini = apiKey ? new GoogleGenAI({ apiKey, apiVersion: "v1beta" }) : new GoogleGenAI({
+    vertexai: true, project, location: process.env.GEMINI_VERTEX_LOCATION || "global", apiVersion: "v1beta1",
+  });
+  const startedAt = Date.now();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20_000);
+  try {
+    const response = await gemini.models.generateContent({
+      model: process.env.APP_AI_MODEL || "gemini-3.8-flash",
+      contents,
+      config: {
+        systemInstruction, abortSignal: controller.signal,
+        responseMimeType: "application/json",
+        responseJsonSchema: { type: "object", properties: { message: { type: "string" } }, required: ["message"] },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        // Thinking tokens share the output budget; reserve space for reasoning plus the reply.
+        maxOutputTokens: maxOutputTokens + 4_096, temperature,
+      },
+    });
+    const content = response.text?.trim();
+    if (!content) throw new Error("Gemini assistant returned empty content");
+    const parsed = JSON.parse(content) as AssistantResponse;
+    if (!parsed.message?.trim()) throw new Error("Gemini assistant returned an invalid message");
+    console.info("assistant_generation", { outcome: "success", latencyBucket: Date.now() - startedAt < 5_000 ? "under_5s" : "5s_or_more" });
+    return content;
+  } catch (error) {
+    // Never log provider messages/bodies: they may contain runner context.
+    const status = error instanceof Error && "status" in error && typeof error.status === "number" ? error.status : undefined;
+    console.error("assistant_generation", { outcome: "failure", operation: "gemini_generate_content", status, category: controller.signal.aborted ? "timeout" : "provider_or_response_error" });
+    throw new Error(`Gemini assistant generation failed${status ? ` (HTTP ${status})` : ""}`);
+  } finally { clearTimeout(timeout); }
 }
 
 function formatActivityContextForPrompt(context: AssistantActivityToolContext | null | undefined): string {

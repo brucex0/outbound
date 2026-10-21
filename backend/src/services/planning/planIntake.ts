@@ -210,7 +210,7 @@ async function interpretWithGemini(
   const timeout = setTimeout(() => controller.abort(), Number(process.env.AI_PLANNING_DEADLINE_MILLISECONDS) || 20_000);
   try {
     const response = await client.models.generateContent({
-      model: process.env.AI_PLANNING_MODEL || "gemini-3.1-pro-preview",
+      model: process.env.AI_PLANNING_MODEL || "gemini-3.8-flash",
       contents: JSON.stringify({
         task: "Extract only explicit goal facts from the runner's latest message. Use knownContext to make the acknowledgement relevant and avoid asking for facts Plainstride already knows, but never copy knownContext into recognizedFields. Return null for any field that appears only in currentDraft or knownContext.",
         locale,

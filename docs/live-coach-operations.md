@@ -49,7 +49,7 @@ Later that day, a simulated Responsive session showed why request duration must 
 - Scaling: minimum 1 warm instance, maximum 3
 - Audio mode/rollout: `dynamic`, 100%, config version `2`
 - Access: `founding_trial`, first 1,000 accounts, three later trial runs
-- Planner: enabled, `gemini-3.1-pro-preview`, Vertex `global`
+- Planner: enabled, `gemini-3.8-flash`, Vertex `global`
 - TTS: enabled, Chirp 3 HD through `us-texttospeech.googleapis.com`
 - Locales/voices: English and Simplified Chinese; `plainstride_warm_1` and `plainstride_clear_1`
 - Fixed pack: signed `2026-09-08.1` manifest; 216 two-voice assets are published, while the enabled EN/ZH subset uses 144
@@ -88,7 +88,7 @@ GOOGLE_CLOUD_TTS_ENDPOINT_KEY=google-cloud-tts-us
 GOOGLE_CLOUD_TTS_DEPLOYMENT_REGION=us
 GOOGLE_CLOUD_TTS_MODEL=chirp3-hd
 LIVE_COACH_PLANNER_ENABLED=true
-GEMINI_LIVE_COACH_PLANNER_MODEL=gemini-3.1-pro-preview
+GEMINI_LIVE_COACH_PLANNER_MODEL=gemini-3.8-flash
 GEMINI_VERTEX_PROJECT_ID=outbound-494602
 GEMINI_VERTEX_LOCATION=global
 GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS=20000
