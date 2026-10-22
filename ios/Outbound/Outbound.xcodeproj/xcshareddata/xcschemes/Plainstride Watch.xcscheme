@@ -47,7 +47,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "W20000000000000000000009"
             BuildableName = "Plainstride Watch.app"
-            BlueprintName = "Plainstride Watch"
             ReferencedContainer = "container:Outbound.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -64,7 +63,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "W20000000000000000000009"
             BuildableName = "Plainstride Watch.app"
-            BlueprintName = "Plainstride Watch"
             ReferencedContainer = "container:Outbound.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
