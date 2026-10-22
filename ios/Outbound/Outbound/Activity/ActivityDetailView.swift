@@ -1938,7 +1938,7 @@ private struct ShareRouteError: Identifiable {
     let message: String
 }
 
-private struct ActivitySharePreview: View {
+struct ActivitySharePreview: View {
     @Environment(\.dismiss) private var dismiss
     let image: UIImage
     let onAction: (String) -> Void

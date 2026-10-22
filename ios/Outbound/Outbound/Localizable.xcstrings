@@ -1190,6 +1190,28 @@
         }
       }
     },
+    "activity.post_save.share_failed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t prepare activity to share. Try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo preparar la actividad para compartir. Inténtalo de nuevo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法生成活动分享卡片，请重试。"
+          }
+        }
+      }
+    },
     "activity.post_save.message": {
       "comment": "[android:activity] [android:recording_post_save] Warm message shown after a workout has been durably saved.",
       "localizations": {

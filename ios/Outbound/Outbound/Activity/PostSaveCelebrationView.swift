@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreLocation
+import OSLog
 
 struct PostSaveCelebrationView: View {
     let activity: SavedActivity
@@ -21,16 +22,7 @@ struct PostSaveCelebrationView: View {
                     .foregroundStyle(Color(red: 0.11, green: 0.16, blue: 0.22))
                     .accessibilityAddTraits(.isHeader)
 
-                Button(action: onContinue) {
-                    Text(String(localized: "activity.post_save.done", defaultValue: "Done"))
-                        .font(.headline)
-                        .frame(minWidth: 112, minHeight: 48)
-                        .padding(.horizontal, 14)
-                        .foregroundStyle(.white)
-                        .background(Color(red: 0.94, green: 0.35, blue: 0.13), in: Capsule())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("PostSaveCelebrationDoneButton")
+                PostSaveActivityActions(activity: activity, onDone: onContinue)
             }
             .padding(.horizontal, 24)
         }
@@ -296,5 +288,108 @@ private struct PostcardRunner: View {
             context.stroke(limbs, with: .color(navy), style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
         }
         .rotationEffect(.degrees(isReducedMotion ? 0 : 5))
+    }
+}
+
+/// Owns sharing presentation so dismissing the preview preserves the post-save page.
+struct PostSaveActivityActions: View {
+    let activity: SavedActivity
+    let onDone: () -> Void
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+    @Environment(\.analyticsManager) private var analyticsManager
+    @State private var shareImage: UIImage?
+    @State private var isPreparing = false
+    @State private var toastMessage: String?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button(action: prepareShare) {
+                HStack {
+                    if isPreparing { ProgressView() }
+                    Label(String(localized: "activity.share.more", defaultValue: "Share…"), systemImage: "square.and.arrow.up")
+                }
+                .frame(maxWidth: .infinity, minHeight: 48)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isPreparing)
+            .accessibilityIdentifier("PostSaveCelebrationShareButton")
+
+            Button(String(localized: "activity.post_save.done", defaultValue: "Done"), action: onDone)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("PostSaveCelebrationDoneButton")
+        }
+        .sheet(isPresented: Binding(
+            get: { shareImage != nil },
+            set: { if !$0 { shareImage = nil } }
+        )) {
+            if let shareImage {
+                ActivitySharePreview(image: shareImage) { result in
+                    track(.init(.activityShareAction, properties: [
+                        .sourceType: .string("post_save"), .result: .string(result)
+                    ]))
+                }
+            }
+        }
+        .overlay(alignment: .top) {
+            if let toastMessage {
+                Text(toastMessage)
+                    .font(.subheadline.weight(.semibold))
+                    .padding(12)
+                    .background(.regularMaterial, in: Capsule())
+                    .offset(y: -60)
+                    .accessibilityAddTraits(.updatesFrequently)
+            }
+        }
+        .task(id: toastMessage) {
+            guard toastMessage != nil else { return }
+            try? await Task.sleep(for: .seconds(3))
+            toastMessage = nil
+        }
+    }
+
+    private func prepareShare() {
+        guard !isPreparing else { return }
+        isPreparing = true
+        Task { @MainActor in
+            defer { isPreparing = false }
+            let referralURL: URL
+            do {
+                referralURL = try await APIClient.shared.createReferralLink().url
+            } catch {
+                // Referral generation is optional; sharing works with the public invitation URL offline.
+                guard !isCancellation(error) else { return }
+                let failure = error as NSError
+                Logger(subsystem: Bundle.main.bundleIdentifier ?? "Plainstride", category: "ActivityShare")
+                    .error("Post-save referral link failed; using public link domain=\(failure.domain, privacy: .public) code=\(failure.code)")
+                referralURL = PlainstrideLinks.appInvitation
+            }
+            do {
+                shareImage = try await ActivityShareCardRenderer.renderCard(
+                    activity: activity,
+                    unitSystem: measurementPreferences.unitSystem,
+                    referralURL: referralURL
+                )
+                track(.init(.activitySharePreviewed, properties: [.sourceType: .string("post_save")]))
+            } catch {
+                guard !isCancellation(error) else { return }
+                let failure = error as NSError
+                Logger(subsystem: Bundle.main.bundleIdentifier ?? "Plainstride", category: "ActivityShare")
+                    .error("Post-save share card failed domain=\(failure.domain, privacy: .public) code=\(failure.code)")
+                toastMessage = String(localized: "activity.post_save.share_failed", defaultValue: "Couldn’t prepare activity to share. Try again.")
+                track(.init(.activityShareAction, properties: [
+                    .sourceType: .string("post_save"), .result: .string("prepare_failed")
+                ]))
+            }
+        }
+    }
+
+    private func isCancellation(_ error: Error) -> Bool {
+        error is CancellationError || (error as? URLError)?.code == .cancelled
+    }
+
+    private func track(_ event: ProductAnalyticsEvent) {
+        guard let analyticsManager else { return }
+        Task { await analyticsManager.track(event) }
     }
 }

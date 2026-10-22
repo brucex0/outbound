@@ -271,6 +271,8 @@ struct PostWorkoutStretchView: View {
                             .multilineTextAlignment(.center)
                             .accessibilityAddTraits(.isHeader)
 
+                        PostSaveActivityActions(activity: activity) { finish("not_started") }
+
                         Text(stretchText("post_workout_stretch.offer_title", "A gentle reset?"))
                             .font(.title2.bold())
                             .padding(.top, 4)
@@ -318,9 +320,6 @@ struct PostWorkoutStretchView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .frame(maxWidth: .infinity, minHeight: 52)
-
-                        Button(stretchText("post_workout_stretch.done", "Done")) { finish("not_started") }
-                            .frame(minHeight: 48)
 
                         Text(stretchText("post_workout_stretch.disclaimer", "General wellness guidance. Stop if you feel pain, dizziness, or unusual discomfort."))
                             .font(.footnote)
