@@ -366,4 +366,4 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 
 - Phone finish/save events include `moving_time_method=gps_observations_v2` to distinguish timestamped stop accounting from the earlier timer-polled implementation. This is an implementation enum, never a location or raw observation.
 
-- iOS `activity_share_previewed` includes `count_bucket` for the coarse number of geotagged photos eligible for route annotations; it excludes photo content, identifiers, and coordinates. Off-map or unavailable thumbnails may be omitted from the rendered card.
+- iOS and Android `activity_share_previewed` include `count_bucket` for the coarse number of geotagged photos eligible for route annotations; it excludes photo content, identifiers, and coordinates. Off-map or unavailable thumbnails may be omitted from the rendered card.
