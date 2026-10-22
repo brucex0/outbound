@@ -96,4 +96,6 @@
     <string name="activity_updated">Activity updated</string>
     <string name="activity_metric_elapsed_time">Elapsed Time</string>
     <string name="activity_metric_avg_speed">Avg Speed</string>
+    <string name="activity_share_prepare_failed">Couldn’t prepare activity to share. Try again.</string>
+    <string name="activity_share_save_failed">Couldn’t save image. Try again.</string>
 </resources>

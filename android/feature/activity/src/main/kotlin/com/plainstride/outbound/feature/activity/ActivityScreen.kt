@@ -322,7 +322,7 @@ fun ActivityHistoryRoute(
         onEdit = viewModel::editTitle,
         onDelete = viewModel::deleteSelected,
         onShareCard = { viewModel.shareCard(selected, unitSystem) },
-        onShareAction = viewModel::trackShareAction,
+        onShareAction = { viewModel.trackShareAction(it) },
         onCalorieExposure = viewModel::trackCalorieExposure,
         onCadenceExposure = viewModel::trackCadenceExposure,
         onPublishRoute = onPublishRoute,
@@ -960,6 +960,51 @@ private fun ActivityPhotoLightbox(
     }
 }
 
+/** Reuses the detail renderer and preview without navigating away from the saved-activity page. */
+@Composable
+fun ActivitySharingPreview(
+    activity: SavedActivity,
+    unitSystem: MeasurementUnitSystem,
+    sourceType: String,
+    onClose: () -> Unit,
+    viewModel: ActivityViewModel = hiltViewModel(key = "post_save_activity_sharing"),
+) {
+    val context = LocalContext.current
+    var export by remember(activity.id) { mutableStateOf<ActivityExport?>(null) }
+    LaunchedEffect(activity.id) {
+        export = viewModel.shareCard(activity, unitSystem, sourceType)
+        if (export == null) {
+            Toast.makeText(context, R.string.activity_share_prepare_failed, Toast.LENGTH_SHORT).show()
+            viewModel.trackShareAction("prepare_failed", sourceType)
+            onClose()
+        }
+    }
+    val prepared = export
+    if (prepared == null) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = onClose) { CircularProgressIndicator() }
+    } else {
+        SharePreviewDialog(
+            export = prepared,
+            close = onClose,
+            save = {
+                val succeeded = context.saveImage(prepared)
+                Toast.makeText(context, if (succeeded) R.string.activity_share_image_saved else R.string.activity_share_save_failed, Toast.LENGTH_SHORT).show()
+                viewModel.trackShareAction(if (succeeded) "saved_to_photos" else "save_failed", sourceType)
+            },
+            share = {
+                try {
+                    context.shareExport(prepared)
+                    viewModel.trackShareAction("share_sheet_opened", sourceType)
+                } catch (error: Exception) {
+                    android.util.Log.e("ActivityShare", "Open share sheet failed type=${error.javaClass.simpleName}")
+                    Toast.makeText(context, R.string.activity_share_prepare_failed, Toast.LENGTH_SHORT).show()
+                    viewModel.trackShareAction("share_failed", sourceType)
+                }
+            },
+        )
+    }
+}
+
 @Composable private fun SharePreviewDialog(export: ActivityExport, close:()->Unit, save:()->Unit, share:()->Unit) {
     val context=LocalContext.current
     val bitmap=remember(export.uri){context.contentResolver.openInputStream(export.uri)?.use(BitmapFactory::decodeStream)}
@@ -976,6 +1021,8 @@ private fun Context.saveImage(export: ActivityExport): Boolean = runCatching {
     val input = requireNotNull(contentResolver.openInputStream(export.uri))
     val output = requireNotNull(contentResolver.openOutputStream(destination))
     input.use { source -> output.use(source::copyTo) }
+}.onFailure { error ->
+    android.util.Log.e("ActivityShare", "Save share image failed type=${error.javaClass.simpleName}")
 }.isSuccess
 
 @Composable private fun ActivityTypeBadge(type: ActivityType) = Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer) {

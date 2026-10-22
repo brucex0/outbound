@@ -1,6 +1,8 @@
 package com.plainstride.outbound.feature.recording
 
 import android.animation.ValueAnimator
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.foundation.layout.width
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
@@ -9,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,7 +20,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +58,7 @@ fun PostSaveCelebration(
     track: List<RecordedLocationSample>,
     sessionKey: String,
     onDone: () -> Unit,
+    onShare: () -> Unit,
 ) {
     val accessibilityLabel = stringResource(R.string.recording_post_save_accessibility)
 
@@ -81,14 +86,7 @@ fun PostSaveCelebration(
             fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
         )
         Spacer(Modifier.height(22.dp))
-        Button(
-            onClick = onDone,
-            modifier = Modifier.widthIn(min = 112.dp).height(48.dp),
-            shape = RoundedCornerShape(50),
-            colors = ButtonDefaults.buttonColors(containerColor = PostcardOrange, contentColor = Color.White),
-        ) {
-            Text(stringResource(R.string.recording_post_save_done), fontSize = 16.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-        }
+        PostSaveActivityActions(onShare = onShare, onDone = onDone)
     }
 }
 
@@ -269,4 +267,24 @@ private fun DrawScope.drawSundaeBurst(center: Offset, progress: Float, opacity: 
     }
     drawPath(stem, Color(0xFF337A4F).copy(alpha = opacity), style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
     drawCircle(Color(0xFFE0344D).copy(alpha = opacity), 4.5.dp.toPx(), Offset(center.x + 7.5.dp.toPx(), center.y - 31.5.dp.toPx()))
+}
+
+@Composable
+internal fun PostSaveActivityActions(onShare: () -> Unit, onDone: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Button(onClick = onShare, modifier = Modifier.weight(1f).height(48.dp)) {
+            Icon(
+                androidx.compose.material.icons.Icons.Outlined.Share,
+                contentDescription = null,
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(com.plainstride.outbound.feature.activity.R.string.activity_share))
+        }
+        OutlinedButton(onClick = onDone, modifier = Modifier.weight(1f).height(48.dp)) {
+            Text(stringResource(R.string.recording_post_save_done))
+        }
+    }
 }

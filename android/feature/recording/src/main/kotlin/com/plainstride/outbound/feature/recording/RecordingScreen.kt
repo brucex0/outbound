@@ -147,6 +147,8 @@ import com.plainstride.outbound.core.designsystem.PlainstrideRouteMap
 import com.plainstride.outbound.core.model.activity.ActivityType
 import com.plainstride.outbound.core.model.activity.DistanceUnit
 import com.plainstride.outbound.core.model.activity.ElevationUnit
+import com.plainstride.outbound.core.model.activity.SavedActivity
+import com.plainstride.outbound.feature.activity.ActivitySharingPreview
 import com.plainstride.outbound.core.model.activity.MeasurementUnitSystem
 import com.plainstride.outbound.core.model.activity.SharedLiveRun
 import com.plainstride.outbound.core.model.activity.SessionFormatting
@@ -218,6 +220,8 @@ fun RecordingRoute(
     var postSaveReview by remember { mutableStateOf<RecordedActivityReview?>(null) }
     var postSavePhotoAlbumExport by remember { mutableStateOf<ActivityPhotoAlbumExportResult?>(null) }
     var postSaveCelebrationReview by remember { mutableStateOf<RecordedActivityReview?>(null) }
+    var postSaveActivity by remember { mutableStateOf<SavedActivity?>(null) }
+    var showPostSaveShare by remember { mutableStateOf(false) }
     var didDismissPostSaveCelebration by remember { mutableStateOf(false) }
     val saveSnackbar = remember { SnackbarHostState() }
     val saveFailedMessage = stringResource(R.string.recording_save_failed)
@@ -275,6 +279,7 @@ fun RecordingRoute(
             scope.launch {
                 val result = viewModel.saveFinished(review, exportPhoto, weightKilograms)
                 if (result.saved) {
+                    postSaveActivity = requireNotNull(result.activity)
                     postSaveIndoor = ui.launch.indoor
                     viewModel.markSaved()
                     onSavedSideEffects(review)
@@ -713,6 +718,7 @@ fun RecordingRoute(
             val review = requireNotNull(postSaveReview)
             val export = postSavePhotoAlbumExport
             PostWorkoutStretchRoute(
+                onShare = { showPostSaveShare = true },
                 fetchAudio = viewModel::fetchStretchAudio,
                 isIndoor = postSaveIndoor,
                 kind = requireNotNull(postSaveStretchKind),
@@ -734,11 +740,20 @@ fun RecordingRoute(
             PostSaveCelebration(
                 track = review.snapshot.track,
                 sessionKey = review.snapshot.sessionId ?: review.snapshot.recordedAtEpochMilliseconds.toString(),
+                onShare = { showPostSaveShare = true },
                 onDone = ::finishPostSaveCelebration,
             )
         } else {
             content()
             SnackbarHost(saveSnackbar, Modifier.align(Alignment.BottomCenter))
+        }
+        if (showPostSaveShare && postSaveActivity != null) {
+            ActivitySharingPreview(
+                activity = requireNotNull(postSaveActivity),
+                unitSystem = unitSystem,
+                sourceType = "post_save",
+                onClose = { showPostSaveShare = false },
+            )
         }
         if (isOffline && postSaveStretchKind == null && postSaveCelebrationReview == null) {
             Surface(

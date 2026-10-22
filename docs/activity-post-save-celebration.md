@@ -20,14 +20,14 @@ Give each saved activity a brief, personal moment of recognition. The celebratio
 - Respect Reduce Motion / system animator duration scale: show the completed route, mascot pose, and fully formed sundae without tracing, movement, or flying sprinkles; fade the sundae after a short pause. Do not play sound or haptics in V1.
 - Keep user-authored content and route coordinates out of analytics. Record a bounded `activity_post_save_celebration` feature exposure and stretch funnel events with only activity type, stable routine ID, and bounded dismissal result.
 
-## Quick Sharing (iOS)
+## Quick Sharing
 
 - After a durable save, show Share beside Done below the celebration message, above any stretch choices. Both celebration-only and stretch-eligible activities use the same actions.
 - Share opens the existing activity-card preview with Save Image and the system share sheet. Closing either sharing surface retains the celebration and selected stretch routine. Saving and Done do not depend on sharing or backend sync.
 - Card preparation disables duplicate Share taps; a preparation failure shows a temporary localized toast and allows retry. Optional referral-link failure falls back to the public invitation URL.
 - Existing `activity_share_previewed` and `activity_share_action` events use `source_type=post_save`; no activity IDs, route coordinates, exact metrics, or content are emitted.
-- Android retains its current post-save actions pending parity work.
-- Verification: iOS Simulator build-only compile passed; no tests run. Manual device checks remain for preview dismissal retaining the stretch choice, offline sharing, and both post-save layouts.
+- Android uses the same Share/Done placement in both post-save layouts, returning the locally persisted activity from save directly to the existing Android card renderer and preview. The preview offers Save Image and the system share sheet without navigating to history. Preparation, image-save, and share-launch failures show localized temporary toasts and safe diagnostics.
+- Verification: iOS Simulator build-only compile and Android `:app:assembleDebug` passed; no tests run. Manual device checks remain on both platforms for preview dismissal retaining the stretch choice, offline sharing, and both post-save layouts.
 
 ## Platform Status
 

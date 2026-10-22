@@ -35,6 +35,7 @@ import com.plainstride.outbound.core.model.activity.ActivityCompanionType
 import com.plainstride.outbound.core.model.activity.ActivityPhoto
 import com.plainstride.outbound.core.model.activity.ActivityReflection
 import com.plainstride.outbound.core.model.activity.ActivityType
+import com.plainstride.outbound.core.model.activity.SavedActivity
 import com.plainstride.outbound.core.model.activity.MeasurementUnitSystem
 import com.plainstride.outbound.core.model.activity.WorkoutCalorieEstimator
 import com.plainstride.outbound.core.network.AccessTokenProvider
@@ -64,6 +65,7 @@ data class RecordingUiState(
 data class RecordedActivitySaveResult(
     val saved: Boolean,
     val photoAlbumExport: ActivityPhotoAlbumExportResult? = null,
+    val activity: SavedActivity? = null,
 )
 
 @HiltViewModel
@@ -638,7 +640,7 @@ class RecordingViewModel @Inject constructor(
             val shortSession = snapshot.elapsedSeconds <= 600
             val reflectionTitle = context.getString(if (shortSession) R.string.recording_reflection_promise_title else R.string.recording_nice_work)
             val reflectionBody = context.getString(if (shortSession) R.string.recording_reflection_promise_body else R.string.recording_reflection_body)
-            activities.save(base.copy(
+            val savedActivity = base.copy(
                 title = savedActivityTitle(mutableState.value.launch),
                 companionType = mutableState.value.launch.companionType,
                 gearJson=mutableState.value.launch.gearId?.let { "{\"id\":\"$it\"}" },
@@ -653,7 +655,8 @@ class RecordingViewModel @Inject constructor(
                     progressNote = mutableState.value.launch.workoutGuideline?.takeIf(String::isNotBlank),
                 ),
                 photos = photos,
-            ))
+            )
+            activities.save(savedActivity)
             syncScheduler.schedule(accountId)
             val photoAlbumExport = if (savePhotoToAlbum && sourcePhotos.isNotEmpty()) {
                 runCatching {
@@ -695,7 +698,7 @@ class RecordingViewModel @Inject constructor(
                 AnalyticsProperty.GroupRunEnabled to (startedWithGroup || currentLaunch.activityEventId != null),
                 AnalyticsProperty.DogCompanionEnabled to (currentLaunch.companionType != null),
             )))
-            RecordedActivitySaveResult(saved = true, photoAlbumExport = photoAlbumExport)
+            RecordedActivitySaveResult(saved = true, photoAlbumExport = photoAlbumExport, activity = savedActivity)
         }.getOrElse {
             persistedPhotoPaths.forEach(media::delete)
             analytics.record(AnalyticsEvent("activity_saved_locally", mapOf(AnalyticsProperty.Result to "failure")))

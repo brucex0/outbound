@@ -252,11 +252,15 @@ class ActivityViewModel @Inject constructor(
             AnalyticsProperty.CountBucket to photoAnnotationCountBucket(activity.photos.count { it.latitude != null && it.longitude != null }),
         )))
         ActivityExport(FileProvider.getUriForFile(context, "${context.packageName}.activityphotos", target), "image/png", target.name)
-    }.getOrElse { messages.tryEmit(ActivityMessage.EXPORT_UNAVAILABLE); null }
+    }.getOrElse { error ->
+        Log.e("ActivityShare", "Share card preparation failed type=${error.javaClass.simpleName}")
+        messages.tryEmit(ActivityMessage.EXPORT_UNAVAILABLE)
+        null
+    }
 
-    fun trackShareAction(result: String) {
+    fun trackShareAction(result: String, sourceType: String = "activity_detail") {
         analytics.record(AnalyticsEvent("activity_share_action", mapOf(
-            AnalyticsProperty.SourceType to "activity_detail",
+            AnalyticsProperty.SourceType to sourceType,
             AnalyticsProperty.Result to result,
         )))
     }

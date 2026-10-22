@@ -96,4 +96,6 @@
     <string name="activity_updated">Actividad actualizada</string>
     <string name="activity_metric_elapsed_time">Tiempo total</string>
     <string name="activity_metric_avg_speed">Velocidad media</string>
+    <string name="activity_share_prepare_failed">No se pudo preparar la actividad para compartir. Inténtalo de nuevo.</string>
+    <string name="activity_share_save_failed">No se pudo guardar la imagen. Inténtalo de nuevo.</string>
 </resources>

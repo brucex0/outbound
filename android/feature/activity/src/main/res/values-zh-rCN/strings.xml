@@ -96,4 +96,6 @@
     <string name="activity_updated">活动已更新</string>
     <string name="activity_metric_elapsed_time">总用时</string>
     <string name="activity_metric_avg_speed">平均速度</string>
+    <string name="activity_share_prepare_failed">无法生成活动分享卡片，请重试。</string>
+    <string name="activity_share_save_failed">无法保存图片，请重试。</string>
 </resources>

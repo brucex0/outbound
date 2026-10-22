@@ -162,6 +162,7 @@ fun PostWorkoutStretchRoute(
     track: List<RecordedLocationSample>,
     sessionKey: String,
     onDone: () -> Unit,
+    onShare: () -> Unit,
     onEvent: (String, String?, String?, Int?) -> Unit,
     fetchAudio: suspend (String, String) -> ByteArray?,
     isIndoor: Boolean = false,
@@ -307,6 +308,7 @@ fun PostWorkoutStretchRoute(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
+                PostSaveActivityActions(onShare = onShare, onDone = { finish("not_started") })
                 Text(stringResource(R.string.stretch_offer_title), style = MaterialTheme.typography.headlineSmall)
                 Text(stringResource(R.string.stretch_offer_body))
                 Text(stringResource(R.string.recording_post_save_program_title), style = MaterialTheme.typography.titleMedium)
@@ -358,12 +360,7 @@ fun PostWorkoutStretchRoute(
                 ) {
                     Text(stringResource(R.string.stretch_start))
                 }
-                OutlinedButton(
-                    onClick = { finish("not_started") },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                ) {
-                    Text(stringResource(R.string.stretch_done))
-                }
+
                 Text(stringResource(R.string.stretch_disclaimer), style = MaterialTheme.typography.bodySmall)
             }
         } else if (complete) {

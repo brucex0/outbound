@@ -87,3 +87,9 @@
 - The journal payload adds current stop-accounting state; Room tables and database version are unchanged. No local data reset is required. Confirmed stops survive process recovery; an interrupted candidate is cleared.
 
 - Stop accounting consumes raw fused-location observation timestamps before the route filter drops stationary fixes. UI ticks only publish the accumulated result. A zero distance minimum keeps stationary observations available; source confidence and the 30-second gap bound match iOS.
+
+## Post-save Quick Sharing
+
+- Both celebration-only and stretch-offer layouts show Share beside Done immediately below the celebration message. Share opens the existing Android card preview for the locally saved activity, with Save Image and the native share chooser. Closing sharing retains the post-save surface and stretch selection.
+- Sharing does not wait for backend sync. Save failure never supplies a shareable activity. Preparation/save/chooser failures show temporary localized feedback and safe technical diagnostics. Existing share events use `source_type=post_save`, with no IDs, coordinates, exact metrics, or photo content.
+- Verification: recording/activity Kotlin compilation and `:app:assembleDebug` passed; no tests run. Manual verification remains for both layouts, route-less and photo activities, preview dismissal, selected stretch preservation, and offline operation.
