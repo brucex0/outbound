@@ -221,7 +221,15 @@ final class GearStore: ObservableObject {
         return ActivityGearAttachment(shoeID: item.id, shoeName: item.displayName)
     }
 
-    func mileageSummaries(from activities: [SavedActivity]) -> [GearMileageSummary] {
+    func mileageSummaries(from activities: [SavedActivity], statistics: AccountStatisticsSnapshot? = nil) -> [GearMileageSummary] {
+        if AuthStore.currentUserId != nil {
+            guard let statistics else { return [] }
+            return shoes.map { item in
+                let totals = statistics.gear[item.id.uuidString.lowercased()]
+                return GearMileageSummary(item: item, distanceMeters: totals?.distanceMeters ?? 0, lastUsedAt: totals?.lastUsedAt)
+            }
+        }
+        return
         shoes.map { item in
             let matchingActivities = activities.filter { $0.gear?.shoeID == item.id }
             return GearMileageSummary(

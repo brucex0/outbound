@@ -150,7 +150,7 @@ struct GearSettingsCard: View {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(shoe.displayName)
                                             .font(.subheadline.weight(.semibold))
-                                        Text(shoeStatusText(summary))
+                                        Text(statisticsAvailable ? shoeStatusText(summary) : String(localized: "statistics.unavailable.title"))
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                     }
@@ -178,6 +178,7 @@ struct GearSettingsCard: View {
                                     }
                                 }
 
+                                if statisticsAvailable {
                                 HStack(alignment: .firstTextBaseline) {
                                     Text(mileageText(summary))
                                         .font(.caption.weight(.semibold).monospacedDigit())
@@ -191,6 +192,7 @@ struct GearSettingsCard: View {
                                     .tint(shoe.retiredAt == nil ? .orange : .secondary)
                                     .accessibilityLabel("Shoe mileage")
                                     .accessibilityValue(mileageText(summary))
+                                }
                             }
                             .padding(10)
                             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
@@ -208,8 +210,13 @@ struct GearSettingsCard: View {
         }
     }
 
+    private var statisticsAvailable: Bool { AuthStore.currentUserId == nil || activityStore.accountStatistics != nil }
+
     private var mileageSummaries: [GearMileageSummary] {
-        gearStore.mileageSummaries(from: activityStore.activities)
+        if !statisticsAvailable {
+            return gearStore.shoes.map { GearMileageSummary(item: $0, distanceMeters: 0, lastUsedAt: nil) }
+        }
+        return gearStore.mileageSummaries(from: activityStore.activities, statistics: activityStore.accountStatistics)
     }
 
     private var selectedShoeSummary: String {
@@ -664,7 +671,7 @@ struct AssistantView: View {
     private var assistantContext: AssistantContext {
         AssistantContext(
             guideName: guideCatalog.selectedPersona.template.displayName,
-            activityCount: activityStore.activities.count,
+            activityCount: activityStore.accountStatistics?.lifetime.activityCount ?? (AuthStore.currentUserId == nil ? activityStore.activities.count : 0),
             weeklyDistanceKilometers: weeklyDistanceKilometers,
             currentGoalSummary: goalStore.progress?.summaryLine,
             currentScreen: screenName,
@@ -815,18 +822,17 @@ struct AssistantView: View {
         if let summary = goalStore.progress?.summaryLine, !summary.isEmpty {
             return summary
         }
-        if activityStore.activities.isEmpty {
-            return "No saved activity yet."
+        guard let count = activityStore.accountStatistics?.lifetime.activityCount ?? (AuthStore.currentUserId == nil ? activityStore.activities.count : nil) else {
+            return String(localized: "statistics.unavailable.title", defaultValue: "Statistics unavailable")
         }
-        return "\(activityStore.activities.count) saved activit\(activityStore.activities.count == 1 ? "y" : "ies") this season."
+        return String(localized: "statistics.saved_count", defaultValue: "\(count) saved activities")
     }
 
     private var weeklyDistanceKilometers: Double {
-        let calendar = Calendar.current
-        let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: Date())?.start ?? .distantPast
-        return activityStore.activities
-            .filter { $0.startedAt >= startOfWeek }
-            .reduce(0) { $0 + $1.distanceM } / 1000
+        if let statistics = activityStore.accountStatistics { return statistics.currentWeek.distanceMeters / 1000 }
+        guard AuthStore.currentUserId == nil else { return 0 }
+        let start = Calendar.current.dateInterval(of: .weekOfYear, for: Date())?.start ?? .distantPast
+        return activityStore.activities.filter { $0.startedAt >= start }.reduce(0) { $0 + $1.distanceM } / 1000
     }
 
     private var personaAccentColor: Color {

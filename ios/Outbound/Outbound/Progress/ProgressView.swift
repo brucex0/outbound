@@ -15,7 +15,7 @@ struct RunnerProgressView: View {
     @State private var didTrackProgressOpen = false
 
     private var snapshot: ProgressStatsSnapshot {
-        ProgressStatsEngine.snapshot(from: activityStore.activities.map(\.progressActivity))
+        activityStore.accountStatistics?.all ?? ProgressStatsEngine.snapshot(from: AuthStore.currentUserId == nil ? activityStore.activities.map(\.progressActivity) : [])
     }
 
     private var recentActivities: [SavedActivity] {
@@ -23,11 +23,12 @@ struct RunnerProgressView: View {
     }
 
     private var availableActivityTypes: [String] {
-        Array(Set(activityStore.activities.map { $0.activityType.rawValue })).sorted()
+        activityStore.accountStatistics.map { Array($0.sports.keys).sorted() } ?? (AuthStore.currentUserId == nil ? Array(Set(activityStore.activities.map { $0.activityType.rawValue })).sorted() : [])
     }
 
     private var trendSnapshot: ProgressStatsSnapshot {
-        let filtered = activityStore.activities.filter { $0.activityType.rawValue == selectedActivityType }
+        if let snapshot = activityStore.accountStatistics?.sports[selectedActivityType] { return snapshot }
+        let filtered = AuthStore.currentUserId == nil ? activityStore.activities.filter { $0.activityType.rawValue == selectedActivityType } : []
         return ProgressStatsEngine.snapshot(from: filtered.map(\.progressActivity))
     }
 
@@ -38,7 +39,10 @@ struct RunnerProgressView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                if snapshot.eligibleActivityCount == 0 {
+                AccountStatisticsStatus(store: activityStore)
+                if AuthStore.currentUserId != nil && activityStore.accountStatistics == nil {
+                    EmptyView()
+                } else if snapshot.eligibleActivityCount == 0 {
                     emptyState
                 } else {
                     progressTabs
@@ -77,6 +81,7 @@ struct RunnerProgressView: View {
             }
         }
         .task {
+            await activityStore.refreshAccountStatistics()
             if !availableActivityTypes.contains(selectedActivityType), let first = availableActivityTypes.first {
                 selectedActivityType = first
             }
@@ -825,7 +830,7 @@ struct ProgressSummaryCard: View {
     @EnvironmentObject private var gearStore: GearStore
 
     private var snapshot: ProgressStatsSnapshot {
-        ProgressStatsEngine.snapshot(from: activityStore.activities.map(\.progressActivity))
+        activityStore.accountStatistics?.all ?? ProgressStatsEngine.snapshot(from: AuthStore.currentUserId == nil ? activityStore.activities.map(\.progressActivity) : [])
     }
 
     var body: some View {
@@ -845,7 +850,9 @@ struct ProgressSummaryCard: View {
                         .foregroundStyle(.tertiary)
                 }
 
-                if snapshot.eligibleActivityCount == 0 {
+                if AuthStore.currentUserId != nil && activityStore.accountStatistics == nil {
+                    AccountStatisticsStatus(store: activityStore)
+                } else if snapshot.eligibleActivityCount == 0 {
                     Text("Save your first activity to start building stats.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -1031,7 +1038,7 @@ private struct PersonalRecordRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(record.title)
+                Text(LocalizedStringKey(record.title))
                     .font(.subheadline.weight(.semibold))
                 Text(record.effort.date.formatted(date: .abbreviated, time: .omitted))
                     .font(.caption)
@@ -1064,7 +1071,7 @@ private struct RacePredictionRow: View {
     var body: some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(prediction.title)
+                Text(LocalizedStringKey(prediction.title))
                     .font(.subheadline.weight(.semibold))
                 Text("\(prediction.confidence.title) confidence")
                     .font(.caption)

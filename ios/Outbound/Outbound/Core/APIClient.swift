@@ -59,12 +59,43 @@ final class APIClient {
         try await post("/elevation/correct", body: request)
     }
 
-    func fetchActivities(offset: Int = 0, cursor: String? = nil) async throws -> ActivitySyncListResponse {
-        try await get("/activities", queryItems: [
-            URLQueryItem(name: "limit", value: "20"),
-            URLQueryItem(name: "offset", value: String(offset)),
-            URLQueryItem(name: "cursor", value: cursor)
+    func fetchAccountStatistics() async throws -> AccountStatisticsSnapshot {
+        try await get("/statistics", queryItems: [
+            URLQueryItem(name: "timeZone", value: TimeZone.current.identifier),
+            URLQueryItem(name: "firstWeekday", value: String(Calendar.current.firstWeekday))
         ])
+    }
+
+    func knownImportIdentities(_ externalIDs: [String], sourceKind: String) async throws -> Set<String> {
+        var known: Set<String> = []
+        for start in stride(from: 0, to: externalIDs.count, by: 200) {
+            let response: ImportIdentityResponse = try await post("/statistics/import-identities", body: ImportIdentityRequest(externalIDs: Array(externalIDs[start..<min(start + 200, externalIDs.count)]), sourceKind: sourceKind, sessionIDs: []))
+            known.formUnion(response.externalIDs)
+        }
+        return known
+    }
+
+    func ownedSessionActivities(_ sessionIDs: [String]) async throws -> [String] {
+        var ids: [String] = []
+        for start in stride(from: 0, to: sessionIDs.count, by: 200) {
+            let response: ImportIdentityResponse = try await post("/statistics/import-identities", body: ImportIdentityRequest(externalIDs: [], sourceKind: "appleHealth", sessionIDs: Array(sessionIDs[start..<min(start + 200, sessionIDs.count)])))
+            ids.append(contentsOf: response.sessionActivityIDs)
+        }
+        return ids
+    }
+
+    func fetchCachedActivityChanges(_ records: [CachedActivityVersion]) async throws -> ActivitySyncListResponse {
+        try await post("/activities/cached-changes", body: CachedActivityVersions(records: records))
+    }
+
+    func fetchActivities(offset: Int = 0, cursor: String? = nil, ids: [String]? = nil, includeRoute: Bool = true) async throws -> ActivitySyncListResponse {
+        try await get("/activities", queryItems: [
+            URLQueryItem(name: "limit", value: String(ids?.count ?? 20)),
+            URLQueryItem(name: "offset", value: String(offset)),
+            URLQueryItem(name: "cursor", value: cursor),
+            URLQueryItem(name: "ids", value: ids?.joined(separator: ",")),
+            URLQueryItem(name: "includeRoute", value: ids == nil || !includeRoute ? "false" : "true")
+        ].filter { $0.value != nil })
     }
 
     func deleteActivity(id: String) async throws -> ActivityDeleteResponse {
@@ -141,6 +172,10 @@ final class APIClient {
             resolved = resolvedComponents.url ?? resolved
         }
         return resolved
+    }
+
+    func activityPhotoURL(id: String, thumbnail: Bool = false) -> URL {
+        url(for: "/media/activity-photos/\(id)/\(thumbnail ? "thumbnail" : "content")")
     }
 
     func downloadActivityPhoto(id: String, thumbnail: Bool = false) async throws -> Data {
@@ -2649,3 +2684,9 @@ struct LiveGroupActivitySnapshotResponse: Decodable, Hashable {
     let distanceM: Double?
     let paceSecondsPerKM: Double?
 }
+
+private struct ImportIdentityRequest: Encodable { let externalIDs: [String]; let sourceKind: String; let sessionIDs: [String] }
+private struct ImportIdentityResponse: Decodable { let externalIDs: [String]; let sessionActivityIDs: [String] }
+
+struct CachedActivityVersion: Encodable { let id: String; let updatedAt: Date? }
+private struct CachedActivityVersions: Encodable { let records: [CachedActivityVersion] }

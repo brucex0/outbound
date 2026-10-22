@@ -109,7 +109,8 @@ final class ActivityPhotoCache {
             return localURL
         }
 
-        let fallbackURL = thumbnailURL ?? photo.remoteRenderURL
+        let authenticatedContentURL = photo.remotePhotoId.map { APIClient.shared.activityPhotoURL(id: $0) }
+        let fallbackURL = thumbnailURL ?? photo.remoteRenderURL ?? authenticatedContentURL
         if let remoteURL = fallbackURL {
             identitiesByURLString[remoteURL.absoluteString] = identity + representation
             return remoteURL
@@ -160,8 +161,16 @@ final class ActivityPhotoCache {
             // APIClient here so the bearer token is attached; a raw URLSession
             // request would otherwise turn the compact URL into a 401.
             let isThumbnail = url.pathComponents.last == "thumbnail"
-            guard let downloaded = try? await APIClient.shared.downloadActivityPhoto(id: photoID, thumbnail: isThumbnail) else { return nil }
-            data = downloaded
+            do {
+                data = try await APIClient.shared.downloadActivityPhoto(id: photoID, thumbnail: isThumbnail)
+            } catch is CancellationError {
+                return nil
+            } catch let error as URLError where error.code == .cancelled {
+                return nil
+            } catch {
+                ActivityDiagnosticLog.error(.sync, "Activity photo render download failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                return nil
+            }
         } else {
             var request = URLRequest(url: url)
             request.cachePolicy = .returnCacheDataElseLoad

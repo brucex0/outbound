@@ -189,6 +189,7 @@ struct ActivityDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task(id: currentActivity.id) {
             guard usesStoredActivity, showsPrivateDetails else { return }
+            await activityStore.refreshActivityDetails(currentActivity.id)
             await activityStore.correctElevationIfNeeded(for: currentActivity.id)
         }
         .toolbar {

@@ -53,6 +53,10 @@ actor ActivityPersistence {
         )
     }
 
+    func copyPhotos(_ photos: [SavedPhoto], into activityID: UUID) throws -> [SavedPhoto] {
+        try LocalActivityStore.copyPhotos(photos, into: activityID)
+    }
+
     func load() throws -> [SavedActivity] {
         try LocalActivityStore.load()
     }
@@ -193,6 +197,24 @@ private nonisolated enum LocalActivityStore {
         activities.insert(activity, at: 0)
         try saveManifest(activities)
         return activity
+    }
+
+    static func copyPhotos(_ photos: [SavedPhoto], into activityID: UUID) throws -> [SavedPhoto] {
+        let target = try directory(for: activityID).appendingPathComponent("photos", isDirectory: true)
+        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+        return try photos.map { photo in
+            let fileName = "reconciled-\(photo.id.uuidString).jpg"
+            let sourceURL = imageURL(for: photo)
+            let destination = target.appendingPathComponent(fileName)
+            if FileManager.default.fileExists(atPath: sourceURL.path) {
+                if !FileManager.default.fileExists(atPath: destination.path) { try FileManager.default.copyItem(at: sourceURL, to: destination) }
+            } else if photo.remotePhotoId == nil {
+                throw CocoaError(.fileNoSuchFile)
+            }
+            return SavedPhoto(id: photo.id, takenAt: photo.takenAt, paceAtShot: photo.paceAtShot, hrAtShot: photo.hrAtShot, distAtShot: photo.distAtShot,
+                              coordinate: photo.coordinate, captureContext: photo.captureContext, relativePath: "\(activityID.uuidString)/photos/\(fileName)",
+                              remotePhotoId: photo.remotePhotoId, remoteUploadedAt: photo.remoteUploadedAt, remoteThumbnailURL: photo.remoteThumbnailURL)
+        }
     }
 
     static func load() throws -> [SavedActivity] {

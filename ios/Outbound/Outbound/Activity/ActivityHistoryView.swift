@@ -109,6 +109,7 @@ struct ActivityHistoryView: View {
                     }
                     ActivityRowCard(activity: activity, activityStore: activityStore)
                 }
+                .task(id: activity.id) { await activityStore.ensureActivityRouteLoaded(activity.id) }
                 .contentShape(Rectangle())
                 .onTapGesture {
                     if isSelecting {

@@ -7,6 +7,18 @@ final class GoalStore: ObservableObject {
     @Published private(set) var conversation: GoalConversationState
     @Published private(set) var progress: GoalProgressSnapshot?
 
+    private var statistics: AccountStatisticsSnapshot?
+    func updateStatistics(_ snapshot: AccountStatisticsSnapshot?, activities: [SavedActivity]) {
+        statistics = snapshot
+        refresh(activities: activities, phase: DailyMotivationEngine.phase(for: activities))
+    }
+    private func completeProgress(_ goal: GoalDefinition, activities: [SavedActivity], summary: ActivitySummary? = nil) -> GoalProgressSnapshot? {
+        if AuthStore.currentUserId != nil {
+            guard let statistics, statistics.weekStart == goal.weekStart else { return nil }
+            return GoalProgressEngine.makeProgress(goal: goal, activities: [], addingSummary: summary, calendar: calendar, serverWeekTotals: statistics.currentWeek)
+        }
+        return GoalProgressEngine.makeProgress(goal: goal, activities: activities, addingSummary: summary, calendar: calendar)
+    }
     private let defaults: UserDefaults
     private let calendar: Calendar
     private let goalKey = "goal_store_active_goal_v1"
@@ -36,7 +48,7 @@ final class GoalStore: ObservableObject {
         }
 
         if let activeGoal {
-            let newProgress = GoalProgressEngine.makeProgress(goal: activeGoal, activities: activities, calendar: calendar)
+            guard let newProgress = completeProgress(activeGoal, activities: activities) else { progress = nil; return }
             progress = newProgress
             if activeGoal.status != (newProgress.isComplete ? .completed : .active) {
                 var updatedGoal = activeGoal
@@ -63,10 +75,11 @@ final class GoalStore: ObservableObject {
         let kind: GoalKind = theme == .lightMovement ? .weeklyMinutes : .weeklySessions
         let suggested = GoalProgressEngine.suggestedTarget(
             theme: theme,
-            activities: activities,
+            activities: AuthStore.currentUserId == nil ? activities : [],
             phase: phase,
             calendar: calendar,
-            now: now
+            now: now,
+            weeklyActivityCount: statistics?.currentWeek.activityCount
         )
         conversation.step = .chooseTarget
         conversation.draft = GoalDraft(kind: kind, theme: theme, targetValue: suggested)
@@ -117,7 +130,7 @@ final class GoalStore: ObservableObject {
         conversation.step = .idle
         conversation.draft = nil
         if let activeGoal {
-            progress = GoalProgressEngine.makeProgress(goal: activeGoal, activities: activities, calendar: calendar)
+            progress = completeProgress(activeGoal, activities: activities)
         }
         persistActiveGoal()
         persistConversation()
@@ -156,7 +169,7 @@ final class GoalStore: ObservableObject {
         activities: [SavedActivity]
     ) -> GoalProgressSnapshot? {
         guard let activeGoal else { return nil }
-        return GoalProgressEngine.makeProgress(goal: activeGoal, activities: activities, addingSummary: summary, calendar: calendar)
+        return completeProgress(activeGoal, activities: activities, summary: summary)
     }
 
     private func shouldPromptForGoal(
@@ -167,9 +180,9 @@ final class GoalStore: ObservableObject {
         if conversation.dismissedWeekStart == weekStart {
             return false
         }
-        if activities.isEmpty {
-            return false
-        }
+        if AuthStore.currentUserId != nil {
+            guard let statistics, statistics.lifetime.activityCount > 0 else { return false }
+        } else if activities.isEmpty { return false }
         switch phase {
         case .steady, .comeback, .momentum, .completedToday:
             return true

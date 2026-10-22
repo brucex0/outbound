@@ -79,6 +79,7 @@ struct OutboundApp: App {
                 .task(id: authStore.user?.id) {
                     await analyticsManager.setUserId(userId: authStore.user?.id)
                     subscriptionStore.activate(userID: authStore.user?.id)
+                    await activityStore.refreshAccountStatistics()
                 }
                 .onChange(of: authStore.user?.id, initial: true) { _, userID in
                     togetherStore.activate(userID: userID)
@@ -301,6 +302,9 @@ struct OutboundApp: App {
                         reason: "plan_changed"
                     )
                 }
+            }
+            .onReceive(activityStore.$accountStatistics) { statistics in
+                goalStore.updateStatistics(statistics, activities: activityStore.activities)
             }
             .onChange(of: activityStore.activities) { _, activities in
                 Task {

@@ -184,7 +184,7 @@ struct SimplifiedAppShell: View {
     @AppStorage("home_widget_onboarding_seen_v1") private var hasSeenHomeWidgetOnboarding = false
 
     private var completedOutboundWorkoutCount: Int {
-        activityStore.activities.filter { $0.source.kind == .outbound }.count
+        activityStore.accountStatistics?.outboundActivityCount ?? (AuthStore.currentUserId == nil ? activityStore.activities.filter { $0.source.kind == .outbound }.count : 0)
     }
 
     private var homeWidgetOnboardingTaskID: String {
@@ -2812,6 +2812,9 @@ private struct SimplifiedMeView: View {
                                     .padding(.vertical, 6)
                                     .background(OutboundPalette.companion.opacity(0.12), in: Capsule())
                                 }
+                                if AuthStore.currentUserId != nil && activityStore.accountStatistics == nil {
+                                    AccountStatisticsStatus(store: activityStore)
+                                } else {
                                 HStack {
                                     meStat(measurementPreferences.unitSystem.distanceString(meters: weekDistance, fractionDigits: 1), String(localized: "Distance"))
                                     meStat(weekDuration.formatted(), String(localized: "Time"))
@@ -2829,6 +2832,8 @@ private struct SimplifiedMeView: View {
                                 ProgressView(value: Double(weekRuns), total: Double(max(1, weekTarget)))
                                     .tint(OutboundPalette.companion)
                                 AIExplanationView(text: weekGuideLine)
+                                    AccountStatisticsStatus(store: activityStore)
+                                }
                             }
                         }
                     }
@@ -3331,9 +3336,9 @@ private struct SimplifiedMeView: View {
 
     private var planDetail: String { String(localized: "\(weekTarget) runs per week") }
     private var weekTarget: Int { trainingPlanStore.currentWeek?.targetSessions ?? trainingPlanStore.activePlan?.sessionsPerWeek ?? 3 }
-    private var weekRuns: Int { trainingPlanStore.currentWeek?.completedSessions ?? currentWeekActivities.count }
-    private var weekDistance: Double { currentWeekActivities.reduce(0) { $0 + $1.distanceM } }
-    private var weekDuration: Int { currentWeekActivities.reduce(0) { $0 + $1.durationSecs } }
+    private var weekRuns: Int { trainingPlanStore.currentWeek?.completedSessions ?? activityStore.accountStatistics?.currentWeek.activityCount ?? (AuthStore.currentUserId == nil ? currentWeekActivities.count : 0) }
+    private var weekDistance: Double { activityStore.accountStatistics?.currentWeek.distanceMeters ?? (AuthStore.currentUserId == nil ? currentWeekActivities.reduce(0) { $0 + $1.distanceM } : 0) }
+    private var weekDuration: Int { activityStore.accountStatistics?.currentWeek.durationSeconds ?? (AuthStore.currentUserId == nil ? currentWeekActivities.reduce(0) { $0 + $1.durationSecs } : 0) }
     private var weekGuideLine: String {
         if let line = trainingPlanStore.currentWeek?.guideLine { return line }
         if weekRuns >= weekTarget { return String(localized: "You completed this week’s rhythm.") }

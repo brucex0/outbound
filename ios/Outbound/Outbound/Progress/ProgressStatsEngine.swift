@@ -1,6 +1,6 @@
 import Foundation
 
-struct ProgressActivity: Equatable {
+struct ProgressActivity: Equatable, Codable {
     let id: String
     let title: String
     let startedAt: Date
@@ -40,12 +40,12 @@ struct ProgressActivity: Equatable {
     }
 }
 
-struct ProgressRoutePoint: Equatable {
+struct ProgressRoutePoint: Equatable, Codable {
     let timestamp: Date
     let cumulativeDistanceMeters: Double
 }
 
-struct ProgressStatsSnapshot: Equatable {
+struct ProgressStatsSnapshot: Equatable, Codable {
     let currentWeek: ProgressPeriodTotals
     let weeklyBuckets: [ProgressWeekBucket]
     let comparisons: [ProgressPeriodComparison]
@@ -78,7 +78,7 @@ struct ProgressStatsSnapshot: Equatable {
     }
 }
 
-enum ProgressMetric: String, CaseIterable, Identifiable, Equatable {
+enum ProgressMetric: String, CaseIterable, Identifiable, Equatable, Codable {
     case distance
     case duration
     case activities
@@ -88,7 +88,7 @@ enum ProgressMetric: String, CaseIterable, Identifiable, Equatable {
     var id: Self { self }
 }
 
-struct ProgressMetricDelta: Equatable {
+struct ProgressMetricDelta: Equatable, Codable {
     let current: Double
     let previous: Double
 
@@ -98,8 +98,8 @@ struct ProgressMetricDelta: Equatable {
     }
 }
 
-struct ProgressPeriodComparison: Identifiable, Equatable {
-    enum Kind: String, CaseIterable, Equatable {
+struct ProgressPeriodComparison: Identifiable, Equatable, Codable {
+    enum Kind: String, CaseIterable, Equatable, Codable {
         case week
         case month
         case rolling28Days
@@ -124,7 +124,7 @@ struct ProgressPeriodComparison: Identifiable, Equatable {
     }
 }
 
-enum ProgressTrendRange: String, CaseIterable, Identifiable, Equatable {
+enum ProgressTrendRange: String, CaseIterable, Identifiable, Equatable, Codable {
     case fourWeeks
     case threeMonths
     case sixMonths
@@ -133,14 +133,14 @@ enum ProgressTrendRange: String, CaseIterable, Identifiable, Equatable {
     var id: Self { self }
 }
 
-struct ProgressTrendSeries: Identifiable, Equatable {
+struct ProgressTrendSeries: Identifiable, Equatable, Codable {
     let range: ProgressTrendRange
     let buckets: [ProgressTrendBucket]
 
     var id: ProgressTrendRange { range }
 }
 
-struct ProgressTrendBucket: Identifiable, Equatable {
+struct ProgressTrendBucket: Identifiable, Equatable, Codable {
     let startDate: Date
     let endDate: Date
     let totals: ProgressPeriodTotals
@@ -148,7 +148,7 @@ struct ProgressTrendBucket: Identifiable, Equatable {
     var id: Date { startDate }
 }
 
-struct ProgressTrainingLoadSnapshot: Equatable {
+struct ProgressTrainingLoadSnapshot: Equatable, Codable {
     let currentSevenDays: Double
     let previousSevenDays: Double
     let rampPercent: Double?
@@ -156,13 +156,13 @@ struct ProgressTrainingLoadSnapshot: Equatable {
     let heartRateActivityCount: Int
 }
 
-enum ProgressInsightConfidence: String, Equatable {
+enum ProgressInsightConfidence: String, Equatable, Codable {
     case emerging
     case solid
     case strong
 }
 
-enum ProgressInsightCategory: String, Equatable {
+enum ProgressInsightCategory: String, Equatable, Codable {
     case volume
     case consistency
     case endurance
@@ -173,13 +173,13 @@ enum ProgressInsightCategory: String, Equatable {
     case pattern
 }
 
-enum ProgressDayPart: String, Hashable {
+enum ProgressDayPart: String, Hashable, Codable {
     case morning
     case afternoon
     case evening
 }
 
-enum ProgressInsightEvidence: Equatable {
+enum ProgressInsightEvidence: Equatable, Codable {
     case rollingDistance(percent: Int, currentMeters: Double, previousMeters: Double)
     case activeWeeks(count: Int, total: Int)
     case longRunShare(percent: Int, longRunMeters: Double, weekMeters: Double)
@@ -190,7 +190,7 @@ enum ProgressInsightEvidence: Equatable {
     case preferredTime(dayPart: ProgressDayPart, percent: Int, total: Int)
 }
 
-struct ProgressInsight: Identifiable, Equatable {
+struct ProgressInsight: Identifiable, Equatable, Codable {
     let id: String
     let category: ProgressInsightCategory
     let confidence: ProgressInsightConfidence
@@ -201,9 +201,10 @@ struct ProgressInsight: Identifiable, Equatable {
 struct ProgressMomentumNote: Equatable {
     let text: String
     let symbolName: String
+    var serverActivityCount: Int = 0
 }
 
-struct ProgressPersonalRecord: Identifiable, Equatable {
+struct ProgressPersonalRecord: Identifiable, Equatable, Codable {
     let title: String
     let targetMeters: Double
     let effort: ProgressBestEffort
@@ -211,13 +212,19 @@ struct ProgressPersonalRecord: Identifiable, Equatable {
     var id: String { "\(Int(targetMeters.rounded()))-\(effort.id)" }
 }
 
-struct ProgressRacePrediction: Identifiable, Equatable {
-    enum Confidence: String, Equatable {
+struct ProgressRacePrediction: Identifiable, Equatable, Codable {
+    enum Confidence: String, Equatable, Codable {
         case low
         case medium
         case high
 
-        var title: String { rawValue.capitalized }
+        var title: String {
+            switch self {
+            case .low: return String(localized: "statistics.confidence.low")
+            case .medium: return String(localized: "statistics.confidence.medium")
+            case .high: return String(localized: "statistics.confidence.high")
+            }
+        }
     }
 
     let title: String
@@ -228,7 +235,7 @@ struct ProgressRacePrediction: Identifiable, Equatable {
     var id: String { title }
 }
 
-struct ProgressPeriodTotals: Equatable {
+struct ProgressPeriodTotals: Equatable, Codable {
     let activityCount: Int
     let distanceMeters: Double
     let durationSeconds: Int
@@ -250,7 +257,7 @@ struct ProgressPeriodTotals: Equatable {
     }
 }
 
-struct ProgressWeekBucket: Identifiable, Equatable {
+struct ProgressWeekBucket: Identifiable, Equatable, Codable {
     let id: Date
     let startDate: Date
     let endDate: Date
@@ -265,8 +272,8 @@ struct ProgressWeekBucket: Identifiable, Equatable {
     }
 }
 
-struct ProgressBestEffort: Identifiable, Equatable {
-    enum Kind: String, CaseIterable {
+struct ProgressBestEffort: Identifiable, Equatable, Codable {
+    enum Kind: String, CaseIterable, Codable {
         case fastestKilometer
         case fastestMile
         case fastestFiveKilometer
@@ -286,7 +293,7 @@ struct ProgressBestEffort: Identifiable, Equatable {
         }
     }
 
-    enum Source: Equatable {
+    enum Source: String, Equatable, Codable {
         case routeWindow
         case wholeActivityFallback
         case activitySummary
@@ -1108,5 +1115,33 @@ enum ProgressStatsEngine {
             return lhsDuration < rhsDuration
         }
         return lhs.date > rhs.date
+    }
+}
+
+// The server sends a semantic kind; display copy is localized on the client.
+extension ProgressMomentumNote: Codable {
+    private enum CodingKeys: String, CodingKey { case kind, symbolName, activityCount }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        symbolName = try c.decode(String.self, forKey: .symbolName)
+        let count = try c.decode(Int.self, forKey: .activityCount)
+        serverActivityCount = count
+        switch try c.decode(String.self, forKey: .kind) {
+        case "showedUpToday": text = String(localized: "You showed up today")
+        case "backAfterRest": text = String(localized: "Back after a rest window")
+        case "buildingRhythm": text = String(localized: "You are building rhythm")
+        case "shortCounts": text = String(localized: "Short sessions still count")
+        case "weekCount": text = String(localized: "statistics.momentum.week_count", defaultValue: "\(count) activities this week")
+        case "keepSimple": text = String(localized: "Keep the day simple")
+        default: throw DecodingError.dataCorruptedError(forKey: .kind, in: c, debugDescription: "Unknown momentum kind")
+        }
+    }
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        let kinds = ["checkmark.circle.fill":"showedUpToday", "arrow.clockwise":"backAfterRest", "waveform.path.ecg":"buildingRhythm", "bolt.heart":"shortCounts", "calendar":"weekCount", "sun.max":"keepSimple"]
+        try c.encode(kinds[symbolName] ?? "keepSimple", forKey: .kind)
+        try c.encode(symbolName, forKey: .symbolName)
+        // Cache localized text is never the data source. Week count is supplied by its snapshot.
+        try c.encode(serverActivityCount, forKey: .activityCount)
     }
 }

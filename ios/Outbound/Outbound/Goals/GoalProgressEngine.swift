@@ -5,7 +5,8 @@ enum GoalProgressEngine {
         goal: GoalDefinition,
         activities: [SavedActivity],
         addingSummary summary: ActivitySummary? = nil,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        serverWeekTotals: ProgressPeriodTotals? = nil
     ) -> GoalProgressSnapshot {
         let weekEnd = calendar.date(byAdding: .day, value: 7, to: goal.weekStart) ?? goal.weekStart
         let inRangeActivities = activities.filter { activity in
@@ -15,9 +16,9 @@ enum GoalProgressEngine {
         let baseValue: Int
         switch goal.kind {
         case .weeklySessions:
-            baseValue = inRangeActivities.count
+            baseValue = serverWeekTotals?.activityCount ?? inRangeActivities.count
         case .weeklyMinutes:
-            let totalSeconds = inRangeActivities.reduce(0) { $0 + $1.durationSecs }
+            let totalSeconds = serverWeekTotals?.durationSeconds ?? inRangeActivities.reduce(0) { $0 + $1.durationSecs }
             baseValue = Int(ceil(Double(totalSeconds) / 60.0))
         }
 
@@ -55,9 +56,10 @@ enum GoalProgressEngine {
         activities: [SavedActivity],
         phase: MotivationPhase,
         calendar: Calendar = .current,
-        now: Date = Date()
+        now: Date = Date(),
+        weeklyActivityCount: Int? = nil
     ) -> Int {
-        let recentWeekCount = activitiesThisWeek(activities: activities, calendar: calendar, now: now)
+        let recentWeekCount = weeklyActivityCount ?? activitiesThisWeek(activities: activities, calendar: calendar, now: now)
 
         switch theme {
         case .lightMovement:
