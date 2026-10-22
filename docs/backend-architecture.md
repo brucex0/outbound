@@ -121,6 +121,7 @@ Rules:
 Responsibilities:
 
 - ingest completed activities from the phone
+- `GET /v1/activities` returns up to 200 records (including deletion tombstones), ordered by `startedAt DESC, id DESC`; `nextCursor` is an opaque start-time/ID boundary and `hasMore` uses one-row lookahead. Clients should use the cursor; validated offset pagination remains available for current Android clients and staggered client/server rollout. No database rebuild is required.
 - store normalized workout metadata
 - store the client-generated finish reflection shown after Save Activity
 - attach route summaries and photo metadata

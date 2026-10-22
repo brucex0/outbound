@@ -29,15 +29,42 @@ router.get("/", async (c) => {
   const prisma = getPrismaClient();
   const user = await getAuthenticatedAppUser(c);
   if (!user) return c.json({ error: "Authentication is required." }, 401);
-  const limit = Math.min(200, Math.max(1, Number(c.req.query("limit") ?? 100)));
-  const offset = Number(c.req.query("offset") ?? 0);
-  const activities = await prisma.activity.findMany({
-    where: { userId: user.id },
+  const query = z.object({
+    limit: z.coerce.number().int().min(1).max(200).default(100),
+    offset: z.coerce.number().int().min(0).default(0),
+    cursor: z.string().max(512).optional(),
+  }).safeParse(c.req.query());
+  if (!query.success) {
+    console.warn("[activities] list rejected reason=invalid_pagination status=400");
+    return c.json({ error: "Invalid activity pagination." }, 400);
+  }
+  const { limit, offset, cursor } = query.data;
+  let boundary: { startedAt: Date; id: string } | undefined;
+  if (cursor) {
+    try {
+      const decoded = z.object({ startedAt: z.string().datetime(), id: z.string().min(1).max(128) })
+        .parse(JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")));
+      boundary = { startedAt: new Date(decoded.startedAt), id: decoded.id };
+    } catch {
+      console.warn("[activities] list rejected reason=invalid_cursor status=400");
+      return c.json({ error: "Invalid activity cursor." }, 400);
+    }
+  }
+  const rows = await prisma.activity.findMany({
+    where: {
+      userId: user.id,
+      ...(boundary ? { OR: [
+        { startedAt: { lt: boundary.startedAt } },
+        { startedAt: boundary.startedAt, id: { lt: boundary.id } },
+      ] } : {}),
+    },
     include: { photos: { orderBy: { takenAt: "asc" } } },
-    orderBy: { updatedAt: "desc" },
-    take: limit,
-    skip: offset,
+    orderBy: [{ startedAt: "desc" }, { id: "desc" }],
+    take: limit + 1,
+    skip: boundary ? 0 : offset,
   });
+  const activities = rows.slice(0, limit);
+  const last = activities.at(-1);
   return c.json({
     activities: activities.map((activity) => ({
       id: activity.id,
@@ -75,7 +102,10 @@ router.get("/", async (c) => {
         updatedAt: photo.updatedAt,
       })),
     })),
-    hasMore: activities.length === limit,
+    hasMore: rows.length > limit,
+    nextCursor: rows.length > limit && last
+      ? Buffer.from(JSON.stringify({ startedAt: last.startedAt.toISOString(), id: last.id })).toString("base64url")
+      : null,
   });
 });
 
