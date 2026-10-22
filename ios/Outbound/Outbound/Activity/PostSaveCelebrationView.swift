@@ -304,21 +304,32 @@ struct PostSaveActivityActions: View {
     var body: some View {
         HStack(spacing: 12) {
             Button(action: prepareShare) {
-                HStack {
-                    if isPreparing { ProgressView() }
-                    Label(String(localized: "activity.share.more", defaultValue: "Share…"), systemImage: "square.and.arrow.up")
-                }
-                .frame(maxWidth: .infinity, minHeight: 48)
+                Text(String(localized: "activity.share", defaultValue: "Share"))
+                    .opacity(isPreparing ? 0 : 1)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(Color.accentColor, in: Capsule())
+                    .foregroundStyle(.white)
+                    .overlay {
+                        if isPreparing { ProgressView().tint(.white) }
+                    }
             }
-            .buttonStyle(.borderedProminent)
             .disabled(isPreparing)
+            .accessibilityLabel(isPreparing
+                ? String(localized: "activity.share.preparing", defaultValue: "Preparing activity to share")
+                : String(localized: "activity.share", defaultValue: "Share"))
             .accessibilityIdentifier("PostSaveCelebrationShareButton")
 
-            Button(String(localized: "activity.post_save.done", defaultValue: "Done"), action: onDone)
-                .frame(maxWidth: .infinity, minHeight: 48)
-                .buttonStyle(.bordered)
-                .accessibilityIdentifier("PostSaveCelebrationDoneButton")
+            Button(action: onDone) {
+                Text(String(localized: "activity.post_save.done", defaultValue: "Done"))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(Color(.secondarySystemFill), in: Capsule())
+                    .foregroundStyle(.primary)
+            }
+            .accessibilityIdentifier("PostSaveCelebrationDoneButton")
         }
+        .font(.subheadline.weight(.semibold))
+        .buttonStyle(.plain)
+        .frame(maxWidth: 320)
         .sheet(isPresented: Binding(
             get: { shareImage != nil },
             set: { if !$0 { shareImage = nil } }

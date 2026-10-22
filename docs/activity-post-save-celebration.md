@@ -22,7 +22,7 @@ Give each saved activity a brief, personal moment of recognition. The celebratio
 
 ## Quick Sharing
 
-- After a durable save, show Share beside Done below the celebration message, above any stretch choices. Both celebration-only and stretch-eligible activities use the same actions.
+- After a durable save, show Share beside Done below the celebration message, above any stretch choices. Both celebration-only and stretch-eligible activities use the same actions. On iOS, use matching capsule buttons with a 44 pt minimum height in a centered row capped at 320 pt; primary emphasis comes from Share’s fill. Use the plain localized Share label (`分享`), without an ellipsis. Preparing the card replaces the label with a spinner without changing button size. The Chinese stretch-offer layout was visually checked in the iOS simulator after a synthetic save; Android’s text-only adjustment passed Kotlin compilation. Share event names/properties and save/share behavior are unchanged.
 - Share opens the existing activity-card preview with Save Image and the system share sheet. Closing either sharing surface retains the celebration and selected stretch routine. Saving and Done do not depend on sharing or backend sync.
 - Card preparation disables duplicate Share taps; a preparation failure shows a temporary localized toast and allows retry. Optional referral-link failure falls back to the public invitation URL.
 - Existing `activity_share_previewed` and `activity_share_action` events use `source_type=post_save`; no activity IDs, route coordinates, exact metrics, or content are emitted.
