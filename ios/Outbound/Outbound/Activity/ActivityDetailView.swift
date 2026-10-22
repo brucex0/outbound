@@ -1023,6 +1023,7 @@ struct ActivityDetailView: View {
                 shareImage = cardImage
                 track(.init(.activitySharePreviewed, properties: [
                     .sourceType: .string("activity_detail"),
+                    .countBucket: .string(ProductAnalyticsBucket.count(currentActivity.photos.filter { $0.coordinate != nil }.count)),
                 ]))
             } catch {
                 shareError = ShareRouteError(message: error.localizedDescription)

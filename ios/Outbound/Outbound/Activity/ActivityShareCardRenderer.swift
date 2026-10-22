@@ -1,6 +1,7 @@
 import CoreLocation
 import CoreImage
 import MapKit
+import OSLog
 import SwiftUI
 import UIKit
 
@@ -313,6 +314,7 @@ private struct ShareStat: View {
 }
 
 private enum ActivityShareMapSnapshotRenderer {
+    @MainActor
     static func snapshot(for activity: SavedActivity, size: CGSize) async throws -> UIImage {
         let coordinateSegments = activity.routeCoordinateSegments
         let coordinates = coordinateSegments.flatMap { $0 }
@@ -329,7 +331,23 @@ private enum ActivityShareMapSnapshotRenderer {
         options.mapRect = mapRect(for: coordinates, size: size)
 
         let snapshot = try await MKMapSnapshotter(options: options).start()
-        return drawRoute(coordinateSegments, on: snapshot)
+        var photos: [(point: CGPoint, image: UIImage)] = []
+        for photo in activity.photos {
+            guard let location = photo.coordinate else { continue }
+            let coordinate = CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)
+            guard CLLocationCoordinate2DIsValid(coordinate) else { continue }
+            let point = snapshot.point(for: coordinate)
+            // Keep off-map photos from obscuring the card edges.
+            guard CGRect(origin: .zero, size: size).insetBy(dx: 60, dy: 120).contains(point) else { continue }
+            let url = ActivityPhotoCache.shared.renderedURL(for: photo, thumbnailPixelHeight: 216)
+            guard let image = await ActivityPhotoCache.shared.image(for: url, maxPixelSize: 216) else {
+                Logger(subsystem: Bundle.main.bundleIdentifier ?? "Plainstride", category: "ActivityShare")
+                    .error("Share route photo thumbnail unavailable; skipping annotation")
+                continue
+            }
+            photos.append((point, image))
+        }
+        return drawRoute(coordinateSegments, photos: photos, on: snapshot)
     }
 
     private static func mapRect(for coordinates: [CLLocationCoordinate2D], size: CGSize) -> MKMapRect {
@@ -361,6 +379,7 @@ private enum ActivityShareMapSnapshotRenderer {
 
     private static func drawRoute(
         _ segments: [[CLLocationCoordinate2D]],
+        photos: [(point: CGPoint, image: UIImage)],
         on snapshot: MKMapSnapshotter.Snapshot
     ) -> UIImage {
         let coordinates = segments.flatMap { $0 }
@@ -388,7 +407,33 @@ private enum ActivityShareMapSnapshotRenderer {
 
             drawEndpoint(at: snapshot.point(for: coordinates[0]), fill: .systemGreen, in: context.cgContext)
             drawEndpoint(at: snapshot.point(for: coordinates[coordinates.count - 1]), fill: .systemPink, in: context.cgContext)
+            for photo in photos {
+                drawPhoto(photo.image, at: photo.point, in: context.cgContext)
+            }
         }
+    }
+
+    private static func drawPhoto(_ image: UIImage, at point: CGPoint, in context: CGContext) {
+        let frame = CGRect(x: point.x - 54, y: point.y - 108, width: 108, height: 108)
+        let border = UIBezierPath(ovalIn: frame)
+        context.saveGState()
+        context.setShadow(offset: CGSize(width: 0, height: 4), blur: 10, color: UIColor.black.withAlphaComponent(0.35).cgColor)
+        UIColor.white.setFill()
+        border.fill()
+        context.restoreGState()
+
+        context.saveGState()
+        UIBezierPath(ovalIn: frame.insetBy(dx: 4, dy: 4)).addClip()
+        // UIImage.draw preserves orientation/mirroring; aspect-fill matches the detail map pins.
+        let scale = max(frame.width / image.size.width, frame.height / image.size.height)
+        let imageSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        image.draw(in: CGRect(
+            x: frame.midX - imageSize.width / 2,
+            y: frame.midY - imageSize.height / 2,
+            width: imageSize.width,
+            height: imageSize.height
+        ))
+        context.restoreGState()
     }
 
     private static func drawEndpoint(at point: CGPoint, fill: UIColor, in context: CGContext) {
