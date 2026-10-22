@@ -23,8 +23,8 @@ type AssistantCapability = "discover" | "navigate" | "support" | "brainstorm" | 
 
 type AssistantChatContext = {
   guideName: string;
-  activityCount: number;
-  weeklyDistanceKilometers: number;
+  activityCount: number | null;
+  weeklyDistanceKilometers: number | null;
   currentGoalSummary?: string | null;
   currentScreen?: string | null;
   isRecordingActive?: boolean;
@@ -96,8 +96,8 @@ Return only valid JSON in the shape {"message":"..."} with no markdown fencing.`
 Current screen: ${input.context.currentScreen ?? "unknown"}
 Recording active: ${input.context.isRecordingActive ? "yes" : "no"}
 Companion style: ${input.context.guideName}
-Saved activities: ${input.context.activityCount}
-Weekly distance: ${input.context.weeklyDistanceKilometers.toFixed(1)} km
+Saved activities: ${input.context.activityCount ?? "unavailable"}
+Weekly distance: ${input.context.weeklyDistanceKilometers?.toFixed(1) ?? "unavailable"} km
 Goal summary: ${input.context.currentGoalSummary ?? "No active goal"}
 Time zone: ${input.context.timeZoneIdentifier ?? input.activityContext?.timeZoneIdentifier ?? "unknown"}
 Firebase UID: ${input.firebaseUid ?? "not provided"}

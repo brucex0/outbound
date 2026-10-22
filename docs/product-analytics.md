@@ -357,7 +357,7 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 
 - iOS coaching reference diagnostics report only a bounded source (`profile`, `local_history`, `unavailable`) when it changes. Pace values, activity IDs, dates, and runner data are excluded; `live_guidance_eligibility_resolved` includes this optional `source_type`; existing moment and provider-outcome events stay unchanged.
 
-- Android `live_guidance_reference_resolved` reports `source_type=local_history|unavailable` when starting a catalog workout that requests an athlete reference; it excludes pace, activity identifiers, and dates.
+- Android `live_guidance_reference_resolved` reports `source_type=server_statistics|unavailable` when starting a catalog workout that requests an athlete reference; it excludes pace, activity identifiers, and dates.
 - Guide-profile recovery emits `guide_profile_resolution` diagnostics with bounded source/outcome. Activity completion emits `activity_completion_task` with operation/outcome and safe failure metadata only; no user IDs, prompts, activity bodies, or provider error bodies are logged.
 
 - Activity analysis and weekly reviews use shared `ai_attempt` / `ai_generation` diagnostics with operations `activity_analysis` / `weekly_review`. These retain the existing metadata-only privacy contract; no new client event or runner identifier is added.
@@ -367,3 +367,7 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 - Phone finish/save events include `moving_time_method=gps_observations_v2` to distinguish timestamped stop accounting from the earlier timer-polled implementation. This is an implementation enum, never a location or raw observation.
 
 - iOS and Android `activity_share_previewed` include `count_bucket` for the coarse number of geotagged photos eligible for route annotations; it excludes photo content, identifiers, and coordinates. Off-map or unavailable thumbnails may be omitted from the rendered card.
+
+## Account Statistics
+
+- Successful server snapshot refresh emits existing `feature_exposed` with `feature = server_statistics`. Existing Progress controls and insight exposure events retain their coarse/semantic properties. Snapshot metrics, evidence, account/activity/source IDs, routes, timestamps, and raw errors never enter analytics.

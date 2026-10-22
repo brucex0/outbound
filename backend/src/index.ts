@@ -2,6 +2,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { authMiddleware } from "./middleware/auth.js";
+import statistics from "./routes/statistics.js";
 import activities from "./routes/activities.js";
 import assistant from "./routes/assistant.js";
 import guide from "./routes/guide.js";
@@ -80,6 +81,7 @@ app.route("/admin", rewardsAdminPortal);
 
 app.route("/v1/auth", auth);
 app.route("/v1/activities", activities);
+app.route("/v1/statistics", statistics);
 app.route("/v1/assistant", assistant);
 import transcribeRoutes from "./routes/transcribe.js";
 app.route("/v1/guide", guide);

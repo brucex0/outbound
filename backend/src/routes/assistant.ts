@@ -8,6 +8,7 @@ import { runAssistantActivityTools } from "../services/assistantActivityTools.js
 import type { AppEnv } from "../types/hono.js";
 import { runCompanionTurn } from "../services/companion/companionOrchestrator.js";
 
+import { accountStatistics } from "../services/statistics/service.js";
 const router = new Hono<AppEnv>();
 
 const assistantCapabilitySchema = z.enum([
@@ -97,10 +98,24 @@ router.post(
       return c.json({ message: activityTools.directAnswer });
     }
 
+    // Client history is a page cache and cannot supply complete account totals.
+    let authoritativeContext: Omit<typeof body.context, "activityCount" | "weeklyDistanceKilometers"> & { activityCount: number | null; weeklyDistanceKilometers: number | null } = body.context;
+    if (process.env.DATABASE_URL && auth) {
+      const user = await getAuthenticatedAppUser(c);
+      if (user) {
+        try {
+          const stats = await accountStatistics(user.id, body.context.timeZoneIdentifier ?? "UTC", 1) as { lifetime: { activityCount: number }; currentWeek: { distanceMeters: number } };
+          authoritativeContext = { ...body.context, activityCount: stats.lifetime.activityCount, weeklyDistanceKilometers: stats.currentWeek.distanceMeters / 1_000 };
+        } catch (error) {
+          console.error("[statistics] assistant_snapshot_failed", { category: error instanceof Error ? error.name : "unknown" });
+          authoritativeContext = { ...body.context, activityCount: null, weeklyDistanceKilometers: null };
+        }
+      }
+    }
     const reply = await generateAssistantReply({
       prompt: body.prompt,
       capability: body.capability,
-      context: body.context,
+      context: authoritativeContext,
       messages: body.messages,
       firebaseUid: auth?.internalUserId ?? auth?.providerSubject ?? undefined,
       activityContext: activityTools?.context,

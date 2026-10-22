@@ -5,7 +5,7 @@ Open this when changing period comparisons, trend ranges, training-load logic, i
 ## Product Contract
 
 - Progress answers three questions: what changed, why it may matter, and what the runner can do next.
-- The primary surface stays local-first and works offline from saved activities.
+- Authenticated Progress uses complete server snapshots and works offline from the last complete cached snapshot. It never derives account totals from paginated local activity history. See `docs/account-statistics.md` for ownership, cache, and rollout.
 - Tabs are `Now`, `Trends`, `Insights`, and `Records`.
 - Shoe mileage is not part of Progress. Gear remains available in Settings and activity metadata.
 - Insights describe supported patterns, not diagnoses or causal claims.
@@ -55,8 +55,8 @@ Open this when changing period comparisons, trend ranges, training-load logic, i
 
 ## Data Boundaries
 
-- `ProgressStatsEngine` receives normalized activity type, totals, optional average heart rate, optional HR-zone seconds, route points, and optional measurable-goal completion.
-- Calculations and rendered evidence remain on device.
+- Backend statistics receives normalized activity facts, optional HR and goal evidence, and precomputed route-window durations. Private geometry stays on the backend except when activity views request it.
+- Clients render the returned semantic evidence and localize its explanations. The Swift engine remains the behavior reference and supports existing local-only mode.
 - Product analytics records only surface opens, bounded control selections, insight count buckets, and the top semantic insight category.
 - Never send exact distance, duration, pace, heart rate, load, goal result, time of day, activity ID, or insight copy to analytics.
 

@@ -86,6 +86,7 @@ Client should own:
 Backend should own:
 
 - authenticated user identity mapping
+- complete account statistics, derived activity facts, and revisioned snapshots (`docs/account-statistics.md`)
 - synced activities and media metadata
 - guide profile artifacts and weekly review generation
 - active plan state, readiness history, and adaptation logic

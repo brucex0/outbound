@@ -11,7 +11,7 @@ Primary flow:
 1. App launches into the production `Social · Today · Me` shell, centered on Today.
 2. New authenticated accounts see the simplified runner intake, editable understanding, calibration, and first-plan onboarding; completed accounts skip it.
 3. Today combines an inspirational spark, one AI-adjusted workout, vertical workout detail, readiness, Quick Start, and a Together invitation.
-4. Me includes a local-first Progress entry with matched week/month/28-day comparisons, sport-specific multi-range trends, grounded companion insights, PR history, race predictions, and recent activity stat highlights.
+4. Me includes a cached, server-authoritative Progress entry with matched week/month/28-day comparisons, sport-specific multi-range trends, grounded companion insights, PR history, race predictions, and recent activity stat highlights.
 5. Me launches suggested sessions directly, while the bottom-row activity button quick-starts into the shared freestyle start page and returns to live sessions when one is already active.
 6. During an activity, the camera/map experience uses a compact bottom status card with Pause while active, then Resume and Finish once paused; runners can invite accepted connections in app to follow precise live location, pace, distance, and heart rate and send short original voice cheers that play through the guide audio path.
 7. GPS is recorded in activity/photo metadata but is not displayed in the overlay.
@@ -79,6 +79,7 @@ Primary flow:
 | Safety, trusted contacts, live location sharing, and route privacy | `docs/safety-live-tracking.md` | Product scope, privacy rules, backend shape, iOS modules, and rollout plan for live tracking |
 | Runner utilities, gear, PRs, race predictions, indoor/manual sessions, and source attribution | `docs/runner-utilities.md` | Practical runner feature sequencing, data model direction, UX surfaces, and metric rules |
 | Strava history import, accepted activity files, ZIP/gzip reading, and deduplication | `docs/strava-import.md` | User-driven export flow, supported formats, distance-unit inference, file map, and known gaps |
+| Account-wide statistics ownership, snapshot contract, offline cache, paged history, import identity, and rollout | `docs/account-statistics.md` | Server-authoritative statistics independent of client history completeness, revisions, derived facts, and additive backfill |
 | Progress comparisons, trend ranges, training load, insight eligibility, and grounded explanations | `docs/progress-insights.md` | V1-V4 Progress contract, thresholds, privacy boundaries, and extension rules |
 | Apple Music, Spotify, playback UX, and music-provider rollout planning | `docs/music-integration.md` | Concrete music integration plan, provider constraints, Swift module boundaries, plist/auth changes, and phased delivery |
 | Motivation UX, daily guide loops, comeback flows, and home-screen engagement | `docs/motivation-ux.md` | UX spec for daily spark, compact `Now` action, momentum states, and post-activity reflection |

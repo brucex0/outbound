@@ -17,6 +17,8 @@ import { backfillActivityRecognitions } from "../services/recognition.js";
 import { reconcileActivityToGroups } from "../services/groups.js";
 import { decodeStoredActivityRoute, encodeActivityRoute, legacyGeoJSONToRoute } from "../services/activityRouteCodec.js";
 
+import { activityFact, identityColumns } from "../services/statistics/facts.js";
+
 const router = new Hono<AppEnv>();
 const activityTypes = ["running", "cycling", "hiking", "walking", "swimming", "strength", "mobility"] as const;
 const companionTypes = ["dog"] as const;
@@ -33,12 +35,19 @@ router.get("/", async (c) => {
     limit: z.coerce.number().int().min(1).max(200).default(100),
     offset: z.coerce.number().int().min(0).default(0),
     cursor: z.string().max(512).optional(),
+    ids: z.string().max(26_000).optional(),
+    includeRoute: z.enum(["true", "false"]).default("true"),
   }).safeParse(c.req.query());
   if (!query.success) {
     console.warn("[activities] list rejected reason=invalid_pagination status=400");
     return c.json({ error: "Invalid activity pagination." }, 400);
   }
   const { limit, offset, cursor } = query.data;
+  const selectedIDs = query.data.ids?.split(",");
+  if (selectedIDs && (selectedIDs.length > 200 || selectedIDs.some(id => !id || id.length > 128))) {
+    console.warn("[activities] list rejected reason=invalid_ids status=400");
+    return c.json({ error: "Invalid activity IDs." }, 400);
+  }
   let boundary: { startedAt: Date; id: string } | undefined;
   if (cursor) {
     try {
@@ -53,7 +62,8 @@ router.get("/", async (c) => {
   const rows = await prisma.activity.findMany({
     where: {
       userId: user.id,
-      ...(boundary ? { OR: [
+      ...(selectedIDs ? { id: { in: selectedIDs } } : {}),
+      ...(boundary && !selectedIDs ? { OR: [
         { startedAt: { lt: boundary.startedAt } },
         { startedAt: boundary.startedAt, id: { lt: boundary.id } },
       ] } : {}),
@@ -66,7 +76,16 @@ router.get("/", async (c) => {
   const activities = rows.slice(0, limit);
   const last = activities.at(-1);
   return c.json({
-    activities: activities.map((activity) => ({
+    activities: activities.map(activity => serializeActivity(activity, query.data.includeRoute === "false")),
+    hasMore: rows.length > limit,
+    nextCursor: rows.length > limit && last
+      ? Buffer.from(JSON.stringify({ startedAt: last.startedAt.toISOString(), id: last.id })).toString("base64url")
+      : null,
+  });
+});
+
+function serializeActivity(activity: Prisma.ActivityGetPayload<{ include: { photos: true } }>, metadataOnly = false) {
+  return {
       id: activity.id,
       clientActivityId: activity.clientActivityId,
       clientData: activity.clientData ?? emptyClientExtras(),
@@ -80,7 +99,7 @@ router.get("/", async (c) => {
       distanceM: activity.distanceM ?? 0,
       avgPace: activity.avgPace,
       elevationGainM: activity.elevationM,
-      route: decodeStoredActivityRoute(activity.routeBlob, activity.routeMetadata),
+      route: metadataOnly ? null : decodeStoredActivityRoute(activity.routeBlob, activity.routeMetadata),
       clientUpdatedAt: activity.clientUpdatedAt,
       deletedAt: activity.deletedAt,
       createdAt: activity.createdAt,
@@ -101,12 +120,17 @@ router.get("/", async (c) => {
         createdAt: photo.createdAt,
         updatedAt: photo.updatedAt,
       })),
-    })),
-    hasMore: rows.length > limit,
-    nextCursor: rows.length > limit && last
-      ? Buffer.from(JSON.stringify({ startedAt: last.startedAt.toISOString(), id: last.id })).toString("base64url")
-      : null,
-  });
+
+  };
+}
+
+router.post("/cached-changes", zValidator("json", z.object({ records: z.array(z.object({ id: z.string().max(128), updatedAt: z.string().datetime().nullable().optional() })).max(200) })), async c => {
+  const unavailable = requireDatabase(c); if (unavailable) return unavailable;
+  const user = await getAuthenticatedAppUser(c); if (!user) return c.json({ error: "Authentication is required." }, 401);
+  const records = c.req.valid("json").records;
+  if (!records.length) return c.json({ activities: [], hasMore: false, nextCursor: null });
+  const activities = await getPrismaClient().activity.findMany({ where: { userId: user.id, OR: records.map(record => ({ id: record.id, ...(record.updatedAt ? { updatedAt: { gt: new Date(record.updatedAt) } } : {}) })) }, include: { photos: true }, take: 200 });
+  return c.json({ activities: activities.map(activity => serializeActivity(activity, true)), hasMore: false, nextCursor: null });
 });
 
 router.get("/:id", async (c) => {
@@ -360,9 +384,23 @@ router.post("/", zValidator("json", createSchema), async (c) => {
   let routeCompletionRecorded = false;
   const createActivityWithSocialPost = () =>
     prisma.$transaction(async (transaction) => {
+      const source = body.clientData?.source as { kind?: unknown; externalID?: unknown } | undefined;
+      if (typeof source?.kind === "string" && typeof source.externalID === "string" && ["strava", "appleHealth", "garminViaHealth", "health_connect", "importedFile"].includes(source.kind)) {
+        const sourceKey = `${source.kind}:${source.externalID}`;
+        // Serialize same-source imports even when two offline devices chose different client IDs.
+        await transaction.$queryRaw`SELECT 1::int AS locked FROM pg_advisory_xact_lock(hashtextextended(${resolvedUserId + ":" + sourceKey}, 0))`;
+        const canonical = await transaction.activity.findFirst({ where: { userId: resolvedUserId, deletedAt: null, OR: [
+          { importSourceKey: sourceKey },
+          { AND: [{ clientData: { path: ["source", "kind"], equals: source.kind } }, { clientData: { path: ["source", "externalID"], equals: source.externalID } }] },
+        ] }, orderBy: { createdAt: "asc" } });
+        if (canonical) return { activity: canonical, routeCompletionRecorded: false, created: false };
+      }
       const createdActivity = await transaction.activity.create({
         data: activityData,
       });
+      const createdFacts = activityFact(createdActivity);
+      await transaction.activity.update({ where: { id: createdActivity.id }, data: { statisticsFacts: createdFacts as unknown as Prisma.InputJsonValue, ...identityColumns(createdFacts), updatedAt: createdActivity.updatedAt } });
+      await transaction.user.update({ where: { id: resolvedUserId }, data: { statisticsRevision: { increment: 1 } } });
       await transaction.post.create({
         data: {
           userId: resolvedUserId,
@@ -375,6 +413,7 @@ router.post("/", zValidator("json", createSchema), async (c) => {
       }
       return {
         activity: createdActivity,
+        created: true,
         routeCompletionRecorded: body.followedRouteCompleted === true && resolvedFollowedRouteId != null,
       };
     });
@@ -433,6 +472,9 @@ router.post("/", zValidator("json", createSchema), async (c) => {
       if (body.followedRouteCompleted && resolvedFollowedRouteId) {
         await recordRouteCompletion(transaction, updatedActivity.id, resolvedFollowedRouteId);
       }
+      const updatedFacts = activityFact(updatedActivity);
+      await transaction.activity.update({ where: { id: updatedActivity.id }, data: { statisticsFacts: updatedFacts as unknown as Prisma.InputJsonValue, ...identityColumns(updatedFacts), updatedAt: updatedActivity.updatedAt } });
+      await transaction.user.update({ where: { id: resolvedUserId }, data: { statisticsRevision: { increment: 1 } } });
       return {
         activity: updatedActivity,
         routeCompletionRecorded: body.followedRouteCompleted === true && resolvedFollowedRouteId != null,
@@ -458,7 +500,7 @@ router.post("/", zValidator("json", createSchema), async (c) => {
           const result = await createActivityWithSocialPost();
           activity = result.activity;
           routeCompletionRecorded = result.routeCompletionRecorded;
-          wasCreated = true;
+          wasCreated = result.created;
         } catch (error) {
           if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
             throw error;
@@ -474,7 +516,7 @@ router.post("/", zValidator("json", createSchema), async (c) => {
       const result = await createActivityWithSocialPost();
       activity = result.activity;
       routeCompletionRecorded = result.routeCompletionRecorded;
-      wasCreated = true;
+      wasCreated = result.created;
     }
   } catch (error) {
     if (error instanceof RouteAssociationConflictError || error instanceof RouteCompletionConflictError) {
@@ -609,6 +651,7 @@ router.delete("/:id", async (c) => {
       where: { recordedActivityId: activity.id },
       data: { recordedActivityId: null, outcome: null, resolvedAt: null },
     });
+    await transaction.user.update({ where: { id: user.id }, data: { statisticsRevision: { increment: 1 } } });
     return transaction.activity.update({
       where: { id: activity.id },
       data: { deletedAt: new Date(), clientData: undefined },

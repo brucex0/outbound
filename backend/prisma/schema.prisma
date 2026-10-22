@@ -24,6 +24,7 @@ model User {
   verified             Boolean   @default(false)
   termsAcceptedVersion Int?
   termsAcceptedAt      DateTime?
+  statisticsRevision   Int       @default(0)
   onboardingStatus     String    @default("pending")
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
@@ -452,6 +453,10 @@ model Activity {
   routeMetadata              Json? // Small route metadata (visibility/elevation attribution)
   splits                     Json? // Split[]
   reflection                 Json? // post-activity finish reflection saved by the client
+  importSourceKey            String?
+  healthWorkoutExternalID    String?
+  recordingSessionID         String?
+  statisticsFacts            Json? // versioned compact facts; excludes route geometry and photo bytes
   clientData                 Json? // lossless client snapshot used to restore local-first history
   clientUpdatedAt            DateTime?
   deletedAt                  DateTime?
@@ -472,6 +477,10 @@ model Activity {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
+  @@index([userId, startedAt, id])
+  @@index([userId, importSourceKey])
+  @@index([userId, healthWorkoutExternalID])
+  @@index([userId, recordingSessionID])
   @@unique([userId, clientActivityId])
   @@index([followedRouteId])
 }

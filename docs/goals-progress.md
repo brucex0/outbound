@@ -38,7 +38,7 @@ Ship:
 - one active weekly goal at a time
 - guide-led setup inside Me
 - local-first persistence
-- progress derived from saved activities
+- authenticated progress derived from complete server weekly totals; local-only mode uses saved activities
 - goal-aware Me-surface copy and post-run reflection
 
 Defer:
@@ -46,7 +46,7 @@ Defer:
 - pace targets
 - multiple simultaneous goals
 - heavy charts
-- backend sync as a requirement
+- complete local activity synchronization as a requirement
 - open-ended natural-language parsing
 
 ## Current Implementation
@@ -216,3 +216,7 @@ Avoid:
 - `goal failed`
 - `you are behind`
 - `increase difficulty`
+
+## Account Statistics Integration
+
+- Authenticated weekly-focus progress uses the complete server weekly snapshot, never a partial local history. Without a snapshot, progress is unavailable; cached/pending statistics stay identified. Goal setup remains local. See `docs/account-statistics.md`.
