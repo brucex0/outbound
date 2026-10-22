@@ -17,7 +17,7 @@
 - Activities with no usable route show an accessible no-route state. Multi-segment routes preserve pause gaps; continuous routes use pace-colored segments.
 - GPS-located photos produce map pins. Selecting a photo in the horizontal strip selects and centers its pin; selecting it again opens the full-screen pageable lightbox. Photos without coordinates remain visible without a misleading pin.
 - Elevation and splits are hidden when source points are insufficient. Both sections are collapsed initially and fade open in place.
-- Share opens the 9:16 image preview before save or system sharing. The route backdrop includes white-bordered circular photo thumbnails at valid, visible photo coordinates. It reuses the detail photo decoder for EXIF rotation/mirroring and aspect-fill crops, retains original files/metadata, and skips unavailable local media without blocking export. Remote-only photos remain unavailable, matching the current detail photo strip. Edit and confirmed deletion retain the existing local-first repository behavior.
+- Share opens the 9:16 image preview before save or system sharing. The route backdrop includes white-bordered 144-pixel circular photo thumbnails at valid, visible photo coordinates. It reuses the detail photo decoder for EXIF rotation/mirroring and aspect-fill crops, retains original files/metadata, and skips unavailable local media without blocking export. Remote-only photos remain unavailable, matching the current detail photo strip. Edit and confirmed deletion retain the existing local-first repository behavior.
 
 ## Data And Presentation Contract
 

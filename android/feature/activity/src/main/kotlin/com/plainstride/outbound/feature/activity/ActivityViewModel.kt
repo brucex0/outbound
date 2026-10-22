@@ -309,17 +309,20 @@ class ActivityViewModel @Inject constructor(
     }
 
     private fun drawRoutePhoto(canvas: Canvas, image: Bitmap, x: Float, y: Float) {
-        val frame = RectF(x - 54f, y - 108f, x + 54f, y)
+        // Keep the larger border inside the card near route edges.
+        val left = (x - 72f).coerceIn(6f, canvas.width - 150f)
+        val top = (y - 144f).coerceIn(6f, canvas.height - 150f)
+        val frame = RectF(left, top, left + 144f, top + 144f)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             setShadowLayer(10f, 0f, 4f, Color.argb(90, 0, 0, 0))
         }
-        canvas.drawCircle(frame.centerX(), frame.centerY(), 54f, paint)
+        canvas.drawCircle(frame.centerX(), frame.centerY(), 72f, paint)
         paint.clearShadowLayer()
         paint.isFilterBitmap = true
         val checkpoint = canvas.save()
         try {
-            val clip = android.graphics.Path().apply { addCircle(frame.centerX(), frame.centerY(), 50f, android.graphics.Path.Direction.CW) }
+            val clip = android.graphics.Path().apply { addCircle(frame.centerX(), frame.centerY(), 68f, android.graphics.Path.Direction.CW) }
             canvas.clipPath(clip)
             // The shared decoder preserves EXIF rotation/mirroring before this aspect-fill crop.
             val scale = maxOf(frame.width() / image.width, frame.height() / image.height)
