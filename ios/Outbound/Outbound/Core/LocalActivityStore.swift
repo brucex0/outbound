@@ -913,6 +913,33 @@ nonisolated struct ActivityManualEdits: Codable, Hashable {
 nonisolated struct ActivityIndoorMetadata: Codable, Hashable {
     let isIndoor: Bool
     let mode: String?
+
+    init(isIndoor: Bool, mode: String?) {
+        self.isIndoor = isIndoor
+        self.mode = mode
+    }
+
+    private enum CodingKeys: String, CodingKey { case isIndoor, indoor, mode }
+
+    init(from decoder: Decoder) throws {
+        // Server snapshots may contain a bare flag or the earlier `indoor` key.
+        // Preserve that fact, then encode only the canonical metadata object.
+        if let flag = try? decoder.singleValueContainer().decode(Bool.self) {
+            isIndoor = flag
+            mode = nil
+        } else {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            isIndoor = try c.decodeIfPresent(Bool.self, forKey: .isIndoor)
+                ?? c.decode(Bool.self, forKey: .indoor)
+            mode = try c.decodeIfPresent(String.self, forKey: .mode)
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(isIndoor, forKey: .isIndoor)
+        try c.encodeIfPresent(mode, forKey: .mode)
+    }
 }
 
 nonisolated struct ActivityCadenceSummary: Codable, Hashable {

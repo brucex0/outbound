@@ -63,8 +63,19 @@ enum ActivityDiagnosticLog {
         if case let APIError.http(statusCode, _, _) = error {
             return "http_\(statusCode)"
         }
-        if error is DecodingError {
-            return "decoding"
+        if let decodingError = error as? DecodingError {
+            let context: DecodingError.Context
+            switch decodingError {
+            case .keyNotFound(_, let value), .typeMismatch(_, let value),
+                 .valueNotFound(_, let value), .dataCorrupted(let value): context = value
+            @unknown default: return "decoding"
+            }
+            // Whitelist structural keys; never print dynamic keys or decoded values.
+            let safeKeys: Set<String> = ["activities", "clientData", "source", "kind", "recognitionBadgeIDs", "route", "points", "photos", "startedAt", "endedAt", "guideNudge", "walkingStepCount", "healthMetrics", "goal", "energyKilocalories", "gear", "manualEdits", "indoor", "cadence", "heartRateZones", "recordingSession", "activityEventID", "followedRoute", "sessionUUID", "origin", "recordingDevice", "healthKitOwnership", "shoeID", "value", "editedAt", "importedAt"]
+            let path = context.codingPath.map { key in
+                key.intValue != nil ? "array" : (safeKeys.contains(key.stringValue) ? key.stringValue : "field")
+            }.joined(separator: ".")
+            return "decoding_\(path)"
         }
         if let urlError = error as? URLError {
             return urlError.code == .notConnectedToInternet ? "offline" : "network"

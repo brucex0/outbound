@@ -14098,6 +14098,28 @@
         }
       }
     },
+    "activity.history.load_more.failed" : {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t load older activities. Please try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar las actividades anteriores. Inténtalo de nuevo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法加载更早的活动，请重试。"
+          }
+        }
+      }
+    },
     "activity.history.load_more.hint": {
       "localizations": {
         "en": {

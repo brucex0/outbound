@@ -9,6 +9,12 @@ final class ActivityStore: ObservableObject {
     @Published private(set) var isSyncing = false
     @Published private(set) var hasLoadedActivities = false
     @Published private(set) var photoAlbumNotice: ActivityPhotoAlbumNotice?
+    @Published private(set) var hasMoreRemoteActivities = true
+    private var remoteHistoryTask: Task<Bool, Never>?
+    private var remoteHistoryCursor: String?
+    private var remoteHistoryOffset = 0
+    private var isRestoringPhotos = false
+    private var pendingRemotePhotos: [UUID: [RemoteActivityPhoto]] = [:]
     private let api = APIClient.shared
     private let persistence = ActivityPersistence.shared
     private let analyticsManager: AnalyticsManager?
@@ -743,7 +749,9 @@ final class ActivityStore: ObservableObject {
             "Activity sync pass started pending=\(ActivityDiagnosticLog.countBucket(pendingActivityCount))"
         )
         await loadActivities()
-        await pullRemoteActivities()
+        _ = await pullRemoteActivities(reset: true, loadAll: true)
+        // Restore every activity record before downloading any private photo bytes.
+        await restorePendingRemotePhotos()
         let pendingIDs = activities
             .filter { !($0.sync?.isSynced ?? false) }
             .map(\.id)
@@ -964,114 +972,163 @@ final class ActivityStore: ObservableObject {
         }
     }
 
-    private func pullRemoteActivities() async {
+    func loadMoreRemoteActivities() async -> Bool {
+        guard AuthStore.currentUserId != nil else { return false }
+        let succeeded = await pullRemoteActivities(reset: false, loadAll: false)
+        Task { await restorePendingRemotePhotos() }
+        return succeeded
+    }
+
+    private func restorePendingRemotePhotos() async {
+        guard !isRestoringPhotos else { return }
+        isRestoringPhotos = true
+        defer { isRestoringPhotos = false }
+        while let (activityID, photos) = pendingRemotePhotos.first {
+            pendingRemotePhotos.removeValue(forKey: activityID)
+            await restoreRemotePhotos(photos, activityID: activityID)
+        }
+    }
+
+    private func pullRemoteActivities(reset: Bool, loadAll: Bool) async -> Bool {
+        if let remoteHistoryTask {
+            let succeeded = await remoteHistoryTask.value
+            guard succeeded, loadAll else { return succeeded }
+            // A foreground page may have been in flight when full sync began.
+            return await pullRemoteActivities(reset: reset, loadAll: true)
+        }
+        let task = Task {
+            let succeeded = await restoreRemoteActivityPages(reset: reset, loadAll: loadAll)
+            remoteHistoryTask = nil
+            return succeeded
+        }
+        remoteHistoryTask = task
+        return await task.value
+    }
+
+    private func restoreRemoteActivityPages(reset: Bool, loadAll: Bool) async -> Bool {
+        if reset {
+            remoteHistoryCursor = nil
+            remoteHistoryOffset = 0
+            hasMoreRemoteActivities = true
+        }
+        guard hasMoreRemoteActivities else { return true }
+        var pageCount = 0
         do {
-            var offset = 0
-            var hasMore = true
             var remoteCount = 0
             var restoredCount = 0
             var deletedCount = 0
-            while hasMore {
-                let response = try await api.fetchActivities(offset: offset)
+            repeat {
+                try Task.checkCancellation()
+                let response = try await api.fetchActivities(offset: remoteHistoryOffset, cursor: remoteHistoryCursor)
                 for remote in response.activities {
-                remoteCount += 1
-                guard let clientID = remote.clientActivityId,
-                      let activityID = UUID(uuidString: clientID) else { continue }
+                    remoteCount += 1
+                    guard let clientID = remote.clientActivityId,
+                          let activityID = UUID(uuidString: clientID) else { continue }
 
-                if remote.deletedAt != nil {
-                    if let local = activity(id: activityID) {
-                        try? await persistence.delete(local)
-                        activities.removeAll { $0.id == activityID }
-                        activityRevision += 1
-                        deletedCount += 1
+                    if remote.deletedAt != nil {
+                        if let local = activity(id: activityID) {
+                            try await persistence.delete(local)
+                            activities.removeAll { $0.id == activityID }
+                            activityRevision += 1
+                            deletedCount += 1
+                        }
+                        continue
                     }
-                    continue
-                }
 
-                guard let clientExtras = remote.clientData else { continue }
-                let local = activity(id: activityID)
-                if let local, remote.clientUpdatedAt == nil {
-                    let upgradeState = SavedActivitySyncState(
+                    guard let clientExtras = remote.clientData else { continue }
+                    let local = activity(id: activityID)
+                    if let local, remote.clientUpdatedAt == nil {
+                        let upgradeState = SavedActivitySyncState(
+                            clientActivityId: clientID,
+                            serverActivityId: remote.id,
+                            lastAttemptAt: local.sync?.lastAttemptAt,
+                            syncedAt: nil,
+                            lastError: nil,
+                            localUpdatedAt: local.sync?.localUpdatedAt ?? local.createdAt
+                        )
+                        await persistSyncState(upgradeState, for: activityID)
+                        continue
+                    }
+                    let localUpdatedAt = local?.sync?.localUpdatedAt ?? local?.createdAt
+                    if local?.sync?.isSynced == false,
+                       let localUpdatedAt,
+                       let remoteClientUpdatedAt = remote.clientUpdatedAt,
+                       localUpdatedAt > remoteClientUpdatedAt {
+                        continue
+                    }
+
+                    let synced = SavedActivitySyncState(
                         clientActivityId: clientID,
                         serverActivityId: remote.id,
-                        lastAttemptAt: local.sync?.lastAttemptAt,
-                        syncedAt: nil,
+                        lastAttemptAt: local?.sync?.lastAttemptAt,
+                        syncedAt: remote.updatedAt,
                         lastError: nil,
-                        localUpdatedAt: local.sync?.localUpdatedAt ?? local.createdAt
+                        localUpdatedAt: remote.clientUpdatedAt ?? remote.updatedAt
                     )
-                    await persistSyncState(upgradeState, for: activityID)
-                    continue
+                    let restored = SavedActivity(
+                        id: activityID,
+                        activityType: remote.activityType,
+                        title: remote.title,
+                        guideNudge: clientExtras.guideNudge,
+                        reflection: remote.reflection,
+                        createdAt: remote.createdAt,
+                        startedAt: remote.startedAt,
+                        endedAt: remote.endedAt,
+                        durationSecs: remote.durationSecs,
+                        distanceM: remote.distanceM,
+                        avgPace: remote.avgPace,
+                        elevationGainM: remote.elevationGainM,
+                        walkingStepCount: clientExtras.walkingStepCount,
+                        healthMetrics: clientExtras.healthMetrics,
+                        goal: clientExtras.goal,
+                        energyKilocalories: clientExtras.energyKilocalories,
+                        companionType: remote.companionType,
+                        source: clientExtras.source,
+                        gear: clientExtras.gear,
+                        manualEdits: clientExtras.manualEdits,
+                        indoor: clientExtras.indoor,
+                        cadence: clientExtras.cadence,
+                        heartRateZones: clientExtras.heartRateZones,
+                        recordingSession: clientExtras.recordingSession,
+                        activityEventID: clientExtras.activityEventID,
+                        followedRoute: clientExtras.followedRoute ?? local?.followedRoute,
+                        recognitionBadgeIDs: clientExtras.recognitionBadgeIDs,
+                        route: remote.route,
+                        photos: local?.photos ?? [],
+                        sync: synced
+                    )
+                    try await persistence.replaceOrInsert(restored)
+                    if let index = activities.firstIndex(where: { $0.id == activityID }) {
+                        activities[index] = restored
+                    } else {
+                        activities.append(restored)
+                    }
+                    activityRevision += 1
+                    restoredCount += 1
+                    pendingRemotePhotos[activityID] = remote.photos ?? []
                 }
-                let localUpdatedAt = local?.sync?.localUpdatedAt ?? local?.createdAt
-                if local?.sync?.isSynced == false,
-                   let localUpdatedAt,
-                   let remoteClientUpdatedAt = remote.clientUpdatedAt,
-                   localUpdatedAt > remoteClientUpdatedAt {
-                    continue
-                }
-
-                let synced = SavedActivitySyncState(
-                    clientActivityId: clientID,
-                    serverActivityId: remote.id,
-                    lastAttemptAt: local?.sync?.lastAttemptAt,
-                    syncedAt: remote.updatedAt,
-                    lastError: nil,
-                    localUpdatedAt: remote.clientUpdatedAt ?? remote.updatedAt
-                )
-                let restored = SavedActivity(
-                    id: activityID,
-                    activityType: remote.activityType,
-                    title: remote.title,
-                    guideNudge: clientExtras.guideNudge,
-                    reflection: remote.reflection,
-                    createdAt: remote.createdAt,
-                    startedAt: remote.startedAt,
-                    endedAt: remote.endedAt,
-                    durationSecs: remote.durationSecs,
-                    distanceM: remote.distanceM,
-                    avgPace: remote.avgPace,
-                    elevationGainM: remote.elevationGainM,
-                    walkingStepCount: clientExtras.walkingStepCount,
-                    healthMetrics: clientExtras.healthMetrics,
-                    goal: clientExtras.goal,
-                    energyKilocalories: clientExtras.energyKilocalories,
-                    companionType: remote.companionType,
-                    source: clientExtras.source,
-                    gear: clientExtras.gear,
-                    manualEdits: clientExtras.manualEdits,
-                    indoor: clientExtras.indoor,
-                    cadence: clientExtras.cadence,
-                    heartRateZones: clientExtras.heartRateZones,
-                    recordingSession: clientExtras.recordingSession,
-                    activityEventID: clientExtras.activityEventID,
-                    followedRoute: clientExtras.followedRoute ?? local?.followedRoute,
-                    recognitionBadgeIDs: clientExtras.recognitionBadgeIDs,
-                    route: remote.route,
-                    photos: local?.photos ?? [],
-                    sync: synced
-                )
-                try await persistence.replaceOrInsert(restored)
-                if let index = activities.firstIndex(where: { $0.id == activityID }) {
-                    activities[index] = restored
-                } else {
-                    activities.append(restored)
-                }
-                restoredCount += 1
-                await restoreRemotePhotos(remote.photos ?? [], activityID: activityID)
-                }
-                offset += response.activities.count
-                hasMore = response.hasMore && !response.activities.isEmpty
-            }
-            sortActivitiesByStartTime()
+                // Advance only after the complete page is durable; a failure retries it.
+                remoteHistoryOffset += response.activities.count
+                remoteHistoryCursor = response.nextCursor
+                hasMoreRemoteActivities = response.hasMore && !response.activities.isEmpty
+                pageCount += 1
+                sortActivitiesByStartTime()
+                ActivityDiagnosticLog.notice(.sync, "Activity restore page completed received=\(ActivityDiagnosticLog.countBucket(response.activities.count)) has_more=\(hasMoreRemoteActivities)")
+            } while loadAll && hasMoreRemoteActivities
             ActivityDiagnosticLog.notice(
                 .sync,
                 "Activity restore completed received=\(ActivityDiagnosticLog.countBucket(remoteCount)) restored=\(ActivityDiagnosticLog.countBucket(restoredCount)) deleted=\(ActivityDiagnosticLog.countBucket(deletedCount))"
             )
+            return true
+        } catch is CancellationError {
+            return false
         } catch {
+            sortActivitiesByStartTime()
             ActivityDiagnosticLog.error(
                 .sync,
-                "Activity restore failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+                "Activity restore failed pages=\(ActivityDiagnosticLog.countBucket(pageCount)) error=\(ActivityDiagnosticLog.errorCategory(error))"
             )
+            return false
         }
     }
 
@@ -1128,8 +1185,8 @@ final class ActivityStore: ObservableObject {
     }
 
     private func restoreRemotePhotos(_ remotePhotos: [RemoteActivityPhoto], activityID: UUID) async {
-        guard var current = activity(id: activityID) else { return }
-        var photos = current.photos
+        guard let initial = activity(id: activityID) else { return }
+        var photos = initial.photos
         var changed = false
         for remote in remotePhotos {
             if let index = photos.firstIndex(where: { $0.id.uuidString.caseInsensitiveCompare(remote.clientPhotoId) == .orderedSame }) {
@@ -1154,10 +1211,24 @@ final class ActivityStore: ObservableObject {
         }
         guard changed else { return }
         photos.sort { $0.takenAt < $1.takenAt }
-        current = copy(current, photos: photos, sync: current.sync)
-        try? await persistence.replace(current)
-        activityRevision += 1
-        if let index = activities.firstIndex(where: { $0.id == activityID }) { activities[index] = current }
+        // Downloads suspend the actor; retain any edits made while they were in flight.
+        guard let latest = activity(id: activityID) else { return }
+        let initialIDs = Set(initial.photos.map(\.id))
+        let restoredPhotos = photos.filter { !initialIDs.contains($0.id) }
+        let metadataByID = Dictionary(uniqueKeysWithValues: photos.map { ($0.id, $0) })
+        let mergedPhotos = (latest.photos.map { local in
+            guard let remote = metadataByID[local.id] else { return local }
+            return copy(local, remotePhotoId: remote.remotePhotoId, remoteUploadedAt: remote.remoteUploadedAt, remoteThumbnailURL: remote.remoteThumbnailURL)
+        } + restoredPhotos.filter { restored in !latest.photos.contains(where: { $0.id == restored.id }) })
+            .sorted { $0.takenAt < $1.takenAt }
+        let current = copy(latest, photos: mergedPhotos, sync: latest.sync)
+        do {
+            try await persistence.replace(current)
+            activityRevision += 1
+            if let index = activities.firstIndex(where: { $0.id == activityID }) { activities[index] = current }
+        } catch {
+            ActivityDiagnosticLog.error(.sync, "Restored photo metadata save failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+        }
     }
 
     private func markPhotoUploaded(_ photoID: UUID, remote: RemoteActivityPhoto, activityID: UUID) async {

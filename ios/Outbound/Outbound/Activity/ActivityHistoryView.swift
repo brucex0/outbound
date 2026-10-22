@@ -12,6 +12,8 @@ struct ActivityHistoryView: View {
     @State private var deletionFailed = false
     @State private var visibleActivityCount = Self.pageSize
     @State private var hasTrackedCalorieExposure = false
+    @State private var isLoadingPage = false
+    @State private var paginationToast: String?
 
     private static let pageSize = 20
 
@@ -22,7 +24,10 @@ struct ActivityHistoryView: View {
     var body: some View {
         Group {
             if activityStore.activities.isEmpty {
-                emptyState
+                VStack {
+                    emptyState
+                    if activityStore.hasMoreRemoteActivities && AuthStore.currentUserId != nil { loadMoreButton.padding() }
+                }
             } else {
                 list
             }
@@ -72,6 +77,22 @@ struct ActivityHistoryView: View {
         } message: {
             Text(String(localized: "activity.history.delete.failed.message", defaultValue: "Some activities could not be deleted. Please try again."))
         }
+        .overlay(alignment: .top) {
+            if let paginationToast {
+                Label(paginationToast, systemImage: "exclamationmark.circle.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.top, 8)
+            }
+        }
+        .task(id: paginationToast) {
+            guard paginationToast != nil else { return }
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
+            paginationToast = nil
+        }
         .onAppear { trackCalorieExposureIfNeeded() }
         .onChange(of: visibleActivities) { _, _ in trackCalorieExposureIfNeeded() }
         .onChange(of: onboardingStore.latestWeightKilograms) { _, _ in trackCalorieExposureIfNeeded() }
@@ -113,32 +134,51 @@ struct ActivityHistoryView: View {
             }
             .deleteDisabled(isSelecting)
 
-            if visibleActivities.count < activityStore.activities.count {
-                Button {
-                    loadNextPage()
-                } label: {
-                    Text(String(localized: "common.load_more", defaultValue: "Load more"))
-                        .frame(maxWidth: .infinity)
-                }
-                .listRowSeparator(.hidden)
-                .accessibilityHint(String(localized: "activity.history.load_more.hint", defaultValue: "Shows older activities."))
+            if visibleActivities.count < activityStore.activities.count || activityStore.hasMoreRemoteActivities && AuthStore.currentUserId != nil {
+                loadMoreButton
+                    .listRowSeparator(.hidden)
             }
         }
         .listStyle(.plain)
     }
 
-    private func loadNextPage() {
-        let priorCount = visibleActivities.count
-        visibleActivityCount = min(activityStore.activities.count, visibleActivityCount + Self.pageSize)
-        let appendedCount = visibleActivities.count - priorCount
-        let page = Int(ceil(Double(visibleActivities.count) / Double(Self.pageSize)))
-        Task {
-            await analyticsManager?.track(.init(.paginatedListPageLoaded, properties: [
-                .sourceType: .string("activity_history"),
-                .countBucket: .string(ProductAnalyticsBucket.count(appendedCount)),
-                .pageDepthBucket: .string(ProductAnalyticsBucket.pageDepth(page))
-            ]))
+    private var loadMoreButton: some View {
+        Button {
+            Task { await loadNextPage() }
+        } label: {
+            HStack {
+                if isLoadingPage { ProgressView() }
+                Text(String(localized: "common.load_more", defaultValue: "Load more"))
+            }
+            .frame(maxWidth: .infinity)
         }
+        .disabled(isLoadingPage)
+        .accessibilityHint(String(localized: "activity.history.load_more.hint", defaultValue: "Shows older activities."))
+    }
+
+    private func loadNextPage() async {
+        guard !isLoadingPage else { return }
+        isLoadingPage = true
+        defer { isLoadingPage = false }
+        let priorCount = visibleActivities.count
+        let targetCount = visibleActivityCount + Self.pageSize
+        var succeeded = true
+        while activityStore.activities.count < targetCount && activityStore.hasMoreRemoteActivities && AuthStore.currentUserId != nil {
+            guard await activityStore.loadMoreRemoteActivities() else {
+                succeeded = false
+                paginationToast = String(localized: "activity.history.load_more.failed", defaultValue: "Couldn’t load older activities. Please try again.")
+                break
+            }
+        }
+        visibleActivityCount = min(activityStore.activities.count, targetCount)
+        let appendedCount = max(0, visibleActivities.count - priorCount)
+        let page = Int(ceil(Double(visibleActivities.count) / Double(Self.pageSize)))
+        await analyticsManager?.track(.init(.paginatedListPageLoaded, properties: [
+            .sourceType: .string("activity_history"),
+            .countBucket: .string(ProductAnalyticsBucket.count(appendedCount)),
+            .pageDepthBucket: .string(ProductAnalyticsBucket.pageDepth(page)),
+            .result: .string(succeeded ? "success" : "failure")
+        ]))
     }
 
     private func trackCalorieExposureIfNeeded() {

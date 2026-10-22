@@ -59,10 +59,11 @@ final class APIClient {
         try await post("/elevation/correct", body: request)
     }
 
-    func fetchActivities(offset: Int = 0) async throws -> ActivitySyncListResponse {
+    func fetchActivities(offset: Int = 0, cursor: String? = nil) async throws -> ActivitySyncListResponse {
         try await get("/activities", queryItems: [
-            URLQueryItem(name: "limit", value: "200"),
-            URLQueryItem(name: "offset", value: String(offset))
+            URLQueryItem(name: "limit", value: "20"),
+            URLQueryItem(name: "offset", value: String(offset)),
+            URLQueryItem(name: "cursor", value: cursor)
         ])
     }
 
@@ -2387,6 +2388,7 @@ struct TerrainElevationAttribution: Decodable {
 struct ActivitySyncListResponse: Decodable {
     let activities: [RemoteActivityRecord]
     let hasMore: Bool
+    let nextCursor: String?
 }
 
 struct RemoteActivityRecord: Decodable {

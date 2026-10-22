@@ -412,7 +412,7 @@ enum ProductAnalyticsSchema {
         .watchWorkoutSaveResult: [.sourceType, .result, .errorCategory],
         .watchPhoneOnlyFallback: [.sourceType, .result, .errorCategory],
         .healthWorkoutWriteBack: [.sourceType, .result, .errorCategory],
-        .paginatedListPageLoaded: [.sourceType, .countBucket, .pageDepthBucket],
+        .paginatedListPageLoaded: [.sourceType, .countBucket, .pageDepthBucket, .result],
         .meDestinationOpened: [.destination, .entrySource],
         .progressSurfaceOpened: [.entrySource, .countBucket],
         .progressControlChanged: [.control, .selectionType],
