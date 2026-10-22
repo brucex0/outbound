@@ -1,8 +1,6 @@
 package com.plainstride.outbound.feature.recording
 
 import android.animation.ValueAnimator
-import androidx.compose.material.icons.outlined.Share
-import androidx.compose.foundation.layout.width
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
@@ -20,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -276,11 +273,6 @@ internal fun PostSaveActivityActions(onShare: () -> Unit, onDone: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Button(onClick = onShare, modifier = Modifier.weight(1f).height(48.dp)) {
-            Icon(
-                androidx.compose.material.icons.Icons.Outlined.Share,
-                contentDescription = null,
-            )
-            Spacer(Modifier.width(8.dp))
             Text(stringResource(com.plainstride.outbound.feature.activity.R.string.activity_share))
         }
         OutlinedButton(onClick = onDone, modifier = Modifier.weight(1f).height(48.dp)) {

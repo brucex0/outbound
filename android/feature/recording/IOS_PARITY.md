@@ -90,6 +90,6 @@
 
 ## Post-save Quick Sharing
 
-- Both celebration-only and stretch-offer layouts show Share beside Done immediately below the celebration message. Share opens the existing Android card preview for the locally saved activity, with Save Image and the native share chooser. Closing sharing retains the post-save surface and stretch selection.
+- Both celebration-only and stretch-offer layouts show text-only Share beside Done immediately below the celebration message. Both buttons have equal width and 48 dp height; Share uses the primary fill. Share opens the existing Android card preview for the locally saved activity, with Save Image and the native share chooser. Closing sharing retains the post-save surface and stretch selection.
 - Sharing does not wait for backend sync. Save failure never supplies a shareable activity. Preparation/save/chooser failures show temporary localized feedback and safe technical diagnostics. Existing share events use `source_type=post_save`, with no IDs, coordinates, exact metrics, or photo content.
 - Verification: recording/activity Kotlin compilation and `:app:assembleDebug` passed; no tests run. Manual verification remains for both layouts, route-less and photo activities, preview dismissal, selected stretch preservation, and offline operation.
