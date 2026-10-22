@@ -339,8 +339,8 @@ private enum ActivityShareMapSnapshotRenderer {
             let point = snapshot.point(for: coordinate)
             // Keep off-map photos from obscuring the card edges.
             guard CGRect(origin: .zero, size: size).insetBy(dx: 60, dy: 120).contains(point) else { continue }
-            let url = ActivityPhotoCache.shared.renderedURL(for: photo, thumbnailPixelHeight: 216)
-            guard let image = await ActivityPhotoCache.shared.image(for: url, maxPixelSize: 216) else {
+            let url = ActivityPhotoCache.shared.renderedURL(for: photo, thumbnailPixelHeight: 288)
+            guard let image = await ActivityPhotoCache.shared.image(for: url, maxPixelSize: 288) else {
                 Logger(subsystem: Bundle.main.bundleIdentifier ?? "Plainstride", category: "ActivityShare")
                     .error("Share route photo thumbnail unavailable; skipping annotation")
                 continue
@@ -414,7 +414,13 @@ private enum ActivityShareMapSnapshotRenderer {
     }
 
     private static func drawPhoto(_ image: UIImage, at point: CGPoint, in context: CGContext) {
-        let frame = CGRect(x: point.x - 54, y: point.y - 108, width: 108, height: 108)
+        // Keep the larger border inside the card near map edges.
+        let bounds = context.boundingBoxOfClipPath
+        let frame = CGRect(
+            x: min(max(point.x - 72, 6), bounds.width - 150),
+            y: min(max(point.y - 144, 6), bounds.height - 150),
+            width: 144, height: 144
+        )
         let border = UIBezierPath(ovalIn: frame)
         context.saveGState()
         context.setShadow(offset: CGSize(width: 0, height: 4), blur: 10, color: UIColor.black.withAlphaComponent(0.35).cgColor)
