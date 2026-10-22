@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="statistics_unavailable">Statistics unavailable</string>
+    <string name="statistics_unavailable_message">Connect to load your complete account statistics.</string>
+    <string name="statistics_cached">Showing your last complete statistics update.</string>
+    <string name="statistics_retry">Retry</string>
+    <string name="statistics_pending">Some activity changes are pending sync. Totals reflect the last complete server update.</string>
+</resources>

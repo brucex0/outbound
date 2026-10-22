@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="statistics_unavailable">Statistics unavailable</string>
+    <string name="statistics_unavailable_message">Connect to load your complete account statistics.</string>
+    <string name="statistics_cached">Showing your last complete statistics update.</string>
+</resources>

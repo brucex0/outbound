@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="statistics_unavailable">统计数据暂不可用</string>
+    <string name="statistics_unavailable_message">连接网络以加载完整的账户统计数据。</string>
+    <string name="statistics_cached">当前显示上次完整更新的统计数据。</string>
+    <string name="statistics_retry">重试</string>
+    <string name="statistics_pending">部分活动变更尚未同步，总计数据来自服务器上次完整更新。</string>
+</resources>

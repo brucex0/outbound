@@ -55,6 +55,11 @@ data class ProgressScreenState(
     val stats: ProgressStatsSnapshot,
     val unitSystem: ProgressUnitSystem = ProgressUnitSystem.METRIC,
     val activities: List<ProgressActivity> = emptyList(),
+    val bySport: Map<String, ProgressStatsSnapshot> = emptyMap(),
+    val isAvailable: Boolean = false,
+    val isCached: Boolean = true,
+    val accountWeek: ProgressPeriodTotals? = null,
+    val pendingChanges: Int = 0,
 )
 
 data class ProgressAnalyticsEvent(
@@ -86,17 +91,24 @@ fun ProgressScreen(
     state: ProgressScreenState,
     modifier: Modifier = Modifier,
     onAnalyticsEvent: (ProgressAnalyticsEvent) -> Unit = {},
+    onRefresh: () -> Unit = {},
 ) {
+    if (!state.isAvailable) {
+        Column(modifier.padding(20.dp)) {
+            Text(stringResource(R.string.statistics_unavailable), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.statistics_unavailable_message))
+            TextButton(onClick = onRefresh) { Text(stringResource(R.string.statistics_retry)) }
+        }
+        return
+    }
     var selectedTab by remember { mutableStateOf(ProgressTab.NOW) }
     var selectedRange by remember { mutableStateOf(ProgressTrendRange.FOUR_WEEKS) }
     var selectedMetric by remember { mutableStateOf(ProgressMetric.DISTANCE) }
-    var selectedSport by remember(state.activities) { mutableStateOf(state.activities.firstOrNull()?.activityType ?: "running") }
+    var selectedSport by remember(state.bySport.keys) { mutableStateOf(state.bySport.keys.firstOrNull() ?: "running") }
     fun trackControl(control: String, selection: String) = onAnalyticsEvent(
         ProgressAnalyticsEvent("progress_control_changed", mapOf("control" to control, "selection_type" to selection)),
     )
-    val trendStats = remember(state.activities, selectedSport) {
-        ProgressStatsEngine.snapshot(state.activities.filter { it.activityType == selectedSport })
-    }
+    val trendStats = state.bySport[selectedSport] ?: state.stats
     LaunchedEffect(Unit) {
         onAnalyticsEvent(
             ProgressAnalyticsEvent(
@@ -117,6 +129,8 @@ fun ProgressScreen(
         modifier = modifier.padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        if (state.pendingChanges > 0) item { Text(stringResource(R.string.statistics_pending), style = MaterialTheme.typography.bodySmall) }
+        else if (state.isCached) item { Text(stringResource(R.string.statistics_cached), style = MaterialTheme.typography.bodySmall) }
         item { Text(stringResource(R.string.progress_title), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold) }
         if (state.stats.eligibleActivityCount == 0) {
             item { EmptyProgressState() }
@@ -152,7 +166,7 @@ fun ProgressScreen(
                 ProgressTab.TRENDS -> {
                     item { ComparisonSection(state.stats.comparisons, state.unitSystem) }
                     item {
-                        val availableSports = state.activities.map { it.activityType }.distinct().sorted()
+                        val availableSports = state.bySport.keys.sorted()
                         TrendControls(availableSports, selectedSport, selectedRange, selectedMetric,
                             onSport = { if (selectedSport != it) { selectedSport = it; trackControl("activity_type", it) } },
                             onRange = { if (selectedRange != it) { selectedRange = it; trackControl("range", it.wireValue) } },

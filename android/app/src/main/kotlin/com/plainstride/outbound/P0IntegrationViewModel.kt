@@ -9,6 +9,8 @@ import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.plainstride.outbound.core.model.activity.localCoachingReference
+import com.plainstride.outbound.progress.progressSnapshot
+import com.plainstride.outbound.progress.statisticsTotals
 import java.time.Instant
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +37,7 @@ import com.plainstride.outbound.core.analytics.AnalyticsEvent
 import com.plainstride.outbound.core.analytics.AnalyticsProperty
 import com.plainstride.outbound.core.analytics.ProductAnalytics
 import com.plainstride.outbound.core.network.PlainstrideJson
+import kotlinx.serialization.json.double
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.contentOrNull
@@ -71,11 +74,18 @@ data class P0IntegrationState(
 ) : ViewModel() {
     private val mutable = MutableStateFlow(P0IntegrationState(pushEnabled=context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES,Context.MODE_PRIVATE).getBoolean(PUSH_ENABLED,true))); val state = mutable.asStateFlow()
     private var activityObservation: Job? = null
+    private var statisticsObservation: Job? = null
+    private var pendingObservation: Job? = null
+    private var serverStatistics: kotlinx.serialization.json.JsonObject? = null
     private var accountId: String? = null; private var locale = "en"; private var routeObservation: Job? = null
     fun trackCoachingReference(available: Boolean) {
-        val source = if (available) "local_history" else "unavailable"
+        val source = if (available) "server_statistics" else "unavailable"
         android.util.Log.i("PlainstrideLiveCoach", "resolve athlete_reference source=$source")
         analytics.record(AnalyticsEvent("live_guidance_reference_resolved", mapOf(AnalyticsProperty.SourceType to source)))
+    }
+    fun refreshStatistics() {
+        val id = accountId ?: return
+        viewModelScope.launch { if (!activities.refreshStatistics(id) && accountId == id) mutable.update { it.copy(progress = it.progress.copy(isCached = true)) } }
     }
     fun trackProgressEvent(event: ProgressAnalyticsEvent) {
         val properties = buildMap {
@@ -91,6 +101,29 @@ data class P0IntegrationState(
         if (this.accountId == accountId && this.locale == locale) return
         this.accountId = accountId
         this.locale = locale
+        serverStatistics = null
+        mutable.update { it.copy(progress = ProgressScreenState(ProgressStatsEngine.snapshot(emptyList()))) }
+        pendingObservation?.cancel()
+        pendingObservation = viewModelScope.launch { activities.observePendingSyncCount(accountId).collect { pending -> mutable.update { it.copy(progress = it.progress.copy(pendingChanges = pending, isCached = it.progress.isCached || pending > 0)) } } }
+        statisticsObservation?.cancel()
+        statisticsObservation = viewModelScope.launch {
+            activities.observeStatistics(accountId).collect { payload ->
+                if (payload == null || this@P0IntegrationViewModel.accountId != accountId) return@collect
+                try {
+                    val zone = java.time.ZoneId.of(payload.getValue("timeZone").jsonPrimitive.content)
+                    val all = payload.getValue("all").jsonObject.progressSnapshot(zone)
+                    val sports = payload.getValue("sports").jsonObject.mapValues { it.value.jsonObject.progressSnapshot(zone) }
+                    serverStatistics = payload
+                    mutable.update { state -> state.copy(coachingReferencePace = payload["coachingReferencePace"]?.jsonPrimitive?.doubleOrNull, progress = state.progress.copy(stats = all, bySport = sports, isAvailable = true, isCached = state.progress.pendingChanges > 0 || java.time.Duration.between(Instant.parse(payload.getValue("computedAt").jsonPrimitive.content), Instant.now()).seconds > 60, accountWeek = payload.getValue("currentWeek").jsonObject.statisticsTotals())) }
+                    refreshGearState()
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    android.util.Log.e("PlainstrideStatistics", "snapshot_decode_failed type=${e.javaClass.simpleName}")
+                    mutable.update { it.copy(progress = it.progress.copy(isCached = true)) }
+                }
+            }
+        }
+        viewModelScope.launch { if (!activities.refreshStatistics(accountId)) mutable.update { it.copy(progress = it.progress.copy(isCached = true)) } }
         mutable.update { it.copy(coachingReferencePace = null, weightKilograms = null, defaultGearId = null, gearShoes = emptyList(), gearMileage = emptyList()) }
         observeRoutes()
         reminderCoordinator.observe(viewModelScope, accountId, locale)
@@ -103,7 +136,8 @@ data class P0IntegrationState(
         }
         activityObservation?.cancel()
         activityObservation = viewModelScope.launch {
-            activities.observeAll(accountId).collect { savedActivities ->
+            activities.observePage(accountId, limit = 30).collect { page ->
+                val savedActivities = page.activities
                 val items = savedActivities.mapNotNull { activity ->
                     runCatching {
                         val zones = activity.heartRateZonesJson?.let(PlainstrideJson::parseToJsonElement)?.jsonObject
@@ -123,13 +157,6 @@ data class P0IntegrationState(
                                 else -> null
                             }
                         }
-                        var distance = 0.0
-                        var previous: com.plainstride.outbound.core.model.activity.ActivityTrackPoint? = null
-                        val route = activity.track.sortedBy { it.timestamp }.map { point ->
-                            previous?.let { distance += routeSegmentMeters(it.latitude, it.longitude, point.latitude, point.longitude) }
-                            previous = point
-                            ProgressRoutePoint(Instant.parse(point.timestamp), distance)
-                        }
                         ProgressActivity(
                             id = activity.id,
                             title = activity.title,
@@ -138,7 +165,7 @@ data class P0IntegrationState(
                             distanceMeters = activity.distanceM,
                             elevationGainMeters = activity.elevationGainM,
                             averageHeartRate = activity.averageHeartRateBpm,
-                            routePoints = route,
+                            routePoints = emptyList(),
                             activityType = activity.type.name,
                             goalCompleted = goalCompleted,
                             heartRateZoneSeconds = zones,
@@ -146,8 +173,8 @@ data class P0IntegrationState(
                     }.getOrNull()
                 }
                 mutable.update { state -> state.copy(
-                    progress = ProgressScreenState(ProgressStatsEngine.snapshot(items), activities = items),
-                    coachingReferencePace = localCoachingReference(savedActivities),
+                    progress = state.progress.copy(activities = items.take(6)),
+                    coachingReferencePace = serverStatistics?.get("coachingReferencePace")?.jsonPrimitive?.doubleOrNull,
                 ) }
                 refreshGearState()
             }
@@ -155,6 +182,7 @@ data class P0IntegrationState(
         viewModelScope.launch(Dispatchers.IO) {
             val result = activities.synchronize(accountId)
             if (result.uploaded > 0) social.refresh(accountId, locale)
+            if (!activities.refreshStatistics(accountId)) mutable.update { it.copy(progress = it.progress.copy(isCached = true)) }
         }
         viewModelScope.launch {
             today.observePersonalization(accountId, locale).collect { resource ->
@@ -242,7 +270,13 @@ data class P0IntegrationState(
             state.copy(
                 defaultGearId = collection.defaultShoe?.id?.toString(),
                 gearShoes = collection.shoes,
-                gearMileage = collection.mileage(gear.activityDistances()),
+                gearMileage = serverStatistics?.get("gear")?.jsonObject?.let { totals ->
+                    collection.mileage(totals.mapNotNull { (id, raw) ->
+                        val obj = raw.jsonObject
+                        try { ActivityGearDistance(java.util.UUID.fromString(id), obj.getValue("distanceMeters").jsonPrimitive.double, obj["lastUsedAt"]?.jsonPrimitive?.contentOrNull?.let(Instant::parse) ?: Instant.EPOCH) }
+                        catch (e: IllegalArgumentException) { android.util.Log.w("PlainstrideStatistics", "gear_snapshot_invalid type=${e.javaClass.simpleName}"); null }
+                    })
+                } ?: collection.mileage(emptyList()),
             )
         }
     }

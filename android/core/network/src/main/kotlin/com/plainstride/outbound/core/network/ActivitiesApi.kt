@@ -149,12 +149,19 @@ data class RemoteActivityDto(
     val companionType: String? = null,
 )
 
-@Serializable data class ActivityListResponse(val activities: List<RemoteActivityDto>, val hasMore: Boolean)
+@Serializable data class ActivityListResponse(val activities: List<RemoteActivityDto>, val hasMore: Boolean, val nextCursor: String? = null)
 @Serializable data class ActivityDeleteResponse(val status: String, val id: String? = null, val deletedAt: String? = null)
 
 @Serializable data class GroupActivityStartRequest(val startedAt: String)
 
+@Serializable data class CachedActivityVersion(val id: String, val updatedAt: String?)
+@Serializable data class CachedActivityVersions(val records: List<CachedActivityVersion>)
+
 interface ActivitiesApiService {
+    @POST("v1/activities/cached-changes") suspend fun cachedChanges(@Header("Authorization") authorization: String, @Body body: CachedActivityVersions): Response<ActivityListResponse>
+
+    @GET("v1/statistics") suspend fun statistics(@Header("Authorization") authorization: String, @Query("timeZone") timeZone: String, @Query("firstWeekday") firstWeekday: Int): Response<JsonObject>
+
     @POST("v1/elevation/correct")
     suspend fun correctTerrainElevation(
         @Header("Authorization") authorization: String,
@@ -175,6 +182,9 @@ interface ActivitiesApiService {
         @Header("Authorization") authorization: String,
         @Query("limit") limit: Int,
         @Query("offset") offset: Int,
+        @Query("cursor") cursor: String? = null,
+        @Query("ids") ids: String? = null,
+        @Query("includeRoute") includeRoute: Boolean = false,
     ): Response<ActivityListResponse>
 
     @POST("v1/activities")

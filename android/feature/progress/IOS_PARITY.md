@@ -39,3 +39,7 @@ Open this when changing Android Progress calculations, evidence, surfaces, or an
 - Implementation: complete for the documented Progress journey and calculations.
 - Verification: build-only compile required; visual/device reference comparison remains a release acceptance step.
 - Approved exceptions: none.
+
+## Statistics Ownership
+
+- Account Progress, sport trends, Me totals, and gear mileage consume the complete server statistics snapshot. Room holds an account/calendar-scoped snapshot cache; history completeness is irrelevant. Missing snapshots show unavailable/retry; failed refreshes retain and identify the cached snapshot. Pending outbox changes are identified and reconciled by server refresh. See `docs/account-statistics.md`.

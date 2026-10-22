@@ -165,9 +165,11 @@ fun MeRoute(
     connections: List<SocialPerson> = emptyList(),
     insights: List<MeInsight> = emptyList(),
     milestones: List<MeMilestone> = emptyList(),
-    localWeeklyMinutes: Int = 0,
-    localWeeklyDistanceMeters: Double = 0.0,
-    localWeeklyActivityCount: Int = 0,
+    accountWeeklyMinutes: Int = 0,
+    accountWeeklyDistanceMeters: Double = 0.0,
+    accountWeeklyActivityCount: Int = 0,
+    statisticsAvailable: Boolean = false,
+    statisticsCached: Boolean = false,
     onMyQrCode: () -> Unit = {},
     onConnections: () -> Unit = {},
     onMyRoutes: () -> Unit = {},
@@ -194,7 +196,7 @@ fun MeRoute(
         MePage.Overview -> MeOverview(
             state, onSettings = { page = MePage.Settings }, onRefresh = viewModel::refresh,
             connections, insights, personalMilestones,
-            localWeeklyMinutes, localWeeklyDistanceMeters, localWeeklyActivityCount,
+            accountWeeklyMinutes, accountWeeklyDistanceMeters, accountWeeklyActivityCount, statisticsAvailable, statisticsCached,
             onMyQrCode = onMyQrCode,
             onConnections = { onMeDestination("connections"); onConnections() },
             onMyRoutes = { onMeDestination("my_routes"); onMyRoutes() },
@@ -238,9 +240,11 @@ private fun MeOverview(
     connections: List<SocialPerson>,
     insights: List<MeInsight>,
     milestones: List<PersonalMilestone>,
-    localWeeklyMinutes: Int,
-    localWeeklyDistanceMeters: Double,
-    localWeeklyActivityCount: Int,
+    accountWeeklyMinutes: Int,
+    accountWeeklyDistanceMeters: Double,
+    accountWeeklyActivityCount: Int,
+    statisticsAvailable: Boolean,
+    statisticsCached: Boolean,
     onMyQrCode: () -> Unit,
     onConnections: () -> Unit,
     onMyRoutes: () -> Unit,
@@ -340,14 +344,19 @@ private fun MeOverview(
             item {
                 OutlinedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        if (!statisticsAvailable) {
+                            Text(stringResource(R.string.statistics_unavailable))
+                        } else {
+                        if (statisticsCached) Text(stringResource(R.string.statistics_cached), style = MaterialTheme.typography.bodySmall)
                         LinearProgressIndicator(
-                            progress = { (state.summary?.consistencyPercent ?: if (localWeeklyActivityCount > 0) (localWeeklyActivityCount * 34).coerceAtMost(100) else 0).coerceIn(0, 100) / 100f },
+                            progress = { (state.summary?.consistencyPercent ?: if (accountWeeklyActivityCount > 0) (accountWeeklyActivityCount * 34).coerceAtMost(100) else 0).coerceIn(0, 100) / 100f },
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            SummaryStat((state.summary?.weeklyMinutes ?: localWeeklyMinutes).toString(), stringResource(R.string.minutes))
-                            SummaryStat(formatWeeklyDistance(state, localWeeklyDistanceMeters), stringResource(if (state.preferences.measurement == MeasurementSystem.Metric) R.string.kilometers else R.string.miles))
-                            SummaryStat("${state.summary?.consistencyPercent ?: (localWeeklyActivityCount * 34).coerceAtMost(100)}%", stringResource(R.string.consistency))
+                            SummaryStat(accountWeeklyMinutes.toString(), stringResource(R.string.minutes))
+                            SummaryStat(formatWeeklyDistance(state, accountWeeklyDistanceMeters), stringResource(if (state.preferences.measurement == MeasurementSystem.Metric) R.string.kilometers else R.string.miles))
+                            SummaryStat("${state.summary?.consistencyPercent ?: (accountWeeklyActivityCount * 34).coerceAtMost(100)}%", stringResource(R.string.consistency))
+                        }
                         }
                     }
                 }
@@ -510,7 +519,7 @@ private fun MilestoneEmptyCard() {
 private val RecognitionOrange = Color(0xFFFF9500)
 private val RecognitionYellow = Color(0xFFFFCC00)
 
-private fun formatWeeklyDistance(state: SettingsUiState, localMeters: Double): String = (state.summary?.weeklyDistanceMeters ?: localMeters).let { meters ->
+private fun formatWeeklyDistance(state: SettingsUiState, localMeters: Double): String = localMeters.let { meters ->
     if (state.preferences.measurement == MeasurementSystem.Metric) "%.1f".format(meters / 1_000)
     else "%.1f".format(meters / 1_609.344)
 }

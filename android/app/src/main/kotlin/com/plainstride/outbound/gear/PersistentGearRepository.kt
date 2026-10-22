@@ -5,14 +5,12 @@ import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 import androidx.room.withTransaction
-import com.plainstride.outbound.core.data.ActivityRepository
 import com.plainstride.outbound.core.database.GearEntity
 import com.plainstride.outbound.core.database.PlainstrideDatabase
 import com.plainstride.outbound.feature.progress.*
 
 class PersistentGearRepository @Inject constructor(
     private val database: PlainstrideDatabase,
-    private val activities: ActivityRepository,
 ) : GearRepository {
     private var accountId: String? = null
     override suspend fun configure(accountId: String) { this.accountId = accountId }
@@ -30,14 +28,7 @@ class PersistentGearRepository @Inject constructor(
             if (collection.shoes.isNotEmpty()) database.gearDao().upsert(collection.shoes.map { it.toEntity(id, collection.defaultShoeId) })
         }
     }
-    override suspend fun activityDistances(): List<ActivityGearDistance> {
-        val id = accountId ?: return emptyList()
-        return activities.observePage(id, offset = 0, limit = 200).first().activities.mapNotNull { activity ->
-            val gearId = activity.gearJson?.let { raw -> UUID_REGEX.find(raw)?.value?.let { runCatching { UUID.fromString(it) }.getOrNull() } } ?: return@mapNotNull null
-            ActivityGearDistance(gearId, activity.distanceM, Instant.parse(activity.startedAt))
-        }
-    }
-    private companion object { val UUID_REGEX = Regex("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}") }
+
 }
 
 private fun GearItem.toEntity(accountId:String,defaultId:UUID?)=GearEntity(accountId,id.toString(),purpose.name,name,brand,model,startedAt.toEpochMilli(),retiredAt?.toEpochMilli(),distanceLimitMeters,notes,id==defaultId)

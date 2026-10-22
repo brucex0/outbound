@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="statistics_unavailable">Estadísticas no disponibles</string>
+    <string name="statistics_unavailable_message">Conéctate para cargar las estadísticas completas de tu cuenta.</string>
+    <string name="statistics_cached">Se muestra la última actualización completa de tus estadísticas.</string>
+    <string name="statistics_retry">Reintentar</string>
+    <string name="statistics_pending">Hay cambios de actividades pendientes de sincronizar. Los totales corresponden a la última actualización completa del servidor.</string>
+</resources>

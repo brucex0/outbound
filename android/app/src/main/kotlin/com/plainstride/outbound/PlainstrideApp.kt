@@ -880,9 +880,11 @@ private fun SignedInApp(
                                 if (stats.eligibleActivityCount >= 10) add(MeMilestone("local:ten_activities", resources.getString(SettingsR.string.milestone_ten_activities)))
                                 if (stats.weeklyBuckets.sumOf { it.distanceMeters } >= 100_000) add(MeMilestone("local:hundred_km", resources.getString(SettingsR.string.milestone_hundred_km)))
                             }.distinctBy(MeMilestone::id),
-                            localWeeklyMinutes = integration.progress.stats.currentWeek.durationSeconds / 60,
-                            localWeeklyDistanceMeters = integration.progress.stats.currentWeek.distanceMeters,
-                            localWeeklyActivityCount = integration.progress.stats.currentWeek.activityCount,
+                            accountWeeklyMinutes = (integration.progress.accountWeek?.durationSeconds ?: 0) / 60,
+                            accountWeeklyDistanceMeters = integration.progress.accountWeek?.distanceMeters ?: 0.0,
+                            accountWeeklyActivityCount = integration.progress.accountWeek?.activityCount ?: 0,
+                            statisticsAvailable = integration.progress.isAvailable,
+                            statisticsCached = integration.progress.isCached,
                             onMyQrCode = { navController.navigate(MY_QR_ROUTE) { launchSingleTop = true } },
                             onConnections = {
                                 socialTarget = SocialNavigationTarget("connections", entrySource = "me_preview")
@@ -977,6 +979,7 @@ private fun SignedInApp(
                                 SettingsGroupTitle(stringResource(ProgressR.string.progress_gear))
                                 GearSettingsSection(
                                     summaries = integration.gearMileage,
+                                    statisticsAvailable = integration.progress.isAvailable,
                                     defaultShoeId = integration.defaultGearId,
                                     units = if (measurementUnitSystem == MeasurementUnitSystem.metric) ProgressUnitSystem.METRIC else ProgressUnitSystem.IMPERIAL,
                                     onAdd = { addShoeSheetVisible = true },
@@ -1195,7 +1198,7 @@ private fun SignedInApp(
                 val progress = integration.progress.copy(
                     unitSystem = if (measurementUnitSystem == MeasurementUnitSystem.metric) ProgressUnitSystem.METRIC else ProgressUnitSystem.IMPERIAL,
                 )
-                ProgressRoute(progress, onAnalyticsEvent = integrationViewModel::trackProgressEvent)
+                ProgressRoute(progress, onAnalyticsEvent = integrationViewModel::trackProgressEvent, onRefresh = integrationViewModel::refreshStatistics)
             }
             dialog(COMMUNITY_ROUTES_ROUTE, dialogProperties = DialogProperties(usePlatformDefaultWidth = false)) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {

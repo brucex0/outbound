@@ -73,6 +73,7 @@ data class NewShoe(
 @Composable
 fun GearSettingsSection(
     summaries: List<GearMileageSummary>,
+    statisticsAvailable: Boolean,
     defaultShoeId: String?,
     units: ProgressUnitSystem,
     onAdd: () -> Unit,
@@ -132,7 +133,7 @@ fun GearSettingsSection(
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         summaries.forEach { summary ->
-                            GearSettingsShoeCard(summary, defaultShoeId, units, onMakeDefault, onRetire)
+                            GearSettingsShoeCard(summary, defaultShoeId, units, onMakeDefault, onRetire, statisticsAvailable)
                         }
                     }
                 }
@@ -148,6 +149,7 @@ private fun GearSettingsShoeCard(
     units: ProgressUnitSystem,
     onMakeDefault: (GearItem) -> Unit,
     onRetire: (GearItem) -> Unit,
+    statisticsAvailable: Boolean,
 ) {
     val shoe = summary.item
     val isDefault = defaultShoeId == shoe.id.toString() && !shoe.isRetired
@@ -165,7 +167,7 @@ private fun GearSettingsShoeCard(
                 Icon(Icons.AutoMirrored.Filled.DirectionsRun, null, tint = if (shoe.isRetired) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(shoe.displayName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                    Text(status, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(if (statisticsAvailable || shoe.isRetired) status else stringResource(R.string.statistics_unavailable), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (isDefault) {
                     Text(stringResource(R.string.progress_gear_default), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -178,6 +180,7 @@ private fun GearSettingsShoeCard(
                     }
                 }
             }
+            if (statisticsAvailable) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.progress_gear_mileage, mileage, target), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                 Text("${(summary.usageFraction * 100).roundToInt()}%", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -189,6 +192,7 @@ private fun GearSettingsShoeCard(
                 },
                 color = if (shoe.isRetired) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
             )
+            }
         }
     }
 }

@@ -95,8 +95,13 @@ class ActivityViewModel @Inject constructor(
     fun loadMore() {
         if (!mutableState.value.page.hasMore || mutableState.value.loading) return
         val next = limit.value + ActivityUiState.PAGE_SIZE
-        limit.value = next
         mutableState.value = mutableState.value.copy(loading = true)
+        viewModelScope.launch {
+            val id = account.value ?: return@launch
+            if (repository.loadHistoryPage(id, next)) limit.value = next
+            else messages.emit(ActivityMessage.FAILED)
+            mutableState.value = mutableState.value.copy(loading = false)
+        }
         analytics.record(AnalyticsEvent("paginated_list_page_loaded", mapOf(
             AnalyticsProperty.Source to "activity_history",
             AnalyticsProperty.PageDepthBucket to when { next <= 60 -> "page_2"; next <= 120 -> "pages_3_4"; else -> "page_5_plus" },
@@ -111,6 +116,10 @@ class ActivityViewModel @Inject constructor(
             mutableState.value = mutableState.value.copy(selected = activity, loading = false, groupAttribution = null)
             if (activity != null) analytics.record(AnalyticsEvent("activity_detail_opened", mapOf(AnalyticsProperty.Source to "history")))
             if (activity != null) launch {
+                repository.refreshActivity(accountId, activity.id)
+                if (account.value == accountId && mutableState.value.selected?.id == activity.id) {
+                    mutableState.value = mutableState.value.copy(selected = repository.activity(accountId, activity.id))
+                }
                 if (repository.correctElevationIfNeeded(accountId, activity.id)) {
                     syncScheduler.schedule(accountId)
                     val refreshed = repository.activity(accountId, activity.id)
