@@ -84,6 +84,7 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		DB3A914B2F9EE18E00F9B729 /* Outbound */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFolders = (LiveCoachAudio,);
 			path = Outbound;
 			sourceTree = "<group>";
 		};

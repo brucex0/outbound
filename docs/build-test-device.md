@@ -141,7 +141,16 @@ xcodebuild -quiet -jobs 2 \
 
 The source exclusion avoids existing stale `HealthKitServing`/`MusicService` mocks and tests referring to the removed `LocalActivityStore`. Remove it once those unrelated tests are repaired; `-only-testing` filters execution but still compiles the unit-test target.
 
-The tests advance sensor/session timestamps synchronously, capture playback requests, and replace AI analysis with a deterministic fixture. Basic cases substitute clip lookup; published-script regressions use the production manifest/disk/checksum lookup with recorded EN/ES/ZH scripts and both product voices, preserving strict rejection of unrelated sentences. They cover detection gates, same-second fixes, resets/cooldowns, queued/stale warnings, unavailable/failed audio, coaching contracts, non-running sessions, and the real Debug simulation through `LocationManager`, `ActivityRecorder`, and `VirtualGuide`, including the 7-to-20 km/h plus-button sequence at 1×/10×. The simulation tests create and clear a recovery journal inside the dedicated simulator; they never save or synchronize an activity. These checks verify audio requests, not physical speaker audibility.
+The tests advance sensor/session timestamps synchronously and capture audio requests. They cover detector gates, 4→19/6→24/7→24/24→7 km/h recorder ramps at 1×/10×, recent target coaching, busy/stale queues, unavailable/failed playback, and both directions through the actual generated WAV files. Across EN/ES/ZH and both voices, every iOS fallback must have a matching recording; countdown lookup and rejection of unrelated sentences remain intact. An older cached manifest must not hide bundled warnings. Positive checks use the approved app bundle directly and prepare every cue with AVAudioPlayer. A separate unreviewed fixture verifies approval rejection. These checks do not establish physical audibility or listening QA. The simulation creates and clears a recovery journal inside its dedicated simulator and never saves/syncs an activity.
+
+Check backend cue/locale/display mappings and fallback-plan integrity without network or AI calls:
+
+```sh
+cd backend
+npm run build
+node scripts/verify-live-coach-cues.mjs
+```
+
 
 ### Complete App UI Regression Suite
 

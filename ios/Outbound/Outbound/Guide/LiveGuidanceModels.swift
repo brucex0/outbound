@@ -326,8 +326,9 @@ final class LiveGuidanceDirector {
             segmentID: segment?.id, phase: segment?.target.phase.rawValue,
             segmentSeconds: segment?.elapsedSeconds
         )
-        if contract != .quiet, let direction = speedDirection,
-           lastMomentElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= 60 }) ?? true {
+        // The speed detector owns its cooldown. Ordinary target coaching must
+        // not consume and permanently discard an independent speed change.
+        if contract != .quiet, let direction = speedDirection {
             lastSpeedChangeElapsedSeconds = snapshot.elapsedSeconds
             lastMomentElapsedSeconds = snapshot.elapsedSeconds
             return LiveGuidanceDirectorUpdate(nextMoment: DetectedLiveGuidanceMoment(

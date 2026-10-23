@@ -13,7 +13,8 @@ protocol GuideAudioPackProviding: AnyObject {
 @MainActor
 final class GuideAudioPackStore: GuideAudioPackProviding {
     static let shared = GuideAudioPackStore()
-    static let sessionControlCueKeys = ["workout.pause", "workout.resume", "coach.settle", "coach.restore_rhythm"]
+    static let speedWarningCueKeys = ["coach.speed_increase", "coach.speed_decrease"]
+    static let sessionControlCueKeys = speedWarningCueKeys + ["workout.pause", "workout.resume"]
     static let countdownCueKeys = [
         "countdown.five", "countdown.four", "countdown.three", "countdown.two", "countdown.one", "countdown.go"
     ]
@@ -58,18 +59,25 @@ final class GuideAudioPackStore: GuideAudioPackProviding {
     private var selectedPreloadTask: Task<Void, Never>?
     private var manifestGeneration = UUID()
     private var manifest: Manifest?
+    private var bundledManifest: Manifest?
     private var coachPersonaID = "plainstride_supportive_v1"
     private var voiceProfileID = "plainstride_warm_1"
     private var scriptStyleID = "standard"
     private let fileManager = FileManager.default
     private let cacheDirectoryOverride: URL?
+    private let bundledAudioDirectory: URL?
     private let localeIdentifier: @MainActor () -> String
 
-    init(cacheDirectory: URL? = nil, localeIdentifier: @escaping @MainActor () -> String = { AppLanguage.currentIdentifier }) {
+    init(cacheDirectory: URL? = nil, bundledAudioDirectory: URL? = nil,
+         localeIdentifier: @escaping @MainActor () -> String = { AppLanguage.currentIdentifier }) {
         self.cacheDirectoryOverride = cacheDirectory
+        self.bundledAudioDirectory = bundledAudioDirectory ?? Bundle.main.url(
+            forResource: "manifest", withExtension: "json", subdirectory: "LiveCoachAudio"
+        )?.deletingLastPathComponent()
         self.localeIdentifier = localeIdentifier
         verifiedAudio.totalCostLimit = 32 * 1024 * 1024
-        manifest = loadCachedManifest() ?? loadBundledManifest()
+        bundledManifest = loadBundledManifest()
+        manifest = loadCachedManifest() ?? bundledManifest
     }
 
     func select(coachPersonaID: String, voiceProfileID: String, scriptStyleID: String) {
@@ -140,12 +148,15 @@ final class GuideAudioPackStore: GuideAudioPackProviding {
     }
 
     func preloadSelectedAudio() async {
-        await preloadAudio(for: Self.sessionControlCueKeys + Self.countdownCueKeys)
-        let entries = manifest?.entries.filter {
+        await preloadAudio(for: Self.speedWarningCueKeys)
+        let ready = Self.speedWarningCueKeys.filter { localAudioData(for: $0) != nil }.count
+        ActivityDiagnosticLog.notice(.lifecycle, "Speed warning audio prepared ready=\(ready) expected=2")
+        await preloadAudio(for: ["workout.pause", "workout.resume"] + Self.countdownCueKeys)
+        let entries = availableEntries.filter {
             $0.locale == localeIdentifier()
                 && $0.voiceProfileId == voiceProfileID
                 && $0.compatibleCoachPersonaIds.contains(coachPersonaID)
-        } ?? []
+        }
         for entry in entries {
             guard !Task.isCancelled else { return }
             if localAudioData(for: entry) == nil { _ = await loadLocalAudio(for: entry) }
@@ -193,7 +204,7 @@ final class GuideAudioPackStore: GuideAudioPackProviding {
 
     private func loadLocalAudio(for entry: Entry) async -> Data? {
         let bundledURL = entry.bundledResourceName.flatMap {
-            Bundle.main.url(forResource: $0, withExtension: "wav", subdirectory: "LiveCoachAudio")
+            bundledAudioDirectory?.appendingPathComponent($0).appendingPathExtension("wav")
         }
         let data = await audioFiles.load(
             cachedURL: cacheURL(for: entry.sha256), bundledURL: bundledURL, sha256: entry.sha256
@@ -208,23 +219,29 @@ final class GuideAudioPackStore: GuideAudioPackProviding {
     // equivalent countdown beats but deliberately not text-equivalent sentences.
     private func matchingEntry(cueKey: String, transcript: String?) -> Entry? {
         let locale = localeIdentifier()
-        let candidates = manifest?.entries.filter {
+        let candidates = availableEntries.filter {
             $0.cueKey == cueKey
                 && $0.locale == locale
                 && $0.voiceProfileId == voiceProfileID
                 && $0.compatibleCoachPersonaIds.contains(coachPersonaID)
                 && (transcript == nil || normalize($0.transcript) == normalize(transcript!))
-        } ?? []
+        }
         if let styled = candidates.first(where: { $0.scriptStyleId == scriptStyleID }) { return styled }
         if let standard = candidates.first(where: { $0.scriptStyleId == "standard" }) { return standard }
         guard let transcript else { return nil }
         let normalized = normalize(transcript)
-        return manifest?.entries.first {
+        return availableEntries.first {
             $0.locale == locale
                 && $0.voiceProfileId == voiceProfileID
                 && $0.compatibleCoachPersonaIds.contains(coachPersonaID)
                 && normalize($0.transcript) == normalized
         }
+    }
+
+    // An older downloaded pack cannot hide the app's purpose-built recordings.
+    // Keep normal sentence matching and selected locale/voice/persona checks.
+    private var availableEntries: [Entry] {
+        (bundledManifest?.entries ?? []) + (manifest?.entries ?? [])
     }
 
     private func loadCachedManifest() -> Manifest? {
@@ -237,11 +254,7 @@ final class GuideAudioPackStore: GuideAudioPackProviding {
     }
 
     private func loadBundledManifest() -> Manifest? {
-        guard let url = Bundle.main.url(
-            forResource: "manifest",
-            withExtension: "json",
-            subdirectory: "LiveCoachAudio"
-        ),
+        guard let url = bundledAudioDirectory?.appendingPathComponent("manifest.json"),
         let data = try? Data(contentsOf: url),
         let decoded = try? JSONDecoder().decode(Manifest.self, from: data),
         decoded.contractVersion == 1,

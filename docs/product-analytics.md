@@ -366,7 +366,7 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 
 - Activity analysis and weekly reviews use shared `ai_attempt` / `ai_generation` diagnostics with operations `activity_analysis` / `weekly_review`. These retain the existing metadata-only privacy contract; no new client event or runner identifier is added.
 
-- iOS and Android `live_guidance_speed_change` record `source_type=increase|decrease` and `result=detected|spoken|audio_unavailable` (plus Android `stale` for dropped queued alerts) for independent local speed-change guidance. It excludes raw speed, pace, profile, locations, timestamps, and activity identifiers.
+- iOS and Android `live_guidance_speed_change` record `source_type=increase|decrease` and `result=detected|spoken|audio_unavailable` (plus Android `stale` for dropped queued alerts) for independent local speed-change guidance. It excludes raw speed, pace, profile, locations, timestamps, and activity identifiers. The cue-wording and bundled-recording update retains these event names and bounded properties; preparation diagnostics log only ready/expected counts, never scripts or measurements.
 
 - Phone finish/save events include `moving_time_method=gps_observations_v2` to distinguish timestamped stop accounting from the earlier timer-polled implementation. This is an implementation enum, never a location or raw observation.
 

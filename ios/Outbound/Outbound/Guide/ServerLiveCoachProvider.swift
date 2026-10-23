@@ -171,7 +171,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
     ) async -> SessionAnalysisResult {
         let fallback = Self.fallback(for: moment, language: AppLanguage.current)
         let message = preferredMessage ?? fallback.text
-        let fixedCueKey = preferredMessage == nil ? fallback.key : nil
+        let fixedCueKey = preferredMessage == nil && !message.isEmpty ? fallback.key : nil
         let audioData: Data?
         if let fixedCueKey {
             audioData = await GuideAudioPackStore.shared.cachedOrBundledAudioData(for: fixedCueKey, transcript: message)
@@ -323,10 +323,11 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         }
     }
 
-    private static func fallback(
+    static func fallback(
         for moment: LiveGuidanceMomentType,
         language: AppLanguage
     ) -> (key: String, text: String) {
+        if moment == .progress { return ("", "") }
         let key: String
         switch moment {
         case .progress: key = "progress.steady"
@@ -344,7 +345,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         case .crestRecovery: key = "coach.crest_reset"
         case .segmentTransition: key = "workout.segment_start"
         case .finishOpportunity: key = "coach.strong_finish"
-        case .raceStartRestraint: key = "coach.early_settle"
+        case .raceStartRestraint: key = "race.start_restraint"
         case .racePaceLocked: key = "progress.steady"
         case .raceHalfwayAssessment: key = "progress.halfway"
         case .raceLateFade: key = "coach.rebuild_rhythm"
@@ -355,67 +356,78 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
         }
         let texts: [String: [String: String]] = [
             AppLanguage.english.rawValue: [
-                "progress.steady": "Keep this pace and effort comfortable.",
-                "coach.early_settle": "Start a little slower; give yourself time to warm up.",
-                "coach.ease_to_target": "Slow down gradually toward your target pace.",
-                "coach.lift_to_target": "Speed up gradually toward your target pace.",
-                "coach.smooth_pace": "Adjust gradually toward your target pace, then hold it.",
-                "coach.rebuild_rhythm": "If it feels manageable, gradually return to your target pace.",
-                "coach.recovery_easy": "Slow to an easy jog; you should be able to speak a full sentence.",
-                "coach.climb_by_effort": "Take shorter steps uphill and let your pace slow.",
-                "coach.crest_reset": "The hill is easing; keep the effort easy before speeding up.",
-                "coach.settle": "Slow down until you can speak a full sentence.",
-                "coach.restore_rhythm": "Keep the effort easy; there is no need to make up lost time.",
-                "coach.rhythm_recovered": "Your pace is closer to the target now; keep the effort controlled.",
+                "progress.halfway": "You are halfway to your goal.",
+                "race.start_restraint": "Start the race at a controlled pace. Save a speed increase for later.",
+                "progress.steady": "You are holding your target pace. Keep it steady.",
+                "coach.early_settle": "You are starting faster than your target. Slow down gradually to avoid an opening surge.",
+                "coach.ease_to_target": "You are above your target pace. Slow down gradually to return to it.",
+                "coach.lift_to_target": "You are below your target pace. Speed up gradually without an abrupt surge.",
+                "coach.smooth_pace": "Your pace shifted outside the target range. Adjust gradually back to target.",
+                "coach.rebuild_rhythm": "You have slowed below your target pace. If comfortable, return to it gradually.",
+                "coach.recovery_easy": "You are moving faster than this easy segment calls for. Slow to a conversational effort.",
+                "coach.climb_by_effort": "You are on a climb. Shorten your steps and let your pace slow.",
+                "coach.crest_reset": "The climb is easing. Keep effort easy before gradually increasing speed.",
+                "coach.settle": "You sped up too fast. Keep a steady pace and speed up gradually.",
+                "coach.restore_rhythm": "Your speed dropped sharply. If you meant to keep running, return to your pace gradually.",
+                "coach.rhythm_recovered": "You are closer to your target pace now. Hold it before adjusting again.",
                 "workout.pause": "Workout paused.",
                 "workout.resume": "Workout resumed.",
-                "workout.segment_start": "New segment. Settle into the target before you press.",
-                "coach.strong_finish": "If you still feel comfortable, speed up gradually toward the finish.",
-                "challenge.start": "Challenge starts now. Build the pace smoothly.",
-                "challenge.complete": "Challenge complete. Settle back into your run."
+                "workout.segment_start": "The next workout segment starts now. Adjust gradually to its prescribed effort.",
+                "coach.strong_finish": "The finish is near. If comfortable, build speed gradually and avoid sprinting.",
+                "challenge.start": "Your challenge starts now. Increase pace gradually and keep the effort controlled.",
+                "challenge.complete": "Your challenge is complete. Ease back to the pace you held before it."
             ],
             AppLanguage.spanish.rawValue: [
-                "progress.steady": "Mantén este ritmo con un esfuerzo cómodo.",
-                "coach.early_settle": "Empieza un poco más despacio y date tiempo para calentar.",
-                "coach.ease_to_target": "Baja poco a poco hasta el ritmo objetivo.",
-                "coach.lift_to_target": "Acelera poco a poco hasta el ritmo objetivo.",
-                "coach.smooth_pace": "Acércate poco a poco al ritmo objetivo y mantenlo.",
-                "coach.rebuild_rhythm": "Si te resulta cómodo, vuelve poco a poco al ritmo objetivo.",
-                "coach.recovery_easy": "Baja a un trote suave; deberías poder decir una frase completa.",
-                "coach.climb_by_effort": "Da pasos más cortos al subir y deja que baje el ritmo.",
-                "coach.crest_reset": "La cuesta afloja; mantén un esfuerzo suave antes de acelerar.",
-                "coach.settle": "Baja el ritmo hasta poder decir una frase completa.",
-                "coach.restore_rhythm": "Mantén un esfuerzo suave; no hace falta recuperar el tiempo perdido.",
-                "coach.rhythm_recovered": "Ahora estás más cerca del ritmo objetivo; mantén el esfuerzo controlado.",
+                "progress.halfway": "Has llegado a la mitad de tu objetivo.",
+                "race.start_restraint": "Empieza la carrera a un ritmo controlado. Deja los aumentos de velocidad para más adelante.",
+                "progress.steady": "Estás manteniendo el ritmo objetivo. Sigue a ese ritmo.",
+                "coach.early_settle": "Has empezado por encima del ritmo objetivo. Baja la velocidad poco a poco, sin cambios bruscos.",
+                "coach.ease_to_target": "Vas por encima del ritmo objetivo. Baja la velocidad poco a poco hasta recuperarlo.",
+                "coach.lift_to_target": "Vas por debajo del ritmo objetivo. Acelera poco a poco, sin un cambio brusco.",
+                "coach.smooth_pace": "Tu ritmo ha cambiado y está fuera del objetivo. Vuelve a él poco a poco.",
+                "coach.rebuild_rhythm": "Has bajado del ritmo objetivo. Si te sientes cómodo, vuelve a él poco a poco.",
+                "coach.recovery_easy": "Vas más rápido de lo indicado para este tramo suave. Baja a un esfuerzo que te permita conversar.",
+                "coach.climb_by_effort": "Estás en una subida. Acorta los pasos y deja que baje la velocidad.",
+                "coach.crest_reset": "La subida está aflojando. Mantén un esfuerzo suave antes de acelerar poco a poco.",
+                "coach.settle": "Has acelerado demasiado rápido. Mantén un ritmo constante y aumenta la velocidad poco a poco.",
+                "coach.restore_rhythm": "Tu velocidad ha bajado de golpe. Si querías seguir corriendo, recupera tu ritmo poco a poco.",
+                "coach.rhythm_recovered": "Ahora estás más cerca del ritmo objetivo. Mantenlo antes de volver a ajustar.",
                 "workout.pause": "Entrenamiento en pausa.",
                 "workout.resume": "Entrenamiento reanudado.",
-                "workout.segment_start": "Nuevo segmento. Encuentra el objetivo antes de apretar.",
-                "coach.strong_finish": "Si aún te sientes cómodo, acelera poco a poco hasta el final.",
-                "challenge.start": "Empieza el reto. Aumenta el ritmo con suavidad.",
-                "challenge.complete": "Reto completado. Vuelve a tu ritmo de carrera."
+                "workout.segment_start": "Empieza el siguiente tramo. Ajusta el esfuerzo poco a poco según lo indicado.",
+                "coach.strong_finish": "La meta está cerca. Si te sientes cómodo, acelera poco a poco, sin esprintar.",
+                "challenge.start": "Tu reto empieza ahora. Acelera poco a poco y mantén el esfuerzo bajo control.",
+                "challenge.complete": "Has completado el reto. Vuelve poco a poco al ritmo que llevabas antes."
             ],
             AppLanguage.simplifiedChinese.rawValue: [
-                "progress.steady": "保持这个配速，强度以舒服为准。",
-                "coach.early_settle": "起步稍慢一点，给身体时间热身。",
-                "coach.ease_to_target": "逐步放慢，回到目标配速。",
-                "coach.lift_to_target": "逐步加速，回到目标配速。",
-                "coach.smooth_pace": "逐步调整到目标配速，然后保持。",
-                "coach.rebuild_rhythm": "如果感觉还能轻松应对，就逐步回到目标配速。",
-                "coach.recovery_easy": "放慢到轻松慢跑，应该能说出一句完整的话。",
-                "coach.climb_by_effort": "上坡时步子小一点，允许配速慢下来。",
-                "coach.crest_reset": "坡度缓下来了，先轻松跑一会儿，再考虑加速。",
-                "coach.settle": "放慢到能说出一句完整的话。",
-                "coach.restore_rhythm": "保持轻松，不用追回刚才的时间。",
-                "coach.rhythm_recovered": "现在更接近目标配速了，继续控制强度。",
+                "progress.halfway": "目标已完成一半。",
+                "race.start_restraint": "比赛刚开始，先控制好配速，留到后面再考虑提速。",
+                "progress.steady": "你正保持在目标配速，继续稳住这个速度。",
+                "coach.early_settle": "起步已快于目标配速，逐步放慢，不要在开头猛冲。",
+                "coach.ease_to_target": "当前速度高于目标配速，逐步放慢，回到目标范围。",
+                "coach.lift_to_target": "当前速度低于目标配速，慢慢提速，不要突然加速。",
+                "coach.smooth_pace": "配速变化后已偏离目标范围，逐步调整回目标配速。",
+                "coach.rebuild_rhythm": "速度已降到目标配速以下，如果感觉轻松，就逐步恢复到目标配速。",
+                "coach.recovery_easy": "这一段快于目标配速，请放慢到能轻松交谈的强度。",
+                "coach.climb_by_effort": "现在正在上坡，步子小一点，允许速度慢下来。",
+                "coach.crest_reset": "坡度缓下来了，先保持轻松，再考虑逐步提速。",
+                "coach.settle": "刚才加速太急了。保持配速稳定，提速时慢慢来。",
+                "coach.restore_rhythm": "刚才速度明显下降了。如果不是打算休息，就慢慢恢复到之前的配速。",
+                "coach.rhythm_recovered": "现在更接近目标配速了，先保持住，不要急着再次调整。",
                 "workout.pause": "训练已暂停。",
-                "workout.resume": "重启训练。",
-                "workout.segment_start": "进入新阶段，先稳定到目标强度，再逐步发力。",
-                "coach.strong_finish": "如果仍然感觉轻松，就逐步加速跑向终点。",
-                "challenge.start": "挑战开始，平稳加速。",
-                "challenge.complete": "挑战完成，回到原来的跑步节奏。"
+                "workout.resume": "训练已恢复。",
+                "workout.segment_start": "下一训练阶段开始了，按这一段的要求逐步调整强度。",
+                "coach.strong_finish": "终点就在前面，如果感觉轻松，可以逐步加速，不要突然冲刺。",
+                "challenge.start": "挑战现在开始，逐步提速，保持强度可控。",
+                "challenge.complete": "挑战已完成，逐步回到挑战前的配速。"
             ]
         ]
-        return (key, texts[language.rawValue]?[key] ?? texts[AppLanguage.english.rawValue]![key]!)
+        guard let text = texts[language.rawValue]?[key] else {
+            ActivityDiagnosticLog.error(.lifecycle,
+                "Coach fallback script unavailable moment=\(moment.rawValue) locale=\(language.rawValue) cue=\(key)")
+            return (key, "")
+        }
+        return (key, text)
     }
 }
 

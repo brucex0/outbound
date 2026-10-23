@@ -452,11 +452,11 @@ final class VirtualGuide: NSObject, ObservableObject {
         else { return }
 
         if let direction = moment.speedChangeDirection {
-            let key = direction > 0 ? "coach.settle" : "coach.restore_rhythm"
+            let key = direction > 0 ? "coach.speed_increase" : "coach.speed_decrease"
             let cue = audioPack.localAudioCue(for: key)
             let message = cue?.transcript ?? (direction > 0
-                ? String(localized: "live_guidance.sudden_speed_increase", defaultValue: "Slow down until you can speak a full sentence.")
-                : String(localized: "live_guidance.sudden_speed_decrease", defaultValue: "Keep the effort easy; there is no need to make up lost time."))
+                ? String(localized: "live_guidance.sudden_speed_increase", defaultValue: "You sped up too fast. Keep a steady pace and speed up gradually.")
+                : String(localized: "live_guidance.sudden_speed_decrease", defaultValue: "Your speed dropped sharply. If you meant to keep running, return to your pace gradually."))
             let played = (cue != nil || !speechEnabled)
                 && speak(message, urgency: .opportunity, role: .paceAdjustment, fixedCueKey: key, audioData: cue?.audioData)
             guidanceEventHandler?(.speedChange(direction: direction > 0 ? "increase" : "decrease", result: played ? "spoken" : "audio_unavailable"))
@@ -996,34 +996,35 @@ final class VirtualGuide: NSObject, ObservableObject {
         for milestone: GoalMilestone,
         snapshot: ActiveSessionSnapshot
     ) -> String {
-        let lastUnitName = unitSystem == .imperial ? "mile" : "kilometer"
         let message = switch milestone {
         case .distanceOneThird:
-            "One third of your distance goal done. Keep it smooth."
+            String(localized: "live_guidance.goal.distance_one_third", defaultValue: "One third of your distance goal is complete.")
         case .distanceHalfway:
-            "Halfway through your distance goal. Stay patient."
+            String(localized: "live_guidance.goal.distance_halfway", defaultValue: "You are halfway to your distance goal.")
         case .distanceTwoThirds:
-            "Two thirds of the distance goal done. Keep stacking it."
+            String(localized: "live_guidance.goal.distance_two_thirds", defaultValue: "Two thirds of your distance goal are complete.")
         case .distanceLastUnit:
-            "Last \(lastUnitName) of the distance goal. Stay tall."
+            unitSystem == .imperial
+                ? String(localized: "live_guidance.goal.last_mile", defaultValue: "One mile remains to reach your distance goal.")
+                : String(localized: "live_guidance.goal.last_kilometer", defaultValue: "One kilometer remains to reach your distance goal.")
         case .distance300MetersRemaining:
             "\(unitSystem.spokenDistanceString(meters: unitSystem == .metric ? 300 : 402.336)) to go."
         case .distance100MetersRemaining:
             "\(unitSystem.spokenDistanceString(meters: unitSystem == .metric ? 100 : 160.9344)) to go."
         case .distanceComplete:
-            "Distance goal covered. Ease through the finish."
+            String(localized: "live_guidance.goal.distance_complete", defaultValue: "Distance goal reached. Reduce effort gradually.")
         case .durationOneThird:
             String(localized: "live_guidance.goal.one_third_time", defaultValue: "One third of your time goal done.")
         case .durationHalfway:
-            "Halfway through your time goal. Keep the effort even."
+            String(localized: "live_guidance.goal.time_halfway", defaultValue: "You are halfway to your time goal.")
         case .durationTwoThirds:
-            "Two thirds of the time goal done. Stay composed."
+            String(localized: "live_guidance.goal.time_two_thirds", defaultValue: "Two thirds of your time goal are complete.")
         case .durationLastFiveMinutes:
             String(localized: "live_guidance.goal.five_minutes_left", defaultValue: "Five minutes left to reach your time goal.")
         case .durationLastMinute:
-            "Last minute of the time goal. Finish steady."
+            String(localized: "live_guidance.goal.time_last_minute", defaultValue: "One minute remains to reach your time goal.")
         case .durationComplete:
-            "Time goal covered. Bring it down smoothly."
+            String(localized: "live_guidance.goal.time_complete", defaultValue: "Time goal reached. Reduce effort gradually.")
         }
 
         switch milestone {
@@ -1200,7 +1201,7 @@ final class VirtualGuide: NSObject, ObservableObject {
                         boundary.seconds
                     )
                 }
-                return (id, "Workout complete.", true, false, boundary.seconds)
+                return (id, String(localized: "live_guidance.workout_complete", defaultValue: "Workout complete. Ease down smoothly."), true, false, boundary.seconds)
             }
         }
         return nil
@@ -1229,7 +1230,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         case .work:
             String(localized: "live_guidance.transition.work", defaultValue: "Build into the next effort with control.")
         default:
-            String(localized: "live_guidance.transition.default", defaultValue: "Flow smoothly into the next effort.")
+            String(localized: "live_guidance.transition.default", defaultValue: "Adjust gradually to the next segment’s prescribed effort.")
         }
         guard AppLanguage.current == .english, !step.label.isEmpty else { return fallback }
         return "\(fallback) \(step.label)."

@@ -1,0 +1,4327 @@
+{
+  "contractVersion": 1,
+  "catalogVersion": "2026-10-22.1",
+  "generatedAt": "2026-10-23T04:52:11.822927Z",
+  "entries": [
+    {
+      "cueKey": "countdown.five",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Five.",
+      "sha256": "43a04fd6c64ddbda29454b4fe8fcd428b27c988f83074804b4e50bf50f7e0edd",
+      "byteCount": 59564,
+      "durationMilliseconds": 1240,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "43a04fd6c64ddbda29454b4fe8fcd428b27c988f83074804b4e50bf50f7e0edd"
+    },
+    {
+      "cueKey": "countdown.four",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Four.",
+      "sha256": "06b9764d51ccc7a2b790447ff0fe225d5d9ef9ade89e731232eb6069fac6b2a1",
+      "byteCount": 49964,
+      "durationMilliseconds": 1040,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "06b9764d51ccc7a2b790447ff0fe225d5d9ef9ade89e731232eb6069fac6b2a1"
+    },
+    {
+      "cueKey": "countdown.three",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Three.",
+      "sha256": "14a8474179846d076a53d06a6d1a02531dbb1b4c0d2eedf16439164bc21e98e9",
+      "byteCount": 49964,
+      "durationMilliseconds": 1040,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "14a8474179846d076a53d06a6d1a02531dbb1b4c0d2eedf16439164bc21e98e9"
+    },
+    {
+      "cueKey": "countdown.two",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Two.",
+      "sha256": "bcb0195468dba07cd04523947406db8671e3a5ae193a34646f7df3e5e41ed9d5",
+      "byteCount": 46124,
+      "durationMilliseconds": 960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "bcb0195468dba07cd04523947406db8671e3a5ae193a34646f7df3e5e41ed9d5"
+    },
+    {
+      "cueKey": "countdown.one",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "One.",
+      "sha256": "24b1afe86d593cd9f437e9b74fa9a2b2dbbf89af771fdff4d1b839e7d15937ce",
+      "byteCount": 40364,
+      "durationMilliseconds": 840,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "24b1afe86d593cd9f437e9b74fa9a2b2dbbf89af771fdff4d1b839e7d15937ce"
+    },
+    {
+      "cueKey": "countdown.go",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Go.",
+      "sha256": "eff5b6e0a4cfac1771557f711aaf20ff133b2966022227a7332f4aff2d8c1be0",
+      "byteCount": 49964,
+      "durationMilliseconds": 1040,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "eff5b6e0a4cfac1771557f711aaf20ff133b2966022227a7332f4aff2d8c1be0"
+    },
+    {
+      "cueKey": "workout.pause",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Workout paused.",
+      "sha256": "e91be0cac3f570356ac1bfa2e0208a4db546d40c53c77cbf444d04d3096bae03",
+      "byteCount": 71084,
+      "durationMilliseconds": 1480,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "e91be0cac3f570356ac1bfa2e0208a4db546d40c53c77cbf444d04d3096bae03"
+    },
+    {
+      "cueKey": "workout.resume",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Workout resumed.",
+      "sha256": "d259a357a78a29c1b35e55f9bce2bb4793b58213a0e59dcbbecc7ebd0778d778",
+      "byteCount": 65324,
+      "durationMilliseconds": 1360,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "d259a357a78a29c1b35e55f9bce2bb4793b58213a0e59dcbbecc7ebd0778d778"
+    },
+    {
+      "cueKey": "workout.complete",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Workout complete. Ease down smoothly.",
+      "sha256": "a04f834e7ff216a19e77920e19821ea0f7a8a022fb51778cab63ffedd33df2ef",
+      "byteCount": 121004,
+      "durationMilliseconds": 2520,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "a04f834e7ff216a19e77920e19821ea0f7a8a022fb51778cab63ffedd33df2ef"
+    },
+    {
+      "cueKey": "route.advisory",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Route update ahead. Check the map when it is safe.",
+      "sha256": "24af53a31468ed1c4182e18f896ca2a95da6cd0af57035388e0955e894ce9846",
+      "byteCount": 165164,
+      "durationMilliseconds": 3440,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "24af53a31468ed1c4182e18f896ca2a95da6cd0af57035388e0955e894ce9846"
+    },
+    {
+      "cueKey": "route.caution",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Route caution. Slow down and check the map.",
+      "sha256": "a102d56fe785ba50baf5428eac0ac2fb784be8f8a78a674756f013791124236d",
+      "byteCount": 136364,
+      "durationMilliseconds": 2840,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "a102d56fe785ba50baf5428eac0ac2fb784be8f8a78a674756f013791124236d"
+    },
+    {
+      "cueKey": "route.wrong_way",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You may be going the wrong way. Check the map before turning back.",
+      "sha256": "cbe172704d944b5d9f38b0230d69ddcc85a06b3b2392fc0b6b5beadf4b6f9031",
+      "byteCount": 165164,
+      "durationMilliseconds": 3440,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "cbe172704d944b5d9f38b0230d69ddcc85a06b3b2392fc0b6b5beadf4b6f9031"
+    },
+    {
+      "cueKey": "route.rejoin",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are back on the selected route.",
+      "sha256": "29964d9b094527094029ef810b7815566b34a0bfad568fa624340dfa4aa3c63c",
+      "byteCount": 101804,
+      "durationMilliseconds": 2120,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "29964d9b094527094029ef810b7815566b34a0bfad568fa624340dfa4aa3c63c"
+    },
+    {
+      "cueKey": "route.arrival",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You have reached the end of the route.",
+      "sha256": "7a1415e0705aaca58a4fb56fb9783fb6ecd0e15a7a7333f7c01d928a239bfb6a",
+      "byteCount": 105644,
+      "durationMilliseconds": 2200,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "7a1415e0705aaca58a4fb56fb9783fb6ecd0e15a7a7333f7c01d928a239bfb6a"
+    },
+    {
+      "cueKey": "coach.speed_increase",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You sped up too fast. Keep a steady pace and speed up gradually.",
+      "sha256": "59517585d81b503530fa1b2103438d69f492c9b36b969fae09beab49ae746239",
+      "byteCount": 224684,
+      "durationMilliseconds": 4680,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "59517585d81b503530fa1b2103438d69f492c9b36b969fae09beab49ae746239"
+    },
+    {
+      "cueKey": "coach.speed_decrease",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Your speed dropped sharply. If you meant to keep running, return to your pace gradually.",
+      "sha256": "5bc34c32701e7d47590ff1a32db46f1a2606ecda3826781aa4d63cf101fb82f9",
+      "byteCount": 272684,
+      "durationMilliseconds": 5680,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "5bc34c32701e7d47590ff1a32db46f1a2606ecda3826781aa4d63cf101fb82f9"
+    },
+    {
+      "cueKey": "workout.segment_start",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "The next workout segment starts now. Adjust gradually to its prescribed effort.",
+      "sha256": "c278e7bada0d84e39bebdebb5b48fcc3624c936df5af5babf48a07a64d1252bf",
+      "byteCount": 241964,
+      "durationMilliseconds": 5040,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "c278e7bada0d84e39bebdebb5b48fcc3624c936df5af5babf48a07a64d1252bf"
+    },
+    {
+      "cueKey": "progress.one_third",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "One third of your goal is complete.",
+      "sha256": "8c0c3849174459c03426d21ac2e28ec7e680631ef5681b77588f6c02f77bd451",
+      "byteCount": 117164,
+      "durationMilliseconds": 2440,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "8c0c3849174459c03426d21ac2e28ec7e680631ef5681b77588f6c02f77bd451"
+    },
+    {
+      "cueKey": "progress.halfway",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are halfway to your goal.",
+      "sha256": "32804b7c34f1f9c3719580413735eb1da4b126251d17dfc0bc33526841ee9d4c",
+      "byteCount": 90284,
+      "durationMilliseconds": 1880,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "32804b7c34f1f9c3719580413735eb1da4b126251d17dfc0bc33526841ee9d4c"
+    },
+    {
+      "cueKey": "progress.two_thirds",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Two thirds of your goal are complete.",
+      "sha256": "e3fc5241956d7ec3370fb97f01c6c448d63874d6b0de748a06d44cc1c6c4dc5c",
+      "byteCount": 140204,
+      "durationMilliseconds": 2920,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "e3fc5241956d7ec3370fb97f01c6c448d63874d6b0de748a06d44cc1c6c4dc5c"
+    },
+    {
+      "cueKey": "progress.finish_soon",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Your goal is close. Finish at a pace you can control.",
+      "sha256": "a96cce3fe765341de91e8e9ff366883c27f91db89d3c08dacac58aeb0c41bca8",
+      "byteCount": 230444,
+      "durationMilliseconds": 4800,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "a96cce3fe765341de91e8e9ff366883c27f91db89d3c08dacac58aeb0c41bca8"
+    },
+    {
+      "cueKey": "progress.steady",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are holding your target pace. Keep it steady.",
+      "sha256": "80cef990383d33e6c5079fef0e54078478a8b395dfb666622c58d0113024b5ce",
+      "byteCount": 167084,
+      "durationMilliseconds": 3480,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "80cef990383d33e6c5079fef0e54078478a8b395dfb666622c58d0113024b5ce"
+    },
+    {
+      "cueKey": "coach.early_settle",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are starting faster than your target. Slow down gradually to avoid an opening surge.",
+      "sha256": "1bd6b0a20782fe450886bb7f0e8d26b230abed4b1356a3e0200fbd1e1b5145f9",
+      "byteCount": 238124,
+      "durationMilliseconds": 4960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "1bd6b0a20782fe450886bb7f0e8d26b230abed4b1356a3e0200fbd1e1b5145f9"
+    },
+    {
+      "cueKey": "coach.ease_to_target",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are above your target pace. Slow down gradually to return to it.",
+      "sha256": "80ea12511deb3aaa70cf2f1dcef8b6b51b7ff5e6852583e5293eb4d1c14d530a",
+      "byteCount": 184364,
+      "durationMilliseconds": 3840,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "80ea12511deb3aaa70cf2f1dcef8b6b51b7ff5e6852583e5293eb4d1c14d530a"
+    },
+    {
+      "cueKey": "coach.lift_to_target",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are below your target pace. Speed up gradually without an abrupt surge.",
+      "sha256": "22b9721d5fa30a03395e391b1dde523a1c33b8e573df42c5c80cc5f22c429cc9",
+      "byteCount": 301484,
+      "durationMilliseconds": 6280,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "22b9721d5fa30a03395e391b1dde523a1c33b8e573df42c5c80cc5f22c429cc9"
+    },
+    {
+      "cueKey": "coach.smooth_pace",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Your pace shifted outside the target range. Adjust gradually back to target.",
+      "sha256": "83dbfbd62b5a9dd20e316910374bac40b47fdb865b76717337bf76a329eb9e58",
+      "byteCount": 247724,
+      "durationMilliseconds": 5160,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "83dbfbd62b5a9dd20e316910374bac40b47fdb865b76717337bf76a329eb9e58"
+    },
+    {
+      "cueKey": "coach.rebuild_rhythm",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You have slowed below your target pace. If comfortable, return to it gradually.",
+      "sha256": "20eaecb4ebe48bced754d0d380746da1576ea633a61ee10099535d1ea5c804ab",
+      "byteCount": 259244,
+      "durationMilliseconds": 5400,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "20eaecb4ebe48bced754d0d380746da1576ea633a61ee10099535d1ea5c804ab"
+    },
+    {
+      "cueKey": "coach.recovery_easy",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are moving faster than this easy segment calls for. Slow to a conversational effort.",
+      "sha256": "bb6f4ddaa6569c1524e2eea70c7182b0f48f76002499881ef92ab90e0edbeb43",
+      "byteCount": 257324,
+      "durationMilliseconds": 5360,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "bb6f4ddaa6569c1524e2eea70c7182b0f48f76002499881ef92ab90e0edbeb43"
+    },
+    {
+      "cueKey": "coach.climb_by_effort",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are on a climb. Shorten your steps and let your pace slow.",
+      "sha256": "0c64eabc018bb1bb4f35ea53781c3db3e782a4beee4e9043481e1face430b36d",
+      "byteCount": 218924,
+      "durationMilliseconds": 4560,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "0c64eabc018bb1bb4f35ea53781c3db3e782a4beee4e9043481e1face430b36d"
+    },
+    {
+      "cueKey": "coach.crest_reset",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "The climb is easing. Keep effort easy before gradually increasing speed.",
+      "sha256": "727aad47e47bfcb4f4cb2ba43703776c6f8b2c8a185a2e6324faf5f27cee6d5b",
+      "byteCount": 217004,
+      "durationMilliseconds": 4520,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "727aad47e47bfcb4f4cb2ba43703776c6f8b2c8a185a2e6324faf5f27cee6d5b"
+    },
+    {
+      "cueKey": "coach.settle",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You sped up too fast. Keep a steady pace and speed up gradually.",
+      "sha256": "59517585d81b503530fa1b2103438d69f492c9b36b969fae09beab49ae746239",
+      "byteCount": 224684,
+      "durationMilliseconds": 4680,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "59517585d81b503530fa1b2103438d69f492c9b36b969fae09beab49ae746239"
+    },
+    {
+      "cueKey": "coach.restore_rhythm",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Your speed dropped sharply. If you meant to keep running, return to your pace gradually.",
+      "sha256": "5bc34c32701e7d47590ff1a32db46f1a2606ecda3826781aa4d63cf101fb82f9",
+      "byteCount": 272684,
+      "durationMilliseconds": 5680,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "5bc34c32701e7d47590ff1a32db46f1a2606ecda3826781aa4d63cf101fb82f9"
+    },
+    {
+      "cueKey": "coach.rhythm_recovered",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are closer to your target pace now. Hold it before adjusting again.",
+      "sha256": "0b2081571b48900835bf6f54a6013a71c8152c8ca141239979ee87c2847bd921",
+      "byteCount": 201644,
+      "durationMilliseconds": 4200,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "0b2081571b48900835bf6f54a6013a71c8152c8ca141239979ee87c2847bd921"
+    },
+    {
+      "cueKey": "coach.strong_finish",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "The finish is near. If comfortable, build speed gradually and avoid sprinting.",
+      "sha256": "25f8020dbe21762d40f4cfb3592d52da1f815892dad3c5b9242bb4b258a51e00",
+      "byteCount": 249644,
+      "durationMilliseconds": 5200,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "25f8020dbe21762d40f4cfb3592d52da1f815892dad3c5b9242bb4b258a51e00"
+    },
+    {
+      "cueKey": "challenge.start",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Your challenge starts now. Increase pace gradually and keep the effort controlled.",
+      "sha256": "e10b3ee17506194598f755573e837a15c019ab905e9b3ab3b0aea3bb6b8aae47",
+      "byteCount": 286124,
+      "durationMilliseconds": 5960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "e10b3ee17506194598f755573e837a15c019ab905e9b3ab3b0aea3bb6b8aae47"
+    },
+    {
+      "cueKey": "challenge.complete",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Your challenge is complete. Ease back to the pace you held before it.",
+      "sha256": "33399d6960b03059765f394d74c3a2e244727b570350dfa763df3e1c13f2243a",
+      "byteCount": 238124,
+      "durationMilliseconds": 4960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "33399d6960b03059765f394d74c3a2e244727b570350dfa763df3e1c13f2243a"
+    },
+    {
+      "cueKey": "fallback.unavailable",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Live coaching is unavailable right now.",
+      "sha256": "063f51d43198102baf162532822881123560c1b993a99d9dd17449e35e769cf9",
+      "byteCount": 111404,
+      "durationMilliseconds": 2320,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "063f51d43198102baf162532822881123560c1b993a99d9dd17449e35e769cf9"
+    },
+    {
+      "cueKey": "voice.preview",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "This is your coach voice. During a run, I will give short, specific instructions.",
+      "sha256": "4bc94da92721b9c631aa2cfde317b2908b1f2094534b46c2271e2b2c63d0718c",
+      "byteCount": 291884,
+      "durationMilliseconds": 6080,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "4bc94da92721b9c631aa2cfde317b2908b1f2094534b46c2271e2b2c63d0718c"
+    },
+    {
+      "cueKey": "race.start_restraint",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Start the race at a controlled pace. Save a speed increase for later.",
+      "sha256": "3d9eff4698cef5f524cceaba901557b20b915b74959ee98b7b1852bb3e0093ee",
+      "byteCount": 226604,
+      "durationMilliseconds": 4720,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "3d9eff4698cef5f524cceaba901557b20b915b74959ee98b7b1852bb3e0093ee"
+    },
+    {
+      "cueKey": "route.off_route",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are off the selected route. Return toward the highlighted line when safe.",
+      "sha256": "ea03270240bfde353466d53098f76b2f5eb5e952f271dc9cbf668af593b3ae6f",
+      "byteCount": 205484,
+      "durationMilliseconds": 4280,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "ea03270240bfde353466d53098f76b2f5eb5e952f271dc9cbf668af593b3ae6f"
+    },
+    {
+      "cueKey": "countdown.five",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Cinco.",
+      "sha256": "cef97593dadbd6374705f60248ba4db90127868b44ac30eb9f49a603330e9b95",
+      "byteCount": 59564,
+      "durationMilliseconds": 1240,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "cef97593dadbd6374705f60248ba4db90127868b44ac30eb9f49a603330e9b95"
+    },
+    {
+      "cueKey": "countdown.four",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Cuatro.",
+      "sha256": "74971b65b5548d9f073e77ca8db04a30e3c08ceb34fc41165ed3edc4c4543066",
+      "byteCount": 48044,
+      "durationMilliseconds": 1000,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "74971b65b5548d9f073e77ca8db04a30e3c08ceb34fc41165ed3edc4c4543066"
+    },
+    {
+      "cueKey": "countdown.three",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Tres.",
+      "sha256": "40e5a016f63bfb798c2942f1693dca47e6d6090327acf8102af8f65fde9b4383",
+      "byteCount": 48044,
+      "durationMilliseconds": 1000,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "40e5a016f63bfb798c2942f1693dca47e6d6090327acf8102af8f65fde9b4383"
+    },
+    {
+      "cueKey": "countdown.two",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Dos.",
+      "sha256": "d2455d6f84310e49408a664fdb013edfb8fbd38600b0ee3fdc8e68f59e1a429c",
+      "byteCount": 49964,
+      "durationMilliseconds": 1040,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "d2455d6f84310e49408a664fdb013edfb8fbd38600b0ee3fdc8e68f59e1a429c"
+    },
+    {
+      "cueKey": "countdown.one",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Uno.",
+      "sha256": "0b42a20d3c5156573463699093bbcb663619fb9df93d9d9e6528d4af45c656f8",
+      "byteCount": 59564,
+      "durationMilliseconds": 1240,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "0b42a20d3c5156573463699093bbcb663619fb9df93d9d9e6528d4af45c656f8"
+    },
+    {
+      "cueKey": "countdown.go",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Adelante.",
+      "sha256": "120f3d51e5182f675c43593fed4350d51a503f8ef6d65505801f0da2f3f08a10",
+      "byteCount": 46124,
+      "durationMilliseconds": 960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "120f3d51e5182f675c43593fed4350d51a503f8ef6d65505801f0da2f3f08a10"
+    },
+    {
+      "cueKey": "workout.pause",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Entrenamiento en pausa.",
+      "sha256": "8bca06da34ed4fc0169bf1f7343bc570f5779a36a1c864038d163fde07352677",
+      "byteCount": 113324,
+      "durationMilliseconds": 2360,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "8bca06da34ed4fc0169bf1f7343bc570f5779a36a1c864038d163fde07352677"
+    },
+    {
+      "cueKey": "workout.resume",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Entrenamiento reanudado.",
+      "sha256": "b0816febafedfa76a9da960193ff8a04eae0ef7c682e2f94ba6be633fa7a31aa",
+      "byteCount": 115244,
+      "durationMilliseconds": 2400,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "b0816febafedfa76a9da960193ff8a04eae0ef7c682e2f94ba6be633fa7a31aa"
+    },
+    {
+      "cueKey": "workout.complete",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Entrenamiento completado. Baja el ritmo con suavidad.",
+      "sha256": "26db1135e30880c71da11d1005ec89fddeb2bc163f421d653ebc98e6454b7c25",
+      "byteCount": 211244,
+      "durationMilliseconds": 4400,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "26db1135e30880c71da11d1005ec89fddeb2bc163f421d653ebc98e6454b7c25"
+    },
+    {
+      "cueKey": "route.advisory",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Hay una indicación de ruta. Mira el mapa cuando sea seguro.",
+      "sha256": "3f94424fb896ebcfacdce07f94bb8e82cf3bd4b47434799b0e625f25b8f61679",
+      "byteCount": 209324,
+      "durationMilliseconds": 4360,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "3f94424fb896ebcfacdce07f94bb8e82cf3bd4b47434799b0e625f25b8f61679"
+    },
+    {
+      "cueKey": "route.caution",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Atención a la ruta. Reduce el ritmo y mira el mapa.",
+      "sha256": "b9acdc88823935c440b4194a54c3a3022b02cd161130c7ea8d006cf20f1ab92f",
+      "byteCount": 249644,
+      "durationMilliseconds": 5200,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "b9acdc88823935c440b4194a54c3a3022b02cd161130c7ea8d006cf20f1ab92f"
+    },
+    {
+      "cueKey": "route.wrong_way",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Puede que vayas en la dirección equivocada. Mira el mapa antes de dar la vuelta.",
+      "sha256": "5ca74a1047398b68fd22335ee38e1220685c5328041abca42262b00e0b5bcac1",
+      "byteCount": 243884,
+      "durationMilliseconds": 5080,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "5ca74a1047398b68fd22335ee38e1220685c5328041abca42262b00e0b5bcac1"
+    },
+    {
+      "cueKey": "route.rejoin",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has vuelto a la ruta seleccionada.",
+      "sha256": "836e76ffe899ff77e2ea14cdf012ec88af46d2b7be0078a9c97bd3c85c0ef2b9",
+      "byteCount": 122924,
+      "durationMilliseconds": 2560,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "836e76ffe899ff77e2ea14cdf012ec88af46d2b7be0078a9c97bd3c85c0ef2b9"
+    },
+    {
+      "cueKey": "route.arrival",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has llegado al final de la ruta.",
+      "sha256": "65dd0fe4ac231480f777a2bc0e6ae682ab8f23de082ebc0ecc11d5b0c2f4e60b",
+      "byteCount": 99884,
+      "durationMilliseconds": 2080,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "65dd0fe4ac231480f777a2bc0e6ae682ab8f23de082ebc0ecc11d5b0c2f4e60b"
+    },
+    {
+      "cueKey": "coach.speed_increase",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has acelerado demasiado rápido. Mantén un ritmo constante y aumenta la velocidad poco a poco.",
+      "sha256": "5b4301baed0e84b4427779687f839ede1936eb741e6c25e7d4ad68e8ad1b2ca3",
+      "byteCount": 324524,
+      "durationMilliseconds": 6760,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "5b4301baed0e84b4427779687f839ede1936eb741e6c25e7d4ad68e8ad1b2ca3"
+    },
+    {
+      "cueKey": "coach.speed_decrease",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Tu velocidad ha bajado de golpe. Si querías seguir corriendo, recupera tu ritmo poco a poco.",
+      "sha256": "709b924b32210dae07c7914c5bb301a943a59b8bf0e4e2109473e4bf738d4506",
+      "byteCount": 328364,
+      "durationMilliseconds": 6840,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "709b924b32210dae07c7914c5bb301a943a59b8bf0e4e2109473e4bf738d4506"
+    },
+    {
+      "cueKey": "workout.segment_start",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Empieza el siguiente tramo. Ajusta el esfuerzo poco a poco según lo indicado.",
+      "sha256": "7cfc492c20d1521512659230634cefbbc312510407c6e5c2b786c2e941b9bb41",
+      "byteCount": 259244,
+      "durationMilliseconds": 5400,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "7cfc492c20d1521512659230634cefbbc312510407c6e5c2b786c2e941b9bb41"
+    },
+    {
+      "cueKey": "progress.one_third",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has completado un tercio de tu objetivo.",
+      "sha256": "06820a1ae4aa54536f12305510cb63819aa600d1185ebd90da819299bec0040a",
+      "byteCount": 119084,
+      "durationMilliseconds": 2480,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "06820a1ae4aa54536f12305510cb63819aa600d1185ebd90da819299bec0040a"
+    },
+    {
+      "cueKey": "progress.halfway",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has llegado a la mitad de tu objetivo.",
+      "sha256": "6cab61f3f9ceb815db55b889e12043f80ffd38f062201917b31b3b3ae8ec3ae7",
+      "byteCount": 128684,
+      "durationMilliseconds": 2680,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "6cab61f3f9ceb815db55b889e12043f80ffd38f062201917b31b3b3ae8ec3ae7"
+    },
+    {
+      "cueKey": "progress.two_thirds",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has completado dos tercios de tu objetivo.",
+      "sha256": "05081a397ef8656b262e351fceabf334b766b945815f9b2ce0f6d980a6fcf098",
+      "byteCount": 174764,
+      "durationMilliseconds": 3640,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "05081a397ef8656b262e351fceabf334b766b945815f9b2ce0f6d980a6fcf098"
+    },
+    {
+      "cueKey": "progress.finish_soon",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Tu objetivo está cerca. Termina a un ritmo que puedas controlar.",
+      "sha256": "bbc343c38418df81a3853da202bf22c49bfd9f09a8e7e8a90185a72a46e38a35",
+      "byteCount": 243884,
+      "durationMilliseconds": 5080,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "bbc343c38418df81a3853da202bf22c49bfd9f09a8e7e8a90185a72a46e38a35"
+    },
+    {
+      "cueKey": "progress.steady",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Estás manteniendo el ritmo objetivo. Sigue a ese ritmo.",
+      "sha256": "55367e36e382194ce4b34955c1d0e40a807a8682eb861a69a6e3aa0b9f7550ac",
+      "byteCount": 184364,
+      "durationMilliseconds": 3840,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "55367e36e382194ce4b34955c1d0e40a807a8682eb861a69a6e3aa0b9f7550ac"
+    },
+    {
+      "cueKey": "coach.early_settle",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has empezado por encima del ritmo objetivo. Baja la velocidad poco a poco, sin cambios bruscos.",
+      "sha256": "f98e25dc8eef0d01a754dfcc2c2914c9df28378fb6bd6952d7faaf9eaaf44b03",
+      "byteCount": 343724,
+      "durationMilliseconds": 7160,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "f98e25dc8eef0d01a754dfcc2c2914c9df28378fb6bd6952d7faaf9eaaf44b03"
+    },
+    {
+      "cueKey": "coach.ease_to_target",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Vas por encima del ritmo objetivo. Baja la velocidad poco a poco hasta recuperarlo.",
+      "sha256": "73a924b3441a5e171b62213f9950c36cc0d325ab0f36dacb3ecf0252c84ceff9",
+      "byteCount": 293804,
+      "durationMilliseconds": 6120,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "73a924b3441a5e171b62213f9950c36cc0d325ab0f36dacb3ecf0252c84ceff9"
+    },
+    {
+      "cueKey": "coach.lift_to_target",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Vas por debajo del ritmo objetivo. Acelera poco a poco, sin un cambio brusco.",
+      "sha256": "effe2ba0536787b63ddc7539c4eff7e99e9116403f2b81cf3bf25cdf3dc6cb23",
+      "byteCount": 303404,
+      "durationMilliseconds": 6320,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "effe2ba0536787b63ddc7539c4eff7e99e9116403f2b81cf3bf25cdf3dc6cb23"
+    },
+    {
+      "cueKey": "coach.smooth_pace",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Tu ritmo ha cambiado y está fuera del objetivo. Vuelve a él poco a poco.",
+      "sha256": "85c9098468269f328d07419c5e08557ed6e65037df375ef2e229fe5e4b83bf06",
+      "byteCount": 266924,
+      "durationMilliseconds": 5560,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "85c9098468269f328d07419c5e08557ed6e65037df375ef2e229fe5e4b83bf06"
+    },
+    {
+      "cueKey": "coach.rebuild_rhythm",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has bajado del ritmo objetivo. Si te sientes cómodo, vuelve a él poco a poco.",
+      "sha256": "4670b0bdb0641705e6272f4c6b694a624da3513c3e0402940c4b4172fe70bdae",
+      "byteCount": 276524,
+      "durationMilliseconds": 5760,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "4670b0bdb0641705e6272f4c6b694a624da3513c3e0402940c4b4172fe70bdae"
+    },
+    {
+      "cueKey": "coach.recovery_easy",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Vas más rápido de lo indicado para este tramo suave. Baja a un esfuerzo que te permita conversar.",
+      "sha256": "6250b5512c6d105772f72430dd8c4a545f55a8eb1586341821c892f2ae2dd8e8",
+      "byteCount": 320684,
+      "durationMilliseconds": 6680,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "6250b5512c6d105772f72430dd8c4a545f55a8eb1586341821c892f2ae2dd8e8"
+    },
+    {
+      "cueKey": "coach.climb_by_effort",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Estás en una subida. Acorta los pasos y deja que baje la velocidad.",
+      "sha256": "a3cb097033f910c6c532af3c94ae6d0db30bf940891bf22d773a5329e7e360a9",
+      "byteCount": 270764,
+      "durationMilliseconds": 5640,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "a3cb097033f910c6c532af3c94ae6d0db30bf940891bf22d773a5329e7e360a9"
+    },
+    {
+      "cueKey": "coach.crest_reset",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "La subida está aflojando. Mantén un esfuerzo suave antes de acelerar poco a poco.",
+      "sha256": "4ecf6cd20b34b9491b2f2050175f513adf2ab93f6d957b2b823d718308333628",
+      "byteCount": 274604,
+      "durationMilliseconds": 5720,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "4ecf6cd20b34b9491b2f2050175f513adf2ab93f6d957b2b823d718308333628"
+    },
+    {
+      "cueKey": "coach.settle",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has acelerado demasiado rápido. Mantén un ritmo constante y aumenta la velocidad poco a poco.",
+      "sha256": "5b4301baed0e84b4427779687f839ede1936eb741e6c25e7d4ad68e8ad1b2ca3",
+      "byteCount": 324524,
+      "durationMilliseconds": 6760,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "5b4301baed0e84b4427779687f839ede1936eb741e6c25e7d4ad68e8ad1b2ca3"
+    },
+    {
+      "cueKey": "coach.restore_rhythm",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Tu velocidad ha bajado de golpe. Si querías seguir corriendo, recupera tu ritmo poco a poco.",
+      "sha256": "709b924b32210dae07c7914c5bb301a943a59b8bf0e4e2109473e4bf738d4506",
+      "byteCount": 328364,
+      "durationMilliseconds": 6840,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "709b924b32210dae07c7914c5bb301a943a59b8bf0e4e2109473e4bf738d4506"
+    },
+    {
+      "cueKey": "coach.rhythm_recovered",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Ahora estás más cerca del ritmo objetivo. Mantenlo antes de volver a ajustar.",
+      "sha256": "c970ea9b70757f53da079e162bbf10d81b5ba898111ac49d965443a7d82a3330",
+      "byteCount": 265004,
+      "durationMilliseconds": 5520,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "c970ea9b70757f53da079e162bbf10d81b5ba898111ac49d965443a7d82a3330"
+    },
+    {
+      "cueKey": "coach.strong_finish",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "La meta está cerca. Si te sientes cómodo, acelera poco a poco, sin esprintar.",
+      "sha256": "bf78d93aae18103e6291fb8771f99220e2b7ce30cdf3c52da52f0191ee4b11d9",
+      "byteCount": 320684,
+      "durationMilliseconds": 6680,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "bf78d93aae18103e6291fb8771f99220e2b7ce30cdf3c52da52f0191ee4b11d9"
+    },
+    {
+      "cueKey": "challenge.start",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Tu reto empieza ahora. Acelera poco a poco y mantén el esfuerzo bajo control.",
+      "sha256": "37510ce180d9a7db2704c56f5aa75c2af9f66bb91474016267ac68f7bf06217a",
+      "byteCount": 284204,
+      "durationMilliseconds": 5920,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "37510ce180d9a7db2704c56f5aa75c2af9f66bb91474016267ac68f7bf06217a"
+    },
+    {
+      "cueKey": "challenge.complete",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has completado el reto. Vuelve poco a poco al ritmo que llevabas antes.",
+      "sha256": "09a4a2ddfe7467d1af40c0afb9746f89e13b47a630d84a0e2769c3c4163fd598",
+      "byteCount": 253484,
+      "durationMilliseconds": 5280,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "09a4a2ddfe7467d1af40c0afb9746f89e13b47a630d84a0e2769c3c4163fd598"
+    },
+    {
+      "cueKey": "fallback.unavailable",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "El entrenamiento por voz no está disponible ahora mismo.",
+      "sha256": "04c1283d7348fb1be09fb2dc5d68caafd97b637de91da5758468f8a4a38edc5a",
+      "byteCount": 195884,
+      "durationMilliseconds": 4080,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "04c1283d7348fb1be09fb2dc5d68caafd97b637de91da5758468f8a4a38edc5a"
+    },
+    {
+      "cueKey": "voice.preview",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Esta es la voz de tu entrenador. Al correr, te daré indicaciones breves y concretas.",
+      "sha256": "0aae434b869576b1ad32fcb5ab9f4072c39e8907012ad2d03aabd873b8e82764",
+      "byteCount": 322604,
+      "durationMilliseconds": 6720,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "0aae434b869576b1ad32fcb5ab9f4072c39e8907012ad2d03aabd873b8e82764"
+    },
+    {
+      "cueKey": "race.start_restraint",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Empieza la carrera a un ritmo controlado. Deja los aumentos de velocidad para más adelante.",
+      "sha256": "fc253ae3c3f9f84178caa9f25d3c8b356de7a474c749f4cbbef8d5f56261edfe",
+      "byteCount": 301484,
+      "durationMilliseconds": 6280,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "fc253ae3c3f9f84178caa9f25d3c8b356de7a474c749f4cbbef8d5f56261edfe"
+    },
+    {
+      "cueKey": "route.off_route",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Te has salido de la ruta elegida. Vuelve hacia la línea resaltada cuando sea seguro.",
+      "sha256": "dd9361ad8769672921498c05a90645876dc460f28840e4a295f2e328cba8ba72",
+      "byteCount": 284204,
+      "durationMilliseconds": 5920,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "dd9361ad8769672921498c05a90645876dc460f28840e4a295f2e328cba8ba72"
+    },
+    {
+      "cueKey": "countdown.five",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "五。",
+      "sha256": "c955331b6ed8c6afbb661f5f36851406912e6b627bd6fcb400d9f3e0ea5d1cc4",
+      "byteCount": 61484,
+      "durationMilliseconds": 1280,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "c955331b6ed8c6afbb661f5f36851406912e6b627bd6fcb400d9f3e0ea5d1cc4"
+    },
+    {
+      "cueKey": "countdown.four",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "四。",
+      "sha256": "570e5c20be968109119959d2d18c84f0de68a0d20335af5e6c699d68ac59cb59",
+      "byteCount": 59564,
+      "durationMilliseconds": 1240,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "570e5c20be968109119959d2d18c84f0de68a0d20335af5e6c699d68ac59cb59"
+    },
+    {
+      "cueKey": "countdown.three",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "三。",
+      "sha256": "ae69aa4baa930ff35737ca3bccae876d9d2027d7651a8ad24cafd403839b1708",
+      "byteCount": 32738,
+      "durationMilliseconds": 681,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "ae69aa4baa930ff35737ca3bccae876d9d2027d7651a8ad24cafd403839b1708"
+    },
+    {
+      "cueKey": "countdown.two",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "二。",
+      "sha256": "9c1fb1b1ce733890b46e11f6e7f2043be0c3a2ae2929b90dafc498b5728e3f99",
+      "byteCount": 52316,
+      "durationMilliseconds": 1089,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "9c1fb1b1ce733890b46e11f6e7f2043be0c3a2ae2929b90dafc498b5728e3f99"
+    },
+    {
+      "cueKey": "countdown.one",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "一。",
+      "sha256": "4f3870a73638dbe3a728f0333c40a6367c69ea31f010e55cf12c3177460c2687",
+      "byteCount": 33288,
+      "durationMilliseconds": 693,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "4f3870a73638dbe3a728f0333c40a6367c69ea31f010e55cf12c3177460c2687"
+    },
+    {
+      "cueKey": "countdown.go",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "出发。",
+      "sha256": "a7da987dda8311f975e613f140182ae69526b34849b5b6d0b52c2ca27eeea9fa",
+      "byteCount": 46210,
+      "durationMilliseconds": 962,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "a7da987dda8311f975e613f140182ae69526b34849b5b6d0b52c2ca27eeea9fa"
+    },
+    {
+      "cueKey": "workout.pause",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "训练已暂停。",
+      "sha256": "1ed5ccaf4a0c953dc91e7f66837b47315a188388f1cfda62e1581478db542a2f",
+      "byteCount": 82604,
+      "durationMilliseconds": 1720,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "1ed5ccaf4a0c953dc91e7f66837b47315a188388f1cfda62e1581478db542a2f"
+    },
+    {
+      "cueKey": "workout.resume",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "训练已恢复。",
+      "sha256": "b6cf754c6c69b55951a842136a6b9f08e091aea7b19aa2b914fc8f8f74d9d14f",
+      "byteCount": 80684,
+      "durationMilliseconds": 1680,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "b6cf754c6c69b55951a842136a6b9f08e091aea7b19aa2b914fc8f8f74d9d14f"
+    },
+    {
+      "cueKey": "workout.complete",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "训练完成，平稳地放松下来。",
+      "sha256": "c3f152022863d707b38340b9400b9b67fdf5f1e6ce9d13a90eed4c124a7c4c62",
+      "byteCount": 176684,
+      "durationMilliseconds": 3680,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "c3f152022863d707b38340b9400b9b67fdf5f1e6ce9d13a90eed4c124a7c4c62"
+    },
+    {
+      "cueKey": "route.advisory",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "前方有路线提示，请在安全时查看地图。",
+      "sha256": "6a93781ed3e193a5226bb9f2d0a0ea73b9ef164e08913c1c202b06aa531e57d3",
+      "byteCount": 222764,
+      "durationMilliseconds": 4640,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "6a93781ed3e193a5226bb9f2d0a0ea73b9ef164e08913c1c202b06aa531e57d3"
+    },
+    {
+      "cueKey": "route.caution",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "注意路线，请减速并查看地图。",
+      "sha256": "62b815457960a0db23901a11cebfb1ef0854bb152dcd124257864aafecc15696",
+      "byteCount": 180524,
+      "durationMilliseconds": 3760,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "62b815457960a0db23901a11cebfb1ef0854bb152dcd124257864aafecc15696"
+    },
+    {
+      "cueKey": "route.wrong_way",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "你可能走错方向了，请先查看地图，再决定是否折返。",
+      "sha256": "499fed70b2180cf39ea8f4c4185732c31e28d9f6ba746445bbec3b1c085619f1",
+      "byteCount": 278444,
+      "durationMilliseconds": 5800,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "499fed70b2180cf39ea8f4c4185732c31e28d9f6ba746445bbec3b1c085619f1"
+    },
+    {
+      "cueKey": "route.rejoin",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "你已回到所选路线。",
+      "sha256": "5e4e144f46d11a750545f6c28b1191bfafbbc056b9960f6b049f499bfd8c10f0",
+      "byteCount": 97964,
+      "durationMilliseconds": 2040,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "5e4e144f46d11a750545f6c28b1191bfafbbc056b9960f6b049f499bfd8c10f0"
+    },
+    {
+      "cueKey": "route.arrival",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "你已到达路线终点。",
+      "sha256": "325db533462a84a453545e8828ef52e9e17bb452e2b697e9340f7d92dfcc3dc7",
+      "byteCount": 99884,
+      "durationMilliseconds": 2080,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "325db533462a84a453545e8828ef52e9e17bb452e2b697e9340f7d92dfcc3dc7"
+    },
+    {
+      "cueKey": "coach.speed_increase",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "刚才加速太急了。保持配速稳定，提速时慢慢来。",
+      "sha256": "e26d52b5b41e3bf2275286cffe616a93490da65cc8ad7429c80ef0358184e6b8",
+      "byteCount": 270764,
+      "durationMilliseconds": 5640,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "e26d52b5b41e3bf2275286cffe616a93490da65cc8ad7429c80ef0358184e6b8"
+    },
+    {
+      "cueKey": "coach.speed_decrease",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "刚才速度明显下降了。如果不是打算休息，就慢慢恢复到之前的配速。",
+      "sha256": "10a5cbf95feebcc50f680cc64c87b1235268aa65729304a55da2cf2b0b8a4020",
+      "byteCount": 349484,
+      "durationMilliseconds": 7280,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "10a5cbf95feebcc50f680cc64c87b1235268aa65729304a55da2cf2b0b8a4020"
+    },
+    {
+      "cueKey": "workout.segment_start",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "下一训练阶段开始了，按这一段的要求逐步调整强度。",
+      "sha256": "29aa72e30e743747058dce6c6f5523411773cabe93d679928d191294a55e5395",
+      "byteCount": 268844,
+      "durationMilliseconds": 5600,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "29aa72e30e743747058dce6c6f5523411773cabe93d679928d191294a55e5395"
+    },
+    {
+      "cueKey": "progress.one_third",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "目标已完成三分之一。",
+      "sha256": "228a995aa28cf52c239ae0a087ad8e65158370c0af659bc0617a12c1fe5a10b2",
+      "byteCount": 109484,
+      "durationMilliseconds": 2280,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "228a995aa28cf52c239ae0a087ad8e65158370c0af659bc0617a12c1fe5a10b2"
+    },
+    {
+      "cueKey": "progress.halfway",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "目标已完成一半。",
+      "sha256": "28f55da320bbf904deda590fed6af9e428c7e7164288df57677e170ce153ca41",
+      "byteCount": 96044,
+      "durationMilliseconds": 2000,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "28f55da320bbf904deda590fed6af9e428c7e7164288df57677e170ce153ca41"
+    },
+    {
+      "cueKey": "progress.two_thirds",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "目标已完成三分之二。",
+      "sha256": "b254d01d0ef97a93f68a7a110ea7cc87311f73ab9d1e47bde4d56142d6586972",
+      "byteCount": 119084,
+      "durationMilliseconds": 2480,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "b254d01d0ef97a93f68a7a110ea7cc87311f73ab9d1e47bde4d56142d6586972"
+    },
+    {
+      "cueKey": "progress.finish_soon",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "目标快达成了，最后这一段保持能控制住的配速。",
+      "sha256": "8503b0b02aed498cb86de852610ff14aae7b3bd63202248aaf45fe162922f8cd",
+      "byteCount": 251564,
+      "durationMilliseconds": 5240,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "8503b0b02aed498cb86de852610ff14aae7b3bd63202248aaf45fe162922f8cd"
+    },
+    {
+      "cueKey": "progress.steady",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "你正保持在目标配速，继续稳住这个速度。",
+      "sha256": "e011979b6839769329b4a757f77581aa3a67d8f475d7bac154c72eb55b0018e5",
+      "byteCount": 217004,
+      "durationMilliseconds": 4520,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "e011979b6839769329b4a757f77581aa3a67d8f475d7bac154c72eb55b0018e5"
+    },
+    {
+      "cueKey": "coach.early_settle",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "起步已快于目标配速，逐步放慢，不要在开头猛冲。",
+      "sha256": "fd32deb6d0ac2d89976a9a807f1a14c73142fb09d527f80225da37feb0c4ac6b",
+      "byteCount": 259244,
+      "durationMilliseconds": 5400,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "fd32deb6d0ac2d89976a9a807f1a14c73142fb09d527f80225da37feb0c4ac6b"
+    },
+    {
+      "cueKey": "coach.ease_to_target",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "当前速度高于目标配速，逐步放慢，回到目标范围。",
+      "sha256": "05cf19faf2be2626f2b9555c1946c7eee00d8e00e7455c32cde7c3df4462018d",
+      "byteCount": 265004,
+      "durationMilliseconds": 5520,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "05cf19faf2be2626f2b9555c1946c7eee00d8e00e7455c32cde7c3df4462018d"
+    },
+    {
+      "cueKey": "coach.lift_to_target",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "当前速度低于目标配速，慢慢提速，不要突然加速。",
+      "sha256": "d68a3a309e23fbe0a59a06c08f15b1bca41da05738f1a7c5f80a38e1d68ab6b4",
+      "byteCount": 247724,
+      "durationMilliseconds": 5160,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "d68a3a309e23fbe0a59a06c08f15b1bca41da05738f1a7c5f80a38e1d68ab6b4"
+    },
+    {
+      "cueKey": "coach.smooth_pace",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "配速变化后已偏离目标范围，逐步调整回目标配速。",
+      "sha256": "d5fb5c85701d36e4507bf6f64aafb621a4c6e0bf0371b9074e510f94c9dcd764",
+      "byteCount": 291884,
+      "durationMilliseconds": 6080,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "d5fb5c85701d36e4507bf6f64aafb621a4c6e0bf0371b9074e510f94c9dcd764"
+    },
+    {
+      "cueKey": "coach.rebuild_rhythm",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "速度已降到目标配速以下，如果感觉轻松，就逐步恢复到目标配速。",
+      "sha256": "e31bf28f8a2dfd8ddc909058ef92e29fdb39ec6c6cb4d7ecca280b324f7af550",
+      "byteCount": 318764,
+      "durationMilliseconds": 6640,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "e31bf28f8a2dfd8ddc909058ef92e29fdb39ec6c6cb4d7ecca280b324f7af550"
+    },
+    {
+      "cueKey": "coach.recovery_easy",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "这一段快于目标配速，请放慢到能轻松交谈的强度。",
+      "sha256": "910294c27c2606215702912cebdca7060f64bef765f5d69e0b2906e01026d5eb",
+      "byteCount": 255404,
+      "durationMilliseconds": 5320,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "910294c27c2606215702912cebdca7060f64bef765f5d69e0b2906e01026d5eb"
+    },
+    {
+      "cueKey": "coach.climb_by_effort",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "现在正在上坡，步子小一点，允许速度慢下来。",
+      "sha256": "803b774bddd65a682d149b0918c130eab4030b076d17b85f27e48e011ec75068",
+      "byteCount": 253484,
+      "durationMilliseconds": 5280,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "803b774bddd65a682d149b0918c130eab4030b076d17b85f27e48e011ec75068"
+    },
+    {
+      "cueKey": "coach.crest_reset",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "坡度缓下来了，先保持轻松，再考虑逐步提速。",
+      "sha256": "0979a6215213c3af1cb33f4ba1473f7aa7fd953b4741c7a70df9e32b505d7926",
+      "byteCount": 255404,
+      "durationMilliseconds": 5320,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "0979a6215213c3af1cb33f4ba1473f7aa7fd953b4741c7a70df9e32b505d7926"
+    },
+    {
+      "cueKey": "coach.settle",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "刚才加速太急了。保持配速稳定，提速时慢慢来。",
+      "sha256": "e26d52b5b41e3bf2275286cffe616a93490da65cc8ad7429c80ef0358184e6b8",
+      "byteCount": 270764,
+      "durationMilliseconds": 5640,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "e26d52b5b41e3bf2275286cffe616a93490da65cc8ad7429c80ef0358184e6b8"
+    },
+    {
+      "cueKey": "coach.restore_rhythm",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "刚才速度明显下降了。如果不是打算休息，就慢慢恢复到之前的配速。",
+      "sha256": "10a5cbf95feebcc50f680cc64c87b1235268aa65729304a55da2cf2b0b8a4020",
+      "byteCount": 349484,
+      "durationMilliseconds": 7280,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "10a5cbf95feebcc50f680cc64c87b1235268aa65729304a55da2cf2b0b8a4020"
+    },
+    {
+      "cueKey": "coach.rhythm_recovered",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "现在更接近目标配速了，先保持住，不要急着再次调整。",
+      "sha256": "54ace165c6bc49a3ebd96a685c57f1a4057cf5f4346f055cc79c501f5697e7b7",
+      "byteCount": 297644,
+      "durationMilliseconds": 6200,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "54ace165c6bc49a3ebd96a685c57f1a4057cf5f4346f055cc79c501f5697e7b7"
+    },
+    {
+      "cueKey": "coach.strong_finish",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "终点就在前面，如果感觉轻松，可以逐步加速，不要突然冲刺。",
+      "sha256": "131ea41be2f84bc7c6403cd18d98e95e96af7b5c3e705f654b087b00fed83b2d",
+      "byteCount": 332204,
+      "durationMilliseconds": 6920,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "131ea41be2f84bc7c6403cd18d98e95e96af7b5c3e705f654b087b00fed83b2d"
+    },
+    {
+      "cueKey": "challenge.start",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "挑战现在开始，逐步提速，保持强度可控。",
+      "sha256": "740e10942425acb13012613dfe03acfb9ca6fc447a18c15ff3bfa1b2ae53b69c",
+      "byteCount": 217004,
+      "durationMilliseconds": 4520,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "740e10942425acb13012613dfe03acfb9ca6fc447a18c15ff3bfa1b2ae53b69c"
+    },
+    {
+      "cueKey": "challenge.complete",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "挑战已完成，逐步回到挑战前的配速。",
+      "sha256": "9e1159bdacdb7d39ec722ea9b85749ec32f1152e538cdd2a77d2c2bcf8d29ed2",
+      "byteCount": 186284,
+      "durationMilliseconds": 3880,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "9e1159bdacdb7d39ec722ea9b85749ec32f1152e538cdd2a77d2c2bcf8d29ed2"
+    },
+    {
+      "cueKey": "fallback.unavailable",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "语音指导暂时不可用。",
+      "sha256": "56f26810087b5f6bcc73966eb636d9076f415464d10c5fdbe44fae687f428b4a",
+      "byteCount": 119084,
+      "durationMilliseconds": 2480,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "56f26810087b5f6bcc73966eb636d9076f415464d10c5fdbe44fae687f428b4a"
+    },
+    {
+      "cueKey": "voice.preview",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "这是你的教练声音。跑步时，我会给出简短、具体的提示。",
+      "sha256": "9ba104aac7fe36d5360f3adb1ca2fefa2a80cb15a26437db7e5277560ea69e29",
+      "byteCount": 291884,
+      "durationMilliseconds": 6080,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "9ba104aac7fe36d5360f3adb1ca2fefa2a80cb15a26437db7e5277560ea69e29"
+    },
+    {
+      "cueKey": "race.start_restraint",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "比赛刚开始，先控制好配速，留到后面再考虑提速。",
+      "sha256": "1c0ef557d35d055f7a99e91eba88a663b60933ad0debbe19b3a52dd26dfcabf1",
+      "byteCount": 255404,
+      "durationMilliseconds": 5320,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "1c0ef557d35d055f7a99e91eba88a663b60933ad0debbe19b3a52dd26dfcabf1"
+    },
+    {
+      "cueKey": "route.off_route",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "你已偏离所选路线，请在安全时向高亮路线返回。",
+      "sha256": "8ea3e12738f3af2ff5f516f396ffe7ed27d74fd79eaf2e0937bf1ed2d6a4d6db",
+      "byteCount": 238124,
+      "durationMilliseconds": 4960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "8ea3e12738f3af2ff5f516f396ffe7ed27d74fd79eaf2e0937bf1ed2d6a4d6db"
+    },
+    {
+      "cueKey": "countdown.five",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Five.",
+      "sha256": "2ee0b053c883b7745b24bbc543f8557811ebeb206cd866bba716956990571df1",
+      "byteCount": 67244,
+      "durationMilliseconds": 1400,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "2ee0b053c883b7745b24bbc543f8557811ebeb206cd866bba716956990571df1"
+    },
+    {
+      "cueKey": "countdown.four",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Four.",
+      "sha256": "4dfa8211a7c5cdda3461ba5c9f61b502a4879b29848576f3e0ee3323a9eb967c",
+      "byteCount": 67244,
+      "durationMilliseconds": 1400,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "4dfa8211a7c5cdda3461ba5c9f61b502a4879b29848576f3e0ee3323a9eb967c"
+    },
+    {
+      "cueKey": "countdown.three",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Three.",
+      "sha256": "c021828c805ae361020172f29a16df2de2db55d83651a7b39af4e116f0061a13",
+      "byteCount": 20868,
+      "durationMilliseconds": 434,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "c021828c805ae361020172f29a16df2de2db55d83651a7b39af4e116f0061a13"
+    },
+    {
+      "cueKey": "countdown.two",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Two.",
+      "sha256": "421788c182a096fda192b6338ea5731bf55d64baabe2783ce3938a7f5eecfba6",
+      "byteCount": 18486,
+      "durationMilliseconds": 384,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "421788c182a096fda192b6338ea5731bf55d64baabe2783ce3938a7f5eecfba6"
+    },
+    {
+      "cueKey": "countdown.one",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "One.",
+      "sha256": "af27cf8fe0c86ce559f6266eb0768db992687ccd1187eb5067f27a5d7a8f721c",
+      "byteCount": 21636,
+      "durationMilliseconds": 450,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "af27cf8fe0c86ce559f6266eb0768db992687ccd1187eb5067f27a5d7a8f721c"
+    },
+    {
+      "cueKey": "countdown.go",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Go.",
+      "sha256": "5b5f475c00131b23d5a7afbcf0cb2528e97b8a59a84d20db6dd006cc415339d1",
+      "byteCount": 18104,
+      "durationMilliseconds": 376,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "5b5f475c00131b23d5a7afbcf0cb2528e97b8a59a84d20db6dd006cc415339d1"
+    },
+    {
+      "cueKey": "workout.pause",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Workout paused.",
+      "sha256": "d0d632ea8f29ed92178f0f0e0c256374002268dc65199193779ad2798cb296d1",
+      "byteCount": 46124,
+      "durationMilliseconds": 960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "d0d632ea8f29ed92178f0f0e0c256374002268dc65199193779ad2798cb296d1"
+    },
+    {
+      "cueKey": "workout.resume",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Workout resumed.",
+      "sha256": "fd8d35af5221e543047a4904d2cf0c6f71e4970a9d2194194057535853a82ae3",
+      "byteCount": 40364,
+      "durationMilliseconds": 840,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "fd8d35af5221e543047a4904d2cf0c6f71e4970a9d2194194057535853a82ae3"
+    },
+    {
+      "cueKey": "workout.complete",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Workout complete. Ease down smoothly.",
+      "sha256": "fd5b0a99e174a390a9283acd0ffecb59b2f9b7b095b55b3a6884b2ab08f7d295",
+      "byteCount": 103724,
+      "durationMilliseconds": 2160,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "fd5b0a99e174a390a9283acd0ffecb59b2f9b7b095b55b3a6884b2ab08f7d295"
+    },
+    {
+      "cueKey": "route.advisory",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Route update ahead. Check the map when it is safe.",
+      "sha256": "dfd2d325d88c6f57f582e08c536a1cd7632968cee2bfdad6b8d9a91bac0d4b48",
+      "byteCount": 161324,
+      "durationMilliseconds": 3360,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "dfd2d325d88c6f57f582e08c536a1cd7632968cee2bfdad6b8d9a91bac0d4b48"
+    },
+    {
+      "cueKey": "route.caution",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Route caution. Slow down and check the map.",
+      "sha256": "a04ce827e4c70e5b12dcc69118c1e7c4d6e0e5eca6606fe3deab61b297361d87",
+      "byteCount": 147884,
+      "durationMilliseconds": 3080,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "a04ce827e4c70e5b12dcc69118c1e7c4d6e0e5eca6606fe3deab61b297361d87"
+    },
+    {
+      "cueKey": "route.wrong_way",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You may be going the wrong way. Check the map before turning back.",
+      "sha256": "b4329e08f0107c53698c72c018dcb6de6c29d702ee9d7893641715a4b20c8a9c",
+      "byteCount": 186284,
+      "durationMilliseconds": 3880,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "b4329e08f0107c53698c72c018dcb6de6c29d702ee9d7893641715a4b20c8a9c"
+    },
+    {
+      "cueKey": "route.rejoin",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are back on the selected route.",
+      "sha256": "2ed510f5a9dce588d2f1b8384b7b3cb57499ce0593de9846e207920a066c1d66",
+      "byteCount": 78764,
+      "durationMilliseconds": 1640,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "2ed510f5a9dce588d2f1b8384b7b3cb57499ce0593de9846e207920a066c1d66"
+    },
+    {
+      "cueKey": "route.arrival",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You have reached the end of the route.",
+      "sha256": "e8e39026c4730055d6dbc28ee5bc04871bb3885ebee86f19966102109f6cf66d",
+      "byteCount": 78764,
+      "durationMilliseconds": 1640,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "e8e39026c4730055d6dbc28ee5bc04871bb3885ebee86f19966102109f6cf66d"
+    },
+    {
+      "cueKey": "coach.speed_increase",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You sped up too fast. Keep a steady pace and speed up gradually.",
+      "sha256": "1a6d0f3fecd45870b595618db5767465ef6a2148d052c8fe6a009480bb970646",
+      "byteCount": 255404,
+      "durationMilliseconds": 5320,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "1a6d0f3fecd45870b595618db5767465ef6a2148d052c8fe6a009480bb970646"
+    },
+    {
+      "cueKey": "coach.speed_decrease",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Your speed dropped sharply. If you meant to keep running, return to your pace gradually.",
+      "sha256": "5987b3de3d9b57d8921706189208d3020b05cc1a5517291e4242b8ecfd99f784",
+      "byteCount": 243884,
+      "durationMilliseconds": 5080,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "5987b3de3d9b57d8921706189208d3020b05cc1a5517291e4242b8ecfd99f784"
+    },
+    {
+      "cueKey": "workout.segment_start",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "The next workout segment starts now. Adjust gradually to its prescribed effort.",
+      "sha256": "0934e69770ae5c0fce34e96c811e147c98565da97670e96625bea45ef9806d45",
+      "byteCount": 211244,
+      "durationMilliseconds": 4400,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "0934e69770ae5c0fce34e96c811e147c98565da97670e96625bea45ef9806d45"
+    },
+    {
+      "cueKey": "progress.one_third",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "One third of your goal is complete.",
+      "sha256": "92a90579db3f3c4ead6b7339cc1cbdb4638ae26b34ac5ccfbadbb45ec5cfb4be",
+      "byteCount": 94124,
+      "durationMilliseconds": 1960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "92a90579db3f3c4ead6b7339cc1cbdb4638ae26b34ac5ccfbadbb45ec5cfb4be"
+    },
+    {
+      "cueKey": "progress.halfway",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are halfway to your goal.",
+      "sha256": "e3a6e6e151953fc2787c6016d4bec07d2265edf4aca75e6f4386dceed04d089c",
+      "byteCount": 74924,
+      "durationMilliseconds": 1560,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "e3a6e6e151953fc2787c6016d4bec07d2265edf4aca75e6f4386dceed04d089c"
+    },
+    {
+      "cueKey": "progress.two_thirds",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Two thirds of your goal are complete.",
+      "sha256": "623efbdffe9d0dd93660f20f56eab8339266bf7f6ae8cb7e9182341bdf6e004b",
+      "byteCount": 86444,
+      "durationMilliseconds": 1800,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "623efbdffe9d0dd93660f20f56eab8339266bf7f6ae8cb7e9182341bdf6e004b"
+    },
+    {
+      "cueKey": "progress.finish_soon",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Your goal is close. Finish at a pace you can control.",
+      "sha256": "b0168323bfad72ac88768d26c53d932dd4fc97adcd94ee40d3830608df32dd93",
+      "byteCount": 182444,
+      "durationMilliseconds": 3800,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "b0168323bfad72ac88768d26c53d932dd4fc97adcd94ee40d3830608df32dd93"
+    },
+    {
+      "cueKey": "progress.steady",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are holding your target pace. Keep it steady.",
+      "sha256": "1fdce09c6baeb89818e7197cc5fd7291e42c2ac5ffef21e15acf37ec0044bd47",
+      "byteCount": 167084,
+      "durationMilliseconds": 3480,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "1fdce09c6baeb89818e7197cc5fd7291e42c2ac5ffef21e15acf37ec0044bd47"
+    },
+    {
+      "cueKey": "coach.early_settle",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are starting faster than your target. Slow down gradually to avoid an opening surge.",
+      "sha256": "2ce0d4a61c9f1fa604d6b3e0a582aba1438c5c296fe9116ef1c2788675f3e099",
+      "byteCount": 288044,
+      "durationMilliseconds": 6000,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "2ce0d4a61c9f1fa604d6b3e0a582aba1438c5c296fe9116ef1c2788675f3e099"
+    },
+    {
+      "cueKey": "coach.ease_to_target",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are above your target pace. Slow down gradually to return to it.",
+      "sha256": "99b9c1687798a3be86d31739e727011aea44adb54ec7f7234351d80741fac28e",
+      "byteCount": 257324,
+      "durationMilliseconds": 5360,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "99b9c1687798a3be86d31739e727011aea44adb54ec7f7234351d80741fac28e"
+    },
+    {
+      "cueKey": "coach.lift_to_target",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are below your target pace. Speed up gradually without an abrupt surge.",
+      "sha256": "32a56edcef86101c925431fc99fa5475b5cc7070f0331b0e1bae9c39e564878e",
+      "byteCount": 307244,
+      "durationMilliseconds": 6400,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "32a56edcef86101c925431fc99fa5475b5cc7070f0331b0e1bae9c39e564878e"
+    },
+    {
+      "cueKey": "coach.smooth_pace",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Your pace shifted outside the target range. Adjust gradually back to target.",
+      "sha256": "373d98bceb007f363a4c9746617642f47127ee9fb094ceb14f822217c1020332",
+      "byteCount": 263084,
+      "durationMilliseconds": 5480,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "373d98bceb007f363a4c9746617642f47127ee9fb094ceb14f822217c1020332"
+    },
+    {
+      "cueKey": "coach.rebuild_rhythm",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You have slowed below your target pace. If comfortable, return to it gradually.",
+      "sha256": "ec3509885fbf4cb5dcf22c67d3cf53f9abf1f9faebc32963568bea6737d591bb",
+      "byteCount": 261164,
+      "durationMilliseconds": 5440,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "ec3509885fbf4cb5dcf22c67d3cf53f9abf1f9faebc32963568bea6737d591bb"
+    },
+    {
+      "cueKey": "coach.recovery_easy",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are moving faster than this easy segment calls for. Slow to a conversational effort.",
+      "sha256": "2aac158f778faf914a2cc49cd7623c3d9164657544434c1576c5ff1161971f0b",
+      "byteCount": 268844,
+      "durationMilliseconds": 5600,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "2aac158f778faf914a2cc49cd7623c3d9164657544434c1576c5ff1161971f0b"
+    },
+    {
+      "cueKey": "coach.climb_by_effort",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are on a climb. Shorten your steps and let your pace slow.",
+      "sha256": "b9abbc9f48ed1fa760dcc1becd7fbdfbcf65ad356327808a1e708a3e4ad8adde",
+      "byteCount": 205484,
+      "durationMilliseconds": 4280,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "b9abbc9f48ed1fa760dcc1becd7fbdfbcf65ad356327808a1e708a3e4ad8adde"
+    },
+    {
+      "cueKey": "coach.crest_reset",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "The climb is easing. Keep effort easy before gradually increasing speed.",
+      "sha256": "0c8ec9d2cda451e00c4784beaf09a5b2e853a2656ccfe4ade4f12d954ed39eb4",
+      "byteCount": 209324,
+      "durationMilliseconds": 4360,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "0c8ec9d2cda451e00c4784beaf09a5b2e853a2656ccfe4ade4f12d954ed39eb4"
+    },
+    {
+      "cueKey": "coach.settle",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You sped up too fast. Keep a steady pace and speed up gradually.",
+      "sha256": "1a6d0f3fecd45870b595618db5767465ef6a2148d052c8fe6a009480bb970646",
+      "byteCount": 255404,
+      "durationMilliseconds": 5320,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "1a6d0f3fecd45870b595618db5767465ef6a2148d052c8fe6a009480bb970646"
+    },
+    {
+      "cueKey": "coach.restore_rhythm",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Your speed dropped sharply. If you meant to keep running, return to your pace gradually.",
+      "sha256": "5987b3de3d9b57d8921706189208d3020b05cc1a5517291e4242b8ecfd99f784",
+      "byteCount": 243884,
+      "durationMilliseconds": 5080,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "5987b3de3d9b57d8921706189208d3020b05cc1a5517291e4242b8ecfd99f784"
+    },
+    {
+      "cueKey": "coach.rhythm_recovered",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are closer to your target pace now. Hold it before adjusting again.",
+      "sha256": "aabac0e697c54af7bc4bb5ca5ac23a7b43630f0a367aa609bb39d471f827fb70",
+      "byteCount": 232364,
+      "durationMilliseconds": 4840,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "aabac0e697c54af7bc4bb5ca5ac23a7b43630f0a367aa609bb39d471f827fb70"
+    },
+    {
+      "cueKey": "coach.strong_finish",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "The finish is near. If comfortable, build speed gradually and avoid sprinting.",
+      "sha256": "c44a7ba2385ed61f5a82e8fb9e274bcbcb704061985ac5326e7c74ef5268630c",
+      "byteCount": 268844,
+      "durationMilliseconds": 5600,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "c44a7ba2385ed61f5a82e8fb9e274bcbcb704061985ac5326e7c74ef5268630c"
+    },
+    {
+      "cueKey": "challenge.start",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Your challenge starts now. Increase pace gradually and keep the effort controlled.",
+      "sha256": "30495b0269a4318d6d36f41df170dc66385692b7282d15594648fe434d6a2573",
+      "byteCount": 261164,
+      "durationMilliseconds": 5440,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "30495b0269a4318d6d36f41df170dc66385692b7282d15594648fe434d6a2573"
+    },
+    {
+      "cueKey": "challenge.complete",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Your challenge is complete. Ease back to the pace you held before it.",
+      "sha256": "504448783173b16afa7748c5134606f9e5ddd2b8f15cdd908766bc4864d4f1c5",
+      "byteCount": 228524,
+      "durationMilliseconds": 4760,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "504448783173b16afa7748c5134606f9e5ddd2b8f15cdd908766bc4864d4f1c5"
+    },
+    {
+      "cueKey": "fallback.unavailable",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Live coaching is unavailable right now.",
+      "sha256": "887453eea3c29a29add2e51980b5917f1ec8e8c558e5f8ec70807b17c238b2ae",
+      "byteCount": 99884,
+      "durationMilliseconds": 2080,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "887453eea3c29a29add2e51980b5917f1ec8e8c558e5f8ec70807b17c238b2ae"
+    },
+    {
+      "cueKey": "voice.preview",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "This is your coach voice. During a run, I will give short, specific instructions.",
+      "sha256": "aa6bfb9c9bdce55a375950bf917de02fb918218b127b83510a3dc560dab4f0da",
+      "byteCount": 234284,
+      "durationMilliseconds": 4880,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "aa6bfb9c9bdce55a375950bf917de02fb918218b127b83510a3dc560dab4f0da"
+    },
+    {
+      "cueKey": "race.start_restraint",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Start the race at a controlled pace. Save a speed increase for later.",
+      "sha256": "df9106b500cc489cbe71124eff9ac971e3ef424e6bf2919fcbb3d2ad552f0436",
+      "byteCount": 205484,
+      "durationMilliseconds": 4280,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "df9106b500cc489cbe71124eff9ac971e3ef424e6bf2919fcbb3d2ad552f0436"
+    },
+    {
+      "cueKey": "route.off_route",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "You are off the selected route. Return toward the highlighted line when safe.",
+      "sha256": "93921697fa5e98793a965e9b0df7db0875476afd9a5235dd111b90817646b4ca",
+      "byteCount": 245804,
+      "durationMilliseconds": 5120,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "93921697fa5e98793a965e9b0df7db0875476afd9a5235dd111b90817646b4ca"
+    },
+    {
+      "cueKey": "countdown.five",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Cinco.",
+      "sha256": "eab5b584d3e2ec24a3d4fbb4904173db1ae6c133f0aa1808de08f40e3d2d338f",
+      "byteCount": 67244,
+      "durationMilliseconds": 1400,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "eab5b584d3e2ec24a3d4fbb4904173db1ae6c133f0aa1808de08f40e3d2d338f"
+    },
+    {
+      "cueKey": "countdown.four",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Cuatro.",
+      "sha256": "279b527cd4b827197bae26c62544e69a6e5e16e6399a0325a275b1f2a4c3d99c",
+      "byteCount": 46124,
+      "durationMilliseconds": 960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "279b527cd4b827197bae26c62544e69a6e5e16e6399a0325a275b1f2a4c3d99c"
+    },
+    {
+      "cueKey": "countdown.three",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Tres.",
+      "sha256": "6e73fa4b66f3d11050cc4fab07606b7bc2e2c00b7aa75abab7f08a440e64a3a0",
+      "byteCount": 65324,
+      "durationMilliseconds": 1360,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "6e73fa4b66f3d11050cc4fab07606b7bc2e2c00b7aa75abab7f08a440e64a3a0"
+    },
+    {
+      "cueKey": "countdown.two",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Dos.",
+      "sha256": "bce61f59b68a45c667028194a56863d1db3f170a316ec96044b8deda2f6a8318",
+      "byteCount": 49964,
+      "durationMilliseconds": 1040,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "bce61f59b68a45c667028194a56863d1db3f170a316ec96044b8deda2f6a8318"
+    },
+    {
+      "cueKey": "countdown.one",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Uno.",
+      "sha256": "f1a835cc107787540670a8adb041322870e63aab9589739311876d5b11e79c76",
+      "byteCount": 17324,
+      "durationMilliseconds": 360,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "f1a835cc107787540670a8adb041322870e63aab9589739311876d5b11e79c76"
+    },
+    {
+      "cueKey": "countdown.go",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Adelante.",
+      "sha256": "7032fb841c1e03ab28094c3be5ca823e14e910cfe94d241a4474bde9e146f324",
+      "byteCount": 59564,
+      "durationMilliseconds": 1240,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "7032fb841c1e03ab28094c3be5ca823e14e910cfe94d241a4474bde9e146f324"
+    },
+    {
+      "cueKey": "workout.pause",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Entrenamiento en pausa.",
+      "sha256": "46754fbabd5fd21b9337bba2cdff52b8c4b51db798b24c9ee31e1cf68ec54171",
+      "byteCount": 94124,
+      "durationMilliseconds": 1960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "46754fbabd5fd21b9337bba2cdff52b8c4b51db798b24c9ee31e1cf68ec54171"
+    },
+    {
+      "cueKey": "workout.resume",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Entrenamiento reanudado.",
+      "sha256": "f365d2ba77111a55a58ad57d4f867ceadb81a7dbc4a7173026771346ce89415a",
+      "byteCount": 103724,
+      "durationMilliseconds": 2160,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "f365d2ba77111a55a58ad57d4f867ceadb81a7dbc4a7173026771346ce89415a"
+    },
+    {
+      "cueKey": "workout.complete",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Entrenamiento completado. Baja el ritmo con suavidad.",
+      "sha256": "acfddb2227f49571be190057b9b2f0d55e454e478d9398ad90dcab3a0fc5bc0f",
+      "byteCount": 211244,
+      "durationMilliseconds": 4400,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "acfddb2227f49571be190057b9b2f0d55e454e478d9398ad90dcab3a0fc5bc0f"
+    },
+    {
+      "cueKey": "route.advisory",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Hay una indicación de ruta. Mira el mapa cuando sea seguro.",
+      "sha256": "69bd6f39034abd76127b2b9b4ffd84350589de064b7218079c973f254ed4be06",
+      "byteCount": 197804,
+      "durationMilliseconds": 4120,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "69bd6f39034abd76127b2b9b4ffd84350589de064b7218079c973f254ed4be06"
+    },
+    {
+      "cueKey": "route.caution",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Atención a la ruta. Reduce el ritmo y mira el mapa.",
+      "sha256": "d0cdfadfbe658d72626f54819c77f789dea4bcfdf690c4546afb2db90331946a",
+      "byteCount": 224684,
+      "durationMilliseconds": 4680,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "d0cdfadfbe658d72626f54819c77f789dea4bcfdf690c4546afb2db90331946a"
+    },
+    {
+      "cueKey": "route.wrong_way",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Puede que vayas en la dirección equivocada. Mira el mapa antes de dar la vuelta.",
+      "sha256": "432c530bdb2e30baa491c1494e01db80063c98d3f52d66a20fafd2b72d200908",
+      "byteCount": 255404,
+      "durationMilliseconds": 5320,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "432c530bdb2e30baa491c1494e01db80063c98d3f52d66a20fafd2b72d200908"
+    },
+    {
+      "cueKey": "route.rejoin",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has vuelto a la ruta seleccionada.",
+      "sha256": "47cd53a9005648db06a14ae1edd54a12b356fb03c778c19ddc45536aa282b5c5",
+      "byteCount": 113324,
+      "durationMilliseconds": 2360,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "47cd53a9005648db06a14ae1edd54a12b356fb03c778c19ddc45536aa282b5c5"
+    },
+    {
+      "cueKey": "route.arrival",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has llegado al final de la ruta.",
+      "sha256": "8409d679960e7e971fe6d4ae9ee6e224affbce8c815984e5905f9b35f4980237",
+      "byteCount": 97964,
+      "durationMilliseconds": 2040,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "8409d679960e7e971fe6d4ae9ee6e224affbce8c815984e5905f9b35f4980237"
+    },
+    {
+      "cueKey": "coach.speed_increase",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has acelerado demasiado rápido. Mantén un ritmo constante y aumenta la velocidad poco a poco.",
+      "sha256": "fba029961a2eecb2891da95d7f17b133474532879f4b87a9167dd76789cc9509",
+      "byteCount": 347564,
+      "durationMilliseconds": 7240,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "fba029961a2eecb2891da95d7f17b133474532879f4b87a9167dd76789cc9509"
+    },
+    {
+      "cueKey": "coach.speed_decrease",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Tu velocidad ha bajado de golpe. Si querías seguir corriendo, recupera tu ritmo poco a poco.",
+      "sha256": "068ae5352e243682aee3d1b58e90557d04fd4328de2f83f092ca3ad7be59d4ae",
+      "byteCount": 330284,
+      "durationMilliseconds": 6880,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "068ae5352e243682aee3d1b58e90557d04fd4328de2f83f092ca3ad7be59d4ae"
+    },
+    {
+      "cueKey": "workout.segment_start",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Empieza el siguiente tramo. Ajusta el esfuerzo poco a poco según lo indicado.",
+      "sha256": "6aa7bb475e0afd0422eb485cbb3f8725e7b79a368897a5a5e4e509ed05651575",
+      "byteCount": 278444,
+      "durationMilliseconds": 5800,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "6aa7bb475e0afd0422eb485cbb3f8725e7b79a368897a5a5e4e509ed05651575"
+    },
+    {
+      "cueKey": "progress.one_third",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has completado un tercio de tu objetivo.",
+      "sha256": "36c0f086f12a247bd6eacd006f6db096bedd4f1e34f7bdc557791d65eb77d889",
+      "byteCount": 119084,
+      "durationMilliseconds": 2480,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "36c0f086f12a247bd6eacd006f6db096bedd4f1e34f7bdc557791d65eb77d889"
+    },
+    {
+      "cueKey": "progress.halfway",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has llegado a la mitad de tu objetivo.",
+      "sha256": "c0b7986b177177b11a7f9658a4d8a705cfb66424d789b774490b3972af675215",
+      "byteCount": 134444,
+      "durationMilliseconds": 2800,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "c0b7986b177177b11a7f9658a4d8a705cfb66424d789b774490b3972af675215"
+    },
+    {
+      "cueKey": "progress.two_thirds",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has completado dos tercios de tu objetivo.",
+      "sha256": "88b1b49c125e406015ec6a40676c98f97715e808227242435c454e90aeed2782",
+      "byteCount": 138284,
+      "durationMilliseconds": 2880,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "88b1b49c125e406015ec6a40676c98f97715e808227242435c454e90aeed2782"
+    },
+    {
+      "cueKey": "progress.finish_soon",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Tu objetivo está cerca. Termina a un ritmo que puedas controlar.",
+      "sha256": "da076d497179033bbc3df1b3ffc554995f35976b9996fb7e5c15ae3b3a52c0a8",
+      "byteCount": 257324,
+      "durationMilliseconds": 5360,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "da076d497179033bbc3df1b3ffc554995f35976b9996fb7e5c15ae3b3a52c0a8"
+    },
+    {
+      "cueKey": "progress.steady",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Estás manteniendo el ritmo objetivo. Sigue a ese ritmo.",
+      "sha256": "491b369efa9293c25769e7114a0b24df7793aeb68c778440809c2c3976b74be3",
+      "byteCount": 192044,
+      "durationMilliseconds": 4000,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "491b369efa9293c25769e7114a0b24df7793aeb68c778440809c2c3976b74be3"
+    },
+    {
+      "cueKey": "coach.early_settle",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has empezado por encima del ritmo objetivo. Baja la velocidad poco a poco, sin cambios bruscos.",
+      "sha256": "5eb78e9a19a9eff216c15235fb8bd492f9c59b5427aace669db52dadea084206",
+      "byteCount": 332204,
+      "durationMilliseconds": 6920,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "5eb78e9a19a9eff216c15235fb8bd492f9c59b5427aace669db52dadea084206"
+    },
+    {
+      "cueKey": "coach.ease_to_target",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Vas por encima del ritmo objetivo. Baja la velocidad poco a poco hasta recuperarlo.",
+      "sha256": "1079c4e6694953ea3fe0d7304e77c727782f6c88ba43d6bc6bed88313466b371",
+      "byteCount": 288044,
+      "durationMilliseconds": 6000,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "1079c4e6694953ea3fe0d7304e77c727782f6c88ba43d6bc6bed88313466b371"
+    },
+    {
+      "cueKey": "coach.lift_to_target",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Vas por debajo del ritmo objetivo. Acelera poco a poco, sin un cambio brusco.",
+      "sha256": "a3fc50ed2573d6f302271194284576445007310be7658805eb56a999ee37f7a4",
+      "byteCount": 288044,
+      "durationMilliseconds": 6000,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "a3fc50ed2573d6f302271194284576445007310be7658805eb56a999ee37f7a4"
+    },
+    {
+      "cueKey": "coach.smooth_pace",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Tu ritmo ha cambiado y está fuera del objetivo. Vuelve a él poco a poco.",
+      "sha256": "25293a7b40e9faad7637b8bb6899bee8a953f6242b4e454a69bbbd35c155337c",
+      "byteCount": 276524,
+      "durationMilliseconds": 5760,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "25293a7b40e9faad7637b8bb6899bee8a953f6242b4e454a69bbbd35c155337c"
+    },
+    {
+      "cueKey": "coach.rebuild_rhythm",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has bajado del ritmo objetivo. Si te sientes cómodo, vuelve a él poco a poco.",
+      "sha256": "0905afd44e335ba2e14bd1ffbfc67b6a9b55d7d7e0ebbf3b6d42d6eabb680d2e",
+      "byteCount": 284204,
+      "durationMilliseconds": 5920,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "0905afd44e335ba2e14bd1ffbfc67b6a9b55d7d7e0ebbf3b6d42d6eabb680d2e"
+    },
+    {
+      "cueKey": "coach.recovery_easy",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Vas más rápido de lo indicado para este tramo suave. Baja a un esfuerzo que te permita conversar.",
+      "sha256": "4086e877f344b97473bb9e687ee16900b46630a013124f9c14d238a616ca9f89",
+      "byteCount": 347564,
+      "durationMilliseconds": 7240,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "4086e877f344b97473bb9e687ee16900b46630a013124f9c14d238a616ca9f89"
+    },
+    {
+      "cueKey": "coach.climb_by_effort",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Estás en una subida. Acorta los pasos y deja que baje la velocidad.",
+      "sha256": "4daf53a3403029afaaa10b7c9fc3280cc6eec6b659472323f89d934fab58dcf2",
+      "byteCount": 245804,
+      "durationMilliseconds": 5120,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "4daf53a3403029afaaa10b7c9fc3280cc6eec6b659472323f89d934fab58dcf2"
+    },
+    {
+      "cueKey": "coach.crest_reset",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "La subida está aflojando. Mantén un esfuerzo suave antes de acelerar poco a poco.",
+      "sha256": "ab4c65ea0f7343c3934b8626444aa210c4fe1e94bb8edd00d978a54223545d5c",
+      "byteCount": 289964,
+      "durationMilliseconds": 6040,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "ab4c65ea0f7343c3934b8626444aa210c4fe1e94bb8edd00d978a54223545d5c"
+    },
+    {
+      "cueKey": "coach.settle",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has acelerado demasiado rápido. Mantén un ritmo constante y aumenta la velocidad poco a poco.",
+      "sha256": "fba029961a2eecb2891da95d7f17b133474532879f4b87a9167dd76789cc9509",
+      "byteCount": 347564,
+      "durationMilliseconds": 7240,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "fba029961a2eecb2891da95d7f17b133474532879f4b87a9167dd76789cc9509"
+    },
+    {
+      "cueKey": "coach.restore_rhythm",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Tu velocidad ha bajado de golpe. Si querías seguir corriendo, recupera tu ritmo poco a poco.",
+      "sha256": "068ae5352e243682aee3d1b58e90557d04fd4328de2f83f092ca3ad7be59d4ae",
+      "byteCount": 330284,
+      "durationMilliseconds": 6880,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "068ae5352e243682aee3d1b58e90557d04fd4328de2f83f092ca3ad7be59d4ae"
+    },
+    {
+      "cueKey": "coach.rhythm_recovered",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Ahora estás más cerca del ritmo objetivo. Mantenlo antes de volver a ajustar.",
+      "sha256": "d7ddc6a242adc88b6a2dbc46d602be382308d55ffa9ec918ea50e7a21a43a61d",
+      "byteCount": 236204,
+      "durationMilliseconds": 4920,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "d7ddc6a242adc88b6a2dbc46d602be382308d55ffa9ec918ea50e7a21a43a61d"
+    },
+    {
+      "cueKey": "coach.strong_finish",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "La meta está cerca. Si te sientes cómodo, acelera poco a poco, sin esprintar.",
+      "sha256": "aa618b6ca2bced0cd7862a54ddc02e3a90081a4d487029f019cc0ec1013ebc49",
+      "byteCount": 309164,
+      "durationMilliseconds": 6440,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "aa618b6ca2bced0cd7862a54ddc02e3a90081a4d487029f019cc0ec1013ebc49"
+    },
+    {
+      "cueKey": "challenge.start",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Tu reto empieza ahora. Acelera poco a poco y mantén el esfuerzo bajo control.",
+      "sha256": "636c9054fdadb4375353c841d9233881b7dff83d528d3109b645cea4285bc0ad",
+      "byteCount": 299564,
+      "durationMilliseconds": 6240,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "636c9054fdadb4375353c841d9233881b7dff83d528d3109b645cea4285bc0ad"
+    },
+    {
+      "cueKey": "challenge.complete",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Has completado el reto. Vuelve poco a poco al ritmo que llevabas antes.",
+      "sha256": "7686068876b30468fe17c22e30f79d2222a393642083782d018b947307d554bd",
+      "byteCount": 268844,
+      "durationMilliseconds": 5600,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "7686068876b30468fe17c22e30f79d2222a393642083782d018b947307d554bd"
+    },
+    {
+      "cueKey": "fallback.unavailable",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "El entrenamiento por voz no está disponible ahora mismo.",
+      "sha256": "215f8d7a80d59bc3fef01138e7840ea93a78c765187854a2ceafae4e988e41ed",
+      "byteCount": 167084,
+      "durationMilliseconds": 3480,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "215f8d7a80d59bc3fef01138e7840ea93a78c765187854a2ceafae4e988e41ed"
+    },
+    {
+      "cueKey": "voice.preview",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Esta es la voz de tu entrenador. Al correr, te daré indicaciones breves y concretas.",
+      "sha256": "9714065ad1de90658c2c83cdd96a5a971f8a926ca9af81daaf1427e9d908229b",
+      "byteCount": 328364,
+      "durationMilliseconds": 6840,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "9714065ad1de90658c2c83cdd96a5a971f8a926ca9af81daaf1427e9d908229b"
+    },
+    {
+      "cueKey": "race.start_restraint",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Empieza la carrera a un ritmo controlado. Deja los aumentos de velocidad para más adelante.",
+      "sha256": "f73cafe1e32b74e6402e8232f00b30d57f1e33e64795c45cacab98de96c3155f",
+      "byteCount": 339884,
+      "durationMilliseconds": 7080,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "f73cafe1e32b74e6402e8232f00b30d57f1e33e64795c45cacab98de96c3155f"
+    },
+    {
+      "cueKey": "route.off_route",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Te has salido de la ruta elegida. Vuelve hacia la línea resaltada cuando sea seguro.",
+      "sha256": "55a16068073024480c2e0df329d8bcc663416616c7de76abe0ee6a0b22ab67d7",
+      "byteCount": 311084,
+      "durationMilliseconds": 6480,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "55a16068073024480c2e0df329d8bcc663416616c7de76abe0ee6a0b22ab67d7"
+    },
+    {
+      "cueKey": "countdown.five",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "五。",
+      "sha256": "640e704d8701504f3e422c615d7cc66b18d4dcc40f4189030e1b38aba1fcd417",
+      "byteCount": 40364,
+      "durationMilliseconds": 840,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "640e704d8701504f3e422c615d7cc66b18d4dcc40f4189030e1b38aba1fcd417"
+    },
+    {
+      "cueKey": "countdown.four",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "四。",
+      "sha256": "6c6f0f4ceb651d5fda6731c35fddd877b17e3d6350939763b33f07963f8e8238",
+      "byteCount": 38444,
+      "durationMilliseconds": 800,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "6c6f0f4ceb651d5fda6731c35fddd877b17e3d6350939763b33f07963f8e8238"
+    },
+    {
+      "cueKey": "countdown.three",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "三。",
+      "sha256": "e69065a472ba9c8cc82269248ea685a625a08f4be74412da5252a3d083cbbeb3",
+      "byteCount": 49964,
+      "durationMilliseconds": 1040,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "e69065a472ba9c8cc82269248ea685a625a08f4be74412da5252a3d083cbbeb3"
+    },
+    {
+      "cueKey": "countdown.two",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "二。",
+      "sha256": "38e04e0d96e5d2e8ddbd92c7ce26625ac666a697ed1e21194122956faf51533b",
+      "byteCount": 46124,
+      "durationMilliseconds": 960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "38e04e0d96e5d2e8ddbd92c7ce26625ac666a697ed1e21194122956faf51533b"
+    },
+    {
+      "cueKey": "countdown.one",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "一。",
+      "sha256": "ac93fb880e00e9a75ac17f2ee6b93d6252f0309f4d79da1199d88bc8aa7e6e42",
+      "byteCount": 42284,
+      "durationMilliseconds": 880,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "ac93fb880e00e9a75ac17f2ee6b93d6252f0309f4d79da1199d88bc8aa7e6e42"
+    },
+    {
+      "cueKey": "countdown.go",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "出发。",
+      "sha256": "b63586503223f2440f132a024e83e4bcf21b1cb51b2a56618526c5ad4bfde2c3",
+      "byteCount": 67244,
+      "durationMilliseconds": 1400,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "b63586503223f2440f132a024e83e4bcf21b1cb51b2a56618526c5ad4bfde2c3"
+    },
+    {
+      "cueKey": "workout.pause",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "训练已暂停。",
+      "sha256": "3b6099e92be519308ebb493215d0a2b55abf832c879386a6d06a77513c829350",
+      "byteCount": 90284,
+      "durationMilliseconds": 1880,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "3b6099e92be519308ebb493215d0a2b55abf832c879386a6d06a77513c829350"
+    },
+    {
+      "cueKey": "workout.resume",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "训练已恢复。",
+      "sha256": "b3cdf679cf2b91685389e18b57c78de3d7367a5c1384ffa7bab7cb780cae1913",
+      "byteCount": 82604,
+      "durationMilliseconds": 1720,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "b3cdf679cf2b91685389e18b57c78de3d7367a5c1384ffa7bab7cb780cae1913"
+    },
+    {
+      "cueKey": "workout.complete",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "训练完成，平稳地放松下来。",
+      "sha256": "73fee31039e59a50ba4957289e08629e77fcd9e0c828a6fc27037522f7cb83c4",
+      "byteCount": 161324,
+      "durationMilliseconds": 3360,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "73fee31039e59a50ba4957289e08629e77fcd9e0c828a6fc27037522f7cb83c4"
+    },
+    {
+      "cueKey": "route.advisory",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "前方有路线提示，请在安全时查看地图。",
+      "sha256": "2d21971844f91cca6ae27a27dd93fe3ca1c269ce6329cb9a208464f499871a67",
+      "byteCount": 209324,
+      "durationMilliseconds": 4360,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "2d21971844f91cca6ae27a27dd93fe3ca1c269ce6329cb9a208464f499871a67"
+    },
+    {
+      "cueKey": "route.caution",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "注意路线，请减速并查看地图。",
+      "sha256": "7924cd14a4bc4f0746d90f893893b9fdd8bff2e1a379518251333053fc3359ee",
+      "byteCount": 178604,
+      "durationMilliseconds": 3720,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "7924cd14a4bc4f0746d90f893893b9fdd8bff2e1a379518251333053fc3359ee"
+    },
+    {
+      "cueKey": "route.wrong_way",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "你可能走错方向了，请先查看地图，再决定是否折返。",
+      "sha256": "3635b0c270180d3fe8cee9ba8612fceace05644cdb9756536542034911d5220e",
+      "byteCount": 274604,
+      "durationMilliseconds": 5720,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "3635b0c270180d3fe8cee9ba8612fceace05644cdb9756536542034911d5220e"
+    },
+    {
+      "cueKey": "route.rejoin",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "你已回到所选路线。",
+      "sha256": "90c6f4c5f6420fa146a560f8669b0f8452c9f7738da09d34083d1d1ed64b5153",
+      "byteCount": 105644,
+      "durationMilliseconds": 2200,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "90c6f4c5f6420fa146a560f8669b0f8452c9f7738da09d34083d1d1ed64b5153"
+    },
+    {
+      "cueKey": "route.arrival",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "你已到达路线终点。",
+      "sha256": "9293e27374d2273dcbc84f866f07f1f2675b382099415ed8667b33d875140d09",
+      "byteCount": 94124,
+      "durationMilliseconds": 1960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "9293e27374d2273dcbc84f866f07f1f2675b382099415ed8667b33d875140d09"
+    },
+    {
+      "cueKey": "coach.speed_increase",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "刚才加速太急了。保持配速稳定，提速时慢慢来。",
+      "sha256": "e07144b4dd95afe7bf1e5234f22eb980c46b6d88b242f7c1d09edd786a9d1cbe",
+      "byteCount": 282284,
+      "durationMilliseconds": 5880,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "e07144b4dd95afe7bf1e5234f22eb980c46b6d88b242f7c1d09edd786a9d1cbe"
+    },
+    {
+      "cueKey": "coach.speed_decrease",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "刚才速度明显下降了。如果不是打算休息，就慢慢恢复到之前的配速。",
+      "sha256": "467d344fa86837c34adde12a6a788e7f43df2130bd8119b7dfd60e6d4a413b61",
+      "byteCount": 368684,
+      "durationMilliseconds": 7680,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "467d344fa86837c34adde12a6a788e7f43df2130bd8119b7dfd60e6d4a413b61"
+    },
+    {
+      "cueKey": "workout.segment_start",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "下一训练阶段开始了，按这一段的要求逐步调整强度。",
+      "sha256": "21b05578441599dcb340c14cf984350a0542487fca2b49c4afdbbd08367bfebf",
+      "byteCount": 278444,
+      "durationMilliseconds": 5800,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "21b05578441599dcb340c14cf984350a0542487fca2b49c4afdbbd08367bfebf"
+    },
+    {
+      "cueKey": "progress.one_third",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "目标已完成三分之一。",
+      "sha256": "f440b5ab2cba19ca4118ef2f8c2a769a4b5df4c8edfceb3c9d1fdbf808daa125",
+      "byteCount": 130604,
+      "durationMilliseconds": 2720,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "f440b5ab2cba19ca4118ef2f8c2a769a4b5df4c8edfceb3c9d1fdbf808daa125"
+    },
+    {
+      "cueKey": "progress.halfway",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "目标已完成一半。",
+      "sha256": "fc8fd8b78c3099689cefe8c5fe443ef2eeaeca2ffa648c9ebf09b1aa3aa0cbd0",
+      "byteCount": 103724,
+      "durationMilliseconds": 2160,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "fc8fd8b78c3099689cefe8c5fe443ef2eeaeca2ffa648c9ebf09b1aa3aa0cbd0"
+    },
+    {
+      "cueKey": "progress.two_thirds",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "目标已完成三分之二。",
+      "sha256": "1989000e23c5cb3f1da83d9903700dc8d9496497a9e4989437baefcdf0aa0a8f",
+      "byteCount": 132524,
+      "durationMilliseconds": 2760,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "1989000e23c5cb3f1da83d9903700dc8d9496497a9e4989437baefcdf0aa0a8f"
+    },
+    {
+      "cueKey": "progress.finish_soon",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "目标快达成了，最后这一段保持能控制住的配速。",
+      "sha256": "4ce599de8b38b58b589aa7f6a115078d5587af07067ad89cbfaac709b5554643",
+      "byteCount": 243884,
+      "durationMilliseconds": 5080,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "4ce599de8b38b58b589aa7f6a115078d5587af07067ad89cbfaac709b5554643"
+    },
+    {
+      "cueKey": "progress.steady",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "你正保持在目标配速，继续稳住这个速度。",
+      "sha256": "ba0eed70e4277a72b72b50394d28427ddbf03234a4e3a2840adbe1db9de9fc9d",
+      "byteCount": 218924,
+      "durationMilliseconds": 4560,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "ba0eed70e4277a72b72b50394d28427ddbf03234a4e3a2840adbe1db9de9fc9d"
+    },
+    {
+      "cueKey": "coach.early_settle",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "起步已快于目标配速，逐步放慢，不要在开头猛冲。",
+      "sha256": "45746235cf572974a14de69767b8366d7d3d7c975eddeec78375450c06a247a6",
+      "byteCount": 286124,
+      "durationMilliseconds": 5960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "45746235cf572974a14de69767b8366d7d3d7c975eddeec78375450c06a247a6"
+    },
+    {
+      "cueKey": "coach.ease_to_target",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "当前速度高于目标配速，逐步放慢，回到目标范围。",
+      "sha256": "0739a317546087f10e063981be680fee7fe5ebd6530d94778cb32959ff733d00",
+      "byteCount": 272684,
+      "durationMilliseconds": 5680,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "0739a317546087f10e063981be680fee7fe5ebd6530d94778cb32959ff733d00"
+    },
+    {
+      "cueKey": "coach.lift_to_target",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "当前速度低于目标配速，慢慢提速，不要突然加速。",
+      "sha256": "534a00968d2aa4c148bca6e17974583b73e80538883a4047d4b4037bf8afd014",
+      "byteCount": 276524,
+      "durationMilliseconds": 5760,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "534a00968d2aa4c148bca6e17974583b73e80538883a4047d4b4037bf8afd014"
+    },
+    {
+      "cueKey": "coach.smooth_pace",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "配速变化后已偏离目标范围，逐步调整回目标配速。",
+      "sha256": "087702cef39edff9740b471903da63fa4cb6f158415aaf15689cb66a671a8b90",
+      "byteCount": 278444,
+      "durationMilliseconds": 5800,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "087702cef39edff9740b471903da63fa4cb6f158415aaf15689cb66a671a8b90"
+    },
+    {
+      "cueKey": "coach.rebuild_rhythm",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "速度已降到目标配速以下，如果感觉轻松，就逐步恢复到目标配速。",
+      "sha256": "65f267b5be085728e0780e21fee97e55a1755d533b0a5bdb176bc7afadbff16a",
+      "byteCount": 330284,
+      "durationMilliseconds": 6880,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "65f267b5be085728e0780e21fee97e55a1755d533b0a5bdb176bc7afadbff16a"
+    },
+    {
+      "cueKey": "coach.recovery_easy",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "这一段快于目标配速，请放慢到能轻松交谈的强度。",
+      "sha256": "a71995d3e16cdab1d86b6f638e6ffe303593113e4e799f3e19e1c7127251e776",
+      "byteCount": 278444,
+      "durationMilliseconds": 5800,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "a71995d3e16cdab1d86b6f638e6ffe303593113e4e799f3e19e1c7127251e776"
+    },
+    {
+      "cueKey": "coach.climb_by_effort",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "现在正在上坡，步子小一点，允许速度慢下来。",
+      "sha256": "9a95eff78e4df92191b90da9ca7ea72bd1d34b12fdac53db51c5a71f04abf37f",
+      "byteCount": 270764,
+      "durationMilliseconds": 5640,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "9a95eff78e4df92191b90da9ca7ea72bd1d34b12fdac53db51c5a71f04abf37f"
+    },
+    {
+      "cueKey": "coach.crest_reset",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "坡度缓下来了，先保持轻松，再考虑逐步提速。",
+      "sha256": "e2e5494a9ce3be5bb4e1fd673ced2d8fc33e8693dfde62d833a4ca4f0212fca2",
+      "byteCount": 272684,
+      "durationMilliseconds": 5680,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "e2e5494a9ce3be5bb4e1fd673ced2d8fc33e8693dfde62d833a4ca4f0212fca2"
+    },
+    {
+      "cueKey": "coach.settle",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "刚才加速太急了。保持配速稳定，提速时慢慢来。",
+      "sha256": "e07144b4dd95afe7bf1e5234f22eb980c46b6d88b242f7c1d09edd786a9d1cbe",
+      "byteCount": 282284,
+      "durationMilliseconds": 5880,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "e07144b4dd95afe7bf1e5234f22eb980c46b6d88b242f7c1d09edd786a9d1cbe"
+    },
+    {
+      "cueKey": "coach.restore_rhythm",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "刚才速度明显下降了。如果不是打算休息，就慢慢恢复到之前的配速。",
+      "sha256": "467d344fa86837c34adde12a6a788e7f43df2130bd8119b7dfd60e6d4a413b61",
+      "byteCount": 368684,
+      "durationMilliseconds": 7680,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "467d344fa86837c34adde12a6a788e7f43df2130bd8119b7dfd60e6d4a413b61"
+    },
+    {
+      "cueKey": "coach.rhythm_recovered",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "现在更接近目标配速了，先保持住，不要急着再次调整。",
+      "sha256": "aa00f2d0e6b34e02b9286ff011623b60ae2f13face24688ec06614198f004a45",
+      "byteCount": 278444,
+      "durationMilliseconds": 5800,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "aa00f2d0e6b34e02b9286ff011623b60ae2f13face24688ec06614198f004a45"
+    },
+    {
+      "cueKey": "coach.strong_finish",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "终点就在前面，如果感觉轻松，可以逐步加速，不要突然冲刺。",
+      "sha256": "dd7cae0700b64db55cd7d4cbe9da457f257479906ae2b9e69a24290bb8eabd82",
+      "byteCount": 330284,
+      "durationMilliseconds": 6880,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "dd7cae0700b64db55cd7d4cbe9da457f257479906ae2b9e69a24290bb8eabd82"
+    },
+    {
+      "cueKey": "challenge.start",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "挑战现在开始，逐步提速，保持强度可控。",
+      "sha256": "51d5caf5b946b70a73bcf31049c86b9d7fd5e82ca2579ddbf145071c5afdc4a6",
+      "byteCount": 238124,
+      "durationMilliseconds": 4960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "51d5caf5b946b70a73bcf31049c86b9d7fd5e82ca2579ddbf145071c5afdc4a6"
+    },
+    {
+      "cueKey": "challenge.complete",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "挑战已完成，逐步回到挑战前的配速。",
+      "sha256": "39342aa887db4cd1af1f5d3e6ba660ddd7a758ec149ee7184c0e2a999e7cf282",
+      "byteCount": 213164,
+      "durationMilliseconds": 4440,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "39342aa887db4cd1af1f5d3e6ba660ddd7a758ec149ee7184c0e2a999e7cf282"
+    },
+    {
+      "cueKey": "fallback.unavailable",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "语音指导暂时不可用。",
+      "sha256": "41e871acc6cb4e07523455d3c30abbdd52346ace3dee941683d2501ced75f2e2",
+      "byteCount": 113324,
+      "durationMilliseconds": 2360,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "41e871acc6cb4e07523455d3c30abbdd52346ace3dee941683d2501ced75f2e2"
+    },
+    {
+      "cueKey": "voice.preview",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "这是你的教练声音。跑步时，我会给出简短、具体的提示。",
+      "sha256": "e23d4387a1ab763c45c018848d8e4aee2e73ad8c469be81cea0369631476bfd2",
+      "byteCount": 318764,
+      "durationMilliseconds": 6640,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "e23d4387a1ab763c45c018848d8e4aee2e73ad8c469be81cea0369631476bfd2"
+    },
+    {
+      "cueKey": "race.start_restraint",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "比赛刚开始，先控制好配速，留到后面再考虑提速。",
+      "sha256": "cf7571a3b7850c34b93c68fd1488e14ac2a10af2bd6eb7336aa0a08a1302dfdf",
+      "byteCount": 270764,
+      "durationMilliseconds": 5640,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "cf7571a3b7850c34b93c68fd1488e14ac2a10af2bd6eb7336aa0a08a1302dfdf"
+    },
+    {
+      "cueKey": "route.off_route",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "你已偏离所选路线，请在安全时向高亮路线返回。",
+      "sha256": "a3b6b61b05499d8f0dc9afdfec75916c329bda5a6066045f3b5a945a3b1aa88f",
+      "byteCount": 243884,
+      "durationMilliseconds": 5080,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "a3b6b61b05499d8f0dc9afdfec75916c329bda5a6066045f3b5a945a3b1aa88f"
+    }
+  ]
+}

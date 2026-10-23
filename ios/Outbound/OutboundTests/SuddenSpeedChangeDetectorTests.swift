@@ -53,10 +53,20 @@ struct SuddenSpeedChangeDetectorTests {
         #expect(alerts.isEmpty)
     }
 
-    @Test(arguments: [(4.0, 5.2), (1.5, 2.2), (1.4, 4.5)])
-    func requiresBothThresholdsAndRunningBaseline(speeds: (Double, Double)) {
+    @Test(arguments: [(4.0, 5.2), (1.5, 2.2), (0.9, 4.5)])
+    func requiresBothThresholdsAndMovingBaseline(speeds: (Double, Double)) {
         var detector = SuddenSpeedChangeDetector()
         #expect(replay(&detector, through: 60) { $0 < 30 ? speeds.0 : speeds.1 }.isEmpty)
+    }
+
+    @Test func walkingToFastRunningTriggersIncrease() {
+        var detector = SuddenSpeedChangeDetector()
+        #expect(replay(&detector, through: 60) { $0 < 30 ? 4 / 3.6 : 19 / 3.6 }.map(\.direction) == [1])
+    }
+
+    @Test func walkingToStoppedDoesNotTriggerRunningSlowdown() {
+        var detector = SuddenSpeedChangeDetector()
+        #expect(replay(&detector, through: 60) { $0 < 30 ? 4 / 3.6 : 0 }.isEmpty)
     }
 
     @Test(arguments: [Double.nan, Double.infinity, -1, 16])

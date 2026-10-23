@@ -3801,24 +3801,24 @@ struct RecordView: View {
                 .progressPercent: .integer(percent)
             ]))
         case .deviated(let distanceMeters):
-            let message = String(localized: "route.guidance.off_route", defaultValue: "You’re off the selected route. Head back toward the highlighted line.")
-            guide.announceRouteGuidance(message, priority: .caution, semanticCueKey: "route.caution")
+            let message = String(localized: "route.guidance.off_route", defaultValue: "You are off the selected route. Return toward the highlighted line when safe.")
+            guide.announceRouteGuidance(message, priority: .caution, semanticCueKey: "route.off_route")
             track(.init(.routeDeviationDetected, properties: [
                 .distanceBucket: .string(ProductAnalyticsBucket.distance(meters: distanceMeters))
             ]))
         case .rejoined:
-            let message = String(localized: "route.guidance.rejoined", defaultValue: "You’re back on the selected route.")
+            let message = String(localized: "route.guidance.rejoined", defaultValue: "You are back on the selected route.")
             guide.announceRouteGuidance(message, priority: .advisory, semanticCueKey: "route.rejoin")
             track(.init(.routeRejoined))
         case .wrongWay:
-            let message = String(localized: "route.guidance.wrong_way", defaultValue: "You may be going the wrong way. Turn back toward the highlighted route.")
+            let message = String(localized: "route.guidance.wrong_way", defaultValue: "You may be going the wrong way. Check the map before turning back.")
             guide.announceRouteGuidance(message, priority: .caution, semanticCueKey: "route.wrong_way")
             track(.init(.routeWrongWayDetected, properties: [
                 .sourceType: .string(route.source.rawValue),
                 .direction: .string(route.direction.rawValue)
             ]))
         case .arrival:
-            let message = String(localized: "route.guidance.arrival", defaultValue: "Route complete. Nice work.")
+            let message = String(localized: "route.guidance.arrival", defaultValue: "You have reached the end of the route.")
             guide.announceRouteGuidance(message, priority: .arrival, semanticCueKey: "route.arrival")
             track(.init(.routeGuidanceArrived, properties: [
                 .sourceType: .string(route.source.rawValue),

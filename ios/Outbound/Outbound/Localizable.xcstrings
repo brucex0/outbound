@@ -423,24 +423,266 @@
         }
       }
     },
-    "live_guidance.sudden_speed_increase": {
+    "live_guidance.goal.distance_one_third": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Slow down until you can speak a full sentence."
+            "value": "One third of your distance goal is complete."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Baja el ritmo hasta poder decir una frase completa."
+            "value": "Has completado un tercio de tu objetivo de distancia."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "放慢到能说出一句完整的话。"
+            "value": "距离目标已完成三分之一。"
+          }
+        }
+      }
+    },
+    "live_guidance.goal.distance_halfway": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You are halfway to your distance goal."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Has llegado a la mitad de tu objetivo de distancia."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距离目标已完成一半。"
+          }
+        }
+      }
+    },
+    "live_guidance.goal.distance_two_thirds": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Two thirds of your distance goal are complete."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Has completado dos tercios de tu objetivo de distancia."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距离目标已完成三分之二。"
+          }
+        }
+      }
+    },
+    "live_guidance.goal.distance_complete": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distance goal reached. Reduce effort gradually."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Has alcanzado tu objetivo de distancia. Reduce el esfuerzo poco a poco."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距离目标已达成，逐步降低强度。"
+          }
+        }
+      }
+    },
+    "live_guidance.goal.time_halfway": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You are halfway to your time goal."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Has llegado a la mitad de tu objetivo de tiempo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "时间目标已完成一半。"
+          }
+        }
+      }
+    },
+    "live_guidance.goal.time_two_thirds": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Two thirds of your time goal are complete."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Has completado dos tercios de tu objetivo de tiempo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "时间目标已完成三分之二。"
+          }
+        }
+      }
+    },
+    "live_guidance.goal.time_last_minute": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One minute remains to reach your time goal."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falta un minuto para alcanzar tu objetivo de tiempo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距离时间目标还有一分钟。"
+          }
+        }
+      }
+    },
+    "live_guidance.goal.time_complete": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time goal reached. Reduce effort gradually."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Has alcanzado tu objetivo de tiempo. Reduce el esfuerzo poco a poco."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "时间目标已达成，逐步降低强度。"
+          }
+        }
+      }
+    },
+    "live_guidance.goal.last_mile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One mile remains to reach your distance goal."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falta una milla para alcanzar tu objetivo de distancia."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距离目标还有一英里。"
+          }
+        }
+      }
+    },
+    "live_guidance.goal.last_kilometer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One kilometer remains to reach your distance goal."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falta un kilómetro para alcanzar tu objetivo de distancia."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距离目标还有一公里。"
+          }
+        }
+      }
+    },
+    "live_guidance.workout_complete": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout complete. Ease down smoothly."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrenamiento completado. Baja el ritmo con suavidad."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "训练完成，平稳地放松下来。"
+          }
+        }
+      }
+    },
+    "live_guidance.sudden_speed_increase": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You sped up too fast. Keep a steady pace and speed up gradually."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Has acelerado demasiado rápido. Mantén un ritmo constante y aumenta la velocidad poco a poco."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刚才加速太急了。保持配速稳定，提速时慢慢来。"
           }
         }
       }
@@ -450,19 +692,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keep the effort easy; there is no need to make up lost time."
+            "value": "Your speed dropped sharply. If you meant to keep running, return to your pace gradually."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mantén un esfuerzo suave; no hace falta recuperar el tiempo perdido."
+            "value": "Tu velocidad ha bajado de golpe. Si querías seguir corriendo, recupera tu ritmo poco a poco."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保持轻松，不用追回刚才的时间。"
+            "value": "刚才速度明显下降了。如果不是打算休息，就慢慢恢复到之前的配速。"
           }
         }
       }
@@ -19455,19 +19697,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Route complete. Nice work."
+            "value": "You have reached the end of the route."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ruta completada. Buen trabajo."
+            "value": "Has llegado al final de la ruta."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "路线已完成。做得好。"
+            "value": "你已到达路线终点。"
           }
         }
       }
@@ -19543,19 +19785,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You’re off the selected route. Head back toward the highlighted line."
+            "value": "You are off the selected route. Return toward the highlighted line when safe."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Te has desviado de la ruta seleccionada. Vuelve hacia la línea resaltada."
+            "value": "Te has salido de la ruta elegida. Vuelve hacia la línea resaltada cuando sea seguro."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你已偏离所选路线。请返回高亮路线。"
+            "value": "你已偏离所选路线，请在安全时向高亮路线返回。"
           }
         }
       }
@@ -19565,7 +19807,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You’re back on the selected route."
+            "value": "You are back on the selected route."
           }
         },
         "es": {
@@ -19830,19 +20072,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You may be going the wrong way. Turn back toward the highlighted route."
+            "value": "You may be going the wrong way. Check the map before turning back."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Puede que vayas en sentido contrario. Da la vuelta y regresa por la ruta resaltada."
+            "value": "Puede que vayas en la dirección equivocada. Mira el mapa antes de dar la vuelta."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "你的行进方向可能相反。请掉头返回高亮路线。"
+            "value": "你可能走错方向了，请先查看地图，再决定是否折返。"
           }
         }
       }
@@ -28081,7 +28323,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "重启训练。"
+            "value": "训练已恢复。"
           }
         }
       }
@@ -28115,19 +28357,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Flow smoothly into the next effort."
+            "value": "Adjust gradually to the next segment’s prescribed effort."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entra con fluidez en el siguiente esfuerzo."
+            "value": "Ajusta el esfuerzo poco a poco según lo indicado para el siguiente tramo."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "顺畅衔接到下一段训练。"
+            "value": "按下一训练阶段的要求逐步调整强度。"
           }
         }
       }

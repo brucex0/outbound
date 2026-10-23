@@ -39,7 +39,8 @@ struct SuddenSpeedChangeDetector {
             if earlier.count >= 8, let start = earlier.first, let end = earlier.last,
                end.second - start.second >= 14 {
                 let established = median(earlier.map(\.speed))
-                if established >= 1.5,
+                // Sustained walking can precede a sharp running acceleration.
+                if established >= 1.0,
                    earlier.allSatisfy({ abs($0.speed - established) <= established * 0.2 }) {
                     stableReference = (established, second)
                 }
@@ -53,6 +54,7 @@ struct SuddenSpeedChangeDetector {
         let delta = current - reference
         let direction = delta > 0 ? 1 : -1
         guard abs(delta) >= max(reference * 0.4, 3.0 / 3.6),
+              !(direction < 0 && reference < 1.5),
               !(direction < 0 && ["warmup", "recovery", "cooldown", "walk"].contains(phase ?? "")) else {
             baseline = nil; candidateSince = nil; candidateDirection = nil; return nil
         }

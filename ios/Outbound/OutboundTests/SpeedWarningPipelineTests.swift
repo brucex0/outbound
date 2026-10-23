@@ -1,6 +1,6 @@
+import AVFAudio
 import Combine
 import CoreLocation
-import CryptoKit
 import Foundation
 import Testing
 @testable import Outbound
@@ -15,7 +15,7 @@ struct SpeedWarningPipelineTests {
         fixture.feed(0...40, direction: direction)
         #expect(fixture.speedEvents == ["\(direction > 0 ? "increase" : "decrease"):detected",
                                        "\(direction > 0 ? "increase" : "decrease"):spoken"])
-        let key = direction > 0 ? "coach.settle" : "coach.restore_rhythm"
+        let key = direction > 0 ? "coach.speed_increase" : "coach.speed_decrease"
         #expect(fixture.pack.requests.map(\.key) == [key])
         #expect(fixture.player.played == [Data(key.utf8)])
         #expect(fixture.pack.requests.first?.transcript == nil)
@@ -34,7 +34,7 @@ struct SpeedWarningPipelineTests {
         fixture.player.isSpeaking = false
         fixture.feed(41...41)
         #expect(fixture.speedEvents == ["increase:detected", "increase:spoken"])
-        #expect(fixture.player.played == [Data("coach.settle".utf8)])
+        #expect(fixture.player.played == [Data("coach.speed_increase".utf8)])
     }
 
     @Test func warningExpiresWhileAudioIsBusy() {
@@ -136,52 +136,52 @@ struct SpeedWarningPipelineTests {
         #expect(changed.paceEvidenceTimestamp == changed.startedAt?.addingTimeInterval(46))
         recorder.advanceRunSimulation(by: 12)
         #expect(fixture.speedEvents == ["increase:detected", "increase:spoken"])
-        #expect(fixture.player.played == [Data("coach.settle".utf8)])
+        #expect(fixture.player.played == [Data("coach.speed_increase".utf8)])
     }
 
     @Test(arguments: ["en", "es", "zh-Hans"], ["plainstride_warm_1", "plainstride_clear_1"])
-    func publishedScriptsPlayThroughRealPackWithoutWeakeningSentenceMatching(locale: String, voice: String) async throws {
+    func bundledScriptsPlayWithOldCachedManifestAndNoDownloadedAudio(locale: String, voice: String) async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let scripts = recordedSpeedWarningScripts(locale: locale)
-        let audio = try writeRecordedSpeedWarningCache(directory: directory, scripts: scripts, voice: voice, locale: locale)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        // The actual installed phone had an older cached manifest. It must not
+        // hide the explicit recordings bundled in this app, even offline.
+        let oldManifest: [String: Any] = ["contractVersion": 1, "catalogVersion": "2026-09-08.1", "entries": []]
+        try JSONSerialization.data(withJSONObject: oldManifest).write(to: directory.appendingPathComponent("last-known-good-manifest.json"))
         let pack = GuideAudioPackStore(cacheDirectory: directory, localeIdentifier: { locale })
         pack.select(coachPersonaID: "plainstride_supportive_v1", voiceProfileID: voice, scriptStyleID: "standard")
         await pack.preloadSelectedAudio()
         for direction in [1, -1] {
-            let key = direction > 0 ? "coach.settle" : "coach.restore_rhythm"
-            // The on-phone published script differs from the app's proposed sentence.
-            // Generic sentence fallback must still reject a mismatched transcript.
-            #expect(pack.localAudioData(for: key, transcript: "Unrelated unreviewed sentence.") == nil)
-            let proposedSentence = direction > 0
-                ? String(localized: "live_guidance.sudden_speed_increase", defaultValue: "Slow down until you can speak a full sentence.")
-                : String(localized: "live_guidance.sudden_speed_decrease", defaultValue: "Keep the effort easy; there is no need to make up lost time.")
-            #expect(pack.localAudioData(for: key, transcript: proposedSentence) == nil)
+            let key = direction > 0 ? "coach.speed_increase" : "coach.speed_decrease"
+            #expect(pack.localAudioData(for: key, transcript: "Settle the effort and find a sustainable rhythm.") == nil)
+            let cue = try #require(pack.localAudioCue(for: key))
+            #expect(cue.audioData.starts(with: Data("RIFF".utf8)))
+            #expect(cue.audioData.count > 44)
             let fixture = WarningFixture(audioPack: pack)
             fixture.feed(0...40, direction: direction)
             #expect(fixture.speedEvents.last == "\(direction > 0 ? "increase" : "decrease"):spoken")
-            #expect(fixture.player.played == [audio])
-            #expect(fixture.guide.lastNudge == scripts[key])
-            #expect(fixture.guide.lastSpokenAnnouncement == scripts[key])
+            #expect(fixture.player.played == [cue.audioData])
+            #expect(fixture.guide.lastNudge == cue.transcript)
+            #expect(fixture.guide.lastSpokenAnnouncement == cue.transcript)
             fixture.guide.deactivate()
         }
     }
 
-    @Test(arguments: [1, 10])
-    func sevenToTwentyKilometersPerHourUsesPublishedClipInSimulation(rate: Int) async throws {
+    @Test(arguments: [1, 10], [4, 6, 7, 24])
+    func walkingAndRunningRampsPlayExplicitBundledCue(rate: Int, startingSpeed: Int) async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let scripts = recordedSpeedWarningScripts(locale: "en")
-        let audio = try writeRecordedSpeedWarningCache(directory: directory, scripts: scripts,
-                                                       voice: "plainstride_clear_1", locale: "en")
         let pack = GuideAudioPackStore(cacheDirectory: directory, localeIdentifier: { "en" })
         pack.select(coachPersonaID: "plainstride_supportive_v1", voiceProfileID: "plainstride_clear_1", scriptStyleID: "standard")
         await pack.preloadSelectedAudio()
+        let direction = startingSpeed == 24 ? -1 : 1
+        let key = direction > 0 ? "coach.speed_increase" : "coach.speed_decrease"
+        let cue = try #require(pack.localAudioCue(for: key))
         let fixture = WarningFixture(audioPack: pack)
         let recorder = ActivityRecorder(locationManager: LocationManager())
         let route = HarvestHalfMarathonSimulation.route
         recorder.startRunSimulation(routeGuidance: .init(route: route, recoverySeed: nil),
-                                    route: route, speedKilometersPerHour: 7)
+                                    route: route, speedKilometersPerHour: Double(startingSpeed))
         defer {
             fixture.guide.deactivate()
             _ = recorder.finish()
@@ -190,18 +190,85 @@ struct SpeedWarningPipelineTests {
         let subscription = recorder.$liveSnapshot.sink { fixture.guide.ingest($0) }
         defer { subscription.cancel() }
         recorder.advanceRunSimulation(by: 45)
-        // The actual plus button adds 1 km/h. Thirteen taps over four wall-clock
+        // The actual plus/minus buttons change 1 km/h. Taps over four wall-clock
         // seconds must exercise the same ramp at both simulation clock rates.
-        for tap in 1...13 {
-            recorder.adjustRunSimulationSpeed(byKilometersPerHour: 1)
-            let seconds = tap * 4 * rate / 13 - (tap - 1) * 4 * rate / 13
+        let targetSpeed = startingSpeed == 4 ? 19 : (startingSpeed == 24 ? 7 : 24)
+        let tapCount = abs(targetSpeed - startingSpeed)
+        for tap in 1...tapCount {
+            recorder.adjustRunSimulationSpeed(byKilometersPerHour: Double(direction))
+            let seconds = tap * 4 * rate / tapCount - (tap - 1) * 4 * rate / tapCount
             if seconds > 0 { recorder.advanceRunSimulation(by: seconds) }
         }
         // Stay before the independent cadence-pacer opportunity at 90 seconds.
-        recorder.advanceRunSimulation(by: max(0, 60 - recorder.elapsedSeconds))
-        #expect(fixture.speedEvents.contains("increase:spoken"))
-        #expect(fixture.player.played.contains(audio))
-        #expect(fixture.guide.lastNudge == scripts["coach.settle"])
+        recorder.advanceRunSimulation(by: max(0, 89 - recorder.elapsedSeconds))
+        #expect(fixture.speedEvents.contains("\(direction > 0 ? "increase" : "decrease"):spoken"))
+        #expect(fixture.player.played.contains(cue.audioData))
+        #expect(fixture.guide.lastNudge == cue.transcript)
+    }
+    @Test func independentSpeedChangeSurvivesRecentTargetCorrection() {
+        let director = LiveGuidanceDirector()
+        director.reset(contract: .responsive, challenge: .off)
+        let target = SessionCoachingTarget(phase: .easy, pace: SessionPaceTarget(
+            reference: .absolute, targetSecondsPerKilometer: 300,
+            fasterToleranceSeconds: 30, slowerToleranceSeconds: 30))
+        let intent = SessionIntent(id: "targeted-run", sport: .run, title: "", detail: "",
+            guideLine: "", startLabel: "", coachingTarget: target)
+        var moments: [DetectedLiveGuidanceMoment] = []
+        for second in 0...70 {
+            if let moment = director.ingest(warningSnapshot(second: second,
+                speed: (second < 50 ? 6.0 : 24.0) / 3.6), profile: nil, intent: intent).nextMoment {
+                moments.append(moment)
+            }
+        }
+        #expect(moments.contains { $0.type == .paceBelowTarget })
+        #expect(moments.contains { $0.speedChangeDirection == 1 })
+    }
+
+    @Test(arguments: AppLanguage.allCases, ["plainstride_warm_1", "plainstride_clear_1"])
+    func everyFixedFallbackHasMatchingPlayableRecording(language: AppLanguage, voice: String) async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pack = GuideAudioPackStore(cacheDirectory: directory, localeIdentifier: { language.rawValue })
+        pack.select(coachPersonaID: "plainstride_supportive_v1", voiceProfileID: voice, scriptStyleID: "standard")
+        await pack.preloadSelectedAudio()
+        for moment in LiveGuidanceMomentType.allCases {
+            let fallback = ServerLiveCoachProvider.fallback(for: moment, language: language)
+            if moment == .progress {
+                // Generic progress cannot truthfully claim that a target is held.
+                #expect(fallback.text.isEmpty)
+                continue
+            }
+            let data = try #require(pack.localAudioData(for: fallback.key, transcript: fallback.text))
+            #expect(data.starts(with: Data("RIFF".utf8)))
+            #expect(pack.localAudioData(for: fallback.key, transcript: "An unrelated sentence.") == nil)
+        }
+        let manifestURL = try #require(Bundle.main.url(forResource: "manifest", withExtension: "json", subdirectory: "LiveCoachAudio"))
+        let manifest = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: manifestURL)) as? [String: Any])
+        let entries = try #require(manifest["entries"] as? [[String: Any]])
+        for entry in entries where entry["locale"] as? String == language.rawValue && entry["voiceProfileId"] as? String == voice {
+            let key = try #require(entry["cueKey"] as? String)
+            let script = try #require(entry["transcript"] as? String)
+            let data = try #require(pack.localAudioData(for: key, transcript: script))
+            let properties = try await Task.detached {
+                let decoder = try AVAudioPlayer(data: data)
+                let properties = (decoder.prepareToPlay(), decoder.duration, decoder.numberOfChannels)
+                decoder.stop()
+                return properties
+            }.value
+            #expect(properties.0)
+            #expect(properties.1 > 0 && properties.1 <= 8)
+            #expect(properties.2 == 1)
+        }
+        #expect(pack.localAudioSequence(for: GuideAudioPackStore.segmentCountdownCueKeys)?.count == 5)
+    }
+
+    @Test func unreviewedBundledRecordingsAreNotGrantedApprovalByPlaybackCode() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pack = try unreviewedAudioPackFixture(directory: directory, locale: "en", voice: "plainstride_clear_1")
+        pack.select(coachPersonaID: "plainstride_supportive_v1", voiceProfileID: "plainstride_clear_1", scriptStyleID: "standard")
+        await pack.preloadSelectedAudio()
+        #expect(pack.localAudioCue(for: "coach.speed_increase") == nil)
     }
 }
 
@@ -288,42 +355,38 @@ private final class WarningAudioPack: GuideAudioPackProviding {
     }
     func localAudioCue(for cueKey: String) -> (transcript: String, audioData: Data)? {
         guard let audio = localAudioData(for: cueKey, transcript: nil) else { return nil }
-        let transcript = cueKey == "coach.settle"
-            ? String(localized: "live_guidance.sudden_speed_increase", defaultValue: "Slow down until you can speak a full sentence.")
-            : String(localized: "live_guidance.sudden_speed_decrease", defaultValue: "Keep the effort easy; there is no need to make up lost time.")
+        let transcript = cueKey == "coach.speed_increase"
+            ? String(localized: "live_guidance.sudden_speed_increase", defaultValue: "You sped up too fast. Keep a steady pace and speed up gradually.")
+            : String(localized: "live_guidance.sudden_speed_decrease", defaultValue: "Your speed dropped sharply. If you meant to keep running, return to your pace gradually.")
         return (transcript, audio)
     }
     func localAudioSequence(for cueKeys: [String]) -> [Data]? { nil }
 }
 
-// Recorded wording from the on-device signed 2026-09-08.1 manifest. Keep this
-// independent of current catalog/app prose so a proposed-script mismatch recurs.
-private func recordedSpeedWarningScripts(locale: String) -> [String: String] {
-    switch locale {
-    case "zh-Hans": return ["coach.settle": "稍微收住强度，找到可持续的节奏。",
-                            "coach.restore_rhythm": "放松肩膀，慢慢找回刚才的节奏。"]
-    case "es": return ["coach.settle": "Baja un poco el esfuerzo y encuentra un ritmo sostenible.",
-                       "coach.restore_rhythm": "Relaja los hombros y recupera el ritmo poco a poco."]
-    default: return ["coach.settle": "Settle the effort and find a sustainable rhythm.",
-                     "coach.restore_rhythm": "Relax your shoulders and gently find your rhythm again."]
+// Exercise rejection with an explicitly unreviewed copy; all positive playback
+// checks above use the actual owner-approved app bundle directly.
+@MainActor
+private func unreviewedAudioPackFixture(directory: URL, locale: String, voice: String) throws -> GuideAudioPackStore {
+    let manifestURL = try #require(Bundle.main.url(forResource: "manifest", withExtension: "json", subdirectory: "LiveCoachAudio"))
+    var manifest = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: manifestURL)) as? [String: Any])
+    let all = try #require(manifest["entries"] as? [[String: Any]])
+    let fixtureDirectory = directory.appendingPathComponent("reviewed-fixture")
+    try FileManager.default.createDirectory(at: fixtureDirectory, withIntermediateDirectories: true)
+    var entries: [[String: Any]] = []
+    for var entry in all where entry["locale"] as? String == locale && entry["voiceProfileId"] as? String == voice {
+        let name = try #require(entry["bundledResourceName"] as? String)
+        let fileName = name + ".wav"
+        let target = fixtureDirectory.appendingPathComponent(fileName)
+        if !FileManager.default.fileExists(atPath: target.path) {
+            try FileManager.default.copyItem(at: manifestURL.deletingLastPathComponent().appendingPathComponent(fileName), to: target)
+        }
+        entry["approved"] = false
+        entries.append(entry)
     }
-}
-
-private func writeRecordedSpeedWarningCache(directory: URL, scripts: [String: String], voice: String, locale: String) throws -> Data {
-    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    // Deterministic local bytes exercise real disk/checksum/manifest selection;
-    // the playback spy captures them without opening an audio device.
-    let audio = Data("reviewed speed warning fixture bytes".utf8)
-    let sha = SHA256.hash(data: audio).map { String(format: "%02x", $0) }.joined()
-    try audio.write(to: directory.appendingPathComponent("\(sha).wav"))
-    let entries = scripts.map { key, script in
-        ["cueKey": key, "locale": locale, "voiceProfileId": voice, "scriptStyleId": "standard",
-         "compatibleCoachPersonaIds": ["plainstride_supportive_v1"], "transcript": script,
-         "sha256": sha, "contentType": "audio/wav", "approved": true] as [String: Any]
-    }
-    let manifest: [String: Any] = ["contractVersion": 1, "catalogVersion": "2026-09-08.1", "entries": entries]
-    try JSONSerialization.data(withJSONObject: manifest).write(to: directory.appendingPathComponent("last-known-good-manifest.json"))
-    return audio
+    manifest["entries"] = entries
+    try JSONSerialization.data(withJSONObject: manifest).write(to: fixtureDirectory.appendingPathComponent("manifest.json"))
+    return GuideAudioPackStore(cacheDirectory: directory, bundledAudioDirectory: fixtureDirectory,
+                               localeIdentifier: { locale })
 }
 
 @MainActor
