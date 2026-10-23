@@ -167,7 +167,7 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             try session.setActive(true)
             let player = try AVAudioPlayer(data: Self.drumAudio(cadence: cadence))
             player.delegate = self
-            player.volume = 0.32
+            player.volume = 0.7
             guard player.play() else {
                 logger.error("Cadence pacer start failed: AVAudioPlayer.play returned false")
                 deactivateAudioSession()
@@ -175,9 +175,9 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
                 return
             }
             self.player = player
-            let output = session.outputVolume == 0 ? "muted" : "audible"
+            let output = session.outputVolume == 0 ? "muted" : "nonzero"
             let route = session.currentRoute.outputs.first?.portType.rawValue ?? "none"
-            logger.notice("Cadence pacer started route=\(route, privacy: .public) output=\(output, privacy: .public)")
+            logger.notice("Cadence pacer started route=\(route, privacy: .public) output=\(output, privacy: .public) media_volume=\(session.outputVolume, privacy: .public) player_gain=\(player.volume, privacy: .public) sound=drum_v2")
             reportState("playing")
             eventHandler?("started")
             finishTask = Task { @MainActor [weak self] in
@@ -226,7 +226,8 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         }
     }
 
-    /// A quiet, decaying low drum hit per footfall; PCM scheduling avoids timer jitter.
+    /// A short drum hit with a midrange attack so the rhythm carries on phone speakers.
+    /// PCM scheduling avoids timer jitter; a smooth onset avoids a hard digital click.
     private static func drumAudio(cadence: Int) -> Data {
         let sampleRate = 22_050
         let sampleCount = sampleRate * 20
@@ -235,10 +236,13 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         for index in 0..<sampleCount {
             let time = Double(index) / Double(sampleRate)
             let hitTime = time.truncatingRemainder(dividingBy: interval)
-            let envelope = exp(-hitTime * 45)
+            let onset = min(1, hitTime / 0.0015)
+            let body = 0.55 * sin(2 * .pi * 240 * hitTime) * exp(-hitTime * 28)
+            let attack = 0.30 * sin(2 * .pi * 840 * hitTime) * exp(-hitTime * 45)
+            let overtone = 0.15 * sin(2 * .pi * 1_680 * hitTime) * exp(-hitTime * 90)
             // An intrinsic fade also completes while the app is suspended.
             let fade = min(1.0, max(0, (20 - time) / 5))
-            let sample = Int16(sin(2 * .pi * 150 * hitTime) * envelope * fade * 24_000)
+            let sample = Int16((body + attack + overtone) * onset * fade * 30_000)
             var littleEndian = sample.littleEndian
             withUnsafeBytes(of: &littleEndian) { pcm.append(contentsOf: $0) }
         }
