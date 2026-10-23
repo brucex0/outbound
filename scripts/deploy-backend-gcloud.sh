@@ -32,7 +32,7 @@ Environment overrides:
   LIVE_COACH_SERVER_AUDIO_MODE default: dynamic for production; disabled otherwise
   LIVE_COACH_ACCESS_MODE       default: founding_trial for production; open_beta otherwise
   LIVE_COACH_CONFIG_VERSION    default: 2 for production; 1 otherwise
-  LIVE_COACH_CATALOG_VERSION   default: 2026-09-08.1
+  LIVE_COACH_CATALOG_VERSION   default: 2026-10-22.1
   LIVE_COACH_ENABLED_LOCALES   default: en,zh-Hans
   LIVE_COACH_ENABLED_PERSONAS  default: supportive,focused product IDs
   LIVE_COACH_ENABLED_VOICE_PROFILES default: one female and one male product voice ID
@@ -116,8 +116,8 @@ if [[ "$production_profile" == "1" ]]; then
   default_openai_secret=outbound-openai-api-key
   default_ai_planning_enabled=true
   default_live_coach_pack_published=true
-  default_live_coach_manifest_url="https://storage.googleapis.com/outbound-494602-live-coach-audio/live-coach/2026-09-08.1/manifest.json"
-  default_live_coach_asset_base_url="https://storage.googleapis.com/outbound-494602-live-coach-audio/live-coach/2026-09-08.1/assets"
+  default_live_coach_manifest_url="https://storage.googleapis.com/outbound-494602-live-coach-audio/live-coach/2026-10-22.1/manifest.json"
+  default_live_coach_asset_base_url="https://storage.googleapis.com/outbound-494602-live-coach-audio/live-coach/2026-10-22.1/assets"
   default_ai_route_policy_version=2
   default_rewards_admin_emails="$GCLOUD_ACCOUNT"
   default_rewards_admin_google_client_id="186140050970-9modifn0lqrpgvm62udhnjap2m1pk7cm.apps.googleusercontent.com"
@@ -157,7 +157,7 @@ GROUP_MEMBER_LIMIT="${GROUP_MEMBER_LIMIT:-6}"
 LIVE_COACH_SERVER_AUDIO_MODE="${LIVE_COACH_SERVER_AUDIO_MODE:-$default_live_coach_mode}"
 LIVE_COACH_ACCESS_MODE="${LIVE_COACH_ACCESS_MODE:-$default_live_coach_access}"
 LIVE_COACH_CONFIG_VERSION="${LIVE_COACH_CONFIG_VERSION:-$default_live_coach_config_version}"
-LIVE_COACH_CATALOG_VERSION="${LIVE_COACH_CATALOG_VERSION:-2026-09-08.1}"
+LIVE_COACH_CATALOG_VERSION="${LIVE_COACH_CATALOG_VERSION:-2026-10-22.1}"
 LIVE_COACH_ENABLED_LOCALES="${LIVE_COACH_ENABLED_LOCALES:-en,zh-Hans}"
 LIVE_COACH_ENABLED_PERSONAS="${LIVE_COACH_ENABLED_PERSONAS:-plainstride_supportive_v1,plainstride_focused_v1}"
 LIVE_COACH_ENABLED_VOICE_PROFILES="${LIVE_COACH_ENABLED_VOICE_PROFILES:-plainstride_warm_1,plainstride_clear_1}"

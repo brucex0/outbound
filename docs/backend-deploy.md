@@ -112,9 +112,17 @@ Useful overrides:
 - `RUN_HEALTH_CHECK=0`
 - `ALLOW_DIRTY_BACKEND=1`
 
-The script runs a local backend build first, deploys `backend/` to Cloud Run with the dedicated identity, private VPC egress, Secret Manager bindings, and concurrency 100. A normal deploy explicitly routes production traffic to the latest ready revision before checking `/health`, preventing a stale pinned revision from making a new deploy look successful. Passing `--no-traffic` preserves candidate-only behavior for guarded rollout scripts. For the canonical production target (`outbound-494602/outbound-api`), its defaults are the approved production profile: one warm instance, a three-instance ceiling, dynamic live coaching at 100%, founding/trial access, planner enabled, and the published `2026-09-08.1` audio pack. Other project/service targets retain the fail-closed minimal-cost defaults: scale to zero, a one-instance ceiling, and live coaching disabled. Every setting remains explicitly overrideable. The health probe retries transient HTTP and connection failures five times at five-second intervals by default; override `HEALTH_CHECK_RETRIES` or `HEALTH_CHECK_RETRY_DELAY_SECONDS` when needed.
+The script runs a local backend build first, deploys `backend/` to Cloud Run with the dedicated identity, private VPC egress, Secret Manager bindings, and concurrency 100. A normal deploy explicitly routes production traffic to the latest ready revision before checking `/health`, preventing a stale pinned revision from making a new deploy look successful. Passing `--no-traffic` preserves candidate-only behavior for guarded rollout scripts. For the canonical production target (`outbound-494602/outbound-api`), its defaults are the approved production profile: one warm instance, a three-instance ceiling, dynamic live coaching at 100%, founding/trial access, planner enabled, and the published `2026-10-22.1` audio pack. Other project/service targets retain the fail-closed minimal-cost defaults: scale to zero, a one-instance ceiling, and live coaching disabled. Every setting remains explicitly overrideable. The health probe retries transient HTTP and connection failures five times at five-second intervals by default; override `HEALTH_CHECK_RETRIES` or `HEALTH_CHECK_RETRY_DELAY_SECONDS` when needed.
 
 Adaptive planning uses Vertex AI through the runtime service account. Production deploys explicitly set `AI_PLANNING_ENABLED=true`, `AI_PLANNING_MODEL=gemini-3.8-flash`, `AI_PLANNING_DEADLINE_MILLISECONDS=20000`, `GEMINI_VERTEX_PROJECT_ID=outbound-494602`, and `GEMINI_VERTEX_LOCATION=global`. Redeploy with `AI_PLANNING_ENABLED=false ./scripts/deploy-backend-gcloud.sh` for the immediate AI-planning kill switch; deterministic planning remains available.
+
+## Live Cue Rollout — 2026-10-22
+
+- Owner-approved revision `outbound-api-00175-6mb` serves 100% of production traffic after candidate and production `/health` checks returned `ok`.
+- Immutable image: `us-central1-docker.pkg.dev/outbound-494602/cloud-run-source-deploy/outbound-api@sha256:41b2df087de86864f39065e277fdbc7c2a1af17257295800eac9e144eaa41167`.
+- Signed audio pack: `2026-10-22.1`; planner prompt: `2026-10-22.4`. Dynamic rollout remains 100%, with the enabled Luna planner, founding/trial access, EN/ZH gate, and 1.5-second audio deadline.
+- The pinned schema job completed without a reset. `outbound-planning-maintenance` was updated to the same immutable image; it was not executed during this rollout.
+- Verification and the owner bulk-approval exception are recorded in `docs/live-cue-review.md`.
 
 ## Daily Planning Maintenance
 
@@ -208,7 +216,7 @@ Operational sequence:
 1. Enable `texttospeech.googleapis.com` in `outbound-494602` and confirm the Cloud Run runtime identity can consume it.
 2. For local generation, authenticate ADC with `gcloud auth application-default login` and set the quota project to `outbound-494602`.
 3. Validate one request with `./scripts/generate-live-coach-audio.sh --smoke`.
-4. Inspect the catalog with `./scripts/generate-live-coach-audio.sh --list`, then generate the 216 content-addressed review assets for the active female/male Google voices with `./scripts/generate-live-coach-audio.sh`.
+4. Inspect the catalog with `./scripts/generate-live-coach-audio.sh --list`, then generate the 240 content-addressed review entries for the active female/male Google voices with `./scripts/generate-live-coach-audio.sh`.
 5. Listen to every review WAV and mark every manifest entry approved. The active key ID is `live-coach-audio-2026-v1`; its public PEM is in the iOS plist and its private PEM is in Secret Manager as `outbound-live-coach-manifest-private-key`. Publish explicitly with `npm run live-coach:publish-audio -- --review-manifest PATH --approved` after loading the private key through a protected file or process environment.
 6. Configure the immutable HTTPS manifest/asset URLs and set `LIVE_COACH_AUDIO_PACK_PUBLISHED=true`.
 7. Deploy `fixed_only`, verify device playback and rollback, apply the Prisma schema, then deploy `dynamic` plus the planner with a 0% rollout. Measure real-device first audio before explicitly raising the percentage.
@@ -233,12 +241,12 @@ GEMINI_VERTEX_LOCATION=global \
 GEMINI_LIVE_COACH_PLANNER_DEADLINE_MILLISECONDS=45000 \
 LIVE_COACH_PROVIDER_DEADLINE_MILLISECONDS=1500 \
 LIVE_COACH_AUDIO_PACK_PUBLISHED=true \
-LIVE_COACH_AUDIO_MANIFEST_URL='https://cdn.example/live-coach/2026-09-08.1/manifest.json' \
-LIVE_COACH_AUDIO_ASSET_BASE_URL='https://cdn.example/live-coach/2026-09-08.1/assets' \
+LIVE_COACH_AUDIO_MANIFEST_URL='https://cdn.example/live-coach/2026-10-22.1/manifest.json' \
+LIVE_COACH_AUDIO_ASSET_BASE_URL='https://cdn.example/live-coach/2026-10-22.1/assets' \
 ./scripts/deploy-backend-gcloud.sh
 ```
 
-Startup rejects enabled configurations with an incomplete pack, non-HTTPS URLs, missing planner project/key, missing TTS model/voice mappings, or prematurely enabled subscription mode. To stop new AI cost immediately while retaining reviewed fixed audio, redeploy with `LIVE_COACH_SERVER_AUDIO_MODE=fixed_only` and `LIVE_COACH_PLANNER_ENABLED=false`. Use `disabled` when server audio itself must be unavailable; iOS retains exact-text `AVSpeechSynthesizer` only as the 1.5 second/offline last resort.
+Startup rejects enabled configurations with an incomplete pack, non-HTTPS URLs, missing planner project/key, missing TTS model/voice mappings, or prematurely enabled subscription mode. To stop new AI cost immediately while retaining approved fixed audio, redeploy with `LIVE_COACH_SERVER_AUDIO_MODE=fixed_only` and `LIVE_COACH_PLANNER_ENABLED=false`. Use `disabled` when server audio itself must be unavailable. iOS uses exact matching bundled or downloaded recordings after the 1.5 second deadline; unavailable audio remains silent.
 
 Publication requires `LIVE_COACH_AUDIO_MANIFEST_SIGNING_KEY_ID=live-coach-audio-2026-v1` and the Secret Manager ES256 private PEM supplied to `LIVE_COACH_AUDIO_MANIFEST_PRIVATE_KEY` without logging it. Keep the private key outside the repo. The app verifies the signed envelope before accepting a remote manifest, then verifies each WAV by SHA-256. A missing/unknown public key or invalid signature leaves the last-known-good or bundled pack untouched.
 

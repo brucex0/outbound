@@ -7,6 +7,22 @@ type CueDeliveryContext = {
 };
 
 const CUE_DELIVERY_CONTEXT: Record<string, CueDeliveryContext> = {
+  "route.off_route": {
+    situation: "The runner has deviated from the selected route.",
+    delivery: "State the deviation clearly, then invite a safe return without alarm or pressure.",
+  },
+  "race.start_restraint": {
+    situation: "The race has begun; no overspeed or fatigue is inferred.",
+    delivery: "Practical and controlled. Explain patient opening execution without claiming the runner exceeded a target.",
+  },
+  "coach.speed_increase": {
+    situation: "Trusted location speed increased sharply after a stable moving baseline.",
+    delivery: "Name the sudden acceleration clearly, then give the gradual pacing action calmly and directly.",
+  },
+  "coach.speed_decrease": {
+    situation: "Trusted location speed dropped sharply after a stable running baseline.",
+    delivery: "State the slowdown clearly. Make the return-to-pace instruction conditional, without urgency or pressure.",
+  },
   "countdown.five": {
     situation: "The first beat of a five-second structured-workout segment countdown.",
     delivery: "Crisp and compact, with controlled anticipation and an even one-second cadence.",

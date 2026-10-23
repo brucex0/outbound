@@ -5,83 +5,32 @@ import { validateLiveCoachOutput } from "./liveCoachOutputValidation.js";
 import type { LiveCoachMoment } from "./liveCoachTypes.js";
 
 const authoredVariants: Record<SupportedAILocale, Partial<Record<Exclude<LiveCoachMoment, "progress">, string[]>>> = {
-  en: {
-    pace_instability: [
-      "Adjust gradually toward your target pace, then hold it.",
-    ],
-    pace_drift: [
-      "If it feels manageable, gradually return to your target pace.",
-    ],
-    rhythm_recovery: [
-      "Your pace is closer to the target now; keep the effort controlled.",
-    ],
-    segment_transition: [
-      "New segment. Settle into the target before adding pressure.",
-      "The next segment starts now. Find control first, then build.",
-    ],
-    finish_opportunity: [
-      "If you still feel comfortable, speed up gradually toward the finish.",
-    ],
-    challenge_start: [
-      "Challenge starts now. Build the pace smoothly and stay controlled.",
-      "Begin the challenge with control, then let the rhythm grow.",
-    ],
-    challenge_complete: [
-      "Challenge complete. Ease back into your sustainable rhythm.",
-      "Nice work. Let the effort settle and return to your normal rhythm.",
-    ],
+  "en": {
+    pace_instability: ["Your pace shifted outside the target range. Adjust gradually back to target."],
+    pace_drift: ["You have slowed below your target pace. If comfortable, return to it gradually."],
+    rhythm_recovery: ["You are closer to your target pace now. Hold it before adjusting again."],
+    segment_transition: ["The next workout segment starts now. Adjust gradually to its prescribed effort."],
+    finish_opportunity: ["The finish is near. If comfortable, build speed gradually and avoid sprinting."],
+    challenge_start: ["Your challenge starts now. Increase pace gradually and keep the effort controlled."],
+    challenge_complete: ["Your challenge is complete. Ease back to the pace you held before it."],
   },
-  es: {
-    pace_instability: [
-      "Acércate poco a poco al ritmo objetivo y mantenlo.",
-    ],
-    pace_drift: [
-      "Si te resulta cómodo, vuelve poco a poco al ritmo objetivo.",
-    ],
-    rhythm_recovery: [
-      "Ahora estás más cerca del ritmo objetivo; mantén el esfuerzo controlado.",
-    ],
-    segment_transition: [
-      "Nuevo segmento. Encuentra el objetivo antes de aumentar el esfuerzo.",
-      "Empieza el siguiente segmento con control y aumenta después.",
-    ],
-    finish_opportunity: [
-      "Si aún te sientes cómodo, acelera poco a poco hasta el final.",
-    ],
-    challenge_start: [
-      "Empieza el reto. Aumenta el ritmo con suavidad y control.",
-      "Comienza con control y deja que el ritmo crezca.",
-    ],
-    challenge_complete: [
-      "Reto completado. Vuelve con calma a tu ritmo sostenible.",
-      "Buen trabajo. Reduce el esfuerzo y recupera tu ritmo normal.",
-    ],
+  "es": {
+    pace_instability: ["Tu ritmo ha cambiado y está fuera del objetivo. Vuelve a él poco a poco."],
+    pace_drift: ["Has bajado del ritmo objetivo. Si te sientes cómodo, vuelve a él poco a poco."],
+    rhythm_recovery: ["Ahora estás más cerca del ritmo objetivo. Mantenlo antes de volver a ajustar."],
+    segment_transition: ["Empieza el siguiente tramo. Ajusta el esfuerzo poco a poco según lo indicado."],
+    finish_opportunity: ["La meta está cerca. Si te sientes cómodo, acelera poco a poco, sin esprintar."],
+    challenge_start: ["Tu reto empieza ahora. Acelera poco a poco y mantén el esfuerzo bajo control."],
+    challenge_complete: ["Has completado el reto. Vuelve poco a poco al ritmo que llevabas antes."],
   },
   "zh-Hans": {
-    pace_instability: [
-      "逐步调整到目标配速，然后保持。",
-    ],
-    pace_drift: [
-      "如果感觉还能轻松应对，就逐步回到目标配速。",
-    ],
-    rhythm_recovery: [
-      "现在更接近目标配速了，继续控制强度。",
-    ],
-    segment_transition: [
-      "进入新阶段，先稳定到目标强度，再逐步发力。",
-      "下一阶段开始，先保持控制，再慢慢提升。",
-    ],
-    finish_opportunity: [
-      "如果仍然感觉轻松，就逐步加速跑向终点。",
-    ],
-    challenge_start: [
-      "挑战开始，平稳提速，保持控制。",
-      "先稳住，再让节奏逐渐加快。",
-    ],
-    challenge_complete: [
-      "挑战完成，放松强度，回到可持续的节奏。",
-      "做得好，慢慢收住强度，回到正常节奏。",
-    ],
+    pace_instability: ["配速变化后已偏离目标范围，逐步调整回目标配速。"],
+    pace_drift: ["速度已降到目标配速以下，如果感觉轻松，就逐步恢复到目标配速。"],
+    rhythm_recovery: ["现在更接近目标配速了，先保持住，不要急着再次调整。"],
+    segment_transition: ["下一训练阶段开始了，按这一段的要求逐步调整强度。"],
+    finish_opportunity: ["终点就在前面，如果感觉轻松，可以逐步加速，不要突然冲刺。"],
+    challenge_start: ["挑战现在开始，逐步提速，保持强度可控。"],
+    challenge_complete: ["挑战已完成，逐步回到挑战前的配速。"],
   },
 };
 

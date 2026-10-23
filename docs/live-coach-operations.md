@@ -4,7 +4,7 @@ Open this when generating or publishing live-coach audio, changing the Google TT
 
 ## Current Architecture
 
-Ad-hoc Race mode supplies typed race distance, goal mode, optional target time/pace, pacing strategy, and a bounded recommendation source to the start planner. Runtime detection remains on device. Race moments use the same planned-cache and streaming route as other semantic cues. Until a reviewed successor pack adds purpose-built race assets, fixed fallback reuses the closest reviewed early-settle, halfway, rebuild-rhythm, steady, and strong-finish assets; semantics and analytics remain race-specific.
+Ad-hoc Race mode supplies typed race distance, goal mode, optional target time/pace, pacing strategy, and a bounded recommendation source to the start planner. Runtime detection remains on device. Race moments use the same planned-cache and streaming route as other semantic cues. Fixed fallback uses the purpose-built `race.start_restraint` for the opening; halfway, late fade, target lock, and finish share a recording only when its sentence expresses the event exactly. Semantics and analytics remain race-specific.
 
 Live coaching uses the configured planner on workout selection or session start and Google Cloud Text-to-Speech for runtime exact-text cues, planned-audio prewarming, and reviewed fixed-pack generation:
 
@@ -19,7 +19,7 @@ Selected-workout triggers fire once, with a 20-second elapsed-time or 75-meter d
 
 iOS keeps the streaming audio engine alive until the final PCM buffer reports `.dataPlayedBack`; buffer-consumption callbacks are not treated as audible completion because doing so can clip the end of stat announcements.
 
-At live-session activation, iOS preloads the selected voice's reviewed `workout.pause` and `workout.resume` clips. Auto-pause can begin soon after countdown, so these controls cannot rely on a prior cue having opportunistically populated the fixed-pack cache. If the network and last-known-good cache are both unavailable, the cue remains silent.
+At live-session activation, iOS preloads the selected voice's approved speed warnings first, followed by `workout.pause`, `workout.resume`, and countdown clips. These recordings are bundled and remain available offline even when an older downloaded manifest is cached. Auto-pause can begin soon after countdown, so controls cannot rely on a prior cue having populated the cache. Missing or invalid recordings remain silent and emit bounded diagnostics.
 
 There is no TTS WebSocket and no LLM call in the live cue path. HTTP/2 is device-to-Plainstride and gRPC is Plainstride-to-Google. `live_guidance_audio_first_byte` measures the end-to-end product gate separately from response-metadata latency.
 
@@ -48,7 +48,7 @@ There is no TTS WebSocket and no LLM call in the live cue path. HTTP/2 is device
 
 ### Independent Speed-Warning Recording Contract
 
-- Independent speed changes select `coach.settle` or `coach.restore_rhythm` semantically and use that selected reviewed entry's transcript and verified local audio together. The displayed/spoken sentence comes from the recording's manifest; it is not a newly proposed sentence imposed on an older recording. Other sentence-fallback callers retain exact-transcript matching.
+- Independent speed changes select `coach.speed_increase` or `coach.speed_decrease` semantically and use that selected reviewed entry's transcript and verified local audio together. The displayed/spoken sentence comes from the recording's manifest; it is not a newly proposed sentence imposed on an older recording. Other sentence-fallback callers retain exact-transcript matching. The app bundle supplies the selected-language/voice recordings independently of older downloaded manifests, and preloads speed warnings before network-backed session controls.
 - Retained incident (2026-10-22): Bruce main had valid cached recordings from signed catalog `2026-09-08.1`, including “Settle the effort and find a sustainable rhythm.” The app requested newer catalog prose, “Slow down until you can speak a full sentence.” Exact matching correctly rejected that combination, so passing detector/playback-spy tests did not establish delivery with the published pack. Editing catalog source does not replace published recordings or their manifest.
 - Regression coverage uses the published EN/ES/ZH wording, both product voices, and the production manifest/disk/checksum lookup. Keep this fixture wording independent of current app/catalog prose. Validate the real simulation controls as well as direct speed steps. Device diagnostics distinguish detected, delivered, unmatched-entry, and unprepared-clip outcomes without logging scripts or workout measurements.
 
@@ -64,7 +64,7 @@ Later that day, a simulated Responsive session showed why request duration must 
 
 ## Current Production Deployment
 
-- Revision and image digest: see the current rollout in `docs/ai-reliability.md`
+- Revision and image digest: see the live-cue rollout in `docs/backend-deploy.md`
 - Traffic: 100%
 - Scaling: minimum 1 warm instance, maximum 3
 - Audio mode/rollout: `dynamic`, 100%, config version `2`
@@ -72,7 +72,7 @@ Later that day, a simulated Responsive session showed why request duration must 
 - Planner: enabled, `gpt-6-luna`, OpenAI Responses with low reasoning
 - TTS: enabled, Chirp 3 HD through `us-texttospeech.googleapis.com`
 - Locales/voices: English and Simplified Chinese; `plainstride_warm_1` and `plainstride_clear_1`
-- Fixed pack: signed `2026-09-08.1` manifest; 216 two-voice assets are published, while the enabled EN/ZH subset uses 144
+- Fixed pack: signed `2026-10-22.1` manifest; 240 two-voice entries are published, while the enabled EN/ZH subset uses 160
 - Alibaba: disabled; its retained secret binding is inactive and remains available only for rollback
 
 The runtime identity has `roles/aiplatform.user` and `roles/serviceusage.serviceUsageConsumer`. Google Cloud Text-to-Speech does not expose a project-level `roles/texttospeech.user` role; the enabled API, attached runtime ADC, and service-usage permission authorize synthesis.
@@ -132,33 +132,21 @@ Never copy the generated ADC file, a service-account key, or an OAuth plist into
 
 ## Fixed Pack Inventory
 
-Catalog `2026-09-08.1` adds `countdown.five` and `countdown.four`, bringing the active pack to 36 cues × 3 locales × 2 voices = 216 files.
-
-The source of truth is `backend/resources/liveCoachAudio/catalog.v1.json`. Catalog `2026-09-01.1` contains 34 semantic cues:
+The source of truth is `backend/resources/liveCoachAudio/catalog.v1.json`. Catalog `2026-10-22.1` contains 40 cues in three locales and two product voices (240 logical entries, 228 unique WAVs):
 
 | Group | Cue keys |
 | --- | --- |
-| Countdown | `countdown.three`, `countdown.two`, `countdown.one`, `countdown.go` |
+| Countdown | `countdown.five`, `countdown.four`, `countdown.three`, `countdown.two`, `countdown.one`, `countdown.go` |
 | Workout control | `workout.pause`, `workout.resume`, `workout.segment_start`, `workout.complete` |
-| Route and safety | `route.advisory`, `route.caution`, `route.wrong_way`, `route.rejoin`, `route.arrival` |
+| Route and safety | `route.advisory`, `route.off_route`, `route.caution`, `route.wrong_way`, `route.rejoin`, `route.arrival` |
 | Progress | `progress.one_third`, `progress.halfway`, `progress.two_thirds`, `progress.finish_soon`, `progress.steady` |
 | Coaching fallback | `coach.early_settle`, `coach.ease_to_target`, `coach.lift_to_target`, `coach.smooth_pace`, `coach.rebuild_rhythm`, `coach.recovery_easy`, `coach.climb_by_effort`, `coach.crest_reset`, `coach.settle`, `coach.restore_rhythm`, `coach.rhythm_recovered`, `coach.strong_finish` |
+| Independent speed warnings | `coach.speed_increase`, `coach.speed_decrease` |
+| Race opening | `race.start_restraint` |
 | Challenges | `challenge.start`, `challenge.complete` |
 | Availability and preview | `fallback.unavailable`, `voice.preview` |
 
-Each cue has product-authored English, Spanish, and Simplified Chinese text. The complete pack is:
-
-```text
-34 cues × 3 locales × 2 active Google voices = 204 published WAV files
-```
-
-Catalog `2026-08-30.1` introduced eight purpose-built cues for early pacing, faster/slower target correction, pace instability, pace drift, recovery effort, climb entry, and crest recovery; `2026-09-01.1` retains them. It does not force these meanings through the older generic settle/restore scripts. Confirmations and workout controls still share an existing cue only where the script expresses the semantic event exactly. The fixed transcript must match the selected catalog entry exactly; see `docs/live-coaching-moments.md` for the semantic-to-audio map.
-
-```text
-34 cues × 2 enabled locales × 2 active Google voices = 136 active EN/ZH files
-```
-
-Spanish remains gated; its 68 files are published in the same manifest but are not offered by the server.
+Each cue has product-authored English, Spanish, and Simplified Chinese text. The enabled EN/ZH matrix contains 160 entries. Spanish remains gated; its 80 entries are published in the same manifest but are not offered by the server. Confirmations and workout controls share a recording only when the script expresses the event exactly. Sentence fallback requires transcript agreement; see `docs/live-coaching-moments.md` for the semantic-to-audio map.
 
 Print the catalog without an API call:
 
@@ -166,9 +154,9 @@ Print the catalog without an API call:
 ./scripts/generate-live-coach-audio.sh --list
 ```
 
-## Pending Clear-Cue Catalog
+## Cue Usefulness And Offline Availability
 
-Source catalog `2026-10-11.1` replaces vague pace/rhythm/posture scripts with clear actions and specific measured encouragement. The generation wrapper targets this version; production configuration remains on the previously published pack until listening review and signed publication are complete. Changed transcripts cannot reuse old audio solely by cue key: both clients require transcript agreement when playback supplies text. During rollout, changed fixed cues may remain silent until their reviewed recordings are available. Deploy the backend wording/prompt changes and release both clients before considering rollout complete.
+Catalog `2026-10-22.1` reviews all 40 fixed cues, names observed deviations, removes filler, and adds explicit speed-change recordings. See `docs/live-cue-review.md` for every cue decision and verification limits. The signed pack is published and the iOS bundle contains all 240 approved entries. Older cached manifests cannot hide bundled clips. Changed transcripts cannot reuse old audio solely by cue key: both clients require transcript agreement when playback supplies text. The backend planner uses prompt `2026-10-22.4`; current Android fallback resources are aligned and compile-checked, while no Android device install was performed for this change.
 
 ## Generate And Review Audio
 
@@ -179,7 +167,7 @@ After ADC is configured:
 ./scripts/generate-live-coach-audio.sh
 ```
 
-`--smoke` generates only the English female `voice.preview` file. Full generation writes content-addressed WAV files and `review-manifest.json` under `backend/.local/live-coach-review/2026-10-11.1/`. The directory is gitignored. Reruns validate and reuse completed WAVs.
+`--smoke` generates only the English female `voice.preview` file. Full generation writes content-addressed WAV files and `review-manifest.json` under `backend/.local/live-coach-review/2026-10-22.1/`. The directory is gitignored. Reruns validate and reuse completed WAVs.
 
 Fixed generation sends Google the exact transcript and selected voice, then validates the resulting 24 kHz mono PCM WAV before storage. The wrapper generates only `plainstride_warm_1` and `plainstride_clear_1` unless an explicit `--voice-profile` is supplied. It writes content-addressed assets and `review-manifest.json` under the gitignored review directory; reruns validate and reuse completed files, and provider/model/voice identity remains part of the content hash.
 
@@ -219,11 +207,13 @@ The prior fixed-only pilot was deliberately limited to English and Simplified Ch
 - Former active runtime subset: 26 cues × 2 locales × 2 enabled voices = 104 WAV files
 - Server locale gate: `LIVE_COACH_ENABLED_LOCALES=en,zh-Hans`
 
-The pilot and `2026-09-01.1` packs remain published as rollback artifacts but are no longer configured. Production uses the signed `2026-09-08.1` manifest: 36 cues × 3 locales × 2 voices = 216 assets, with 144 EN/ZH assets enabled. It carries forward the approved `2026-09-01.1` recordings and adds the twelve reviewed `countdown.five` and `countdown.four` variants. Existing approved files can be reused only when their cue transcript, locale, voice, provider/model route, and audio checksum still match.
+Earlier signed packs, including `2026-09-08.1`, remain published as rollback artifacts. The current signed pack is `2026-10-22.1`, described above. Existing approved files can be reused only when their cue transcript, locale, voice, provider/model route, and audio checksum still match. Roll back backend wording and its pack together when their transcripts differ.
 
-For Spanish, `/v1/live-coach/config` reports `disabled`, the catalog omits the audio pack and voice/persona choices, and session creation is rejected. The 68 Spanish assets are signed and published, but enabling Spanish still requires explicit product approval and listening QA.
+For Spanish, `/v1/live-coach/config` reports `disabled`, the catalog omits the audio pack and voice/persona choices, and session creation is rejected. Its 80 entries are signed and published, but enabling Spanish still requires explicit product approval and listening QA.
 
 On 2026-08-30 the owner explicitly directed publication with bulk approval of all 204 generated entries. The manifest therefore records every entry as approved, but bulk approval is not evidence that every rendition received listening QA; do not treat this release as precedent for skipping the review screen.
+
+On 2026-10-22, the owner explicitly bulk-approved all 240 entries of catalog `2026-10-22.1` after stating that they had not checked the recordings. The pack passed script, checksum, format, download, and native-decoder checks. Its approval flags reflect that directive; per-rendition listening QA remains unverified. This explicit exception does not change the normal review requirement.
 
 Publication still requires an audio storage bucket and public HTTPS base URL. Follow `docs/backend-deploy.md` after approval.
 
@@ -232,7 +222,7 @@ Publish a successor only after every in-scope entry is approved:
 ```sh
 cd backend
 npm run live-coach:publish-audio -- \
-  --review-manifest .local/live-coach-review/2026-09-08.1/review-manifest.json \
+  --review-manifest .local/live-coach-review/2026-10-22.1/review-manifest.json \
   --approved
 ```
 
@@ -276,7 +266,7 @@ The database-backed `paywall_enabled` control overrides trial enforcement. While
 
 Production dynamic coaching is enabled after the Google APIs, runtime IAM, schema, signed fallback pack, Gemini strict-JSON response, and streamed TTS first chunk were verified. The remaining product-quality gate is a representative real-device benchmark with provider-result/fallback telemetry visible; the on-device deadline must continue to speak exact progress instead of `progress.steady` when cloud audio misses 1.5 seconds.
 
-Production retains pack `2026-09-08.1`; current service revision is recorded in `docs/ai-reliability.md`. All 216 two-voice assets are generated through Google, signed, uploaded, and exposed through immutable HTTPS URLs; the locale gate enables the 144 English/Simplified-Chinese assets and keeps the 72 Spanish assets unavailable. The remaining quality work is listening QA for the owner-bulk-approved base pack plus the representative real-device latency benchmark above.
+Production uses pack `2026-10-22.1`; the current service revision is recorded in `docs/backend-deploy.md`. All 240 two-voice entries are generated through Google, signed, uploaded, and exposed through immutable HTTPS URLs; the locale gate enables 160 English/Simplified-Chinese entries and keeps 80 Spanish entries unavailable. Bruce main has the complete bundle and logged both speed warnings ready after normal launch. The remaining quality work is listening QA for the owner-bulk-approved recordings plus the representative real-device latency benchmark above.
 
 ## Planner Failure Diagnostics
 
