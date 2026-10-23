@@ -6,6 +6,7 @@ protocol GuideAudioPackProviding: AnyObject {
     func preloadSelectedAudio() async
     func audioData(for cueKey: String, transcript: String?) async -> Data?
     func localAudioData(for cueKey: String, transcript: String?) -> Data?
+    func localAudioCue(for cueKey: String) -> (transcript: String, audioData: Data)?
     func localAudioSequence(for cueKeys: [String]) -> [Data]?
 }
 
@@ -61,8 +62,12 @@ final class GuideAudioPackStore: GuideAudioPackProviding {
     private var voiceProfileID = "plainstride_warm_1"
     private var scriptStyleID = "standard"
     private let fileManager = FileManager.default
+    private let cacheDirectoryOverride: URL?
+    private let localeIdentifier: @MainActor () -> String
 
-    private init() {
+    init(cacheDirectory: URL? = nil, localeIdentifier: @escaping @MainActor () -> String = { AppLanguage.currentIdentifier }) {
+        self.cacheDirectoryOverride = cacheDirectory
+        self.localeIdentifier = localeIdentifier
         verifiedAudio.totalCostLimit = 32 * 1024 * 1024
         manifest = loadCachedManifest() ?? loadBundledManifest()
     }
@@ -137,7 +142,7 @@ final class GuideAudioPackStore: GuideAudioPackProviding {
     func preloadSelectedAudio() async {
         await preloadAudio(for: Self.sessionControlCueKeys + Self.countdownCueKeys)
         let entries = manifest?.entries.filter {
-            $0.locale == AppLanguage.currentIdentifier
+            $0.locale == localeIdentifier()
                 && $0.voiceProfileId == voiceProfileID
                 && $0.compatibleCoachPersonaIds.contains(coachPersonaID)
         } ?? []
@@ -157,6 +162,20 @@ final class GuideAudioPackStore: GuideAudioPackProviding {
     func localAudioData(for cueKey: String, transcript: String? = nil) -> Data? {
         guard let entry = matchingEntry(cueKey: cueKey, transcript: transcript) else { return nil }
         return localAudioData(for: entry)
+    }
+
+    /// Semantic callers use the reviewed script and bytes together. Sentence
+    /// fallback callers must continue to use the transcript-constrained lookup.
+    func localAudioCue(for cueKey: String) -> (transcript: String, audioData: Data)? {
+        guard let entry = matchingEntry(cueKey: cueKey, transcript: nil) else {
+            ActivityDiagnosticLog.error(.lifecycle, "Coach semantic clip unavailable reason=no_matching_entry")
+            return nil
+        }
+        guard let data = localAudioData(for: entry) else {
+            ActivityDiagnosticLog.error(.lifecycle, "Coach semantic clip unavailable reason=not_preloaded")
+            return nil
+        }
+        return (entry.transcript, data)
     }
 
     func localAudioSequence(for cueKeys: [String]) -> [Data]? {
@@ -188,7 +207,7 @@ final class GuideAudioPackStore: GuideAudioPackProviding {
     // Fixed countdown callers omit it: "3" and localized spoken "Three." are
     // equivalent countdown beats but deliberately not text-equivalent sentences.
     private func matchingEntry(cueKey: String, transcript: String?) -> Entry? {
-        let locale = AppLanguage.currentIdentifier
+        let locale = localeIdentifier()
         let candidates = manifest?.entries.filter {
             $0.cueKey == cueKey
                 && $0.locale == locale
@@ -251,6 +270,7 @@ final class GuideAudioPackStore: GuideAudioPackProviding {
     }
 
     private var cacheDirectory: URL {
+        if let cacheDirectoryOverride { return cacheDirectoryOverride }
         let base = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
         return base.appendingPathComponent("Plainstride/LiveCoachAudio", isDirectory: true)
     }

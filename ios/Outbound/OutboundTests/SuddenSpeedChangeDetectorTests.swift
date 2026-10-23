@@ -125,6 +125,11 @@ struct SuddenSpeedChangeDetectorTests {
         #expect(alerts.map(\.second) == [37, 127])
     }
 
+    @Test func gradualSpeedProgressionDoesNotUseAnOldBaseline() {
+        var detector = SuddenSpeedChangeDetector()
+        #expect(replay(&detector, through: 600) { 2.5 + Double($0) * 0.003 }.isEmpty)
+    }
+
     private func replay(
         _ detector: inout SuddenSpeedChangeDetector, from start: Int = 0,
         through end: Int, segmentID: String? = nil, speed: (Int) -> Double

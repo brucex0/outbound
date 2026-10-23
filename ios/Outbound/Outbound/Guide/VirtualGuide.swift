@@ -283,6 +283,7 @@ final class VirtualGuide: NSObject, ObservableObject {
 
         if let moment = update.nextMoment {
             if let direction = moment.speedChangeDirection {
+                ActivityDiagnosticLog.notice(.lifecycle, "Sudden speed cue detected direction=\(direction > 0 ? "increase" : "decrease")")
                 guidanceEventHandler?(.speedChange(direction: direction > 0 ? "increase" : "decrease", result: "detected"))
             }
             guidanceEventHandler?(.momentDetected(
@@ -431,14 +432,17 @@ final class VirtualGuide: NSObject, ObservableObject {
         else { return }
 
         if let direction = moment.speedChangeDirection {
-            let message = direction > 0
-                ? String(localized: "live_guidance.sudden_speed_increase", defaultValue: "Slow down until you can speak a full sentence.")
-                : String(localized: "live_guidance.sudden_speed_decrease", defaultValue: "Keep the effort easy; there is no need to make up lost time.")
             let key = direction > 0 ? "coach.settle" : "coach.restore_rhythm"
-            let played = speak(message, urgency: .opportunity, role: .paceAdjustment, fixedCueKey: key)
+            let cue = audioPack.localAudioCue(for: key)
+            let message = cue?.transcript ?? (direction > 0
+                ? String(localized: "live_guidance.sudden_speed_increase", defaultValue: "Slow down until you can speak a full sentence.")
+                : String(localized: "live_guidance.sudden_speed_decrease", defaultValue: "Keep the effort easy; there is no need to make up lost time."))
+            let played = (cue != nil || !speechEnabled)
+                && speak(message, urgency: .opportunity, role: .paceAdjustment, fixedCueKey: key, audioData: cue?.audioData)
             guidanceEventHandler?(.speedChange(direction: direction > 0 ? "increase" : "decrease", result: played ? "spoken" : "audio_unavailable"))
             if !played { ActivityDiagnosticLog.error(.lifecycle, "Sudden speed cue unavailable direction=\(direction > 0 ? "increase" : "decrease")") }
             if played {
+                ActivityDiagnosticLog.notice(.lifecycle, "Sudden speed cue delivered direction=\(direction > 0 ? "increase" : "decrease") speech_enabled=\(speechEnabled)")
                 lastNudge = message
                 rememberGuideSpeech(at: snapshot.elapsedSeconds)
                 recordSpokenMoment(moment, spokenAtElapsedSeconds: snapshot.elapsedSeconds)

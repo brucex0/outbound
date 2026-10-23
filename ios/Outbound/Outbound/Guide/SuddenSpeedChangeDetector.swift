@@ -5,12 +5,13 @@ struct SuddenSpeedChangeDetector {
     private struct Sample { let second: Int; let evidence: Double; let speed: Double }
     private var samples: [Sample] = []
     private var baseline: Double?
+    private var stableReference: (speed: Double, observedAt: Int)?
     private var candidateSince: Int?
     private var candidateDirection: Int?
     private var lastAlert: Int?
     private var segment: String?
 
-    mutating func resetEvidence() { samples = []; baseline = nil; candidateSince = nil; candidateDirection = nil }
+    mutating func resetEvidence() { samples = []; baseline = nil; stableReference = nil; candidateSince = nil; candidateDirection = nil }
     mutating func ingest(second: Int, evidence: Double?, speed: Double?, segmentID: String?, phase: String?, segmentSeconds: Int?) -> Int? {
         if segment != segmentID { resetEvidence(); segment = segmentID }
         guard let evidence, let speed, speed.isFinite, speed >= 0, speed <= 15 else { resetEvidence(); return nil }
@@ -35,9 +36,19 @@ struct SuddenSpeedChangeDetector {
         let reference: Double
         if let baseline { reference = baseline } else {
             let earlier = samples.filter { $0.second >= second - 24 && $0.second <= second - 5 }
-            guard earlier.count >= 8, let start = earlier.first, let end = earlier.last, end.second - start.second >= 14 else { return nil }
-            reference = median(earlier.map(\.speed))
-            guard reference >= 1.5, earlier.allSatisfy({ abs($0.speed - reference) <= reference * 0.2 }) else { return nil }
+            if earlier.count >= 8, let start = earlier.first, let end = earlier.last,
+               end.second - start.second >= 14 {
+                let established = median(earlier.map(\.speed))
+                if established >= 1.5,
+                   earlier.allSatisfy({ abs($0.speed - established) <= established * 0.2 }) {
+                    stableReference = (established, second)
+                }
+            }
+            // A ramp can disrupt the earlier window before crossing the alert
+            // threshold. Briefly retain its trusted reference so incremental
+            // speed changes cannot erase the very baseline they depart from.
+            guard let stableReference, second - stableReference.observedAt <= 15 else { return nil }
+            reference = stableReference.speed
         }
         let delta = current - reference
         let direction = delta > 0 ? 1 : -1
