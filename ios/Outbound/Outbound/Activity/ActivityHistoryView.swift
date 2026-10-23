@@ -26,7 +26,7 @@ struct ActivityHistoryView: View {
             if activityStore.activities.isEmpty {
                 VStack {
                     emptyState
-                    if activityStore.hasMoreRemoteActivities && AuthStore.currentUserId != nil { loadMoreButton.padding() }
+                    if activityStore.hasMoreRemoteActivities && AuthStore.currentUserId != nil { paginationRow.padding() }
                 }
             } else {
                 list
@@ -136,25 +136,17 @@ struct ActivityHistoryView: View {
             .deleteDisabled(isSelecting)
 
             if visibleActivities.count < activityStore.activities.count || activityStore.hasMoreRemoteActivities && AuthStore.currentUserId != nil {
-                loadMoreButton
+                paginationRow
                     .listRowSeparator(.hidden)
             }
         }
         .listStyle(.plain)
     }
 
-    private var loadMoreButton: some View {
-        Button {
-            Task { await loadNextPage() }
-        } label: {
-            HStack {
-                if isLoadingPage { ProgressView() }
-                Text(String(localized: "common.load_more", defaultValue: "Load more"))
-            }
-            .frame(maxWidth: .infinity)
+    private var paginationRow: some View {
+        AutomaticPaginationRow(pageID: visibleActivityCount) {
+            await loadNextPage()
         }
-        .disabled(isLoadingPage)
-        .accessibilityHint(String(localized: "activity.history.load_more.hint", defaultValue: "Shows older activities."))
     }
 
     private func loadNextPage() async {

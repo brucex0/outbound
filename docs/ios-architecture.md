@@ -14,6 +14,12 @@ Open this when touching app flow, Swift source layout, recording, camera, persis
 - `Tests/OutboundSessionAnalysisTests`: Swift Package tests for the on-device session-analysis module.
 - `Package.swift`: exposes only the session-analysis subset as `OutboundSessionAnalysis` for lightweight package testing outside the full iOS app target.
 
+## Paginated Lists
+
+iOS paginated lists use `AutomaticPaginationRow` at the end of lazy content: fetch when visible, show a spinner while loading, and advance by cursor (or local page depth). Use this pattern for future paginated Groups and Routes as well; do not add Load more buttons. Keep store-level duplicate-request guards, end-of-list detection, and temporary failure toasts. A failed cursor does not automatically retry in a loop; it retries when the row reappears.
+
+My Activities, the activity feed, and Connections share this component. Keep `paginated_list_page_loaded` instrumentation in the owning page; see `docs/product-analytics.md` for allowed properties. Groups and Routes currently have no iOS load-more control; adopt this component when adding pagination.
+
 ## App Entry
 
 ### Navigation Ownership

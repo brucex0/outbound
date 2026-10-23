@@ -1212,25 +1212,21 @@ struct SocialHomeView: View {
     private var feedPagination: some View {
         // The loader has its own cell, separate from activity cards.
         if let cursor = socialStore.state.nextFeedCursor {
-            ProgressView()
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, OutboundSpacing.compact)
-                .task(id: socialStore.isLoading ? nil : cursor) {
-                    guard !socialStore.isLoading else { return }
-                    guard let appendedCount = await socialStore.loadMorePosts() else {
-                        toastMessage = String(localized: "social.feed.load_more_failed")
-                        return
-                    }
-                    guard appendedCount > 0 else { return }
-                    let page = Int(ceil(
-                        Double(socialStore.state.posts.count) / Double(Self.feedPageSize)
-                    ))
-                    await analyticsManager?.track(.init(.paginatedListPageLoaded, properties: [
-                        .sourceType: .string("activity_feed"),
-                        .countBucket: .string(ProductAnalyticsBucket.count(appendedCount)),
-                        .pageDepthBucket: .string(ProductAnalyticsBucket.pageDepth(page))
-                    ]))
+            AutomaticPaginationRow(pageID: cursor, isReady: !socialStore.isLoading) {
+                guard let appendedCount = await socialStore.loadMorePosts() else {
+                    toastMessage = String(localized: "social.feed.load_more_failed")
+                    return
                 }
+                guard appendedCount > 0 else { return }
+                let page = Int(ceil(
+                    Double(socialStore.state.posts.count) / Double(Self.feedPageSize)
+                ))
+                await analyticsManager?.track(.init(.paginatedListPageLoaded, properties: [
+                    .sourceType: .string("activity_feed"),
+                    .countBucket: .string(ProductAnalyticsBucket.count(appendedCount)),
+                    .pageDepthBucket: .string(ProductAnalyticsBucket.pageDepth(page))
+                ]))
+            }
         }
     }
 
@@ -3371,23 +3367,11 @@ struct SocialConnectionsView: View {
                 }
             }
 
-            if socialStore.hasMoreConnections {
+            if let cursor = socialStore.nextConnectionsCursor {
                 Section {
-                    Button {
-                        Task { await loadMoreConnections() }
-                    } label: {
-                        HStack {
-                            Spacer()
-                            if socialStore.isLoadingMoreConnections {
-                                ProgressView()
-                            } else {
-                                Text(String(localized: "common.load_more", defaultValue: "Load more"))
-                            }
-                            Spacer()
-                        }
+                    AutomaticPaginationRow(pageID: cursor, isReady: !socialStore.isConnectionsLoading) {
+                        await loadMoreConnections()
                     }
-                    .disabled(socialStore.isLoadingMoreConnections)
-                    .accessibilityHint(String(localized: "social.connections.load_more.hint", defaultValue: "Shows more connections and requests."))
                 }
             }
 

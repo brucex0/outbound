@@ -63,7 +63,7 @@ final class TogetherStore: ObservableObject {
     private var activeUserID: String?
     private var authGeneration = 0
     private var feedRevision = 0
-    private var nextConnectionsCursor: String?
+    @Published private(set) var nextConnectionsCursor: String?
     private var latestPeopleSearchQuery = ""
 
     var hasMoreConnections: Bool {
@@ -671,7 +671,8 @@ final class TogetherStore: ObservableObject {
             errorMessage = nil
             return appended.count
         } catch {
-            guard generation == authGeneration else { return nil }
+            guard !Self.isCancellation(error), generation == authGeneration else { return nil }
+            Self.logger.error("Social connections pagination failed (\(Self.networkErrorCode(error), privacy: .public))")
             errorMessage = error.localizedDescription
             return nil
         }
