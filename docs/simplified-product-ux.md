@@ -46,6 +46,8 @@ Use the fixed, flat Today launch dock defined in `docs/activity-launch-live-ux.m
 - The center Today control becomes a visibly labeled Start action only on Today; on Social or Me it remains Today navigation.
 - Choosing a goal only updates its information card. Goal values are edited from that card with a compact chooser, while setup uses focused overlays or direct toggles.
 
+The expanded planned-workout card pairs Plan with a pencil + Change action. Change opens the existing one-day workout adjustment sheet; changing the overall plan remains in plan details.
+
 ### Personalization loop
 
 Today participates in the learning loop defined in `docs/personalized-running-companion.md`:

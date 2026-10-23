@@ -236,7 +236,6 @@ struct SimplifiedAppShell: View {
                     onRouteRemovalAction: onRouteRemovalAction,
                     onGroupRunAction: onGroupRunAction,
                     onOpenPlan: { openPlanManagement(from: "today_planned_card_plan") },
-                    onChangePlan: { presentPlanPicker(from: "today_planned_card_change") },
                     onStartRun: onStartRun
                 )
                 .assistantHighlightAnchor("today.primary-action")
@@ -826,7 +825,6 @@ private struct SimplifiedTodayView: View {
     let onRouteRemovalAction: () -> Void
     let onGroupRunAction: () -> Void
     let onOpenPlan: () -> Void
-    let onChangePlan: () -> Void
     let onStartRun: (SessionIntent?) -> Void
     @EnvironmentObject private var launchLocationManager: LocationManager
     @State private var showsChangeSheet = false
@@ -1386,8 +1384,10 @@ private struct SimplifiedTodayView: View {
                         Divider()
                             .frame(height: 24)
 
-                        Button(action: onChangePlan) {
-                            Label(String(localized: "Change plan"), systemImage: "arrow.triangle.2.circlepath")
+                        Button {
+                            openWorkoutChange()
+                        } label: {
+                            Label(String(localized: "today.change", defaultValue: "Change"), systemImage: "pencil")
                                 .font(.subheadline.weight(.semibold))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.8)
@@ -1473,6 +1473,16 @@ private struct SimplifiedTodayView: View {
                 }
             }
         }
+    }
+
+    private func openWorkoutChange() {
+        Task {
+            await analyticsManager?.track(.init(.planningSurfaceOpened, properties: [
+                .sourceType: .string("workout_change"),
+                .entrySource: .string("today_planned_card_change"),
+            ]))
+        }
+        showsChangeSheet = true
     }
 
     private func openPlannedWorkoutDetails() {
