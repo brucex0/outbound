@@ -36,7 +36,7 @@ final class SessionLiveActivityManager: ObservableObject {
 
         let attributes = OutboundLiveActivityAttributes(
             sessionStartedAt: snapshot.startedAt,
-            activityName: intent?.title ?? String(localized: "Freestyle run"),
+            activityName: intent?.title ?? SportType.run.displayName,
             sportName: intent?.sport.displayName ?? String(localized: "Run"),
             sportSystemImageName: intent?.sport.systemImage ?? "figure.run"
         )

@@ -97,7 +97,7 @@ companionType: null | "dog"
 ## Localization and Accessibility
 
 - Localize every visible string in English, Spanish, and Simplified Chinese using the existing platform localization systems.
-- Recommended labels are `With dog`, `Con perro`, and `带狗狗`; translators should preserve the friendly activity context rather than use clinical pet terminology.
+- Recommended labels are `With dog`, `Con perro`, and `遛狗`; translators should preserve the friendly activity context rather than use clinical pet terminology.
 - The control exposes a localized label and selected state to VoiceOver and TalkBack without relying on color.
 - Announce automatic clearing when the user moves to an incompatible sport.
 - Companion markers are text-only and carry an accessible label wherever the surrounding text does not already communicate the context.

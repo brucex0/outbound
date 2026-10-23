@@ -5475,11 +5475,7 @@ struct RecordView: View {
         return SessionIntent(
             id: "freestyle-\(sport.rawValue)",
             sport: sport,
-            title: String(
-                format: String(localized: "activity.freestyle.title.format", defaultValue: "Freestyle %@"),
-                locale: .autoupdatingCurrent,
-                sport.displayName.lowercased()
-            ),
+            title: sport.displayName,
             detail: String(
                 format: String(localized: "activity.freestyle.detail.format", defaultValue: "%@ • no preset target"),
                 locale: .autoupdatingCurrent,

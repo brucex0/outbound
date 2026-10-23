@@ -2,6 +2,11 @@
 
 Open this when changing the Today launch dock, activity goal selection, countdown, or live-run controls. The clickable reference is `docs/prototypes/activity-start-live-wireframe.html`; the production flow is implemented in `RecordView.swift`, `ActivityGoal.swift`, `LiveMapView.swift`, and `CameraHUDView.swift`.
 
+## Default activity titles
+
+- Default freestyle activity titles use the localized sport name without a Freestyle prefix; the goal-mode selector still says Freestyle. Android’s generic recording fallback says Activity.
+- Dog-specific, planned, curated, and user-entered titles remain unchanged. This is a display-copy change; activity identifiers and analytics values remain unchanged.
+
 ## Ad-hoc race mode
 
 - Run setup exposes Race as a peer of Curated, Freestyle, Distance, Time, and Calories. Selecting it opens the race planner immediately.

@@ -356,7 +356,7 @@ struct OnboardingProfile: Codable, Equatable {
         case (_, .swim):
             return String(format: String(localized: "onboarding.first_session.swim.format", defaultValue: "%d min easy swim"), locale: .autoupdatingCurrent, intakeSummary.firstSessionLength.rawValue)
         case (_, .strength), (_, .mobility):
-            return String(format: String(localized: "activity.freestyle.title.format", defaultValue: "Freestyle %@"), locale: .autoupdatingCurrent, intakeSummary.sport.displayName.lowercased())
+            return intakeSummary.sport.displayName
         }
     }
 

@@ -111,7 +111,7 @@ enum ActivityGoal: Codable, Hashable {
     func title(for sport: SportType) -> String {
         switch self {
         case .freestyle:
-            return "Freestyle \(sport.displayName.lowercased())"
+            return sport.displayName
         case .distanceMeters(let meters):
             return "\(Self.metricDistanceLabel(meters: meters)) \(sport.displayName.lowercased())"
         case .timeSeconds(let seconds):
