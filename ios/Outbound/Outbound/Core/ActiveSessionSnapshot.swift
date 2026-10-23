@@ -16,6 +16,7 @@ struct ActiveSessionSnapshot: Equatable {
     // Local-only sensor evidence; never included in cloud coaching or analytics.
     var cadenceStepsPerMinute: Int? = nil
     var cadenceEvidenceTimestamp: Date? = nil
+    var isSimulated = false
 
     static var empty: ActiveSessionSnapshot {
         ActiveSessionSnapshot(

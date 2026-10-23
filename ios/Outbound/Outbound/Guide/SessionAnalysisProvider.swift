@@ -63,11 +63,18 @@ struct SessionAnalysisResult: Equatable {
     let audioStream: LiveCoachPCMStream?
 }
 
+struct ScheduledGuideInstruction {
+    let id: String
+    let trigger: SessionWorkoutCueTrigger
+    let message: String
+}
+
 @MainActor
 protocol SessionAnalysisProvider: AnyObject {
     var identifier: String { get }
     var displayName: String { get }
     var progressPolicy: LiveCoachProgressPolicyDTO? { get }
+    var scheduledInstructions: [ScheduledGuideInstruction] { get }
 
     func beginSession(
         profile: GuideProfile?,
@@ -80,6 +87,10 @@ protocol SessionAnalysisProvider: AnyObject {
     )
     func analyze(_ request: SessionAnalysisRequest) async throws -> SessionAnalysisResult
     func endSession(report: LiveGuidanceSessionReport?)
+}
+
+extension SessionAnalysisProvider {
+    var scheduledInstructions: [ScheduledGuideInstruction] { [] }
 }
 
 enum SessionAnalysisProviderFactory {

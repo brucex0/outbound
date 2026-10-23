@@ -23,6 +23,16 @@ final class LiveCoachSessionController {
 
     var progressPolicy: LiveCoachProgressPolicyDTO? { session?.guidancePlan.progressPolicy }
 
+    var scheduledInstructions: [ScheduledGuideInstruction] {
+        guard session?.effectiveMode == .dynamic else { return [] }
+        return session?.guidancePlan.cues.compactMap { cue in
+            guard cue.moment == "workout_instruction",
+                  let id = cue.instructionId, id.hasPrefix("execution_coaching."),
+                  let trigger = cue.trigger, let phrase = cue.phrases.first else { return nil }
+            return ScheduledGuideInstruction(id: id, trigger: trigger, message: phrase.text)
+        } ?? []
+    }
+
     func begin(
         profile: GuideProfile?,
         persona: GuidePersona?,
@@ -272,7 +282,7 @@ final class LiveCoachSessionController {
         voiceProfileID: String,
         generation expectedGeneration: UUID
     ) async {
-        guard response.effectiveMode == .dynamic, response.planner.status == "generated" else { return }
+        guard response.effectiveMode == .dynamic else { return }
         let preferredMoments = [
             "early_overpace", "pace_above_target", "pace_below_target", "pace_drift",
             "race_start_restraint", "race_halfway_assessment", "race_late_fade", "race_final_kilometer",
@@ -294,10 +304,17 @@ final class LiveCoachSessionController {
             )
             guard !Task.isCancelled, expectedGeneration == generation else { return }
             if cached != nil { continue }
-            guard let audio = try? await APIClient.shared.fetchLiveCoachPhraseAudio(
-                sessionID: response.sessionId,
-                phraseID: phrase.id
-            ) else { continue }
+            let audio: Data
+            do {
+                audio = try await APIClient.shared.fetchLiveCoachPhraseAudio(
+                    sessionID: response.sessionId, phraseID: phrase.id
+                )
+            } catch is CancellationError {
+                return // Session replacement intentionally cancels prewarming.
+            } catch {
+                ActivityDiagnosticLog.error(.lifecycle, "Coach phrase prewarm failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                continue
+            }
             guard !Task.isCancelled, expectedGeneration == generation else { return }
             await GuidePlannedAudioCache.shared.store(
                 audio,

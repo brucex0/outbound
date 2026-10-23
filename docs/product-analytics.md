@@ -81,6 +81,8 @@ The legacy provider methods still accept vendor-facing string names after the ma
 
 - Automatic iOS cadence beats emit `live_guidance_pacer_playback` with only bounded `result` (`started`, `completed`, `interrupted`, `failed`). Cadence readings, exact timing, workout content, and identifiers remain excluded. See `docs/live-coaching-moments.md` for signal gates and playback scope.
 
+- Scheduled execution instructions emit `live_guidance_execution_coaching` with only `result = scheduled`, `spoken`, or `audio_unavailable`. Instruction IDs, text, cadence, exact metrics, and timestamps are excluded.
+
 ## Measurement Model
 
 ### Post-Workout Stretch Contract

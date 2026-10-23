@@ -67,12 +67,15 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             suspend()
         }
         lastSnapshot = snapshot
-        observations.removeAll { snapshot.recordedAt.timeIntervalSince($0.date) > 25 }
+        let evidenceNow = snapshot.isSimulated
+            ? snapshot.startedAt?.addingTimeInterval(Double(snapshot.elapsedSeconds)) ?? snapshot.recordedAt
+            : snapshot.recordedAt
+        observations.removeAll { evidenceNow.timeIntervalSince($0.date) > 25 }
         guard snapshot.isActive, snapshot.activityType == .running else { suspend(); return }
         guard let cadence = snapshot.cadenceStepsPerMinute,
               let timestamp = snapshot.cadenceEvidenceTimestamp,
               (100...220).contains(cadence),
-              (-1...5).contains(snapshot.recordedAt.timeIntervalSince(timestamp)) else {
+              (-1...5).contains(evidenceNow.timeIntervalSince(timestamp)) else {
             observations = []
             stop()
             return

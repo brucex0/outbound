@@ -283,6 +283,7 @@ final class VirtualGuide: NSObject, ObservableObject {
             ))
             enqueue(moment)
         }
+        queueWorkoutInstructions(for: snapshot, scheduledOnly: true)
         processPendingMoment(using: snapshot)
         cadencePacer.ingest(
             snapshot, intent: sessionIntent,
@@ -473,6 +474,7 @@ final class VirtualGuide: NSObject, ObservableObject {
                 self.apply(analysis, for: snapshot, moment: moment)
             } catch {
                 guard !(error is CancellationError) else { return }
+                ActivityDiagnosticLog.error(.lifecycle, "Coach analysis failed error=\(ActivityDiagnosticLog.errorCategory(error))")
                 self.guidanceEventHandler?(.providerResult(
                     source: .cachedFallback,
                     result: .unavailable,
@@ -531,15 +533,6 @@ final class VirtualGuide: NSObject, ObservableObject {
             return
         }
 
-        recentSpokenFingerprints.append(fingerprint)
-        if recentSpokenFingerprints.count > maxRecentSpokenFingerprints {
-            recentSpokenFingerprints.removeFirst(recentSpokenFingerprints.count - maxRecentSpokenFingerprints)
-        }
-        recentSpokenMessages.append(message)
-        if recentSpokenMessages.count > maxRecentSpokenMessages {
-            recentSpokenMessages.removeFirst(recentSpokenMessages.count - maxRecentSpokenMessages)
-        }
-
         if speak(
             message,
             urgency: analysis.urgency,
@@ -548,10 +541,21 @@ final class VirtualGuide: NSObject, ObservableObject {
             audioData: analysis.audioData,
             audioStream: analysis.audioStream
         ) {
+            if moment.instructionID?.hasPrefix("execution_coaching.") == true {
+                guidanceEventHandler?(.executionCoaching(result: "spoken"))
+            }
+            recentSpokenFingerprints.append(fingerprint)
+            if recentSpokenFingerprints.count > maxRecentSpokenFingerprints {
+                recentSpokenFingerprints.removeFirst(recentSpokenFingerprints.count - maxRecentSpokenFingerprints)
+            }
+            recentSpokenMessages.append(message)
+            if recentSpokenMessages.count > maxRecentSpokenMessages {
+                recentSpokenMessages.removeFirst(recentSpokenMessages.count - maxRecentSpokenMessages)
+            }
             rememberGuideSpeech(at: snapshot.elapsedSeconds)
             recordSpokenMoment(moment, spokenAtElapsedSeconds: snapshot.elapsedSeconds)
             if pendingMoment == nil { advancePendingMoment() }
-        } else {
+        } else if audioPlayer.isSpeaking {
             pendingMoment = DetectedLiveGuidanceMoment(
                 type: moment.type,
                 detectedAtElapsedSeconds: snapshot.elapsedSeconds,
@@ -562,6 +566,15 @@ final class VirtualGuide: NSObject, ObservableObject {
                 instructionID: moment.instructionID,
                 remainingDistanceMeters: moment.remainingDistanceMeters
             )
+        } else {
+            // Unavailable audio cannot improve through an unbounded per-snapshot retry.
+            // Release the queue so later prepared instructions can still be delivered.
+            if moment.instructionID?.hasPrefix("execution_coaching.") == true {
+                guidanceEventHandler?(.executionCoaching(result: "audio_unavailable"))
+            }
+            guidanceEventHandler?(.fixedAudioUnavailable(cueGroup: "live_coaching", reason: "no_playable_audio"))
+            ActivityDiagnosticLog.error(.lifecycle, "Coach playback unavailable moment=\(moment.type.rawValue) result=\(analysis.result.rawValue)")
+            if pendingMoment == nil { advancePendingMoment() }
         }
     }
 
@@ -732,24 +745,38 @@ final class VirtualGuide: NSObject, ObservableObject {
         requestProgressAnalysis(for: snapshot, localAnnouncement: announcement)
     }
 
-    private func queueWorkoutInstructions(for snapshot: ActiveSessionSnapshot) {
+    private func queueWorkoutInstructions(for snapshot: ActiveSessionSnapshot, scheduledOnly: Bool = false) {
         defer { lastWorkoutCueSnapshot = snapshot }
-        guard let sessionIntent, !sessionIntent.workoutCues.isEmpty else { return }
-
-        for cue in sessionIntent.workoutCues where !processedWorkoutCueIDs.contains(cue.id) {
+        let catalogInstructions = (sessionIntent?.workoutCues ?? []).map {
+            ScheduledGuideInstruction(id: $0.id, trigger: $0.trigger, message: $0.cue)
+        }
+        let scheduled = persona?.coachingContract == .quiet ? [] : provider.scheduledInstructions
+        let instructions = scheduledOnly ? scheduled : catalogInstructions
+        for cue in instructions where !processedWorkoutCueIDs.contains(cue.id) {
             let state = workoutCueTriggerState(
                 cue.trigger,
                 previous: lastWorkoutCueSnapshot,
                 current: snapshot
             )
             guard state != .notReached else { continue }
+            guard state == .due else {
+                processedWorkoutCueIDs.insert(cue.id)
+                continue
+            }
+            let scheduledTip = cue.id.hasPrefix("execution_coaching.")
+            // Optional tips defer within their window; route, speech and measured corrections win.
+            if scheduledTip {
+                guard !audioPlayer.isSpeaking, !isAnalyzing, pendingMoment == nil,
+                      lastGuideSpeechElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= 45 }) ?? true,
+                      routeSpeechQuietUntil.map({ Date() >= $0 }) ?? true else { continue }
+            }
             processedWorkoutCueIDs.insert(cue.id)
-            guard state == .due else { continue }
+            if scheduledTip { guidanceEventHandler?(.executionCoaching(result: "scheduled")) }
             guard routeSpeechQuietUntil.map({ Date() >= $0 }) ?? true else { continue }
 
             // Catalog cues are already localized by withCatalogVersion. Keep the
             // selected instruction useful while cloud preparation is pending.
-            let fallback = cue.cue
+            let fallback = cue.message
             let moment = DetectedLiveGuidanceMoment(
                 type: .workoutInstruction,
                 detectedAtElapsedSeconds: snapshot.elapsedSeconds,

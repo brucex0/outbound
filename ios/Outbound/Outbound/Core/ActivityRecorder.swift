@@ -933,7 +933,7 @@ final class ActivityRecorder: ObservableObject {
     }
 
     private func makeSnapshot(isActive: Bool? = nil, location: CLLocation? = nil) -> ActiveSessionSnapshot {
-        ActiveSessionSnapshot(
+        var snapshot = ActiveSessionSnapshot(
             recordedAt: Date(),
             startedAt: startDate,
             elapsedSeconds: elapsedSeconds,
@@ -948,6 +948,15 @@ final class ActivityRecorder: ObservableObject {
             cadenceStepsPerMinute: currentCadenceStepsPerMinute,
             cadenceEvidenceTimestamp: locationManager.runningCadenceReading?.measuredAt
         )
+#if DEBUG
+        if runSimulationState != nil, activityType == .running {
+            // Synthetic fixture, never an inferred or recommended running cadence.
+            snapshot.isSimulated = true
+            snapshot.cadenceStepsPerMinute = 164
+            snapshot.cadenceEvidenceTimestamp = startDate?.addingTimeInterval(Double(elapsedSeconds))
+        }
+#endif
+        return snapshot
     }
 
     @discardableResult

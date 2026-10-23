@@ -3701,6 +3701,8 @@ struct RecordView: View {
             track(.init(.liveGuidanceAudioPlaybackRoute, properties: [
                 .sourceType: .string(route.rawValue)
             ]))
+        case .executionCoaching(let result):
+            track(.init(.liveGuidanceExecutionCoaching, properties: [.result: .string(result)]))
         case .pacerPlayback(let result):
             track(.init(.liveGuidancePacerPlayback, properties: [.result: .string(result)]))
         case .fixedAudioUnavailable(let cueGroup, let reason):

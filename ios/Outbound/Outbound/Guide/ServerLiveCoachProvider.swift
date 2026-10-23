@@ -7,6 +7,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
 
     private let controller = LiveCoachSessionController()
     var progressPolicy: LiveCoachProgressPolicyDTO? { controller.progressPolicy }
+    var scheduledInstructions: [ScheduledGuideInstruction] { controller.scheduledInstructions }
 
     func beginSession(
         profile: GuideProfile?,
@@ -147,6 +148,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
             throw CancellationError()
         } catch {
             if Task.isCancelled { throw CancellationError() }
+            ActivityDiagnosticLog.error(.lifecycle, "Coach cue request failed error=\(ActivityDiagnosticLog.errorCategory(error))")
             return await immediateFallback(
                 for: moment,
                 preferredMessage: request.preferredMessage,
