@@ -616,7 +616,7 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func refreshConnections() async {
+    func refreshConnections(retainingLoadedPages: Bool = false) async {
         guard isUITestSeedData || activeUserID != nil else { return }
         let generation = authGeneration
         if isUITestSeedData {
@@ -633,9 +633,17 @@ final class TogetherStore: ObservableObject {
             }
         }
         do {
-            let page = try await withTransientNetworkRetry { try await self.api.fetchSocialConnections() }
+            let retainedCount = retainingLoadedPages ? connections.count : 0
+            var page = try await withTransientNetworkRetry { try await self.api.fetchSocialConnections() }
+            var refreshedConnections = page.connections
+            while refreshedConnections.count < retainedCount, let cursor = page.nextCursor {
+                try Task.checkCancellation()
+                page = try await withTransientNetworkRetry { try await self.api.fetchSocialConnections(cursor: cursor) }
+                refreshedConnections.append(contentsOf: page.connections)
+            }
+            try Task.checkCancellation()
             guard generation == authGeneration, activeUserID != nil else { return }
-            connections = page.connections
+            connections = refreshedConnections
             hasLoadedConnections = true
             nextConnectionsCursor = page.nextCursor
             persistConnections()

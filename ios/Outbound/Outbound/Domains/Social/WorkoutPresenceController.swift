@@ -27,8 +27,17 @@ final class WorkoutPresenceController: ObservableObject {
             if let previousTask {
                 await previousTask.value
             }
-            _ = try? await APIClient.shared.endWorkoutPresence(clientSessionID: clientSessionID)
+            do {
+                _ = try await APIClient.shared.endWorkoutPresence(clientSessionID: clientSessionID)
+            } catch {
+                Self.logFailure(error, operation: "end")
+            }
         }
+    }
+
+    private static func logFailure(_ error: Error, operation: String) {
+        guard !(error is CancellationError), (error as? URLError)?.code != .cancelled else { return }
+        ActivityDiagnosticLog.error(.sync, "Workout presence \(operation) failed error=\(ActivityDiagnosticLog.errorCategory(error)) code=\((error as NSError).code)")
     }
 
     private func beginIfNeeded() {
@@ -38,7 +47,11 @@ final class WorkoutPresenceController: ObservableObject {
         heartbeatTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self, self.clientSessionID == clientSessionID else { return }
-                _ = try? await APIClient.shared.refreshWorkoutPresence(clientSessionID: clientSessionID)
+                do {
+                    _ = try await APIClient.shared.refreshWorkoutPresence(clientSessionID: clientSessionID)
+                } catch {
+                    Self.logFailure(error, operation: "heartbeat")
+                }
                 do {
                     try await Task.sleep(for: self.heartbeatInterval)
                 } catch {

@@ -12,6 +12,7 @@ struct SocialHomeView: View {
         self.isSelected = isSelected
     }
 
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var socialStore: TogetherStore
@@ -156,6 +157,22 @@ struct SocialHomeView: View {
                 _ = await (connectionsRefresh, notificationsRefresh, groupRefresh, groupInvitations, liveCheers)
                 guard !Task.isCancelled else { return }
                 hasLoadedHomeModules = true
+            }
+            .task(id: isSelected && scenePhase == .active) {
+                guard isSelected, scenePhase == .active else { return }
+                // Social stays mounted across tabs; refresh when selected and while visible.
+                while !Task.isCancelled {
+                    async let connections: Void = socialStore.refreshConnections(retainingLoadedPages: true)
+                    async let live: Void = liveCheerStore.refreshSessions()
+                    _ = await (connections, live)
+                    guard !Task.isCancelled else { return }
+                    if selectedFeatureTab == .feed { trackActiveNowExposureIfNeeded() }
+                    do {
+                        try await Task.sleep(for: .seconds(30))
+                    } catch {
+                        return
+                    }
+                }
             }
             .onChange(of: socialStore.hasLoadedConnections, initial: true) { _, loaded in
                 guard loaded else { return }
@@ -646,7 +663,9 @@ struct SocialHomeView: View {
         let previousRevision = socialStore.homeRefreshRevision
         async let home: Void = socialStore.refresh(resetFeed: resetFeed)
         async let live: Void = liveCheerStore.refreshSessions()
-        _ = await (home, live)
+        async let connections: Void = socialStore.refreshConnections(retainingLoadedPages: true)
+        _ = await (home, live, connections)
+        trackActiveNowExposureIfNeeded()
         guard clearUnseenBadge,
               socialStore.homeRefreshRevision > previousRevision,
               socialStore.hasUnseenFeedPosts else { return }
