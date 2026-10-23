@@ -151,7 +151,7 @@ class RecordingCoordinator internal constructor(
         }
         val nowUtc = clock.utcMillis()
         val sampler = if (BuildConfig.DEBUG && simulatedRun) {
-            RunSimulationRouteSampler((simulatedRoute ?: HarvestRunSimulation.route).points)
+            RunSimulationRouteSampler((simulatedRoute ?: HarvestRunSimulation.route).let { if (it.reverse) it.points.reversed() else it.points })
         } else null
         simulationSampler = sampler
         simulationStartElapsedRealtimeNanos = sampler?.let { clock.elapsedRealtimeNanos() }
@@ -177,7 +177,7 @@ class RecordingCoordinator internal constructor(
             recordedAtEpochMilliseconds = nowUtc,
             companionType = companionType,
             runSimulation = sampler?.let {
-                RunSimulationState(routeDistanceMeters = it.totalDistanceMeters)
+                RunSimulationState(routeDistanceMeters = it.totalDistanceMeters, route = simulatedRoute ?: HarvestRunSimulation.route)
             },
         )
         beginCollection()
@@ -206,7 +206,7 @@ class RecordingCoordinator internal constructor(
             AnalyticsEvent(
                 name = "activity_simulation_started",
                 properties = mapOf(
-                    AnalyticsProperty.SourceType to "harvest_half",
+                    AnalyticsProperty.SourceType to "selected_route",
                     AnalyticsProperty.DistanceBucket to distanceBucket(sampler.totalDistanceMeters),
                     AnalyticsProperty.SelectionType to HarvestRunSimulation.speedBucket(10.0),
                 ),
@@ -750,7 +750,7 @@ class RecordingCoordinator internal constructor(
 
     private fun restoredSimulationSampler(snapshot: RecordingSnapshot): RunSimulationRouteSampler? {
         if (!BuildConfig.DEBUG || snapshot.runSimulation == null) return null
-        return runCatching { RunSimulationRouteSampler(HarvestRunSimulation.route.points) }.getOrNull()
+        return runCatching { RunSimulationRouteSampler(snapshot.runSimulation.route.let { if (it.reverse) it.points.reversed() else it.points }) }.getOrNull()
     }
 
     private suspend fun persist(force: Boolean) {

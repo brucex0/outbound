@@ -1,10 +1,17 @@
 package com.plainstride.outbound.feature.recording
 
 import kotlinx.serialization.Serializable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+
+/** In-memory opt-in, reset to off when the debug app process restarts. */
+object RouteTestMode {
+    var enabled by androidx.compose.runtime.mutableStateOf(false)
+}
 
 @Serializable
 data class RunSimulationState(
@@ -14,6 +21,7 @@ data class RunSimulationState(
     val elapsedSeconds: Int = 0,
     val distanceMeters: Double = 0.0,
     val routeDistanceMeters: Double,
+    val route: FollowedRouteConfiguration,
 ) {
     val isComplete: Boolean get() = distanceMeters >= routeDistanceMeters
     val speedMetersPerSecond: Double get() = speedKilometersPerHour / 3.6
