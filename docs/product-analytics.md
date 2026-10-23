@@ -372,3 +372,8 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 ## Account Statistics
 
 - Successful server snapshot refresh emits existing `feature_exposed` with `feature = server_statistics`. Existing Progress controls and insight exposure events retain their coarse/semantic properties. Snapshot metrics, evidence, account/activity/source IDs, routes, timestamps, and raw errors never enter analytics.
+
+## iOS App Review
+
+- `app_review_requested` records only invocation of StoreKit’s native review action after the persisted three-save milestone and explicit post-save exit. It carries no event-specific properties; standard shared context and authentication collection rules still apply.
+- Never interpret this event as prompt presentation, rating, submission, or sentiment. Do not send activity IDs, workout facts, exact save counts, or review content.

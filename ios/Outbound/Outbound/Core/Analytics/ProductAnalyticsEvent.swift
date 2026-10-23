@@ -25,6 +25,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activityResumed = "activity_resumed"
     case activityLocationPermissionChanged = "activity_location_permission_changed"
     case activityFinished = "activity_finished"
+    case appReviewRequested = "app_review_requested"
     case activitySaved = "activity_saved"
     case activitySaveIneligibleShown = "activity_save_ineligible_shown"
     case postWorkoutStretchOffered = "post_workout_stretch_offered"
@@ -364,6 +365,7 @@ enum ProductAnalyticsSchema {
         .activityPaused: [.sourceType],
         .activityResumed: [.sourceType, .durationBucket],
         .activityFinished: [.movingTimeMethod, .elapsedDurationBucket, .durationBucket, .distanceBucket, .goalCompletionBucket],
+        .appReviewRequested: [],
         .activitySaved: [.movingTimeMethod, .elapsedDurationBucket, .activityType, .goalType, .durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket, .musicEnabled, .routeSelected, .shoeSelected, .groupRunEnabled, .indoor, .dogCompanionEnabled],
         .activitySaveIneligibleShown: [.activityType, .durationBucket, .distanceBucket],
         .postWorkoutStretchOffered: [.activityType, .routineID],

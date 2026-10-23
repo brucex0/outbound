@@ -170,6 +170,7 @@ struct RecordView: View {
     private let onPlanBuilderRequested: (() -> Void)?
     private let onPreActivityPhotoChange: ((UIImage?) -> Void)?
     private let onPreActivityRouteChange: ((PreparedRoute?) -> Void)?
+    private let onPostSaveCompleted: (() -> Void)?
     private let onCloseRequest: ((Bool) -> Void)?
     private let onSessionStateChange: ((ActivitySessionPortalState) -> Void)?
     private let onElapsedTimeChange: ((Int) -> Void)?
@@ -190,6 +191,7 @@ struct RecordView: View {
         onPlanBuilderRequested: (() -> Void)? = nil,
         onPreActivityPhotoChange: ((UIImage?) -> Void)? = nil,
         onPreActivityRouteChange: ((PreparedRoute?) -> Void)? = nil,
+        onPostSaveCompleted: (() -> Void)? = nil,
         onCloseRequest: ((Bool) -> Void)? = nil,
         onSessionStateChange: ((ActivitySessionPortalState) -> Void)? = nil,
         onElapsedTimeChange: ((Int) -> Void)? = nil,
@@ -221,6 +223,7 @@ struct RecordView: View {
         self.onPlanBuilderRequested = onPlanBuilderRequested
         self.onPreActivityPhotoChange = onPreActivityPhotoChange
         self.onPreActivityRouteChange = onPreActivityRouteChange
+        self.onPostSaveCompleted = onPostSaveCompleted
         self.onCloseRequest = onCloseRequest
         self.onSessionStateChange = onSessionStateChange
         self.onElapsedTimeChange = onElapsedTimeChange
@@ -1979,6 +1982,7 @@ struct RecordView: View {
             sessionController.saveFailed()
             return false
         }
+        AppReviewRequestPolicy.recordSuccessfulSave(id: savedActivity.id)
         ActivityDiagnosticLog.notice(.persistence, "Post-run save completed local_state=durable")
         var savedProperties = outcomeProperties(for: resolvedActivity.summary)
         savedProperties[.movingTimeMethod] = .string("gps_observations_v2")
@@ -2084,6 +2088,7 @@ struct RecordView: View {
         postSaveCelebrationActivity = nil
         postSaveStretchContext = nil
         sessionController.completeSave(withPostSaveFlow: false)
+        onPostSaveCompleted?()
         onCloseRequest?(false)
     }
 
@@ -2091,6 +2096,7 @@ struct RecordView: View {
         postSaveStretchContext = nil
         postSaveCelebrationActivity = nil
         sessionController.completeSave(withPostSaveFlow: false)
+        onPostSaveCompleted?()
         onCloseRequest?(false)
     }
 

@@ -1,8 +1,10 @@
 import SwiftUI
+import StoreKit
 import CoreLocation
 import UIKit
 
 struct MainTabView: View {
+    @Environment(\.requestReview) private var requestReview
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var assistantStore: AssistantStore
@@ -23,6 +25,7 @@ struct MainTabView: View {
     @EnvironmentObject private var workoutReminderPreferences: WorkoutReminderPreferences
     @EnvironmentObject private var phoneWorkoutCoordinator: PhoneWorkoutSessionCoordinator
     @StateObject private var locationManager = LocationManager()
+    @State private var reviewOpportunity: UUID?
     @State private var activeLaunch: RecordLaunch?
     @State private var isActivityVisible = false
     @State private var activitySessionState: ActivitySessionPortalState = .idle
@@ -86,6 +89,10 @@ struct MainTabView: View {
                 .environmentObject(stravaImportStore)
                 .environmentObject(measurementPreferences)
         }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { reviewOpportunity = nil }
+        }
+        .task(id: reviewOpportunity) { await requestReviewAfterPostSaveIfEligible() }
         .onAppear {
             phoneWorkoutCoordinator.bind(activityStore: activityStore)
             restoreInterruptedActivityIfNeeded()
@@ -194,6 +201,25 @@ struct MainTabView: View {
         }
     }
 
+    @MainActor
+    private func requestReviewAfterPostSaveIfEligible() async {
+        guard reviewOpportunity != nil else { return }
+        // Allow the post-save surface to leave before requesting the native prompt.
+        do { try await Task.sleep(for: .seconds(1)) }
+        catch { return } // Cancellation is expected when the host disappears.
+        guard !Task.isCancelled, scenePhase == .active,
+              activitySessionState == .idle, !isActivityFullscreenVisible,
+              !onboardingStore.isPresented,
+              let scene = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .first(where: { $0.activationState == .foregroundActive }),
+              let window = scene.windows.first(where: \.isKeyWindow),
+              window.rootViewController?.presentedViewController == nil,
+              AppReviewRequestPolicy.consumeEligibleRequest() else { return }
+        requestReview()
+        await analyticsManager?.track(.init(.appReviewRequested))
+    }
+
     private func requestAppLocationAccessIfNeeded() {
         guard !onboardingStore.isPresented else { return }
         locationManager.refreshForForeground()
@@ -293,6 +319,7 @@ struct MainTabView: View {
             preActivityPhoto: preActivityPhoto,
             preActivityRoute: preActivityRoute,
             onContextualStart: {
+                reviewOpportunity = nil
                 activityStartRequest += 1
             },
             onPreActivityPhotoAction: {
@@ -329,6 +356,7 @@ struct MainTabView: View {
                 },
                 onPreActivityPhotoChange: { preActivityPhoto = $0 },
                 onPreActivityRouteChange: { preActivityRoute = $0 },
+                onPostSaveCompleted: { reviewOpportunity = UUID() },
                 onCloseRequest: handleActivityClose,
                 onSessionStateChange: { activitySessionState = $0 },
                 onElapsedTimeChange: { activityElapsedSeconds = $0 },
@@ -346,6 +374,7 @@ struct MainTabView: View {
     }
 
     private func presentActivity(intent: SessionIntent? = nil) {
+        reviewOpportunity = nil
         if let activeLaunch, activitySessionState != .idle {
             self.activeLaunch = activeLaunch
             isActivityVisible = true
