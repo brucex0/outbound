@@ -12,6 +12,9 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import retrofit2.http.*
 import com.plainstride.outbound.core.network.PlainstrideJson
 
+@Serializable data class ActiveLiveSession(val id: String, val status: String, val runner: SocialPerson)
+@Serializable data class ActiveLiveSessionsResponse(val sessions: List<ActiveLiveSession> = emptyList())
+
 @Serializable data class FeedResponse(val posts: List<SocialPost> = emptyList(), val nextCursor: String? = null)
 @Serializable data class ConnectionDto(val id: String, val status: String, val direction: String, val person: SocialPerson, val isInActiveWorkout: Boolean = false)
 @Serializable data class ConnectionsResponse(val connections: List<ConnectionDto> = emptyList(), val nextCursor: String? = null)
@@ -50,6 +53,7 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 @Serializable data class LinkActivityBody(val activityId:String)
 
 interface SocialApiService {
+    @GET("v1/safety/live-shares/invited") suspend fun invitedLiveSessions(@Header("Authorization") auth: String): Response<ActiveLiveSessionsResponse>
     @GET("v1/social/home") suspend fun home(@Header("Authorization") auth: String): Response<SocialHome>
     @GET("v1/social/home") suspend fun feed(@Header("Authorization") auth: String, @Query("feedCursor") cursor: String? = null): Response<SocialHome>
     @GET("v1/social/connections") suspend fun connections(@Header("Authorization") auth: String, @Query("cursor") cursor: String? = null): Response<ConnectionsResponse>

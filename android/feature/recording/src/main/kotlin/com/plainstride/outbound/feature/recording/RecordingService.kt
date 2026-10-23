@@ -39,6 +39,7 @@ class RecordingService : Service() {
         private set
     @Inject lateinit var database: PlainstrideDatabase
     @Inject lateinit var analytics: ProductAnalytics
+    @Inject lateinit var socialRepository: com.plainstride.outbound.feature.social.SocialRepository
 
     override fun onCreate() {
         super.onCreate()
@@ -52,6 +53,7 @@ class RecordingService : Service() {
             analytics = analytics,
             stepSource = StepDetectorSource(applicationContext),
         )
+        WorkoutPresenceController(socialRepository).observe(coordinator.snapshot, serviceScope)
         serviceScope.launch {
             coordinator.snapshot.collect { snapshot ->
                 if (snapshot.status != RecordingStatus.IDLE) {

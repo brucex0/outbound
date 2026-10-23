@@ -27,6 +27,7 @@ fun SafetyRoute(
     accountId: String? = null,
     unitSystem: MeasurementUnitSystem = MeasurementUnitSystem.metric,
     viewModel: SafetySettingsViewModel = hiltViewModel(),
+    liveCheerEntrySource: String = "notification",
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val contacts by viewModel.trustedContacts.collectAsStateWithLifecycle()
@@ -36,7 +37,7 @@ fun SafetyRoute(
     val followerTrack by viewModel.followerTrack.collectAsStateWithLifecycle()
     val followerLoading by viewModel.followerLoading.collectAsStateWithLifecycle()
     val followerMessage by viewModel.followerMessage.collectAsStateWithLifecycle()
-    LaunchedEffect(targetId, targetKind) { targetId?.takeIf(String::isNotBlank)?.let { if(targetKind=="live") viewModel.openLiveShare(it) else viewModel.openGroup(it) } }
+    LaunchedEffect(targetId, targetKind) { targetId?.takeIf(String::isNotBlank)?.let { if(targetKind=="live") viewModel.openLiveShare(it, liveCheerEntrySource) else viewModel.openGroup(it) } }
     DisposableEffect(targetKind,targetId){onDispose{if(targetKind=="live")viewModel.stopWatchingLiveShare()}}
     LaunchedEffect(accountId) { viewModel.onAccountActivated(accountId) }
     LaunchedEffect(connections) { viewModel.onConnectionsUpdated(connections) }

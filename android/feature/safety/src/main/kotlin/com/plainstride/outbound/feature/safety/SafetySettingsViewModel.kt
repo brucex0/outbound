@@ -90,16 +90,16 @@ import java.time.Instant
  fun isSharingEvent(activityEventId:String)=liveShare.isSharingEvent(activityEventId)
  fun hasDifferentActiveGroup(activityEventId:String)=liveShare.hasDifferentActiveGroup(activityEventId)
  fun stopGroupSharing()=viewModelScope.launch{liveShare.leaveGroupRun(false)}
- fun openLiveShare(id:String) {
+ fun openLiveShare(id:String,entrySource:String="notification") {
   if(BuildConfig.DEBUG) Log.d(REALTIME_TAG,"follower_open_requested")
   if(followerTrackShareId!=id){followerTrackShareId=id;mutableFollowerTrack.value=emptyList()}
   followerRefreshJob?.cancel()
   followerRefreshJob=null
   viewModelScope.launch {
-   analytics.record(com.plainstride.outbound.core.analytics.AnalyticsEvent("live_cheer_follower_opened",mapOf(com.plainstride.outbound.core.analytics.AnalyticsProperty.Source to "notification")))
    mutableFollowerMessage.value=null
    mutableFollowerLoading.value=mutableFollower.value?.id!=id
    liveShare.invitedShare(id).onSuccess { initial ->
+    analytics.record(com.plainstride.outbound.core.analytics.AnalyticsEvent("live_cheer_follower_opened",mapOf(com.plainstride.outbound.core.analytics.AnalyticsProperty.EntrySource to entrySource,com.plainstride.outbound.core.analytics.AnalyticsProperty.SelectionType to if(initial.status=="active")"current_pace" else "average_pace")))
     mutableFollower.value=initial
     seedFollowerTrack(initial)
     if(BuildConfig.DEBUG) Log.d(REALTIME_TAG,"follower_snapshot_loaded active=${initial.status=="active"} has_location=${initial.lastLocation!=null}")

@@ -11,9 +11,16 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import com.plainstride.outbound.core.analytics.*
 
 data class SocialUiState(
+    val liveSessions: List<ActiveLiveSession> = emptyList(),
     val home: SocialHome = SocialHome(), val loading: Boolean = true, val refreshing: Boolean = false,
     val offline: Boolean = false, val search: String = "", val searchResults: List<SocialPerson> = emptyList(),
     val groupDirectory: List<GroupSummary> = emptyList(), val groupDirectoryQuery: String = "",
@@ -62,6 +69,7 @@ sealed interface ConnectionEffect {
     private var activityFeedLoadTracked = false
     private var feedPagesLoaded = 1
     private var connectionPagesLoaded = 1
+    private val connectionRefreshLock = Mutex()
 
     private var trackHomeExposure = false
     fun start(accountId: String, localeTag: String, trackOpen: Boolean = true) {
@@ -76,7 +84,7 @@ sealed interface ConnectionEffect {
         trackHomeExposure = trackOpen
         this.accountId = accountId; this.localeTag = localeTag
         groupLoadJob?.cancel()
-        mutableState.update { it.copy(selectedGroupId = null, selectedGroupDetail = null, groupLoading = false, groupLoadFailed = false, groupUnavailable = false, groupInvitationResponding = false) }
+        mutableState.update { it.copy(liveSessions = emptyList(), selectedGroupId = null, selectedGroupDetail = null, groupLoading = false, groupLoadFailed = false, groupUnavailable = false, groupInvitationResponding = false) }
         groupDirectoryJob?.cancel()
         mutableState.update { it.copy(groupDirectory = emptyList(), groupDirectoryQuery = "", groupDirectoryNextCursor = null, groupDirectoryLoading = false, groupDirectoryFailed = false) }
         activityFeedLoadTracked = false
@@ -98,10 +106,46 @@ sealed interface ConnectionEffect {
     fun refresh() { val account = accountId ?: return; viewModelScope.launch {
         groups.flush()
         mutableState.update { it.copy(refreshing = true) }
-        repository.refresh(account, localeTag)
-            .onFailure { mutableState.update { s -> s.copy(offline = true) }; messages.emit(SocialMessage.ACTION_FAILED) }
+        connectionRefreshLock.withLock {
+            repository.refresh(account, localeTag, mutableState.value.home.let { SocialPage(it.connections, it.connectionNextCursor) })
+                .onFailure { logPresenceFailure("feed_refresh", it); mutableState.update { s -> s.copy(offline = true) }; messages.emit(SocialMessage.ACTION_FAILED) }
+        }
+        refreshLiveSessions()
         mutableState.update { it.copy(refreshing = false, loading = false) }
     } }
+    /** Called only while Social is selected and the app is in the foreground. */
+    suspend fun refreshActiveNow() = coroutineScope {
+        val account = accountId ?: return@coroutineScope
+        val connections = async {
+            connectionRefreshLock.withLock {
+                repository.refreshConnections(mutableState.value.home.connections.size)
+                    .onSuccess { page ->
+                        currentCoroutineContext().ensureActive()
+                        if (accountId == account) mutableState.update { state -> state.copy(home = state.home.copy(
+                            connections = page.items, connectionNextCursor = page.nextCursor,
+                        )) }
+                    }.onFailure { logPresenceFailure("connections_refresh", it) }
+            }
+        }
+        val live = async { refreshLiveSessions() }
+        connections.await()
+        live.await()
+    }
+
+    private suspend fun refreshLiveSessions() {
+        val account = accountId ?: return
+        repository.invitedLiveSessions().onSuccess { sessions ->
+            currentCoroutineContext().ensureActive()
+            if (accountId == account) mutableState.update { it.copy(liveSessions = sessions.filter { session -> session.status == "active" }) }
+        }.onFailure { logPresenceFailure("live_sessions_refresh", it) }
+    }
+
+    private suspend fun logPresenceFailure(operation: String, error: Throwable) {
+        currentCoroutineContext().ensureActive()
+        if (error is CancellationException) throw error
+        Log.w("PlainstrideSocial", "$operation failed category=${(error as? SocialException)?.reason ?: error.javaClass.simpleName} status=${(error as? SocialException)?.httpStatus}")
+    }
+
     fun trackConnectionsOpened(entrySource: String) = analytics.record(AnalyticsEvent(
         "connections_opened",
         mapOf(AnalyticsProperty.EntrySource to entrySource),
@@ -165,22 +209,24 @@ sealed interface ConnectionEffect {
     }
     fun loadMoreConnections() {
         val current = mutableState.value
-        val cursor = current.home.connectionNextCursor ?: return
-        if (current.connectionsLoadingMore) return
+        if (current.home.connectionNextCursor == null || current.connectionsLoadingMore) return
         viewModelScope.launch {
             mutableState.update { it.copy(connectionsLoadingMore = true, connectionsLoadFailed = false) }
-            repository.loadConnections(cursor).onSuccess { page ->
-                mutableState.update { state -> state.copy(home = state.home.copy(
-                    connections = (state.home.connections + page.items).distinctBy { it.connectionId ?: it.id },
-                    connectionNextCursor = page.nextCursor,
-                )) }
-                connectionPagesLoaded += 1
-                analytics.record(AnalyticsEvent("paginated_list_page_loaded", mapOf(
-                    AnalyticsProperty.Source to "connections",
-                    AnalyticsProperty.CountBucket to countBucket(page.items.size),
-                    AnalyticsProperty.PageDepthBucket to when { connectionPagesLoaded == 2 -> "page_2"; connectionPagesLoaded <= 4 -> "pages_3_4"; else -> "page_5_plus" },
-                )))
-            }.onFailure { mutableState.update { it.copy(connectionsLoadFailed = true) } }
+            connectionRefreshLock.withLock {
+                val latestCursor = mutableState.value.home.connectionNextCursor
+                if (latestCursor != null) repository.loadConnections(latestCursor).onSuccess { page ->
+                    mutableState.update { state -> state.copy(home = state.home.copy(
+                        connections = (state.home.connections + page.items).distinctBy { it.connectionId ?: it.id },
+                        connectionNextCursor = page.nextCursor,
+                    )) }
+                    connectionPagesLoaded += 1
+                    analytics.record(AnalyticsEvent("paginated_list_page_loaded", mapOf(
+                        AnalyticsProperty.Source to "connections",
+                        AnalyticsProperty.CountBucket to countBucket(page.items.size),
+                        AnalyticsProperty.PageDepthBucket to when { connectionPagesLoaded == 2 -> "page_2"; connectionPagesLoaded <= 4 -> "pages_3_4"; else -> "page_5_plus" },
+                    )))
+                }.onFailure { mutableState.update { it.copy(connectionsLoadFailed = true) } }
+            }
             mutableState.update { it.copy(connectionsLoadingMore = false) }
         }
     }

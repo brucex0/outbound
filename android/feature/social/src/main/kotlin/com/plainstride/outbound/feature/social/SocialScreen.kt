@@ -41,6 +41,10 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,6 +55,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.serialization.json.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -64,7 +71,7 @@ import com.plainstride.outbound.feature.activity.ActivityExport
 import com.plainstride.outbound.feature.activity.ActivityViewModel
 import com.plainstride.outbound.feature.activity.R as ActivityR
 
-@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,targetEntrySource:String="deep_link",inboxCount:Int=0,unitSystem:MeasurementUnitSystem=MeasurementUnitSystem.metric,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onTargetConsumed:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={},onRoutesTabSelected:()->Unit={},onOpenSharedActivity:(String)->Unit={},onOpenSharedEvent:(String,String)->Unit={_,_->},onOpenSharedProfile:(SocialPerson)->Unit={},groupRun:SharedLiveRun?=null,groupRunJoining:Boolean=false,onToggleActivityLiveMap:(String)->Unit={},onStartGroupActivity:(SocialEvent)->Unit={},communityRoutesContent: @Composable (Int) -> Unit = {}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel(), notificationAccessAvailable: Boolean = true, onEnableNotifications: () -> Unit = {}) {
+@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,targetEntrySource:String="deep_link",inboxCount:Int=0,unitSystem:MeasurementUnitSystem=MeasurementUnitSystem.metric,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onTargetConsumed:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={},onRoutesTabSelected:()->Unit={},onOpenSharedActivity:(String)->Unit={},onOpenSharedEvent:(String,String)->Unit={_,_->},onOpenSharedProfile:(SocialPerson)->Unit={},onOpenLiveCheer:(String)->Unit={},groupRun:SharedLiveRun?=null,groupRunJoining:Boolean=false,onToggleActivityLiveMap:(String)->Unit={},onStartGroupActivity:(SocialEvent)->Unit={},communityRoutesContent: @Composable (Int) -> Unit = {}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel(), notificationAccessAvailable: Boolean = true, onEnableNotifications: () -> Unit = {}) {
     var selectedTab by rememberSaveable { mutableStateOf(SocialFeatureTab.FEED) }
     var hasSelectedSocialTab by rememberSaveable { mutableStateOf(false) }
     var routeImportRequest by rememberSaveable { mutableStateOf(0) }
@@ -76,6 +83,15 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
     val resources = LocalResources.current
     val activityViewModel: ActivityViewModel = hiltViewModel()
     LaunchedEffect(accountId, localeTag) { viewModel.start(accountId, localeTag) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(accountId, localeTag, lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                viewModel.refreshActiveNow()
+                delay(30_000)
+            }
+        }
+    }
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.loading, state.home.connections.size) {
         if (!state.loading && !hasSelectedSocialTab) {
@@ -181,12 +197,13 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
         SocialScreen(state, selectedTab, { tab ->
             hasSelectedSocialTab = true
             selectedTab = tab
+            if (tab == SocialFeatureTab.FEED) viewModel.refresh()
             if (tab == SocialFeatureTab.ROUTES) onRoutesTabSelected()
             if (tab == SocialFeatureTab.GROUPS) { viewModel.refresh(); viewModel.refreshGroupDirectory() }
             viewModel.trackSocialTabSelected(tab.analyticsValue)
         }, inboxCount, unitSystem, viewModel::refresh, viewModel::search, { person -> viewModel.trackProfileOpened(); onOpenSharedProfile(person) }, { connectionsOpen = true; addConnectionFlow = false; viewModel.trackConnectionsOpened("social_home_preview") }, { connectionsOpen = true; addConnectionFlow = true; viewModel.search(""); viewModel.trackConnectionsOpened("social_create_menu") }, viewModel::openGroup, viewModel::openComments, { post -> viewModel.openActivityDetail(post); onOpenSharedActivity(post.id) }, { type, id -> if (type == "event") onOpenSharedEvent(id, "social_upcoming") else viewModel.openTarget(type, id) }, onConditions, onCommunity, onNotifications, { routeImportRequest += 1 }, viewModel::toggleCheer, { group ->
             viewModel.joinGroup(group)
-        }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, communityRoutesContent, modifier, viewModel = viewModel, feedListState = feedListState, routeImportRequest = routeImportRequest, notificationAccessAvailable = notificationAccessAvailable, onEnableNotifications = onEnableNotifications)
+        }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, communityRoutesContent, modifier, viewModel = viewModel, feedListState = feedListState, routeImportRequest = routeImportRequest, notificationAccessAvailable = notificationAccessAvailable, onEnableNotifications = onEnableNotifications, onOpenLiveCheer = onOpenLiveCheer)
     } else {
         BackHandler { viewModel.closeActivityDetail() }
         SocialActivityDetail(
@@ -465,7 +482,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable private fun SocialScreen(state: SocialUiState, selectedTab: SocialFeatureTab, selectTab: (SocialFeatureTab) -> Unit, inboxCount: Int, unitSystem: MeasurementUnitSystem, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, addConnection: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, requestRouteImport:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, communityRoutesContent: @Composable (Int) -> Unit, modifier: Modifier, viewModel: SocialViewModel, feedListState: LazyListState, routeImportRequest:Int, notificationAccessAvailable: Boolean, onEnableNotifications: () -> Unit) {
+@Composable private fun SocialScreen(state: SocialUiState, selectedTab: SocialFeatureTab, selectTab: (SocialFeatureTab) -> Unit, inboxCount: Int, unitSystem: MeasurementUnitSystem, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, addConnection: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, requestRouteImport:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, communityRoutesContent: @Composable (Int) -> Unit, modifier: Modifier, viewModel: SocialViewModel, feedListState: LazyListState, routeImportRequest:Int, notificationAccessAvailable: Boolean, onEnableNotifications: () -> Unit, onOpenLiveCheer: (String) -> Unit) {
     var safetyPost by remember { mutableStateOf<SocialPost?>(null) }
     var blockConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
     var deletionConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
@@ -569,18 +586,32 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                 if (activeConnections.isNotEmpty()) item {
                     Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                         SectionHeader(stringResource(R.string.social_active_now_title))
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
+                        LazyRow(Modifier.height(70.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(horizontal = 1.dp)) {
                             items(activeConnections, key = SocialPerson::id) { person ->
+                                val session = state.liveSessions.firstOrNull { it.runner.id == person.id && it.status == "active" }
                                 val activePersonLabel = stringResource(R.string.social_active_now_person, person.displayName)
+                                val actionHint = stringResource(if (session != null) R.string.social_active_now_cheer_hint else R.string.social_active_now_profile_hint)
+                                val selectPerson: () -> Unit = {
+                                    viewModel.trackActiveNowSelected(if (session != null) "cheer" else "profile")
+                                    if (session != null) onOpenLiveCheer(session.id) else openProfile(person)
+                                }
                                 Column(
-                                    Modifier.width(58.dp).clickable { viewModel.trackActiveNowSelected("profile"); openProfile(person) }
-                                        .semantics { contentDescription = activePersonLabel },
+                                    Modifier.width(58.dp).clickable(onClickLabel = actionHint, onClick = selectPerson)
+                                        .clearAndSetSemantics {
+                                            contentDescription = activePersonLabel
+                                            role = Role.Button
+                                            onClick(actionHint) { selectPerson(); true }
+                                        },
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.spacedBy(3.dp),
                                 ) {
                                     Box {
                                         SocialAvatar(person, 40.dp)
-                                        Icon(Icons.Outlined.RadioButtonChecked, null, Modifier.align(Alignment.BottomEnd).size(15.dp), tint = MaterialTheme.colorScheme.primary)
+                                        Box(Modifier.align(Alignment.BottomEnd).size(15.dp)
+                                            .background(MaterialTheme.colorScheme.surface, CircleShape).padding(1.dp)
+                                            .background(MaterialTheme.colorScheme.primary, CircleShape), contentAlignment = Alignment.Center) {
+                                            if (session != null) Icon(Icons.Outlined.GraphicEq, null, Modifier.size(10.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                                        }
                                     }
                                     Text(person.displayName.substringBefore(' '), maxLines = 1, style = MaterialTheme.typography.labelSmall)
                                 }

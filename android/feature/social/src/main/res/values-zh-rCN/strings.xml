@@ -168,4 +168,6 @@
     <string name="social_report_person">举报</string>
     <string name="social_profile_action_complete">操作已完成</string>
     <string name="social_profile_action_failed">操作未完成，请重试。</string>
+    <string name="social_active_now_cheer_hint">打开实时加油页面</string>
+    <string name="social_active_now_profile_hint">打开此人的个人资料</string>
 </resources>
