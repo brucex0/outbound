@@ -2,7 +2,15 @@ import CryptoKit
 import Foundation
 
 @MainActor
-final class GuideAudioPackStore {
+protocol GuideAudioPackProviding: AnyObject {
+    func preloadSelectedAudio() async
+    func audioData(for cueKey: String, transcript: String?) async -> Data?
+    func localAudioData(for cueKey: String, transcript: String?) -> Data?
+    func localAudioSequence(for cueKeys: [String]) -> [Data]?
+}
+
+@MainActor
+final class GuideAudioPackStore: GuideAudioPackProviding {
     static let shared = GuideAudioPackStore()
     static let sessionControlCueKeys = ["workout.pause", "workout.resume", "coach.settle", "coach.restore_rhythm"]
     static let countdownCueKeys = [

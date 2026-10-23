@@ -110,6 +110,27 @@ xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme Outbound -des
 swift test
 ```
 
+### Focused Speed-Warning Regression Tests
+
+When requested, run only the detector and recorder/guide pipeline tests on a dedicated simulator:
+
+```sh
+xcodebuild -quiet -jobs 2 \
+  -project ios/Outbound/Outbound.xcodeproj -scheme Outbound \
+  -destination 'platform=iOS Simulator,id=SIMULATOR_UUID' \
+  -parallel-testing-enabled NO \
+  -only-testing:OutboundTests/SuddenSpeedChangeDetectorTests \
+  -only-testing:OutboundTests/SpeedWarningPipelineTests \
+  'EXCLUDED_SOURCE_FILE_NAMES=HealthKitStoreTests.swift OutboundTests.swift LocalActivityStorePhotoTests.swift' \
+  CODE_SIGNING_ALLOWED=NO test
+```
+
+The source exclusion avoids existing stale `HealthKitServing`/`MusicService` mocks and tests referring to the removed `LocalActivityStore`. Remove it once those unrelated tests are repaired; `-only-testing` filters execution but still compiles the unit-test target.
+
+The tests advance sensor/session timestamps synchronously and replace audio playback, clip lookup, and AI analysis with deterministic fixtures. They cover detection gates, same-second fixes, resets/cooldowns, queued/stale warnings, unavailable/failed audio, coaching contracts, non-running sessions, and the real Debug simulation through `LocationManager`, `ActivityRecorder`, and `VirtualGuide`. The simulation test creates and clears a recovery journal inside the dedicated simulator; it never saves or synchronizes an activity. These checks verify audio requests, not physical speaker audibility.
+
+### Complete App UI Regression Suite
+
 Run the complete deterministic app UI regression suite. It selects the first available iPhone simulator unless an explicit Xcode destination is supplied:
 
 ```sh

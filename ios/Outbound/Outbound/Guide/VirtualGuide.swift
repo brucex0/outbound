@@ -68,7 +68,8 @@ final class VirtualGuide: NSObject, ObservableObject {
     @Published private(set) var sessionReport: LiveGuidanceSessionReport = .empty
 
     private let provider: any SessionAnalysisProvider
-    private let audioPlayer = GuideAudioPlayer()
+    private let audioPlayer: any GuideAudioPlaying
+    private let audioPack: any GuideAudioPackProviding
     private let cadencePacer = CadencePacer()
     private let momentDirector = LiveGuidanceDirector()
     private var speechEnabled: Bool
@@ -117,20 +118,27 @@ final class VirtualGuide: NSObject, ObservableObject {
     var speechEventHandler: ((GuideSpeechEvent) -> Void)?
     var guidanceEventHandler: ((LiveGuidanceTelemetryEvent) -> Void)?
 
-    init(provider: (any SessionAnalysisProvider)? = nil, speechEnabled: Bool = true) {
+    init(
+        provider: (any SessionAnalysisProvider)? = nil,
+        speechEnabled: Bool = true,
+        audioPlayer: (any GuideAudioPlaying)? = nil,
+        audioPack: (any GuideAudioPackProviding)? = nil
+    ) {
         let selectedProvider = provider ?? SessionAnalysisProviderFactory.makePreferredProvider()
         self.provider = selectedProvider
         self.speechEnabled = speechEnabled
+        self.audioPlayer = audioPlayer ?? GuideAudioPlayer()
+        self.audioPack = audioPack ?? GuideAudioPackStore.shared
         providerName = selectedProvider.displayName
         super.init()
-        audioPlayer.eventHandler = { [weak self] event in
+        self.audioPlayer.eventHandler = { [weak self] event in
             if case .didStart = event { self?.cadencePacer.stop(deactivateSession: false) }
             self?.speechEventHandler?(event)
         }
         cadencePacer.eventHandler = { [weak self] result in
             self?.guidanceEventHandler?(.pacerPlayback(result: result))
         }
-        audioPlayer.playbackRouteHandler = { [weak self] route in
+        self.audioPlayer.playbackRouteHandler = { [weak self] route in
             self?.guidanceEventHandler?(.audioPlaybackRoute(route: route))
         }
     }
@@ -168,8 +176,8 @@ final class VirtualGuide: NSObject, ObservableObject {
             result: activityType == ActivityType.running.rawValue ? "running_ai_eligible" : "pacer_only"
         ))
         sessionControlAudioPreloadTask?.cancel()
-        sessionControlAudioPreloadTask = Task {
-            await GuideAudioPackStore.shared.preloadSelectedAudio()
+        sessionControlAudioPreloadTask = Task { [audioPack] in
+            await audioPack.preloadSelectedAudio()
         }
         self.profile = profile
         self.persona = persona
@@ -348,14 +356,14 @@ final class VirtualGuide: NSObject, ObservableObject {
             // Countdown identity comes from its cue key. Display digits intentionally
             // differ from the reviewed spoken words in each locale.
             for key in keys {
-                guard let data = await GuideAudioPackStore.shared.audioData(for: key) else {
+                guard let data = await self.audioPack.audioData(for: key, transcript: nil) else {
                     self.reportCountdownAudioUnavailable(group: "start_countdown", reason: "audio_unavailable")
                     return
                 }
                 clips.append(data)
             }
             guard self.speechEnabled else { return }
-            self.audioPlayer.playSequence(clips)
+            _ = self.audioPlayer.playSequence(clips, completion: nil)
         }
     }
 
@@ -1064,7 +1072,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         guard !suppressedTimedCountdownBoundaries.contains(boundarySeconds) else { return false }
 
         if cueKey == "countdown.five" {
-            guard GuideAudioPackStore.shared.localAudioSequence(
+            guard audioPack.localAudioSequence(
                 for: GuideAudioPackStore.segmentCountdownCueKeys
             ) != nil else {
                 suppressTimedCountdown(at: boundarySeconds, reason: "audio_unavailable")
@@ -1077,7 +1085,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         }
 
         // Use the semantic key, not the numeric display text, just as at start.
-        guard let data = GuideAudioPackStore.shared.localAudioData(for: cueKey) else {
+        guard let data = audioPack.localAudioData(for: cueKey, transcript: nil) else {
             suppressTimedCountdown(at: boundarySeconds, reason: "audio_unavailable")
             return false
         }
@@ -1378,7 +1386,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         } else if let audioData {
             return audioPlayer.play(audioData, interrupt: urgency == .caution)
         }
-        if let data = GuideAudioPackStore.shared.localAudioData(
+        if let data = audioPack.localAudioData(
             for: fixedCueKey ?? "",
             transcript: announcement
         ) {

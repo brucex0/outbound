@@ -7,7 +7,18 @@ enum GuideAudioPlaybackRoute: String, Equatable {
 }
 
 @MainActor
-final class GuideAudioPlayer: NSObject, @preconcurrency AVAudioPlayerDelegate {
+protocol GuideAudioPlaying: AnyObject {
+    var eventHandler: ((GuideSpeechEvent) -> Void)? { get set }
+    var playbackRouteHandler: ((GuideAudioPlaybackRoute) -> Void)? { get set }
+    var isSpeaking: Bool { get }
+    func play(_ data: Data, interrupt: Bool) -> Bool
+    func play(_ stream: LiveCoachPCMStream, fallbackData: Data?, interrupt: Bool) -> Bool
+    func playSequence(_ data: [Data], completion: (() -> Void)?) -> Bool
+    func stopSpeaking(at boundary: GuideAudioPlayer.StopBoundary)
+}
+
+@MainActor
+final class GuideAudioPlayer: NSObject, GuideAudioPlaying, @preconcurrency AVAudioPlayerDelegate {
     enum StopBoundary {
         case immediate
         case currentCue
