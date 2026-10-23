@@ -3596,6 +3596,11 @@ private struct SimplifiedSettingsView: View {
             }
             #if DEBUG
             Section("Debug") {
+                NavigationLink {
+                    DebugAppReviewView()
+                } label: {
+                    Label(String(localized: "title", table: "AppReviewDebug"), systemImage: "star.bubble")
+                }
                 Button {
                     onboardingStore.restartForDebug()
                 } label: {

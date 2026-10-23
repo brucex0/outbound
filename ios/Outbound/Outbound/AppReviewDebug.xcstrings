@@ -1,0 +1,72 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test App Store review"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Probar reseña del App Store"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "测试 App Store 评价"
+          }
+        }
+      }
+    },
+    "request": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Request native review prompt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solicitar el aviso de reseña del sistema"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请求系统评价弹窗"
+          }
+        }
+      }
+    },
+    "explanation": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calls StoreKit without changing saved-workout eligibility or the once-per-install request state. Repeat as needed in development. Apple controls whether the prompt appears; this does not verify a submitted review."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Llama a StoreKit sin cambiar los entrenamientos guardados que cuentan para la solicitud ni el estado de solicitud única por instalación. Puedes repetirlo durante el desarrollo. Apple decide si aparece el aviso; esto no confirma que se haya enviado una reseña."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "调用 StoreKit，不改变已保存训练的评价资格或每次安装仅请求一次的状态。开发时可重复尝试。弹窗是否显示由 Apple 决定；此操作无法确认评价是否已提交。"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

@@ -377,3 +377,5 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 
 - `app_review_requested` records only invocation of StoreKit’s native review action after the persisted three-save milestone and explicit post-save exit. It carries no event-specific properties; standard shared context and authentication collection rules still apply.
 - Never interpret this event as prompt presentation, rating, submission, or sentiment. Do not send activity IDs, workout facts, exact save counts, or review content.
+
+- Debug review requests emit only `feature_exposed` with `feature=debug_app_review_request`; they never emit production `app_review_requested` or alter milestone persistence.

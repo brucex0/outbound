@@ -127,7 +127,9 @@ struct OutboundApp: App {
     @ViewBuilder
     private var rootView: some View {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-OutboundDebugLiveCheerFollower") {
+        if ProcessInfo.processInfo.arguments.contains("-OutboundDebugAppReview") {
+            NavigationStack { DebugAppReviewView() }
+        } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugLiveCheerFollower") {
             DebugLiveCheerFollowerHarness()
         } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugCommunityRoutes") {
             DebugCommunityRouteLibraryHarness()

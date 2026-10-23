@@ -87,3 +87,10 @@ Give each saved activity a brief, personal moment of recognition. The celebratio
 - Apple controls presentation; the app cannot observe whether a prompt appeared or a review was submitted. See the analytics contract for the request-only event.
 - Verification: iOS Simulator build succeeded; diff whitespace check passed. No test suite run. Source review checked durable-save ordering, both post-save exit paths, import exclusion, and request-only analytics.
 - Manual verification remains required on device for first/second/third saves, relaunch persistence, Done with/without stretching, sharing dismissal, failed/discarded saves, backgrounding, and a new recording during the settling delay. Development StoreKit presentation does not prove production presentation.
+
+### Manual Debug Trigger
+
+- In a Debug build, open **Me → Settings → Debug → Test App Store review**, then tap **Request native review prompt**. Repeat as needed; this calls the same native StoreKit action while leaving production eligibility and request persistence untouched. It does not simulate three saves or verify post-save dismissal timing.
+- To open that screen directly without sign-in, add `-OutboundDebugAppReview` to the Xcode scheme launch arguments, or run `xcrun simctl launch booted plainstride.outbound -OutboundDebugAppReview` after installing a Debug build. Remove the argument to return to the normal app.
+- The screen and launch route are compiled out of Release builds. Apple controls actual presentation; TestFlight may suppress the prompt. Only `feature_exposed` with `feature=debug_app_review_request` is emitted; the production `app_review_requested` funnel is not advanced.
+- Verification: Debug iOS Simulator build and diff whitespace check passed. No test suite run. The menu, native prompt presentation, and translated layout have not been exercised at runtime.
