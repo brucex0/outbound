@@ -658,7 +658,7 @@ final class ActivityRecorder: ObservableObject {
         default:
             break
         }
-        updateSessionMetrics(now: Date())
+        updateSessionMetrics(now: Date(), location: location)
     }
 
     private func evaluateAutoPauseCandidate(now: Date) {
@@ -744,7 +744,7 @@ final class ActivityRecorder: ObservableObject {
         )
     }
 
-    private func updateSessionMetrics(now: Date) {
+    private func updateSessionMetrics(now: Date, location: CLLocation? = nil) {
         elapsedSeconds = currentElapsedSeconds(at: now)
         movingSeconds = movingTimeTracker.movingSeconds(activeSeconds: elapsedSeconds)
         distanceMeters = locationManager.totalDistanceMeters + goalDistanceAdjustmentMeters
@@ -766,7 +766,9 @@ final class ActivityRecorder: ObservableObject {
             heartRateEffort = .unavailable
             heartRateSignalState = .unavailable
         }
-        liveSnapshot = makeSnapshot()
+        // @Published delivers location in willSet; use the incoming fix so speed
+        // and its evidence timestamp describe the same observation.
+        liveSnapshot = makeSnapshot(location: location)
         persistJournal()
     }
 
@@ -930,7 +932,7 @@ final class ActivityRecorder: ObservableObject {
         }
     }
 
-    private func makeSnapshot(isActive: Bool? = nil) -> ActiveSessionSnapshot {
+    private func makeSnapshot(isActive: Bool? = nil, location: CLLocation? = nil) -> ActiveSessionSnapshot {
         ActiveSessionSnapshot(
             recordedAt: Date(),
             startedAt: startDate,
@@ -939,7 +941,7 @@ final class ActivityRecorder: ObservableObject {
             currentPaceSecsPerKm: currentPace,
             activityType: activityType,
             heartRate: heartRate,
-            location: locationManager.location.map(SessionLocation.init),
+            location: (location ?? locationManager.location).map(SessionLocation.init),
             isActive: isActive ?? (state == .active),
             paceEvidenceTimestamp: locationManager.coachingPaceEvidenceTimestamp,
             movingSeconds: movingSeconds,

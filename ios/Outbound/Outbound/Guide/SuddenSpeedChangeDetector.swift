@@ -16,8 +16,12 @@ struct SuddenSpeedChangeDetector {
         guard let evidence, let speed, speed.isFinite, speed >= 0, speed <= 15 else { resetEvidence(); return nil }
         if let last = samples.last {
             if evidence == last.evidence { return nil }
-            if evidence < last.evidence || evidence - last.evidence > 5 || second <= last.second || second - last.second > 5 { resetEvidence() }
+            if evidence < last.evidence || evidence - last.evidence > 5 || second < last.second || second - last.second > 5 { resetEvidence() }
         }
+        // Location delivery and the UI timer can publish distinct fixes within
+        // one active second. Keep the latest without discarding the baseline or
+        // counting extra fixes toward the duration/coverage requirements.
+        if samples.last?.second == second { samples.removeLast() }
         samples.append(Sample(second: second, evidence: evidence, speed: speed))
         samples.removeAll { $0.second < second - 25 }
         guard segmentSeconds.map({ $0 >= 30 }) ?? true else { baseline = nil; candidateSince = nil; return nil }
