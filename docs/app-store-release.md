@@ -220,6 +220,16 @@ After clearing the legacy reservation, deliver the preserved IPA with
   proof that delivery is healthy. Do not share raw ContentDelivery logs publicly:
   they can contain signed URLs. Use the sanitized release events for triage.
 
+- **October 22, 2026 — 1.7.9 (61), screenshots:** a browser batch upload left
+  two of eight image records in `AWAITING_UPLOAD` while thumbnails and the set
+  count were already visible. App Review correctly refused submission. Removing
+  only those attachments (retaining Asset Library files), uploading each image
+  individually, and restoring the order produced `COMPLETE` for all eight.
+  Check asset delivery state, not thumbnail visibility alone. The build itself
+  processed normally; no IPA rebuild or re-upload was needed. The default
+  Developer key again returned 403 on attaching the public build; use the
+  signed-in UI or a suitably scoped owner-provided key.
+
 ### Keep release lessons current
 
 - Before publishing or recovering a stalled upload, read this runbook and inspect

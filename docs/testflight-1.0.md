@@ -1,14 +1,14 @@
-# TestFlight and App Store 1.7.8 Submission Sheet
+# TestFlight and App Store 1.7.9 Submission Sheet
 
 Open this for the current TestFlight upload and public App Store release. Product behavior and release mechanics remain in `docs/app-store-release.md`.
 
 ## Build Identity
 
-- App Store name: `Plainstride` (confirm availability in App Store Connect).
+- App Store name: `Plainstride: AI Running Coach`.
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
-- Version: `1.7.8`
-- Build: `60`
+- Version: `1.7.9`
+- Build: `61`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -17,6 +17,24 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - Encryption: no non-exempt encryption; `ITSAppUsesNonExemptEncryption` is `false`.
 - Customer-facing and installed app name: `Plainstride`.
 - Internal Xcode target, scheme, storage, and backend names may remain `Outbound`.
+
+## Submission Status
+
+- October 22, 2026, 10:44 PM Pacific: **Waiting for Review**, automatic release after approval, all users immediately.
+- Final submission ID: `044b7411-6f9e-44df-9056-3d80ce618c15`.
+- Build 61 passed unsigned Release compilation, signed archive/export, packaged-bundle preflight, and Apple processing. No tests or physical-device acceptance run were performed for this release.
+- All eight replacement iPhone screenshots and the four retained Watch screenshots report `COMPLETE`; screenshot order and populated live-sharing preview were verified in App Store Connect.
+
+## App Store Positioning Experiment
+
+- Existing App Store localization: English (U.S.) only; in-app Spanish and Simplified Chinese support are unchanged.
+- Subtitle: `Daily Plans & Live Guidance`. The requested `Daily Plans & Live Run Guidance` is 31 characters and Apple rejected it.
+- Promotional text: `Know what to run today with personalized workouts, live guidance, and flexible race plans. Track your progress and share the journey with friends.`
+- Description opens: “Know what to run today. Get a personalized workout, hear guidance during your run, and adjust your training when life changes.” The remaining walking, cycling, and social copy is retained.
+- Keywords: `walk,hike,bike,GPS,tracker,race,workout,training,pace,marathon,5K,fitness,health,cadence,10K`. Inspected and replaced the previous field; no keyword-demand claim is implied.
+- Eight screenshots lead with “Know What to Run Today,” live workout guidance, and race planning. Live sharing shows fictional Sage Runner with populated stats and voice Cheers.
+- Minimum requirements remain iOS 18.0 and watchOS 11.0. Native review prompting is included from merged commit `703f42ba`; no duplicate implementation was added.
+- Positioning is an experiment, with no guaranteed download or organic-search outcome.
 
 ## TestFlight Requirements
 
@@ -54,18 +72,19 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- [iOS] Correct Watch background location declaration for App Store
-- [iOS] Prepare Plainstride 1.7.8 build 59 for public release
-- [iOS] Add Watch and phone-only flow regression tests
-- [iOS] Stabilize stretch audio setup after saving an activity
-- [iOS] Replace stretch countdown speech with clock ticks
-- Plus 87 more fixes and improvements
+- [iOS] Bundle useful coach recordings and deliver sharp speed warnings offline
+- [BE] Publish useful event-specific coaching cues and activate the approved pack
+- [iOS] Explain cadence beats before playback with best-effort speech
+- [BE] Prepare localized cadence beat introductions in coaching plans
+- [iOS] Strengthen cadence drum audibility and clarify output diagnostics
+- Plus 52 more fixes and improvements
 
 ### App Store What's New
 
-- Record runs on Apple Watch, including phone-free workouts, with improved Apple Workout integration.
-- Follow guided post-workout stretches with clearer posture previews, smoother audio, and gentle countdown ticks.
-- Enjoy more reliable activity recording, live coaching, group invitations, and live map sharing.
+- Get clearer live coaching, faster pace-change warnings, and automatic cadence beats with spoken introductions.
+- Review more complete activity history and progress statistics, including improved moving-time and elevation calculations.
+- Share post-workout highlights with route photos, find meetup places on the map, and enjoy smoother camera and map transitions.
+- Includes improvements to Apple Watch recording, outdoor stretches, and localization.
 
 ### How to Report Feedback
 
@@ -180,6 +199,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.7.8 (60)`, validate, and upload from Xcode Organizer.
+- Archive `1.7.9 (61)`, validate, and upload from Xcode Organizer.
 - After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.

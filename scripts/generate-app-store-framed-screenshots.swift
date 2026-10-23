@@ -91,15 +91,16 @@ let legacySlides: [Slide] = [
     ),
 ]
 
-// --current uses only recaptured production views and synthetic fixture data.
+// --current uses recaptured production views plus the retained race-planning capture.
+// All activity and participant data is synthetic; screenshot contents are unaltered.
 let usesCurrentCaptures = CommandLine.arguments.contains("--current")
 let currentSlides: [Slide] = [
-    Slide(filename: "01-start-your-next-run.png", title: "Everything Ready\non One Start Screen", subtitle: "Choose your activity, goal, music, and voice guidance.", screenshot: "01-start.png", titleSize: 88),
-    Slide(filename: "02-follow-your-run.png", title: "Keep Your Run\nin View", subtitle: "Follow your route with live distance and elapsed time.", screenshot: "02-live-run.png", titleSize: 96),
-    Slide(filename: "03-see-your-progress.png", title: "See How Your\nTraining Adds Up", subtitle: "Review your weekly totals and recent activity stats.", screenshot: "03-progress.png", titleSize: 96),
-    Slide(filename: "04-explore-your-trends.png", title: "Watch Your\nConsistency Grow", subtitle: "Compare training periods and explore your activity trends.", screenshot: "04-trends.png", titleSize: 96),
+    Slide(filename: "01-know-what-to-run-today.png", title: "Know What to\nRun Today", subtitle: "Choose your workout, goal, and guidance—then get moving.", screenshot: "01-start.png", titleSize: 100),
+    Slide(filename: "02-live-workout-guidance.png", title: "Live Guidance\nfor Your Run", subtitle: "Keep your route and workout progress in view as you move.", screenshot: "02-live-run.png", titleSize: 96),
+    Slide(filename: "03-plan-your-race.png", title: "Plan Your Race.\nFind Your Pace.", subtitle: "Set a race goal and pacing strategy using your recent training.", screenshot: "../../17-race-planning-light.png", titleSize: 96),
+    Slide(filename: "04-see-your-progress.png", title: "See How Your\nTraining Adds Up", subtitle: "Review your weekly totals and recent activity stats.", screenshot: "03-progress.png", titleSize: 96),
     Slide(filename: "05-share-your-run-live.png", title: "Let Someone\nFollow Your Run", subtitle: "People you invite can follow your run and send voice Cheers.", screenshot: "06-live-sharing.png", titleSize: 96),
-    Slide(filename: "06-find-community-routes.png", title: "Find Your\nNext Route", subtitle: "Explore community routes and choose one for your next activity.", screenshot: "07-community-routes.png", titleSize: 96),
+    Slide(filename: "06-explore-your-trends.png", title: "Watch Your\nConsistency Grow", subtitle: "Compare training periods and explore your activity trends.", screenshot: "04-trends.png", titleSize: 96),
     Slide(filename: "07-run-together.png", title: "Find Your People.\nKeep Moving Together.", subtitle: "Connect, celebrate activities, and plan a run together.", screenshot: "08-social.png", titleSize: 84),
     Slide(filename: "08-revisit-your-run.png", title: "Revisit Your Run\nBeyond the Finish", subtitle: "Review your route, pace, time, and elevation.", screenshot: "09-activity-detail.png", titleSize: 90),
 ]

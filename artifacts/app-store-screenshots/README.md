@@ -1,8 +1,12 @@
 # App Store Screenshots
 
 The latest recapture package is `current/`, captured October 22, 2026 from
-commit `c48df00e` plus simulator-only capture routing. Use `current/framed/`
-in filename order for the updated English review set; `current/raw/` retains
+commit `c48df00e` plus simulator-only capture routing. The `--current` renderer produces the eight-image running-first English set
+for 1.7.9; upload only the eight names in `currentSlides`, since older ignored
+exports can remain in the folder. The sequence is activity start, live guidance, race
+planning, progress, live sharing, trends, Social, and activity detail.
+The first headline stays “Know What to Run Today.” Use `current/framed/`
+for the updated English review set; `current/raw/` retains
 unaltered 1320 × 2868 source captures. Framed exports are opaque 1284 × 2778
 PNGs and preserve source aspect ratios and full screen contents.
 
@@ -14,9 +18,9 @@ new set. It does not claim a real person joined a real session.
 All participants, activities, locations, and stats are synthetic. Captures use the
 current Debug production views, not a Release acceptance run. Raw Records is
 retained for QA only: its sparse three-point fixture produces implausible best
-efforts and no race predictions, so it is excluded from the composed set. Older
-plan, Circle, and race-planning images below are legacy references and are not
-part of the refreshed package. No assets were uploaded or published.
+efforts and no race predictions, so it is excluded from the composed set. The retained `17-race-planning-light.png` capture supplies the race-planning
+slide; its synthetic data and UI are preserved. Older Circle and plan captures
+remain legacy references. The 1.7.9 set is intended for the App Store submission.
 
 Rebuild/install from the current checkout, then capture without XCTest:
 
