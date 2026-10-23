@@ -7,12 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A90000012F9EE6DA00F9B729 /* Ably in Frameworks */ = {isa = PBXBuildFile; productRef = A90000022F9EE6DA00F9B729 /* Ably */; };
 		AB0000052F9EE18E00F9B729 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000042F9EE18E00F9B729 /* FirebaseMessaging */; };
 		AB0000072F9EE18E00F9B729 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000062F9EE18E00F9B729 /* FirebaseAnalytics */; };
 		C10000012F9EE18E00F9B729 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = C10000032F9EE18E00F9B729 /* RevenueCat */; };
 		C10000022F9EE18E00F9B729 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = C10000042F9EE18E00F9B729 /* RevenueCatUI */; };
 		DB3A923F2F9EE6DA00F9B729 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000022F9EE18E00F9B729 /* FirebaseCore */; };
-		A90000012F9EE6DA00F9B729 /* Ably in Frameworks */ = {isa = PBXBuildFile; productRef = A90000022F9EE6DA00F9B729 /* Ably */; };
 		E10000000000000000000004 /* OutboundLiveActivityExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = E10000000000000000000001 /* OutboundLiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		W20000000000000000000004 /* Plainstride Watch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = W20000000000000000000001 /* Plainstride Watch.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -777,8 +777,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_ENTITLEMENTS = SupportFiles/OutboundLiveActivityExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 60;
 				DEVELOPMENT_TEAM = WT54K7D7VH;
 				ENABLE_PREVIEWS = YES;
@@ -808,8 +808,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_ENTITLEMENTS = SupportFiles/OutboundLiveActivityExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 60;
 				DEVELOPMENT_TEAM = WT54K7D7VH;
 				ENABLE_PREVIEWS = YES;
@@ -959,6 +959,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		A90000032F9EE6DA00F9B729 /* XCRemoteSwiftPackageReference "ably-cocoa" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ably/ably-cocoa";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.2.61;
+			};
+		};
 		AB0000012F9EE18E00F9B729 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
@@ -975,14 +983,14 @@
 				minimumVersion = 5.82.0;
 			};
 		};
-		A90000032F9EE6DA00F9B729 /* XCRemoteSwiftPackageReference "ably-cocoa" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/ably/ably-cocoa";
-			requirement = { kind = upToNextMajorVersion; minimumVersion = 1.2.61; };
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		A90000022F9EE6DA00F9B729 /* Ably */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A90000032F9EE6DA00F9B729 /* XCRemoteSwiftPackageReference "ably-cocoa" */;
+			productName = Ably;
+		};
 		AB0000022F9EE18E00F9B729 /* FirebaseCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = AB0000012F9EE18E00F9B729 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
@@ -1007,11 +1015,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = C10000002F9EE18E00F9B729 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
 			productName = RevenueCatUI;
-		};
-		A90000022F9EE6DA00F9B729 /* Ably */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A90000032F9EE6DA00F9B729 /* XCRemoteSwiftPackageReference "ably-cocoa" */;
-			productName = Ably;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
