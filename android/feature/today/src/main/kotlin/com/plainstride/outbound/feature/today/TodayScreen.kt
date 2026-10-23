@@ -45,7 +45,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Checkbox
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.DirectionsBike
@@ -242,7 +242,7 @@ fun TodayRoute(
         onSetUpPlan = onSetUpPlan,
         onBuildPlan = onBuildPlan,
         planPicker = planPicker,
-        onChangePlan = viewModel::openPlanPicker,
+        onWorkoutChangeOpened = viewModel::trackWorkoutChangeOpened,
         onDismissPlanPicker = viewModel::closePlanPicker,
         onRetryPlanPicker = viewModel::openPlanPicker,
         onSelectPlan = viewModel::selectPlanRecommendation,
@@ -308,7 +308,7 @@ fun TodayScreen(
     onSetUpPlan: () -> Unit,
     onBuildPlan: () -> Unit,
     planPicker: PlanPickerUiState = PlanPickerUiState(),
-    onChangePlan: () -> Unit = {},
+    onWorkoutChangeOpened: () -> Unit = {},
     onDismissPlanPicker: () -> Unit = {},
     onRetryPlanPicker: () -> Unit = {},
     onSelectPlan: (com.plainstride.outbound.core.network.PlanRecommendation?) -> Unit = {},
@@ -473,7 +473,7 @@ fun TodayScreen(
                             onCardDisplayChanged(cardMinimized)
                         },
                         onOpen = { onWorkoutDetailsOpened(); showsDetail = true },
-                        onChange = onChangePlan,
+                        onChange = { onWorkoutChangeOpened(); showsChange = true },
                     )
                     state.hasNoCachedSuggestion -> NoSuggestionCard(
                         noPlan = (state.planning as? CachedResource.Available)?.value?.plan == null,
@@ -905,9 +905,9 @@ private fun WorkoutRecommendationCard(
                         Text(stringResource(R.string.today_plan))
                     }
                     TextButton(onClick = onChange, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
-                        Icon(Icons.Default.Autorenew, null)
+                        Icon(Icons.Default.Edit, null)
                         Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.today_change_plan))
+                        Text(stringResource(R.string.today_change))
                     }
                 }
             }

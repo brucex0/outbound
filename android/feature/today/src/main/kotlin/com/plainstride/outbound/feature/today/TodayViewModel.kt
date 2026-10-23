@@ -267,6 +267,13 @@ class TodayViewModel @Inject constructor(
         ),
     )
 
+    fun trackWorkoutChangeOpened() = analytics.record(
+        AnalyticsEvent("planning_surface_opened", mapOf(
+            AnalyticsProperty.SourceType to "workout_change",
+            AnalyticsProperty.EntrySource to "today_planned_card_change",
+        )),
+    )
+
     fun trackPlannedWorkoutDetailsOpened() = analytics.record(
         AnalyticsEvent("planning_surface_opened", mapOf(
             AnalyticsProperty.SourceType to "planned_workout_details",

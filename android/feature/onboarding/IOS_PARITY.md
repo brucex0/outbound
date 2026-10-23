@@ -49,7 +49,7 @@
 ## Status
 
 - First-use onboarding and Settings replay use the reusable plan builder. The Today no-plan entry opens it with `planned_button` analytics attribution.
-- The Today planned-workout card's Change plan action loads reviewed recommendations, supports plan details and build-my-plan routing, and asks before replacing an active plan. Recommendation loading, activation outcomes, and picker entry use bounded analytics.
+- The plan detail's Change plan action loads reviewed recommendations, supports plan details and build-my-plan routing, and asks before replacing an active plan. Today’s card instead opens the one-day workout adjustment sheet through pencil + Change. Recommendation loading, activation outcomes, and picker entry use bounded analytics.
 - Goal intake follows the iOS conversation pattern: quick replies and interpreted text confirm the same objective state, event and review details must be confirmed, confirmed answers can be edited, and established-runner setup can be accepted or adjusted.
 - The typed-goal composer uses the iOS-style up-arrow send control and a compact busy indicator. If intake context is still loading, sending a goal fetches it first and then continues the conversation. Interpreted activities are retained, including running for event goals.
 - The Android objective screen keeps confirmed answers in the conversation, reveals one event/review question at a time, and scrolls as answers arrive. Goal/activity tiles, selected rows, and the welcome promise follow the iOS hierarchy. Its review includes the event or review horizon and optional progress signal.
