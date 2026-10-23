@@ -23,6 +23,12 @@ At live-session activation, iOS preloads the selected voice's reviewed `workout.
 
 There is no TTS WebSocket and no LLM call in the live cue path. HTTP/2 is device-to-Plainstride and gRPC is Plainstride-to-Google. `live_guidance_audio_first_byte` measures the end-to-end product gate separately from response-metadata latency.
 
+### Ordinary-Run Coaching Delivery
+
+- Phrase plans include deterministic, localized execution tips for ordinary runs even while AI planning is pending or unavailable. iOS consumes their explicit `execution_coaching.*` IDs and elapsed triggers; no new cue moment or database shape is introduced. See `docs/live-coaching-moments.md` for scheduling and suppression.
+- Prewarming is eligible for any dynamic session, including a fallback phrase plan. Missing audio releases the device queue and emits a diagnostic rather than repeatedly blocking subsequent cues.
+- After deploying this change, start a new session with an updated iOS build. Existing sessions do not acquire the new instruction timeline. DEBUG route simulation now supplies synthetic cadence; physical runs continue to require measured cadence.
+
 ### Countdown Lookup Contract And Regression Checks
 
 - Fixed start and segment countdowns select reviewed clips by cue key, locale, voice, and persona. Do not pass display digits as a transcript constraint: `3` differs from `Three.`, `Tres.`, and `三。`.
