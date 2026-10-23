@@ -415,7 +415,8 @@ class LiveCoachPlaybackCoordinator @Inject constructor(
 object FixedCueKeys {
     fun forMoment(moment: LiveCoachMoment) = when (moment) {
         LiveCoachMoment.Progress, LiveCoachMoment.TargetLocked, LiveCoachMoment.RacePaceLocked -> "progress.steady"
-        LiveCoachMoment.EarlyOverpace, LiveCoachMoment.RaceStartRestraint -> "coach.early_settle"
+        LiveCoachMoment.EarlyOverpace -> "coach.early_settle"
+        LiveCoachMoment.RaceStartRestraint -> "race.start_restraint"
         LiveCoachMoment.PaceAboveTarget -> "coach.ease_to_target"
         LiveCoachMoment.PaceBelowTarget -> "coach.lift_to_target"
         LiveCoachMoment.PaceInstability -> "coach.smooth_pace"

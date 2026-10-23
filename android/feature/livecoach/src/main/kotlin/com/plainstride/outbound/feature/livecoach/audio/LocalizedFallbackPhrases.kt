@@ -18,7 +18,8 @@ object LocalizedFallbackPhrases {
         val localized = localizedContext(context, localeTag)
         val resource = when (moment) {
             LiveCoachMoment.Progress, LiveCoachMoment.TargetLocked, LiveCoachMoment.RacePaceLocked -> R.string.live_coach_cue_steady
-            LiveCoachMoment.EarlyOverpace, LiveCoachMoment.RaceStartRestraint -> R.string.live_coach_cue_early_settle
+            LiveCoachMoment.EarlyOverpace -> R.string.live_coach_cue_early_settle
+            LiveCoachMoment.RaceStartRestraint -> R.string.live_coach_cue_race_start_restraint
             LiveCoachMoment.PaceAboveTarget -> R.string.live_coach_cue_ease_to_target
             LiveCoachMoment.PaceBelowTarget -> R.string.live_coach_cue_lift_to_target
             LiveCoachMoment.PaceInstability -> R.string.live_coach_cue_smooth_pace
@@ -28,7 +29,7 @@ object LocalizedFallbackPhrases {
             LiveCoachMoment.ClimbStart -> R.string.live_coach_cue_climb
             LiveCoachMoment.CrestRecovery -> R.string.live_coach_cue_crest
             LiveCoachMoment.FinishOpportunity, LiveCoachMoment.RaceLateStrength, LiveCoachMoment.RaceFinalKilometer -> R.string.live_coach_cue_finish
-            LiveCoachMoment.RaceHalfwayAssessment -> R.string.live_coach_goal_distance_halfway
+            LiveCoachMoment.RaceHalfwayAssessment -> R.string.live_coach_cue_race_halfway
             LiveCoachMoment.UnexpectedStop -> R.string.live_coach_cue_pause
             LiveCoachMoment.ResumeAfterBreak -> R.string.live_coach_cue_resume
             LiveCoachMoment.SegmentTransition, LiveCoachMoment.WorkoutInstruction -> R.string.live_coach_cue_segment

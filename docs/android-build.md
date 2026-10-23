@@ -37,6 +37,14 @@ Run from `android/`:
 
 The build must not require Firebase files, signing secrets, provider credentials, or a reachable backend. Release publishing configuration will be added only through secret-backed local or CI inputs.
 
+For shared coach-wording or fallback-resource changes, a focused compile is sufficient:
+
+```sh
+./gradlew :feature:livecoach:compileDebugKotlin
+```
+
+`backend/scripts/verify-live-coach-cues.mjs` also checks current Android fallback keys and all three locales against the shared recorded catalog. It does not establish Android device audibility.
+
 ## Variants
 
 Android 12+ uses `plainstride_splash_icon` with proportional padding to keep the
