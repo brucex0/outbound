@@ -2,6 +2,22 @@ import type { LiveCoachCompiledContext, SupportedAILocale } from "../aiProviders
 import type { LiveCoachGuidancePlan } from "./liveCoachTypes.js";
 
 type Phase = "warmup" | "easy" | "work" | "recovery" | "walk" | "cooldown" | "open";
+const pacerIntroductions: Record<SupportedAILocale, string> = {
+  en: "These beats match your current rhythm. Try one step per beat, keeping the effort comfortable.",
+  es: "Estos golpes siguen tu ritmo actual. Prueba a dar un paso con cada golpe, sin dejar de correr a gusto.",
+  "zh-Hans": "接下来的鼓点会跟随你现在的步频。试着每个鼓点迈一步，保持轻松舒适就好。",
+};
+
+/** Opportunistic device playback only: deliberately has no scheduled trigger. */
+export function cadencePacerIntroductionCues(context: LiveCoachCompiledContext): LiveCoachGuidancePlan["cues"] {
+  if (context.activityType !== "running" || context.race || context.safetyRequiresFixedOnly) return [];
+  return [{
+    id: "cadence_pacer.intro", moment: "workout_instruction", instructionId: "cadence_pacer.intro",
+    phases: ["any"], priority: "steady", cooldownSeconds: 300,
+    phrases: [{ id: "cadence_pacer.intro.0", text: pacerIntroductions[context.locale] }],
+  }];
+}
+
 const scripts: Record<SupportedAILocale, Record<Phase | "breathing" | "form" | "pacing", string>> = {
   en: {
     warmup: "Start gently and build effort gradually; these opening minutes prepare you for the work ahead.",
