@@ -41,10 +41,9 @@ struct LiveMapView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Keep the native map and its camera alive while the camera page is selected.
-                // Recreating it can let MapKit's automatic fit replace the live follow camera.
+                // Keep the native map and its camera alive across page changes. The pager
+                // moves it offscreen; hiding it on selection exposes a blank transition frame.
                 mapSurface
-                    .opacity(activePage == .map ? 1 : 0)
                     .allowsHitTesting(activePage == .map)
                     .accessibilityHidden(activePage != .map)
                 bottomControls(expandedHeight: geometry.size.height)
