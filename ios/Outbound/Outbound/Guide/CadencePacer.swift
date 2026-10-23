@@ -16,7 +16,10 @@ enum CadencePacerBlockReason: String {
 @MainActor
 final class CadencePacer: NSObject, AVAudioPlayerDelegate {
     var eventHandler: ((String) -> Void)?
+    var introductionAudio: (() -> Data?)?
     private var player: AVAudioPlayer?
+    private var isPlayingIntroduction = false
+    private var beatReadyAt: Date?
     private var finishTask: Task<Void, Never>?
     private var observations: [(date: Date, cadence: Int)] = []
     private var lastPlaybackSeconds: Int?
@@ -61,14 +64,17 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
     }
 
     func stop(deactivateSession: Bool = true) {
+        beatReadyAt = nil
         guard let player else { return }
+        let result = isPlayingIntroduction ? "introduction_interrupted" : "interrupted"
+        isPlayingIntroduction = false
         finishTask?.cancel()
         finishTask = nil
         player.stop()
         self.player = nil
         if deactivateSession { deactivateAudioSession() }
-        reportState("interrupted")
-        eventHandler?("interrupted")
+        reportState(result)
+        eventHandler?(result)
     }
 
     func ingest(
@@ -118,11 +124,16 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         // One opportunity after settling into easy running, then at most every five minutes.
         // Never play over the next transition or during hard/recovery/race execution.
         guard player == nil else { return }
+        if let beatReadyAt, Date().timeIntervalSince(beatReadyAt) > 5 {
+            self.beatReadyAt = nil
+        }
         guard snapshot.elapsedSeconds >= 90, phase.elapsed >= 30, phase.remaining >= 35 else {
+            beatReadyAt = nil
             reportState("settling_or_transition")
             return
         }
-        guard lastPlaybackSeconds.map({ snapshot.elapsedSeconds - $0 >= 300 }) ?? true else {
+        guard beatReadyAt != nil
+                || (lastPlaybackSeconds.map({ snapshot.elapsedSeconds - $0 >= 300 }) ?? true) else {
             reportState("cooldown")
             return
         }
@@ -138,7 +149,17 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         let cadenceTarget = sorted[sorted.count / 2]
         // Do not retry an audio failure on every snapshot.
         lastPlaybackSeconds = snapshot.elapsedSeconds
-        play(cadence: cadenceTarget)
+        if beatReadyAt != nil {
+            beatReadyAt = nil
+            play(cadence: cadenceTarget)
+        } else if let introduction = introductionAudio?() {
+            playIntroduction(introduction)
+        } else {
+            reportState("introduction_unavailable")
+            eventHandler?("introduction_unavailable")
+            logger.notice("Cadence pacer introduction unavailable; continuing with beat")
+            play(cadence: cadenceTarget)
+        }
     }
 
     private func phaseWindow(intent: SessionIntent?, elapsed: Int) -> (eligible: Bool, elapsed: Int, remaining: Int) {
@@ -157,6 +178,36 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         let phase = intent?.coachingTarget?.phase ?? .open
         let remaining = intent?.resolvedTargetDurationSeconds.map { $0 - elapsed } ?? Int.max
         return (phase == .easy || phase == .open, elapsed, remaining)
+    }
+
+    private func playIntroduction(_ audio: Data) {
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playback, mode: .spokenAudio,
+                                    options: [.duckOthers, .interruptSpokenAudioAndMixWithOthers])
+            try session.setActive(true)
+            let player = try AVAudioPlayer(data: audio)
+            player.delegate = self
+            guard player.play() else {
+                logger.error("Cadence pacer introduction failed: AVAudioPlayer.play returned false")
+                deactivateAudioSession()
+                beatReadyAt = Date()
+                reportState("introduction_failed")
+                eventHandler?("introduction_failed")
+                return
+            }
+            self.player = player
+            isPlayingIntroduction = true
+            reportState("introduction_started")
+            eventHandler?("introduction_started")
+        } catch {
+            let error = error as NSError
+            logger.error("Cadence pacer introduction failed: domain=\(error.domain, privacy: .public) code=\(error.code)")
+            deactivateAudioSession()
+            beatReadyAt = Date()
+            reportState("introduction_failed")
+            eventHandler?("introduction_failed")
+        }
     }
 
     private func play(cadence: Int) {
@@ -194,7 +245,18 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
     }
 
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        guard self.player === player else { return }
         self.player = nil
+        if isPlayingIntroduction {
+            isPlayingIntroduction = false
+            beatReadyAt = Date()
+            deactivateAudioSession()
+            let result = flag ? "introduction_completed" : "introduction_failed"
+            reportState(result)
+            eventHandler?(result)
+            if !flag { logger.error("Cadence pacer introduction ended unsuccessfully") }
+            return
+        }
         finishTask?.cancel()
         finishTask = nil
         deactivateAudioSession()
@@ -204,8 +266,19 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
     }
 
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        guard self.player === player else { return }
         let error = error as NSError?
         logger.error("Cadence pacer decode failed: code=\(error?.code ?? -1)")
+        if isPlayingIntroduction {
+            player.stop()
+            self.player = nil
+            isPlayingIntroduction = false
+            deactivateAudioSession()
+            beatReadyAt = Date()
+            reportState("introduction_failed")
+            eventHandler?("introduction_failed")
+            return
+        }
         stop()
         eventHandler?("failed")
     }

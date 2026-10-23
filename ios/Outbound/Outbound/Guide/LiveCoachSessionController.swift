@@ -26,6 +26,13 @@ final class LiveCoachSessionController {
 
     var progressPolicy: LiveCoachProgressPolicyDTO? { session?.guidancePlan.progressPolicy }
 
+    var pacerIntroduction: PacerIntroduction? {
+        guard let session, session.effectiveMode == .dynamic,
+              let phrase = session.guidancePlan.cues.first(where: { $0.instructionId == "cadence_pacer.intro" })?.phrases.first,
+              let audio = prewarmedAudioByText[phrase.text] else { return nil }
+        return PacerIntroduction(message: phrase.text, audioData: audio)
+    }
+
     var scheduledInstructions: [ScheduledGuideInstruction] {
         guard session?.effectiveMode == .dynamic else { return [] }
         return session?.guidancePlan.cues.compactMap { cue in
@@ -295,13 +302,16 @@ final class LiveCoachSessionController {
             "race_start_restraint", "race_halfway_assessment", "race_late_fade", "race_final_kilometer",
             "recovery_too_hard", "climb_start", "segment_transition", "finish_opportunity"
         ]
+        let pacerPhrases = response.guidancePlan.cues
+            .filter { $0.instructionId == "cadence_pacer.intro" }
+            .compactMap(\.phrases.first)
         let workoutPhrases = response.guidancePlan.cues
-            .filter { $0.moment == "workout_instruction" }
+            .filter { $0.moment == "workout_instruction" && $0.instructionId != "cadence_pacer.intro" }
             .compactMap(\.phrases.first)
         let reactivePhrases = preferredMoments.compactMap { moment in
             response.guidancePlan.cues.first(where: { $0.moment == moment })?.phrases.first
         }
-        let phrases = Array((workoutPhrases + reactivePhrases).prefix(8))
+        let phrases = Array((pacerPhrases + workoutPhrases + reactivePhrases).prefix(8))
         for phrase in phrases {
             guard !Task.isCancelled, expectedGeneration == generation else { return }
             let cached = await GuidePlannedAudioCache.shared.audioData(
@@ -391,6 +401,7 @@ final class LiveCoachSessionController {
     ) -> String? {
         let eligible = plan.cues.filter { cue in
             cue.moment == moment
+                && (cue.instructionId != "cadence_pacer.intro" || instructionID == "cadence_pacer.intro")
                 && (instructionID == nil || cue.instructionId == instructionID)
                 && (phase == nil || cue.phases.contains("any") || cue.phases.contains(phase!))
         }.flatMap(\.phrases)

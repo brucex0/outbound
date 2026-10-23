@@ -71,6 +71,7 @@ final class VirtualGuide: NSObject, ObservableObject {
     private let audioPlayer: any GuideAudioPlaying
     private let audioPack: any GuideAudioPackProviding
     private let cadencePacer = CadencePacer()
+    private var pacerIntroductionSpeechActive = false
     private let momentDirector = LiveGuidanceDirector()
     private var speechEnabled: Bool
     private var profile: GuideProfile?
@@ -135,8 +136,27 @@ final class VirtualGuide: NSObject, ObservableObject {
             if case .didStart = event { self?.cadencePacer.stop(deactivateSession: false) }
             self?.speechEventHandler?(event)
         }
+        cadencePacer.introductionAudio = { [weak self] in
+            self?.provider.pacerIntroduction?.audioData
+        }
         cadencePacer.eventHandler = { [weak self] result in
-            self?.guidanceEventHandler?(.pacerPlayback(result: result))
+            guard let self else { return }
+            if result == "introduction_started" {
+                self.pacerIntroductionSpeechActive = true
+                if let introduction = self.provider.pacerIntroduction {
+                    self.lastNudge = introduction.message
+                    self.lastSpokenAnnouncement = introduction.message
+                }
+                if let snapshot = self.snapshotHistory.last {
+                    self.rememberGuideSpeech(at: snapshot.elapsedSeconds)
+                }
+                self.speechEventHandler?(.didStart)
+            } else if self.pacerIntroductionSpeechActive,
+                      ["introduction_completed", "introduction_interrupted", "introduction_failed"].contains(result) {
+                self.pacerIntroductionSpeechActive = false
+                self.speechEventHandler?(.didFinish)
+            }
+            self.guidanceEventHandler?(.pacerPlayback(result: result))
         }
         self.audioPlayer.playbackRouteHandler = { [weak self] route in
             self?.guidanceEventHandler?(.audioPlaybackRoute(route: route))

@@ -8,6 +8,7 @@ final class ServerLiveCoachProvider: SessionAnalysisProvider {
     private let controller = LiveCoachSessionController()
     var progressPolicy: LiveCoachProgressPolicyDTO? { controller.progressPolicy }
     var scheduledInstructions: [ScheduledGuideInstruction] { controller.scheduledInstructions }
+    var pacerIntroduction: PacerIntroduction? { controller.pacerIntroduction }
 
     func beginSession(
         profile: GuideProfile?,

@@ -69,12 +69,18 @@ struct ScheduledGuideInstruction {
     let message: String
 }
 
+struct PacerIntroduction {
+    let message: String
+    let audioData: Data
+}
+
 @MainActor
 protocol SessionAnalysisProvider: AnyObject {
     var identifier: String { get }
     var displayName: String { get }
     var progressPolicy: LiveCoachProgressPolicyDTO? { get }
     var scheduledInstructions: [ScheduledGuideInstruction] { get }
+    var pacerIntroduction: PacerIntroduction? { get }
 
     func beginSession(
         profile: GuideProfile?,
@@ -91,6 +97,7 @@ protocol SessionAnalysisProvider: AnyObject {
 
 extension SessionAnalysisProvider {
     var scheduledInstructions: [ScheduledGuideInstruction] { [] }
+    var pacerIntroduction: PacerIntroduction? { nil }
 }
 
 enum SessionAnalysisProviderFactory {

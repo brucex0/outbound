@@ -79,7 +79,7 @@ The app already has a provider-neutral foundation in `Core/Analytics`:
 
 The legacy provider methods still accept vendor-facing string names after the manager boundary, but product surfaces emit typed events and values. New product instrumentation must use the typed contract rather than arbitrary event strings or `[String: Any]` dictionaries.
 
-- Automatic iOS cadence beats emit `live_guidance_pacer_playback` with only bounded `result` (`started`, `completed`, `interrupted`, `failed`). Cadence readings, exact timing, workout content, and identifiers remain excluded. See `docs/live-coaching-moments.md` for signal gates and playback scope.
+- Automatic iOS cadence beats emit `live_guidance_pacer_playback` with only bounded `result` (`started`, `completed`, `interrupted`, `failed`, `introduction_started`, `introduction_completed`, `introduction_interrupted`, `introduction_failed`, `introduction_unavailable`). Introduction results distinguish the explanatory speech from the subsequent beat. Cadence readings, exact timing, workout content, transcripts, and identifiers remain excluded. See `docs/live-coaching-moments.md` for signal gates and playback scope.
 
 - Scheduled execution instructions emit `live_guidance_execution_coaching` with only `result = scheduled`, `spoken`, or `audio_unavailable`. Instruction IDs, text, cadence, exact metrics, and timestamps are excluded.
 
