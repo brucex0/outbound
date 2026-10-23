@@ -11,6 +11,9 @@ struct CommunityRouteLibraryView: View {
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var store: CommunityRouteStore
     @StateObject private var locator = RouteDiscoveryLocator()
+#if DEBUG
+    @AppStorage("debug_route_test_mode") private var routeTestMode = false
+#endif
     @State private var query = ""
     @State private var myRoutesOnly = false
     @State private var nearbyActive = false
@@ -56,16 +59,24 @@ struct CommunityRouteLibraryView: View {
                     || $0.owner.displayName.localizedCaseInsensitiveContains(term)
             }
         }
-#if DEBUG
-        return [HarvestHalfMarathonSimulation.communityRoute]
-            + storedRoutes.filter { $0.id != HarvestHalfMarathonSimulation.routeID }
-#else
         return storedRoutes
-#endif
     }
 
     var body: some View {
         List {
+#if DEBUG
+            Section {
+                Toggle(String(localized: "route.library.test_mode", defaultValue: "Test Mode"), isOn: $routeTestMode)
+                    .onChange(of: routeTestMode) { _, enabled in
+                        Task {
+                            await analyticsManager?.track(.init(.activityConfigurationChanged, properties: [
+                                .changeType: .string("route_test_mode"),
+                                .selectionType: .string(enabled ? "enabled" : "disabled")
+                            ]))
+                        }
+                    }
+            }
+#endif
             Section {
                     HStack(spacing: 6) {
                         TextField(
@@ -510,14 +521,6 @@ private struct CommunityRouteRow: View {
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
-#if DEBUG
-                if route.id == HarvestHalfMarathonSimulation.routeID {
-                    Text(String(localized: "route.library.test_badge", defaultValue: "Test"))
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(.orange)
-                        .accessibilityLabel(String(localized: "route.library.test_badge.accessibility", defaultValue: "Test route"))
-                }
-#endif
             }
             Spacer()
             if route.isBookmarked && !route.isOwnedByCurrentUser {

@@ -150,6 +150,7 @@ struct RecordView: View {
     @State private var isLocationPermissionGranted = false
     @State private var isLocationPermissionModalPresented = false
 #if DEBUG
+    @AppStorage("debug_route_test_mode") private var routeTestMode = false
     @State private var isRunSimulationEnabled = false
     @State private var liveGroupTopControlsHeight: CGFloat = 0
     @State private var didConfigureRequestedGroupRecoveryTest = false
@@ -385,8 +386,12 @@ struct RecordView: View {
             onPreActivityRouteChange?(route)
         }
 #if DEBUG
+        .onChange(of: routeTestMode) { _, enabled in
+            guard recorder.state == .idle else { return }
+            isRunSimulationEnabled = enabled && plannedIntent?.preparedRoute != nil
+        }
         .onChange(of: plannedIntent?.preparedRoute?.id, initial: true) { _, routeID in
-            isRunSimulationEnabled = routeID == HarvestHalfMarathonSimulation.routeID
+            isRunSimulationEnabled = routeID != nil && routeTestMode
                 && recorder.state == .idle
         }
 #endif
@@ -1422,6 +1427,7 @@ struct RecordView: View {
         tracksChange: Bool = true
     ) {
         guard recorder.state == .idle else { return }
+        routeTestMode = enabled
         isRunSimulationEnabled = enabled
 
         if enabled {
@@ -1434,6 +1440,7 @@ struct RecordView: View {
             intentBeforeSelectedRoute = nil
             isIndoorSession = false
             applyRoute(HarvestHalfMarathonSimulation.route)
+            isRunSimulationEnabled = true
         } else if plannedIntent?.preparedRoute?.id == HarvestHalfMarathonSimulation.routeID {
             applyRoute(nil)
         }
@@ -1622,17 +1629,16 @@ struct RecordView: View {
     private func startRecorder(routeGuidance: ActiveRouteGuidanceJournal?) {
 #if DEBUG
         if isRunSimulationEnabled,
-           let routeGuidance,
-           routeGuidance.route.id == HarvestHalfMarathonSimulation.routeID {
+           let routeGuidance {
             recorder.startRunSimulation(
-                activityType: .running,
+                activityType: activeIntent?.resolvedActivityType ?? .running,
                 routeGuidance: routeGuidance,
                 route: routeGuidance.route,
                 activityEvent: activeIntent?.activityEvent,
                 liveGroupSessionID: liveGroupStore.isSharing ? liveGroupStore.activeSession?.id : nil
             )
             track(.init(.activitySimulationStarted, properties: [
-                .sourceType: .string("harvest_half"),
+                .sourceType: .string("selected_route"),
                 .distanceBucket: .string(ProductAnalyticsBucket.distance(
                     meters: recorder.runSimulationState?.routeDistanceMeters ?? 0
                 )),
@@ -5342,9 +5348,7 @@ struct RecordView: View {
 
     private func removeSelectedRoute(_ route: PreparedRoute) {
 #if DEBUG
-        if route.id == HarvestHalfMarathonSimulation.routeID {
-            isRunSimulationEnabled = false
-        }
+        isRunSimulationEnabled = false
 #endif
         applyRoute(nil)
         track(.init(.routeRemoved, properties: [.sourceType: .string(route.source.rawValue)]))
@@ -5379,7 +5383,7 @@ struct RecordView: View {
 
     private func applyRoute(_ route: PreparedRoute?) {
 #if DEBUG
-        isRunSimulationEnabled = route?.id == HarvestHalfMarathonSimulation.routeID
+        isRunSimulationEnabled = route != nil && routeTestMode
 #endif
         let currentIntent = plannedIntent ?? .freestyleRun
         if let route {

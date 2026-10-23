@@ -17716,6 +17716,29 @@
         }
       }
     },
+    "route.library.test_mode": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test Mode"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modo de prueba"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "测试模式"
+          }
+        }
+      }
+    },
     "route.library.test_badge": {
       "comment": "[android:community] Label shown on the built-in debug-only route.",
       "localizations": {
