@@ -34,6 +34,20 @@ Enter the Mac login password when prompted. The helper unlocks `~/Library/Keycha
 - The device UDID may still appear inside `devicectl` JSON and local hostnames, but the build helper no longer depends on Xcode listing the phone as a direct build destination.
 - If launch fails with "profile has not been explicitly trusted by the user", trust the personal development profile on the phone: Settings -> General -> VPN & Device Management -> Developer App -> Trust.
 
+## Read Device Coaching Logs
+
+- Prefer the connected phone's Console stream filtered to process `Outbound`. Read recent history with `log collect --device-udid DEVICE_UDID --last 30m`; Apple's attached-device collector requires administrator access. Never restart an active recording just to attach a console.
+- When Console is stalled and administrator access is unavailable, `pymobiledevice3` can read the existing Apple tunnel. Install it in a temporary virtual environment, then use the selected phone's actual UDID:
+
+  ```sh
+  python -m pymobiledevice3 syslog live --native --udid DEVICE_UDID \
+    --process-name Outbound --insensitive-regex 'coach|cadence|guide|speech|audio'
+  ```
+
+- `--native` can temporarily displace Xcode/CoreDevice's tunnel connection; it does not restart the app. Stop this reader before opening another native reader. USB devices can omit `--native`.
+- Historical `syslog collect` archives may contain unrelated private device logs. Keep them local, filter to the app's coaching/audio diagnostics, and remove the broad temporary archive after extracting the necessary evidence. Never paste tokens, request bodies, location, or user content into diagnostics or commits.
+- Beat diagnostics are in subsystem `com.plainstride`, category `CadencePacer`; session/prewarm errors use `plainstride.outbound`, category `ActivityLifecycle`. See `docs/live-coach-operations.md` for the confirmed prewarm incident and the distinction between playback requests and listening verification.
+
 ## Build-Only Checks
 
 Use build-only checks for normal validation. Do not run tests unless the user asks.

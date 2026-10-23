@@ -11,6 +11,9 @@ final class LiveCoachSessionController {
     private var planRefreshTask: Task<Void, Never>?
     private var voiceProfileID = ""
     private var sessionRequestedForEligibleSport = false
+    // The server permits eight prefetch requests per session, across all plan versions.
+    private var prewarmRequestCount = 0
+    private var prewarmedAudioByText: [String: Data] = [:]
 
     var effectiveMode: LiveCoachAudioMode {
         session?.effectiveMode
@@ -44,6 +47,8 @@ final class LiveCoachSessionController {
     ) {
         end(report: nil)
         phraseUseCounts = [:]
+        prewarmRequestCount = 0
+        prewarmedAudioByText = [:]
         guard let persona else { return }
         guard (intent?.sport ?? persona.template.sport) == .run else { return }
         sessionRequestedForEligibleSport = true
@@ -260,6 +265,8 @@ final class LiveCoachSessionController {
         planRefreshTask = nil
         createTask?.cancel()
         createTask = nil
+        prewarmedAudioByText = [:]
+        prewarmRequestCount = 0
         guard let session else {
             self.session = nil
             return
@@ -303,7 +310,23 @@ final class LiveCoachSessionController {
                 phraseID: phrase.id
             )
             guard !Task.isCancelled, expectedGeneration == generation else { return }
-            if cached != nil { continue }
+            if let cached {
+                prewarmedAudioByText[phrase.text] = cached
+                continue
+            }
+            if let reused = prewarmedAudioByText[phrase.text] {
+                // A new plan hash does not change an identical sentence in the same voice/session.
+                await GuidePlannedAudioCache.shared.store(
+                    reused, planHash: response.guidancePlanHash,
+                    voiceProfileID: voiceProfileID, phraseID: phrase.id
+                )
+                continue
+            }
+            guard prewarmRequestCount < 8 else {
+                ActivityDiagnosticLog.notice(.lifecycle, "Coach prewarm stopped reason=session_budget")
+                break
+            }
+            prewarmRequestCount += 1
             let audio: Data
             do {
                 audio = try await APIClient.shared.fetchLiveCoachPhraseAudio(
@@ -312,10 +335,12 @@ final class LiveCoachSessionController {
             } catch is CancellationError {
                 return // Session replacement intentionally cancels prewarming.
             } catch {
+                if Task.isCancelled { return } // Plan attachment cancels obsolete prewarming.
                 ActivityDiagnosticLog.error(.lifecycle, "Coach phrase prewarm failed error=\(ActivityDiagnosticLog.errorCategory(error))")
                 continue
             }
             guard !Task.isCancelled, expectedGeneration == generation else { return }
+            prewarmedAudioByText[phrase.text] = audio
             await GuidePlannedAudioCache.shared.store(
                 audio,
                 planHash: response.guidancePlanHash,

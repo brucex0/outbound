@@ -2,6 +2,15 @@ import AVFoundation
 import Foundation
 import OSLog
 
+enum CadencePacerBlockReason: String {
+    case audioDisabled = "audio_disabled"
+    case quiet
+    case speech
+    case analysis
+    case queuedCue = "queued_cue"
+    case routePriority = "route_priority"
+}
+
 /// Brief footfall beats, matched to measured cadence, never a speed prescription.
 /// Missing or unstable cadence deliberately produces silence rather than a default target.
 @MainActor
@@ -12,6 +21,7 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
     private var observations: [(date: Date, cadence: Int)] = []
     private var lastPlaybackSeconds: Int?
     private var lastSnapshot: ActiveSessionSnapshot?
+    private var lastReportedState: String?
     private var interruptionObserver: NSObjectProtocol?
     private var routeObserver: NSObjectProtocol?
     private let logger = Logger(subsystem: "com.plainstride", category: "CadencePacer")
@@ -41,6 +51,7 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
     func reset() {
         suspend()
         lastPlaybackSeconds = nil
+        lastReportedState = nil
     }
 
     func suspend() {
@@ -56,10 +67,14 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         player.stop()
         self.player = nil
         if deactivateSession { deactivateAudioSession() }
+        reportState("interrupted")
         eventHandler?("interrupted")
     }
 
-    func ingest(_ snapshot: ActiveSessionSnapshot, intent: SessionIntent?, allowed: Bool) {
+    func ingest(
+        _ snapshot: ActiveSessionSnapshot, intent: SessionIntent?, allowed: Bool,
+        blockReason: CadencePacerBlockReason? = nil
+    ) {
         if let lastSnapshot,
            snapshot.recordedAt.timeIntervalSince(lastSnapshot.recordedAt) > 8
                 || snapshot.recordedAt < lastSnapshot.recordedAt
@@ -71,32 +86,54 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             ? snapshot.startedAt?.addingTimeInterval(Double(snapshot.elapsedSeconds)) ?? snapshot.recordedAt
             : snapshot.recordedAt
         observations.removeAll { evidenceNow.timeIntervalSince($0.date) > 25 }
-        guard snapshot.isActive, snapshot.activityType == .running else { suspend(); return }
+        guard snapshot.isActive, snapshot.activityType == .running else {
+            suspend()
+            reportState("inactive_or_unsupported")
+            return
+        }
         guard let cadence = snapshot.cadenceStepsPerMinute,
               let timestamp = snapshot.cadenceEvidenceTimestamp,
               (100...220).contains(cadence),
               (-1...5).contains(evidenceNow.timeIntervalSince(timestamp)) else {
             observations = []
             stop()
+            reportState("cadence_unavailable")
             return
         }
         if observations.last.map({ timestamp > $0.date }) ?? true {
             observations.append((timestamp, cadence))
         }
         if let target = intent?.resolvedTargetDistanceMeters,
-           target - snapshot.distanceMeters <= 200 { stop(); return }
+           target - snapshot.distanceMeters <= 200 {
+            stop()
+            reportState("near_finish")
+            return
+        }
         let phase = phaseWindow(intent: intent, elapsed: snapshot.elapsedSeconds)
-        guard allowed, phase.eligible else { stop(); return }
+        guard allowed, phase.eligible else {
+            stop()
+            reportState(allowed ? "phase_ineligible" : blockReason?.rawValue ?? "audio_priority")
+            return
+        }
         // One opportunity after settling into easy running, then at most every five minutes.
         // Never play over the next transition or during hard/recovery/race execution.
-        guard player == nil, snapshot.elapsedSeconds >= 90,
-              phase.elapsed >= 30, phase.remaining >= 35,
-              lastPlaybackSeconds.map({ snapshot.elapsedSeconds - $0 >= 300 }) ?? true,
-              observations.count >= 8,
+        guard player == nil else { return }
+        guard snapshot.elapsedSeconds >= 90, phase.elapsed >= 30, phase.remaining >= 35 else {
+            reportState("settling_or_transition")
+            return
+        }
+        guard lastPlaybackSeconds.map({ snapshot.elapsedSeconds - $0 >= 300 }) ?? true else {
+            reportState("cooldown")
+            return
+        }
+        guard observations.count >= 8,
               let first = observations.first, let last = observations.last,
               last.date.timeIntervalSince(first.date) >= 15,
               let low = observations.map(\.cadence).min(),
-              let high = observations.map(\.cadence).max(), high - low <= 12 else { return }
+              let high = observations.map(\.cadence).max(), high - low <= 12 else {
+            reportState("cadence_not_established")
+            return
+        }
         let sorted = observations.map(\.cadence).sorted()
         let cadenceTarget = sorted[sorted.count / 2]
         // Do not retry an audio failure on every snapshot.
@@ -138,6 +175,10 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
                 return
             }
             self.player = player
+            let output = session.outputVolume == 0 ? "muted" : "audible"
+            let route = session.currentRoute.outputs.first?.portType.rawValue ?? "none"
+            logger.notice("Cadence pacer started route=\(route, privacy: .public) output=\(output, privacy: .public)")
+            reportState("playing")
             eventHandler?("started")
             finishTask = Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .seconds(15))
@@ -157,6 +198,7 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         finishTask?.cancel()
         finishTask = nil
         deactivateAudioSession()
+        reportState(flag ? "completed" : "failed")
         eventHandler?(flag ? "completed" : "failed")
         if !flag { logger.error("Cadence pacer playback ended unsuccessfully") }
     }
@@ -166,6 +208,13 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         logger.error("Cadence pacer decode failed: code=\(error?.code ?? -1)")
         stop()
         eventHandler?("failed")
+    }
+
+    private func reportState(_ state: String) {
+        guard state != lastReportedState else { return }
+        lastReportedState = state
+        // Closed technical states only; no cadence, timestamps, names or workout content.
+        logger.notice("Cadence pacer state=\(state, privacy: .public)")
     }
 
     private func deactivateAudioSession() {

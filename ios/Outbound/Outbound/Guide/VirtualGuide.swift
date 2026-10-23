@@ -295,11 +295,19 @@ final class VirtualGuide: NSObject, ObservableObject {
         processPendingMoment(using: snapshot)
         cadencePacer.ingest(
             snapshot, intent: sessionIntent,
-            allowed: speechEnabled && persona?.coachingContract != .quiet
-                && !audioPlayer.isSpeaking && !isAnalyzing && pendingMoment == nil
-                && queuedMoments.isEmpty
-                && (routeSpeechQuietUntil.map { $0 <= Date() } ?? true)
+            allowed: pacerBlockReason == nil,
+            blockReason: pacerBlockReason
         )
+    }
+
+    private var pacerBlockReason: CadencePacerBlockReason? {
+        if !speechEnabled { return .audioDisabled }
+        if persona?.coachingContract == .quiet { return .quiet }
+        if audioPlayer.isSpeaking { return .speech }
+        if isAnalyzing { return .analysis }
+        if pendingMoment != nil || !queuedMoments.isEmpty { return .queuedCue }
+        if routeSpeechQuietUntil.map({ $0 > Date() }) ?? false { return .routePriority }
+        return nil
     }
 
     func handleRecordingStateTransition(

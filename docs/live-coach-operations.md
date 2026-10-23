@@ -29,6 +29,13 @@ There is no TTS WebSocket and no LLM call in the live cue path. HTTP/2 is device
 - Prewarming is eligible for any dynamic session, including a fallback phrase plan. Missing audio releases the device queue and emits a diagnostic rather than repeatedly blocking subsequent cues.
 - After deploying this change, start a new session with an updated iOS build. Existing sessions do not acquire the new instruction timeline. DEBUG route simulation now supplies synthetic cadence; physical runs continue to require measured cadence.
 
+### Device Diagnosis: Prewarm Across Plan Attachment
+
+- A device session on 2026-10-22 showed a fallback-plan prewarm followed by another prewarm when the prepared plan attached. Server request timing confirmed duplicate sentence requests and HTTP 429 after the eight-request session allowance was consumed. This confirms prewarm throttling, not the cause of every silent cue or an unheard cadence beat.
+- iOS now shares that eight-request budget across plan versions and reuses audio only for exactly matching text within the same voice/session. Cancellation of obsolete prewarming is normal control flow. Ending a session clears the in-memory text/audio map. The server allowance is unchanged.
+- Cadence logs now emit changed technical states (`cadence_unavailable`, `cadence_not_established`, `phase_ineligible`, `settling_or_transition`, `cooldown`, `near_finish`, `audio_disabled`, `quiet`, `speech`, `analysis`, `queued_cue`, `route_priority`, `playing`, `interrupted`, `completed`, `failed`). Start logs contain only output port type and a muted/audible volume category. These logs contain no cadence values, exact timing, workout text, or device names.
+- Treat a start log as an accepted playback request, not listening verification. Diagnose the actual suppression state before changing eligibility policy; do not infer a queue fault solely from sparse speech.
+
 ### Countdown Lookup Contract And Regression Checks
 
 - Fixed start and segment countdowns select reviewed clips by cue key, locale, voice, and persona. Do not pass display digits as a transcript constraint: `3` differs from `Three.`, `Tres.`, and `三。`.
