@@ -1,9 +1,47 @@
 # App Store Screenshots
 
-Upload these iPhone screenshots in filename order. Each PNG is 1284 × 2778
-pixels with no alpha channel, matching an App Store Connect-supported size.
+The latest recapture package is `current/`, captured October 22, 2026 from
+commit `c48df00e` plus simulator-only capture routing. Use `current/framed/`
+in filename order for the updated English review set; `current/raw/` retains
+unaltered 1320 × 2868 source captures. Framed exports are opaque 1284 × 2778
+PNGs and preserve source aspect ratios and full screen contents.
 
-## Latest Light And Dark Retake Set
+The live-sharing image now shows the **follower's view of Sage Runner's active
+run**, including the map marker, distance, time, current pace, heart rate, and
+voice Cheer control. It replaces the empty trusted-contact setup concept in the
+new set. It does not claim a real person joined a real session.
+
+All participants, activities, locations, and stats are synthetic. Captures use the
+current Debug production views, not a Release acceptance run. Raw Records is
+retained for QA only: its sparse three-point fixture produces implausible best
+efforts and no race predictions, so it is excluded from the composed set. Older
+plan, Circle, and race-planning images below are legacy references and are not
+part of the refreshed package. No assets were uploaded or published.
+
+Rebuild/install from the current checkout, then capture without XCTest:
+
+```sh
+SIMULATOR_ID=4C2C54CB-2E70-45A4-AE9B-A59E940AD862 \
+  ./scripts/build-install-bruce-main.sh --simulator --with-social
+SIMULATOR_ID=4C2C54CB-2E70-45A4-AE9B-A59E940AD862 \
+  ./scripts/capture-app-store-screenshots.sh
+swift -module-cache-path /tmp/plainstride-screenshot-module-cache \
+  scripts/generate-app-store-framed-screenshots.swift --current
+```
+
+Use an iPhone 17 Pro Max simulator with the current app installed. The capture
+script sets a synthetic Golden Gate Park location, uses a loopback API override,
+disables Firebase, dismisses discovery tips through launch defaults, and clears
+only this simulator app's recording/photo journals on each explicitly seeded
+capture launch. Use a dedicated capture simulator if it contains valuable data.
+Allow MapKit tiles to load; increase `CAPTURE_SETTLE_SECONDS` above 12 if needed.
+Inspect every image before upload. Screenshot routing compiles only for Debug
+simulator builds, and production analytics behavior is unchanged.
+
+Apple's [screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications)
+accept both source and framed dimensions (checked October 22, 2026).
+
+## Previous Light And Dark Retake Set
 
 1. `01-today-light.png` and `01-today-dark.png` — current Today workout and Circle progress
 2. `03-live-redmond-half-light.png` and `03-live-redmond-half-dark.png` — Redmond Harvest half-marathon GPX simulation at 45:00 and 41% route progress

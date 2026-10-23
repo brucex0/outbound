@@ -11,7 +11,7 @@ struct Slide {
     let titleSize: CGFloat
 }
 
-let slides: [Slide] = [
+let legacySlides: [Slide] = [
     Slide(
         filename: "01-know-what-to-run-today.png",
         title: "Know What to\nRun Today",
@@ -91,18 +91,32 @@ let slides: [Slide] = [
     ),
 ]
 
+// --current uses only recaptured production views and synthetic fixture data.
+let usesCurrentCaptures = CommandLine.arguments.contains("--current")
+let currentSlides: [Slide] = [
+    Slide(filename: "01-start-your-next-run.png", title: "Everything Ready\non One Start Screen", subtitle: "Choose your activity, goal, music, and voice guidance.", screenshot: "01-start.png", titleSize: 88),
+    Slide(filename: "02-follow-your-run.png", title: "Keep Your Run\nin View", subtitle: "Follow your route with live distance and elapsed time.", screenshot: "02-live-run.png", titleSize: 96),
+    Slide(filename: "03-see-your-progress.png", title: "See How Your\nTraining Adds Up", subtitle: "Review your weekly totals and recent activity stats.", screenshot: "03-progress.png", titleSize: 96),
+    Slide(filename: "04-explore-your-trends.png", title: "Watch Your\nConsistency Grow", subtitle: "Compare training periods and explore your activity trends.", screenshot: "04-trends.png", titleSize: 96),
+    Slide(filename: "05-share-your-run-live.png", title: "Let Someone\nFollow Your Run", subtitle: "People you invite can follow your run and send voice Cheers.", screenshot: "06-live-sharing.png", titleSize: 96),
+    Slide(filename: "06-find-community-routes.png", title: "Find Your\nNext Route", subtitle: "Explore community routes and choose one for your next activity.", screenshot: "07-community-routes.png", titleSize: 96),
+    Slide(filename: "07-run-together.png", title: "Find Your People.\nKeep Moving Together.", subtitle: "Connect, celebrate activities, and plan a run together.", screenshot: "08-social.png", titleSize: 84),
+    Slide(filename: "08-revisit-your-run.png", title: "Revisit Your Run\nBeyond the Finish", subtitle: "Review your route, pace, time, and elevation.", screenshot: "09-activity-detail.png", titleSize: 90),
+]
+let slides = usesCurrentCaptures ? currentSlides : legacySlides
+
 let fileManager = FileManager.default
 let repositoryRoot = URL(fileURLWithPath: fileManager.currentDirectoryPath)
-let sourceDirectory = repositoryRoot.appendingPathComponent("artifacts/app-store-screenshots")
+let sourceDirectory = repositoryRoot.appendingPathComponent(usesCurrentCaptures ? "artifacts/app-store-screenshots/current/raw" : "artifacts/app-store-screenshots")
 let legacySourceDirectory = repositoryRoot.appendingPathComponent("artifacts/artifacts/app-store-screenshots")
-let outputDirectory = sourceDirectory.appendingPathComponent("framed-light")
+let outputDirectory = usesCurrentCaptures ? repositoryRoot.appendingPathComponent("artifacts/app-store-screenshots/current/framed") : sourceDirectory.appendingPathComponent("framed-light")
 let canonicalBackgroundURL = outputDirectory.appendingPathComponent("background-route-ivory.png")
 let legacyBackgroundURL = repositoryRoot.appendingPathComponent("artifacts/artifacts/app-store-screenshots/framed-light/background-route-ivory.png")
 let backgroundURL = fileManager.fileExists(atPath: canonicalBackgroundURL.path)
     ? canonicalBackgroundURL
     : legacyBackgroundURL
 
-guard fileManager.fileExists(atPath: backgroundURL.path) else {
+guard usesCurrentCaptures || fileManager.fileExists(atPath: backgroundURL.path) else {
     fputs("Missing background: \(backgroundURL.path)\n", stderr)
     exit(1)
 }
@@ -171,7 +185,12 @@ func drawText(
         .paragraphStyle: paragraph,
         .kern: kern,
     ]
-    NSAttributedString(string: text, attributes: attributes).draw(in: rect)
+    let attributed = NSAttributedString(string: text, attributes: attributes)
+    if usesCurrentCaptures {
+        let measured = attributed.boundingRect(with: NSSize(width: rect.width, height: .greatestFiniteMagnitude), options: [.usesLineFragmentOrigin, .usesFontLeading])
+        precondition(measured.height <= rect.height + 1, "Text exceeds screenshot caption box: \(text)")
+    }
+    attributed.draw(in: rect)
 }
 
 func drawRoundedImage(_ screenshot: NSImage, top: CGFloat) {
@@ -190,7 +209,13 @@ func drawRoundedImage(_ screenshot: NSImage, top: CGFloat) {
 
     NSGraphicsContext.saveGraphicsState()
     NSBezierPath(roundedRect: screenRect, xRadius: 82, yRadius: 82).addClip()
-    aspectFill(screenshot, in: screenRect)
+    if usesCurrentCaptures {
+        let scale = min(screenRect.width / screenshot.size.width, screenRect.height / screenshot.size.height)
+        let size = NSSize(width: screenshot.size.width * scale, height: screenshot.size.height * scale)
+        screenshot.draw(in: NSRect(x: screenRect.midX - size.width / 2, y: screenRect.midY - size.height / 2, width: size.width, height: size.height))
+    } else {
+        aspectFill(screenshot, in: screenRect)
+    }
     NSGraphicsContext.restoreGraphicsState()
 
     gold.withAlphaComponent(0.64).setStroke()
@@ -215,7 +240,7 @@ func render(slide: Slide, index: Int, background: NSImage) throws {
         height: canvasHeight,
         bitsPerComponent: 8,
         bytesPerRow: canvasWidth * 4,
-        space: CGColorSpaceCreateDeviceRGB(),
+        space: usesCurrentCaptures ? CGColorSpace(name: CGColorSpace.sRGB)! : CGColorSpaceCreateDeviceRGB(),
         bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
     ) else {
         throw NSError(domain: "PlainstrideScreenshots", code: 2, userInfo: [NSLocalizedDescriptionKey: "Unable to create output canvas"])
@@ -228,7 +253,7 @@ func render(slide: Slide, index: Int, background: NSImage) throws {
 
     NSColor(calibratedRed: 0.98, green: 0.965, blue: 0.925, alpha: 1).setFill()
     NSBezierPath(rect: NSRect(origin: .zero, size: canvasSize)).fill()
-    aspectFill(background, in: NSRect(origin: .zero, size: canvasSize))
+    if !usesCurrentCaptures { aspectFill(background, in: NSRect(origin: .zero, size: canvasSize)) }
     NSColor.white.withAlphaComponent(0.14).setFill()
     NSBezierPath(rect: NSRect(origin: .zero, size: canvasSize)).fill()
 
@@ -241,7 +266,7 @@ func render(slide: Slide, index: Int, background: NSImage) throws {
     let counterRect = rectFromTop(x: 1050, top: 88, width: 142, height: 58)
     NSColor.white.withAlphaComponent(0.74).setFill()
     NSBezierPath(roundedRect: counterRect, xRadius: 29, yRadius: 29).fill()
-    let counterText = index <= 10 ? String(format: "%02d / 10", index) : "ALT"
+    let counterText = usesCurrentCaptures ? String(format: "%02d / %02d", index, slides.count) : (index <= 10 ? String(format: "%02d / 10", index) : "ALT")
     drawText(counterText, in: rectFromTop(x: 1050, top: 100, width: 142, height: 36), font: NSFont.monospacedDigitSystemFont(ofSize: 24, weight: .medium), color: secondaryInk, alignment: .center, kern: 1)
 
     drawText(slide.title, in: rectFromTop(x: 92, top: 218, width: 1096, height: 250), font: NSFont.systemFont(ofSize: slide.titleSize, weight: .bold), color: ink, lineSpacing: 2, kern: -1.8)
@@ -266,7 +291,7 @@ func render(slide: Slide, index: Int, background: NSImage) throws {
     try data.write(to: outputDirectory.appendingPathComponent(slide.filename), options: .atomic)
 }
 
-guard let background = NSImage(contentsOf: backgroundURL) else {
+guard let background = usesCurrentCaptures ? NSImage(size: canvasSize) : NSImage(contentsOf: backgroundURL) else {
     fputs("Unable to read background: \(backgroundURL.path)\n", stderr)
     exit(1)
 }
@@ -275,6 +300,21 @@ do {
     for (offset, slide) in slides.enumerated() {
         try render(slide: slide, index: offset + 1, background: background)
         print("Rendered \(slide.filename)")
+    }
+    if usesCurrentCaptures {
+        let width = 1284, height = 1389
+        let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
+        NSColor.white.setFill()
+        NSBezierPath(rect: NSRect(x: 0, y: 0, width: width, height: height)).fill()
+        for (index, slide) in slides.enumerated() {
+            let image = NSImage(contentsOf: outputDirectory.appendingPathComponent(slide.filename))!
+            image.draw(in: NSRect(x: CGFloat(index % 4) * 321, y: CGFloat(1 - index / 4) * 694.5, width: 321, height: 694.5))
+        }
+        NSGraphicsContext.restoreGraphicsState()
+        let data = NSBitmapImageRep(cgImage: context.makeImage()!).representation(using: .png, properties: [:])!
+        try data.write(to: outputDirectory.deletingLastPathComponent().appendingPathComponent("review-sheet.png"))
     }
 } catch {
     fputs("\(error.localizedDescription)\n", stderr)

@@ -6,7 +6,17 @@ struct RunnerProgressView: View {
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var gearStore: GearStore
     @Environment(\.analyticsManager) private var analyticsManager
-    @State private var selectedTab: RunnerProgressTab = .now
+    @State private var selectedTab: RunnerProgressTab = {
+#if DEBUG && targetEnvironment(simulator)
+        let arguments = ProcessInfo.processInfo.arguments
+        if let index = arguments.firstIndex(of: "-OutboundScreenshotScreen"),
+           arguments.indices.contains(index + 1),
+           let tab = RunnerProgressTab(rawValue: arguments[index + 1]) {
+            return tab
+        }
+#endif
+        return .now
+    }()
     @State private var selectedTrendRange: ProgressTrendRange = .fourWeeks
     @State private var selectedTrendMetric: ProgressMetric = .distance
     @State private var selectedActivityType = ActivityType.running.rawValue

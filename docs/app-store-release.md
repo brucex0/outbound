@@ -342,7 +342,16 @@ version is already waiting for review.
   npm run db:rebuild
   ```
 
-## Header, Search Creative, And First Three Screenshots
+## Current Screenshot Recaptures
+
+The current English review package is `artifacts/app-store-screenshots/current/`.
+Open [the screenshot README](../artifacts/app-store-screenshots/README.md) for
+capture/build commands, source provenance, synthetic-data limits, and the ordered
+framed set. The live-sharing image now demonstrates the follower view of a
+populated active run rather than empty trusted-contact setup. These Debug
+captures need release-equivalent review before submission; no upload is implied.
+
+## Previous Header, Search Creative, And First Three Screenshots
 
 Generate the coordinated static asset set from existing local captures and the
 repository's coastal-trail photo (no app build or test run required):

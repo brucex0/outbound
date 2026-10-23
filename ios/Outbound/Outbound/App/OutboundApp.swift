@@ -52,6 +52,12 @@ struct OutboundApp: App {
 
     init() {
 #if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.arguments.contains("-OutboundScreenshotCapture"),
+           ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData") {
+            // Repeated captures must not restore a previous synthetic recording.
+            ActiveSessionJournal.clear(reason: .discarded)
+            _ = ActiveSessionPhotoJournal.clear()
+        }
         WatchWorkoutFlowUITestControls.resetRecordingIfRequested()
 #endif
         let isFirebaseConfigured = FirebaseBootstrap.configureIfAvailable()
@@ -180,8 +186,30 @@ struct OutboundApp: App {
         }
     }
 
-    private var mainRoot: some View {
+    @ViewBuilder
+    private var mainContent: some View {
+#if DEBUG && targetEnvironment(simulator)
+        switch ProcessInfo.processInfo.arguments.drop(while: { $0 != "-OutboundScreenshotScreen" }).dropFirst().first {
+        case "progress", "records", "trends":
+            NavigationStack { RunnerProgressView() }
+        case "social":
+            NavigationStack { SocialHomeView(isSelected: true) }
+        case "detail":
+            NavigationStack {
+                if let activity = activityStore.activities.first {
+                    ActivityDetailView(activity: activity)
+                }
+            }
+        default:
+            MainTabView()
+        }
+#else
         MainTabView()
+#endif
+    }
+
+    private var mainRoot: some View {
+        mainContent
             .environmentObject(authStore)
             .environmentObject(guideStore)
             .environmentObject(guideCatalogStore)

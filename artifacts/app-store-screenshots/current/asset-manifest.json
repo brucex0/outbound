@@ -1,0 +1,141 @@
+{
+  "capturedOn": "2026-10-22",
+  "sourceBaseCommit": "c48df00e",
+  "appVersion": "1.7.8",
+  "appBuild": "60",
+  "configuration": "Debug iOS Simulator with simulator-only screenshot routing",
+  "locale": "en-US",
+  "syntheticData": true,
+  "published": false,
+  "excludedFromFramed": {
+    "raw/05-records.png": "Sparse route fixture yields implausible best efforts and no race predictions."
+  },
+  "files": [
+    {
+      "path": "framed/01-start-your-next-run.png",
+      "width": 1284,
+      "height": 2778,
+      "hasAlpha": false,
+      "sha256": "9269f4f28b3a8c4756cd7fb9fcd367a903c0435d1ae95de8e310a316e90f7f02"
+    },
+    {
+      "path": "framed/02-follow-your-run.png",
+      "width": 1284,
+      "height": 2778,
+      "hasAlpha": false,
+      "sha256": "2cb10b9a038e24143a90d92baf6de89c29c6b4bbcfcda35c72dc1a42f0885a65"
+    },
+    {
+      "path": "framed/03-see-your-progress.png",
+      "width": 1284,
+      "height": 2778,
+      "hasAlpha": false,
+      "sha256": "bca913387b6d3572f9a87d5d82f2879a9864a2437b6f01b9ee1d922579356f72"
+    },
+    {
+      "path": "framed/04-explore-your-trends.png",
+      "width": 1284,
+      "height": 2778,
+      "hasAlpha": false,
+      "sha256": "e24c6abcf9eaeb07469e367b724f67073a9842ac894b3faf0cfe0f71bf88603b"
+    },
+    {
+      "path": "framed/05-share-your-run-live.png",
+      "width": 1284,
+      "height": 2778,
+      "hasAlpha": false,
+      "sha256": "eac904e504f8061dc64164a06a5c2c191b8a0284329406ed996bb1214d28f116"
+    },
+    {
+      "path": "framed/06-find-community-routes.png",
+      "width": 1284,
+      "height": 2778,
+      "hasAlpha": false,
+      "sha256": "26bba309997104661209df3e14ae0f71ca0cec865a558e12f37536878d208e80"
+    },
+    {
+      "path": "framed/07-run-together.png",
+      "width": 1284,
+      "height": 2778,
+      "hasAlpha": false,
+      "sha256": "686cd6543e5751d5c6d7e25e10653dac3878f581120a716b2d2b11afee4210d1"
+    },
+    {
+      "path": "framed/08-revisit-your-run.png",
+      "width": 1284,
+      "height": 2778,
+      "hasAlpha": false,
+      "sha256": "e4ec7dd55e1678cbf65b5f23daabdb25b830c356673e80f72621c5a7a29b18c7"
+    },
+    {
+      "path": "raw/01-start.png",
+      "width": 1320,
+      "height": 2868,
+      "hasAlpha": false,
+      "sha256": "cd6ad21ead7918992c9f0d19b6214bb225647d395c339768941664ba724051d4"
+    },
+    {
+      "path": "raw/02-live-run.png",
+      "width": 1320,
+      "height": 2868,
+      "hasAlpha": false,
+      "sha256": "929c500cdb8519f8348afd2048ad2299c94cd4bf573e8d16f5457718ba028ae3"
+    },
+    {
+      "path": "raw/03-progress.png",
+      "width": 1320,
+      "height": 2868,
+      "hasAlpha": false,
+      "sha256": "a205a0f0a12156ff4db135e480acbe15cc6b4d9a50c628b4e827cf015451f447"
+    },
+    {
+      "path": "raw/04-trends.png",
+      "width": 1320,
+      "height": 2868,
+      "hasAlpha": false,
+      "sha256": "7aecc0888df2d41ab301b904842f92c593a28524eb45d6bf6a095a86162fa9c0"
+    },
+    {
+      "path": "raw/05-records.png",
+      "width": 1320,
+      "height": 2868,
+      "hasAlpha": false,
+      "sha256": "d6f445f408a08928af7b3f906d55af3438daff521e8141681b87e8015e11e9a1"
+    },
+    {
+      "path": "raw/06-live-sharing.png",
+      "width": 1320,
+      "height": 2868,
+      "hasAlpha": false,
+      "sha256": "709dc0db672472fa57cdc345b91b4bdee9ca4f574903a073d93aada495cb2c9f"
+    },
+    {
+      "path": "raw/07-community-routes.png",
+      "width": 1320,
+      "height": 2868,
+      "hasAlpha": false,
+      "sha256": "82fa1f553cf34207cfef0c5d259e65735c5cb1e6e4a87f6584bb4eef93d0da91"
+    },
+    {
+      "path": "raw/08-social.png",
+      "width": 1320,
+      "height": 2868,
+      "hasAlpha": false,
+      "sha256": "9076053f04122173d861196d58b212632860d33b3e001a52fe61f941bc900267"
+    },
+    {
+      "path": "raw/09-activity-detail.png",
+      "width": 1320,
+      "height": 2868,
+      "hasAlpha": false,
+      "sha256": "5899764c7cd7fb98f3b0216b848adc8464290813ff8c510ad17596876e1028bb"
+    },
+    {
+      "path": "review-sheet.png",
+      "width": 1284,
+      "height": 1389,
+      "hasAlpha": false,
+      "sha256": "45ce520e334ead53e765bc81df1bf03cff21071f437f6dc02882049074fb98b5"
+    }
+  ]
+}

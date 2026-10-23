@@ -91,6 +91,11 @@ struct MainTabView: View {
             restoreInterruptedActivityIfNeeded()
             consumeStoredPreparedActivityIfNeeded()
             prepareTodayLaunchIfNeeded()
+#if DEBUG && targetEnvironment(simulator)
+            if ProcessInfo.processInfo.arguments.contains("-OutboundScreenshotLiveRun") {
+                presentActivity()
+            }
+#endif
             handlePendingWorkoutReminder()
             requestAppLocationAccessIfNeeded()
         }
