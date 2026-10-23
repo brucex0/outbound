@@ -38,7 +38,7 @@
     <string name="recording_finish">Finalizar</string>
     <string name="recording_finish_body">Detén el registro y revisa esta actividad.</string>
     <string name="recording_finish_title">¿Finalizar la actividad?</string>
-    <string name="recording_freestyle">Actividad libre</string>
+    <string name="recording_freestyle">Actividad</string>
     <string name="recording_goal_calories">Objetivo de energía · %1$d kcal</string>
     <string name="recording_goal_distance">Objetivo de distancia · %1$s</string>
     <string name="recording_goal_freestyle">Sin objetivo fijo. Muévete según tus sensaciones.</string>

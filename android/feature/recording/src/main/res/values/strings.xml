@@ -38,7 +38,7 @@
     <string name="recording_finish">Finish</string>
     <string name="recording_finish_body">Stop recording and review this activity.</string>
     <string name="recording_finish_title">Finish activity?</string>
-    <string name="recording_freestyle">Freestyle activity</string>
+    <string name="recording_freestyle">Activity</string>
     <string name="recording_goal_calories">Energy goal · %1$d kcal</string>
     <string name="recording_goal_distance">Distance goal · %1$s</string>
     <string name="recording_goal_freestyle">No preset target. Move by feel.</string>

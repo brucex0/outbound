@@ -5,7 +5,7 @@
     <string name="activity_avg_pace">平均配速</string>
     <string name="activity_back">返回</string>
     <string name="activity_cancel">取消</string>
-    <string name="activity_companion_dog_title">和狗狗一起</string>
+    <string name="activity_companion_dog_title">遛狗</string>
     <string name="activity_completed_duration_calories_format">%1$d 分钟 · %2$d 千卡</string>
     <string name="activity_completed_duration_format">%1$d 分钟</string>
     <string name="activity_delete">删除活动</string>

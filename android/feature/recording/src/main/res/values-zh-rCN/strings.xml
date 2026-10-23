@@ -20,9 +20,9 @@
     <string name="recording_cancel">取消</string>
     <string name="recording_capture_photo">拍照</string>
     <string name="recording_close">关闭</string>
-    <string name="recording_companion_accessibility">和狗狗一起</string>
+    <string name="recording_companion_accessibility">遛狗</string>
     <string name="recording_companion_accessibility_hint">将这次活动标记为与爱犬同行</string>
-    <string name="recording_companion_cleared_message">“和狗狗一起”仅适用于跑步、步行、徒步和骑行。</string>
+    <string name="recording_companion_cleared_message">“遛狗”仅适用于跑步、步行、徒步和骑行。</string>
     <string name="recording_companion_title_hike">带狗徒步</string>
     <string name="recording_companion_title_ride">带狗骑行</string>
     <string name="recording_companion_title_run">带狗跑步</string>
@@ -38,7 +38,7 @@
     <string name="recording_finish">结束</string>
     <string name="recording_finish_body">停止记录并查看本次活动。</string>
     <string name="recording_finish_title">结束活动？</string>
-    <string name="recording_freestyle">自由活动</string>
+    <string name="recording_freestyle">活动</string>
     <string name="recording_goal_calories">能量目标 · %1$d 千卡</string>
     <string name="recording_goal_distance">距离目标 · %1$s</string>
     <string name="recording_goal_freestyle">不设目标，跟着身体感受前进。</string>
