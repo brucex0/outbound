@@ -1114,14 +1114,17 @@ private fun LiveRecordingScreen(
         elevationGainMeters = snapshot.elevationGainMeters,
         weightKilograms = weightKilograms,
     )
-    Box(Modifier.fillMaxSize().background(if (mode == RecordingSurfaceMode.CAMERA) Color.Black else MaterialTheme.colorScheme.surface).pointerInput(mode) {
-        detectHorizontalDragGestures { _, amount ->
-            if (amount < -18 && mode == RecordingSurfaceMode.CAMERA) onMode(RecordingSurfaceMode.MAP)
-            if (amount > 18 && mode == RecordingSurfaceMode.MAP) onMode(RecordingSurfaceMode.CAMERA)
-        }
-    }) {
+    Box(Modifier.fillMaxSize().background(if (mode == RecordingSurfaceMode.CAMERA) Color.Black else MaterialTheme.colorScheme.surface)) {
+        // Let the map own its gestures, as on iOS. Switch back using the surface button.
         if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot, configuration, Modifier.fillMaxSize(), groupRun, focusedParticipant) { focusedParticipant = it }
-        else CameraSurface(photoPath, onPhotoCaptured, onTakePhoto,onPhotoPending, Modifier.fillMaxSize())
+        else CameraSurface(
+            photoPath, onPhotoCaptured, onTakePhoto, onPhotoPending,
+            Modifier.fillMaxSize().pointerInput(mode) {
+                detectHorizontalDragGestures { _, amount ->
+                    if (amount < -18) onMode(RecordingSurfaceMode.MAP)
+                }
+            },
+        )
 
         if (!dashboardExpanded) Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val controlColor = if (mode == RecordingSurfaceMode.CAMERA) Color.Black.copy(alpha = 0.52f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)

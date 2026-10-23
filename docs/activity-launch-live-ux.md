@@ -72,6 +72,8 @@ Android clears the retained recording ViewModel’s start-request flag after sav
 
 Android records `activity_countdown_voice_prepared` with only a bounded `success` or `unavailable` result so delayed or missing device TTS initialization can be diagnosed without collecting spoken content.
 
+Android live recording gives map gestures to the map, matching iOS pan, zoom, and rotate behavior. Horizontal map drags never switch to the camera; use the camera/map button to switch from the map. Swiping left on the camera still opens the map. Android surface changes retain the existing `activity_surface_changed` analytics with only the selected surface, without recording map gestures or coordinates.
+
 The live map remains mounted when switching to the camera and back, preserving its camera position, athlete-follow mode, and manually selected participant focus. Switching pages must not trigger an automatic route or world fit. Existing `live_workout_page_selected` analytics continue to record the selected camera/map surface without camera or location data.
 
 The live map represents the current athlete with a theme-colored, activity-specific companion for running, cycling, hiking, walking, or swimming instead of a generic location dot. Run, walk, and hike companions use an articulated figure whose arms and legs move with activity-specific cadence and stride; other sports retain their activity symbol. The companion follows valid GPS course, moves only while recording, and remains still when paused or Reduce Motion is enabled. Its exposure uses the privacy-safe `feature_exposed` event without location or pace data.
