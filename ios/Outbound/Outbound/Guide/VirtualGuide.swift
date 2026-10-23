@@ -69,6 +69,7 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     private let provider: any SessionAnalysisProvider
     private let audioPlayer = GuideAudioPlayer()
+    private let cadencePacer = CadencePacer()
     private let momentDirector = LiveGuidanceDirector()
     private var speechEnabled: Bool
     private var profile: GuideProfile?
@@ -123,7 +124,11 @@ final class VirtualGuide: NSObject, ObservableObject {
         providerName = selectedProvider.displayName
         super.init()
         audioPlayer.eventHandler = { [weak self] event in
+            if case .didStart = event { self?.cadencePacer.stop(deactivateSession: false) }
             self?.speechEventHandler?(event)
+        }
+        cadencePacer.eventHandler = { [weak self] result in
+            self?.guidanceEventHandler?(.pacerPlayback(result: result))
         }
         audioPlayer.playbackRouteHandler = { [weak self] route in
             self?.guidanceEventHandler?(.audioPlaybackRoute(route: route))
@@ -133,6 +138,7 @@ final class VirtualGuide: NSObject, ObservableObject {
     func setSpeechEnabled(_ isEnabled: Bool) {
         speechEnabled = isEnabled
         if !isEnabled {
+            cadencePacer.stop()
             audioPlayer.stopSpeaking(at: .immediate)
         }
     }
@@ -171,6 +177,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         self.companionBrief = companionBrief
         self.unitSystem = unitSystem
         isActive = true
+        cadencePacer.reset()
         snapshotHistory = []
         lastProgressAnnouncementElapsedSeconds = nil
         lastProgressTimeMilestone = 0
@@ -219,6 +226,7 @@ final class VirtualGuide: NSObject, ObservableObject {
 
     func deactivate() {
         isActive = false
+        cadencePacer.reset()
         sessionControlAudioPreloadTask?.cancel()
         sessionControlAudioPreloadTask = nil
         persona = nil
@@ -242,7 +250,10 @@ final class VirtualGuide: NSObject, ObservableObject {
     }
 
     func ingest(_ snapshot: ActiveSessionSnapshot) {
-        guard isActive, snapshot.isActive else { return }
+        guard isActive, snapshot.isActive else {
+            cadencePacer.stop()
+            return
+        }
 
         snapshotHistory.append(snapshot)
         retainRecentLiveGuidanceHistory(&snapshotHistory, through: snapshot.elapsedSeconds)
@@ -273,6 +284,13 @@ final class VirtualGuide: NSObject, ObservableObject {
             enqueue(moment)
         }
         processPendingMoment(using: snapshot)
+        cadencePacer.ingest(
+            snapshot, intent: sessionIntent,
+            allowed: speechEnabled && persona?.coachingContract != .quiet
+                && !audioPlayer.isSpeaking && !isAnalyzing && pendingMoment == nil
+                && queuedMoments.isEmpty
+                && (routeSpeechQuietUntil.map { $0 <= Date() } ?? true)
+        )
     }
 
     func handleRecordingStateTransition(
@@ -282,6 +300,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         snapshot: ActiveSessionSnapshot
     ) {
         if previousState != state {
+            cadencePacer.suspend()
             momentDirector.resetPaceEvidence()
             snapshotHistory = []
             let paceTypes: Set<LiveGuidanceMomentType> = [.earlyOverpace, .paceAboveTarget, .paceBelowTarget, .paceInstability, .paceDrift, .targetLocked, .rhythmRecovery, .recoveryTooHard, .raceLateFade, .racePaceLocked]

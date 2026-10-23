@@ -20,6 +20,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case appStartupResolved = "app_startup_resolved"
     case activitySetupViewed = "activity_setup_viewed"
     case activityConfigurationChanged = "activity_configuration_changed"
+    case liveGuidancePacerPlayback = "live_guidance_pacer_playback"
     case activityStarted = "activity_started"
     case activityPaused = "activity_paused"
     case activityResumed = "activity_resumed"
@@ -564,6 +565,7 @@ enum ProductAnalyticsSchema {
         .liveGuidanceProviderResult: [.sourceType, .result, .audioMode, .accessReason, .latencyBucket],
         .liveGuidanceAudioFirstByte: [.sourceType, .latencyBucket],
         .liveGuidanceAudioPlaybackRoute: [.sourceType],
+        .liveGuidancePacerPlayback: [.result],
         .liveGuidanceVoiceSelected: [.selectionType, .sourceType],
         .liveGuidanceEligibilityResolved: [.activityType, .result, .sourceType],
         .pushNotificationOpened: [.sourceType, .selectionType],

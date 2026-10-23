@@ -79,6 +79,8 @@ The app already has a provider-neutral foundation in `Core/Analytics`:
 
 The legacy provider methods still accept vendor-facing string names after the manager boundary, but product surfaces emit typed events and values. New product instrumentation must use the typed contract rather than arbitrary event strings or `[String: Any]` dictionaries.
 
+- Automatic iOS cadence beats emit `live_guidance_pacer_playback` with only bounded `result` (`started`, `completed`, `interrupted`, `failed`). Cadence readings, exact timing, workout content, and identifiers remain excluded. See `docs/live-coaching-moments.md` for signal gates and playback scope.
+
 ## Measurement Model
 
 ### Post-Workout Stretch Contract

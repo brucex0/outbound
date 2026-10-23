@@ -1449,6 +1449,8 @@ private struct SimplifiedTodayView: View {
                             .foregroundStyle(.secondary)
                     }
 
+                    WorkoutExecutionNotes(intent: activeRunIntent)
+
                     Button {
                         showsPlannedWorkoutDetails = false
                         Task { @MainActor in

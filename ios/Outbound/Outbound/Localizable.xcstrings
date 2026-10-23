@@ -67808,6 +67808,342 @@
           }
         }
       }
+    },
+    "workout.coaching.heading": {
+      "comment": "[platform:ios] Workout execution guidance; general suggestions, not sensor observations.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How to approach it"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cómo afrontar la sesión"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "怎么完成这次训练"
+          }
+        }
+      }
+    },
+    "workout.coaching.success": {
+      "comment": "[platform:ios] Workout execution guidance; general suggestions, not sensor observations.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What matters today"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lo importante hoy"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天的重点"
+          }
+        }
+      }
+    },
+    "workout.coaching.success_body": {
+      "comment": "[platform:ios] Workout execution guidance; general suggestions, not sensor observations.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Follow the planned effort and recovery. Adjust speed when needed; finishing in control matters more than forcing a number."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Respeta el esfuerzo y las recuperaciones del plan. Ajusta la velocidad cuando lo necesites; terminar con control importa más que forzar una cifra."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按计划控制强度，留足恢复时间。需要时调整速度；从容完成比硬追数字更重要。"
+          }
+        }
+      }
+    },
+    "workout.coaching.feel": {
+      "comment": "[platform:ios] Workout execution guidance; general suggestions, not sensor observations.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pacing and breathing"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esfuerzo y respiración"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配速与呼吸"
+          }
+        }
+      }
+    },
+    "workout.coaching.warmup": {
+      "comment": "[platform:ios] Workout execution guidance; general suggestions, not sensor observations.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Build effort gradually so the opening minutes prepare you for the work ahead."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aumenta el esfuerzo poco a poco para que los primeros minutos te preparen para lo que viene."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "逐步进入状态，让开始的几分钟为接下来的训练做好准备。"
+          }
+        }
+      }
+    },
+    "workout.coaching.easy": {
+      "comment": "[platform:ios] Workout execution guidance; general suggestions, not sensor observations.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep the effort comfortable enough to speak in full sentences; ease off if that becomes difficult."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén un esfuerzo que te permita hablar con frases completas; afloja si te cuesta hacerlo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持能说完整句子的轻松强度；如果说话变得吃力，就放慢一点。"
+          }
+        }
+      }
+    },
+    "workout.coaching.work": {
+      "comment": "[platform:ios] Workout execution guidance; general suggestions, not sensor observations.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Build toward the prescribed effort without rushing the start. Use each recovery to let your breathing settle."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acércate al esfuerzo indicado sin acelerar de golpe al inicio. Aprovecha cada recuperación para que la respiración se calme."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "逐步达到规定强度，不要一开始就猛冲。利用每段恢复让呼吸平稳下来。"
+          }
+        }
+      }
+    },
+    "workout.coaching.recovery": {
+      "comment": "[platform:ios] Workout execution guidance; general suggestions, not sensor observations.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ease off during recovery and let your breathing settle rather than chasing the previous pace."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afloja durante la recuperación y deja que la respiración se calme, sin intentar mantener la velocidad anterior."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复时降低强度，让呼吸平稳下来，不必维持上一段的配速。"
+          }
+        }
+      }
+    },
+    "workout.coaching.cooldown": {
+      "comment": "[platform:ios] Workout execution guidance; general suggestions, not sensor observations.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reduce effort gradually to finish calmly instead of stopping straight after a hard effort."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reduce el esfuerzo poco a poco para terminar con calma, en lugar de parar justo después de un esfuerzo intenso."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "逐步降低强度，从容结束，不要在高强度后突然停下。"
+          }
+        }
+      }
+    },
+    "workout.coaching.walk": {
+      "comment": "[platform:ios] Workout execution guidance; general suggestions, not sensor observations.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walk at the prescribed effort, keeping your steps comfortable and your shoulders relaxed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina al esfuerzo indicado, con pasos cómodos y los hombros relajados."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按规定强度步行，步伐自然舒适，肩膀放松。"
+          }
+        }
+      }
+    },
+    "workout.coaching.open": {
+      "comment": "[platform:ios] Workout execution guidance; general suggestions, not sensor observations.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Follow the prescribed effort and ease off if it stops feeling manageable."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sigue el esfuerzo indicado y afloja si deja de resultarte sostenible."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按规定强度进行；如果感到难以持续，就降低强度。"
+          }
+        }
+      }
+    },
+    "workout.coaching.form": {
+      "comment": "[platform:ios] Workout execution guidance; general suggestions, not sensor observations.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A simple body check"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una comprobación sencilla"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一个简单的身体检查"
+          }
+        }
+      }
+    },
+    "workout.coaching.form_body": {
+      "comment": "[platform:ios] Workout execution guidance; general suggestions, not sensor observations.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try relaxing your shoulders and hands. Keep the movement comfortable; this is a reminder to check, not a detected posture problem."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prueba a relajar los hombros y las manos. Muévete con comodidad; es un recordatorio, no un problema de postura detectado."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "试着放松肩膀和双手，保持动作舒适。这只是自我检查提醒，并不代表检测到了跑姿问题。"
+          }
+        }
+      }
+    },
+    "workout.coaching.pacer": {
+      "comment": "[platform:ios] Workout execution guidance; general suggestions, not sensor observations.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Occasional drum beats match your recent steps to help you keep a steady cadence. Follow only if comfortable; they are not a speed target."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algunos momentos tendrán golpes de tambor al ritmo de tus pasos recientes para ayudarte a mantener la cadencia. Síguelos solo si te resulta cómodo; no marcan una velocidad objetivo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "偶尔播放的鼓点会贴近你最近的步频，帮助保持步伐稳定。感觉舒适再跟随；鼓点不是速度目标。"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

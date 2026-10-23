@@ -191,6 +191,7 @@ enum LiveGuidanceTelemetryEvent: Equatable {
     )
     case audioFirstByte(source: LiveCoachCueSource, latency: LiveCoachLatencyBucket)
     case audioPlaybackRoute(route: GuideAudioPlaybackRoute)
+    case pacerPlayback(result: String)
     case fixedAudioUnavailable(cueGroup: String, reason: String)
 }
 

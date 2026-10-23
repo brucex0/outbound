@@ -942,7 +942,9 @@ final class ActivityRecorder: ObservableObject {
             location: locationManager.location.map(SessionLocation.init),
             isActive: isActive ?? (state == .active),
             paceEvidenceTimestamp: locationManager.coachingPaceEvidenceTimestamp,
-            movingSeconds: movingSeconds
+            movingSeconds: movingSeconds,
+            cadenceStepsPerMinute: currentCadenceStepsPerMinute,
+            cadenceEvidenceTimestamp: locationManager.runningCadenceReading?.measuredAt
         )
     }
 
