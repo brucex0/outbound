@@ -41,11 +41,12 @@ struct LiveMapView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                if activePage == .map {
-                    mapSurface
-                } else {
-                    Color(.systemBackground).ignoresSafeArea()
-                }
+                // Keep the native map and its camera alive while the camera page is selected.
+                // Recreating it can let MapKit's automatic fit replace the live follow camera.
+                mapSurface
+                    .opacity(activePage == .map ? 1 : 0)
+                    .allowsHitTesting(activePage == .map)
+                    .accessibilityHidden(activePage != .map)
                 bottomControls(expandedHeight: geometry.size.height)
                 if !isWorkoutPanelExpanded {
                     rightControls
@@ -83,7 +84,9 @@ struct LiveMapView: View {
             .onAppear {
                 cachePlannedRouteCoordinates()
                 guard !plannedRouteCoordinates.isEmpty else { return }
-                framePlannedRoute(including: locationManager.location?.coordinate)
+                if recorder.state == .idle {
+                    framePlannedRoute(including: locationManager.location?.coordinate)
+                }
                 trackRouteDisplayIfNeeded()
             }
             .onChange(of: plannedRouteCacheKey) { _, _ in
