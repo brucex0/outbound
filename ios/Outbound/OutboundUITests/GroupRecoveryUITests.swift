@@ -4,15 +4,21 @@ final class GroupRecoveryUITests: XCTestCase {
     @MainActor
     func testGroupRecordingSurvivesTwoAppRestarts() throws {
         continueAfterFailure = false
+        let fixture = try GroupRecoveryFixture()
+        let baseURL = try fixture.start()
+        defer { fixture.stop() }
         let app = XCUIApplication()
         let baseArguments = [
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
             "-OutboundDisableFirebase", "-OutboundUseMockMusic", "-OutboundSkipOnboarding",
-            "-OutboundUITestSeedData", "-OutboundAPIBaseURL", "http://127.0.0.1:18763",
+            "-OutboundUITestSeedData", "-OutboundAPIBaseURL", baseURL,
             "-preferred_session_page_v1", "map", "-voice_guide_enabled_v1", "NO",
+            "-home_widget_onboarding_seen_v1", "YES",
+            "-push_notification_permission_primer_seen_v1", "YES",
+            "-watch.startWatchApp", "NO", "-auto_pause_running_enabled_v1", "NO",
             "-new_user_onboarding_completed_v2.UI test session", "YES"
         ]
-        app.launchArguments = baseArguments + ["-OutboundGroupRecoveryUITestSetup"]
+        app.launchArguments = baseArguments + ["-OutboundGroupRecoveryUITestSetup", "-OutboundUITestResetRecording"]
         app.launch()
         dismissLocationDialog(in: app)
         let start = app.buttons["tab.start"]
@@ -37,6 +43,12 @@ final class GroupRecoveryUITests: XCTestCase {
             screenshot.lifetime = .keepAlways
             add(screenshot)
         }
+        XCTAssertEqual(fixture.requestCount("POST /live/group-runs/activity-events/ui-recovery-event"), 1,
+                       "Recovery must reuse the original live group session")
+        XCTAssertGreaterThanOrEqual(fixture.requestCount("GET /live/group-runs/ui-recovery-live"), 2)
+        app.buttons["Finish activity"].tap()
+        XCTAssertTrue(app.buttons["ClosePostRunSummaryButton"].waitForExistence(timeout: 5))
+        discardReview(app)
     }
 
     @MainActor

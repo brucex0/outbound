@@ -31,7 +31,8 @@ struct WatchWorkoutFlowUITestControls: View {
     private static var didSeedRecording = false
 
     static func claimRecordingSeed() -> Bool {
-        guard ProcessInfo.processInfo.arguments.contains("-OutboundUITestWatchScenario") else { return true }
+        // Review dismissal can recreate the flow. Seed once per process for
+        // ordinary live fixtures as well as Watch scenarios.
         guard !didSeedRecording else { return false }
         didSeedRecording = true
         return true

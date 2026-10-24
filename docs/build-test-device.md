@@ -119,7 +119,7 @@ For a non-destructive compile-only backend check, use `npm run db:generate && np
 Run tests only when the user asks.
 
 ```sh
-xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme Outbound -destination 'id=90D55095-943A-416B-B91F-01EA17807713' -parallel-testing-enabled NO test
+xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme Outbound -destination 'platform=iOS Simulator,id=SIMULATOR_UUID' -parallel-testing-enabled NO OUTBOUND_APP_TEST_MODE=NO test
 xcodebuild -quiet -project ios/Outbound/Outbound.xcodeproj -scheme Outbound -destination 'id=90D55095-943A-416B-B91F-01EA17807713' -parallel-testing-enabled NO -only-testing:OutboundUITests test
 swift test
 ```
@@ -135,11 +135,10 @@ xcodebuild -quiet -jobs 2 \
   -parallel-testing-enabled NO \
   -only-testing:OutboundTests/SuddenSpeedChangeDetectorTests \
   -only-testing:OutboundTests/SpeedWarningPipelineTests \
-  'EXCLUDED_SOURCE_FILE_NAMES=HealthKitStoreTests.swift OutboundTests.swift LocalActivityStorePhotoTests.swift' \
   CODE_SIGNING_ALLOWED=NO test
 ```
 
-The source exclusion avoids existing stale `HealthKitServing`/`MusicService` mocks and tests referring to the removed `LocalActivityStore`. Remove it once those unrelated tests are repaired; `-only-testing` filters execution but still compiles the unit-test target.
+Unit mocks conform to the current service contracts; do not exclude test source files. `-only-testing` filters execution but still compiles the entire target. Use `OUTBOUND_APP_TEST_MODE=NO` for unit tests, including onboarding.
 
 The tests advance sensor/session timestamps synchronously and capture audio requests. They cover detector gates, 4→19/6→24/7→24/24→7 km/h recorder ramps at 1×/10×, recent target coaching, busy/stale queues, unavailable/failed playback, and both directions through the actual generated WAV files. Across EN/ES/ZH and both voices, every iOS fallback must have a matching recording; countdown lookup and rejection of unrelated sentences remain intact. An older cached manifest must not hide bundled warnings. Positive checks use the approved app bundle directly and prepare every cue with AVAudioPlayer. A separate unreviewed fixture verifies approval rejection. These checks do not establish physical audibility or listening QA. The simulation creates and clears a recovery journal inside its dedicated simulator and never saves/syncs an activity.
 
@@ -154,14 +153,14 @@ node scripts/verify-live-coach-cues.mjs
 
 ### Complete App UI Regression Suite
 
-Run the complete deterministic app UI regression suite. It selects the first available iPhone simulator unless an explicit Xcode destination is supplied:
+Run the complete deterministic app UI regression suite. It creates and removes a dedicated iPhone simulator unless an explicit simulator destination is supplied:
 
 ```sh
 ./scripts/run-app-tests.sh
 ./scripts/run-app-tests.sh 'id=SIMULATOR_UUID'
 ```
 
-This suite covers the primary shell and navigation, installed iOS guide voice previews, seeded Social connections, requests, groups, notifications, group-run RSVP, Cheers, comments and activity sharing, activity history, Settings, recording and post-run lifecycle, a deterministic live 10K run with route and health metrics, and launch performance. It uses local UI-test authentication, deterministic in-memory fixtures, and skips onboarding; use `run-local-e2e.sh` separately for Firebase and server persona coverage. Standalone DEBUG harness tests are intentionally outside this production-flow suite.
+This suite covers the primary shell and navigation, seeded Social connections, requests, groups, notifications, group-run RSVP, Cheers, comments and activity sharing, activity history, Settings, recording and post-run lifecycle, a deterministic live 10K run with route and health metrics, and launch performance. It uses local UI-test authentication, deterministic in-memory fixtures, and skips onboarding; use `run-local-e2e.sh` separately for Firebase and server persona coverage. The runner executes the complete `OutboundUITests` target, including deterministic DEBUG harness and Watch transport scenarios. Seeded launches reset recording journals explicitly; recovery relaunches retain them. Live recording fixtures seed once per process so rebuilding the flow after save/discard cannot restart a synthetic session.
 
 ### On-Demand UI Flows From Terminal
 
@@ -448,8 +447,8 @@ Run only when UI tests are requested:
 ./scripts/run-group-recovery-ui-test.sh /tmp/outbound-group-recovery-results
 ```
 
-The runner creates and removes a dedicated iPhone simulator and serves synthetic attendees/live-map membership on loopback port 18763. Keep that port free. The Debug setup flag supplies a group intent and indoor setup only; the test starts and pauses a real recorder, then terminates and relaunches twice without the setup flag. It does not seed the recovery journal, use run simulation, or call production APIs.
+The runner creates and removes a dedicated iPhone simulator and uses an in-process synthetic attendees/live-map server on an available loopback port. The Debug setup flag supplies a group intent and indoor setup only; the test starts and pauses a real recorder, then terminates and relaunches twice without the setup flag. It does not seed the recovery journal, use run simulation, or call production APIs.
 
-Assertions cover the retained event title, exactly one assistant button, five attendee pills, sharing status, and Stop sharing after each restart. `GroupRecovery.xcresult` keeps restart screenshots; `fixture.log` confirms reads of the original live-map session after relaunch. No personal activity is saved. The focused `GroupRecoveryUI` scheme excludes unrelated unit-test targets; existing broad UI tests are not run.
+Assertions cover the retained event title, exactly one assistant button, five attendee pills, sharing status, and Stop sharing after each restart. `GroupRecovery.xcresult` keeps restart screenshots. The test asserts exactly one join and at least two reads of the original live-map session after relaunch. No personal activity is saved. The focused `GroupRecoveryUI` scheme excludes unrelated unit-test targets; existing broad UI tests are not run.
 
 Verified on iPhone 17 Pro / iOS 26.5 Simulator: one initial join, two app restarts, two reads of the same live-map session, with all group UI assertions passing. This covers recordings started by the current build; older journals without group context cannot reconstruct it.

@@ -52,9 +52,10 @@ struct OutboundApp: App {
 
     init() {
 #if DEBUG && targetEnvironment(simulator)
-        if ProcessInfo.processInfo.arguments.contains("-OutboundScreenshotCapture"),
+        if (ProcessInfo.processInfo.arguments.contains("-OutboundScreenshotCapture")
+            || ProcessInfo.processInfo.arguments.contains("-OutboundUITestResetRecording")),
            ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData") {
-            // Repeated captures must not restore a previous synthetic recording.
+            // Explicit seeded scenarios start clean; recovery tests omit reset on relaunch.
             ActiveSessionJournal.clear(reason: .discarded)
             _ = ActiveSessionPhotoJournal.clear()
         }

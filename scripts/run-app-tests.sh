@@ -4,45 +4,36 @@ set -euo pipefail
 script_dir=${0:A:h}
 repo_dir=${script_dir:h}
 destination="${1:-}"
-derived_data_path="/tmp/plainstride-app-tests-derived"
+owned_simulator=""
+result_dir=$(mktemp -d /tmp/plainstride-app-tests.XXXXXX)
+
+cleanup() {
+  if [[ -n "$owned_simulator" ]]; then
+    xcrun simctl shutdown "$owned_simulator" >/dev/null 2>&1 || true
+    xcrun simctl delete "$owned_simulator" >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup EXIT
 
 if [[ -z "$destination" ]]; then
-  simulator_id=$(xcrun simctl list devices available | awk '
-    /iPhone/ && /(Booted|Shutdown)/ {
-      for (field = 1; field <= NF; field++) {
-        if ($field ~ /^\([0-9A-F-]{36}\)$/) {
-          gsub(/[()]/, "", $field)
-          print $field
-          exit
-        }
-      }
-    }
-  ')
-  [[ -n "$simulator_id" ]] || { print "No available iPhone simulator was found." >&2; exit 1; }
-  destination="id=$simulator_id"
+  owned_simulator=$(xcrun simctl create "Plainstride App Tests" com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro)
+  destination="platform=iOS Simulator,id=$owned_simulator"
+elif [[ "$destination" == id=* ]]; then
+  destination="platform=iOS Simulator,$destination"
 fi
+[[ "$destination" == "platform=iOS Simulator,"* ]] || { print -u2 "Use an iPhone simulator destination."; exit 1; }
 
-if [[ "$destination" == id=* ]]; then
-  simulator_id=${destination#id=}
-  xcrun simctl uninstall "$simulator_id" plainstride.outbound >/dev/null 2>&1 || true
-fi
-
-print "Running full Plainstride app regression suite on $destination..."
+print "Running all Plainstride UI tests on $destination"
+print "Results: $result_dir/AppTests.xcresult"
 cd "$repo_dir"
-xcodebuild -quiet \
+xcodebuild -quiet -jobs 2 \
   -project ios/Outbound/Outbound.xcodeproj \
   -scheme OutboundAppTests \
   -destination "$destination" \
-  -derivedDataPath "$derived_data_path" \
-  OUTBOUND_APP_TEST_MODE=YES \
+  -derivedDataPath /tmp/plainstride-app-tests-derived \
+  -resultBundlePath "$result_dir/AppTests.xcresult" \
+  OUTBOUND_APP_TEST_MODE=YES CODE_SIGNING_ALLOWED=NO \
   -parallel-testing-enabled NO \
-  -only-testing:OutboundUITests/OutboundUITests/testLaunchSkipsLoginAndShowsPrimaryTabs \
-  -only-testing:OutboundUITests/OutboundUITests/testPrimaryNavigationAndSettings \
-  -only-testing:OutboundUITests/OutboundUITests/testRealPiperGuideVoicePreviews \
-  -only-testing:OutboundUITests/OutboundUITests/testSeededSocialFeedRunAndComments \
-  -only-testing:OutboundUITests/OutboundUITests/testSeededSocialConnectionsGroupsAndNotifications \
-  -only-testing:OutboundUITests/OutboundUITests/testSeededSocialDeclinesConnectionRequest \
-  -only-testing:OutboundUITests/OutboundUITests/testTodayFreestyleStartOpensRecordingFlowAndCanFinish \
-  -only-testing:OutboundUITests/OutboundUITests/testSeededLive10KRunMetricsAndLifecycle \
-  -only-testing:OutboundUITests/OutboundUITests/testLaunchPerformance \
+  -collect-test-diagnostics never \
+  -only-testing:OutboundUITests \
   test

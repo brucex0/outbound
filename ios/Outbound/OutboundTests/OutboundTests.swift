@@ -98,6 +98,8 @@ private final class StubMusicService: MusicService {
         currentSnapshot = snapshot
     }
 
+    func setPlaybackUpdateHandler(_ handler: @escaping @MainActor @Sendable (MusicPlaybackSnapshot) -> Void) {}
+
     func refreshSnapshot() async -> MusicConnectionSnapshot { currentSnapshot }
     func connect() async throws -> MusicConnectionSnapshot { currentSnapshot }
     func loadQuickPicks() async throws -> [MusicQuickPick] { [] }

@@ -4,10 +4,11 @@ import Testing
 import UIKit
 @testable import Outbound
 
-struct LocalActivityStorePhotoTests {
+@Suite(.serialized)
+struct ActivityPersistenceTests {
 
     @MainActor
-    @Test func savePersistsPhotoMetadataAndJpegFile() throws {
+    @Test func savePersistsPhotoMetadataAndJpegFile() async throws {
         let startedAt = Date(timeIntervalSince1970: 1_800_000_000)
         let endedAt = startedAt.addingTimeInterval(900)
         let takenAt = startedAt.addingTimeInterval(300)
@@ -38,21 +39,34 @@ struct LocalActivityStorePhotoTests {
             ]
         )
 
-        let savedActivity = try LocalActivityStore.save(
+        let savedActivity = try await ActivityPersistence.shared.save(
             summary: summary,
             photos: [(makeTestImage(), metadata)],
+            activityType: .running,
             title: "Photo Persistence Test",
             guideNudge: "Keep the cadence steady.",
             reflection: nil,
-            goal: nil
+            goal: nil,
+            energyKilocalories: nil,
+            source: .outboundRecorded,
+            gear: nil,
+            manualEdits: nil,
+            indoor: nil,
+            cadence: nil,
+            heartRateZones: nil,
+            recordingSession: nil,
+            activityEventID: nil,
+            followedRoute: nil,
+            recognitionBadgeIDs: [],
+            companionType: nil
         )
-        defer { try? LocalActivityStore.delete(savedActivity) }
+        defer { Task { try? await ActivityPersistence.shared.delete(savedActivity) } }
 
         let reloadedActivity = try #require(
-            LocalActivityStore.load().first { $0.id == savedActivity.id }
+            await ActivityPersistence.shared.load().first { $0.id == savedActivity.id }
         )
         let savedPhoto = try #require(reloadedActivity.photos.first)
-        let photoURL = try LocalActivityStore.imageURL(for: savedPhoto)
+        let photoURL = ActivityPersistence.imageURL(for: savedPhoto)
 
         #expect(reloadedActivity.photos.count == 1)
         #expect(savedPhoto.relativePath == "\(savedActivity.id.uuidString)/photos/photo-01.jpg")
@@ -70,7 +84,7 @@ struct LocalActivityStorePhotoTests {
         #expect(UIImage(contentsOfFile: photoURL.path(percentEncoded: false)) != nil)
     }
 
-    @Test func saveStoresRouteOutsideManifestAndRoundTripsSidecar() throws {
+    @Test func saveStoresRouteOutsideManifestAndRoundTripsSidecar() async throws {
         let startedAt = Date(timeIntervalSince1970: 1_800_000_000)
         let summary = ActivitySummary(
             startedAt: startedAt,
@@ -84,15 +98,28 @@ struct LocalActivityStorePhotoTests {
                 CLLocation(latitude: 37.3330, longitude: -122.0320),
             ]
         )
-        let saved = try LocalActivityStore.save(
+        let saved = try await ActivityPersistence.shared.save(
             summary: summary,
             photos: [],
+            activityType: .running,
             title: "Route Sidecar Test",
             guideNudge: "",
             reflection: nil,
-            goal: nil
+            goal: nil,
+            energyKilocalories: nil,
+            source: .outboundRecorded,
+            gear: nil,
+            manualEdits: nil,
+            indoor: nil,
+            cadence: nil,
+            heartRateZones: nil,
+            recordingSession: nil,
+            activityEventID: nil,
+            followedRoute: nil,
+            recognitionBadgeIDs: [],
+            companionType: nil
         )
-        defer { try? LocalActivityStore.delete(saved) }
+        defer { Task { try? await ActivityPersistence.shared.delete(saved) } }
 
         let manifestURL = URL.applicationSupportDirectory
             .appendingPathComponent("Outbound/Activities/activities.json")
@@ -103,7 +130,7 @@ struct LocalActivityStorePhotoTests {
         #expect(FileManager.default.fileExists(atPath: sidecarURL.path))
         #expect(try Data(contentsOf: sidecarURL).count < manifest.utf8.count)
 
-        let restored = try #require(LocalActivityStore.load().first { $0.id == saved.id })
+        let restored = try #require(await ActivityPersistence.shared.load().first { $0.id == saved.id })
         #expect(restored.routePoints.count == saved.routePoints.count)
         #expect(abs(restored.routePoints[1].latitude - saved.routePoints[1].latitude) < 0.000001)
     }

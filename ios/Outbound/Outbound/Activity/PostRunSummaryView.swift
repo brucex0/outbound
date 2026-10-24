@@ -671,7 +671,10 @@ struct PostRunSummaryView: View {
                 .resizable()
                 .scaledToFill()
         }
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(finishPhotoCaption(photo, index: index))
+        .accessibilityIdentifier("FinishPhotoThumbnail-\(index)")
+        .accessibilityAddTraits(selectedPhotoIDs.contains(photo.id) ? .isSelected : [])
         .accessibilityHint(String(localized: "summary.photos.long_press_hint", defaultValue: "Long press to select, then drag to reorder"))
     }
 
@@ -888,6 +891,7 @@ struct PostRunPhotoViewer: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(String(localized: "common.close", defaultValue: "Close"))
+            .accessibilityIdentifier("CloseFinishPhotoPreviewButton")
             .padding(.top, 12)
             .padding(.trailing, 16)
         }

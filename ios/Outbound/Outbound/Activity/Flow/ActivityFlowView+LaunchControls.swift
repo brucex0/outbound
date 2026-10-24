@@ -33,6 +33,7 @@ extension ActivityFlowView {
                 }
                 .frame(maxWidth: .infinity)
                 .defaultScrollAnchor(host.isEmbeddedInToday ? .center : .leading, for: .alignment)
+                .accessibilityIdentifier("activity.launch.options")
 
                 if !host.isEmbeddedInToday {
                     Divider()

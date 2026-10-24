@@ -29,10 +29,7 @@ final class UIFlowTests: XCTestCase {
 
     @MainActor
     private func launchAppearanceTip() -> XCUIApplication {
-        let app = XCUIApplication()
-        // Argument-domain defaults isolate this scenario from lifetime discovery
-        // counters without resetting the app. Normal preference writes still occur.
-        app.launchArguments = [
+        let app = launchFixtureApp(extraArguments: [
             "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
             "-OutboundUseMockMusic", "-OutboundDisableFirebase",
             "-OutboundSkipOnboarding", "-OutboundUITestSeedData",
@@ -50,13 +47,7 @@ final class UIFlowTests: XCTestCase {
             "-tooltip.voice_guide.dismissed.v1", "YES",
             "-tooltip.shoes.dismissed.v1", "YES",
             "-tooltip.swipe_to_map.dismissed.v1", "YES",
-        ]
-        app.launch()
-        let locationPermission = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-            .alerts.buttons["Allow While Using App"]
-        if locationPermission.waitForExistence(timeout: 5) {
-            locationPermission.tap()
-        }
+        ])
         return app
     }
 

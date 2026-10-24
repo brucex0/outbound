@@ -57,7 +57,7 @@ struct OnboardingStoreTests {
     }
 
     @MainActor
-    @Test func debugRestartPresentsEvenAfterCompletion() {
+    @Test func debugReplayPreservesDraftAndCompletedProfile() {
         let defaults = UserDefaults(suiteName: #function)!
         defaults.removePersistentDomain(forName: #function)
 
@@ -66,10 +66,18 @@ struct OnboardingStoreTests {
         store.updateGoalText("Move today with an easy run")
         _ = store.complete(now: Date(timeIntervalSince1970: 1_800_000_001))
 
+        let completedProfile = store.completedProfile
+        let priorDraft = store.draft
         store.restartForDebug()
 
         #expect(store.isPresented)
         #expect(store.step == .welcome)
-        #expect(store.draft == .fresh)
+        #expect(store.draft == priorDraft)
+        #expect(store.completedProfile == completedProfile)
+        store.finishLater()
+        let reloaded = OnboardingStore(defaults: defaults)
+        reloaded.prepareForAuthenticatedUser(identity: "debug-user")
+        #expect(!reloaded.isPresented)
+        #expect(reloaded.completedProfile == completedProfile)
     }
 }

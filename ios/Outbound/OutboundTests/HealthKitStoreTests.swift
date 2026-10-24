@@ -14,7 +14,8 @@ struct HealthKitStoreTests {
             endedAt: Date(timeIntervalSince1970: 1_800_000_900),
             durationSeconds: 900,
             distanceMeters: 5000,
-            energyBurnedKilocalories: 420
+            energyBurnedKilocalories: 420,
+            activityType: .running
         )
         let store = HealthImportStore(service: MockHealthKitService(recentWorkouts: [workout]))
 
@@ -86,6 +87,10 @@ private struct MockHealthKitService: HealthKitServing {
             throw fetchRecentWorkoutsError
         }
         return Array(recentWorkouts.prefix(limit))
+    }
+
+    func fetchPersonalizationData(since: Date) async throws -> HealthPersonalizationData {
+        .init(dateOfBirth: nil, biologicalSex: .notSpecified, heightCentimeters: nil, weightKilograms: nil, recentWorkouts: recentWorkouts)
     }
 
     func saveWorkout(_ activity: SavedActivity, sport: SportType, energyKilocalories: Double?) async throws {}

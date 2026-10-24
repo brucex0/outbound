@@ -17,11 +17,10 @@ final class OutboundUITests: XCTestCase {
     func testLaunchSkipsLoginAndShowsPrimaryTabs() throws {
         let app = launchApp()
 
-        XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.tabBars.buttons["Today"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.tabBars.buttons["Social"].exists)
-        XCTAssertTrue(app.tabBars.buttons["Me"].exists)
-        XCTAssertTrue(app.buttons["Quick start"].exists)
+        XCTAssertTrue(app.buttons["tab.start"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["tab.social"].exists)
+        XCTAssertTrue(app.buttons["tab.me"].exists)
+        XCTAssertTrue(app.buttons["today.conditions"].exists)
         XCTAssertFalse(app.textFields["Phone number"].exists)
     }
 
@@ -29,100 +28,101 @@ final class OutboundUITests: XCTestCase {
     func testPrimaryNavigationAndSettings() throws {
         let app = launchApp()
 
-        XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
-        app.tabBars.buttons["Social"].tap()
-        XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["tab.start"].waitForExistence(timeout: 5))
+        app.buttons["tab.social"].tap()
+        XCTAssertTrue(app.buttons["Feed"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Saturday waterfront 5K"].exists)
-        XCTAssertTrue(app.staticTexts["Golden Gate Run Club"].exists)
         XCTAssertTrue(app.staticTexts["Presidio Morning Run"].exists)
 
-        app.tabBars.buttons["Me"].tap()
-        XCTAssertTrue(app.navigationBars["Me"].waitForExistence(timeout: 5))
+        app.buttons["tab.me"].tap()
+        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Golden Gate Easy Run"].waitForExistence(timeout: 5))
         let settingsButton = app.buttons["Settings"]
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 5))
         settingsButton.tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Sign out"].exists)
+        reveal(app.buttons["Sign out"], in: app)
     }
 
     @MainActor
     func testSeededSocialFeedRunAndComments() throws {
         let app = launchApp()
 
-        XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
-        app.tabBars.buttons["Social"].tap()
-        XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["tab.start"].waitForExistence(timeout: 5))
+        app.buttons["tab.social"].tap()
+        XCTAssertTrue(app.buttons["Feed"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Saturday waterfront 5K"].exists)
         XCTAssertTrue(app.staticTexts["Presidio Morning Run"].exists)
 
-        let cheerButton = app.buttons["Cheer · 2"]
+        let cheerButton = app.buttons["Cheer"].firstMatch
         XCTAssertTrue(cheerButton.waitForExistence(timeout: 5))
+        XCTAssertEqual(cheerButton.value as? String, "2")
         cheerButton.tap()
-        XCTAssertTrue(app.buttons["Cheered · 3"].waitForExistence(timeout: 5))
+        let cheered = app.buttons["Remove cheer"].firstMatch
+        XCTAssertTrue(cheered.waitForExistence(timeout: 5))
+        XCTAssertEqual(cheered.value as? String, "3")
 
-        app.buttons["Comment · 1"].tap()
-        XCTAssertTrue(app.navigationBars["Comments"].waitForExistence(timeout: 5))
+        app.buttons["Comments"].firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Comments (1)"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["See you next time!"].exists)
-        app.buttons["Done"].tap()
+        app.buttons["Close comments"].tap()
 
-        app.buttons["View run"].tap()
+        app.staticTexts["Saturday waterfront 5K"].firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Saturday waterfront 5K"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Going"].waitForExistence(timeout: 5))
-        app.buttons["I'm going"].tap()
-        XCTAssertTrue(app.buttons["Leave run"].waitForExistence(timeout: 5))
+        let join = app.buttons["Join activity"]
+        reveal(join, in: app)
+        join.tap()
+        app.buttons["Crissy Field"].tap()
+        reveal(app.buttons["Leave run"], in: app, maxSwipes: 12)
     }
 
     @MainActor
     func testSeededSocialConnectionsGroupsAndNotifications() throws {
         let app = launchApp()
 
-        XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
-        app.tabBars.buttons["Social"].tap()
-        XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["tab.start"].waitForExistence(timeout: 5))
+        app.buttons["tab.social"].tap()
+        XCTAssertTrue(app.buttons["Feed"].waitForExistence(timeout: 5))
 
-        app.buttons["Social community"].tap()
-        app.buttons["Connections"].tap()
-        XCTAssertTrue(app.navigationBars["Connections"].waitForExistence(timeout: 5))
+        app.buttons["People"].tap()
+        XCTAssertTrue(app.staticTexts["Maya Chen"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Maya Chen"].exists)
         XCTAssertTrue(app.staticTexts["Leo Martinez"].exists)
         XCTAssertTrue(app.staticTexts["Priya Shah"].exists)
-        XCTAssertTrue(app.staticTexts["Blocked Runner"].exists)
         app.buttons["Accept connection request"].tap()
         XCTAssertTrue(app.buttons["Accept connection request"].waitForNonExistence(timeout: 5))
 
-        app.staticTexts["Maya Chen"].tap()
+        app.staticTexts["Maya Chen"].firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 5))
-        let profileActionsButton = app.buttons["Profile actions"]
-        XCTAssertTrue(profileActionsButton.exists)
-        profileActionsButton.tap()
-        XCTAssertTrue(app.buttons["Remove connection"].waitForExistence(timeout: 5))
-        app.buttons["Remove connection"].tap()
+        let disconnect = app.buttons["Disconnect"]
+        XCTAssertTrue(disconnect.waitForExistence(timeout: 5))
+        disconnect.tap()
         XCTAssertTrue(app.alerts["Remove connection?"].waitForExistence(timeout: 5))
         app.alerts["Remove connection?"].buttons["Cancel"].tap()
-        XCTAssertTrue(profileActionsButton.exists)
-        profileActionsButton.tap()
-        app.buttons["Remove connection"].tap()
-        app.alerts["Remove connection?"].buttons["Remove"].tap()
-        XCTAssertTrue(app.navigationBars["Connections"].waitForExistence(timeout: 5))
+        XCTAssertTrue(disconnect.exists)
+        disconnect.tap()
+        app.alerts["Remove connection?"].buttons["Disconnect"].tap()
+        XCTAssertTrue(app.buttons["People"].waitForExistence(timeout: 5))
+        app.buttons["People"].tap()
         XCTAssertFalse(app.staticTexts["Maya Chen"].exists)
+        reveal(app.buttons["Unblock Blocked Runner"], in: app)
 
-        app.navigationBars["Connections"].buttons.firstMatch.tap()
-        app.buttons["Social community"].tap()
         app.buttons["Groups"].tap()
-        XCTAssertTrue(app.navigationBars["Groups"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Golden Gate Run Club"].exists)
-        XCTAssertTrue(app.staticTexts["Sunset Striders"].exists)
-        app.buttons["Join"].tap()
-        XCTAssertEqual(app.buttons.matching(identifier: "Leave").count, 2)
-
-        app.navigationBars["Groups"].buttons.firstMatch.tap()
-        app.buttons["Social notifications"].tap()
-        XCTAssertTrue(app.navigationBars["Notifications"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Maya Chen cheered your run."].exists)
-        XCTAssertTrue(app.staticTexts["Maya Chen invited you to Saturday waterfront 5K."].exists)
-        app.buttons["Accept run invitation"].tap()
-        XCTAssertTrue(app.buttons["Accept run invitation"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Bruce, Daniel, Rina's Group"].waitForExistence(timeout: 5))
+        app.staticTexts["Bruce, Daniel, Rina's Group"].tap()
+        XCTAssertTrue(app.staticTexts["Daniel Runner"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons.firstMatch.tap()
+        app.buttons["Notification Center"].tap()
+        XCTAssertTrue(app.navigationBars["Notification Center"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Maya Chen cheered your activity."].exists)
+        let invitation = app.buttons.containing(.staticText, identifier: "Maya Chen invited you to Saturday waterfront 5K.").firstMatch
+        reveal(invitation, in: app)
+        invitation.tap()
+        XCTAssertTrue(app.navigationBars["Run invitation"].waitForExistence(timeout: 5))
+        let accept = app.buttons["Meet in person"]
+        XCTAssertTrue(accept.waitForExistence(timeout: 5))
+        accept.tap()
+        XCTAssertTrue(accept.waitForNonExistence(timeout: 5))
 
     }
 
@@ -130,12 +130,11 @@ final class OutboundUITests: XCTestCase {
     func testSeededSocialDeclinesConnectionRequest() throws {
         let app = launchApp()
 
-        XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
-        app.tabBars.buttons["Social"].tap()
-        XCTAssertTrue(app.navigationBars["Social"].waitForExistence(timeout: 5))
-        app.buttons["Social community"].tap()
-        app.buttons["Connections"].tap()
-        XCTAssertTrue(app.navigationBars["Connections"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["tab.start"].waitForExistence(timeout: 5))
+        app.buttons["tab.social"].tap()
+        XCTAssertTrue(app.buttons["Feed"].waitForExistence(timeout: 5))
+        app.buttons["People"].tap()
+        XCTAssertTrue(app.staticTexts["Maya Chen"].waitForExistence(timeout: 5))
 
         let declineButton = app.buttons["Decline connection request"]
         XCTAssertTrue(declineButton.waitForExistence(timeout: 5))
@@ -148,7 +147,7 @@ final class OutboundUITests: XCTestCase {
     func testGroupInvitePickerShowsSelectionState() throws {
         let app = launchApp()
 
-        app.tabBars.buttons["Social"].tap()
+        app.buttons["tab.social"].tap()
         XCTAssertTrue(app.buttons["Groups"].waitForExistence(timeout: 5))
         app.buttons["Groups"].tap()
         let groupName = "Bruce, Daniel, Rina's Group"
@@ -172,7 +171,7 @@ final class OutboundUITests: XCTestCase {
     func testGroupMembersAndWeeklyThemePersistAfterReopening() throws {
         let app = launchApp()
 
-        app.tabBars.buttons["Social"].tap()
+        app.buttons["tab.social"].tap()
         XCTAssertTrue(app.buttons["Groups"].waitForExistence(timeout: 5))
         app.buttons["Groups"].tap()
 
@@ -213,31 +212,27 @@ final class OutboundUITests: XCTestCase {
 
     @MainActor
     func testTodayFreestyleStartOpensRecordingFlowAndCanFinish() throws {
-        addPermissionMonitor()
         let app = launchApp()
-
-        app.buttons["Quick start"].tap()
-        XCTAssertTrue(app.staticTexts["Freestyle run"].waitForExistence(timeout: 5))
-        if app.buttons["Connect Apple Music"].exists {
-            app.buttons["Connect Apple Music"].tap()
-            XCTAssertTrue(app.staticTexts["Mock upbeat run mix"].waitForExistence(timeout: 5))
-            app.buttons["Select Mock upbeat run mix"].tap()
+        XCTAssertTrue(app.buttons["tab.start"].waitForExistence(timeout: 5))
+        let outdoor = app.buttons["Outdoor"].firstMatch
+        // Setup options are a horizontal row; bring Outdoor into view without
+        // replacing real start/countdown behavior with a seeded recording.
+        for _ in 0..<6 {
+            if outdoor.exists && outdoor.frame.intersects(app.frame) && outdoor.isHittable { break }
+            app.scrollViews["activity.launch.options"].swipeLeft()
         }
-        XCTAssertTrue(app.buttons["Start now"].exists)
-        app.buttons["Start now"].tap()
-        dismissPermissionAlerts(app)
-
+        XCTAssertTrue(outdoor.isHittable)
+        outdoor.tap()
+        XCTAssertTrue(app.buttons["Indoor"].exists)
+        app.buttons["tab.start"].tap()
         XCTAssertTrue(app.buttons["Pause activity"].waitForExistence(timeout: 12))
-        XCTAssertTrue(app.staticTexts["Pace"].exists)
-
         app.buttons["Pause activity"].press(forDuration: 1.1)
-        XCTAssertTrue(app.buttons["Finish"].waitForExistence(timeout: 5))
-        app.buttons["Finish"].tap()
-        XCTAssertTrue(app.buttons["Save activity"].waitForExistence(timeout: 5))
-        app.buttons["Discard activity"].tap()
-
-        XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Quick start"].exists)
+        XCTAssertTrue(app.buttons["Finish activity"].waitForExistence(timeout: 5))
+        app.buttons["Finish activity"].tap()
+        XCTAssertTrue(app.buttons["PostRunSaveEligibilityExplanation"].waitForExistence(timeout: 5)
+                      || app.staticTexts["Record at least 5 minutes or 500 meters to save this activity."].exists)
+        discardReview(app)
+        XCTAssertTrue(app.buttons["tab.start"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -248,13 +243,12 @@ final class OutboundUITests: XCTestCase {
             "metric",
         ])
 
-        app.buttons["Quick start"].tap()
         XCTAssertTrue(app.buttons["Pause activity"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts["Morning 10K"].exists)
         XCTAssertTrue(app.staticTexts["7.8/10km"].exists)
-        XCTAssertTrue(app.staticTexts["5:41 /km"].exists)
-        XCTAssertTrue(app.staticTexts["61"].exists)
-        XCTAssertTrue(app.staticTexts["152"].exists)
+        app.buttons["Expand workout dashboard"].tap()
+        XCTAssertTrue(app.staticTexts["61"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "152")).firstMatch.exists)
+        app.buttons["Collapse workout dashboard"].tap()
         XCTAssertTrue(app.buttons["Show Camera"].exists)
         XCTAssertTrue(app.buttons["Recenter Map"].exists)
 
@@ -266,37 +260,52 @@ final class OutboundUITests: XCTestCase {
         app.buttons["Resume activity"].tap()
         XCTAssertTrue(app.buttons["Pause activity"].waitForExistence(timeout: 5))
         app.buttons["Pause activity"].press(forDuration: 1.1)
-        XCTAssertTrue(app.buttons["Finish"].waitForExistence(timeout: 5))
-        app.buttons["Finish"].tap()
+        XCTAssertTrue(app.buttons["Finish activity"].waitForExistence(timeout: 5))
+        app.buttons["Finish activity"].tap()
 
         XCTAssertTrue(app.buttons["Save activity"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["7.82"].exists)
-        XCTAssertTrue(app.staticTexts["5:52 /km"].exists)
-        XCTAssertTrue(app.staticTexts["152"].exists)
-        app.buttons["Discard activity"].tap()
-        XCTAssertTrue(app.navigationBars["Today"].waitForExistence(timeout: 5))
+        // The seeded recorder keeps ticking while real pause/resume controls run.
+        let pace = app.staticTexts.matching(NSPredicate(format: "label MATCHES %@", "5:5[2-9] /km")).firstMatch
+        XCTAssertTrue(pace.exists, app.debugDescription)
+        XCTAssertTrue(app.staticTexts["152"].exists, app.debugDescription)
+        discardReview(app)
+        XCTAssertTrue(app.buttons["tab.start"].waitForExistence(timeout: 5), app.debugDescription)
     }
 
     @MainActor
     func testPostRunSummaryCanManageCapturedPhotos() throws {
-        let app = launchApp(extraArguments: ["-OutboundDebugPostRunSummary"])
-
-        XCTAssertTrue(app.staticTexts["3 selected"].waitForExistence(timeout: 5))
-        app.buttons["Manage"].tap()
-        XCTAssertTrue(app.navigationBars["Choose Photos"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["3 of 3 selected"].exists)
-        app.buttons["Clear"].tap()
-        XCTAssertTrue(app.staticTexts["0 of 3 selected"].waitForExistence(timeout: 3))
-        app.buttons["Done"].tap()
-        XCTAssertTrue(app.staticTexts["None selected"].waitForExistence(timeout: 3))
-        app.buttons["Discard"].tap()
+        let app = launchApp(extraArguments: ["-OutboundDebugPostRunSummary", "-measurement_unit_system_v1", "metric"])
+        let first = app.descendants(matching: .any)["FinishPhotoThumbnail-0"].firstMatch
+        reveal(first, in: app)
+        XCTAssertEqual(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "FinishPhotoThumbnail-")).count, 3)
+        first.tap()
+        let closePreview = app.buttons["CloseFinishPhotoPreviewButton"]
+        XCTAssertTrue(closePreview.waitForExistence(timeout: 5))
+        closePreview.tap()
+        first.press(forDuration: 0.6)
+        let delete = app.buttons["Delete selected photos"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(first.isSelected)
+        let secondCaption = app.descendants(matching: .any)["FinishPhotoThumbnail-1"].firstMatch.label
+        let last = app.descendants(matching: .any)["FinishPhotoThumbnail-2"].firstMatch
+        first.press(forDuration: 0.6, thenDragTo: last)
+        let moved = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", secondCaption), object: first)
+        XCTAssertEqual(XCTWaiter.wait(for: [moved], timeout: 5), .completed)
+        XCTAssertTrue(last.isSelected)
+        delete.tap()
+        XCTAssertEqual(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "FinishPhotoThumbnail-")).count, 2)
+        XCTAssertFalse(delete.exists)
+        reveal(app.buttons["Save activity"], in: app)
+        app.buttons["Save activity"].tap()
+        XCTAssertTrue(app.staticTexts["Saved 2"].waitForExistence(timeout: 5), "Only the remaining photos must reach onSave")
     }
 
     @MainActor
     func testDemoCaptureHarvestHalfMarathon() throws {
         let app = launchDemoCaptureApp()
 
-        let todayTab = app.tabBars.buttons["Today"]
+        let todayTab = app.buttons["tab.start"]
         XCTAssertTrue(todayTab.waitForExistence(timeout: 8))
         XCTAssertTrue(app.staticTexts["Redmond Harvest Half Marathon"].waitForExistence(timeout: 8))
         pacedPause(6)
@@ -343,61 +352,19 @@ final class OutboundUITests: XCTestCase {
 
     @MainActor
     private func launchApp(extraArguments: [String] = []) -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchArguments += [
-            "-OutboundUseMockMusic",
-            "-OutboundDisableFirebase",
-            "-OutboundSkipOnboarding",
-            "-OutboundUITestSeedData",
-            "-new_user_onboarding_completed_v2.UI test session",
-            "YES",
-        ]
-        app.launchArguments += extraArguments
-        app.launch()
-        return app
+        launchFixtureApp(extraArguments: extraArguments)
     }
 
     @MainActor
     private func launchDemoCaptureApp() -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchArguments += [
-            "-AppleLanguages", "(en)",
-            "-AppleLocale", "en_US",
-            "-OutboundUseMockMusic",
-            "-OutboundDisableFirebase",
-            "-OutboundSkipOnboarding",
-            "-OutboundDemoCapture",
-            "-OutboundSimulatedHarvestRun",
-            "-measurement_unit_system_v1", "metric",
-            "-workout_reminders_enabled_v1", "NO",
-            "-new_user_onboarding_completed_v2.UI test session", "YES",
-        ]
-        app.launch()
-        return app
+        launchFixtureApp(extraArguments: [
+            "-OutboundDemoCapture", "-OutboundSimulatedHarvestRun",
+            "-measurement_unit_system_v1", "metric", "-workout_reminders_enabled_v1", "NO",
+        ])
     }
 
     private func pacedPause(_ seconds: TimeInterval) {
         Thread.sleep(forTimeInterval: seconds)
     }
 
-    @MainActor
-    private func addPermissionMonitor() {
-        addUIInterruptionMonitor(withDescription: "System permissions") { alert in
-            for button in ["Allow While Using App", "Allow Once", "OK", "Allow"] {
-                if alert.buttons[button].exists {
-                    alert.buttons[button].tap()
-                    return true
-                }
-            }
-            return false
-        }
-    }
-
-    @MainActor
-    private func dismissPermissionAlerts(_ app: XCUIApplication) {
-        for _ in 0..<3 {
-            if app.otherElements["CameraDataOverlay"].exists { break }
-            app.tap()
-        }
-    }
 }

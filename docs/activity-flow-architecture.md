@@ -69,5 +69,7 @@ The coordinator owns the screen models for one retained flow. Screen changes and
     CODE_SIGNING_ALLOWED=NO build
   ```
 
-- No tests authorized; do not run unit/UI suites.
+- Follow-up tests were explicitly authorized. Portable metrics tests and the complete iOS unit target pass after repairing stale package dependencies, service mocks, persistence APIs, and onboarding replay expectations. Live guide tests run in the iOS target against the current moment-driven contract.
+- UI regressions use the custom dock and current Social/photo flows. Seeded scenarios explicitly clear synthetic recording journals; group recovery retains its journal across two relaunches and owns its loopback API fixture.
+- Requested verification passed: 15 Swift Package tests and all 91 unique iOS tests (69 unit, 22 UI) on a fresh iPhone 17 / iOS 26.5 simulator. The full scheme includes all six Watch scenarios and six launch configurations. Photo coverage checks preview, long-press selection, drag reordering, deletion, and the saved photo count.
 - Manual device verification must be reported separately: a build does not verify GPS, camera, Watch, audio, map gestures, or visual transitions.

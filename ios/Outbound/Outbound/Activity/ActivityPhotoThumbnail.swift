@@ -22,6 +22,30 @@ struct ActivityPhotoThumbnail<Content: View>: View {
     }
 
     var body: some View {
+        Group {
+            // Selected tiles reserve long press for native drag and drop.
+            if isSelected || longPressAction == nil {
+                thumbnail.onTapGesture(perform: action)
+            } else {
+                thumbnail.gesture(
+                    LongPressGesture(minimumDuration: 0.35)
+                        .exclusively(before: TapGesture())
+                        .onEnded { gesture in
+                            switch gesture {
+                            case .first(true): longPressAction?()
+                            case .second: action()
+                            default: break
+                            }
+                        }
+                )
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { action() }
+    }
+
+    private var thumbnail: some View {
         ZStack(alignment: .bottomLeading) {
             content
             LinearGradient(
@@ -41,11 +65,6 @@ struct ActivityPhotoThumbnail<Content: View>: View {
                 .stroke(isSelected ? Color.orange : Color.clear, lineWidth: 3)
         }
         .contentShape(Rectangle())
-        .onTapGesture(perform: action)
-        .onLongPressGesture(minimumDuration: 0.35) {
-            longPressAction?()
-        }
-        .accessibilityAddTraits(.isButton)
     }
 }
 
