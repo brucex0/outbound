@@ -278,6 +278,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case changeType = "change_type"
     case selectionType = "selection_type"
     case sourceType = "source_type"
+    case motivationComeback = "motivation_comeback"
     case stepName = "step_name"
     case timestampSource = "timestamp_source"
     case direction
@@ -366,7 +367,7 @@ enum ProductAnalyticsSchema {
         .activityStarted: [.entrySource, .activityType, .goalType, .targetBucket, .musicEnabled, .routeSelected, .shoeSelected, .preRunPhotoAdded, .groupRunEnabled, .liveShareEnabled, .indoor, .voiceGuideEnabled, .autoPauseEnabled, .autoStopAtGoal, .dogCompanionEnabled, .participantCountBucket],
         .activityPaused: [.sourceType],
         .activityResumed: [.sourceType, .durationBucket],
-        .activityFinished: [.movingTimeMethod, .elapsedDurationBucket, .durationBucket, .distanceBucket, .goalCompletionBucket],
+        .activityFinished: [.motivationComeback, .movingTimeMethod, .elapsedDurationBucket, .durationBucket, .distanceBucket, .goalCompletionBucket],
         .appReviewRequested: [],
         .activitySaved: [.movingTimeMethod, .elapsedDurationBucket, .activityType, .goalType, .durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket, .musicEnabled, .routeSelected, .shoeSelected, .groupRunEnabled, .indoor, .dogCompanionEnabled],
         .activitySaveIneligibleShown: [.activityType, .durationBucket, .distanceBucket],

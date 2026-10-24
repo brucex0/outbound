@@ -747,6 +747,9 @@ struct FinishReflection: Equatable, Codable {
 }
 
 enum DailyMotivationEngine {
+    // Ordinary rest days should not be framed as losing and restarting a rhythm.
+    private static let comebackInterval: TimeInterval = 7 * 24 * 60 * 60
+
     static func finishReflection(
         summary: ActivitySummary,
         priorActivities: [SavedActivity],
@@ -760,7 +763,7 @@ enum DailyMotivationEngine {
         let highlight = "\(summary.durationSecs.formatted()) completed"
         let progressNote = goalProgress?.guideLine
 
-        if wasComeback(priorActivities: priorActivities, now: now, calendar: calendar) {
+        if wasComeback(priorActivities: priorActivities, now: now) {
             return FinishReflection(
                 title: "Fresh start secured.",
                 body: "You came back without making it dramatic. That is how rhythm returns.",
@@ -827,11 +830,11 @@ enum DailyMotivationEngine {
         now: Date,
         calendar: Calendar
     ) -> MotivationPhase {
-        guard let latest = activities.first else { return .firstSession }
-        if calendar.isDateInToday(latest.startedAt) {
+        guard let latest = activities.max(by: { $0.startedAt < $1.startedAt }) else { return .firstSession }
+        if calendar.isDate(latest.startedAt, inSameDayAs: now) {
             return .completedToday
         }
-        if daysSince(date: latest.startedAt, now: now, calendar: calendar) >= 2 {
+        if wasComeback(priorActivities: activities, now: now) {
             return .comeback
         }
         if activitiesThisWeek(activities: activities, now: now, calendar: calendar) >= 3 {
@@ -849,22 +852,11 @@ enum DailyMotivationEngine {
         return activities.filter { week.contains($0.startedAt) }.count
     }
 
-    private static func daysSince(
-        date: Date,
-        now: Date,
-        calendar: Calendar
-    ) -> Int {
-        let start = calendar.startOfDay(for: date)
-        let end = calendar.startOfDay(for: now)
-        return calendar.dateComponents([.day], from: start, to: end).day ?? 0
-    }
-
-    private static func wasComeback(
+    static func wasComeback(
         priorActivities: [SavedActivity],
-        now: Date,
-        calendar: Calendar
+        now: Date
     ) -> Bool {
-        guard let latest = priorActivities.first else { return false }
-        return daysSince(date: latest.startedAt, now: now, calendar: calendar) >= 2
+        guard let latest = priorActivities.map(\.startedAt).max() else { return false }
+        return now.timeIntervalSince(latest) >= comebackInterval
     }
 }

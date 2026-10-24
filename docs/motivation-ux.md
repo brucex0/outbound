@@ -604,6 +604,10 @@ The finish moment is a key emotional payoff and should not be just a stats hando
 
 ### Immediate Reflection Card
 
+- Comeback wording requires at least seven full days since the newest saved activity, independent of list order. Empty history and ordinary rest days use other reflections.
+- The daily motivation phase uses the same gap rule; completed-today checks use the supplied local calendar date.
+- `activity_finished.motivation_comeback` records only the boolean comeback classification, with no activity dates or content.
+
 Show a short reflection before or above the save/discard controls.
 
 Example:

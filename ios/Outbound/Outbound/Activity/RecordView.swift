@@ -1726,7 +1726,17 @@ struct RecordView: View {
             if isSaveEligible {
                 guideCatalog.recordGuidanceReport(guidanceReport)
             }
-            track(.init(.activityFinished, properties: outcomeProperties(for: summary).merging([.movingTimeMethod: .string("gps_observations_v2"), .elapsedDurationBucket: .string(ProductAnalyticsBucket.duration(seconds: max(summary.durationSecs, Int(summary.endedAt.timeIntervalSince(summary.startedAt)))))]) { _, new in new }))
+            let finishProperties: [ProductPropertyKey: AnalyticsValue] = [
+                .motivationComeback: .boolean(DailyMotivationEngine.wasComeback(
+                    priorActivities: activityStore.activities,
+                    now: summary.endedAt
+                )),
+                .movingTimeMethod: .string("gps_observations_v2"),
+                .elapsedDurationBucket: .string(ProductAnalyticsBucket.duration(
+                    seconds: max(summary.durationSecs, Int(summary.endedAt.timeIntervalSince(summary.startedAt)))
+                ))
+            ]
+            track(.init(.activityFinished, properties: outcomeProperties(for: summary).merging(finishProperties) { _, new in new }))
             let locationDiagnostics = recorder.locationManager.recordingDiagnostics
             track(.init(.activityRecordingQuality, properties: [
                 .sourceType: .string(locationDiagnostics.deliveryMode),
@@ -1765,7 +1775,8 @@ struct RecordView: View {
             intent: activeIntent,
             goalProgress: isSaveEligible
                 ? goalStore.previewProgress(with: summary, activities: activityStore.activities)
-                : nil
+                : nil,
+            now: summary.endedAt
         )
         let recognitionPreviews = isSaveEligible
             ? recognitionStore.previewPostRunRecognition(
