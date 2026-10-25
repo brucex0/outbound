@@ -1,0 +1,2 @@
+# Vector PDF resources are binary documents, including when their streams use ASCII.
+ios/Outbound/Outbound/Assets.xcassets/stretch_*.imageset/*.pdf binary

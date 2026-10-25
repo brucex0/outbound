@@ -86,7 +86,12 @@
         "es": "Estiramiento de glúteos",
         "zh-Hans": "臀部拉伸"
       },
-      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis",
+      "artwork": "stretch_glute",
+      "artworkPackID": 30,
+      "artworkSide": "left",
+      "alternating": false,
+      "cushion": false
     },
     {
       "id": "hamstring",
@@ -157,7 +162,12 @@
         "es": "Estiramiento de isquiotibiales",
         "zh-Hans": "大腿后侧拉伸"
       },
-      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis",
+      "artwork": "stretch_hamstring",
+      "artworkPackID": 61,
+      "artworkSide": "right",
+      "alternating": false,
+      "cushion": false
     },
     {
       "id": "inner_thigh",
@@ -232,7 +242,12 @@
         "es": "Estiramiento de aductores",
         "zh-Hans": "大腿内侧拉伸"
       },
-      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis",
+      "artwork": "stretch_inner_thigh",
+      "artworkPackID": 32,
+      "artworkSide": "left",
+      "alternating": false,
+      "cushion": false
     },
     {
       "id": "calf",
@@ -315,7 +330,12 @@
         "es": "Estiramiento de pantorrilla",
         "zh-Hans": "小腿拉伸"
       },
-      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis",
+      "artwork": "stretch_calf",
+      "artworkPackID": 1,
+      "artworkSide": "left",
+      "alternating": false,
+      "cushion": false
     },
     {
       "id": "quad",
@@ -410,7 +430,12 @@
         "es": "Estiramiento de cuádriceps",
         "zh-Hans": "大腿前侧拉伸"
       },
-      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis",
+      "artwork": "stretch_quad",
+      "artworkPackID": 4,
+      "artworkSide": "left",
+      "alternating": false,
+      "cushion": false
     },
     {
       "id": "hip_flexor",
@@ -485,7 +510,12 @@
         "es": "Estiramiento de flexores de cadera",
         "zh-Hans": "髋屈肌拉伸"
       },
-      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis",
+      "artwork": "stretch_hip_flexor",
+      "artworkPackID": 76,
+      "artworkSide": "left",
+      "alternating": false,
+      "cushion": false
     },
     {
       "id": "standing_hamstring",
@@ -564,7 +594,12 @@
         "es": "Estiramiento de isquiotibiales de pie",
         "zh-Hans": "站姿大腿后侧拉伸"
       },
-      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis",
+      "alternating": false,
+      "cushion": false,
+      "artwork": "stretch_standing_hamstring",
+      "artworkPackID": 5,
+      "artworkSide": "right"
     },
     {
       "id": "soleus",
@@ -651,7 +686,12 @@
         "es": "Estiramiento de pantorrilla con rodilla flexionada",
         "zh-Hans": "屈膝小腿拉伸"
       },
-      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis",
+      "alternating": false,
+      "cushion": false,
+      "artwork": "stretch_soleus",
+      "artworkPackID": 2,
+      "artworkSide": "left"
     },
     {
       "id": "shoulder",
@@ -732,7 +772,12 @@
         "es": "Estiramiento de hombro de pie",
         "zh-Hans": "站姿肩部拉伸"
       },
-      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis",
+      "alternating": false,
+      "cushion": false,
+      "artwork": "stretch_shoulder",
+      "artworkPackID": 13,
+      "artworkSide": "right"
     },
     {
       "id": "chest",
@@ -812,7 +857,12 @@
         ]
       ],
       "lying": false,
-      "reference": "https://www.acefitness.org/resources/everyone/exercise-library/209/standing-chest-stretch/"
+      "reference": "https://www.acefitness.org/resources/everyone/exercise-library/209/standing-chest-stretch/",
+      "alternating": false,
+      "cushion": false,
+      "artwork": "stretch_chest",
+      "artworkPackID": 77,
+      "artworkSide": "left"
     },
     {
       "id": "upper_back",
@@ -896,7 +946,12 @@
         ]
       ],
       "lying": false,
-      "reference": "https://www.nhs.uk/live-well/exercise/strength-and-flex-exercise-plan-how-to-videos/"
+      "reference": "https://www.nhs.uk/live-well/exercise/strength-and-flex-exercise-plan-how-to-videos/",
+      "alternating": false,
+      "cushion": false,
+      "artwork": "stretch_upper_back",
+      "artworkPackID": 12,
+      "artworkSide": "left"
     },
     {
       "id": "triceps",
@@ -980,7 +1035,12 @@
         ]
       ],
       "lying": false,
-      "reference": "https://www.acefitness.org/resources/everyone/exercise-library/174/overhead-triceps-stretch/"
+      "reference": "https://www.acefitness.org/resources/everyone/exercise-library/174/overhead-triceps-stretch/",
+      "alternating": false,
+      "cushion": false,
+      "artwork": "stretch_triceps",
+      "artworkPackID": 14,
+      "artworkSide": "right"
     },
     {
       "id": "lat",
@@ -1056,7 +1116,12 @@
         ]
       ],
       "lying": false,
-      "reference": "https://www.acefitness.org/resources/everyone/exercise-library/198/90-lat-stretch/"
+      "reference": "https://www.acefitness.org/resources/everyone/exercise-library/198/90-lat-stretch/",
+      "alternating": false,
+      "cushion": false,
+      "artwork": "stretch_lat",
+      "artworkPackID": 11,
+      "artworkSide": "left"
     },
     {
       "id": "wall_side",
@@ -1150,7 +1215,12 @@
         ]
       ],
       "lying": false,
-      "reference": "https://www.lta.org.uk/play/tennis-at-home/at-home-standing-stretches/"
+      "reference": "https://www.lta.org.uk/play/tennis-at-home/at-home-standing-stretches/",
+      "alternating": false,
+      "cushion": false,
+      "artwork": "stretch_wall_side",
+      "artworkPackID": 78,
+      "artworkSide": "left"
     },
     {
       "id": "wall_chest",
@@ -1226,7 +1296,687 @@
         ]
       ],
       "lying": false,
-      "reference": "https://www.lta.org.uk/play/tennis-at-home/at-home-standing-stretches/"
+      "reference": "https://www.lta.org.uk/play/tennis-at-home/at-home-standing-stretches/",
+      "alternating": false,
+      "cushion": false,
+      "artwork": "stretch_wall_chest",
+      "artworkPackID": 15,
+      "artworkSide": "left"
+    },
+    {
+      "id": "leg_swings",
+      "title": {
+        "en": "Leg swings",
+        "zh-Hans": "前后摆腿",
+        "es": "Balanceos de pierna"
+      },
+      "instruction": {
+        "en": "Hold a fixed support. Swing one leg gently forward and back with a soft knee, keeping your torso tall.",
+        "zh-Hans": "扶稳固定支撑物，膝盖微屈，轻轻前后摆动一条腿，保持上身直立。",
+        "es": "Sujétate a un apoyo fijo. Balancea una pierna suavemente hacia delante y atrás, con la rodilla relajada y el tronco erguido."
+      },
+      "bilateral": true,
+      "floor": false,
+      "support": true,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": true,
+      "artwork": "stretch_leg_swings",
+      "artworkPackID": 65,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "right",
+      "alternating": false,
+      "cushion": false
+    },
+    {
+      "id": "lateral_leg_swings",
+      "title": {
+        "en": "Lateral leg swings",
+        "zh-Hans": "侧向摆腿",
+        "es": "Balanceos laterales de pierna"
+      },
+      "instruction": {
+        "en": "Hold a fixed rail. Swing one leg gently across and out to the side while keeping your pelvis level.",
+        "zh-Hans": "扶稳固定栏杆，轻轻将一条腿向内、向外摆动，保持骨盆平稳。",
+        "es": "Sujétate a una barandilla fija. Balancea una pierna suavemente hacia dentro y hacia fuera, manteniendo la pelvis nivelada."
+      },
+      "bilateral": true,
+      "floor": false,
+      "support": true,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": true,
+      "artwork": "stretch_lateral_leg_swings",
+      "artworkPackID": 66,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "right",
+      "alternating": false,
+      "cushion": false
+    },
+    {
+      "id": "gate_opener",
+      "title": {
+        "en": "Gate opener",
+        "zh-Hans": "开髋抬腿",
+        "es": "Apertura de cadera"
+      },
+      "instruction": {
+        "en": "Lift one bent knee, open the thigh gently to the side, then lower it. Alternate legs without twisting the planted knee. Use support if needed.",
+        "zh-Hans": "屈膝抬起一条腿，轻轻向外打开大腿，再放下。左右交替，不要扭转支撑腿的膝盖；必要时扶稳支撑物。",
+        "es": "Eleva una rodilla flexionada, abre suavemente el muslo hacia un lado y baja el pie. Alterna sin torcer la rodilla de apoyo. Usa un apoyo si lo necesitas."
+      },
+      "bilateral": false,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": true,
+      "artwork": "stretch_gate_opener",
+      "artworkPackID": 67,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": true,
+      "cushion": false
+    },
+    {
+      "id": "heel_to_toe_rocks",
+      "title": {
+        "en": "Heel-to-toe rocks",
+        "zh-Hans": "脚跟脚尖交替抬起",
+        "es": "Balanceo de talones a puntas"
+      },
+      "instruction": {
+        "en": "With soft knees, rise gently onto the balls of both feet. Lower your heels, then lift your toes slightly. Rock slowly without losing balance.",
+        "zh-Hans": "膝盖微屈，轻轻踮起双脚，再放下脚跟，稍稍抬起脚尖。缓慢交替，保持平衡。",
+        "es": "Con las rodillas relajadas, eleva suavemente ambos talones. Bájalos y levanta un poco las puntas. Alterna despacio sin perder el equilibrio."
+      },
+      "bilateral": false,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": true,
+      "artwork": "stretch_heel_to_toe_rocks",
+      "artworkPackID": 68,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": false,
+      "cushion": false
+    },
+    {
+      "id": "lateral_foot_rocks",
+      "title": {
+        "en": "Lateral foot rocks",
+        "zh-Hans": "足底左右移重心",
+        "es": "Balanceo lateral de los pies"
+      },
+      "instruction": {
+        "en": "Stand with soft knees. Shift weight a little across the soles from side to side, keeping feet nearly flat. Keep the range small; do not roll onto your ankles.",
+        "zh-Hans": "站立，膝盖微屈，重心在足底小幅左右移动，双脚基本贴地。幅度要小，不要让脚踝向两侧翻倒。",
+        "es": "De pie con las rodillas relajadas, desplaza un poco el peso de un lado a otro de las plantas, con los pies casi planos. Evita volcar los tobillos."
+      },
+      "bilateral": false,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": true,
+      "artwork": "stretch_lateral_foot_rocks",
+      "artworkPackID": 69,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": false,
+      "cushion": false
+    },
+    {
+      "id": "knee_circles",
+      "title": {
+        "en": "Knee circles",
+        "zh-Hans": "膝部小幅绕圈",
+        "es": "Círculos suaves de rodillas"
+      },
+      "instruction": {
+        "en": "Bring feet close and soften your knees. Rest hands lightly above the knees and make tiny comfortable circles. Keep feet planted and never force rotation.",
+        "zh-Hans": "双脚靠近，膝盖微屈，双手轻放在膝盖上方，舒适地小幅绕圈。双脚不离地，不要用力扭转。",
+        "es": "Acerca los pies y flexiona un poco las rodillas. Apoya las manos suavemente por encima de ellas y haz círculos pequeños y cómodos, sin mover los pies ni forzar el giro."
+      },
+      "bilateral": false,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": true,
+      "artwork": "stretch_knee_circles",
+      "artworkPackID": 70,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": false,
+      "cushion": false
+    },
+    {
+      "id": "dynamic_side_bends",
+      "title": {
+        "en": "Dynamic side bends",
+        "zh-Hans": "动态侧屈",
+        "es": "Flexiones laterales dinámicas"
+      },
+      "instruction": {
+        "en": "Stand tall with soft knees. Reach one arm overhead and bend gently sideways. Return upright and alternate, keeping your chest facing forward.",
+        "zh-Hans": "站直，膝盖微屈，一只手臂举过头顶，轻轻向侧面弯身。回正后换边，胸口始终朝前。",
+        "es": "De pie con las rodillas relajadas, eleva un brazo y flexiona suavemente el tronco hacia un lado. Vuelve al centro y alterna, con el pecho hacia delante."
+      },
+      "bilateral": false,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": true,
+      "artwork": "stretch_dynamic_side_bends",
+      "artworkPackID": 71,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": true,
+      "cushion": false
+    },
+    {
+      "id": "split_squats",
+      "title": {
+        "en": "Split squats",
+        "zh-Hans": "分腿蹲",
+        "es": "Sentadillas en posición dividida"
+      },
+      "instruction": {
+        "en": "Set one foot forward and the other back. Bend both knees to lower straight down, then rise. Keep the front knee tracking its toes and use a comfortable depth.",
+        "zh-Hans": "一脚在前、一脚在后，屈双膝垂直下蹲，再站起。前膝与脚尖方向一致，下蹲至舒适深度即可。",
+        "es": "Coloca un pie delante y otro detrás. Flexiona ambas rodillas para bajar verticalmente y vuelve a subir. Alinea la rodilla delantera con los dedos y baja solo hasta donde resulte cómodo."
+      },
+      "bilateral": true,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": true,
+      "artwork": "stretch_split_squats",
+      "artworkPackID": 72,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "right",
+      "alternating": false,
+      "cushion": false
+    },
+    {
+      "id": "dynamic_lateral_lunge",
+      "title": {
+        "en": "Lateral lunge",
+        "zh-Hans": "动态侧弓步",
+        "es": "Zancada lateral"
+      },
+      "instruction": {
+        "en": "Stand wide. Sit your hips back over one bent knee while the other leg stays long. Return to the middle and alternate, with knees tracking toes.",
+        "zh-Hans": "双脚分开，臀部向后移，屈一侧膝盖，另一腿伸长。回到中间后换边，膝盖与脚尖方向一致。",
+        "es": "Separa los pies. Lleva las caderas atrás y flexiona una rodilla mientras la otra pierna queda larga. Vuelve al centro y alterna, alineando las rodillas con los pies."
+      },
+      "bilateral": false,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": true,
+      "artwork": "stretch_dynamic_lateral_lunge",
+      "artworkPackID": 51,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": true,
+      "cushion": false
+    },
+    {
+      "id": "runners_lunge_twist",
+      "title": {
+        "en": "Runner’s lunge twist",
+        "zh-Hans": "跑者弓步转体",
+        "es": "Zancada de corredor con giro"
+      },
+      "instruction": {
+        "en": "Step into a runner’s lunge and place the opposite hand beside the front foot. Gently open your chest toward the front knee and reach up. Return and alternate sides without forcing the twist.",
+        "zh-Hans": "迈入跑者弓步，将对侧手放在前脚旁。轻轻朝前膝方向转开胸口，另一手向上伸展。回正后换边，不要强行扭转。",
+        "es": "Adopta una zancada de corredor y apoya la mano contraria junto al pie delantero. Abre suavemente el pecho hacia la rodilla y eleva el otro brazo. Vuelve y alterna sin forzar el giro."
+      },
+      "bilateral": false,
+      "floor": true,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": true,
+      "artwork": "stretch_runners_lunge_twist",
+      "artworkPackID": 52,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": true,
+      "cushion": false
+    },
+    {
+      "id": "toe_touch_twist",
+      "title": {
+        "en": "Toe touch twist",
+        "zh-Hans": "俯身交替转体",
+        "es": "Giro con alcance al pie"
+      },
+      "instruction": {
+        "en": "Stand wide with soft knees. Hinge at the hips and reach toward the opposite shin or foot as the other arm opens upward. Return through the middle and alternate. Touching the toes is optional.",
+        "zh-Hans": "双脚分开，膝盖微屈，从髋部俯身，一手伸向对侧小腿或脚，另一臂向上打开。经中间回正后换边，不必碰到脚尖。",
+        "es": "Separa los pies y relaja las rodillas. Inclínate desde las caderas y alcanza la espinilla o el pie contrario mientras abres el otro brazo hacia arriba. Vuelve al centro y alterna; no es necesario tocar los dedos."
+      },
+      "bilateral": false,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": true,
+      "artwork": "stretch_toe_touch_twist",
+      "artworkPackID": 53,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": true,
+      "cushion": false
+    },
+    {
+      "id": "high_knee_twists",
+      "title": {
+        "en": "High knee twists",
+        "zh-Hans": "抬膝转体",
+        "es": "Elevación de rodillas con giro"
+      },
+      "instruction": {
+        "en": "Stand tall. Lift one knee and turn your chest gently toward it. Lower the foot, face forward and alternate. Do not pull or press on the knee.",
+        "zh-Hans": "站直，抬起一侧膝盖，轻轻朝该侧转动胸口。放下脚、回正，再换边。不要拉扯或按压膝盖。",
+        "es": "De pie, eleva una rodilla y gira suavemente el pecho hacia ella. Baja el pie, vuelve al frente y alterna. No tires de la rodilla ni la presiones."
+      },
+      "bilateral": false,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": true,
+      "artwork": "stretch_high_knee_twists",
+      "artworkPackID": 54,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": true,
+      "cushion": false
+    },
+    {
+      "id": "dynamic_quad",
+      "title": {
+        "en": "Dynamic quad stretch",
+        "zh-Hans": "动态大腿前侧拉伸",
+        "es": "Estiramiento dinámico de cuádriceps"
+      },
+      "instruction": {
+        "en": "Stand tall and briefly hold one ankle behind you, with the knee pointing down beside the other knee. Release, step and alternate. Use a fixed support if needed; do not arch your back.",
+        "zh-Hans": "站直，短暂握住身后一侧脚踝，双膝靠近，屈膝朝下。松手、迈步，再换边。必要时扶稳支撑物，不要塌腰。",
+        "es": "De pie, sujeta brevemente un tobillo por detrás, con la rodilla hacia abajo junto a la otra. Suelta, da un paso y alterna. Usa un apoyo fijo si hace falta y evita arquear la espalda."
+      },
+      "bilateral": false,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": true,
+      "artwork": "stretch_dynamic_quad",
+      "artworkPackID": 55,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": true,
+      "cushion": false
+    },
+    {
+      "id": "hamstring_scoops",
+      "title": {
+        "en": "Hamstring scoops",
+        "zh-Hans": "腿后侧扫手伸展",
+        "es": "Barridos de isquiotibiales"
+      },
+      "instruction": {
+        "en": "Step one heel forward with toes raised. Soften the supporting knee, hinge from your hips and sweep your hands down beside the front leg. Rise smoothly and alternate.",
+        "zh-Hans": "一侧脚跟向前点地、脚尖抬起，支撑腿微屈。从髋部俯身，双手沿前腿两侧向下扫过。平稳站起后换边。",
+        "es": "Adelanta un talón con la punta elevada. Flexiona un poco la pierna de apoyo, inclínate desde las caderas y barre con las manos junto a la pierna delantera. Incorpórate suavemente y alterna."
+      },
+      "bilateral": false,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": true,
+      "artwork": "stretch_hamstring_scoops",
+      "artworkPackID": 56,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": true,
+      "cushion": false
+    },
+    {
+      "id": "high_knees",
+      "title": {
+        "en": "High knees",
+        "zh-Hans": "高抬腿",
+        "es": "Rodillas arriba"
+      },
+      "instruction": {
+        "en": "March or jog lightly in place, alternating knees at a comfortable height and swinging opposite arms. Stay upright and land softly. A low march is fine.",
+        "zh-Hans": "原地踏步或轻跑，左右交替抬膝至舒适高度，对侧手臂自然摆动。上身直立、轻柔落地；低抬膝踏步也可以。",
+        "es": "Marcha o trota suavemente en el sitio, elevando las rodillas a una altura cómoda y moviendo los brazos contrarios. Mantente erguido y aterriza suave; puedes marchar sin elevar mucho las rodillas."
+      },
+      "bilateral": false,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": true,
+      "artwork": "stretch_high_knees",
+      "artworkPackID": 57,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": true,
+      "cushion": false
+    },
+    {
+      "id": "butt_kicks",
+      "title": {
+        "en": "Butt kicks",
+        "zh-Hans": "后踢腿",
+        "es": "Talones a glúteos"
+      },
+      "instruction": {
+        "en": "March or jog lightly in place, alternating heels toward your buttocks. Keep thighs near vertical, torso tall and land softly. Do not force heel contact.",
+        "zh-Hans": "原地踏步或轻跑，左右交替向后抬脚跟，靠近臀部。大腿基本竖直，上身直立、轻柔落地，不必踢到臀部。",
+        "es": "Marcha o trota suavemente en el sitio, llevando los talones hacia los glúteos de forma alterna. Mantén los muslos casi verticales y aterriza suave, sin forzar el contacto."
+      },
+      "bilateral": false,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": true,
+      "artwork": "stretch_butt_kicks",
+      "artworkPackID": 73,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": true,
+      "cushion": false
+    },
+    {
+      "id": "side_lunge",
+      "title": {
+        "en": "Side lunge stretch",
+        "zh-Hans": "侧弓步拉伸",
+        "es": "Estiramiento en zancada lateral"
+      },
+      "instruction": {
+        "en": "Stand wide and bend one knee while keeping the other leg long. Sit your hips back, keep feet planted and hold gentle tension along the inner thigh.",
+        "zh-Hans": "双脚分开，屈一侧膝盖，另一腿伸长。臀部向后移，双脚贴地，保持大腿内侧轻柔的牵拉感。",
+        "es": "Separa los pies y flexiona una rodilla mientras la otra pierna queda larga. Lleva las caderas atrás, mantén los pies apoyados y siente una tensión suave en la cara interna del muslo."
+      },
+      "bilateral": true,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": false,
+      "artwork": "stretch_side_lunge",
+      "artworkPackID": 7,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": false,
+      "cushion": false
+    },
+    {
+      "id": "wide_leg_fold",
+      "title": {
+        "en": "Seated wide-leg fold",
+        "zh-Hans": "坐姿宽腿前屈",
+        "es": "Flexión sentada con piernas separadas"
+      },
+      "instruction": {
+        "en": "Sit with legs comfortably apart and knees soft. Hinge gently forward from your hips with a long back, resting hands on the floor in front. Do not force your chest down.",
+        "zh-Hans": "坐下，双腿舒适地分开，膝盖放松。从髋部轻轻向前俯身，背部舒展，双手放在身前地面，不要强压胸口向下。",
+        "es": "Siéntate con las piernas separadas cómodamente y las rodillas relajadas. Inclínate suavemente desde las caderas con la espalda larga y apoya las manos delante. No fuerces el pecho hacia abajo."
+      },
+      "bilateral": false,
+      "floor": true,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": false,
+      "artwork": "stretch_wide_leg_fold",
+      "artworkPackID": 35,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": false,
+      "cushion": false
+    },
+    {
+      "id": "wide_leg_side",
+      "title": {
+        "en": "Wide-leg side bend",
+        "zh-Hans": "宽距站姿侧屈",
+        "es": "Flexión lateral con piernas separadas"
+      },
+      "instruction": {
+        "en": "Stand wide with soft knees. Rest one hand on the thigh, reach the other arm overhead and bend gently sideways. Keep your chest facing forward.",
+        "zh-Hans": "双脚分开，膝盖微屈，一手轻放大腿，另一臂举过头顶，轻轻向侧面弯身，胸口保持朝前。",
+        "es": "Separa los pies y relaja las rodillas. Apoya una mano en el muslo, eleva el otro brazo y flexiona suavemente el tronco hacia un lado, con el pecho hacia delante."
+      },
+      "bilateral": true,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": false,
+      "artwork": "stretch_wide_leg_side",
+      "artworkPackID": 59,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": false,
+      "cushion": false
+    },
+    {
+      "id": "cross_leg_fold",
+      "title": {
+        "en": "Cross-leg fold",
+        "zh-Hans": "交叉腿前屈",
+        "es": "Flexión con piernas cruzadas"
+      },
+      "instruction": {
+        "en": "Cross one foot in front with both feet grounded and knees soft. Hinge gently from your hips toward your shins. Rise slowly and uncross before changing sides. Use support for balance if needed.",
+        "zh-Hans": "一脚交叉放在另一脚前，双脚着地、膝盖微屈。从髋部轻轻俯身，双手伸向小腿。缓慢起身，解开交叉后再换边；必要时扶稳支撑物。",
+        "es": "Cruza un pie por delante, con ambos apoyados y las rodillas relajadas. Inclínate suavemente desde las caderas hacia las espinillas. Sube despacio y descruza antes de cambiar. Usa un apoyo si hace falta."
+      },
+      "bilateral": true,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": false,
+      "artwork": "stretch_cross_leg_fold",
+      "artworkPackID": 60,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": false,
+      "cushion": false
+    },
+    {
+      "id": "downward_dog",
+      "title": {
+        "en": "Downward dog",
+        "zh-Hans": "下犬式",
+        "es": "Perro boca abajo"
+      },
+      "instruction": {
+        "en": "From hands and knees, tuck your toes and lift hips up and back. Keep knees softly bent to lengthen your back. Heels may stay lifted. Lower your knees to finish.",
+        "zh-Hans": "从四点跪姿开始，脚趾蹬地，臀部向上、向后抬起。膝盖可微屈，让背部舒展，脚跟不必落地。结束时放下双膝。",
+        "es": "Desde cuatro apoyos, apoya los dedos de los pies y eleva las caderas arriba y atrás. Flexiona un poco las rodillas para alargar la espalda; los talones pueden quedar elevados. Baja las rodillas para terminar."
+      },
+      "bilateral": false,
+      "floor": true,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": false,
+      "artwork": "stretch_downward_dog",
+      "artworkPackID": 62,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "left",
+      "alternating": false,
+      "cushion": false
+    },
+    {
+      "id": "pigeon",
+      "title": {
+        "en": "Supported pigeon stretch",
+        "zh-Hans": "支撑鸽式拉伸",
+        "es": "Estiramiento de paloma con apoyo"
+      },
+      "instruction": {
+        "en": "Bring one knee forward with the heel toward the opposite groin, and extend the other leg behind. Support the front-side hip with a cushion. Keep hips facing forward without forcing the shin square. Stop for knee discomfort; use lying figure four instead.",
+        "zh-Hans": "一侧膝盖放到身前，脚跟靠近对侧腹股沟，另一腿向后伸展。用软垫支撑前侧臀部，髋部朝前，不要强行把小腿摆成直角。膝盖不适时停止，可改做仰卧四字拉伸。",
+        "es": "Lleva una rodilla delante con el talón hacia la ingle contraria y extiende la otra pierna atrás. Apoya la cadera delantera sobre un cojín. Mantén las caderas al frente sin forzar la espinilla. Si molesta la rodilla, cambia al estiramiento de figura cuatro tumbado."
+      },
+      "bilateral": true,
+      "floor": true,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": false,
+      "artwork": "stretch_pigeon",
+      "artworkPackID": 63,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "right",
+      "alternating": false,
+      "cushion": true
+    },
+    {
+      "id": "seated_hamstring",
+      "title": {
+        "en": "Seated hamstring stretch",
+        "zh-Hans": "坐姿单腿腿后侧拉伸",
+        "es": "Estiramiento de isquiotibiales sentado"
+      },
+      "instruction": {
+        "en": "Sit with one leg extended and its knee soft. Bend the other knee out with its sole against the inner thigh. Hinge gently toward the long leg. Keep the bent foot in front of your pelvis, never tucked behind.",
+        "zh-Hans": "坐下，一腿向前伸长、膝盖放松，另一膝向外屈曲，脚底贴住伸直腿的大腿内侧。从髋部轻轻向前俯身。屈腿的脚留在骨盆前方，不要折到身后。",
+        "es": "Siéntate con una pierna extendida y la rodilla relajada. Flexiona la otra hacia fuera, con la planta contra la cara interna del muslo. Inclínate suavemente hacia la pierna larga. Mantén el pie flexionado delante de la pelvis, nunca detrás."
+      },
+      "bilateral": true,
+      "floor": true,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": false,
+      "artwork": "stretch_seated_hamstring",
+      "artworkPackID": 64,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "right",
+      "alternating": false,
+      "cushion": false
+    },
+    {
+      "id": "bent_over_calf",
+      "title": {
+        "en": "Bent-over calf stretch",
+        "zh-Hans": "俯身小腿拉伸",
+        "es": "Estiramiento de gemelo inclinado"
+      },
+      "instruction": {
+        "en": "Place one heel forward with toes raised and soften the supporting knee. Hinge gently from your hips and, if comfortable, lightly draw the front forefoot toward your shin. Do not force the reach.",
+        "zh-Hans": "一侧脚跟向前点地、脚尖抬起，支撑膝微屈。从髋部轻轻俯身，若能舒适够到，可轻拉前脚掌朝向小腿。不要勉强伸手。",
+        "es": "Adelanta un talón con la punta elevada y flexiona un poco la rodilla de apoyo. Inclínate suavemente desde las caderas y, si llegas con comodidad, acerca un poco el antepié hacia la espinilla. No fuerces el alcance."
+      },
+      "bilateral": true,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": false,
+      "artwork": "stretch_bent_over_calf",
+      "artworkPackID": 74,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "right",
+      "alternating": false,
+      "cushion": false
+    },
+    {
+      "id": "seated_twist",
+      "title": {
+        "en": "Modified seated twist",
+        "zh-Hans": "简化坐姿转体",
+        "es": "Giro sentado modificado"
+      },
+      "instruction": {
+        "en": "Sit tall with one leg long and the opposite foot flat outside its thigh. Place one hand behind you and turn your chest gently toward the bent knee. Rest the other hand lightly on the thigh; do not lever against the knee.",
+        "zh-Hans": "坐直，一腿伸长，另一脚放在该腿大腿外侧。将一手放在身后，胸口轻轻转向屈膝侧。另一手轻放大腿，不要用肘部顶压膝盖借力。",
+        "es": "Siéntate erguido con una pierna larga y el pie contrario apoyado fuera del muslo. Coloca una mano detrás y gira suavemente el pecho hacia la rodilla flexionada. Apoya la otra mano en el muslo sin hacer palanca contra la rodilla."
+      },
+      "bilateral": true,
+      "floor": true,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "lying": false,
+      "paths": [],
+      "dynamic": false,
+      "artwork": "stretch_seated_twist",
+      "artworkPackID": 75,
+      "reference": "docs/stretch-routines.md#run-routines",
+      "artworkSide": "right",
+      "alternating": false,
+      "cushion": false
     }
   ],
   "templates": [
@@ -1364,6 +2114,206 @@
         }
       ],
       "wireSuffix": "hips_hamstrings_v2"
+    },
+    {
+      "id": "pre_run",
+      "wireSuffix": "pre_run_v1",
+      "title": {
+        "en": "Before run",
+        "zh-Hans": "跑前热身",
+        "es": "Antes de correr"
+      },
+      "entries": [
+        {
+          "movementID": "leg_swings",
+          "seconds": 15
+        },
+        {
+          "movementID": "lateral_leg_swings",
+          "seconds": 15
+        },
+        {
+          "movementID": "gate_opener",
+          "seconds": 30
+        },
+        {
+          "movementID": "heel_to_toe_rocks",
+          "seconds": 30
+        },
+        {
+          "movementID": "lateral_foot_rocks",
+          "seconds": 30
+        },
+        {
+          "movementID": "knee_circles",
+          "seconds": 30
+        },
+        {
+          "movementID": "dynamic_side_bends",
+          "seconds": 30
+        },
+        {
+          "movementID": "split_squats",
+          "seconds": 15
+        },
+        {
+          "movementID": "dynamic_lateral_lunge",
+          "seconds": 30
+        },
+        {
+          "movementID": "runners_lunge_twist",
+          "seconds": 30
+        },
+        {
+          "movementID": "toe_touch_twist",
+          "seconds": 30
+        },
+        {
+          "movementID": "high_knee_twists",
+          "seconds": 30
+        },
+        {
+          "movementID": "dynamic_quad",
+          "seconds": 30
+        },
+        {
+          "movementID": "hamstring_scoops",
+          "seconds": 30
+        },
+        {
+          "movementID": "high_knees",
+          "seconds": 15
+        },
+        {
+          "movementID": "butt_kicks",
+          "seconds": 15
+        }
+      ]
+    },
+    {
+      "id": "post_run_1",
+      "wireSuffix": "post_run_1_v1",
+      "title": {
+        "en": "After run · Short",
+        "zh-Hans": "跑后拉伸 · 简短",
+        "es": "Después de correr · Breve"
+      },
+      "entries": [
+        {
+          "movementID": "quad",
+          "seconds": 30
+        },
+        {
+          "movementID": "cross_leg_fold",
+          "seconds": 30
+        },
+        {
+          "movementID": "hip_flexor",
+          "seconds": 30
+        },
+        {
+          "movementID": "glute",
+          "seconds": 30
+        },
+        {
+          "movementID": "seated_hamstring",
+          "seconds": 30
+        }
+      ]
+    },
+    {
+      "id": "post_run_2",
+      "wireSuffix": "post_run_2_v1",
+      "title": {
+        "en": "After run · Full",
+        "zh-Hans": "跑后拉伸 · 全面",
+        "es": "Después de correr · Completo"
+      },
+      "entries": [
+        {
+          "movementID": "quad",
+          "seconds": 30
+        },
+        {
+          "movementID": "wide_leg_fold",
+          "seconds": 30
+        },
+        {
+          "movementID": "calf",
+          "seconds": 30
+        },
+        {
+          "movementID": "side_lunge",
+          "seconds": 30
+        },
+        {
+          "movementID": "hip_flexor",
+          "seconds": 30
+        },
+        {
+          "movementID": "hamstring",
+          "seconds": 30
+        },
+        {
+          "movementID": "glute",
+          "seconds": 30
+        }
+      ]
+    },
+    {
+      "id": "post_run_3",
+      "wireSuffix": "post_run_3_v1",
+      "title": {
+        "en": "After run · Extended",
+        "zh-Hans": "跑后拉伸 · 加长",
+        "es": "Después de correr · Extendido"
+      },
+      "entries": [
+        {
+          "movementID": "bent_over_calf",
+          "seconds": 30
+        },
+        {
+          "movementID": "quad",
+          "seconds": 30
+        },
+        {
+          "movementID": "calf",
+          "seconds": 30
+        },
+        {
+          "movementID": "wide_leg_side",
+          "seconds": 30
+        },
+        {
+          "movementID": "cross_leg_fold",
+          "seconds": 30
+        },
+        {
+          "movementID": "hip_flexor",
+          "seconds": 30
+        },
+        {
+          "movementID": "downward_dog",
+          "seconds": 30
+        },
+        {
+          "movementID": "pigeon",
+          "seconds": 30
+        },
+        {
+          "movementID": "seated_hamstring",
+          "seconds": 30
+        },
+        {
+          "movementID": "inner_thigh",
+          "seconds": 30
+        },
+        {
+          "movementID": "seated_twist",
+          "seconds": 30
+        }
+      ]
     }
   ],
   "ui": {
@@ -1506,6 +2456,41 @@
       "en": "Up to 20 postures per routine.",
       "es": "Hasta 20 posturas por rutina.",
       "zh-Hans": "每个流程最多20个动作。"
+    },
+    "alternating": {
+      "en": "Alternate sides",
+      "zh-Hans": "左右交替",
+      "es": "Alterna los lados"
+    },
+    "move": {
+      "en": "Move gently",
+      "zh-Hans": "轻柔活动",
+      "es": "Muévete suavemente"
+    },
+    "hold": {
+      "en": "Hold gently",
+      "zh-Hans": "轻柔保持",
+      "es": "Mantén suavemente"
+    },
+    "start": {
+      "en": "Start routine",
+      "zh-Hans": "开始练习",
+      "es": "Iniciar rutina"
+    },
+    "complete": {
+      "en": "Routine complete",
+      "zh-Hans": "练习完成",
+      "es": "Rutina completada"
+    },
+    "choose": {
+      "en": "Warm up or stretch",
+      "zh-Hans": "热身或拉伸",
+      "es": "Calentamiento o estiramientos"
+    },
+    "cushion": {
+      "en": "Hip cushion",
+      "zh-Hans": "臀部支撑软垫",
+      "es": "Cojín para la cadera"
     }
   }
 }

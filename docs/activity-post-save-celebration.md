@@ -97,5 +97,7 @@ Give each saved activity a brief, personal moment of recognition. The celebratio
 
 ## Reusable Catalog And Customization
 
-- The stretch session is independent of saved activities; post-save adapters supply the celebration/share header. See `stretch-routines.md` for entry-point APIs, the 15-movement catalog, local per-template edits, and verification limits.
+- The stretch session is independent of saved activities; post-save adapters supply the celebration/share header. See `stretch-routines.md` for entry-point APIs, the shared movement catalog, local per-template edits, and verification limits.
 - Duration and equipment labels derive from edited content. Swimming can initially suggest upper body; remembered valid choices take precedence. Mat-containing edits appear under More routines.
+
+- The run-routine update adds three optional After run templates with orange vector artwork. Before run is available only from independent stretch entry points, never after saving. Existing recommendations, standing/mat restoration, Share and Done ownership remain unchanged. See `stretch-routines.md#run-routines`.

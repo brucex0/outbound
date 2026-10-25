@@ -1,0 +1,362 @@
+[
+  {
+    "id": "pre_run",
+    "title": {
+      "en": "Before run",
+      "zh-Hans": "跑前热身",
+      "es": "Antes de correr"
+    },
+    "movementSeconds": 450,
+    "clockSeconds": 543,
+    "entries": [
+      {
+        "movementID": "leg_swings",
+        "name": "Leg swings",
+        "artworkPackID": 65,
+        "secondsPerStep": 15,
+        "steps": 2,
+        "dynamic": true
+      },
+      {
+        "movementID": "lateral_leg_swings",
+        "name": "Lateral leg swings",
+        "artworkPackID": 66,
+        "secondsPerStep": 15,
+        "steps": 2,
+        "dynamic": true
+      },
+      {
+        "movementID": "gate_opener",
+        "name": "Gate opener",
+        "artworkPackID": 67,
+        "secondsPerStep": 30,
+        "steps": 1,
+        "dynamic": true
+      },
+      {
+        "movementID": "heel_to_toe_rocks",
+        "name": "Heel-to-toe rocks",
+        "artworkPackID": 68,
+        "secondsPerStep": 30,
+        "steps": 1,
+        "dynamic": true
+      },
+      {
+        "movementID": "lateral_foot_rocks",
+        "name": "Lateral foot rocks",
+        "artworkPackID": 69,
+        "secondsPerStep": 30,
+        "steps": 1,
+        "dynamic": true
+      },
+      {
+        "movementID": "knee_circles",
+        "name": "Knee circles",
+        "artworkPackID": 70,
+        "secondsPerStep": 30,
+        "steps": 1,
+        "dynamic": true
+      },
+      {
+        "movementID": "dynamic_side_bends",
+        "name": "Dynamic side bends",
+        "artworkPackID": 71,
+        "secondsPerStep": 30,
+        "steps": 1,
+        "dynamic": true
+      },
+      {
+        "movementID": "split_squats",
+        "name": "Split squats",
+        "artworkPackID": 72,
+        "secondsPerStep": 15,
+        "steps": 2,
+        "dynamic": true
+      },
+      {
+        "movementID": "dynamic_lateral_lunge",
+        "name": "Lateral lunge",
+        "artworkPackID": 51,
+        "secondsPerStep": 30,
+        "steps": 1,
+        "dynamic": true
+      },
+      {
+        "movementID": "runners_lunge_twist",
+        "name": "Runner’s lunge twist",
+        "artworkPackID": 52,
+        "secondsPerStep": 30,
+        "steps": 1,
+        "dynamic": true
+      },
+      {
+        "movementID": "toe_touch_twist",
+        "name": "Toe touch twist",
+        "artworkPackID": 53,
+        "secondsPerStep": 30,
+        "steps": 1,
+        "dynamic": true
+      },
+      {
+        "movementID": "high_knee_twists",
+        "name": "High knee twists",
+        "artworkPackID": 54,
+        "secondsPerStep": 30,
+        "steps": 1,
+        "dynamic": true
+      },
+      {
+        "movementID": "dynamic_quad",
+        "name": "Dynamic quad stretch",
+        "artworkPackID": 55,
+        "secondsPerStep": 30,
+        "steps": 1,
+        "dynamic": true
+      },
+      {
+        "movementID": "hamstring_scoops",
+        "name": "Hamstring scoops",
+        "artworkPackID": 56,
+        "secondsPerStep": 30,
+        "steps": 1,
+        "dynamic": true
+      },
+      {
+        "movementID": "high_knees",
+        "name": "High knees",
+        "artworkPackID": 57,
+        "secondsPerStep": 15,
+        "steps": 1,
+        "dynamic": true
+      },
+      {
+        "movementID": "butt_kicks",
+        "name": "Butt kicks",
+        "artworkPackID": 73,
+        "secondsPerStep": 15,
+        "steps": 1,
+        "dynamic": true
+      }
+    ]
+  },
+  {
+    "id": "post_run_1",
+    "title": {
+      "en": "After run · Short",
+      "zh-Hans": "跑后拉伸 · 简短",
+      "es": "Después de correr · Breve"
+    },
+    "movementSeconds": 300,
+    "clockSeconds": 348,
+    "entries": [
+      {
+        "movementID": "quad",
+        "name": "Standing quad stretch",
+        "artworkPackID": 4,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      },
+      {
+        "movementID": "cross_leg_fold",
+        "name": "Cross-leg fold",
+        "artworkPackID": 60,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      },
+      {
+        "movementID": "hip_flexor",
+        "name": "Kneeling hip-flexor stretch",
+        "artworkPackID": 76,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      },
+      {
+        "movementID": "glute",
+        "name": "Reclining glute stretch",
+        "artworkPackID": 30,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      },
+      {
+        "movementID": "seated_hamstring",
+        "name": "Seated hamstring stretch",
+        "artworkPackID": 64,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      }
+    ]
+  },
+  {
+    "id": "post_run_2",
+    "title": {
+      "en": "After run · Full",
+      "zh-Hans": "跑后拉伸 · 全面",
+      "es": "Después de correr · Completo"
+    },
+    "movementSeconds": 390,
+    "clockSeconds": 453,
+    "entries": [
+      {
+        "movementID": "quad",
+        "name": "Standing quad stretch",
+        "artworkPackID": 4,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      },
+      {
+        "movementID": "wide_leg_fold",
+        "name": "Seated wide-leg fold",
+        "artworkPackID": 35,
+        "secondsPerStep": 30,
+        "steps": 1,
+        "dynamic": false
+      },
+      {
+        "movementID": "calf",
+        "name": "Calf release",
+        "artworkPackID": 1,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      },
+      {
+        "movementID": "side_lunge",
+        "name": "Side lunge stretch",
+        "artworkPackID": 7,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      },
+      {
+        "movementID": "hip_flexor",
+        "name": "Kneeling hip-flexor stretch",
+        "artworkPackID": 76,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      },
+      {
+        "movementID": "hamstring",
+        "name": "Lying hamstring stretch",
+        "artworkPackID": 61,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      },
+      {
+        "movementID": "glute",
+        "name": "Reclining glute stretch",
+        "artworkPackID": 30,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      }
+    ]
+  },
+  {
+    "id": "post_run_3",
+    "title": {
+      "en": "After run · Extended",
+      "zh-Hans": "跑后拉伸 · 加长",
+      "es": "Después de correr · Extendido"
+    },
+    "movementSeconds": 600,
+    "clockSeconds": 698,
+    "entries": [
+      {
+        "movementID": "bent_over_calf",
+        "name": "Bent-over calf stretch",
+        "artworkPackID": 74,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      },
+      {
+        "movementID": "quad",
+        "name": "Standing quad stretch",
+        "artworkPackID": 4,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      },
+      {
+        "movementID": "calf",
+        "name": "Calf release",
+        "artworkPackID": 1,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      },
+      {
+        "movementID": "wide_leg_side",
+        "name": "Wide-leg side bend",
+        "artworkPackID": 59,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      },
+      {
+        "movementID": "cross_leg_fold",
+        "name": "Cross-leg fold",
+        "artworkPackID": 60,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      },
+      {
+        "movementID": "hip_flexor",
+        "name": "Kneeling hip-flexor stretch",
+        "artworkPackID": 76,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      },
+      {
+        "movementID": "downward_dog",
+        "name": "Downward dog",
+        "artworkPackID": 62,
+        "secondsPerStep": 30,
+        "steps": 1,
+        "dynamic": false
+      },
+      {
+        "movementID": "pigeon",
+        "name": "Supported pigeon stretch",
+        "artworkPackID": 63,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      },
+      {
+        "movementID": "seated_hamstring",
+        "name": "Seated hamstring stretch",
+        "artworkPackID": 64,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      },
+      {
+        "movementID": "inner_thigh",
+        "name": "Seated inner-thigh stretch",
+        "artworkPackID": 32,
+        "secondsPerStep": 30,
+        "steps": 1,
+        "dynamic": false
+      },
+      {
+        "movementID": "seated_twist",
+        "name": "Modified seated twist",
+        "artworkPackID": 75,
+        "secondsPerStep": 30,
+        "steps": 2,
+        "dynamic": false
+      }
+    ]
+  }
+]

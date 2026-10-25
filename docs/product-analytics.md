@@ -89,6 +89,8 @@ The legacy provider methods still accept vendor-facing string names after the ma
 
 Both clients emit `post_workout_stretch_offered`, `post_workout_stretch_started`, `post_workout_stretch_completed`, and `post_workout_stretch_dismissed` with only canonical activity type, bounded routine ID, and bounded dismissal result.
 
+The run templates add bounded routine IDs `pre_run_v1`, `post_run_1_v1`, `post_run_2_v1`, and `post_run_3_v1` under the existing sport/standalone prefixes. Existing offer, selection, start, step, completion and dismissal events cover them. `held` and `fully_held` mean completed timed intervals; dynamic intervals do not assert a static hold or detected exercise. No artwork, instruction text or inferred movement performance is emitted.
+
 ### Core Activity Funnel
 
 Track:
