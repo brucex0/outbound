@@ -1,5 +1,9 @@
 package com.plainstride.outbound.feature.recording
 
+import androidx.compose.runtime.collectAsState
+import com.plainstride.outbound.core.data.AccountConfigurationStore
+import com.plainstride.outbound.core.data.AccountConfigurationValue
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -90,10 +94,9 @@ fun StretchSessionRoute(
     val kind = launch.kind
     val isIndoor = launch.isIndoor
     val context = androidx.compose.ui.platform.LocalContext.current
-    val preferences = remember { context.getSharedPreferences("stretch_preferences_v1", android.content.Context.MODE_PRIVATE) }
     var routines by remember(kind, launch.entryPoint) { mutableStateOf(StretchCatalog.routines(context, kind, launch.entryPoint)) }
     val initialRoutine = remember(kind, isIndoor, launch.entryPoint) {
-        val remembered = preferences.getString(if (isIndoor) "last_routine" else "last_standing_routine", null)
+        val remembered = AccountConfigurationStore.record(if (isIndoor) "stretch/last" else "stretch/standing")?.value?.selection
         routines.firstOrNull { it.preferenceId == remembered && (isIndoor || it.isStanding) }
             ?: routines.firstOrNull { it.preferenceId == (if (kind == ActivityKind.SWIMMING) "upper_body" else "standing_quick") && (isIndoor || it.isStanding) }
             ?: routines.firstOrNull { isIndoor || it.isStanding }
@@ -104,6 +107,8 @@ fun StretchSessionRoute(
         return
     }
 
+    var didChooseRoutine by remember { mutableStateOf(false) }
+    val configurationRevision by AccountConfigurationStore.changes.collectAsState()
     var selectedRoutine by remember(kind) { mutableStateOf(initialRoutine) }
     var editing by remember { mutableStateOf(false) }
     var chosen by remember { mutableStateOf(false) }
@@ -120,6 +125,19 @@ fun StretchSessionRoute(
     var stepHeld by remember { mutableIntStateOf(0) }
     var totalHeld by remember { mutableIntStateOf(0) }
     var moreRoutines by remember { mutableStateOf(!initialRoutine.isStanding) }
+    LaunchedEffect(configurationRevision) {
+        if (!chosen && !editing) {
+            routines = StretchCatalog.routines(context, kind, launch.entryPoint)
+            if (!didChooseRoutine) {
+                val remembered = AccountConfigurationStore.record(if (isIndoor) "stretch/last" else "stretch/standing")?.value?.selection
+                selectedRoutine = routines.firstOrNull { it.preferenceId == remembered && (isIndoor || it.isStanding) }
+                    ?: routines.firstOrNull { it.preferenceId == (if (kind == ActivityKind.SWIMMING) "upper_body" else "standing_quick") && (isIndoor || it.isStanding) }
+                    ?: routines.firstOrNull { isIndoor || it.isStanding } ?: StretchCatalog.outdoorFallback()
+                movementIndex = 0
+            }
+        }
+    }
+
     fun emit(name: String, routineID: String?, result: String?, seconds: Int?) {
         onEvent(StretchSessionEvent(name, routineID, result, seconds, launch.entryPoint, selectedRoutine.customized, selectedRoutine.entries.size, selectedRoutine.totalSeconds))
     }
@@ -236,6 +254,7 @@ fun StretchSessionRoute(
                 if (routines.none { it.id == selectedRoutine.id }) { StretchRoutineOption(selectedRoutine, true) {} }
                 routines.filter { it.isStanding }.forEach { routine ->
                     StretchRoutineOption(routine, selectedRoutine.id == routine.id) {
+                        didChooseRoutine = true
                         selectedRoutine = routine
                         movementIndex = 0
                         emit("post_workout_stretch_program_selected", routine.id, null, null)
@@ -244,13 +263,14 @@ fun StretchSessionRoute(
                 TextButton(onClick = { moreRoutines = !moreRoutines }) { Text(stringResource(R.string.stretch_more_routines)) }
                 if (moreRoutines) routines.filterNot { it.isStanding }.forEach { routine ->
                     StretchRoutineOption(routine, selectedRoutine.id == routine.id) {
+                        didChooseRoutine = true
                         selectedRoutine = routine
                         movementIndex = 0
                         emit("post_workout_stretch_program_selected", routine.id, null, null)
                     }
                 }
 
-                TextButton(onClick = { editing = true; emit("stretch_routine_edited", selectedRoutine.id, "opened", null) }) { Text(stringResource(R.string.stretch_catalog_ui_customize)) }
+                TextButton(onClick = { didChooseRoutine = true; editing = true; emit("stretch_routine_edited", selectedRoutine.id, "opened", null) }) { Text(stringResource(R.string.stretch_catalog_ui_customize)) }
                 Text("≈ ${selectedRoutine.totalSeconds / 60}:${(selectedRoutine.totalSeconds % 60).toString().padStart(2, '0')} · ${selectedRoutine.requirements(context)}")
                 TextButton(onClick = { preview = !preview }) { Text(stringResource(R.string.stretch_preview)) }
                 if (preview) selectedRoutine.movements.forEach { step ->
@@ -272,8 +292,8 @@ fun StretchSessionRoute(
                     onClick = {
                         secondsLeft = 3
                         phase = StretchPhase.SETUP
-                        preferences.edit().putString("last_routine", selectedRoutine.preferenceId).apply()
-                        if (selectedRoutine.isStanding) preferences.edit().putString("last_standing_routine", selectedRoutine.preferenceId).apply()
+                        AccountConfigurationStore.set("stretch/last", AccountConfigurationValue(selection = selectedRoutine.preferenceId))
+                        if (selectedRoutine.isStanding) AccountConfigurationStore.set("stretch/standing", AccountConfigurationValue(selection = selectedRoutine.preferenceId))
                         chosen = true
                         running = true
                         view.keepScreenOn = true

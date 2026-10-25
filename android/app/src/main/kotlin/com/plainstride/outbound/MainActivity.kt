@@ -22,6 +22,12 @@ import com.plainstride.outbound.di.SpotifyOAuthClient
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @javax.inject.Inject lateinit var configurationSync: com.plainstride.outbound.preferences.AccountConfigurationSync
+    override fun onResume() {
+        super.onResume()
+        configurationSync.refresh()
+    }
+
     private var transferCode by mutableStateOf<String?>(null)
     private var navigationUri by mutableStateOf<Uri?>(null)
     private var connectionCode by mutableStateOf<String?>(null)

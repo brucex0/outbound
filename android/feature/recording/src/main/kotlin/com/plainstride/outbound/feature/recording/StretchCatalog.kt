@@ -1,9 +1,10 @@
 package com.plainstride.outbound.feature.recording
 
+import com.plainstride.outbound.core.data.AccountConfigurationStore
+import com.plainstride.outbound.core.data.AccountConfigurationValue
+import com.plainstride.outbound.core.data.AccountStretchEntry
 import android.content.Context
 import android.util.Log
-import org.json.JSONArray
-import org.json.JSONObject
 
 internal data class StretchDefinition(
     val id: String, val title: Int, val instruction: Int, val bilateral: Boolean,
@@ -62,20 +63,12 @@ internal object StretchCatalog {
     }
 }
 internal class StretchCustomizationStore(context: Context) {
-    private val preferences = context.getSharedPreferences("stretch_customizations_v1", Context.MODE_PRIVATE)
     fun load(id: String): List<StretchEntry>? {
-        val json = preferences.getString(id, null) ?: return null
-        return try {
-            val array = JSONArray(json)
-            val entries = (0 until array.length()).map { array.getJSONObject(it).let { row -> StretchEntry(row.getString("movementID"), row.getInt("seconds")) } }
-            if (!StretchCatalog.valid(entries)) { Log.w("StretchCatalog", "Customization validation failed"); null } else entries
-        } catch (error: Exception) { Log.w("StretchCatalog", "Customization decode failed type=${error.javaClass.simpleName}"); null }
+        val entries = AccountConfigurationStore.record("stretch/custom/$id")?.value?.entries?.map { StretchEntry(it.movementID, it.seconds) } ?: return null
+        return if (StretchCatalog.valid(entries)) entries else { Log.w("StretchCatalog", "Account customization validation failed"); null }
     }
     fun save(id: String, entries: List<StretchEntry>?): Boolean {
         if (entries != null && !StretchCatalog.valid(entries)) { Log.w("StretchCatalog", "Customization save validation failed"); return false }
-        val edit = preferences.edit()
-        if (entries == null) edit.remove(id) else edit.putString(id, JSONArray().apply { entries.forEach { put(JSONObject().put("movementID", it.movementID).put("seconds", it.seconds)) } }.toString())
-        // Commit on the editor's IO coroutine so failure can be surfaced before closing it.
-        return edit.commit().also { if (!it) Log.w("StretchCatalog", "Customization persistence failed") }
+        return AccountConfigurationStore.set("stretch/custom/$id", entries?.let { AccountConfigurationValue(entries = it.map { AccountStretchEntry(it.movementID, it.seconds) }) })
     }
 }

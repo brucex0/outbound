@@ -349,3 +349,8 @@ Android is ready for public release only when:
 - Update this document when implementation reveals a changed boundary or release requirement.
 - Commit only phase-owned files and leave unrelated worktree changes untouched.
 - Report completed deliverables, verification evidence, known risks, and the next phase scope, then wait for owner confirmation.
+
+## Account Configuration Sync
+
+- Stretch selections/customizations and per-sport manual targets use the shared revisioned configuration API and account-scoped durable outbox. See `account-preferences.md` for the canonical contract, current-storage reset policy, rollout and remaining device acceptance.
+- Targets are saved after recording enters active state; Today restores per-sport targets and the shared three-start learned goal mode. Planned/curated/race launches and canceled setup do not replace manual defaults.

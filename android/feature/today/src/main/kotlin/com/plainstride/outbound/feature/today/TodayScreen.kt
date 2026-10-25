@@ -1,5 +1,8 @@
 package com.plainstride.outbound.feature.today
 
+import com.plainstride.outbound.core.data.AccountConfigurationStore
+import androidx.compose.runtime.collectAsState
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -368,6 +371,36 @@ fun TodayScreen(
     var durationSeconds by rememberSaveable { mutableStateOf(1_800L) }
     var calories by rememberSaveable { mutableStateOf(300) }
     var caloriePlan by remember { mutableStateOf<PlannedCalorieEstimate?>(null) }
+    val configurationRevision by AccountConfigurationStore.changes.collectAsState()
+    val manualDrafts = remember(AccountConfigurationStore.accountId) { mutableMapOf<TodayActivityChoice, Triple<Double, Long, Int>>() }
+    val manualModes = remember(AccountConfigurationStore.accountId) { mutableMapOf<TodayActivityChoice, TodayGoalChoice>() }
+    val locallyEdited = remember(AccountConfigurationStore.accountId) { mutableSetOf<TodayActivityChoice>() }
+    fun saveManualDraft(markEdited: Boolean = true) {
+        if (activityChoice != TodayActivityChoice.PLANNED) {
+            manualDrafts[activityChoice] = Triple(distanceMeters, durationSeconds, calories)
+            manualModes[activityChoice] = goalChoice
+            if (markEdited) locallyEdited.add(activityChoice)
+        }
+    }
+    LaunchedEffect(activityChoice, configurationRevision) {
+        if (activityChoice == TodayActivityChoice.PLANNED) return@LaunchedEffect
+        val sport = activityChoice.name.lowercase()
+        val saved = AccountConfigurationStore.record("launch/$sport")?.value?.launch
+        val draft = manualDrafts[activityChoice]
+        if (activityChoice in locallyEdited && draft != null) {
+            distanceMeters = draft.first; durationSeconds = draft.second; calories = draft.third
+            goalChoice = manualModes[activityChoice] ?: TodayGoalChoice.FREE
+        } else {
+            distanceMeters = saved?.distanceMeters ?: 5_000.0
+            durationSeconds = saved?.timeSeconds?.toLong() ?: 1_800L
+            calories = saved?.calories ?: 300
+            goalChoice = when (saved?.preferredGoalModeRawValue) {
+                "distance" -> TodayGoalChoice.DISTANCE; "time" -> TodayGoalChoice.TIME
+                "calories" -> TodayGoalChoice.CALORIES; else -> TodayGoalChoice.FREE
+            }
+        }
+    }
+
     var editingGoal by rememberSaveable { mutableStateOf(false) }
     var autoStopAtGoal by rememberSaveable { mutableStateOf(displayPreferences.getBoolean("auto_stop_at_goal", false)) }
     var overflowExpanded by rememberSaveable { mutableStateOf(false) }
@@ -515,12 +548,13 @@ fun TodayScreen(
                 indoor = indoor,
                 voiceGuideEnabled = voiceGuideEnabled,
                 companionType = companionType,
-                onActivityChoice = { activityChoice = it; if (it != TodayActivityChoice.RUN && goalChoice == TodayGoalChoice.RACE) goalChoice = TodayGoalChoice.FREE; onLaunchConfigurationChanged("activity_type", it.name.lowercase()) },
+                onActivityChoice = { saveManualDraft(markEdited = false); activityChoice = it; if (it != TodayActivityChoice.RUN && goalChoice == TodayGoalChoice.RACE) goalChoice = TodayGoalChoice.FREE; onLaunchConfigurationChanged("activity_type", it.name.lowercase()) },
                 onGoalChoice = { choice ->
                     if (choice == TodayGoalChoice.RACE) {
                         showsRacePlanner = true
                     } else {
                         goalChoice = choice
+                        saveManualDraft()
                         if (choice == TodayGoalChoice.CURATED) showsCatalog = true
                         onLaunchConfigurationChanged("goal", choice.name.lowercase())
                     }
@@ -613,9 +647,9 @@ fun TodayScreen(
             displayPreferences.edit().putBoolean("auto_stop_at_goal", enabled).apply()
             onLaunchConfigurationChanged("auto_stop_at_goal", if (enabled) "enabled" else "disabled")
         },
-        { distanceMeters = it; editingGoal = false; onLaunchConfigurationChanged("goal_value", "preset") },
-        { durationSeconds = it; editingGoal = false; onLaunchConfigurationChanged("goal_value", "preset") },
-        { calories = it; editingGoal = false; onLaunchConfigurationChanged("goal_value", "preset") })
+        { distanceMeters = it; saveManualDraft(); editingGoal = false; onLaunchConfigurationChanged("goal_value", "preset") },
+        { durationSeconds = it; saveManualDraft(); editingGoal = false; onLaunchConfigurationChanged("goal_value", "preset") },
+        { calories = it; saveManualDraft(); editingGoal = false; onLaunchConfigurationChanged("goal_value", "preset") })
 }
 
 @Composable

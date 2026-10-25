@@ -331,6 +331,10 @@ private fun SignedInApp(
         is SessionState.Refreshing -> session.accountId
         else -> null
     }
+    remember(accountId) {
+        com.plainstride.outbound.core.data.AccountConfigurationStore.activate(context, accountId)
+        true
+    }
     val cycleViewModel:CycleAwareViewModel=hiltViewModel()
     val cycleState by cycleViewModel.state.collectAsStateWithLifecycle()
     val healthViewModel:HealthIntegrationViewModel=hiltViewModel()

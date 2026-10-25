@@ -14,11 +14,13 @@ import com.plainstride.outbound.notifications.PlainstrideMessagingService
 
 @HiltAndroidApp
 class PlainstrideApplication : Application(), Configuration.Provider {
+    @Inject lateinit var configurationSync: com.plainstride.outbound.preferences.AccountConfigurationSync
     @Inject lateinit var workerFactory: HiltWorkerFactory
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
     override fun onCreate() {
         super.onCreate()
+        configurationSync.start()
         if (FirebaseApp.getApps(this).isEmpty() && BuildConfig.FIREBASE_APPLICATION_ID.isNotBlank() && BuildConfig.FIREBASE_API_KEY.isNotBlank() && BuildConfig.FIREBASE_PROJECT_ID.isNotBlank()) {
             FirebaseApp.initializeApp(this, FirebaseOptions.Builder().setApplicationId(BuildConfig.FIREBASE_APPLICATION_ID).setApiKey(BuildConfig.FIREBASE_API_KEY).setProjectId(BuildConfig.FIREBASE_PROJECT_ID).build())
         }

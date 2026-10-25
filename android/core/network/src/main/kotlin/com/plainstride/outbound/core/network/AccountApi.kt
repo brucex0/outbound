@@ -75,6 +75,9 @@ import retrofit2.http.PUT
 )
 
 interface AccountApiService {
+    @GET("v1/auth/me/configuration") suspend fun configuration(@Header("Authorization") authorization: String): Response<kotlinx.serialization.json.JsonObject>
+    @PATCH("v1/auth/me/configuration") suspend fun updateConfiguration(@Header("Authorization") authorization: String, @Body body: kotlinx.serialization.json.JsonObject): Response<kotlinx.serialization.json.JsonObject>
+
     @GET("v1/auth/me") suspend fun currentAccount(@Header("Authorization") authorization: String): Response<AccountDto>
     @PATCH("v1/auth/me") suspend fun updateAccount(@Header("Authorization") authorization: String, @Body body: UpdateAccountRequest): Response<AccountDto>
     @retrofit2.http.POST("v1/auth/onboarding/skip") suspend fun skipOnboarding(@Header("Authorization") authorization: String): Response<OnboardingResolutionResponse>

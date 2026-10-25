@@ -1,5 +1,8 @@
 package com.plainstride.outbound.feature.recording
 
+import com.plainstride.outbound.core.data.AccountConfigurationStore
+import com.plainstride.outbound.core.data.AccountConfigurationValue
+import com.plainstride.outbound.core.data.AccountLaunchPreference
 import android.content.Context
 import android.util.Log
 import android.media.ExifInterface
@@ -155,7 +158,12 @@ class RecordingViewModel @Inject constructor(
         voice.observe(viewModelScope, snapshot = { snapshot.value }, ::pause, ::resume, ::requestFinish)
         viewModelScope.launch {
             var registeredSession: String? = null
+            var rememberedSession: String? = null
             snapshot.collect { value ->
+                if (value.status == RecordingStatus.ACTIVE && !value.recovered && mutableState.value.startRequested && rememberedSession != value.sessionId) {
+                    rememberedSession = value.sessionId
+                    rememberStartedConfiguration()
+                }
                 val event = mutableState.value.launch.activityEventId
                 if (value.status == RecordingStatus.ACTIVE && event != null && registeredSession != value.sessionId) {
                     registeredSession = value.sessionId
@@ -165,6 +173,28 @@ class RecordingViewModel @Inject constructor(
             }
         }
     }
+    private fun rememberStartedConfiguration() {
+        val launch = mutableState.value.launch
+        if (launch.plannedWorkoutId != null || launch.standaloneWorkoutId != null || launch.raceIntent != null || launch.goal.type == RecordingGoalType.WORKOUT) return
+        if (snapshot.value.accountId != AccountConfigurationStore.accountId) return
+        val sport = when (launch.activityKind) {
+            ActivityKind.RUNNING -> "run"; ActivityKind.WALKING -> "walk"; ActivityKind.HIKING -> "hike"
+            ActivityKind.CYCLING -> "bike"; ActivityKind.SWIMMING -> "swim"
+        }
+        val mode = launch.goal.type.name.lowercase()
+        val old = AccountConfigurationStore.record("launch/$sport")?.value?.launch ?: AccountLaunchPreference()
+        val history = (old.goalModeStartHistory + mode).takeLast(3)
+        val preference = old.copy(
+            preferredGoalModeRawValue = if (history.size == 3 && history.all { it == mode }) mode else old.preferredGoalModeRawValue,
+            goalModeStartHistory = history,
+            distanceMeters = launch.goal.targetDistanceMeters?.takeIf { it.isFinite() && it > 0 } ?: old.distanceMeters,
+            timeSeconds = launch.goal.targetDurationSeconds?.takeIf { it in 1..Int.MAX_VALUE.toLong() }?.toInt() ?: old.timeSeconds,
+            calories = launch.goal.targetCalories?.takeIf { it > 0 } ?: old.calories,
+        )
+        AccountConfigurationStore.set("launch/lastSport", AccountConfigurationValue(selection = sport))
+        AccountConfigurationStore.set("launch/$sport", AccountConfigurationValue(launch = preference))
+    }
+
     suspend fun refreshGroupParticipants(): Boolean {
         val event = mutableState.value.launch.activityEventId ?: return false
         val detail = groups.detail(event) ?: return false
