@@ -5,6 +5,7 @@ import { validateLiveCoachWav } from "../aiProviders/audioValidation.js";
 import type { SupportedAILocale, VoiceProfileId } from "../aiProviders/types.js";
 
 import { stretchMovementTitles } from "./stretchCatalogData.js";
+import { stretchMovementModes } from "./stretchCatalogModes.js";
 
 // Only finite catalog-generated cues can reach synthesis. Existing cue text stays unchanged.
 const extras = {
@@ -15,7 +16,7 @@ const extras = {
 const extraKeys = ["release", "five", "four", "three", "two", "one"];
 export const stretchCueKeys = [
   ...Object.keys(stretchMovementTitles).flatMap(id =>
-    ["inner_thigh", "chest", "upper_back", "lat"].includes(id) ? [`${id}_both`] : [`${id}_left`, `${id}_right`]),
+    stretchMovementModes[id as keyof typeof stretchMovementModes].bilateral ? [`${id}_left`, `${id}_right`] : [`${id}_both`]),
   ...extraKeys,
 ] as [string, ...string[]];
 type Cue = string;
@@ -25,6 +26,11 @@ export function stretchCueTranscript(cue: Cue, locale: SupportedAILocale): strin
   const movement = cue.replace(/_(left|right|both)$/, "") as keyof typeof stretchMovementTitles;
   if (!stretchCueKeys.includes(cue) || !(movement in stretchMovementTitles)) {
     throw new AIProviderError("invalid_provider_output", "Unknown stretch cue.");
+  }
+  if (stretchMovementModes[movement].alternating) {
+    const alternate = locale === "en" ? "Alternate sides." : locale === "es" ? "Alterna los lados." : "左右交替。";
+    // New dynamic cues are separate keys; existing static cached transcripts stay unchanged.
+    return `${stretchMovementTitles[movement][locale]}. ${alternate}`;
   }
   const sides = locale === "en" ? ["left side", "right side", "both sides"]
     : locale === "es" ? ["lado izquierdo", "lado derecho", "ambos lados"] : ["左侧", "右侧", "双侧"];

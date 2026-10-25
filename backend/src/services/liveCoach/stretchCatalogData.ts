@@ -74,5 +74,130 @@ export const stretchMovementTitles = {
     "en": "Wall chest stretch",
     "es": "Estiramiento de pecho en pared",
     "zh-Hans": "扶墙胸部拉伸"
+  },
+  "leg_swings": {
+    "en": "Leg swings",
+    "zh-Hans": "前后摆腿",
+    "es": "Balanceos de pierna"
+  },
+  "lateral_leg_swings": {
+    "en": "Lateral leg swings",
+    "zh-Hans": "侧向摆腿",
+    "es": "Balanceos laterales de pierna"
+  },
+  "gate_opener": {
+    "en": "Gate opener",
+    "zh-Hans": "开髋抬腿",
+    "es": "Apertura de cadera"
+  },
+  "heel_to_toe_rocks": {
+    "en": "Heel-to-toe rocks",
+    "zh-Hans": "脚跟脚尖交替抬起",
+    "es": "Balanceo de talones a puntas"
+  },
+  "lateral_foot_rocks": {
+    "en": "Lateral foot rocks",
+    "zh-Hans": "足底左右移重心",
+    "es": "Balanceo lateral de los pies"
+  },
+  "knee_circles": {
+    "en": "Knee circles",
+    "zh-Hans": "膝部小幅绕圈",
+    "es": "Círculos suaves de rodillas"
+  },
+  "dynamic_side_bends": {
+    "en": "Dynamic side bends",
+    "zh-Hans": "动态侧屈",
+    "es": "Flexiones laterales dinámicas"
+  },
+  "split_squats": {
+    "en": "Split squats",
+    "zh-Hans": "分腿蹲",
+    "es": "Sentadillas en posición dividida"
+  },
+  "dynamic_lateral_lunge": {
+    "en": "Lateral lunge",
+    "zh-Hans": "动态侧弓步",
+    "es": "Zancada lateral"
+  },
+  "runners_lunge_twist": {
+    "en": "Runner’s lunge twist",
+    "zh-Hans": "跑者弓步转体",
+    "es": "Zancada de corredor con giro"
+  },
+  "toe_touch_twist": {
+    "en": "Toe touch twist",
+    "zh-Hans": "俯身交替转体",
+    "es": "Giro con alcance al pie"
+  },
+  "high_knee_twists": {
+    "en": "High knee twists",
+    "zh-Hans": "抬膝转体",
+    "es": "Elevación de rodillas con giro"
+  },
+  "dynamic_quad": {
+    "en": "Dynamic quad stretch",
+    "zh-Hans": "动态大腿前侧拉伸",
+    "es": "Estiramiento dinámico de cuádriceps"
+  },
+  "hamstring_scoops": {
+    "en": "Hamstring scoops",
+    "zh-Hans": "腿后侧扫手伸展",
+    "es": "Barridos de isquiotibiales"
+  },
+  "high_knees": {
+    "en": "High knees",
+    "zh-Hans": "高抬腿",
+    "es": "Rodillas arriba"
+  },
+  "butt_kicks": {
+    "en": "Butt kicks",
+    "zh-Hans": "后踢腿",
+    "es": "Talones a glúteos"
+  },
+  "side_lunge": {
+    "en": "Side lunge stretch",
+    "zh-Hans": "侧弓步拉伸",
+    "es": "Estiramiento en zancada lateral"
+  },
+  "wide_leg_fold": {
+    "en": "Seated wide-leg fold",
+    "zh-Hans": "坐姿宽腿前屈",
+    "es": "Flexión sentada con piernas separadas"
+  },
+  "wide_leg_side": {
+    "en": "Wide-leg side bend",
+    "zh-Hans": "宽距站姿侧屈",
+    "es": "Flexión lateral con piernas separadas"
+  },
+  "cross_leg_fold": {
+    "en": "Cross-leg fold",
+    "zh-Hans": "交叉腿前屈",
+    "es": "Flexión con piernas cruzadas"
+  },
+  "downward_dog": {
+    "en": "Downward dog",
+    "zh-Hans": "下犬式",
+    "es": "Perro boca abajo"
+  },
+  "pigeon": {
+    "en": "Supported pigeon stretch",
+    "zh-Hans": "支撑鸽式拉伸",
+    "es": "Estiramiento de paloma con apoyo"
+  },
+  "seated_hamstring": {
+    "en": "Seated hamstring stretch",
+    "zh-Hans": "坐姿单腿腿后侧拉伸",
+    "es": "Estiramiento de isquiotibiales sentado"
+  },
+  "bent_over_calf": {
+    "en": "Bent-over calf stretch",
+    "zh-Hans": "俯身小腿拉伸",
+    "es": "Estiramiento de gemelo inclinado"
+  },
+  "seated_twist": {
+    "en": "Modified seated twist",
+    "zh-Hans": "简化坐姿转体",
+    "es": "Giro sentado modificado"
   }
 } as const;
