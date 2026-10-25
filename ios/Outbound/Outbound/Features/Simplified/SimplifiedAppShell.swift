@@ -827,6 +827,7 @@ private struct SimplifiedTodayView: View {
     let onOpenPlan: () -> Void
     let onStartRun: (SessionIntent?) -> Void
     @EnvironmentObject private var launchLocationManager: LocationManager
+    @State private var showsStretch = false
     @State private var showsChangeSheet = false
     @State private var showsPlannedWorkoutDetails = false
     @State private var companionTodayMessage: String?
@@ -905,6 +906,13 @@ private struct SimplifiedTodayView: View {
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar(isActivityFullscreenVisible ? .hidden : .visible, for: .navigationBar)
             .toolbar {
+                if activitySessionState == .idle {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(stretchUI("entry")) { showsStretch = true }
+                            .font(.subheadline.weight(.semibold))
+                            .accessibilityIdentifier("today.stretch")
+                    }
+                }
                 if tooltipCoordinator.canEventuallyPresent(.themeDiscovery) {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
@@ -995,6 +1003,9 @@ private struct SimplifiedTodayView: View {
             .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
                 refreshCurrentDayIfNeeded()
             }
+        }
+        .fullScreenCover(isPresented: $showsStretch) {
+            StretchSessionView(launch: StretchLaunchContext(entryPoint: .today), voiceProfileID: guideCatalog.selectedVoice.id) { showsStretch = false }
         }
         .sheet(isPresented: $showsPlannedWorkoutDetails) {
             plannedWorkoutDetailsSheet

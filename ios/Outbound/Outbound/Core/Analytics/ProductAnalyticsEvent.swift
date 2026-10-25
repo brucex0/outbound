@@ -30,6 +30,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case appReviewRequested = "app_review_requested"
     case activitySaved = "activity_saved"
     case activitySaveIneligibleShown = "activity_save_ineligible_shown"
+    case stretchInterfaceUsed = "stretch_interface_used"
     case stretchRoutineEdited = "stretch_routine_edited"
     case postWorkoutStretchOffered = "post_workout_stretch_offered"
     case postWorkoutStretchStarted = "post_workout_stretch_started"
@@ -373,6 +374,7 @@ enum ProductAnalyticsSchema {
         .appReviewRequested: [],
         .activitySaved: [.movingTimeMethod, .elapsedDurationBucket, .activityType, .goalType, .durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket, .musicEnabled, .routeSelected, .shoeSelected, .groupRunEnabled, .indoor, .dogCompanionEnabled],
         .activitySaveIneligibleShown: [.activityType, .durationBucket, .distanceBucket],
+        .stretchInterfaceUsed: [.activityType, .routineID, .sourceType, .stretchCustomized, .result],
         .stretchRoutineEdited: [.activityType, .routineID, .sourceType, .stretchCustomized, .result, .countBucket, .durationBucket],
         .postWorkoutStretchOffered: [.activityType, .routineID, .sourceType, .stretchCustomized],
         .postWorkoutStretchStarted: [.activityType, .routineID, .control, .sourceType, .stretchCustomized, .countBucket, .durationBucket],
