@@ -201,3 +201,14 @@ export const stretchMovementModes = {
     "alternating": false
   }
 } as const;
+export const stretchTemplateModes = {
+  "standing_quick": false,
+  "standing_standard": false,
+  "upper_body": false,
+  "mat_standard": false,
+  "mat_quick": false,
+  "pre_run": true,
+  "post_run_1": false,
+  "post_run_2": false,
+  "post_run_3": false
+} as const;

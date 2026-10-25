@@ -114,6 +114,7 @@ Rules:
 - derive current user from verified token
 - support local-only app mode by letting the client skip backend sync entirely when not signed in with Firebase
 - keep user-owned relations cascade-safe so account deletion removes associated activities, plans, personalization, safety, and social records
+- persist revisioned stretch and launch configuration through `GET`/`PATCH /v1/auth/me/configuration`; see `docs/account-preferences.md` for ownership, conflict/reset policy and additive-table deployment
 - validate preference snapshots at the API boundary and keep provider authorization or transient playback/session state out of the snapshot
 - accept omitted nullable preference members from Codable clients and normalize them to explicit `null` before persistence
 

@@ -19,9 +19,11 @@ import { Prisma } from "@prisma/client";
 import { acceptCurrentTerms, CURRENT_TERMS_VERSION } from "../services/legal.js";
 import { changeUsername, UsernameChangeError } from "../services/usernames.js";
 import { consumeGoogleIdentityLinkIntent, createIdentityLinkIntent, IdentityLinkIntentError } from "../services/identityLinkIntents.js";
+import { configurationRouter } from "./configuration.js";
 import { compactPerson } from "../services/apiAssetURLs.js";
 
 const router = new Hono<AppEnv>();
+router.route("/me/configuration", configurationRouter);
 
 const sessionClient = z.object({
   platform: z.enum(["ios", "android", "web"]),

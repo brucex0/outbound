@@ -36,6 +36,7 @@ model User {
   activeWorkoutPresence       ActiveWorkoutPresence?
   guideProfile                GuideProfile?
   preferences                 UserPreferences?
+  configurations              UserConfiguration[]
   trainingGoals               TrainingGoal[]
   trainingPlans               TrainingPlan[]
   plannedWorkouts             PlannedWorkout[]
@@ -1833,4 +1834,16 @@ model PushDevice {
   updatedAt  DateTime @updatedAt
 
   @@index([userId, enabled])
+}
+
+// One revisioned value per account/configuration key. JSON null is a reset tombstone.
+model UserConfiguration {
+  userId String
+  key String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  revision Int @default(1)
+  value Json
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, key])
 }
