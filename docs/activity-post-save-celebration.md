@@ -9,7 +9,7 @@ Give each saved activity a brief, personal moment of recognition. The celebratio
 ## Product Contract
 
 - Show only after the activity has been durably saved locally. A failed or ineligible save never shows it.
-- Present a centered, rounded activity postcard over a softly tinted full-screen background.
+- Present a rounded activity postcard. iOS uses a scrollable saved summary on the system background; Android retains the softly tinted celebration background.
 - Draw the saved route as a bright, rounded line when at least two route points exist. Normalize the coordinates into the postcard bounds; do not show map tiles or start/end labels. For activities without a route, use the same simple looping path on both platforms.
 - Animate the route drawing from start to finish over 1.4 seconds. A small, friendly runner mascot follows the line. As it reaches the finish, a playful ice-cream sundae pops in with a short sprinkle burst, holds briefly, then fades away to uncover the route. Keep both illustrations simple vector geometry so both platforms can reproduce the same shapes without platform-specific emoji or system artwork.
 - Show one short, warm message. V1 default: “You made time for this today.” Use the same copy for every activity; do not imply a personal record or make claims from activity data.
@@ -22,7 +22,9 @@ Give each saved activity a brief, personal moment of recognition. The celebratio
 
 ## Quick Sharing
 
-- After a durable save, show Share beside Done below the celebration message, above any stretch choices. Both celebration-only and stretch-eligible activities use the same actions. On iOS, use matching capsule buttons with a 44 pt minimum height in a centered row capped at 320 pt; primary emphasis comes from Share’s fill. Use the plain localized Share label (`分享`), without an ellipsis. Preparing the card replaces the label with a spinner without changing button size. The Chinese stretch-offer layout was visually checked in the iOS simulator after a synthetic save; Android’s text-only adjustment passed Kotlin compilation. Share event names/properties and save/share behavior are unchanged.
+- iOS leads with “Activity saved”, localized sport, moving duration and measured distance (omitted at zero), then the route postcard and secondary encouragement. Share is a neutral secondary capsule; Done is the persistent bottom primary action. Start stretch lives inside the optional routine card, alongside Choose another; opening routine details retains the existing player setup and start action.
+- iOS Share uses explicit neutral surface/foreground colors and suppresses inherited animation on its controls, avoiding ambient accent-color changes and celebration animation affecting the button. Preparation retains its fixed size and blocks duplicate taps. Existing share events remain unchanged; celebration exposure includes bounded `source_type=saved_summary_v2` to identify this layout.
+- Android retains its existing Share/Done row and stretch layout pending parity work.
 - Share opens the existing activity-card preview with Save Image and the system share sheet. Closing either sharing surface retains the celebration and selected stretch routine. Saving and Done do not depend on sharing or backend sync.
 - Card preparation disables duplicate Share taps; a preparation failure shows a temporary localized toast and allows retry. Optional referral-link failure falls back to the public invitation URL.
 - Existing `activity_share_previewed` and `activity_share_action` events use `source_type=post_save`; no activity IDs, route coordinates, exact metrics, or content are emitted.
@@ -101,3 +103,8 @@ Give each saved activity a brief, personal moment of recognition. The celebratio
 - Duration and equipment labels derive from edited content. Swimming can initially suggest upper body; remembered valid choices take precedence. Mat-containing edits appear under More routines.
 
 - The run-routine update adds three optional After run templates with orange vector artwork. Before run is available only from independent stretch entry points, never after saving. Existing recommendations, standing/mat restoration, Share and Done ownership remain unchanged. See `stretch-routines.md#run-routines`.
+
+## Saved Summary Verification (October 2026)
+
+- iOS Simulator build-only compilation passed. Source review covered the shared eligible/ineligible header, distance omission at zero, localized sport/units, retained sharing presentation, and unchanged stretch timer/preferences. New-resource ownership validation and diff whitespace checks passed; the full resource validator reports stale Android outputs on both HEAD and this branch. No test suite run.
+- Device verification remains required for the reported intermittent Share flashing, sharing dismissal, Dynamic Type, dark appearance, all three languages, and stretch start/Done navigation.

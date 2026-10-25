@@ -7,27 +7,73 @@ struct PostSaveCelebrationView: View {
     let onContinue: () -> Void
 
     var body: some View {
-        ZStack {
-            Color(red: 1.0, green: 0.94, blue: 0.86)
-                .ignoresSafeArea()
-
-            VStack(spacing: 22) {
-                PostSaveCelebrationCard(activity: activity)
-                    .frame(maxWidth: 360)
-                    .frame(height: 250)
-
-                Text(String(localized: "activity.post_save.message", defaultValue: "You made time for this today."))
-                    .font(.title3.weight(.semibold))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(Color(red: 0.11, green: 0.16, blue: 0.22))
-                    .accessibilityAddTraits(.isHeader)
-
-                PostSaveActivityActions(activity: activity, onDone: onContinue)
+        ScrollView {
+            VStack(spacing: 20) {
+                PostSaveActivitySummary(activity: activity)
+                PostSaveActivityActions(activity: activity)
             }
-            .padding(.horizontal, 24)
+            .frame(maxWidth: 540)
+            .padding(24)
+            .frame(maxWidth: .infinity)
+        }
+        .background(Color(.systemBackground))
+        .safeAreaInset(edge: .bottom) {
+            PostSaveDoneButton(action: onContinue)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(String(localized: "activity.post_save.accessibility", defaultValue: "Activity saved celebration")))
+    }
+}
+
+/// Shared saved-state hierarchy for both post-save destinations.
+struct PostSaveActivitySummary: View {
+    let activity: SavedActivity
+    @EnvironmentObject private var measurementPreferences: MeasurementPreferences
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text(String(localized: "activity.post_save.saved", defaultValue: "Activity saved"))
+                .font(.title2.bold())
+                .accessibilityAddTraits(.isHeader)
+            HStack(spacing: 8) {
+                Label(SportType(activityType: activity.activityType).displayName,
+                      systemImage: SportType(activityType: activity.activityType).systemImage)
+                Text(Duration.seconds(activity.durationSecs).formatted(.time(pattern: .hourMinuteSecond)))
+                    .monospacedDigit()
+                if activity.distanceM > 0 {
+                    Text(measurementPreferences.unitSystem.distanceValueString(meters: activity.distanceM)
+                         + " " + measurementPreferences.unitSystem.distanceUnit)
+                }
+            }
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            PostSaveCelebrationCard(activity: activity)
+                .frame(height: 190)
+            Text(String(localized: "activity.post_save.message", defaultValue: "You made time for this today."))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+    }
+}
+
+struct PostSaveDoneButton: View {
+    let action: () -> Void
+    @Environment(\.outboundTheme) private var theme
+
+    var body: some View {
+        Button(action: action) {
+            Text(String(localized: "activity.post_save.done", defaultValue: "Done"))
+                .font(.headline)
+                .frame(maxWidth: .infinity, minHeight: 52)
+                .foregroundStyle(.white)
+                .background(theme.actionColor, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("PostSaveCelebrationDoneButton")
+        .padding(.horizontal, 24)
+        .padding(.vertical, 12)
+        .background(.bar)
     }
 }
 
@@ -294,7 +340,6 @@ private struct PostcardRunner: View {
 /// Owns sharing presentation so dismissing the preview preserves the post-save page.
 struct PostSaveActivityActions: View {
     let activity: SavedActivity
-    let onDone: () -> Void
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @Environment(\.analyticsManager) private var analyticsManager
     @State private var shareImage: UIImage?
@@ -307,10 +352,10 @@ struct PostSaveActivityActions: View {
                 Text(String(localized: "activity.share", defaultValue: "Share"))
                     .opacity(isPreparing ? 0 : 1)
                     .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(Color.accentColor, in: Capsule())
-                    .foregroundStyle(.white)
+                    .background(Color(.secondarySystemFill), in: Capsule())
+                    .foregroundStyle(.primary)
                     .overlay {
-                        if isPreparing { ProgressView().tint(.white) }
+                        if isPreparing { ProgressView().tint(.primary) }
                     }
             }
             .disabled(isPreparing)
@@ -319,17 +364,12 @@ struct PostSaveActivityActions: View {
                 : String(localized: "activity.share", defaultValue: "Share"))
             .accessibilityIdentifier("PostSaveCelebrationShareButton")
 
-            Button(action: onDone) {
-                Text(String(localized: "activity.post_save.done", defaultValue: "Done"))
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(Color(.secondarySystemFill), in: Capsule())
-                    .foregroundStyle(.primary)
-            }
-            .accessibilityIdentifier("PostSaveCelebrationDoneButton")
+
         }
         .font(.subheadline.weight(.semibold))
         .buttonStyle(.plain)
-        .frame(maxWidth: 320)
+        .frame(maxWidth: 220)
+        .transaction { $0.animation = nil }
         .sheet(isPresented: Binding(
             get: { shareImage != nil },
             set: { if !$0 { shareImage = nil } }

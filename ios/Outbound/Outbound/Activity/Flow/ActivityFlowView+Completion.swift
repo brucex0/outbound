@@ -27,7 +27,8 @@ extension ActivityFlowView {
                     guard model.review.lastPostSaveCelebrationExposureID != postSaveCelebrationActivity.id else { return }
                     model.review.lastPostSaveCelebrationExposureID = postSaveCelebrationActivity.id
                     model.track(.init(.featureExposed, properties: [
-                        .feature: .string("activity_post_save_celebration")
+                        .feature: .string("activity_post_save_celebration"),
+                        .sourceType: .string("saved_summary_v2")
                     ]))
                 }
             }

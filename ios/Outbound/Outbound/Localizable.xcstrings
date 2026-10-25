@@ -1,6 +1,102 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "activity.post_save.choose_another": {
+      "comment": "[platform:ios] Saved activity summary and optional stretch actions.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose another"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir otra rutina"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择其他方案"
+          }
+        }
+      }
+    },
+    "activity.post_save.start_stretch": {
+      "comment": "[platform:ios] Saved activity summary and optional stretch actions.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start stretch"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empezar a estirar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始拉伸"
+          }
+        }
+      }
+    },
+    "activity.post_save.stretch_offer": {
+      "comment": "[platform:ios] Saved activity summary and optional stretch actions.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finish with a gentle stretch"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Termina con un estiramiento suave"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最后，轻松拉伸一下"
+          }
+        }
+      }
+    },
+    "activity.post_save.saved": {
+      "comment": "[platform:ios] Saved activity summary and optional stretch actions.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activity saved"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actividad guardada"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "活动已保存"
+          }
+        }
+      }
+    },
     "statistics.loading": {
       "localizations": {
         "en": {

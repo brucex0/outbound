@@ -130,10 +130,8 @@ struct PostWorkoutStretchView: View {
     let onExit: () -> Void
     var body: some View {
         StretchSessionView(launch: StretchLaunchContext(entryPoint: .postSave, activityType: context.activityType, isIndoor: activity.indoor?.isIndoor == true), voiceProfileID: voiceProfileID, onExit: onExit) { finish in
-            PostSaveCelebrationCard(activity: activity).id(activity.id).frame(height: 205)
-            Text(String(localized: "activity.post_save.message", defaultValue: "You made time for this today."))
-                .font(.title3.weight(.semibold)).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
-            PostSaveActivityActions(activity: activity, onDone: finish)
+            PostSaveActivitySummary(activity: activity)
+            PostSaveActivityActions(activity: activity)
         }
     }
 }
@@ -186,11 +184,17 @@ struct StretchSessionView<Header: View>: View {
                             if launch.entryPoint == .postSave && !showingDetails {
                                 header { finish("not_started") }
                                 VStack(alignment: .leading, spacing: 12) {
-                                    Text(stretchText("post_workout_stretch.offer_title", "A gentle reset?")).font(.title2.bold())
+                                    Text(String(localized: "activity.post_save.stretch_offer", defaultValue: "Finish with a gentle stretch")).font(.title2.bold())
                                     Text(timer.routine.title).font(.headline)
                                     Text(timer.routine.calculatedDuration + " · " + timer.routine.requirements)
                                         .font(.subheadline).foregroundStyle(.secondary)
-                                    Button(stretchUI("change")) { showingDetails = true }
+                                    HStack {
+                                        Button(String(localized: "activity.post_save.start_stretch", defaultValue: "Start stretch"), action: startRoutine)
+                                            .buttonStyle(.bordered).tint(.orange)
+                                        Spacer()
+                                        Button(String(localized: "activity.post_save.choose_another", defaultValue: "Choose another")) { showingDetails = true }
+                                            .buttonStyle(.plain)
+                                    }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(20).background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 24))
@@ -204,12 +208,16 @@ struct StretchSessionView<Header: View>: View {
                     }
                 }
                 .safeAreaInset(edge: .bottom) {
-                    Button(action: startRoutine) {
-                        Text(stretchCatalogText("ui.start"))
-                            .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
+                    if launch.entryPoint == .postSave && !showingDetails {
+                        PostSaveDoneButton { finish("not_started") }
+                    } else {
+                        Button(action: startRoutine) {
+                            Text(stretchCatalogText("ui.start"))
+                                .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.borderedProminent).tint(.orange)
+                        .padding(.horizontal, 24).padding(.vertical, 12).background(.bar)
                     }
-                    .buttonStyle(.borderedProminent).tint(.orange)
-                    .padding(.horizontal, 24).padding(.vertical, 12).background(.bar)
                 }
             } else if timer.complete {
                 VStack(spacing: 20) {
