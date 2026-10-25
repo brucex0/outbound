@@ -449,16 +449,21 @@ class RecordingViewModel @Inject constructor(
         }
     }
 
-    fun trackStretchEvent(name: String, kind: ActivityKind, routineId: String?, result: String?, seconds: Int? = null) {
-        val routine = PostWorkoutStretchCatalog.routines(kind).orEmpty().firstOrNull { it.id == routineId } ?: return
+    fun trackStretchEvent(event: StretchSessionEvent, kind: ActivityKind) {
         val properties = mutableMapOf<AnalyticsProperty, Any>(
             AnalyticsProperty.ActivityType to kind.name.lowercase(),
-            AnalyticsProperty.RoutineId to routine.id,
+            AnalyticsProperty.SourceType to event.source.wireName,
+            AnalyticsProperty.StretchCustomized to event.customized,
         )
-        if (name == "post_workout_stretch_started") properties[AnalyticsProperty.Control] = "clock_tick"
-        result?.let { properties[AnalyticsProperty.Result] = it }
-        seconds?.let { properties[AnalyticsProperty.CountBucket] = when { it == 0 -> "zero"; it < 20 -> "under_20"; it < 60 -> "20_to_59"; else -> "60_plus" } }
-        if (name.startsWith("post_workout_stretch_")) analytics.record(AnalyticsEvent(name, properties))
+        event.routineID?.let { properties[AnalyticsProperty.RoutineId] = it }
+        if (event.name == "post_workout_stretch_started") properties[AnalyticsProperty.Control] = "clock_tick"
+        if (event.name == "post_workout_stretch_started" || event.name == "stretch_routine_edited" && event.result in listOf("saved", "reset")) {
+            properties[AnalyticsProperty.CountBucket] = when { event.postureCount <= 3 -> "one_to_three"; event.postureCount <= 6 -> "four_to_six"; else -> "seven_plus" }
+            properties[AnalyticsProperty.DurationBucket] = when { event.totalSeconds < 180 -> "under_3_min"; event.totalSeconds < 360 -> "3_to_6_min"; else -> "6_plus_min" }
+        }
+        event.result?.let { properties[AnalyticsProperty.Result] = it }
+        event.seconds?.let { properties[AnalyticsProperty.CountBucket] = when { it == 0 -> "zero"; it < 20 -> "under_20"; it < 60 -> "20_to_59"; else -> "60_plus" } }
+        if (event.name.startsWith("post_workout_stretch_") || event.name == "stretch_routine_edited") analytics.record(AnalyticsEvent(event.name, properties))
     }
 
     fun trackStartPreflight() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(

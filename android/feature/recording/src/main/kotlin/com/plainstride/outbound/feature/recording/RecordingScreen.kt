@@ -285,7 +285,7 @@ fun RecordingRoute(
                     onSavedSideEffects(review)
                     postSaveReview = review
                     postSavePhotoAlbumExport = overrideResult ?: result.photoAlbumExport
-                    postSaveStretchKind = review.snapshot.activityKind.takeIf { PostWorkoutStretchCatalog.routines(it) != null }
+                    postSaveStretchKind = review.snapshot.activityKind.takeIf { it != ActivityKind.WALKING }
                     postSaveCelebrationReview = review
                 } else {
                     saveSnackbar.showSnackbar(saveFailedMessage)
@@ -731,9 +731,7 @@ fun RecordingRoute(
                     postSaveStretchKind = null
                     onSaved(review, export)
                 },
-                onEvent = { name, routineId, result, seconds ->
-                    viewModel.trackStretchEvent(name, requireNotNull(postSaveStretchKind), routineId, result, seconds)
-                },
+                onEvent = { event -> viewModel.trackStretchEvent(event, requireNotNull(postSaveStretchKind)) },
             )
         } else if (postSaveCelebrationReview != null) {
             val review = requireNotNull(postSaveCelebrationReview)
