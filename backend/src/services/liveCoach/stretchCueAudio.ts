@@ -4,41 +4,31 @@ import { AIProviderError, sanitizedProviderError } from "../aiProviders/errors.j
 import { validateLiveCoachWav } from "../aiProviders/audioValidation.js";
 import type { SupportedAILocale, VoiceProfileId } from "../aiProviders/types.js";
 
-export const stretchCueKeys = [
-  "glute_left", "glute_right", "hamstring_left", "hamstring_right", "inner_thigh_both",
-  "calf_left", "calf_right", "quad_left", "quad_right", "hip_flexor_left", "hip_flexor_right",
-  "release", "five", "four", "three", "two", "one",
-  "standing_hamstring_left", "standing_hamstring_right", "soleus_left", "soleus_right", "shoulder_left", "shoulder_right",
-] as const;
-type Cue = typeof stretchCueKeys[number];
-const names = {
-  en: ["Glute stretch", "Hamstring stretch", "Inner thigh stretch", "Calf stretch", "Quad stretch", "Hip flexor stretch"],
-  es: ["Estiramiento de glúteos", "Estiramiento de isquiotibiales", "Estiramiento de aductores", "Estiramiento de pantorrilla", "Estiramiento de cuádriceps", "Estiramiento de flexores de cadera"],
-  "zh-Hans": ["臀部拉伸", "大腿后侧拉伸", "大腿内侧拉伸", "小腿拉伸", "大腿前侧拉伸", "髋屈肌拉伸"],
-};
+import { stretchMovementTitles } from "./stretchCatalogData.js";
+
+// Only finite catalog-generated cues can reach synthesis. Existing cue text stays unchanged.
 const extras = {
   en: ["Release.", "Five.", "Four.", "Three.", "Two.", "One."],
   es: ["Relaja.", "Cinco.", "Cuatro.", "Tres.", "Dos.", "Uno."],
   "zh-Hans": ["放松。", "五。", "四。", "三。", "二。", "一。"],
 };
+const extraKeys = ["release", "five", "four", "three", "two", "one"];
+export const stretchCueKeys = [
+  ...Object.keys(stretchMovementTitles).flatMap(id =>
+    ["inner_thigh", "chest", "upper_back", "lat"].includes(id) ? [`${id}_both`] : [`${id}_left`, `${id}_right`]),
+  ...extraKeys,
+] as [string, ...string[]];
+type Cue = string;
 export function stretchCueTranscript(cue: Cue, locale: SupportedAILocale): string {
-  const index = stretchCueKeys.indexOf(cue);
-  let text: string;
-  if (index >= 11 && index < 17) text = extras[locale][index - 11]!;
-  else {
-    const movement = index < 4 ? Math.floor(index / 2) : index === 4 ? 2 : Math.floor((index + 1) / 2);
-    const standingNames = {
-      en: ["Standing hamstring stretch", "Bent-knee calf stretch", "Standing shoulder stretch"],
-      es: ["Estiramiento de isquiotibiales de pie", "Estiramiento de pantorrilla con rodilla flexionada", "Estiramiento de hombro de pie"],
-      "zh-Hans": ["站姿大腿后侧拉伸", "屈膝小腿拉伸", "站姿肩部拉伸"],
-    };
-    const title = index >= 17 ? standingNames[locale][Math.floor((index - 17) / 2)] : names[locale][movement];
-    const side = cue.endsWith("left") ? 0 : cue.endsWith("right") ? 1 : 2;
-    const sides = locale === "en" ? ["left side", "right side", "both sides"]
-      : locale === "es" ? ["lado izquierdo", "lado derecho", "ambos lados"] : ["左侧", "右侧", "双侧"];
-    text = `${title}. ${sides[side]}.`;
+  const extraIndex = extraKeys.indexOf(cue);
+  if (extraIndex >= 0) return extras[locale][extraIndex]!;
+  const movement = cue.replace(/_(left|right|both)$/, "") as keyof typeof stretchMovementTitles;
+  if (!stretchCueKeys.includes(cue) || !(movement in stretchMovementTitles)) {
+    throw new AIProviderError("invalid_provider_output", "Unknown stretch cue.");
   }
-  return text;
+  const sides = locale === "en" ? ["left side", "right side", "both sides"]
+    : locale === "es" ? ["lado izquierdo", "lado derecho", "ambos lados"] : ["左侧", "右侧", "双侧"];
+  return `${stretchMovementTitles[movement][locale]}. ${sides[cue.endsWith("left") ? 0 : cue.endsWith("right") ? 1 : 2]}.`;
 }
 
 // Finite catalog of keys × 3 locales × 2 voices. Share in-flight synthesis.

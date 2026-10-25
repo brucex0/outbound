@@ -1,0 +1,1511 @@
+{
+  "schemaVersion": 1,
+  "movements": [
+    {
+      "id": "glute",
+      "title": {
+        "en": "Reclining glute stretch",
+        "es": "Estiramiento de glúteos tumbado",
+        "zh-Hans": "仰卧臀部拉伸"
+      },
+      "instruction": {
+        "en": "Lie on your back, cross one ankle over the opposite thigh, and draw your legs gently toward your chest.",
+        "es": "Túmbate boca arriba, cruza un tobillo sobre el muslo contrario y acerca suavemente las piernas al pecho.",
+        "zh-Hans": "仰卧，将一侧脚踝搭在另一侧大腿上，再轻轻把双腿拉向胸前。"
+      },
+      "bilateral": true,
+      "floor": true,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "paths": [
+        [
+          [
+            15,
+            75
+          ],
+          [
+            35,
+            75
+          ],
+          [
+            55,
+            60
+          ],
+          [
+            75,
+            60
+          ]
+        ],
+        [
+          [
+            35,
+            75
+          ],
+          [
+            45,
+            45
+          ],
+          [
+            60,
+            55
+          ]
+        ],
+        [
+          [
+            45,
+            45
+          ],
+          [
+            70,
+            40
+          ],
+          [
+            75,
+            60
+          ]
+        ],
+        [
+          [
+            55,
+            60
+          ],
+          [
+            55,
+            80
+          ],
+          [
+            80,
+            80
+          ]
+        ]
+      ],
+      "lying": true,
+      "audioTitle": {
+        "en": "Glute stretch",
+        "es": "Estiramiento de glúteos",
+        "zh-Hans": "臀部拉伸"
+      },
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+    },
+    {
+      "id": "hamstring",
+      "title": {
+        "en": "Lying hamstring stretch",
+        "es": "Estiramiento de isquiotibiales tumbado",
+        "zh-Hans": "仰卧大腿后侧拉伸"
+      },
+      "instruction": {
+        "en": "Lie back and raise one leg. Hold behind the thigh and gently draw it toward you, keeping the knee softly straight.",
+        "es": "Túmbate y eleva una pierna. Sujétala por detrás del muslo y acércala suavemente, manteniendo la rodilla ligeramente extendida.",
+        "zh-Hans": "仰卧抬起一条腿，从大腿后侧轻轻拉向自己，膝盖保持自然伸展。"
+      },
+      "bilateral": true,
+      "floor": true,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "paths": [
+        [
+          [
+            15,
+            80
+          ],
+          [
+            45,
+            80
+          ]
+        ],
+        [
+          [
+            30,
+            80
+          ],
+          [
+            50,
+            55
+          ],
+          [
+            57,
+            50
+          ]
+        ],
+        [
+          [
+            45,
+            80
+          ],
+          [
+            80,
+            80
+          ]
+        ],
+        [
+          [
+            45,
+            80
+          ],
+          [
+            60,
+            35
+          ]
+        ]
+      ],
+      "lying": true,
+      "audioTitle": {
+        "en": "Hamstring stretch",
+        "es": "Estiramiento de isquiotibiales",
+        "zh-Hans": "大腿后侧拉伸"
+      },
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+    },
+    {
+      "id": "inner_thigh",
+      "title": {
+        "en": "Seated inner-thigh stretch",
+        "es": "Estiramiento sentado de la cara interna del muslo",
+        "zh-Hans": "坐姿大腿内侧拉伸"
+      },
+      "instruction": {
+        "en": "Sit tall with the soles of your feet together. Let your knees relax outward without pushing them down.",
+        "es": "Siéntate con la espalda erguida y las plantas de los pies juntas. Deja que las rodillas se abran sin empujarlas.",
+        "zh-Hans": "坐直并让双脚脚掌相对，放松膝盖向两侧打开，不要用手向下压。"
+      },
+      "bilateral": false,
+      "floor": true,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "paths": [
+        [
+          [
+            50,
+            20
+          ],
+          [
+            50,
+            55
+          ]
+        ],
+        [
+          [
+            50,
+            35
+          ],
+          [
+            30,
+            60
+          ]
+        ],
+        [
+          [
+            50,
+            55
+          ],
+          [
+            30,
+            80
+          ],
+          [
+            50,
+            75
+          ]
+        ],
+        [
+          [
+            50,
+            55
+          ],
+          [
+            70,
+            80
+          ],
+          [
+            50,
+            75
+          ]
+        ]
+      ],
+      "lying": false,
+      "audioTitle": {
+        "en": "Inner thigh stretch",
+        "es": "Estiramiento de aductores",
+        "zh-Hans": "大腿内侧拉伸"
+      },
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+    },
+    {
+      "id": "calf",
+      "title": {
+        "en": "Calf release",
+        "es": "Estiramiento de pantorrilla",
+        "zh-Hans": "小腿放松"
+      },
+      "instruction": {
+        "en": "Step the named leg back, keep that knee straight without locking it, and its heel down. Bend the front knee gently. Use a stable wall or railing if needed.",
+        "es": "Lleva atrás la pierna indicada, con la rodilla extendida sin bloquearla y el talón apoyado. Flexiona suavemente la rodilla delantera. Usa una pared o barandilla firme si lo necesitas.",
+        "zh-Hans": "指定侧腿向后迈，膝盖自然伸直但不锁死，脚跟保持着地。前侧膝盖轻轻弯曲，需要时可扶稳墙壁或栏杆。"
+      },
+      "bilateral": true,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "paths": [
+        [
+          [
+            65,
+            20
+          ],
+          [
+            50,
+            55
+          ]
+        ],
+        [
+          [
+            60,
+            30
+          ],
+          [
+            70,
+            50
+          ],
+          [
+            70,
+            70
+          ]
+        ],
+        [
+          [
+            50,
+            55
+          ],
+          [
+            70,
+            70
+          ],
+          [
+            80,
+            90
+          ],
+          [
+            90,
+            90
+          ]
+        ],
+        [
+          [
+            50,
+            55
+          ],
+          [
+            20,
+            90
+          ],
+          [
+            10,
+            90
+          ]
+        ]
+      ],
+      "lying": false,
+      "audioTitle": {
+        "en": "Calf stretch",
+        "es": "Estiramiento de pantorrilla",
+        "zh-Hans": "小腿拉伸"
+      },
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+    },
+    {
+      "id": "quad",
+      "title": {
+        "en": "Standing quad stretch",
+        "es": "Cuádriceps de pie",
+        "zh-Hans": "站立大腿前侧拉伸"
+      },
+      "instruction": {
+        "en": "Hold a stable wall or railing. Bend the named knee and gently bring that heel toward your bottom, keeping knees close. Skip if support is unavailable or balance feels difficult.",
+        "es": "Sujétate a una pared o barandilla firme. Flexiona la rodilla indicada y acerca suavemente el talón al glúteo, manteniendo las rodillas juntas. Omite el movimiento si no tienes apoyo o te cuesta mantener el equilibrio.",
+        "zh-Hans": "扶稳墙壁或栏杆，弯曲指定侧膝盖，轻轻将脚跟靠近臀部，双膝保持靠近。没有稳固支撑或难以保持平衡时，请跳过。"
+      },
+      "bilateral": true,
+      "floor": false,
+      "support": true,
+      "surface": false,
+      "area": "lower",
+      "paths": [
+        [
+          [
+            50,
+            20
+          ],
+          [
+            50,
+            55
+          ]
+        ],
+        [
+          [
+            50,
+            55
+          ],
+          [
+            50,
+            90
+          ]
+        ],
+        [
+          [
+            50,
+            30
+          ],
+          [
+            20,
+            35
+          ]
+        ],
+        [
+          [
+            20,
+            25
+          ],
+          [
+            20,
+            90
+          ]
+        ],
+        [
+          [
+            50,
+            35
+          ],
+          [
+            70,
+            55
+          ],
+          [
+            70,
+            65
+          ]
+        ],
+        [
+          [
+            50,
+            55
+          ],
+          [
+            80,
+            85
+          ],
+          [
+            70,
+            65
+          ]
+        ]
+      ],
+      "lying": false,
+      "audioTitle": {
+        "en": "Quad stretch",
+        "es": "Estiramiento de cuádriceps",
+        "zh-Hans": "大腿前侧拉伸"
+      },
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+    },
+    {
+      "id": "hip_flexor",
+      "title": {
+        "en": "Kneeling hip-flexor stretch",
+        "es": "Estiramiento de flexores de cadera de rodillas",
+        "zh-Hans": "跪姿髋屈肌拉伸"
+      },
+      "instruction": {
+        "en": "Kneel in a split stance, gently tuck your pelvis, and keep your spine neutral as you shift forward.",
+        "es": "Colócate de rodillas en posición de zancada, bascula suavemente la pelvis y mantén la espalda neutra al avanzar.",
+        "zh-Hans": "跪成前后分腿姿势，轻轻收紧骨盆，保持脊柱自然，再缓缓向前移动。"
+      },
+      "bilateral": true,
+      "floor": true,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "paths": [
+        [
+          [
+            50,
+            15
+          ],
+          [
+            50,
+            55
+          ]
+        ],
+        [
+          [
+            50,
+            35
+          ],
+          [
+            70,
+            55
+          ]
+        ],
+        [
+          [
+            50,
+            55
+          ],
+          [
+            70,
+            60
+          ],
+          [
+            70,
+            85
+          ]
+        ],
+        [
+          [
+            50,
+            55
+          ],
+          [
+            30,
+            85
+          ],
+          [
+            15,
+            85
+          ]
+        ]
+      ],
+      "lying": false,
+      "audioTitle": {
+        "en": "Hip flexor stretch",
+        "es": "Estiramiento de flexores de cadera",
+        "zh-Hans": "髋屈肌拉伸"
+      },
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+    },
+    {
+      "id": "standing_hamstring",
+      "title": {
+        "en": "Standing hamstring stretch",
+        "es": "Estiramiento de isquiotibiales de pie",
+        "zh-Hans": "站姿大腿后侧拉伸"
+      },
+      "instruction": {
+        "en": "Place the named heel a short step forward with toes up. Bend the other knee and hinge gently at the hips with a long back; rest hands on the bent thigh.",
+        "es": "Adelanta un poco el talón del lado indicado y eleva los dedos. Flexiona la otra rodilla e inclínate suavemente desde las caderas, con la espalda alargada y las manos sobre el muslo flexionado.",
+        "zh-Hans": "将指定侧脚跟向前迈一小步，脚尖抬起。另一侧膝盖微屈，背部自然伸展，从髋部轻轻前倾，双手扶在屈膝侧大腿上。"
+      },
+      "bilateral": true,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "paths": [
+        [
+          [
+            65,
+            30
+          ],
+          [
+            50,
+            55
+          ]
+        ],
+        [
+          [
+            60,
+            40
+          ],
+          [
+            45,
+            60
+          ],
+          [
+            35,
+            75
+          ]
+        ],
+        [
+          [
+            50,
+            55
+          ],
+          [
+            35,
+            75
+          ],
+          [
+            35,
+            90
+          ]
+        ],
+        [
+          [
+            50,
+            55
+          ],
+          [
+            80,
+            90
+          ],
+          [
+            88,
+            82
+          ]
+        ]
+      ],
+      "lying": false,
+      "audioTitle": {
+        "en": "Standing hamstring stretch",
+        "es": "Estiramiento de isquiotibiales de pie",
+        "zh-Hans": "站姿大腿后侧拉伸"
+      },
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+    },
+    {
+      "id": "soleus",
+      "title": {
+        "en": "Bent-knee calf stretch",
+        "es": "Estiramiento de pantorrilla con rodilla flexionada",
+        "zh-Hans": "屈膝小腿拉伸"
+      },
+      "instruction": {
+        "en": "Step the named leg back, keep its heel down, and soften both knees. Stay upright and use a stable wall or railing if you need balance.",
+        "es": "Lleva atrás la pierna indicada, mantén el talón apoyado y flexiona suavemente ambas rodillas. Mantente erguido y usa una pared o barandilla firme si necesitas equilibrio.",
+        "zh-Hans": "指定侧腿向后迈，脚跟保持着地，双膝自然微屈。身体保持挺直，需要时可扶稳墙壁或栏杆。"
+      },
+      "bilateral": true,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "lower",
+      "paths": [
+        [
+          [
+            60,
+            20
+          ],
+          [
+            50,
+            55
+          ]
+        ],
+        [
+          [
+            60,
+            30
+          ],
+          [
+            70,
+            50
+          ],
+          [
+            72,
+            70
+          ]
+        ],
+        [
+          [
+            50,
+            55
+          ],
+          [
+            72,
+            70
+          ],
+          [
+            80,
+            90
+          ],
+          [
+            90,
+            90
+          ]
+        ],
+        [
+          [
+            50,
+            55
+          ],
+          [
+            25,
+            70
+          ],
+          [
+            20,
+            90
+          ],
+          [
+            10,
+            90
+          ]
+        ]
+      ],
+      "lying": false,
+      "audioTitle": {
+        "en": "Bent-knee calf stretch",
+        "es": "Estiramiento de pantorrilla con rodilla flexionada",
+        "zh-Hans": "屈膝小腿拉伸"
+      },
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+    },
+    {
+      "id": "shoulder",
+      "title": {
+        "en": "Standing shoulder stretch",
+        "es": "Estiramiento de hombro de pie",
+        "zh-Hans": "站姿肩部拉伸"
+      },
+      "instruction": {
+        "en": "Stand with both feet grounded. Bring the named arm across your chest and gently support it above or below the elbow; keep the shoulder relaxed.",
+        "es": "Apoya ambos pies. Cruza el brazo indicado por delante del pecho y sujétalo suavemente por encima o debajo del codo, manteniendo el hombro relajado.",
+        "zh-Hans": "双脚站稳，将指定侧手臂横放于胸前，另一只手轻扶肘部上方或下方，肩膀保持放松。"
+      },
+      "bilateral": true,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "upper",
+      "paths": [
+        [
+          [
+            50,
+            20
+          ],
+          [
+            50,
+            60
+          ]
+        ],
+        [
+          [
+            50,
+            60
+          ],
+          [
+            35,
+            90
+          ]
+        ],
+        [
+          [
+            50,
+            60
+          ],
+          [
+            65,
+            90
+          ]
+        ],
+        [
+          [
+            35,
+            35
+          ],
+          [
+            55,
+            50
+          ],
+          [
+            50,
+            40
+          ]
+        ],
+        [
+          [
+            65,
+            35
+          ],
+          [
+            30,
+            40
+          ]
+        ]
+      ],
+      "lying": false,
+      "audioTitle": {
+        "en": "Standing shoulder stretch",
+        "es": "Estiramiento de hombro de pie",
+        "zh-Hans": "站姿肩部拉伸"
+      },
+      "reference": "docs/activity-post-save-celebration.md#routine-content-basis"
+    },
+    {
+      "id": "chest",
+      "title": {
+        "en": "Standing chest opener",
+        "es": "Apertura de pecho de pie",
+        "zh-Hans": "站姿扩胸拉伸"
+      },
+      "instruction": {
+        "en": "Stand tall, draw your shoulders gently down and back, and lift your chest slightly without arching your lower back.",
+        "es": "Ponte de pie, lleva suavemente los hombros hacia abajo y atrás y eleva un poco el pecho sin arquear la zona lumbar.",
+        "zh-Hans": "站直，肩膀轻轻下沉并向后打开，微微抬胸，不要塌腰。"
+      },
+      "bilateral": false,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "upper",
+      "paths": [
+        [
+          [
+            50,
+            20
+          ],
+          [
+            50,
+            60
+          ]
+        ],
+        [
+          [
+            50,
+            60
+          ],
+          [
+            35,
+            90
+          ]
+        ],
+        [
+          [
+            50,
+            60
+          ],
+          [
+            65,
+            90
+          ]
+        ],
+        [
+          [
+            50,
+            35
+          ],
+          [
+            25,
+            45
+          ],
+          [
+            20,
+            65
+          ]
+        ],
+        [
+          [
+            50,
+            35
+          ],
+          [
+            75,
+            45
+          ],
+          [
+            80,
+            65
+          ]
+        ]
+      ],
+      "lying": false,
+      "reference": "https://www.acefitness.org/resources/everyone/exercise-library/209/standing-chest-stretch/"
+    },
+    {
+      "id": "upper_back",
+      "title": {
+        "en": "Upper-back stretch",
+        "es": "Estiramiento de espalda alta",
+        "zh-Hans": "上背部拉伸"
+      },
+      "instruction": {
+        "en": "Reach both arms forward with hands together. Gently round your upper back and let your shoulder blades move apart; keep your knees soft.",
+        "es": "Extiende los brazos al frente con las manos juntas. Redondea suavemente la espalda alta y separa los omóplatos; mantén las rodillas relajadas.",
+        "zh-Hans": "双手合拢向前伸，轻轻拱起上背，让肩胛骨向两侧展开，膝盖保持微屈。"
+      },
+      "bilateral": false,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "upper",
+      "paths": [
+        [
+          [
+            48,
+            20
+          ],
+          [
+            40,
+            40
+          ],
+          [
+            50,
+            60
+          ]
+        ],
+        [
+          [
+            50,
+            60
+          ],
+          [
+            35,
+            90
+          ]
+        ],
+        [
+          [
+            50,
+            60
+          ],
+          [
+            65,
+            90
+          ]
+        ],
+        [
+          [
+            45,
+            32
+          ],
+          [
+            75,
+            40
+          ],
+          [
+            85,
+            40
+          ]
+        ],
+        [
+          [
+            45,
+            38
+          ],
+          [
+            73,
+            46
+          ],
+          [
+            85,
+            40
+          ]
+        ]
+      ],
+      "lying": false,
+      "reference": "https://www.nhs.uk/live-well/exercise/strength-and-flex-exercise-plan-how-to-videos/"
+    },
+    {
+      "id": "triceps",
+      "title": {
+        "en": "Overhead triceps stretch",
+        "es": "Estiramiento de tríceps por encima de la cabeza",
+        "zh-Hans": "上臂后侧拉伸"
+      },
+      "instruction": {
+        "en": "Raise one arm and bend the elbow so your hand rests behind your head. Rest the other hand above that elbow and apply only gentle pressure; keep your ribs relaxed.",
+        "es": "Eleva un brazo y dobla el codo, dejando la mano detrás de la cabeza. Apoya la otra mano por encima del codo y presiona suavemente, sin sacar las costillas.",
+        "zh-Hans": "一只手臂举过头顶并屈肘，手放在头后；另一只手轻扶肘部上方，不要用力拉，肋骨保持放松。"
+      },
+      "bilateral": true,
+      "floor": false,
+      "support": false,
+      "surface": false,
+      "area": "upper",
+      "paths": [
+        [
+          [
+            50,
+            25
+          ],
+          [
+            50,
+            60
+          ]
+        ],
+        [
+          [
+            50,
+            60
+          ],
+          [
+            35,
+            90
+          ]
+        ],
+        [
+          [
+            50,
+            60
+          ],
+          [
+            65,
+            90
+          ]
+        ],
+        [
+          [
+            40,
+            35
+          ],
+          [
+            30,
+            10
+          ],
+          [
+            55,
+            12
+          ],
+          [
+            55,
+            35
+          ]
+        ],
+        [
+          [
+            60,
+            35
+          ],
+          [
+            70,
+            15
+          ],
+          [
+            55,
+            12
+          ]
+        ]
+      ],
+      "lying": false,
+      "reference": "https://www.acefitness.org/resources/everyone/exercise-library/174/overhead-triceps-stretch/"
+    },
+    {
+      "id": "lat",
+      "title": {
+        "en": "Supported lat stretch",
+        "es": "Estiramiento dorsal con apoyo",
+        "zh-Hans": "支撑式背阔肌拉伸"
+      },
+      "instruction": {
+        "en": "Place both hands on a fixed, sturdy surface around waist height. Step back and hinge at your hips, keeping your back long. Skip if suitable support is unavailable.",
+        "es": "Apoya las manos en una superficie fija y firme a la altura de la cintura. Da un paso atrás e inclínate desde las caderas, manteniendo la espalda alargada. Omítelo si no tienes un apoyo adecuado.",
+        "zh-Hans": "双手放在腰部高度的固定稳固台面上，向后退，从髋部前倾，背部保持伸展。没有合适支撑时请跳过。"
+      },
+      "bilateral": false,
+      "floor": false,
+      "support": false,
+      "surface": true,
+      "area": "upper",
+      "paths": [
+        [
+          [
+            60,
+            40
+          ],
+          [
+            30,
+            55
+          ]
+        ],
+        [
+          [
+            30,
+            55
+          ],
+          [
+            25,
+            90
+          ]
+        ],
+        [
+          [
+            30,
+            55
+          ],
+          [
+            45,
+            90
+          ]
+        ],
+        [
+          [
+            60,
+            40
+          ],
+          [
+            85,
+            40
+          ]
+        ],
+        [
+          [
+            80,
+            40
+          ],
+          [
+            95,
+            40
+          ],
+          [
+            95,
+            90
+          ]
+        ]
+      ],
+      "lying": false,
+      "reference": "https://www.acefitness.org/resources/everyone/exercise-library/198/90-lat-stretch/"
+    },
+    {
+      "id": "wall_side",
+      "title": {
+        "en": "Wall side stretch",
+        "es": "Estiramiento lateral con pared",
+        "zh-Hans": "扶墙体侧拉伸"
+      },
+      "instruction": {
+        "en": "Stand beside a wall. Reach both hands toward it and gently lean your hips away until you feel a mild stretch along your side. Keep both feet grounded.",
+        "es": "Colócate junto a una pared, lleva ambas manos hacia ella y aleja suavemente las caderas hasta sentir una tensión leve en el costado. Mantén los pies apoyados.",
+        "zh-Hans": "站在墙边，双手伸向墙面，髋部轻轻向外移，感受体侧温和拉伸，双脚保持着地。"
+      },
+      "bilateral": true,
+      "floor": false,
+      "support": true,
+      "surface": false,
+      "area": "upper",
+      "paths": [
+        [
+          [
+            60,
+            25
+          ],
+          [
+            45,
+            45
+          ],
+          [
+            40,
+            60
+          ]
+        ],
+        [
+          [
+            40,
+            60
+          ],
+          [
+            30,
+            90
+          ]
+        ],
+        [
+          [
+            40,
+            60
+          ],
+          [
+            55,
+            90
+          ]
+        ],
+        [
+          [
+            55,
+            35
+          ],
+          [
+            80,
+            15
+          ],
+          [
+            90,
+            15
+          ]
+        ],
+        [
+          [
+            60,
+            40
+          ],
+          [
+            80,
+            25
+          ],
+          [
+            90,
+            25
+          ]
+        ],
+        [
+          [
+            92,
+            5
+          ],
+          [
+            92,
+            95
+          ]
+        ]
+      ],
+      "lying": false,
+      "reference": "https://www.lta.org.uk/play/tennis-at-home/at-home-standing-stretches/"
+    },
+    {
+      "id": "wall_chest",
+      "title": {
+        "en": "Wall chest stretch",
+        "es": "Estiramiento de pecho en pared",
+        "zh-Hans": "扶墙胸部拉伸"
+      },
+      "instruction": {
+        "en": "Place one forearm against a wall with the elbow at shoulder height. Turn your chest gently away until you feel a mild stretch. Keep the shoulder relaxed; do not force the turn.",
+        "es": "Apoya un antebrazo en la pared con el codo a la altura del hombro. Gira suavemente el pecho en sentido contrario hasta notar una tensión leve. Relaja el hombro y no fuerces el giro.",
+        "zh-Hans": "一侧前臂贴墙，肘部与肩同高，胸口轻轻转向另一侧，感受温和拉伸。肩膀放松，不要强扭。"
+      },
+      "bilateral": true,
+      "floor": false,
+      "support": true,
+      "surface": false,
+      "area": "upper",
+      "paths": [
+        [
+          [
+            50,
+            20
+          ],
+          [
+            50,
+            60
+          ]
+        ],
+        [
+          [
+            50,
+            60
+          ],
+          [
+            35,
+            90
+          ]
+        ],
+        [
+          [
+            50,
+            60
+          ],
+          [
+            65,
+            90
+          ]
+        ],
+        [
+          [
+            50,
+            35
+          ],
+          [
+            80,
+            35
+          ],
+          [
+            80,
+            15
+          ]
+        ],
+        [
+          [
+            85,
+            5
+          ],
+          [
+            85,
+            95
+          ]
+        ]
+      ],
+      "lying": false,
+      "reference": "https://www.lta.org.uk/play/tennis-at-home/at-home-standing-stretches/"
+    }
+  ],
+  "templates": [
+    {
+      "id": "standing_quick",
+      "title": {
+        "en": "Standing reset",
+        "es": "Pausa de pie",
+        "zh-Hans": "站姿放松"
+      },
+      "entries": [
+        {
+          "movementID": "calf",
+          "seconds": 15
+        },
+        {
+          "movementID": "soleus",
+          "seconds": 15
+        },
+        {
+          "movementID": "standing_hamstring",
+          "seconds": 15
+        }
+      ],
+      "wireSuffix": "standing_quick_v1"
+    },
+    {
+      "id": "standing_standard",
+      "title": {
+        "en": "Standing stretch",
+        "es": "Estiramientos de pie",
+        "zh-Hans": "站姿拉伸"
+      },
+      "entries": [
+        {
+          "movementID": "calf",
+          "seconds": 25
+        },
+        {
+          "movementID": "soleus",
+          "seconds": 25
+        },
+        {
+          "movementID": "standing_hamstring",
+          "seconds": 25
+        },
+        {
+          "movementID": "quad",
+          "seconds": 25
+        },
+        {
+          "movementID": "shoulder",
+          "seconds": 25
+        }
+      ],
+      "wireSuffix": "standing_standard_v1"
+    },
+    {
+      "id": "upper_body",
+      "title": {
+        "en": "Upper-body stretch",
+        "es": "Estiramientos del tren superior",
+        "zh-Hans": "上半身拉伸"
+      },
+      "entries": [
+        {
+          "movementID": "chest",
+          "seconds": 25
+        },
+        {
+          "movementID": "upper_back",
+          "seconds": 25
+        },
+        {
+          "movementID": "shoulder",
+          "seconds": 25
+        },
+        {
+          "movementID": "triceps",
+          "seconds": 25
+        }
+      ],
+      "wireSuffix": "upper_body_v1"
+    },
+    {
+      "id": "mat_standard",
+      "title": {
+        "en": "Mat · Lower body",
+        "es": "Colchoneta · Tren inferior",
+        "zh-Hans": "垫上 · 下半身"
+      },
+      "entries": [
+        {
+          "movementID": "glute",
+          "seconds": 30
+        },
+        {
+          "movementID": "hamstring",
+          "seconds": 30
+        },
+        {
+          "movementID": "inner_thigh",
+          "seconds": 30
+        },
+        {
+          "movementID": "calf",
+          "seconds": 30
+        },
+        {
+          "movementID": "quad",
+          "seconds": 30
+        }
+      ],
+      "wireSuffix": "cooldown_v2"
+    },
+    {
+      "id": "mat_quick",
+      "title": {
+        "en": "Mat · Hips & hamstrings",
+        "es": "Colchoneta · Caderas e isquiotibiales",
+        "zh-Hans": "垫上 · 髋部和大腿后侧"
+      },
+      "entries": [
+        {
+          "movementID": "hip_flexor",
+          "seconds": 20
+        },
+        {
+          "movementID": "hamstring",
+          "seconds": 20
+        },
+        {
+          "movementID": "glute",
+          "seconds": 20
+        }
+      ],
+      "wireSuffix": "hips_hamstrings_v2"
+    }
+  ],
+  "ui": {
+    "customize": {
+      "en": "Customize",
+      "es": "Personalizar",
+      "zh-Hans": "自定义"
+    },
+    "editor": {
+      "en": "Customize routine",
+      "es": "Personalizar rutina",
+      "zh-Hans": "自定义拉伸流程"
+    },
+    "add": {
+      "en": "Add posture",
+      "es": "Añadir postura",
+      "zh-Hans": "添加动作"
+    },
+    "replace": {
+      "en": "Replace",
+      "es": "Sustituir",
+      "zh-Hans": "替换"
+    },
+    "remove": {
+      "en": "Remove",
+      "es": "Eliminar",
+      "zh-Hans": "移除"
+    },
+    "up": {
+      "en": "Move up",
+      "es": "Subir",
+      "zh-Hans": "上移"
+    },
+    "down": {
+      "en": "Move down",
+      "es": "Bajar",
+      "zh-Hans": "下移"
+    },
+    "save": {
+      "en": "Save",
+      "es": "Guardar",
+      "zh-Hans": "保存"
+    },
+    "cancel": {
+      "en": "Cancel",
+      "es": "Cancelar",
+      "zh-Hans": "取消"
+    },
+    "reset": {
+      "en": "Reset to original",
+      "es": "Restablecer original",
+      "zh-Hans": "恢复默认"
+    },
+    "undo": {
+      "en": "Undo removal",
+      "es": "Deshacer eliminación",
+      "zh-Hans": "撤销移除"
+    },
+    "your_version": {
+      "en": "Your version",
+      "es": "Tu versión",
+      "zh-Hans": "你的版本"
+    },
+    "empty": {
+      "en": "Add at least one posture to continue.",
+      "es": "Añade al menos una postura para continuar.",
+      "zh-Hans": "请至少添加一个动作。"
+    },
+    "duration": {
+      "en": "Seconds per side",
+      "es": "Segundos por lado",
+      "zh-Hans": "每侧秒数"
+    },
+    "duration_both": {
+      "en": "Seconds",
+      "es": "Segundos",
+      "zh-Hans": "秒数"
+    },
+    "all": {
+      "en": "All areas",
+      "es": "Todas las zonas",
+      "zh-Hans": "全部部位"
+    },
+    "upper": {
+      "en": "Upper body",
+      "es": "Tren superior",
+      "zh-Hans": "上半身"
+    },
+    "lower": {
+      "en": "Lower body",
+      "es": "Tren inferior",
+      "zh-Hans": "下半身"
+    },
+    "any": {
+      "en": "All requirements",
+      "es": "Todos los requisitos",
+      "zh-Hans": "全部条件"
+    },
+    "none": {
+      "en": "No equipment",
+      "es": "Sin material",
+      "zh-Hans": "无需器材"
+    },
+    "wall": {
+      "en": "Wall / support",
+      "es": "Pared / apoyo",
+      "zh-Hans": "墙面／支撑"
+    },
+    "floor": {
+      "en": "Mat",
+      "es": "Colchoneta",
+      "zh-Hans": "垫子"
+    },
+    "surface": {
+      "en": "Fixed sturdy surface",
+      "es": "Superficie fija y firme",
+      "zh-Hans": "固定稳固台面"
+    },
+    "both_sides": {
+      "en": "Both sides",
+      "es": "Ambos lados",
+      "zh-Hans": "双侧"
+    },
+    "done": {
+      "en": "Done",
+      "es": "Listo",
+      "zh-Hans": "完成"
+    },
+    "failed": {
+      "en": "Could not save your routine. Please try again.",
+      "es": "No se pudo guardar la rutina. Inténtalo de nuevo.",
+      "zh-Hans": "无法保存拉伸流程，请重试。"
+    },
+    "saved": {
+      "en": "Routine saved",
+      "es": "Rutina guardada",
+      "zh-Hans": "拉伸流程已保存"
+    },
+    "limit": {
+      "en": "Up to 20 postures per routine.",
+      "es": "Hasta 20 posturas por rutina.",
+      "zh-Hans": "每个流程最多20个动作。"
+    }
+  }
+}

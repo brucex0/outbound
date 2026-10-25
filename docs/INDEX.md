@@ -86,6 +86,7 @@ Primary flow:
 | Apple Music, Spotify, playback UX, and music-provider rollout planning | `docs/music-integration.md` | Concrete music integration plan, provider constraints, Swift module boundaries, plist/auth changes, and phased delivery |
 | Motivation UX, daily guide loops, comeback flows, and home-screen engagement | `docs/motivation-ux.md` | UX spec for daily spark, compact `Now` action, momentum states, and post-activity reflection |
 | Post-save activity celebration, route animation, stretch choices, timing, and cross-platform parity | `docs/activity-post-save-celebration.md` | Persistent iOS-first post-save page with stretch program choices and the Android parity target |
+| Stretch catalog, reusable entry points, customization, generation and verification | `docs/stretch-routines.md` | Shared movement/template source, local editor persistence, independent screen APIs and manual checks |
 | Historical post-save stretching implementation prompt | `docs/post-workout-stretch-implementation-prompt.md` | Legacy implementation checklist; the current routine and post-save product contract is in `docs/activity-post-save-celebration.md` |
 | Badge strategy, recognition UX, unlock rules, and reward system rollout | `docs/recognition-rewards.md` | Product spec for Outbound's recognition layer, V1 badge families, unlock logic, and Me/post-run/Social placement |
 | Goal setting, weekly progress, and guide-led focus flows | `docs/goals-progress.md` | Product and implementation spec for local-first goals, progress tracking, and conversational setup |

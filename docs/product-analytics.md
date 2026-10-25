@@ -383,3 +383,10 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 - Never interpret this event as prompt presentation, rating, submission, or sentiment. Do not send activity IDs, workout facts, exact save counts, or review content.
 
 - Debug review requests emit only `feature_exposed` with `feature=debug_app_review_request`; they never emit production `app_review_requested` or alter milestone persistence.
+
+## Stretch customization
+
+- `stretch_routine_edited` records `result=opened|add|remove|replace|reorder|duration|undo|saved|reset`, with stable built-in `routine_id`, optional `activity_type`, `source_type=post_save|today|standalone`, and `stretch_customized` indicating whether the selected routine is customized. Draft actions describe editor interactions, not persisted changes; only saved/reset changes persistence.
+- Existing stretch funnel events also include bounded source and customized status. Existing hold-time count buckets remain unchanged. No free text, custom IDs, posture sequences, selected body areas or health conditions are sent.
+
+- Stretch starts and successful editor saves/resets include posture-count buckets (`one_to_three`, `four_to_six`, `seven_plus`) and estimated duration buckets (`under_3_min`, `3_to_6_min`, `6_plus_min`). Per-step/completion count buckets continue to mean held time.
