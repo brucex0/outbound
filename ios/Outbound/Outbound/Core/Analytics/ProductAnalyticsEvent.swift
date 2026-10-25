@@ -30,6 +30,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case appReviewRequested = "app_review_requested"
     case activitySaved = "activity_saved"
     case activitySaveIneligibleShown = "activity_save_ineligible_shown"
+    case stretchRoutineEdited = "stretch_routine_edited"
     case postWorkoutStretchOffered = "post_workout_stretch_offered"
     case postWorkoutStretchStarted = "post_workout_stretch_started"
     case postWorkoutStretchProgramSelected = "post_workout_stretch_program_selected"
@@ -283,6 +284,7 @@ enum ProductPropertyKey: String, Sendable, CaseIterable {
     case timestampSource = "timestamp_source"
     case direction
     case activityType = "activity_type"
+    case stretchCustomized = "stretch_customized"
     case routineID = "routine_id"
     case goalType = "goal_type"
     case targetBucket = "target_bucket"
@@ -371,12 +373,13 @@ enum ProductAnalyticsSchema {
         .appReviewRequested: [],
         .activitySaved: [.movingTimeMethod, .elapsedDurationBucket, .activityType, .goalType, .durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket, .musicEnabled, .routeSelected, .shoeSelected, .groupRunEnabled, .indoor, .dogCompanionEnabled],
         .activitySaveIneligibleShown: [.activityType, .durationBucket, .distanceBucket],
-        .postWorkoutStretchOffered: [.activityType, .routineID],
-        .postWorkoutStretchStarted: [.activityType, .routineID, .control],
-        .postWorkoutStretchProgramSelected: [.activityType, .routineID],
-        .postWorkoutStretchStepEnded: [.activityType, .routineID, .result, .countBucket],
-        .postWorkoutStretchCompleted: [.activityType, .routineID, .result, .countBucket],
-        .postWorkoutStretchDismissed: [.activityType, .routineID, .result, .countBucket],
+        .stretchRoutineEdited: [.activityType, .routineID, .sourceType, .stretchCustomized, .result, .countBucket, .durationBucket],
+        .postWorkoutStretchOffered: [.activityType, .routineID, .sourceType, .stretchCustomized],
+        .postWorkoutStretchStarted: [.activityType, .routineID, .control, .sourceType, .stretchCustomized, .countBucket, .durationBucket],
+        .postWorkoutStretchProgramSelected: [.activityType, .routineID, .sourceType, .stretchCustomized],
+        .postWorkoutStretchStepEnded: [.activityType, .routineID, .result, .countBucket, .sourceType, .stretchCustomized],
+        .postWorkoutStretchCompleted: [.activityType, .routineID, .result, .countBucket, .sourceType, .stretchCustomized],
+        .postWorkoutStretchDismissed: [.activityType, .routineID, .result, .countBucket, .sourceType, .stretchCustomized],
         .activityDiscardPrompted: [.durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket],
         .activityDiscarded: [.durationBucket, .distanceBucket, .photoCountBucket, .goalCompletionBucket],
         .activityDeleted: [.sourceType, .countBucket],

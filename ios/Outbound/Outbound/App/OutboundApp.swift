@@ -128,7 +128,9 @@ struct OutboundApp: App {
     @ViewBuilder
     private var rootView: some View {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-OutboundDebugAppReview") {
+        if ProcessInfo.processInfo.arguments.contains("-OutboundDebugStretch") {
+            DebugStretchHarness(voiceProfileID: guideCatalogStore.selectedVoice.id)
+        } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugAppReview") {
             NavigationStack { DebugAppReviewView() }
         } else if ProcessInfo.processInfo.arguments.contains("-OutboundDebugLiveCheerFollower") {
             DebugLiveCheerFollowerHarness()

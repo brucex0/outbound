@@ -176,8 +176,8 @@ extension ActivityFlowCoordinator {
             activities: self.dependencies.activityStore.activities,
             phase: DailyMotivationEngine.phase(for: self.dependencies.activityStore.activities)
         )
-        if let routines = PostWorkoutStretchCatalog.routines(for: savedActivity.activityType), savedActivity.source.kind == .outbound {
-            self.review.postSaveStretchContext = PostSavedStretchContext(activityType: savedActivity.activityType, routines: routines)
+        if PostWorkoutStretchEligibility.isEligible(savedActivity.activityType), savedActivity.source.kind == .outbound {
+            self.review.postSaveStretchContext = PostSavedStretchContext(activityType: savedActivity.activityType)
         }
         self.review.postSaveCelebrationActivity = savedActivity
         // The store owns enrichment after review is dismissed or the app is offline.

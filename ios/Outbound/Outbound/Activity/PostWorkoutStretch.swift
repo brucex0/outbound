@@ -11,115 +11,8 @@ private func stretchText(_ key: String, _ defaultValue: String) -> String {
     NSLocalizedString(key, comment: defaultValue)
 }
 
-struct StretchMovement: Identifiable, Sendable {
-    let id: String
-    let title: String
-    let instruction: String
-    let side: String?
-    let duration: Int
-    let icon: String
-    var cue: String { id.split(separator: "_").dropFirst().joined(separator: "_") }
-}
-
-struct StretchRoutine: Sendable, Identifiable {
-    let id: String
-    let title: String
-    let durationLabel: String
-    var isStanding: Bool { id.contains("_standing_") }
-    var preferenceID: String {
-        if id.contains("_standing_quick_") { return "standing_quick" }
-        if isStanding { return "standing_standard" }
-        return id.contains("_hips_hamstrings_") ? "mat_quick" : "mat_standard"
-    }
-    var requirements: String {
-        stretchText(isStanding ? (preferenceID == "standing_quick" ? "post_workout_stretch.requirements.standing_quick" : "post_workout_stretch.requirements.standing_standard") : "post_workout_stretch.requirements.mat", "")
-    }
-    let movements: [StretchMovement]
-    var totalSeconds: Int { movements.reduce(0) { $0 + $1.duration } + 3 + max(0, movements.count - 1) * 5 }
-    var calculatedDuration: String { "≈ " + Duration.seconds(totalSeconds).formatted(.time(pattern: .minuteSecond)) }
-}
-
 struct PostSavedStretchContext {
     let activityType: ActivityType
-    let routines: [StretchRoutine]
-}
-
-enum PostWorkoutStretchCatalog {
-    static func routines(for type: ActivityType) -> [StretchRoutine]? {
-        guard PostWorkoutStretchEligibility.isEligible(type) else { return nil }
-        let prefix = type.rawValue
-        let cooldown = bilateralSteps(prefix: prefix, id: "glute", titleKey: "glute", instructionKey: "glute", seconds: 30, icon: "figure.flexibility")
-            + bilateralSteps(prefix: prefix, id: "hamstring", titleKey: "hamstring", instructionKey: "hamstring", seconds: 30, icon: "figure.flexibility")
-            + [singleStep(prefix: prefix, id: "inner_thigh", titleKey: "inner_thigh", instructionKey: "inner_thigh", side: "both", seconds: 30, icon: "figure.flexibility")]
-            + bilateralSteps(prefix: prefix, id: "calf", titleKey: "calf", instructionKey: "calf", seconds: 30, icon: "figure.walk")
-            + bilateralSteps(prefix: prefix, id: "quad", titleKey: "quad", instructionKey: "quad", seconds: 30, icon: "figure.stand")
-        let hipsAndHamstrings = bilateralSteps(prefix: prefix, id: "hip_flexor", titleKey: "hip_flexor", instructionKey: "hip_flexor", seconds: 20, icon: "figure.flexibility")
-            + bilateralSteps(prefix: prefix, id: "hamstring", titleKey: "hamstring", instructionKey: "hamstring", seconds: 20, icon: "figure.flexibility")
-            + bilateralSteps(prefix: prefix, id: "glute", titleKey: "glute", instructionKey: "glute", seconds: 20, icon: "figure.flexibility")
-
-        let quickStanding = ["calf", "soleus", "standing_hamstring"].flatMap {
-            bilateralSteps(prefix: prefix, id: $0, titleKey: $0, instructionKey: $0, seconds: 15, icon: "figure.stand")
-        }
-        let standardStanding = ["calf", "soleus", "standing_hamstring", "quad", "shoulder"].flatMap {
-            bilateralSteps(prefix: prefix, id: $0, titleKey: $0, instructionKey: $0, seconds: 25, icon: "figure.stand")
-        }
-        return [
-            StretchRoutine(id: "post_save_\(prefix)_standing_quick_v1",
-                title: stretchText("post_workout_stretch.routine.standing_quick", "Standing reset"), durationLabel: "", movements: quickStanding),
-            StretchRoutine(id: "post_save_\(prefix)_standing_standard_v1",
-                title: stretchText("post_workout_stretch.routine.standing_standard", "Standing stretch"), durationLabel: "", movements: standardStanding),
-            StretchRoutine(
-                id: "post_save_\(prefix)_cooldown_v2",
-                title: stretchText("activity.post_save.program.full_body", "Full-body cooldown"),
-                durationLabel: stretchText("activity.post_save.program.full_body.duration", "About 5 min"),
-                movements: cooldown
-            ),
-            StretchRoutine(
-                id: "post_save_\(prefix)_hips_hamstrings_v2",
-                title: stretchText("activity.post_save.program.hips_hamstrings", "Hips & hamstrings"),
-                durationLabel: stretchText("activity.post_save.program.hips_hamstrings.duration", "About 2½ min"),
-                movements: hipsAndHamstrings
-            )
-        ]
-    }
-
-    static func initialRoutine(_ routines: [StretchRoutine], isIndoor: Bool, lastRoutine: String?, lastStanding: String?) -> StretchRoutine {
-        let preference = isIndoor ? lastRoutine : lastStanding
-        return routines.first { $0.preferenceID == preference && (isIndoor || $0.isStanding) } ?? routines[0]
-    }
-
-    private static func bilateralSteps(
-        prefix: String,
-        id: String,
-        titleKey: String,
-        instructionKey: String,
-        seconds: Int,
-        icon: String
-    ) -> [StretchMovement] {
-        ["left", "right"].map { side in
-            singleStep(prefix: prefix, id: id, titleKey: titleKey, instructionKey: instructionKey, side: side, seconds: seconds, icon: icon)
-        }
-    }
-
-    private static func singleStep(
-        prefix: String,
-        id: String,
-        titleKey: String,
-        instructionKey: String,
-        side: String,
-        seconds: Int,
-        icon: String
-    ) -> StretchMovement {
-        let sideKey = "post_workout_stretch.side.\(side)"
-        return StretchMovement(
-            id: "\(prefix)_\(id)_\(side)",
-            title: stretchText("post_workout_stretch.movement.\(titleKey)", titleKey.capitalized),
-            instruction: stretchText("post_workout_stretch.instruction.\(instructionKey)", "Move gently within your comfort."),
-            side: stretchText(sideKey, "Side"),
-            duration: seconds,
-            icon: icon
-        )
-    }
 }
 
 @MainActor final class PostWorkoutStretchTimer: ObservableObject {
@@ -143,7 +36,7 @@ enum PostWorkoutStretchCatalog {
     var audioPlaying: () -> Bool = { false }
     var onStepEnded: ((Bool, Int) -> Void)?
     private var stepHeld = 0
-    private(set) var routine: StretchRoutine
+    @Published private(set) var routine: StretchRoutine
     private var task: Task<Void, Never>?
 
     init(routine: StretchRoutine) {
@@ -229,29 +122,50 @@ enum PostWorkoutStretchCatalog {
     func leave() { pause() }
 }
 
+/// Post-save adapter: the reusable session owns no recording, sharing, or celebration state.
 struct PostWorkoutStretchView: View {
+    let context: PostSavedStretchContext
+    let activity: SavedActivity
+    let voiceProfileID: String
+    let onExit: () -> Void
+    var body: some View {
+        StretchSessionView(launch: StretchLaunchContext(entryPoint: .postSave, activityType: context.activityType, isIndoor: activity.indoor?.isIndoor == true), voiceProfileID: voiceProfileID, onExit: onExit) { finish in
+            PostSaveCelebrationCard(activity: activity).id(activity.id).frame(height: 205)
+            Text(String(localized: "activity.post_save.message", defaultValue: "You made time for this today."))
+                .font(.title3.weight(.semibold)).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
+            PostSaveActivityActions(activity: activity, onDone: finish)
+        }
+    }
+}
+
+/// Reuse from Today with StretchLaunchContext(entryPoint: .today), without a SavedActivity.
+struct StretchSessionView<Header: View>: View {
     @Environment(\.scenePhase) private var phase
     @Environment(\.analyticsManager) private var analytics
     @StateObject private var timer: PostWorkoutStretchTimer
     @StateObject private var narrator: StretchNarrator
-    let context: PostSavedStretchContext
-    let activity: SavedActivity
+    let launch: StretchLaunchContext
     let onExit: () -> Void
+    let header: (@escaping () -> Void) -> Header
+    @State private var routines: [StretchRoutine]
     @State private var chosen = false
     @State private var confirmEnd = false
     @State private var completedTracked = false
     @State private var speaksInstructions = true
     @State private var transitionFeedback = false
     @State private var showMoreRoutines = false
+    @State private var editing = false
+    @State private var toast: String?
 
-    init(context: PostSavedStretchContext, activity: SavedActivity, voiceProfileID: String, onExit: @escaping () -> Void) {
-        self.context = context
-        self.activity = activity
+    init(launch: StretchLaunchContext = StretchLaunchContext(), voiceProfileID: String, onExit: @escaping () -> Void, @ViewBuilder header: @escaping (@escaping () -> Void) -> Header) {
+        self.launch = launch
         self.onExit = onExit
-        let initial = PostWorkoutStretchCatalog.initialRoutine(context.routines,
-            isIndoor: activity.indoor?.isIndoor == true,
-            lastRoutine: UserDefaults.standard.string(forKey: "stretch_last_routine_v1"),
-            lastStanding: UserDefaults.standard.string(forKey: "stretch_last_standing_routine_v1"))
+        self.header = header
+        let routines = StretchCatalog.routines(activityType: launch.activityType)
+        let initial = StretchCatalog.initial(routines, isIndoor: launch.isIndoor,
+            last: UserDefaults.standard.string(forKey: "stretch_last_routine_v1"),
+            lastStanding: UserDefaults.standard.string(forKey: "stretch_last_standing_routine_v1"), sport: launch.activityType)
+        _routines = State(initialValue: routines)
         _timer = StateObject(wrappedValue: PostWorkoutStretchTimer(routine: initial))
         _showMoreRoutines = State(initialValue: !initial.isStanding)
         _narrator = StateObject(wrappedValue: StretchNarrator(voice: voiceProfileID))
@@ -262,16 +176,8 @@ struct PostWorkoutStretchView: View {
             if !chosen {
                 ScrollView {
                     VStack(spacing: 16) {
-                        PostSaveCelebrationCard(activity: activity)
-                            .id(activity.id)
-                            .frame(height: 205)
-
-                        Text(String(localized: "activity.post_save.message", defaultValue: "You made time for this today."))
-                            .font(.title3.weight(.semibold))
-                            .multilineTextAlignment(.center)
-                            .accessibilityAddTraits(.isHeader)
-
-                        PostSaveActivityActions(activity: activity) { finish("not_started") }
+                        header { finish("not_started") }
+                        if launch.entryPoint != .postSave { Button(stretchCatalogText("ui.done")) { finish("not_started") } }
 
                         Text(stretchText("post_workout_stretch.offer_title", "A gentle reset?"))
                             .font(.title2.bold())
@@ -283,16 +189,19 @@ struct PostWorkoutStretchView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text(String(localized: "activity.post_save.program.title", defaultValue: "Choose a stretch"))
                                 .font(.headline)
-                            ForEach(context.routines.filter(\.isStanding)) { routine in
+                            if !routines.contains(where: { $0.id == timer.routine.id }) { stretchProgramOption(timer.routine) }
+                            ForEach(routines.filter(\.isStanding)) { routine in
                                 stretchProgramOption(routine)
                             }
                             DisclosureGroup(stretchText("post_workout_stretch.more_routines", "More routines"), isExpanded: $showMoreRoutines) {
-                                ForEach(context.routines.filter { !$0.isStanding }) { routine in
+                                ForEach(routines.filter { !$0.isStanding }) { routine in
                                     stretchProgramOption(routine)
                                 }
                             }
                         }
 
+                        Button(stretchCatalogText("ui.customize")) { editing = true; track(.stretchRoutineEdited, result: "opened") }
+                        Text(timer.routine.calculatedDuration + " · " + timer.routine.requirements).font(.caption)
                         DisclosureGroup(stretchText("post_workout_stretch.preview", "Preview movements")) {
                             ForEach(timer.routine.movements) { movement in
                                 HStack {
@@ -342,6 +251,13 @@ struct PostWorkoutStretchView: View {
                 activePlayer
             }
         }
+        .sheet(isPresented: $editing) {
+            StretchRoutineEditor(routine: timer.routine, onSave: saveCustomization) { action in track(.stretchRoutineEdited, result: action) }
+        }
+        .overlay(alignment: .bottom) {
+            if let toast { Text(toast).padding().background(.regularMaterial, in: Capsule()).padding().accessibilityAddTraits(.updatesFrequently) }
+        }
+        .task(id: toast) { if toast != nil { try? await Task.sleep(for: .seconds(3)); toast = nil } }
         .safeAreaPadding(.vertical)
         .background(Color(.systemBackground))
         .onAppear {
@@ -351,7 +267,7 @@ struct PostWorkoutStretchView: View {
                 track(.postWorkoutStretchStepEnded, result: skipped ? "skipped" : "held", seconds: seconds)
             }
         }
-        .task(id: timer.routine.id) { await narrator.preload(timer.routine.movements.map(\.cue)) }
+        .task(id: timer.routine.movements.map(\.cue)) { await narrator.preload(timer.routine.movements.map(\.cue)) }
         .onChange(of: timer.remaining) { _, seconds in
             guard chosen, timer.running, timer.phase == .holding, (1...5).contains(seconds) else { return }
             if speaksInstructions { narrator.tick() }
@@ -453,6 +369,7 @@ struct PostWorkoutStretchView: View {
             HStack(spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(routine.title).font(.subheadline.weight(.semibold))
+                    if routine.customized { Text(stretchCatalogText("ui.your_version")).font(.caption) }
                     Text(routine.calculatedDuration).font(.caption).foregroundStyle(.secondary)
                     Text(routine.requirements).font(.caption).foregroundStyle(.secondary)
                 }
@@ -478,6 +395,22 @@ struct PostWorkoutStretchView: View {
         .accessibilityIdentifier("StretchProgramOption-\(routine.id)")
     }
 
+    private func saveCustomization(_ entries: [StretchEntry]?) -> Bool {
+        let id = timer.routine.preferenceID
+        let store = StretchCustomizationStore()
+        do {
+            if let entries { try store.save(entries, templateID: id) } else { store.reset(id) }
+            routines = StretchCatalog.routines(activityType: launch.activityType)
+            if let routine = routines.first(where: { $0.preferenceID == id }) { timer.select(routine); showMoreRoutines = !routine.isStanding }
+            toast = stretchCatalogText("ui.saved")
+            track(.stretchRoutineEdited, result: entries == nil ? "reset" : "saved")
+            return true
+        } catch {
+            ActivityDiagnosticLog.error(.lifecycle, "Stretch customization save failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+            return false
+        }
+    }
+
     private func toggleTimer() {
         if timer.running {
             timer.pause()
@@ -500,10 +433,18 @@ struct PostWorkoutStretchView: View {
 
     private func track(_ event: ProductEventName, result: String? = nil, routineID: String? = nil, seconds: Int? = nil) {
         var properties: [ProductPropertyKey: AnalyticsValue] = [
-            .activityType: .string(context.activityType.rawValue),
+            .sourceType: .string(launch.entryPoint.rawValue),
             .routineID: .string(routineID ?? timer.routine.id)
         ]
+        if let type = launch.activityType { properties[.activityType] = .string(type.rawValue) }
         if event == .postWorkoutStretchStarted { properties[.control] = .string("clock_tick") }
+        properties[.stretchCustomized] = .boolean(timer.routine.customized)
+        if event == .postWorkoutStretchStarted || event == .stretchRoutineEdited && ["saved", "reset"].contains(result ?? "") {
+            let count = timer.routine.entries.count
+            properties[.countBucket] = .string(count <= 3 ? "one_to_three" : count <= 6 ? "four_to_six" : "seven_plus")
+            let duration = timer.routine.totalSeconds
+            properties[.durationBucket] = .string(duration < 180 ? "under_3_min" : duration < 360 ? "3_to_6_min" : "6_plus_min")
+        }
         if let result { properties[.result] = .string(result) }
         if let seconds { properties[.countBucket] = .string(seconds == 0 ? "zero" : seconds < 20 ? "under_20" : seconds < 60 ? "20_to_59" : "60_plus") }
         Task { await analytics?.track(.init(event, properties: properties)) }
@@ -577,39 +518,29 @@ private final class StretchNarrator: ObservableObject {
 }
 
 /// Schematic setup reference; the orange limb marks the working side.
-private struct StretchPostureIllustration: View {
+struct StretchPostureIllustration: View {
     let cue: String
     var body: some View {
         Canvas { context, size in
-            let points: [[CGPoint]] = posturePoints(cue)
-            let scale = min(size.width / 100, size.height / 100)
+            let id = cue.replacingOccurrences(of: "_left", with: "").replacingOccurrences(of: "_right", with: "").replacingOccurrences(of: "_both", with: "")
+            guard let definition = StretchCatalog.definition(id), let first = definition.paths.first?.first else { return }
+            let mirror = cue.hasSuffix("_right")
+            let scale = min(size.width, size.height) / 100
             let offset = CGPoint(x: (size.width - 100 * scale) / 2, y: (size.height - 100 * scale) / 2)
-            if let first = points.first?.first {
-                let lying = cue.hasPrefix("glute") || cue.hasPrefix("hamstring")
-                let center = CGPoint(x: offset.x + (first.x + (lying ? -7 : 0)) * scale, y: offset.y + (first.y + (lying ? 0 : -7)) * scale)
-                context.stroke(Path(ellipseIn: CGRect(x: center.x - 6 * scale, y: center.y - 6 * scale, width: 12 * scale, height: 12 * scale)), with: .color(.primary), lineWidth: 3 * scale)
-            }
-            for (index, line) in points.enumerated() {
+            func point(_ p: CGPoint) -> CGPoint { CGPoint(x: offset.x + (mirror ? 100 - p.x : p.x) * scale, y: offset.y + p.y * scale) }
+            let head = point(CGPoint(x: first.x + (definition.lying ? -7 : 0), y: first.y + (definition.lying ? 0 : -7)))
+            context.stroke(Path(ellipseIn: CGRect(x: head.x - 6 * scale, y: head.y - 6 * scale, width: 12 * scale, height: 12 * scale)), with: .color(.primary), lineWidth: 3 * scale)
+            for (index, line) in definition.paths.enumerated() {
                 var path = Path()
-                for (i, point) in line.enumerated() {
-                    let p = CGPoint(x: offset.x + point.x * scale, y: offset.y + point.y * scale)
-                    if i == 0 { path.move(to: p) } else { path.addLine(to: p) }
-                }
-                context.stroke(path, with: .color(index == points.count - 1 ? .orange : .primary), style: StrokeStyle(lineWidth: 4 * scale, lineCap: .round, lineJoin: .round))
+                for (i, p) in line.enumerated() { if i == 0 { path.move(to: point(p)) } else { path.addLine(to: point(p)) } }
+                context.stroke(path, with: .color(index == definition.paths.count - 1 ? .orange : .primary), style: StrokeStyle(lineWidth: 4 * scale, lineCap: .round, lineJoin: .round))
             }
         }.accessibilityHidden(true)
     }
-    private func posturePoints(_ cue: String) -> [[CGPoint]] {
-        let raw: [[(Double, Double)]]
-        if cue.hasPrefix("standing_hamstring") { raw = [[(65,30),(50,55)],[(60,40),(45,60),(35,75)],[(50,55),(35,75),(35,90)],[(50,55),(80,90),(88,82)]] }
-        else if cue.hasPrefix("shoulder") { raw = [[(50,20),(50,60)],[(50,60),(35,90)],[(50,60),(65,90)],[(35,35),(55,50),(50,40)],[(65,35),(30,40)]] }
-        else if cue.hasPrefix("soleus") { raw = [[(60,20),(50,55)],[(60,30),(70,50),(72,70)],[(50,55),(72,70),(80,90),(90,90)],[(50,55),(25,70),(20,90),(10,90)]] }
-        else if cue.hasPrefix("glute") { raw = [[(15,75),(35,75),(55,60),(75,60)],[(35,75),(45,45),(60,55)],[(45,45),(70,40),(75,60)],[(55,60),(55,80),(80,80)]] }
-        else if cue.hasPrefix("hamstring") { raw = [[(15,80),(45,80)],[(30,80),(50,55),(57,50)],[(45,80),(80,80)],[(45,80),(60,35)]] }
-        else if cue.hasPrefix("inner") { raw = [[(50,20),(50,55)],[(50,35),(30,60)],[(50,55),(30,80),(50,75)],[(50,55),(70,80),(50,75)]] }
-        else if cue.hasPrefix("calf") { raw = [[(65,20),(50,55)],[(60,30),(70,50),(70,70)],[(50,55),(70,70),(80,90),(90,90)],[(50,55),(20,90),(10,90)]] }
-        else if cue.hasPrefix("quad") { raw = [[(50,20),(50,55)],[(50,55),(50,90)],[(50,30),(20,35)],[(20,25),(20,90)],[(50,35),(70,55),(70,65)],[(50,55),(80,85),(70,65)]] }
-        else { raw = [[(50,15),(50,55)],[(50,35),(70,55)],[(50,55),(70,60),(70,85)],[(50,55),(30,85),(15,85)]] }
-        return raw.map { $0.map { x, y in CGPoint(x: cue.hasSuffix("right") ? 100 - x : x, y: y) } }
+}
+
+extension StretchSessionView where Header == EmptyView {
+    init(launch: StretchLaunchContext = StretchLaunchContext(), voiceProfileID: String, onExit: @escaping () -> Void) {
+        self.init(launch: launch, voiceProfileID: voiceProfileID, onExit: onExit) { _ in EmptyView() }
     }
 }
