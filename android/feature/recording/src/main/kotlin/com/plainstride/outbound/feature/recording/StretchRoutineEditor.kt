@@ -52,6 +52,7 @@ internal fun StretchRoutineEditor(
                         StretchFilter(area, listOf("all" to R.string.stretch_catalog_ui_all, "upper" to R.string.stretch_catalog_ui_upper, "lower" to R.string.stretch_catalog_ui_lower)) { area = it }
                         StretchFilter(requirement, listOf("any" to R.string.stretch_catalog_ui_any, "none" to R.string.stretch_catalog_ui_none, "wall" to R.string.stretch_catalog_ui_wall, "floor" to R.string.stretch_catalog_ui_floor, "surface" to R.string.stretch_catalog_ui_surface)) { requirement = it }
                         StretchCatalogData.definitions.filter { d ->
+                            d.dynamic == routine.isWarmup &&
                             (area == "all" || d.area == area) &&
                             (requirement == "any" || requirement == "none" && !d.floor && !d.support && !d.surface || requirement == "wall" && d.support || requirement == "floor" && d.floor || requirement == "surface" && d.surface) &&
                             (entries.none { it.movementID == d.id } || d.id == replacing)

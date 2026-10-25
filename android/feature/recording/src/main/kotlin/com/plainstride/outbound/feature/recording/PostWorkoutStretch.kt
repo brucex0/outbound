@@ -40,6 +40,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -90,8 +91,8 @@ fun StretchSessionRoute(
     val isIndoor = launch.isIndoor
     val context = androidx.compose.ui.platform.LocalContext.current
     val preferences = remember { context.getSharedPreferences("stretch_preferences_v1", android.content.Context.MODE_PRIVATE) }
-    var routines by remember(kind) { mutableStateOf(StretchCatalog.routines(context, kind)) }
-    val initialRoutine = remember(kind, isIndoor) {
+    var routines by remember(kind, launch.entryPoint) { mutableStateOf(StretchCatalog.routines(context, kind, launch.entryPoint)) }
+    val initialRoutine = remember(kind, isIndoor, launch.entryPoint) {
         val remembered = preferences.getString(if (isIndoor) "last_routine" else "last_standing_routine", null)
         routines.firstOrNull { it.preferenceId == remembered && (isIndoor || it.isStanding) }
             ?: routines.firstOrNull { it.preferenceId == (if (kind == ActivityKind.SWIMMING) "upper_body" else "standing_quick") && (isIndoor || it.isStanding) }
@@ -228,8 +229,8 @@ fun StretchSessionRoute(
             ) {
                 header { finish("not_started") }
                 if (launch.entryPoint != StretchEntryPoint.POST_SAVE) TextButton(onClick = { finish("not_started") }) { Text(stringResource(R.string.stretch_done)) }
-                Text(stringResource(R.string.stretch_offer_title), style = MaterialTheme.typography.headlineSmall)
-                Text(stringResource(R.string.stretch_offer_body))
+                Text(stringResource(if (launch.entryPoint == StretchEntryPoint.POST_SAVE) R.string.stretch_offer_title else R.string.stretch_catalog_ui_choose), style = MaterialTheme.typography.headlineSmall)
+                if (launch.entryPoint == StretchEntryPoint.POST_SAVE) Text(stringResource(R.string.stretch_offer_body))
                 Text(stringResource(R.string.recording_post_save_program_title), style = MaterialTheme.typography.titleMedium)
 
                 if (routines.none { it.id == selectedRoutine.id }) { StretchRoutineOption(selectedRoutine, true) {} }
@@ -280,7 +281,7 @@ fun StretchSessionRoute(
                     },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                 ) {
-                    Text(stringResource(R.string.stretch_start))
+                    Text(stringResource(R.string.stretch_catalog_ui_start))
                 }
 
                 Text(stringResource(R.string.stretch_disclaimer), style = MaterialTheme.typography.bodySmall)
@@ -297,6 +298,7 @@ fun StretchSessionRoute(
             if (phase != StretchPhase.HOLD) Text(stringResource(if (phase == StretchPhase.TRANSITION) R.string.stretch_transition else R.string.stretch_get_ready))
             Text(stringResource(movement.title), style = MaterialTheme.typography.headlineMedium)
             movement.side?.let { Text(stringResource(it), style = MaterialTheme.typography.titleMedium) }
+            Text(stringResource(if (selectedRoutine.isWarmup) R.string.stretch_catalog_ui_move else R.string.stretch_catalog_ui_hold))
             Text(stringResource(movement.instruction))
             Text(
                 text = "${secondsLeft / 60}:${(secondsLeft % 60).toString().padStart(2, '0')}",
@@ -341,7 +343,7 @@ fun StretchSessionRoute(
         StretchRoutineEditor(selectedRoutine, onDismiss = { editing = false }, onAction = { action -> emit("stretch_routine_edited", selectedRoutine.id, action, null) }) { entries ->
             val saved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { StretchCustomizationStore(context).save(selectedRoutine.preferenceId, entries) }
             if (saved) {
-                routines = StretchCatalog.routines(context, kind)
+                routines = StretchCatalog.routines(context, kind, launch.entryPoint)
                 selectedRoutine = routines.first { it.preferenceId == selectedRoutine.preferenceId }
                 movementIndex = 0
                 moreRoutines = !selectedRoutine.isStanding
@@ -410,6 +412,17 @@ private fun StretchRoutineOption(routine: StretchRoutine, selected: Boolean, onC
 
 @Composable
 internal fun StretchIllustration(id: String, modifier: Modifier) {
+    val movementId = id.removeSuffix("_left").removeSuffix("_right").removeSuffix("_both")
+    val artworkDefinition = StretchCatalog.definition(movementId)
+    val artwork = artworkDefinition?.artwork
+    if (artwork != null) {
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(artwork), contentDescription = null,
+            modifier = modifier.then(Modifier.graphicsLayer { scaleX = if (if (artworkDefinition.artworkSide == "right") id.endsWith("_left") else id.endsWith("_right")) -1f else 1f }),
+            contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+        )
+        return
+    }
     val color = MaterialTheme.colorScheme.onSurface
     val accent = MaterialTheme.colorScheme.primary
     androidx.compose.foundation.Canvas(modifier) {
