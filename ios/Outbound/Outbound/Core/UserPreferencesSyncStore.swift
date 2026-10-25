@@ -79,6 +79,7 @@ final class UserPreferencesSyncStore: ObservableObject {
     }
 
     func refresh() async {
+        await AccountConfigurationStore.shared.refresh()
         guard currentUserID != nil else { return }
         do {
             let response = try await api.fetchUserPreferences()

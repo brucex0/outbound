@@ -149,6 +149,7 @@ struct StretchSessionView<Header: View>: View {
     let header: (@escaping () -> Void) -> Header
     @State private var routines: [StretchRoutine]
     @State private var chosen = false
+    @State private var didChooseRoutine = false
     @State private var confirmEnd = false
     @State private var completedTracked = false
     @AppStorage("stretch_voice_enabled_v1") private var speaksInstructions = true
@@ -166,8 +167,8 @@ struct StretchSessionView<Header: View>: View {
         self.header = header
         let routines = StretchCatalog.routines(activityType: launch.activityType, entryPoint: launch.entryPoint)
         let initial = StretchCatalog.initial(routines, isIndoor: launch.isIndoor,
-            last: UserDefaults.standard.string(forKey: "stretch_last_routine_v1"),
-            lastStanding: UserDefaults.standard.string(forKey: "stretch_last_standing_routine_v1"), sport: launch.activityType)
+            last: AccountConfigurationStore.shared.record("stretch/last")?.value?.selection,
+            lastStanding: AccountConfigurationStore.shared.record("stretch/standing")?.value?.selection, sport: launch.activityType)
         _routines = State(initialValue: routines)
         _timer = StateObject(wrappedValue: PostWorkoutStretchTimer(routine: initial))
         _narrator = StateObject(wrappedValue: StretchNarrator(voice: voiceProfileID))
@@ -221,6 +222,14 @@ struct StretchSessionView<Header: View>: View {
             } else {
                 activePlayer
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: AccountConfigurationStore.changed)) { _ in
+            guard !chosen, !editing else { return }
+            routines = StretchCatalog.routines(activityType: launch.activityType, entryPoint: launch.entryPoint)
+            guard !didChooseRoutine else { return }
+            timer.select(StretchCatalog.initial(routines, isIndoor: launch.isIndoor,
+                last: AccountConfigurationStore.shared.record("stretch/last")?.value?.selection,
+                lastStanding: AccountConfigurationStore.shared.record("stretch/standing")?.value?.selection, sport: launch.activityType))
         }
         .onChange(of: showingLibrary) { _, visible in if visible { track(.stretchInterfaceUsed, result: "routines_opened") } }
         .sheet(isPresented: $showingLibrary) {
@@ -364,7 +373,7 @@ struct StretchSessionView<Header: View>: View {
             HStack {
                 Text(stretchUI("movements")).font(.headline)
                 Spacer()
-                Button(stretchCatalogText("ui.customize")) { editing = true; track(.stretchRoutineEdited, result: "opened") }
+                Button(stretchCatalogText("ui.customize")) { didChooseRoutine = true; editing = true; track(.stretchRoutineEdited, result: "opened") }
             }
             VStack(spacing: 0) {
                 ForEach(timer.routine.entries) { entry in
@@ -391,8 +400,8 @@ struct StretchSessionView<Header: View>: View {
     }
 
     private func startRoutine() {
-        UserDefaults.standard.set(timer.routine.preferenceID, forKey: "stretch_last_routine_v1")
-        if timer.routine.isStanding { UserDefaults.standard.set(timer.routine.preferenceID, forKey: "stretch_last_standing_routine_v1") }
+        AccountConfigurationStore.shared.set("stretch/last", .init(selection: timer.routine.preferenceID))
+        if timer.routine.isStanding { AccountConfigurationStore.shared.set("stretch/standing", .init(selection: timer.routine.preferenceID)) }
         chosen = true
         track(.postWorkoutStretchStarted)
         timer.start()
@@ -466,6 +475,7 @@ struct StretchSessionView<Header: View>: View {
         let isSelected = timer.routine.id == routine.id
         Button {
             guard !isSelected else { showingLibrary = false; return }
+            didChooseRoutine = true
             timer.select(routine)
             showingLibrary = false
             track(.postWorkoutStretchProgramSelected, routineID: routine.id)

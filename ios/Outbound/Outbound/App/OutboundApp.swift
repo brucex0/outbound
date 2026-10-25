@@ -256,6 +256,7 @@ struct OutboundApp: App {
                 if let userID = authStore.user?.id {
                     recognitionStore.activate(userID: userID)
                     socialRecognitionStore.activate(userID: userID)
+                    AccountConfigurationStore.shared.analytics = analyticsManager
                     await userPreferencesSyncStore.start(
                         userID: userID,
                         measurementPreferences: measurementPreferences,

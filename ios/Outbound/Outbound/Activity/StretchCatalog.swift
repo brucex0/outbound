@@ -93,7 +93,7 @@ enum StretchCatalog {
         let id = activityType.map { "post_save_\($0.rawValue)_\(suffix)" } ?? "stretch_\(suffix)"
         return StretchRoutine(id: id, preferenceID: template.id, title: template.title, entries: entries ?? template.entries, customized: entries != nil)
     }
-    static func routines(activityType: ActivityType? = nil, entryPoint: StretchEntryPoint = .standalone, store: StretchCustomizationStore = StretchCustomizationStore()) -> [StretchRoutine] {
+    @MainActor static func routines(activityType: ActivityType? = nil, entryPoint: StretchEntryPoint = .standalone, store: StretchCustomizationStore = StretchCustomizationStore()) -> [StretchRoutine] {
         StretchCatalogData.templates.filter { entryPoint != .postSave || $0.id != "pre_run" }.map { routine(template: $0, entries: store.load($0.id), activityType: activityType) }
     }
     static var outdoorFallback: StretchRoutine {
@@ -109,27 +109,20 @@ enum StretchCatalog {
     }
 }
 
-/// One local customization per template, shared across sports and launch surfaces.
+/// One account customization per template, shared across sports and launch surfaces.
 struct StretchCustomizationStore {
     var defaults: UserDefaults = .standard
-    private func key(_ id: String) -> String { "stretch_customization_v1_" + id }
-    func load(_ id: String) -> [StretchEntry]? {
-        guard let data = defaults.data(forKey: key(id)) else { return nil }
-        do {
-            let entries = try JSONDecoder().decode([StretchEntry].self, from: data)
-            guard StretchCatalog.valid(entries) else {
-                ActivityDiagnosticLog.error(.lifecycle, "Stretch customization validation failed")
-                return nil
-            }
-            return entries
-        } catch {
-            ActivityDiagnosticLog.error(.lifecycle, "Stretch customization decode failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+    @MainActor func load(_ id: String) -> [StretchEntry]? {
+        guard let entries = AccountConfigurationStore.shared.record("stretch/custom/" + id)?.value?.entries else { return nil }
+        guard StretchCatalog.valid(entries) else {
+            ActivityDiagnosticLog.error(.lifecycle, "Account stretch customization validation failed")
             return nil
         }
+        return entries
     }
-    func save(_ entries: [StretchEntry], templateID: String) throws {
+    @MainActor func save(_ entries: [StretchEntry], templateID: String) throws {
         guard StretchCatalog.valid(entries) else { throw CocoaError(.coderInvalidValue) }
-        defaults.set(try JSONEncoder().encode(entries), forKey: key(templateID))
+        AccountConfigurationStore.shared.set("stretch/custom/" + templateID, .init(entries: entries))
     }
-    func reset(_ id: String) { defaults.removeObject(forKey: key(id)) }
+    @MainActor func reset(_ id: String) { AccountConfigurationStore.shared.set("stretch/custom/" + id, nil) }
 }

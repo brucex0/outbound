@@ -94,7 +94,7 @@ struct ActivitySportLaunchPreference: Codable, Equatable {
     }
 }
 
-private struct ActivityLaunchPreferenceSnapshot: Codable {
+struct ActivityLaunchPreferenceSnapshot: Codable {
     var version = 1
     var lastManualSportRawValue: String?
     var sports: [String: ActivitySportLaunchPreference] = [:]
@@ -125,7 +125,7 @@ final class ActivityLaunchPreferenceStore: ObservableObject {
     }
 
     var lastManualSport: SportType? {
-        snapshot.lastManualSportRawValue.flatMap(SportType.init(rawValue:))
+        AccountConfigurationStore.shared.record("launch/lastSport")?.value?.selection.flatMap(SportType.init(rawValue:))
     }
 
     func draft(for sport: SportType) -> ActivityManualSetupDraft {
@@ -144,7 +144,7 @@ final class ActivityLaunchPreferenceStore: ObservableObject {
         guard mode.isLearnableManualMode else { return .init() }
 
         var changes = ActivityLaunchPreferenceChanges()
-        if snapshot.lastManualSportRawValue != sport.rawValue {
+        if lastManualSport != sport {
             snapshot.lastManualSportRawValue = sport.rawValue
             changes.didChangeSport = true
         }
@@ -163,13 +163,15 @@ final class ActivityLaunchPreferenceStore: ObservableObject {
             changes.didLearnGoalMode = true
         }
 
+        AccountConfigurationStore.shared.set("launch/lastSport", .init(selection: sport.rawValue))
+        AccountConfigurationStore.shared.set("launch/" + sport.rawValue, .init(launch: sportPreference))
         snapshot.sports[sport.rawValue] = sportPreference
         persist()
         return changes
     }
 
     private func preference(for sport: SportType) -> ActivitySportLaunchPreference {
-        snapshot.sports[sport.rawValue] ?? ActivitySportLaunchPreference()
+        AccountConfigurationStore.shared.record("launch/" + sport.rawValue)?.value?.launch ?? ActivitySportLaunchPreference()
     }
 
     private func persist() {

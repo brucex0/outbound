@@ -865,6 +865,14 @@ final class APIClient {
         try await get("/auth/me/preferences")
     }
 
+    func fetchAccountConfiguration() async throws -> AccountConfigurationResponse {
+        try await get("/auth/me/configuration")
+    }
+
+    func patchAccountConfiguration(_ mutation: AccountConfigurationMutation) async throws -> AccountConfigurationMutationResponse {
+        try await patch("/auth/me/configuration", body: mutation)
+    }
+
     func updateUserPreferences(_ preferences: UserPreferencesSnapshotDTO) async throws -> UserPreferencesResponseDTO {
         try await put("/auth/me/preferences", body: preferences)
     }

@@ -69,6 +69,15 @@ final class ActivityFlowCoordinator: ObservableObject {
         setup.selectedGoalMode = initialIntent == nil ? .freestyle : .planned
         setup.selectedWorkoutChoice = initialIntent == nil ? .sport(.run) : .planned
         setup.selectedRouteDistanceMeters = initialIntent?.preparedRoute.map(Self.calculatePreparedRouteDistance)
+        NotificationCenter.default.publisher(for: AccountConfigurationStore.changed)
+            .sink { [weak self] _ in
+                guard let self, self.recorder.state == .idle,
+                      self.countdown.countdownStep == nil, !self.isStartingActivity,
+                      !self.setup.hasEditedLaunchConfiguration else { return }
+                self.setup.manualSetupDrafts = [:]
+                self.applyLearnedGoalModeIfNeeded()
+            }
+            .store(in: &observations)
         observe(setup)
         observe(live)
         observe(review)

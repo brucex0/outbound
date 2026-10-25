@@ -104,6 +104,7 @@ extension ActivityFlowCoordinator {
     }
 
     func selectLaunchMode(_ mode: SessionGoalMode) {
+        setup.hasEditedLaunchConfiguration = true
         guard self.setup.selectedWorkoutChoice != .planned else {
             if mode == .planned {
                 self.selectWorkoutChoice(.planned)
@@ -134,6 +135,7 @@ extension ActivityFlowCoordinator {
     }
 
     func selectWorkoutChoice(_ choice: LaunchWorkoutChoice, trackChange: Bool = true) {
+        if trackChange { setup.hasEditedLaunchConfiguration = true }
         if trackChange, choice == .sport(.walk) {
             let didRequestPermission = self.recorder.locationManager.requestStepMotionPermissionIfNeeded { result in
                 self.track(.init(.motionAuthorizationCompleted, properties: [
@@ -533,6 +535,7 @@ extension ActivityFlowCoordinator {
         trackChange: Bool = true,
         selectionType: String? = nil
     ) -> Bool {
+        if trackChange { setup.hasEditedLaunchConfiguration = true }
         let currentIntent = self.setup.plannedIntent ?? .freestyleRun
         if case .calories(let targetCalories) = goal {
             let isEligibleManualSport = self.setup.selectedWorkoutChoice != .planned

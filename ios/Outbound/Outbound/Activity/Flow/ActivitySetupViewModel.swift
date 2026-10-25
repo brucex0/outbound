@@ -12,6 +12,7 @@ final class ActivitySetupViewModel: ObservableObject {
     @Published var selectedGoalMode: SessionGoalMode = .freestyle
     @Published var selectedWorkoutChoice: LaunchWorkoutChoice = .sport(.run)
     @Published var manualActivityGoal: ActivityGoal = .freestyle
+    var hasEditedLaunchConfiguration = false
     @Published var manualSetupDrafts: [SportType: ActivityManualSetupDraft] = [:]
     @Published var customDistanceText = ""
     @Published var customTimeText = ""
