@@ -39,7 +39,7 @@ struct StretchRoutineEditor: View {
                                     .frame(width: 56, height: 64)
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(definition.title).font(.subheadline.weight(.medium))
-                                    if definition.bilateral { Text(stretchCatalogText("ui.both_sides")).font(.caption).foregroundStyle(.secondary) }
+                                    if definition.bilateral || definition.dynamic { Text(stretchCatalogText(definition.alternating ? "ui.alternating" : "ui.both_sides")).font(.caption).foregroundStyle(.secondary) }
                                     if !definition.requirements.isEmpty { Text(definition.requirements).font(.caption).foregroundStyle(.secondary) }
                                 }
                                 Spacer(minLength: 0)
@@ -100,6 +100,7 @@ struct StretchRoutineEditor: View {
                 }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 145), spacing: 12)], spacing: 12) {
                 ForEach(StretchCatalogData.definitions.filter { d in
+                    d.dynamic == routine.isWarmup &&
                     (area == "all" || d.area == area) &&
                     (requirement == "any" || (requirement == "none" && !d.floor && !d.support && !d.surface) || (requirement == "wall" && d.support) || (requirement == "floor" && d.floor) || (requirement == "surface" && d.surface)) &&
                     (!entries.contains { $0.movementID == d.id } || d.id == replacing)

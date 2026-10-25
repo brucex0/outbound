@@ -14,10 +14,15 @@ struct StretchDefinition: Identifiable {
     let area: String
     let lying: Bool
     let paths: [[CGPoint]]
+    var dynamic: Bool = false
+    var artwork: String? = nil
+    var artworkSide: String = "left"
+    var alternating: Bool = false
+    var cushion: Bool = false
     var title: String { stretchCatalogText("movement.\(id).title") }
     var instruction: String { stretchCatalogText("movement.\(id).instruction") }
     var requirements: String {
-        [floor ? "floor" : nil, support ? "wall" : nil, surface ? "surface" : nil].compactMap { $0 }.map { stretchCatalogText("ui." + $0) }.joined(separator: " · ")
+        [floor ? "floor" : nil, support ? "wall" : nil, surface ? "surface" : nil, cushion ? "cushion" : nil].compactMap { $0 }.map { stretchCatalogText("ui." + $0) }.joined(separator: " · ")
     }
 }
 
@@ -56,10 +61,11 @@ struct StretchRoutine: Identifiable, Sendable {
     let title: String
     let entries: [StretchEntry]
     let customized: Bool
+    var isWarmup: Bool { entries.contains { StretchCatalog.definition($0.movementID)?.dynamic == true } }
     var isStanding: Bool { !entries.contains { StretchCatalog.definition($0.movementID)?.floor == true } }
     var requirements: String {
         let definitions = entries.compactMap { StretchCatalog.definition($0.movementID) }
-        let keys = [definitions.contains(where: \.floor) ? "floor" : nil, definitions.contains(where: \.support) ? "wall" : nil, definitions.contains(where: \.surface) ? "surface" : nil].compactMap { $0 }
+        let keys = [definitions.contains(where: \.floor) ? "floor" : nil, definitions.contains(where: \.support) ? "wall" : nil, definitions.contains(where: \.surface) ? "surface" : nil, definitions.contains(where: \.cushion) ? "cushion" : nil].compactMap { $0 }
         return (keys.isEmpty ? ["none"] : keys).map { stretchCatalogText("ui." + $0) }.joined(separator: " · ")
     }
     var movements: [StretchMovement] {
@@ -67,7 +73,7 @@ struct StretchRoutine: Identifiable, Sendable {
             guard let definition = StretchCatalog.definition(entry.movementID) else { return [] }
             return (definition.bilateral ? ["left", "right"] : ["both"]).map { side in
                 StretchMovement(id: "\(entry.movementID)_\(side)", title: definition.title, instruction: definition.instruction,
-                    side: NSLocalizedString("post_workout_stretch.side." + side, comment: "Side"), duration: entry.seconds,
+                    side: definition.alternating ? stretchCatalogText("ui.alternating") : NSLocalizedString("post_workout_stretch.side." + side, comment: "Side"), duration: entry.seconds,
                     icon: "figure.flexibility", cue: "\(entry.movementID)_\(side)")
             }
         }
@@ -80,15 +86,15 @@ enum StretchCatalog {
     static let durations = [15, 20, 25, 30]
     static func definition(_ id: String) -> StretchDefinition? { StretchCatalogData.definitions.first { $0.id == id } }
     static func valid(_ entries: [StretchEntry]) -> Bool {
-        !entries.isEmpty && entries.count <= 20 && Set(entries.map(\.movementID)).count == entries.count && entries.allSatisfy { definition($0.movementID) != nil && durations.contains($0.seconds) }
+        !entries.isEmpty && entries.count <= 20 && Set(entries.map(\.movementID)).count == entries.count && entries.allSatisfy { definition($0.movementID) != nil && durations.contains($0.seconds) } && Set(entries.compactMap { definition($0.movementID)?.dynamic }).count == 1
     }
     static func routine(template: StretchTemplate, entries: [StretchEntry]? = nil, activityType: ActivityType? = nil) -> StretchRoutine {
         let suffix = template.wireSuffix
         let id = activityType.map { "post_save_\($0.rawValue)_\(suffix)" } ?? "stretch_\(suffix)"
         return StretchRoutine(id: id, preferenceID: template.id, title: template.title, entries: entries ?? template.entries, customized: entries != nil)
     }
-    static func routines(activityType: ActivityType? = nil, store: StretchCustomizationStore = StretchCustomizationStore()) -> [StretchRoutine] {
-        StretchCatalogData.templates.map { routine(template: $0, entries: store.load($0.id), activityType: activityType) }
+    static func routines(activityType: ActivityType? = nil, entryPoint: StretchEntryPoint = .standalone, store: StretchCustomizationStore = StretchCustomizationStore()) -> [StretchRoutine] {
+        StretchCatalogData.templates.filter { entryPoint != .postSave || $0.id != "pre_run" }.map { routine(template: $0, entries: store.load($0.id), activityType: activityType) }
     }
     static var outdoorFallback: StretchRoutine {
         let original = routine(template: StretchCatalogData.templates[0])

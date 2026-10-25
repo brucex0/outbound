@@ -1,0 +1,15 @@
+{
+  "images": [
+    {
+      "filename": "stretch_dynamic_quad.pdf",
+      "idiom": "universal"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  },
+  "properties": {
+    "preserves-vector-representation": true
+  }
+}

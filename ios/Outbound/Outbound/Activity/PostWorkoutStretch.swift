@@ -164,7 +164,7 @@ struct StretchSessionView<Header: View>: View {
         self.launch = launch
         self.onExit = onExit
         self.header = header
-        let routines = StretchCatalog.routines(activityType: launch.activityType)
+        let routines = StretchCatalog.routines(activityType: launch.activityType, entryPoint: launch.entryPoint)
         let initial = StretchCatalog.initial(routines, isIndoor: launch.isIndoor,
             last: UserDefaults.standard.string(forKey: "stretch_last_routine_v1"),
             lastStanding: UserDefaults.standard.string(forKey: "stretch_last_standing_routine_v1"), sport: launch.activityType)
@@ -204,7 +204,7 @@ struct StretchSessionView<Header: View>: View {
                 }
                 .safeAreaInset(edge: .bottom) {
                     Button(action: startRoutine) {
-                        Text(stretchText("post_workout_stretch.start", "Start stretching"))
+                        Text(stretchCatalogText("ui.start"))
                             .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
                     }
                     .buttonStyle(.borderedProminent).tint(.orange)
@@ -214,7 +214,7 @@ struct StretchSessionView<Header: View>: View {
                 VStack(spacing: 20) {
                     Spacer()
                     Image(systemName: "checkmark.circle.fill").font(.system(size: 64)).foregroundStyle(.green)
-                    Text(stretchText("post_workout_stretch.complete", "Stretch complete")).font(.title.bold())
+                    Text(stretchCatalogText("ui.complete")).font(.title.bold())
                     Button(stretchText("post_workout_stretch.done", "Done")) { finish(nil) }.buttonStyle(.borderedProminent).frame(minHeight: 52)
                     Spacer()
                 }
@@ -416,6 +416,7 @@ struct StretchSessionView<Header: View>: View {
                         VStack(spacing: 6) {
                             Text(timer.movement.title).font(.title2.bold())
                             if let side = timer.movement.side { Text(side).font(.headline).foregroundStyle(.orange) }
+                            Text(stretchCatalogText(timer.routine.isWarmup ? "ui.move" : "ui.hold")).font(.subheadline).foregroundStyle(.secondary)
                         }.multilineTextAlignment(.center)
                         Text(Duration.seconds(timer.remaining).formatted(.time(pattern: .minuteSecond)))
                             .font(.system(size: 60, weight: .semibold, design: .rounded)).monospacedDigit()
@@ -503,7 +504,7 @@ struct StretchSessionView<Header: View>: View {
         let store = StretchCustomizationStore()
         do {
             if let entries { try store.save(entries, templateID: id) } else { store.reset(id) }
-            routines = StretchCatalog.routines(activityType: launch.activityType)
+            routines = StretchCatalog.routines(activityType: launch.activityType, entryPoint: launch.entryPoint)
             if let routine = routines.first(where: { $0.preferenceID == id }) { timer.select(routine) }
             toast = stretchCatalogText("ui.saved")
             track(.stretchRoutineEdited, result: entries == nil ? "reset" : "saved")
@@ -621,7 +622,7 @@ private final class StretchNarrator: ObservableObject {
 }
 
 /// Schematic setup reference; the orange limb marks the working side.
-struct StretchPostureIllustration: View {
+struct StretchSchematicIllustration: View {
     let cue: String
     var body: some View {
         Canvas { context, size in
@@ -645,5 +646,20 @@ struct StretchPostureIllustration: View {
 extension StretchSessionView where Header == EmptyView {
     init(launch: StretchLaunchContext = StretchLaunchContext(), voiceProfileID: String, onExit: @escaping () -> Void) {
         self.init(launch: launch, voiceProfileID: voiceProfileID, onExit: onExit) { _ in EmptyView() }
+    }
+}
+
+/// Catalog artwork is vector PDF; mirroring follows the existing side contract.
+struct StretchPostureIllustration: View {
+    let cue: String
+    var body: some View {
+        let id = cue.replacingOccurrences(of: "_left", with: "").replacingOccurrences(of: "_right", with: "").replacingOccurrences(of: "_both", with: "")
+        if let definition = StretchCatalog.definition(id), let artwork = definition.artwork {
+            Image(artwork).resizable().scaledToFit()
+                .scaleEffect(x: (definition.artworkSide == "right" ? cue.hasSuffix("_left") : cue.hasSuffix("_right")) ? -1 : 1, y: 1)
+                .accessibilityHidden(true)
+        } else {
+            StretchSchematicIllustration(cue: cue)
+        }
     }
 }
