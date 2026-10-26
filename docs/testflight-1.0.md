@@ -1,4 +1,4 @@
-# TestFlight and App Store 1.7.9 Submission Sheet
+# TestFlight and App Store 1.7.10 Submission Sheet
 
 Open this for the current TestFlight upload and public App Store release. Product behavior and release mechanics remain in `docs/app-store-release.md`.
 
@@ -7,8 +7,8 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - App Store name: `Plainstride: AI Running Coach`.
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
-- Version: `1.7.9`
-- Build: `61`
+- Version: `1.7.10`
+- Build: `62`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -20,10 +20,12 @@ Open this for the current TestFlight upload and public App Store release. Produc
 
 ## Submission Status
 
-- October 22, 2026, 10:44 PM Pacific: **Waiting for Review**, automatic release after approval, all users immediately.
-- Final submission ID: `044b7411-6f9e-44df-9056-3d80ce618c15`.
-- Build 61 passed unsigned Release compilation, signed archive/export, packaged-bundle preflight, and Apple processing. No tests or physical-device acceptance run were performed for this release.
-- All eight replacement iPhone screenshots and the four retained Watch screenshots report `COMPLETE`; screenshot order and populated live-sharing preview were verified in App Store Connect.
+- Version 1.7.10 (62) passed unsigned Release compilation, signed archive/export, packaged-bundle preflight, upload, and Apple processing. Assigned to internal TestFlight group `Plainstride Team` with English beta release notes.
+- Public submission is blocked: `POST /v1/appStoreVersions` returned HTTP 403 because the configured Developer API key cannot manage public versions. Browser sign-in also stalled before authenticated access. This build is **not submitted for public release**.
+- Finish in the signed-in App Store Connect UI: create 1.7.10, select build 62, copy **App Store What's New** below, choose automatic release after approval, save, add for review, submit, and verify **Waiting for Review**. Retain existing store metadata and screenshots.
+- No tests or physical-device acceptance run were performed for this release.
+- Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.10-62/`; upload ID `8ab0e665-fd5b-473b-b066-a5d066d2c2b0`. Do not rebuild or re-upload to finish submission.
+- Prior release: 1.7.9 (61) was submitted October 22, 2026, with all eight iPhone and four Watch screenshots reporting `COMPLETE`.
 
 ## App Store Positioning Experiment
 
@@ -72,19 +74,19 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- [iOS] Bundle useful coach recordings and deliver sharp speed warnings offline
-- [BE] Publish useful event-specific coaching cues and activate the approved pack
-- [iOS] Explain cadence beats before playback with best-effort speech
-- [BE] Prepare localized cadence beat introductions in coaching plans
-- [iOS] Strengthen cadence drum audibility and clarify output diagnostics
-- Plus 52 more fixes and improvements
+- [iOS] Clarify saved activity summary and stabilize Share styling
+- [iOS] Restore account stretch routines and launch defaults across phones
+- [BE] Add revisioned account configuration storage and sync contract
+- [iOS] Add run routines and complete orange vector artwork
+- [BE] Add finite run warm-up and cooldown audio cues
+- Plus 6 more fixes and improvements
 
 ### App Store What's New
 
-- Get clearer live coaching, faster pace-change warnings, and automatic cadence beats with spoken introductions.
-- Review more complete activity history and progress statistics, including improved moving-time and elevation calculations.
-- Share post-workout highlights with route photos, find meetup places on the map, and enjoy smoother camera and map transitions.
-- Includes improvements to Apple Watch recording, outdoor stretches, and localization.
+- Prepare and recover with guided warm-up, cooldown, and stretch routines, with clearer exercise illustrations.
+- Keep your saved stretch routines and activity-start preferences in sync across phones.
+- Enjoy clearer saved-activity summaries and more consistent sharing screens.
+- Includes live coaching and usability improvements.
 
 ### How to Report Feedback
 
@@ -199,6 +201,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.7.9 (61)`, validate, and upload from Xcode Organizer.
+- Archive `1.7.10 (62)`, validate, and upload from Xcode Organizer.
 - After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.
