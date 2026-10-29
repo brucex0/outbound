@@ -4495,7 +4495,7 @@ private actor SocialRoutePreviewCache {
         let routeSignature = sampledCoordinates.map { coordinate in
             coordinate.prefix(2).map { String(format: "%.6f", $0) }.joined(separator: ",")
         }.joined(separator: ";")
-        let raw = "v5|\(activity.id)|\(coordinates.count)|\(routeSignature)"
+        let raw = "v6|\(activity.id)|\(coordinates.count)|\(routeSignature)"
         let digest = SHA256.hash(data: Data(raw.utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }
@@ -4562,28 +4562,6 @@ private actor SocialRoutePreviewCache {
         guard let snapshot = try? await MKMapSnapshotter(options: options).start() else { return nil }
 
         let projectedRoute = route.map(snapshot.point(for:))
-        let projectedBounds = projectedRoute.reduce(CGRect.null) { $0.union(CGRect(origin: $1, size: .zero)) }
-        // The feed lays a translucent stats panel over the bottom of this image.
-        // Keep the complete route above that panel so its finish is not obscured.
-        let bottomOverlayReservation: CGFloat = 160
-        let drawingBounds = CGRect(
-            x: 24,
-            y: 24,
-            width: Self.imageSize.width - 48,
-            height: Self.imageSize.height - bottomOverlayReservation - 24
-        )
-        let fitScale = min(
-            drawingBounds.width / max(projectedBounds.width, 1),
-            drawingBounds.height / max(projectedBounds.height, 1)
-        )
-        let fitOffset = CGPoint(
-            x: drawingBounds.midX - projectedBounds.midX * fitScale,
-            y: drawingBounds.midY - projectedBounds.midY * fitScale
-        )
-        func fittedPoint(_ point: CGPoint) -> CGPoint {
-            CGPoint(x: point.x * fitScale + fitOffset.x, y: point.y * fitScale + fitOffset.y)
-        }
-
         // imageSize is a pixel budget, not a device-scaled point budget.
         // Twelve decoded 720px previews cost roughly 24MB, even on a 3x device.
         let format = UIGraphicsImageRendererFormat()
@@ -4593,8 +4571,7 @@ private actor SocialRoutePreviewCache {
             snapshot.image.draw(in: CGRect(origin: .zero, size: Self.imageSize))
             let path = CGMutablePath()
             for (index, point) in projectedRoute.enumerated() {
-                let fitted = fittedPoint(point)
-                if index == 0 { path.move(to: fitted) } else { path.addLine(to: fitted) }
+                if index == 0 { path.move(to: point) } else { path.addLine(to: point) }
             }
             context.cgContext.addPath(path)
             context.cgContext.setStrokeColor(UIColor.white.withAlphaComponent(0.92).cgColor)
@@ -4614,7 +4591,7 @@ private actor SocialRoutePreviewCache {
     }
 
     private static func mapRect(for coordinates: [CLLocationCoordinate2D], size: CGSize) -> MKMapRect {
-        var rect = coordinates.reduce(MKMapRect.null) { rect, coordinate in
+        let rect = coordinates.reduce(MKMapRect.null) { rect, coordinate in
             let point = MKMapPoint(coordinate)
             return rect.union(MKMapRect(x: point.x, y: point.y, width: 1, height: 1))
         }
@@ -4622,21 +4599,22 @@ private actor SocialRoutePreviewCache {
         guard !rect.isNull, rect.width > 0, rect.height > 0,
               size.width > 0, size.height > 0 else { return rect }
 
-        // MKMapSnapshotter preserves the requested map rect's aspect ratio only
-        // approximately. Expand the short dimension explicitly so every route
-        // point remains inside the image even for very tall or very wide routes.
-        let targetAspect = size.width / size.height
-        let currentAspect = rect.width / rect.height
-        if currentAspect > targetAspect {
-            let targetHeight = rect.width / targetAspect
-            rect = rect.insetBy(dx: 0, dy: -(targetHeight - rect.height) / 2)
-        } else {
-            let targetWidth = rect.height * targetAspect
-            rect = rect.insetBy(dx: -(targetWidth - rect.width) / 2, dy: 0)
-        }
-
-        let padding = min(rect.width, rect.height) * 0.12
-        return rect.insetBy(dx: -max(padding, 1_500), dy: -max(padding, 1_500))
+        // Fit the camera to the area above the stats strip. Leave projected
+        // coordinates untouched: transforming only the line detaches it from
+        // the roads and paths in the snapshot beneath it.
+        let drawingBounds = CGRect(x: 24, y: 24, width: size.width - 48, height: size.height - 184)
+        let mapUnitsPerPoint = max(
+            rect.width / drawingBounds.width,
+            rect.height / drawingBounds.height
+        ) * 1.12
+        let width = mapUnitsPerPoint * size.width
+        let height = mapUnitsPerPoint * size.height
+        return MKMapRect(
+            x: rect.midX - drawingBounds.midX * mapUnitsPerPoint,
+            y: rect.midY - drawingBounds.midY * mapUnitsPerPoint,
+            width: width,
+            height: height
+        )
     }
 
     private func remember(_ image: UIImage, for key: String) {
