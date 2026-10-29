@@ -157,10 +157,11 @@ extension ActivityFlowView {
                 : String(localized: "common.off", defaultValue: "Off"),
             isConfigured: enabled
         ) {
-            model.setAutoPauseEnabled(!enabled, for: activityType)
+            let newValue = !model.autoPauseEnabled(for: activityType)
+            model.setAutoPauseEnabled(newValue, for: activityType)
             model.track(.init(.activityConfigurationChanged, properties: [
                 .changeType: .string("auto_pause"),
-                .selectionType: .string(enabled ? "disabled" : "enabled"),
+                .selectionType: .string(newValue ? "enabled" : "disabled"),
                 .activityType: .string(activityType.rawValue)
             ]))
         })

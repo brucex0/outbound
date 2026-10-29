@@ -10,8 +10,8 @@ struct ActivityFlowView: View {
     @FocusState var focusedCustomGoalKind: CustomGoalKind?
     @StateObject var model: ActivityFlowCoordinator
     let host: ActivityFlowHost
-    // A value snapshot ensures external AppStorage edits invalidate this host,
-    // even though its retained coordinator keeps the original storage bindings.
+    // A value snapshot ensures external AppStorage edits invalidate this host.
+    // Coordinator accessors read the persisted values live across view updates.
     let preferenceValues: [String]
 
     init(initialIntent: SessionIntent?, dependencies: ActivityFlowDependencies, preferences: ActivityFlowPreferences, host: ActivityFlowHost, reduceMotion: Bool, analyticsManager: AnalyticsManager?) {

@@ -104,6 +104,14 @@ struct RecordView: View {
     }
 
     var body: some View {
+        // Register the view's AppStorage dependencies for edits from settings/sync.
+        let _ = (preferredSessionPageRawValue, isVoiceGuideEnabled,
+                 autoPauseRunningEnabled, autoPauseCyclingEnabled,
+                 autoPauseWalkingEnabled, autoPauseHikingEnabled,
+                 autoStopAtGoalEnabled, startWatchApp)
+#if DEBUG
+        let _ = routeTestMode
+#endif
         ActivityFlowView(
             initialIntent: initialIntent,
             dependencies: ActivityFlowDependencies(
@@ -159,17 +167,17 @@ struct RecordView: View {
 
     private var flowPreferences: ActivityFlowPreferences {
         var preferences = ActivityFlowPreferences(
-            preferredSessionPageRawValue: $preferredSessionPageRawValue,
-            isVoiceGuideEnabled: $isVoiceGuideEnabled,
-            autoPauseRunningEnabled: $autoPauseRunningEnabled,
-            autoPauseCyclingEnabled: $autoPauseCyclingEnabled,
-            autoPauseWalkingEnabled: $autoPauseWalkingEnabled,
-            autoPauseHikingEnabled: $autoPauseHikingEnabled,
-            autoStopAtGoalEnabled: $autoStopAtGoalEnabled,
-            startWatchApp: $startWatchApp
+            preferredSessionPageRawValue: ActivityFlowPreferences.persisted(key: "preferred_session_page_v1", defaultValue: SessionPage.map.rawValue),
+            isVoiceGuideEnabled: ActivityFlowPreferences.persisted(key: "voice_guide_enabled_v1", defaultValue: true),
+            autoPauseRunningEnabled: ActivityFlowPreferences.persisted(key: "auto_pause_running_enabled_v1", defaultValue: true),
+            autoPauseCyclingEnabled: ActivityFlowPreferences.persisted(key: "auto_pause_cycling_enabled_v1", defaultValue: true),
+            autoPauseWalkingEnabled: ActivityFlowPreferences.persisted(key: "auto_pause_walking_enabled_v1", defaultValue: false),
+            autoPauseHikingEnabled: ActivityFlowPreferences.persisted(key: "auto_pause_hiking_enabled_v1", defaultValue: false),
+            autoStopAtGoalEnabled: ActivityFlowPreferences.persisted(key: "auto_stop_at_goal_enabled_v1", defaultValue: false),
+            startWatchApp: ActivityFlowPreferences.persisted(key: "watch.startWatchApp", defaultValue: true)
         )
 #if DEBUG
-        preferences.routeTestMode = $routeTestMode
+        preferences.routeTestMode = ActivityFlowPreferences.persisted(key: "debug_route_test_mode", defaultValue: false)
 #endif
         return preferences
     }

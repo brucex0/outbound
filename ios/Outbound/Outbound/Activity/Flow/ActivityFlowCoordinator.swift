@@ -119,50 +119,56 @@ final class ActivityFlowCoordinator: ObservableObject {
         }.store(in: &observations)
     }
 
+    private func setPreference<Value: Equatable>(_ preference: ActivityFlowPreference<Value>, to value: Value) {
+        guard preference.wrappedValue != value else { return }
+        objectWillChange.send()
+        preference.wrappedValue = value
+    }
+
     var preferredSessionPageRawValue: String {
         get { preferences.preferredSessionPageRawValue.wrappedValue }
-        set { preferences.preferredSessionPageRawValue.wrappedValue = newValue }
+        set { setPreference(preferences.preferredSessionPageRawValue, to: newValue) }
     }
 
     var isVoiceGuideEnabled: Bool {
         get { preferences.isVoiceGuideEnabled.wrappedValue }
-        set { preferences.isVoiceGuideEnabled.wrappedValue = newValue }
+        set { setPreference(preferences.isVoiceGuideEnabled, to: newValue) }
     }
 
     var autoPauseRunningEnabled: Bool {
         get { preferences.autoPauseRunningEnabled.wrappedValue }
-        set { preferences.autoPauseRunningEnabled.wrappedValue = newValue }
+        set { setPreference(preferences.autoPauseRunningEnabled, to: newValue) }
     }
 
     var autoPauseCyclingEnabled: Bool {
         get { preferences.autoPauseCyclingEnabled.wrappedValue }
-        set { preferences.autoPauseCyclingEnabled.wrappedValue = newValue }
+        set { setPreference(preferences.autoPauseCyclingEnabled, to: newValue) }
     }
 
     var autoPauseWalkingEnabled: Bool {
         get { preferences.autoPauseWalkingEnabled.wrappedValue }
-        set { preferences.autoPauseWalkingEnabled.wrappedValue = newValue }
+        set { setPreference(preferences.autoPauseWalkingEnabled, to: newValue) }
     }
 
     var autoPauseHikingEnabled: Bool {
         get { preferences.autoPauseHikingEnabled.wrappedValue }
-        set { preferences.autoPauseHikingEnabled.wrappedValue = newValue }
+        set { setPreference(preferences.autoPauseHikingEnabled, to: newValue) }
     }
 
     var autoStopAtGoalEnabled: Bool {
         get { preferences.autoStopAtGoalEnabled.wrappedValue }
-        set { preferences.autoStopAtGoalEnabled.wrappedValue = newValue }
+        set { setPreference(preferences.autoStopAtGoalEnabled, to: newValue) }
     }
 
     var startWatchApp: Bool {
         get { preferences.startWatchApp.wrappedValue }
-        set { preferences.startWatchApp.wrappedValue = newValue }
+        set { setPreference(preferences.startWatchApp, to: newValue) }
     }
 #if DEBUG
 
     var routeTestMode: Bool {
         get { preferences.routeTestMode.wrappedValue }
-        set { preferences.routeTestMode.wrappedValue = newValue }
+        set { setPreference(preferences.routeTestMode, to: newValue) }
     }
 #endif
 

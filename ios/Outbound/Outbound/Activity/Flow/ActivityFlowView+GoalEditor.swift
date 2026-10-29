@@ -70,9 +70,11 @@ extension ActivityFlowView {
                             .foregroundStyle(.primary)
                         Spacer(minLength: 0)
                     }
+                    .frame(minHeight: 44)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("activity.goal.pauseAtGoal")
                 .accessibilityLabel(String(localized: "today.stop.at.goal", defaultValue: "Pause at goal"))
                 .accessibilityValue(model.autoStopAtGoalEnabled
                     ? String(localized: "common.on", defaultValue: "On")

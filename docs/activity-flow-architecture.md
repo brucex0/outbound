@@ -24,6 +24,14 @@ Open when changing activity setup, countdown, live recording, finish/review, or 
 
 The coordinator owns the screen models for one retained flow. Screen changes and existing observable domain services invalidate the flow through explicit observation; SwiftUI focus and environment values remain in views.
 
+## Preference Tap Pipeline
+
+- Launch and goal options use native SwiftUI `Button` actions, then coordinator setters, then persisted preferences. Setters notify `objectWillChange` before writing, so selected styling and open goal editors update through the retained coordinator.
+- `ActivityFlowPreferences.persisted` provides a plain storage accessor that reads UserDefaults live, without SwiftUI Binding value caching. Do not retain projected `@AppStorage` bindings in the coordinator: their cached reads can outlive the view update that created them, making taps appear ineffective and returning stale values to guide setup or analytics.
+- `RecordView` retains AppStorage subscriptions for external settings/account-sync edits; the flow's preference snapshot propagates those changes without replacing session identity.
+- Auto Pause computes its next value at action time. Configuration analytics retain their existing event/property names and report the value just written. Pause at goal exposes a full-width, minimum 44-point row.
+- Verification for this repair: build-only compilation, source tracing, and a standalone storage probe covering defaults, repeated toggles, external edits, reopening, reset, and string values; repeated physical-device taps, external sync while the editor is open, and relaunch persistence still require manual verification.
+
 ## Maps And Entry Points
 
 - Today keeps its stable `ActivityLaunchMap`, selected route, and camera within the Today shell.
