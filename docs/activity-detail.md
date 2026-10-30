@@ -38,9 +38,17 @@ Limitations vs Strava and category expectations:
 - No comparison to previous activities
 - No mood/training context tags
 
+## Activity editor
+
+- The editor groups activity identity, photos, workout metrics, and gear, with a persistent Save Changes action and discard confirmation.
+- Detail and edit share `ActivityPhotoCarousel`, with existing `ActivityPhotoThumbnail` and `ActivityPhotoActionTile` tiles. Tapping opens the existing manager; photo changes still commit independently of metadata Cancel/Save.
+- Distance follows the measurement preference with a permanent unit suffix and locale-aware decimals. Unchanged displayed distance preserves the exact stored meters.
+- Duration uses labeled hours/minutes/seconds and preserves seconds when editing other fields. Pace previews use existing sport plausibility rules. Totals edits retain route/split samples.
+- Manual verification: metric/imperial and decimal-comma locale; title-only save on a non-round duration/distance; zero distance, invalid duration, discard, failed save, and photos saved before metadata edits.
+
 ## Photo editing persistence
 
-- The Edit Activity Manage Photos row uses a static monochrome symbol with symbol effects and implicit transitions disabled during store refreshes.
+- The Edit Activity carousel opens the existing Manage Photos sheet; detail photo selection and lightbox behavior are unchanged.
 - Manage Photos commits through `ActivityStore.updatePhotos`, then reuses the preference-aware, deduplicated Photos album exporter, transient feedback, and export analytics used by new activity saves.
 - Metadata edits resolve the latest stored activity to preserve photos saved by the nested manager. Reopening Manage Photos also resolves the latest activity.
 - Automated regression: `./scripts/run-ui-flow.sh activity-photos` exercises saved-photo refresh and persistence through the recent activity UI; see `docs/build-test-device.md` for fixture boundaries.

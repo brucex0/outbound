@@ -110,3 +110,19 @@ struct ActivityPhotoActionTile: View {
         .contentShape(Rectangle())
     }
 }
+
+/// Shared saved-activity photo strip used by detail and editing surfaces.
+struct ActivityPhotoCarousel<Content: View>: View {
+    var horizontalPadding: CGFloat = 0
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: 12) {
+                content()
+            }
+            .padding(.horizontal, horizontalPadding)
+        }
+        .frame(height: 104)
+    }
+}

@@ -723,45 +723,41 @@ struct ActivityDetailView: View {
 
     private var activityPhotoStrip: some View {
         ScrollViewReader { reader in
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 12) {
-                    ForEach(Array(currentActivity.photos.enumerated()), id: \.element.id) { index, photo in
-                        ActivityPhotoThumbnail(
-                            caption: photoCaption(photo, index: index, compact: true),
-                            isSelected: photo.id == selectedPhotoID,
-                            action: {
-                                if selectedPhotoPage == index {
-                                    openPhotoPreview(at: index, sourceType: "activity_detail_carousel")
-                                } else {
-                                    withAnimation(.snappy) { selectedPhotoPage = index }
-                                }
-                            }
-                        ) {
-                            if let url = activityStore.imageURL(for: photo, thumbnailPixelHeight: 232) {
-                                LocalImageView(url: url, maxPixelSize: 232) { Color(.secondarySystemBackground) }
+            ActivityPhotoCarousel(horizontalPadding: 20) {
+                ForEach(Array(currentActivity.photos.enumerated()), id: \.element.id) { index, photo in
+                    ActivityPhotoThumbnail(
+                        caption: photoCaption(photo, index: index, compact: true),
+                        isSelected: photo.id == selectedPhotoID,
+                        action: {
+                            if selectedPhotoPage == index {
+                                openPhotoPreview(at: index, sourceType: "activity_detail_carousel")
+                            } else {
+                                withAnimation(.snappy) { selectedPhotoPage = index }
                             }
                         }
-                        .id(photo.id)
-                        .accessibilityIdentifier("SavedActivityPhoto-\(index)")
-                        .accessibilityLabel(photoCaption(photo, index: index, compact: false))
-                        .accessibilityHint(photo.id == selectedPhotoID
-                            ? String(localized: "activity.photos.open", defaultValue: "Open photo full screen")
-                            : String(localized: "activity.photos.locate", defaultValue: "Show this photo on the map"))
-                    }
-                    ForEach(0..<photoPlaceholderCount, id: \.self) { _ in
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(Color(.tertiarySystemBackground))
-                            ProgressView()
-                                .tint(.secondary)
+                    ) {
+                        if let url = activityStore.imageURL(for: photo, thumbnailPixelHeight: 232) {
+                            LocalImageView(url: url, maxPixelSize: 232) { Color(.secondarySystemBackground) }
                         }
-                        .frame(width: 116, height: 104)
-                        .accessibilityHidden(true)
                     }
+                    .id(photo.id)
+                    .accessibilityIdentifier("SavedActivityPhoto-\(index)")
+                    .accessibilityLabel(photoCaption(photo, index: index, compact: false))
+                    .accessibilityHint(photo.id == selectedPhotoID
+                        ? String(localized: "activity.photos.open", defaultValue: "Open photo full screen")
+                        : String(localized: "activity.photos.locate", defaultValue: "Show this photo on the map"))
                 }
-                .padding(.horizontal, 20)
+                ForEach(0..<photoPlaceholderCount, id: \.self) { _ in
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color(.tertiarySystemBackground))
+                        ProgressView()
+                            .tint(.secondary)
+                    }
+                    .frame(width: 116, height: 104)
+                    .accessibilityHidden(true)
+                }
             }
-            .frame(height: 104)
             .onChange(of: selectedPhotoPage) { _, index in
                 guard currentActivity.photos.indices.contains(index) else { return }
                 withAnimation(.snappy) { reader.scrollTo(currentActivity.photos[index].id, anchor: .center) }
@@ -2125,14 +2121,21 @@ private struct HeartRateZonesMiniView: View {
 
 private struct EditActivityView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var gearStore: GearStore
 
+    @EnvironmentObject var measurementPreferences: MeasurementPreferences
     let activity: SavedActivity
     @State private var title: String
     @State private var startedAt: Date
     @State private var distanceText: String
-    @State private var durationMinutesText: String
+    @State private var hours: Int
+    @State private var minutes: Int
+    @State private var seconds: Int
+    @State private var initialDistanceText = ""
+    @State private var units: MeasurementUnitSystem = .metric
+    @State private var confirmDiscard = false
     @State private var shoeID: UUID?
     @State private var isSaving = false
     @State private var saveError: String?
@@ -2143,7 +2146,9 @@ private struct EditActivityView: View {
         _title = State(initialValue: activity.title)
         _startedAt = State(initialValue: activity.startedAt)
         _distanceText = State(initialValue: String(format: "%.2f", activity.distanceM / 1000))
-        _durationMinutesText = State(initialValue: String(format: "%.0f", Double(activity.durationSecs) / 60))
+        _hours = State(initialValue: activity.durationSecs / 3600)
+        _minutes = State(initialValue: activity.durationSecs / 60 % 60)
+        _seconds = State(initialValue: activity.durationSecs % 60)
         _shoeID = State(initialValue: activity.gear?.shoeID)
     }
 
@@ -2151,13 +2156,58 @@ private struct EditActivityView: View {
         NavigationStack {
             Form {
                 Section("Activity") {
-                    TextField("Title", text: $title)
-                        .accessibilityIdentifier("EditActivityTitle")
+                    LabeledContent("Title") {
+                        TextField("Title", text: $title)
+                            .multilineTextAlignment(.trailing)
+                            .accessibilityIdentifier("EditActivityTitle")
+                    }
                     DatePicker("Date", selection: $startedAt)
-                    TextField("Distance in km", text: $distanceText)
-                        .keyboardType(.decimalPad)
-                    TextField("Duration in minutes", text: $durationMinutesText)
-                        .keyboardType(.numberPad)
+                }
+
+                Section(String(localized: "activity.photos.title", defaultValue: "Photos")) {
+                    ActivityPhotoCarousel {
+                        ForEach((activityStore.activity(id: activity.id) ?? activity).photos) { photo in
+                            ActivityPhotoThumbnail(
+                                caption: photo.takenAt.formatted(date: .omitted, time: .shortened),
+                                isSelected: false,
+                                action: { isPhotoManagerPresented = true }
+                            ) {
+                                if let url = activityStore.imageURL(for: photo, thumbnailPixelHeight: 232) {
+                                    LocalImageView(url: url, maxPixelSize: 232) { Color(.secondarySystemBackground) }
+                                }
+                            }
+                            .accessibilityLabel(String(localized: "summary.photos.manage", defaultValue: "Manage Photos"))
+                        }
+                        Button { isPhotoManagerPresented = true } label: {
+                            ActivityPhotoActionTile(
+                                title: String(localized: "summary.photos.manage", defaultValue: "Manage Photos"),
+                                systemImage: "photo.on.rectangle.angled"
+                            )
+                        }.buttonStyle(.plain)
+                    }
+                }
+
+                Section("activity.edit.details") {
+                    HStack {
+                        Text("Distance")
+                        Spacer()
+                        TextField("Distance", text: $distanceText)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                        Text(units.distanceUnit).foregroundStyle(.secondary)
+                    }
+                    VStack(alignment: .leading) {
+                        Text("Duration")
+                        HStack {
+                            durationInput("activity.edit.hours", value: $hours)
+                            durationInput("activity.edit.minutes", value: $minutes)
+                            durationInput("activity.edit.seconds", value: $seconds)
+                        }
+                    }
+                    LabeledContent("session.metric.average_pace", value: pacePreview)
+                    if !validMetrics {
+                        Text("activity.edit.invalid").font(.caption).foregroundStyle(.red)
+                    }
                 }
 
                 Section("Gear") {
@@ -2168,50 +2218,58 @@ private struct EditActivityView: View {
                         }
                     }
                 }
-
-                Section(String(localized: "activity.photos.title", defaultValue: "Photos")) {
-                    Button {
-                        isPhotoManagerPresented = true
-                    } label: {
-                        Label {
-                            Text(String(localized: "summary.photos.manage", defaultValue: "Manage Photos"))
-                        } icon: {
-                            Image(systemName: "photo.on.rectangle.angled")
-                                .symbolRenderingMode(.monochrome)
-                                .symbolEffectsRemoved()
-                                .contentTransition(.identity)
-                        }
-                        // Store updates can redraw the form while it is open.
-                        // This static action must not animate its symbol layers.
-                        .transaction { transaction in
-                            transaction.animation = nil
-                            transaction.disablesAnimations = true
-                        }
-                    }
+            }
+            .safeAreaInset(edge: .bottom) {
+                Button {
+                    Task { await save() }
+                } label: {
+                    Text(isSaving ? String(localized: "Saving…") : String(localized: "activity.edit.save"))
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(isSaving || !hasChanges || !validMetrics)
+                .padding()
+                .background(.bar)
             }
             .navigationTitle("Edit Activity")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(isSaving ? "Saving…" : "Save") {
-                        Task { await save() }
-                    }
-                        .disabled(isSaving || !hasChanges)
-                        .fontWeight(.semibold)
+                    Button("Cancel") { if hasChanges { confirmDiscard = true } else { dismiss() } }
+                        .disabled(isSaving)
                 }
             }
         }
-        .alert("Couldn’t save activity", isPresented: Binding(
-            get: { saveError != nil },
-            set: { if !$0 { saveError = nil } }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(saveError ?? "Try again.")
+        .interactiveDismissDisabled(hasChanges || isSaving)
+        .onAppear {
+            guard initialDistanceText.isEmpty else { return }
+            units = measurementPreferences.unitSystem
+            distanceText = units.distanceValueString(meters: activity.distanceM)
+            initialDistanceText = distanceText
+            Task { await analyticsManager?.track(.init(.featureExposed, properties: [
+                .feature: .string("activity_editor")
+            ])) }
+        }
+        .confirmationDialog("activity.edit.discard", isPresented: $confirmDiscard, titleVisibility: .visible) {
+            Button("activity.edit.discard.action", role: .destructive) { dismiss() }
+            Button("Cancel", role: .cancel) {}
+        }
+        .overlay(alignment: .top) {
+            if saveError != nil {
+                Text("Couldn’t save activity")
+                    .font(.subheadline.weight(.semibold))
+                    .padding()
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.top, 12)
+                    .accessibilityAddTraits(.updatesFrequently)
+            }
+        }
+        .task(id: saveError) {
+            guard saveError != nil else { return }
+            do { try await Task.sleep(for: .seconds(4)) } catch { return }
+            saveError = nil
         }
         .sheet(isPresented: $isPhotoManagerPresented) {
             SavedActivityPhotoManager(activity: activityStore.activity(id: activity.id) ?? activity)
@@ -2219,24 +2277,60 @@ private struct EditActivityView: View {
         }
     }
 
+    private func durationInput(_ label: LocalizedStringKey, value: Binding<Int>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label).font(.caption).foregroundStyle(.secondary)
+            TextField(label, value: value, format: .number.grouping(.never))
+                .keyboardType(.numberPad)
+                .textFieldStyle(.roundedBorder)
+        }
+    }
+
+    private var editedDistance: Double {
+        if distanceText == initialDistanceText { return activity.distanceM }
+        let formatter = NumberFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.numberStyle = .decimal
+        let decimalSeparator = formatter.decimalSeparator ?? "."
+        let normalized = distanceText.replacingOccurrences(of: decimalSeparator, with: ".")
+        guard normalized.unicodeScalars.allSatisfy({ CharacterSet(charactersIn: "0123456789.").contains($0) }),
+              let value = Double(normalized) else { return .nan }
+        return units.distanceMeters(from: value)
+    }
+
+    private var editedDuration: Int {
+        guard (0...999).contains(hours), (0...59).contains(minutes), (0...59).contains(seconds) else { return 0 }
+        return hours * 3600 + minutes * 60 + seconds
+    }
+    private var validMetrics: Bool {
+        editedDistance.isFinite && editedDistance >= 0 && hours >= 0 && hours <= 999
+            && (0...59).contains(minutes) && (0...59).contains(seconds) && editedDuration > 0
+    }
+    private var pacePreview: String {
+        guard validMetrics, let pace = activity.activityType.plausibleAveragePace(
+            durationSeconds: Double(editedDuration), distanceMeters: editedDistance
+        ) else { return "—" }
+        return units.paceString(secondsPerKilometer: pace)
+    }
+
     private var hasChanges: Bool {
         let cleanedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let distanceM = (Double(distanceText) ?? activity.distanceM / 1000) * 1000
-        let durationSecs = max(1, Int((Double(durationMinutesText) ?? Double(activity.durationSecs) / 60) * 60))
+        let distanceM = editedDistance
+        let durationSecs = editedDuration
 
         return (!cleanedTitle.isEmpty && cleanedTitle != activity.title)
             || startedAt != activity.startedAt
-            || abs(distanceM - activity.distanceM) > 0.5
+            || distanceText != initialDistanceText || abs(distanceM - activity.distanceM) > 0.5
             || durationSecs != activity.durationSecs
             || shoeID != activity.gear?.shoeID
     }
 
     private func save() async {
-        guard !isSaving, hasChanges else { return }
+        guard !isSaving, hasChanges, validMetrics else { return }
         isSaving = true
         defer { isSaving = false }
-        let distanceM = (Double(distanceText) ?? activity.distanceM / 1000) * 1000
-        let durationSecs = max(1, Int((Double(durationMinutesText) ?? Double(activity.durationSecs) / 60) * 60))
+        let distanceM = editedDistance
+        let durationSecs = editedDuration
         let selectedShoe = shoeID.flatMap { id in gearStore.shoes.first { $0.id == id } }
         do {
             try await activityStore.updateActivity(
@@ -2247,8 +2341,12 @@ private struct EditActivityView: View {
                 durationSecs: durationSecs,
                 gear: gearStore.attachment(for: selectedShoe)
             )
+            await analyticsManager?.track(.init(.featureExposed, properties: [
+                .feature: .string("activity_editor_saved")
+            ]))
             dismiss()
         } catch {
+            NSLog("Activity metadata save failed: domain=%@ code=%ld", (error as NSError).domain, (error as NSError).code)
             saveError = error.localizedDescription
         }
     }
