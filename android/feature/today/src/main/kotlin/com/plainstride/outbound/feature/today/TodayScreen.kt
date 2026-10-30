@@ -870,7 +870,8 @@ private fun GoalValueDialog(goal: TodayGoalChoice, distanceMeters: Double, durat
     var customValue by rememberSaveable(goal) { mutableStateOf("") }
     AlertDialog(onDismissRequest = onDismiss, title = {
         Row(
-            Modifier.fillMaxWidth().toggleable(
+            // Own the full touch target so taps around the visual checkbox toggle exactly once.
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
                 value = autoStopAtGoal,
                 role = Role.Checkbox,
                 onValueChange = onAutoStopAtGoalChanged,
@@ -892,7 +893,30 @@ private fun GoalValueDialog(goal: TodayGoalChoice, distanceMeters: Double, durat
             }
             if(goal in setOf(TodayGoalChoice.DISTANCE,TodayGoalChoice.TIME,TodayGoalChoice.CALORIES)) OutlinedTextField(customValue,{customValue=it.filter{character->character.isDigit()||character=='.'}.take(7)},Modifier.fillMaxWidth(),singleLine=true,label={Text(stringResource(when(goal){TodayGoalChoice.DISTANCE->R.string.today_distance;TodayGoalChoice.TIME->R.string.today_time;else->R.string.today_calories}))},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal))
         }
-    }, confirmButton = { TextButton(onClick={when(goal){TodayGoalChoice.DISTANCE->customValue.toDoubleOrNull()?.takeIf{it>0}?.let{onDistance(it*1_000)};TodayGoalChoice.TIME->customValue.toLongOrNull()?.takeIf{it>0}?.let{onTime(it*60)};TodayGoalChoice.CALORIES->customValue.toIntOrNull()?.takeIf{it>0}?.let(onCalories);else->onDismiss()}},enabled=customValue.toDoubleOrNull()?.let{it>0}==true){Text(stringResource(R.string.today_done))} }, dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.today_change)) } })
+    }, confirmButton = {
+        val validCustomValue = when (goal) {
+            TodayGoalChoice.DISTANCE -> customValue.toDoubleOrNull()?.let { it.isFinite() && it > 0 } == true
+            TodayGoalChoice.TIME -> customValue.toLongOrNull()?.let { it > 0 } == true
+            TodayGoalChoice.CALORIES -> customValue.toIntOrNull()?.let { it > 0 } == true
+            else -> false
+        }
+        TextButton(
+            onClick = {
+                if (customValue.isBlank()) {
+                    // Pause at goal is persisted when toggled, independently of target edits, like iOS.
+                    onDismiss()
+                } else {
+                    when (goal) {
+                        TodayGoalChoice.DISTANCE -> onDistance(customValue.toDouble() * 1_000)
+                        TodayGoalChoice.TIME -> onTime(customValue.toLong() * 60)
+                        TodayGoalChoice.CALORIES -> onCalories(customValue.toInt())
+                        else -> onDismiss()
+                    }
+                }
+            },
+            enabled = customValue.isBlank() || validCustomValue,
+        ) { Text(stringResource(R.string.today_done)) }
+    }, dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.today_change)) } })
 }
 
 @Composable
