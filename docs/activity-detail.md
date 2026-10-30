@@ -42,6 +42,7 @@ Limitations vs Strava and category expectations:
 
 - Manage Photos commits through `ActivityStore.updatePhotos`, then reuses the preference-aware, deduplicated Photos album exporter, transient feedback, and export analytics used by new activity saves.
 - Metadata edits resolve the latest stored activity to preserve photos saved by the nested manager. Reopening Manage Photos also resolves the latest activity.
+- Automated regression: `./scripts/run-ui-flow.sh activity-photos` exercises saved-photo refresh and persistence through the recent activity UI; see `docs/build-test-device.md` for fixture boundaries.
 - Device verification: open a recent activity → edit → Manage Photos → Take Photo → capture → Done; change the title and Save; reopen both activity and manager. Confirm the photo remains and appears once in the Plainstride album when enabled. Repeat with imports, deletion/reordering, and album saving disabled.
 
 ## Strava Comparison

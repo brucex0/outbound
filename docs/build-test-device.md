@@ -168,6 +168,7 @@ This suite covers the primary shell and navigation, seeded Social connections, r
 ./scripts/run-ui-flow.sh --list
 ./scripts/run-ui-flow.sh appearance
 ./scripts/run-ui-flow.sh appearance-palette
+OUTBOUND_UI_SIMULATOR_RUNTIME=com.apple.CoreSimulator.SimRuntime.iOS-26-5 ./scripts/run-ui-flow.sh activity-photos
 # Explicit simulator or connected test iPhone (use its Xcode UDID):
 ./scripts/run-ui-flow.sh appearance 'platform=iOS Simulator,id=SIMULATOR_UUID'
 ./scripts/run-ui-flow.sh appearance 'platform=iOS,id=DEVICE_UDID'
@@ -175,6 +176,7 @@ This suite covers the primary shell and navigation, seeded Social connections, r
 
 - Each command runs only the named XCTest UI flow. The default creates and removes a dedicated iPhone simulator, preserving existing simulator apps and data.
 - `appearance` verifies that the tip and all four toolbar controls are visible, tappable, and do not overlap, then taps the pill, verifies the chooser, and returns to the toolbar. `appearance-palette` checks the palette path while the tip is visible.
+- `activity-photos` runs `SavedActivityPhotoUITests` on Simulator: recent activity → Manage Photos → camera/import → Done → metadata Save, immediate detail refresh, reopening the manager, and persistence after app relaunch. It checks the real Plainstride Photos album, imports through the system picker, and verifies refresh when the parent metadata editor is cancelled. Both tests passed. The photo flow disables verbose failure sysdiagnoses (which stalled on this host), retaining normal XCTest results and screenshots. Only camera hardware is replaced with a deterministic DEBUG simulator image; local persistence, album export, and image importing remain real. Validated on iOS 26.5; the iOS 27.0 run encountered permission/keyboard/system-picker automation failures. Set `OUTBOUND_UI_SIMULATOR_RUNTIME` to select a temporary simulator runtime, or pass an explicit simulator destination. Physical camera capture still requires device verification.
 - Screenshots and XCTest assertions are retained in `Flow.xcresult`, with the build/test log in the fresh `/tmp/plainstride-ui-flow.*` directory printed by the runner. Open the result bundle in Xcode to inspect failures and screenshots. The command returns nonzero on failure.
 - Connected phones require pairing, Developer Mode, an unlocked screen, and valid development signing. Use a dedicated test phone: flows relaunch the app with local test authentication and fixtures, and some scenarios change local app state. They do not test production sign-in.
 - The runner controls the app through Apple's XCTest runner; no network command listener is added to the app. Device availability and signing are reported by `xcodebuild`.

@@ -742,6 +742,7 @@ struct ActivityDetailView: View {
                             }
                         }
                         .id(photo.id)
+                        .accessibilityIdentifier("SavedActivityPhoto-\(index)")
                         .accessibilityLabel(photoCaption(photo, index: index, compact: false))
                         .accessibilityHint(photo.id == selectedPhotoID
                             ? String(localized: "activity.photos.open", defaultValue: "Open photo full screen")
@@ -2151,6 +2152,7 @@ private struct EditActivityView: View {
             Form {
                 Section("Activity") {
                     TextField("Title", text: $title)
+                        .accessibilityIdentifier("EditActivityTitle")
                     DatePicker("Date", selection: $startedAt)
                     TextField("Distance in km", text: $distanceText)
                         .keyboardType(.decimalPad)
@@ -2301,6 +2303,8 @@ private struct SavedActivityPhotoManager: View {
                                 }
                                 Text(photo.takenAt, style: .time).foregroundStyle(.secondary)
                             }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityIdentifier("ManagedSavedPhoto-\(photo.id)")
                         }
                         .onDelete { keptPhotos.remove(atOffsets: $0) }
                         .onMove { keptPhotos.move(fromOffsets: $0, toOffset: $1) }
@@ -2313,6 +2317,8 @@ private struct SavedActivityPhotoManager: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 8))
                                 Text(photo.metadata.takenAt, style: .time).foregroundStyle(.secondary)
                             }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityIdentifier("ManagedNewPhoto-\(photo.id)")
                         }
                         .onDelete { newPhotos.remove(atOffsets: $0) }
                         .onMove { newPhotos.move(fromOffsets: $0, toOffset: $1) }

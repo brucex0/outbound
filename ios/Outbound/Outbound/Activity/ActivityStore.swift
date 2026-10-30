@@ -864,6 +864,24 @@ final class ActivityStore: ObservableObject {
 
     private func loadActivities() async {
         defer { hasLoadedActivities = true }
+#if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestPhotoEditing") {
+            do {
+                if !ProcessInfo.processInfo.arguments.contains("-OutboundUITestRestorePhotoEditing") {
+                    for fixture in Self.uiTestActivityFixtures {
+                        try await persistence.replaceOrInsert(fixture)
+                    }
+                }
+                // Unlike in-memory UI seeds, these fixtures exercise disk writes
+                // and can be reopened after a fresh app process.
+                activities = try await persistence.load().sortedByStartTimeDescending()
+            } catch {
+                ActivityDiagnosticLog.error(.persistence,
+                    "Photo UI fixture load failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+            }
+            return
+        }
+#endif
         if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData")
             || ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedSavedActivity")
         {

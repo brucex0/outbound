@@ -26,6 +26,9 @@ final class CameraController: ObservableObject {
     }
 
     func start() {
+#if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestPhotoEditing") { return }
+#endif
         let status = AVCaptureDevice.authorizationStatus(for: .video)
         updateAuthorizationStatus(status)
 
@@ -63,6 +66,20 @@ final class CameraController: ObservableObject {
     }
 
     func capturePhoto(completion: @escaping (UIImage?) -> Void) {
+#if DEBUG && targetEnvironment(simulator)
+        // Only replace unavailable simulator camera hardware; callers still run
+        // their normal capture callback, draft, persistence, and Photos export.
+        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestPhotoEditing") {
+            let image = UIGraphicsImageRenderer(size: CGSize(width: 320, height: 240)).image { context in
+                UIColor.systemOrange.setFill()
+                context.fill(CGRect(x: 0, y: 0, width: 320, height: 240))
+                UIColor.white.setFill()
+                context.fill(CGRect(x: 100, y: 60, width: 120, height: 120))
+            }
+            DispatchQueue.main.async { completion(image) }
+            return
+        }
+#endif
         sessionQueue.async { [weak self] in
             guard let self else { return }
             self.configureSessionIfNeeded()
