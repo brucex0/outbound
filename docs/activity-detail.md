@@ -40,6 +40,7 @@ Limitations vs Strava and category expectations:
 
 ## Photo editing persistence
 
+- The Edit Activity Manage Photos row uses a static monochrome symbol with symbol effects and implicit transitions disabled during store refreshes.
 - Manage Photos commits through `ActivityStore.updatePhotos`, then reuses the preference-aware, deduplicated Photos album exporter, transient feedback, and export analytics used by new activity saves.
 - Metadata edits resolve the latest stored activity to preserve photos saved by the nested manager. Reopening Manage Photos also resolves the latest activity.
 - Automated regression: `./scripts/run-ui-flow.sh activity-photos` exercises saved-photo refresh and persistence through the recent activity UI; see `docs/build-test-device.md` for fixture boundaries.

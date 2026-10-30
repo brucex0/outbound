@@ -2173,10 +2173,20 @@ private struct EditActivityView: View {
                     Button {
                         isPhotoManagerPresented = true
                     } label: {
-                        Label(
-                            String(localized: "summary.photos.manage", defaultValue: "Manage Photos"),
-                            systemImage: "photo.on.rectangle.angled"
-                        )
+                        Label {
+                            Text(String(localized: "summary.photos.manage", defaultValue: "Manage Photos"))
+                        } icon: {
+                            Image(systemName: "photo.on.rectangle.angled")
+                                .symbolRenderingMode(.monochrome)
+                                .symbolEffectsRemoved()
+                                .contentTransition(.identity)
+                        }
+                        // Store updates can redraw the form while it is open.
+                        // This static action must not animate its symbol layers.
+                        .transaction { transaction in
+                            transaction.animation = nil
+                            transaction.disablesAnimations = true
+                        }
                     }
                 }
             }
