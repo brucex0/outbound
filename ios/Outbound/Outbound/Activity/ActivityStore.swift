@@ -681,6 +681,8 @@ final class ActivityStore: ObservableObject {
         durationSecs: Int,
         gear: ActivityGearAttachment?
     ) async throws {
+        // Nested editors may have already committed photos since this editor opened.
+        let activity = self.activity(id: activity.id) ?? activity
         let cleanedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         var editedFields: [String] = []
         if cleanedTitle != activity.title { editedFields.append("title") }
@@ -767,6 +769,7 @@ final class ActivityStore: ObservableObject {
         if let index = activities.firstIndex(where: { $0.id == updated.id }) {
             activities[index] = updated
         }
+        await exportPhotosToAlbumIfNeeded(updated)
         Task { await syncActivityIfPossible(id: updated.id) }
     }
 

@@ -2202,7 +2202,7 @@ private struct EditActivityView: View {
             Text(saveError ?? "Try again.")
         }
         .sheet(isPresented: $isPhotoManagerPresented) {
-            SavedActivityPhotoManager(activity: activity)
+            SavedActivityPhotoManager(activity: activityStore.activity(id: activity.id) ?? activity)
                 .environmentObject(activityStore)
         }
     }
@@ -2365,6 +2365,7 @@ private struct SavedActivityPhotoManager: View {
     }
 
     private func save() async {
+        guard !isSaving else { return }
         isSaving = true
         defer { isSaving = false }
         do {
@@ -2375,6 +2376,10 @@ private struct SavedActivityPhotoManager: View {
             )
             dismiss()
         } catch {
+            ActivityDiagnosticLog.error(
+                .persistence,
+                "Activity photo update failed error=\(ActivityDiagnosticLog.errorCategory(error))"
+            )
             saveError = error.localizedDescription
         }
     }
