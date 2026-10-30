@@ -109,7 +109,8 @@ private fun SharedCommunityRouteLibrary(
   }else onImport(false)
  }
  LaunchedEffect(searchQuery) { query=searchQuery;submittedQuery=searchQuery.isNotBlank() }
- LaunchedEffect(selectionMode,initialSelection?.id,routeDetailLoading){
+ // Only reset when the picker input changes; detail loading belongs to the pending row.
+ LaunchedEffect(selectionMode,initialSelection?.id,initialSelectionReverse){
   if(selectionMode){
    selectedForToday=initialSelection
    pendingSelectionId=initialSelection?.takeIf{it.guidancePoints().size<2&&routeDetailLoading}?.id
