@@ -826,6 +826,7 @@ private fun SignedInApp(
                             onSelectShoe = { shoe -> selectedTodayShoeId = shoe.id; integrationViewModel.trackShoeSelected("active_shoe") },
                             onAddShoe = { integrationViewModel.trackShoeSelected("add_new"); addShoeSheetVisible = true },
                             onOpenLiveTrack = { cheerPickerVisible = true },
+                            cheerRecipientsSelected = selectedCheerIdSet.isNotEmpty(),
                             onOpenInbox = { navController.navigate(NOTIFICATIONS_ROUTE) },
                             onFindRoute = {
                                 selectingRouteForToday = true

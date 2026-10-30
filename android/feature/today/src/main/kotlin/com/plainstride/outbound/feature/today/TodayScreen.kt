@@ -181,6 +181,7 @@ fun TodayRoute(
     onSelectShoe: (TodayShoeOption) -> Unit = {},
     onAddShoe: () -> Unit,
     onOpenLiveTrack: () -> Unit,
+    cheerRecipientsSelected: Boolean = false,
     onOpenInbox: () -> Unit,
     onFindRoute: () -> Unit,
     selectedRoute: TodayRouteSelection? = null,
@@ -256,6 +257,7 @@ fun TodayRoute(
         onSelectShoe = onSelectShoe,
         onAddShoe = onAddShoe,
         onOpenLiveTrack = onOpenLiveTrack,
+        cheerRecipientsSelected = cheerRecipientsSelected,
         onOpenInbox = onOpenInbox,
         onFindRoute = onFindRoute,
         selectedRoute = selectedRoute,
@@ -322,6 +324,7 @@ fun TodayScreen(
     onSelectShoe: (TodayShoeOption) -> Unit = {},
     onAddShoe: () -> Unit = {},
     onOpenLiveTrack: () -> Unit = {},
+    cheerRecipientsSelected: Boolean = false,
     onOpenInbox: () -> Unit = {},
     onFindRoute: () -> Unit = {},
     selectedRoute: TodayRouteSelection? = null,
@@ -572,6 +575,7 @@ fun TodayScreen(
                 onSelectShoe = onSelectShoe,
                 onAddShoe = onAddShoe,
                 onOpenLiveTrack = onOpenLiveTrack,
+                cheerRecipientsSelected = cheerRecipientsSelected,
             )
     }
 
@@ -986,6 +990,7 @@ private fun ActivityLaunchDock(
     onSelectShoe: (TodayShoeOption) -> Unit,
     onAddShoe: () -> Unit,
     onOpenLiveTrack: () -> Unit,
+    cheerRecipientsSelected: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
@@ -1012,7 +1017,7 @@ private fun ActivityLaunchDock(
                         selected = companionType != null,
                     )
                 }
-                UtilityButton(stringResource(R.string.today_cheer), onClick = onOpenLiveTrack)
+                UtilityButton(stringResource(R.string.today_cheer), onClick = onOpenLiveTrack, selected = cheerRecipientsSelected)
                 TodayShoePicker(shoes, selectedShoeId, onSelectShoe, onAddShoe)
                 UtilityButton(stringResource(if (indoor) R.string.today_indoor else R.string.today_outdoor), onClick = { onIndoorChanged(!indoor) }, selected = true)
             }
