@@ -38,6 +38,7 @@ The coordinator owns the screen models for one retained flow. Screen changes and
 - Live keeps its existing `LiveMapView`/camera and recorder-backed route; paging does not reconstruct the native map.
 - Review uses the finished snapshot and existing `PostRunSummaryView` route presentation.
 - Share existing map surface/geometry helpers, not mutable camera state between screens. Replacing map renderers is outside this behavior-preserving extraction.
+- Reusable plan setup presents as a full-screen cover above the retained main shell when `OnboardingStore.isPresented` changes after startup. First-use onboarding retains its startup destination; finishing the reusable builder returns to the same Today draft. The existing builder analytics retain their presentation source.
 - Today and Group use the same `RecordView` adapter and flow implementation. Preserve embedded Today and immediate standalone Group launch, permission prompts, and return destinations.
 - Current Group detail owns a standalone flow presentation; Today retains its own flow. Moving both to one app-owned session and changing conflict/return routing is a separate navigation migration, not claimed as implemented here.
 

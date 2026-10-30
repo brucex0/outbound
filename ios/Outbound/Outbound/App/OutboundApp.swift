@@ -175,6 +175,14 @@ struct OutboundApp: App {
             .transition(.opacity.combined(with: .scale(scale: 0.99)))
         }
         .animation(.easeInOut(duration: 0.28), value: startupDestination)
+        // First-use onboarding owns a startup destination. Reusable plan setup
+        // presents over the retained main shell so Today keeps its launch draft.
+        .fullScreenCover(isPresented: Binding(
+            get: { startupDestination == .main && onboardingStore.isPresented },
+            set: { if !$0 { onboardingStore.finishLater() } }
+        )) {
+            onboardingRoot
+        }
         .task(id: authStore.startupResolutionKey) {
             await resolveStartupDestination()
         }

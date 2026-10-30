@@ -143,6 +143,7 @@ extension ActivityFlowView {
             .shadow(color: .black.opacity(0.1), radius: 12, y: 5)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("activity.goal.edit")
         .disabled(model.setup.selectedGoalMode == .planned || model.setup.selectedGoalMode == .freestyle)
     }
 

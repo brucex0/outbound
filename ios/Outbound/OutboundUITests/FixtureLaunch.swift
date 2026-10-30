@@ -2,7 +2,7 @@ import XCTest
 
 extension XCTestCase {
     @MainActor
-    func launchFixtureApp(extraArguments: [String] = [], resetRecording: Bool = true) -> XCUIApplication {
+    func launchFixtureApp(extraArguments: [String] = [], resetRecording: Bool = true, overrideLaunchPreferences: Bool = true) -> XCUIApplication {
         addUIInterruptionMonitor(withDescription: "Fixture system permissions") { alert in
             for label in ["Allow While Using App", "Allow Once", "OK", "Allow"] {
                 if alert.buttons[label].exists { alert.buttons[label].tap(); return true }
@@ -16,9 +16,13 @@ extension XCTestCase {
             "-OutboundUITestSeedData", "-home_widget_onboarding_seen_v1", "YES",
             "-push_notification_permission_primer_seen_v1", "YES",
             "-new_user_onboarding_completed_v2.UI test session", "YES",
-            "-voice_guide_enabled_v1", "NO", "-watch.startWatchApp", "NO",
-            "-auto_pause_running_enabled_v1", "NO",
         ]
+        if overrideLaunchPreferences {
+            app.launchArguments += [
+                "-voice_guide_enabled_v1", "NO", "-watch.startWatchApp", "NO",
+                "-auto_pause_running_enabled_v1", "NO",
+            ]
+        }
         if resetRecording { app.launchArguments.append("-OutboundUITestResetRecording") }
         app.launchArguments += extraArguments
         app.launch()

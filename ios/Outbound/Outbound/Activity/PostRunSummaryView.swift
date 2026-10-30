@@ -917,6 +917,7 @@ struct PostRunCameraView: View {
                             .frame(width: 44, height: 44)
                             .background(.ultraThinMaterial, in: Circle())
                     }
+                    .accessibilityIdentifier("activity.photo.close")
                     Spacer()
                     Button { camera.flipCamera() } label: {
                         Image(systemName: "camera.rotate.fill")

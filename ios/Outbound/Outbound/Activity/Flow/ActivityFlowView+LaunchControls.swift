@@ -15,6 +15,7 @@ extension ActivityFlowView {
                 .padding(.horizontal, 16)
             }
             .defaultScrollAnchor(host.isEmbeddedInToday ? .center : .leading, for: .alignment)
+            .accessibilityIdentifier("activity.launch.workouts")
 
             HStack(spacing: 10) {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -206,6 +207,7 @@ extension ActivityFlowView {
             }
             .padding(.horizontal, 16)
         }
+        .accessibilityIdentifier("activity.launch.modes")
     }
 
     var contextualStartControl: some View {
@@ -271,6 +273,7 @@ extension ActivityFlowView {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("activity.workout.\(choice.id)")
         .accessibilityLabel(choice.title)
         .accessibilityValue(choice.accessibilityValue(
             plannedIntent: model.setup.plannedWorkoutIntent,
@@ -300,6 +303,7 @@ extension ActivityFlowView {
                 .shadow(color: .black.opacity(isSelected ? 0.12 : 0.07), radius: 8, y: 3)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("activity.mode.\(mode.rawValue)")
         .accessibilityLabel(mode.pillTitle)
         .accessibilityValue(
             mode == .curated && isSelected

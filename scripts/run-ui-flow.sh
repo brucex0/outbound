@@ -3,15 +3,20 @@ set -euo pipefail
 
 repo_dir=${0:A:h:h}
 flow=${1:---list}
+additional_tests=()
 case "$flow" in
   --list|--help)
     print 'Usage: scripts/run-ui-flow.sh FLOW [XCODE_DESTINATION]'
-    print 'Flows: appearance, appearance-palette, activity-photos'
+    print 'Flows: appearance, appearance-palette, activity-photos, launch-controls'
     print 'Default: temporary iPhone simulator. Physical device: platform=iOS,id=DEVICE_UDID'
     print 'Results: fresh /tmp/plainstride-ui-flow.XXXXXX directory (log + xcresult screenshots).'
     print 'Optional OUTBOUND_UI_SIMULATOR_RUNTIME selects the runtime for a temporary simulator.'
     exit 0 ;;
   activity-photos) test_name='SavedActivityPhotoUITests' ;;
+  launch-controls)
+    test_name='LaunchControlUITests'
+    additional_tests+=('-only-testing:OutboundUITests/OutboundUITests/testTodayFreestyleStartOpensRecordingFlowAndCanFinish')
+    ;;
   appearance) test_name='UIFlowTests/testAppearanceTipOpensChooserAndKeepsToolbarVisible' ;;
   appearance-palette) test_name='UIFlowTests/testAppearancePaletteOpensChooserWhileTipVisible' ;;
   *) print -u2 "Unknown UI flow: $flow. Use --list."; exit 2 ;;
@@ -64,6 +69,7 @@ xcodebuild -quiet \
   OUTBOUND_APP_TEST_MODE=YES \
   -parallel-testing-enabled NO \
   "-only-testing:OutboundUITests/$test_name" \
+  "${additional_tests[@]}" \
   "${build_options[@]}" test 2>&1 | tee "$results_dir/xcodebuild.log"
 
 print "UI flow passed: $flow"

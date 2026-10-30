@@ -102,6 +102,7 @@ extension ActivityFlowView {
                         text: goalEditorTextBinding(for: kind),
                         prompt: Text("0")
                     )
+                    .accessibilityIdentifier("activity.goal.custom")
                     .keyboardType(kind == .distance ? .decimalPad : .numberPad)
                     .font(.body.monospacedDigit().weight(.semibold))
                     .focused($focusedCustomGoalKind, equals: kind)
@@ -125,12 +126,14 @@ extension ActivityFlowView {
                     dismissGoalEditor()
                 }
                 .buttonStyle(.bordered)
+                .accessibilityIdentifier("activity.goal.cancel")
                 .frame(maxWidth: .infinity)
 
                 Button(String(localized: "common.done", defaultValue: "Done")) {
                     saveGoalEditorSelection()
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("activity.goal.done")
                 .tint(.orange)
                 .frame(maxWidth: .infinity)
                 .disabled(model.setup.goalEditorGoal == nil)
@@ -348,6 +351,8 @@ extension ActivityFlowView {
             .fixedSize(horizontal: true, vertical: false)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("activity.goal.preset.\(title)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     func customGoalTextBinding(for kind: CustomGoalKind) -> Binding<String> {

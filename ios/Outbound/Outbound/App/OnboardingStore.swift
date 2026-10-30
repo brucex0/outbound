@@ -430,6 +430,16 @@ final class OnboardingStore: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         completedProfile = Self.decode(OnboardingProfile.self, from: defaults.data(forKey: profileKey(for: activeIdentity)))
+#if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData"),
+           ProcessInfo.processInfo.arguments.contains("-OutboundUITestLaunchControls") {
+            // Synthetic body context keeps calorie-control UI checks offline.
+            // Do not persist or replace a real account's body profile.
+            completedProfile = nil
+            draft.unitSystem = .metric
+            draft.weightText = "70"
+        }
+#endif
     }
 
     var progressText: String {
