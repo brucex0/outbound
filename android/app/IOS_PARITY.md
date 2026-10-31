@@ -14,6 +14,7 @@
 - [x] Existing iPhone accounts can enter the deliberate one-time transfer/link flow without weakening normal Google sign-in.
 - [x] Primary navigation contains exactly Social, Today, and Me.
 - [x] Today is initially selected.
+- [x] Me → Connections uses a dedicated nested destination; dismissing Connections returns directly to Me without adding a Social tab entry. The existing `connections_opened` event retains `me_preview` as its entry source.
 - [x] Assistant is a persistent launcher on every primary destination, not a fourth tab.
 - [x] Closing Assistant returns to the primary destination that opened it.
 - [x] Assistant deep links open the same destination.
@@ -50,6 +51,8 @@
 - Network status is environmental and has no corresponding iOS analytics event. Offline and recording statuses expose localized accessibility labels; the pending-sync Snackbar uses localized text.
 
 ### Reference Scenarios
+
+- Me → Connections → system Back or dialog close returns to Me in one step; Social/Me tab taps still work afterward. Also check Connections → profile → Back and My QR → Back. Device verification remains pending.
 
 - Online with no pending writes; airplane mode while on Today, Social, Me, and nested signed-in screens; restore connectivity with queued activity writes and confirm transient feedback; drain the outbox.
 - Begin and continue an activity offline; restore connectivity and confirm local recording remains active while sync resumes.

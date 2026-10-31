@@ -71,11 +71,11 @@ import com.plainstride.outbound.feature.activity.ActivityExport
 import com.plainstride.outbound.feature.activity.ActivityViewModel
 import com.plainstride.outbound.feature.activity.R as ActivityR
 
-@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,targetEntrySource:String="deep_link",inboxCount:Int=0,unitSystem:MeasurementUnitSystem=MeasurementUnitSystem.metric,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onTargetConsumed:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={},onRoutesTabSelected:()->Unit={},onOpenSharedActivity:(String)->Unit={},onOpenSharedEvent:(String,String)->Unit={_,_->},onOpenSharedProfile:(SocialPerson)->Unit={},onOpenLiveCheer:(String)->Unit={},groupRun:SharedLiveRun?=null,groupRunJoining:Boolean=false,onToggleActivityLiveMap:(String)->Unit={},onStartGroupActivity:(SocialEvent)->Unit={},communityRoutesContent: @Composable (Int) -> Unit = {}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel(), notificationAccessAvailable: Boolean = true, onEnableNotifications: () -> Unit = {}) {
+@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,targetEntrySource:String="deep_link",inboxCount:Int=0,unitSystem:MeasurementUnitSystem=MeasurementUnitSystem.metric,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onConnectionsClosed:()->Unit={},onTargetConsumed:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={},onRoutesTabSelected:()->Unit={},onOpenSharedActivity:(String)->Unit={},onOpenSharedEvent:(String,String)->Unit={_,_->},onOpenSharedProfile:(SocialPerson)->Unit={},onOpenLiveCheer:(String)->Unit={},groupRun:SharedLiveRun?=null,groupRunJoining:Boolean=false,onToggleActivityLiveMap:(String)->Unit={},onStartGroupActivity:(SocialEvent)->Unit={},communityRoutesContent: @Composable (Int) -> Unit = {}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel(), notificationAccessAvailable: Boolean = true, onEnableNotifications: () -> Unit = {}) {
     var selectedTab by rememberSaveable { mutableStateOf(SocialFeatureTab.FEED) }
     var hasSelectedSocialTab by rememberSaveable { mutableStateOf(false) }
     var routeImportRequest by rememberSaveable { mutableStateOf(0) }
-    var createGroup by rememberSaveable { mutableStateOf(false) };var inviteGroup by remember { mutableStateOf<GroupSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var groupActivity by remember { mutableStateOf<GroupSummary?>(null) };var connectionsOpen by remember { mutableStateOf(false) };var addConnectionFlow by rememberSaveable { mutableStateOf(false) }
+    var createGroup by rememberSaveable { mutableStateOf(false) };var inviteGroup by remember { mutableStateOf<GroupSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var groupActivity by remember { mutableStateOf<GroupSummary?>(null) };var connectionsOpen by rememberSaveable { mutableStateOf(false) };var addConnectionFlow by rememberSaveable { mutableStateOf(false) }
     var scannerOpen by rememberSaveable { mutableStateOf(false) }
     var scannerFeedback by remember { mutableStateOf<String?>(null) }
     val feedListState = rememberLazyListState()
@@ -239,7 +239,7 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
         declineRequest = { person -> person.connectionId?.let(viewModel::removeConnection) },
         cancelRequest = { person -> person.connectionId?.let(viewModel::removeConnection) },
         loadMoreConnections = viewModel::loadMoreConnections,
-        close = { connectionsOpen = false; addConnectionFlow = false; viewModel.search("") },
+        close = { connectionsOpen = false; addConnectionFlow = false; viewModel.search(""); onConnectionsClosed() },
     )
     if (scannerOpen) ConnectionQrScannerScreen(
         isProcessing = state.connectionProfileLoading,
