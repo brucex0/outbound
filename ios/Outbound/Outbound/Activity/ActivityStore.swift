@@ -755,8 +755,16 @@ final class ActivityStore: ObservableObject {
     func updatePhotos(
         for activity: SavedActivity,
         keeping photos: [SavedPhoto],
-        adding captures: [(UIImage, PhotoMetadata)]
+        adding captures: [(UIImage, PhotoMetadata)],
+        photoOrder: [Int]? = nil
     ) async throws {
+        if let photoOrder {
+            let count = photos.count + captures.count
+            guard photoOrder.count == count, Set(photoOrder) == Set(0..<count) else {
+                ActivityDiagnosticLog.error(.persistence, "Activity photo update failed: invalid draft order")
+                throw CocoaError(.fileWriteUnknown)
+            }
+        }
         let current = self.activity(id: activity.id) ?? activity
         let keptIDs = Set(photos.map(\.id))
         for removed in current.photos where !keptIDs.contains(removed.id) {
@@ -764,7 +772,7 @@ final class ActivityStore: ObservableObject {
                 try await api.deleteActivityPhoto(id: remotePhotoID)
             }
         }
-        let updated = try await persistence.updatePhotos(for: current, keeping: photos, adding: captures)
+        let updated = try await persistence.updatePhotos(for: current, keeping: photos, adding: captures, photoOrder: photoOrder)
         activityRevision += 1
         if let index = activities.firstIndex(where: { $0.id == updated.id }) {
             activities[index] = updated

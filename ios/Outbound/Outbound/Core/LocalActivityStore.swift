@@ -96,9 +96,10 @@ actor ActivityPersistence {
     func updatePhotos(
         for activity: SavedActivity,
         keeping photos: [SavedPhoto],
-        adding captures: [(UIImage, PhotoMetadata)]
+        adding captures: [(UIImage, PhotoMetadata)],
+        photoOrder: [Int]? = nil
     ) throws -> SavedActivity {
-        try LocalActivityStore.updatePhotos(for: activity, keeping: photos, adding: captures)
+        try LocalActivityStore.updatePhotos(for: activity, keeping: photos, adding: captures, photoOrder: photoOrder)
     }
 }
 
@@ -250,7 +251,8 @@ private nonisolated enum LocalActivityStore {
     static func updatePhotos(
         for activity: SavedActivity,
         keeping photos: [SavedPhoto],
-        adding captures: [(UIImage, PhotoMetadata)]
+        adding captures: [(UIImage, PhotoMetadata)],
+        photoOrder: [Int]? = nil
     ) throws -> SavedActivity {
         let keptIDs = Set(photos.map(\.id))
         for removed in activity.photos where !keptIDs.contains(removed.id) {
@@ -280,6 +282,17 @@ private nonisolated enum LocalActivityStore {
                 remoteUploadedAt: nil
             )
         }
+        let combinedPhotos = photos + addedPhotos
+        let orderedPhotos: [SavedPhoto]
+        if let photoOrder {
+            guard photoOrder.count == combinedPhotos.count,
+                  Set(photoOrder) == Set(combinedPhotos.indices) else {
+                throw CocoaError(.fileWriteUnknown)
+            }
+            orderedPhotos = photoOrder.map { combinedPhotos[$0] }
+        } else {
+            orderedPhotos = combinedPhotos
+        }
         let updated = SavedActivity(
             id: activity.id,
             activityType: activity.activityType,
@@ -308,7 +321,7 @@ private nonisolated enum LocalActivityStore {
             followedRoute: activity.followedRoute,
             recognitionBadgeIDs: activity.recognitionBadgeIDs,
             route: activity.route,
-            photos: photos + addedPhotos,
+            photos: orderedPhotos,
             sync: SavedActivitySyncState(
                 clientActivityId: activity.sync?.clientActivityId ?? activity.id.uuidString,
                 serverActivityId: activity.sync?.serverActivityId,

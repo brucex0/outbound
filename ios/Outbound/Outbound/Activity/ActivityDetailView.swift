@@ -2119,6 +2119,21 @@ private struct HeartRateZonesMiniView: View {
     }
 }
 
+private enum EditableActivityPhoto: Identifiable {
+    case saved(SavedPhoto)
+    case added(PostRunPhoto)
+
+    var id: UUID {
+        switch self { case .saved(let photo): photo.id; case .added(let photo): photo.id }
+    }
+    var captureContext: PhotoCaptureContext {
+        switch self { case .saved(let photo): photo.captureContext; case .added(let photo): photo.metadata.captureContext }
+    }
+    var distance: Double {
+        switch self { case .saved(let photo): photo.distAtShot; case .added(let photo): photo.metadata.distAtShot }
+    }
+}
+
 private struct EditActivityView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.analyticsManager) private var analyticsManager
@@ -2139,10 +2154,17 @@ private struct EditActivityView: View {
     @State private var shoeID: UUID?
     @State private var isSaving = false
     @State private var saveError: String?
-    @State private var isPhotoManagerPresented = false
+    @State private var draftPhotos: [EditableActivityPhoto]
+    @State private var selectedPhotoIDs: Set<UUID> = []
+    @State private var importedPhotoItems: [PhotosPickerItem] = []
+    @State private var isCameraPresented = false
+    @State private var previewedPhotoID: UUID?
+    @State private var isImporting = false
+    @EnvironmentObject private var tooltipCoordinator: TooltipCoordinator
 
     init(activity: SavedActivity) {
         self.activity = activity
+        _draftPhotos = State(initialValue: activity.photos.map(EditableActivityPhoto.saved))
         _title = State(initialValue: activity.title)
         _startedAt = State(initialValue: activity.startedAt)
         _distanceText = State(initialValue: String(format: "%.2f", activity.distanceM / 1000))
@@ -2164,27 +2186,21 @@ private struct EditActivityView: View {
                     DatePicker("Date", selection: $startedAt)
                 }
 
-                Section(String(localized: "activity.photos.title", defaultValue: "Photos")) {
-                    ActivityPhotoCarousel {
-                        ForEach((activityStore.activity(id: activity.id) ?? activity).photos) { photo in
-                            ActivityPhotoThumbnail(
-                                caption: photo.takenAt.formatted(date: .omitted, time: .shortened),
-                                isSelected: false,
-                                action: { isPhotoManagerPresented = true }
-                            ) {
-                                if let url = activityStore.imageURL(for: photo, thumbnailPixelHeight: 232) {
-                                    LocalImageView(url: url, maxPixelSize: 232) { Color(.secondarySystemBackground) }
-                                }
-                            }
-                            .accessibilityLabel(String(localized: "summary.photos.manage", defaultValue: "Manage Photos"))
-                        }
-                        Button { isPhotoManagerPresented = true } label: {
-                            ActivityPhotoActionTile(
-                                title: String(localized: "summary.photos.manage", defaultValue: "Manage Photos"),
-                                systemImage: "photo.on.rectangle.angled"
-                            )
-                        }.buttonStyle(.plain)
-                    }
+                Section {
+                    ActivityPhotoReviewSection(
+                        photos: draftPhotos,
+                        selectedPhotoIDs: $selectedPhotoIDs,
+                        importedPhotoItems: $importedPhotoItems,
+                        identifierPrefix: "EditActivity",
+                        onCapture: {
+                            trackPhoto(.photoCaptureAttempted)
+                            isCameraPresented = true
+                        },
+                        onRemove: removeSelectedPhotos,
+                        onMove: movePhoto,
+                        thumbnail: photoThumbnail
+                    )
+                    .listRowInsets(EdgeInsets())
                 }
 
                 Section("activity.edit.details") {
@@ -2219,6 +2235,7 @@ private struct EditActivityView: View {
                     }
                 }
             }
+            .disabled(isSaving || isImporting)
             .safeAreaInset(edge: .bottom) {
                 Button {
                     Task { await save() }
@@ -2229,7 +2246,7 @@ private struct EditActivityView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .disabled(isSaving || !hasChanges || !validMetrics)
+                .disabled(isSaving || isImporting || !hasChanges || !validMetrics)
                 .padding()
                 .background(.bar)
             }
@@ -2238,11 +2255,11 @@ private struct EditActivityView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { if hasChanges { confirmDiscard = true } else { dismiss() } }
-                        .disabled(isSaving)
+                        .disabled(isSaving || isImporting)
                 }
             }
         }
-        .interactiveDismissDisabled(hasChanges || isSaving)
+        .interactiveDismissDisabled(hasChanges || isSaving || isImporting)
         .onAppear {
             guard initialDistanceText.isEmpty else { return }
             units = measurementPreferences.unitSystem
@@ -2271,9 +2288,125 @@ private struct EditActivityView: View {
             do { try await Task.sleep(for: .seconds(4)) } catch { return }
             saveError = nil
         }
-        .sheet(isPresented: $isPhotoManagerPresented) {
-            SavedActivityPhotoManager(activity: activityStore.activity(id: activity.id) ?? activity)
-                .environmentObject(activityStore)
+        .fullScreenCover(isPresented: $isCameraPresented) {
+            PostRunCameraView { image in
+                draftPhotos.append(.added(PostRunPhoto(image: image, metadata: photoMetadata)))
+                trackPhoto(.photoCaptured, locationAttached: photoMetadata.coordinate != nil)
+            }
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { previewedPhotoID != nil }, set: { if !$0 { previewedPhotoID = nil } }
+        )) {
+            NavigationStack {
+                TabView(selection: $previewedPhotoID) {
+                    ForEach(draftPhotos) { photo in
+                        Group {
+                            switch photo {
+                            case .saved(let saved):
+                                if let url = activityStore.imageURL(for: saved) {
+                                    ZoomableActivityPhotoView(url: url, isActive: previewedPhotoID == photo.id, onZoom: { _ in })
+                                }
+                            case .added(let added):
+                                Image(uiImage: added.image).resizable().scaledToFit()
+                            }
+                        }
+                        .tag(Optional(photo.id))
+                    }
+                }
+                .tabViewStyle(.page)
+                .background(.black)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(String(localized: "common.close", defaultValue: "Close")) { previewedPhotoID = nil }
+                    }
+                }
+            }
+        }
+        .onChange(of: importedPhotoItems) { _, items in
+            guard !items.isEmpty else { return }
+            Task { await importPhotos(items) }
+        }
+    }
+
+    private var photoMetadata: PhotoMetadata {
+        PhotoMetadata(takenAt: Date(), paceAtShot: activity.avgPace,
+                      hrAtShot: activity.healthMetrics?.averageHeartRateBPM,
+                      distAtShot: activity.distanceM, coordinate: activity.routeCoordinates.last, captureContext: .paused)
+    }
+
+    private var photosChanged: Bool { draftPhotos.map(\.id) != activity.photos.map(\.id) }
+
+    private func trackPhoto(_ name: ProductEventName, locationAttached: Bool = false) {
+        var properties: [ProductPropertyKey: AnalyticsValue] = [.sourceType: .string("activity_edit")]
+        if name == .photoCaptured { properties[.locationAttached] = .boolean(locationAttached) }
+        Task { await analyticsManager?.track(.init(name, properties: properties)) }
+    }
+
+    private func photoThumbnail(_ photo: EditableActivityPhoto, index: Int) -> some View {
+        ActivityPhotoThumbnail(caption: photoCaption(photo), isSelected: selectedPhotoIDs.contains(photo.id), action: {
+            if selectedPhotoIDs.isEmpty {
+                previewedPhotoID = photo.id
+                trackPhoto(.photoPreviewed)
+            } else { togglePhoto(photo.id) }
+        }, longPressAction: { togglePhoto(photo.id) }) {
+            switch photo {
+            case .saved(let saved):
+                if let url = activityStore.imageURL(for: saved, thumbnailPixelHeight: 232) {
+                    LocalImageView(url: url, maxPixelSize: 232) { Color(.secondarySystemBackground) }
+                }
+            case .added(let added):
+                Image(uiImage: added.image).resizable().scaledToFill()
+            }
+        }
+        .accessibilityLabel(photoCaption(photo))
+        .accessibilityIdentifier("EditActivityPhoto-\(index)")
+        .accessibilityAddTraits(selectedPhotoIDs.contains(photo.id) ? .isSelected : [])
+        .accessibilityHint(String(localized: "summary.photos.long_press_hint", defaultValue: "Long press to select, then drag to reorder"))
+    }
+
+    private func photoCaption(_ photo: EditableActivityPhoto) -> String {
+        switch photo.captureContext {
+        case .preActivity: return String(localized: "activity.photos.start", defaultValue: "Start")
+        case .paused: return String(localized: "activity.photos.finish", defaultValue: "Finish")
+        case .active: return units.distanceString(meters: photo.distance, fractionDigits: 1)
+        }
+    }
+
+    private func togglePhoto(_ id: UUID) {
+        tooltipCoordinator.dismiss(.photoManagement, outcome: "used")
+        if selectedPhotoIDs.contains(id) { selectedPhotoIDs.remove(id) } else { selectedPhotoIDs.insert(id) }
+    }
+
+    private func removeSelectedPhotos() {
+        draftPhotos.removeAll { selectedPhotoIDs.contains($0.id) }
+        selectedPhotoIDs.removeAll()
+        trackPhoto(.photoRemoved)
+    }
+
+    private func movePhoto(_ source: UUID, to destination: UUID) -> Bool {
+        guard source != destination,
+              let from = draftPhotos.firstIndex(where: { $0.id == source }),
+              let to = draftPhotos.firstIndex(where: { $0.id == destination }) else { return false }
+        let photo = draftPhotos.remove(at: from)
+        draftPhotos.insert(photo, at: min(to, draftPhotos.count))
+        trackPhoto(.photoReordered)
+        return true
+    }
+
+    private func importPhotos(_ items: [PhotosPickerItem]) async {
+        isImporting = true
+        defer { isImporting = false; importedPhotoItems = [] }
+        trackPhoto(.photoCaptureAttempted)
+        let placement = ActivityPhotoPlacementContext(activity: activity)
+        for item in items {
+            guard let imported = await ActivityPhotoImporter.importItem(item) else {
+                ActivityDiagnosticLog.error(.persistence, "Activity edit photo import failed: unavailable image or metadata")
+                saveError = String(localized: "activity.photos.save_error", defaultValue: "Couldn’t update photos")
+                continue
+            }
+            let metadata = placement.metadata(for: imported)
+            draftPhotos.append(.added(PostRunPhoto(image: imported.image, metadata: metadata, isImported: true)))
+            trackPhoto(.photoCaptured, locationAttached: metadata.coordinate != nil)
         }
     }
 
@@ -2323,10 +2456,11 @@ private struct EditActivityView: View {
             || distanceText != initialDistanceText || abs(distanceM - activity.distanceM) > 0.5
             || durationSecs != activity.durationSecs
             || shoeID != activity.gear?.shoeID
+            || photosChanged
     }
 
     private func save() async {
-        guard !isSaving, hasChanges, validMetrics else { return }
+        guard !isSaving, !isImporting, hasChanges, validMetrics else { return }
         isSaving = true
         defer { isSaving = false }
         let distanceM = editedDistance
@@ -2341,159 +2475,24 @@ private struct EditActivityView: View {
                 durationSecs: durationSecs,
                 gear: gearStore.attachment(for: selectedShoe)
             )
+            if photosChanged {
+                let kept = draftPhotos.compactMap { photo -> SavedPhoto? in
+                    if case .saved(let saved) = photo { return saved }; return nil
+                }
+                let added = draftPhotos.compactMap { photo -> PostRunPhoto? in
+                    if case .added(let added) = photo { return added }; return nil
+                }
+                let baseIDs = kept.map(\.id) + added.map(\.id)
+                let order = draftPhotos.compactMap { photo in baseIDs.firstIndex(of: photo.id) }
+                try await activityStore.updatePhotos(for: activity, keeping: kept,
+                    adding: added.map { ($0.image, $0.metadata) }, photoOrder: order)
+            }
             await analyticsManager?.track(.init(.featureExposed, properties: [
                 .feature: .string("activity_editor_saved")
             ]))
             dismiss()
         } catch {
             NSLog("Activity metadata save failed: domain=%@ code=%ld", (error as NSError).domain, (error as NSError).code)
-            saveError = error.localizedDescription
-        }
-    }
-}
-
-private struct SavedActivityPhotoManager: View {
-    @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var activityStore: ActivityStore
-    let activity: SavedActivity
-    @State private var keptPhotos: [SavedPhoto]
-    @State private var newPhotos: [PostRunPhoto] = []
-    @State private var importedPhotoItems: [PhotosPickerItem] = []
-    @State private var isCameraPresented = false
-    @State private var isSaving = false
-    @State private var saveError: String?
-
-    init(activity: SavedActivity) {
-        self.activity = activity
-        _keptPhotos = State(initialValue: activity.photos)
-    }
-
-    private var placement: ActivityPhotoPlacementContext {
-        ActivityPhotoPlacementContext(activity: activity)
-    }
-
-    private var photoMetadata: PhotoMetadata {
-        PhotoMetadata(
-            takenAt: Date(),
-            paceAtShot: activity.avgPace,
-            hrAtShot: activity.healthMetrics?.averageHeartRateBPM,
-            distAtShot: activity.distanceM,
-            coordinate: activity.routeCoordinates.last,
-            captureContext: .paused
-        )
-    }
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    Button { isCameraPresented = true } label: {
-                        Label(String(localized: "summary.photos.take", defaultValue: "Take Photo"), systemImage: "camera.fill")
-                    }
-                    PhotosPicker(
-                        selection: $importedPhotoItems,
-                        matching: .images,
-                        photoLibrary: .shared()
-                    ) {
-                        Label(String(localized: "summary.photos.import", defaultValue: "Import Photo"), systemImage: "photo.on.rectangle.angled")
-                    }
-                    .accessibilityIdentifier("ImportActivityEditPhotoButton")
-                }
-
-                if !keptPhotos.isEmpty || !newPhotos.isEmpty {
-                    Section(String(localized: "summary.photos.reorder", defaultValue: "Photos — drag to reorder")) {
-                        ForEach(keptPhotos) { photo in
-                            HStack(spacing: 12) {
-                                if let url = activityStore.imageURL(for: photo, thumbnailPixelHeight: 112) {
-                                    LocalImageView(url: url, maxPixelSize: 112) { Color(.systemGroupedBackground) }
-                                        .frame(width: 72, height: 56)
-                                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                                }
-                                Text(photo.takenAt, style: .time).foregroundStyle(.secondary)
-                            }
-                            .accessibilityElement(children: .combine)
-                            .accessibilityIdentifier("ManagedSavedPhoto-\(photo.id)")
-                        }
-                        .onDelete { keptPhotos.remove(atOffsets: $0) }
-                        .onMove { keptPhotos.move(fromOffsets: $0, toOffset: $1) }
-
-                        ForEach(newPhotos) { photo in
-                            HStack(spacing: 12) {
-                                Image(uiImage: photo.image)
-                                    .resizable().scaledToFill()
-                                    .frame(width: 72, height: 56).clipped()
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                Text(photo.metadata.takenAt, style: .time).foregroundStyle(.secondary)
-                            }
-                            .accessibilityElement(children: .combine)
-                            .accessibilityIdentifier("ManagedNewPhoto-\(photo.id)")
-                        }
-                        .onDelete { newPhotos.remove(atOffsets: $0) }
-                        .onMove { newPhotos.move(fromOffsets: $0, toOffset: $1) }
-                    }
-                }
-            }
-            .environment(\.editMode, .constant(.active))
-            .navigationTitle(String(localized: "summary.photos.manage.title", defaultValue: "Manage Photos"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "common.cancel", defaultValue: "Cancel")) { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(isSaving ? String(localized: "common.saving", defaultValue: "Saving…") : String(localized: "common.done", defaultValue: "Done")) {
-                        Task { await save() }
-                    }
-                    .disabled(isSaving)
-                    .fontWeight(.semibold)
-                }
-            }
-        }
-        .fullScreenCover(isPresented: $isCameraPresented) {
-            PostRunCameraView { image in
-                newPhotos.append(PostRunPhoto(image: image, metadata: photoMetadata))
-            }
-        }
-        .alert(String(localized: "activity.photos.save_error", defaultValue: "Couldn’t update photos"), isPresented: Binding(
-            get: { saveError != nil }, set: { if !$0 { saveError = nil } }
-        )) {
-            Button(String(localized: "common.ok", defaultValue: "OK"), role: .cancel) {}
-        } message: { Text(saveError ?? "") }
-        .onChange(of: importedPhotoItems) { _, items in
-            guard !items.isEmpty else { return }
-            Task { await importPhotos(from: items) }
-        }
-    }
-
-    private func importPhotos(from items: [PhotosPickerItem]) async {
-        let placement = self.placement
-        for item in items {
-            guard let imported = await ActivityPhotoImporter.importItem(item) else { continue }
-            newPhotos.append(PostRunPhoto(
-                image: imported.image,
-                metadata: placement.metadata(for: imported),
-                isImported: true
-            ))
-        }
-        importedPhotoItems = []
-    }
-
-    private func save() async {
-        guard !isSaving else { return }
-        isSaving = true
-        defer { isSaving = false }
-        do {
-            try await activityStore.updatePhotos(
-                for: activity,
-                keeping: keptPhotos,
-                adding: newPhotos.map { ($0.image, $0.metadata) }
-            )
-            dismiss()
-        } catch {
-            ActivityDiagnosticLog.error(
-                .persistence,
-                "Activity photo update failed error=\(ActivityDiagnosticLog.errorCategory(error))"
-            )
             saveError = error.localizedDescription
         }
     }

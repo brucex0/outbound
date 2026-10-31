@@ -41,18 +41,13 @@ Limitations vs Strava and category expectations:
 ## Activity editor
 
 - The editor groups activity identity, photos, workout metrics, and gear, with a persistent Save Changes action and discard confirmation.
-- Detail and edit share `ActivityPhotoCarousel`, with existing `ActivityPhotoThumbnail` and `ActivityPhotoActionTile` tiles. Tapping opens the existing manager; photo changes still commit independently of metadata Cancel/Save.
-- Distance follows the measurement preference with a permanent unit suffix and locale-aware decimals. Unchanged displayed distance preserves the exact stored meters.
-- Duration uses labeled hours/minutes/seconds and preserves seconds when editing other fields. Pace previews use existing sport plausibility rules. Totals edits retain route/split samples.
-- Manual verification: metric/imperial and decimal-comma locale; title-only save on a non-round duration/distance; zero distance, invalid duration, discard, failed save, and photos saved before metadata edits.
-
-## Photo editing persistence
-
-- The Edit Activity carousel opens the existing Manage Photos sheet; detail photo selection and lightbox behavior are unchanged.
-- Manage Photos commits through `ActivityStore.updatePhotos`, then reuses the preference-aware, deduplicated Photos album exporter, transient feedback, and export analytics used by new activity saves.
-- Metadata edits resolve the latest stored activity to preserve photos saved by the nested manager. Reopening Manage Photos also resolves the latest activity.
-- Automated regression: `./scripts/run-ui-flow.sh activity-photos` exercises saved-photo refresh and persistence through the recent activity UI; see `docs/build-test-device.md` for fixture boundaries.
-- Device verification: open a recent activity → edit → Manage Photos → Take Photo → capture → Done; change the title and Save; reopen both activity and manager. Confirm the photo remains and appears once in the Plainstride album when enabled. Repeat with imports, deletion/reordering, and album saving disabled.
+- Save review and edit share `ActivityPhotoReviewSection`: camera/library actions, tap to preview, long press to select, delete selection, and drag selected photos to reorder. The top route/photo pager remains specific to save review.
+- Edit keeps existing file/remote photo references and new captures/imports in one ordered draft. Save Changes persists the photo draft; Cancel discards it. Existing images are not decoded and re-encoded for metadata edits or reordering.
+- New imports retain the existing EXIF-aware importer and activity placement logic. Saved previews use the existing cached image/zoom view; newly added photos use their in-memory image.
+- Mixed saved/new ordering is passed to photo persistence as a validated permutation of retained photos followed by new captures. The default remains append-only for other callers.
+- Metadata and photo persistence are sequential: if photo saving fails after metadata succeeds, the editor retains the draft for retry; it does not roll metadata back.
+- Distance follows the measurement preference with a permanent unit suffix and locale-aware decimals. Unchanged displayed distance preserves exact stored meters. Duration uses labeled hours/minutes/seconds; totals edits retain route/split samples.
+- Manual checks still required: save-page gesture parity; edit preview, selection, delete, mixed-photo reorder, camera/library import, Cancel, failed save/retry, reopen, and Photos album export enabled/disabled. Cover local/cached/remote images and rotated/mirrored imports.
 
 ## Strava Comparison
 

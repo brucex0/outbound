@@ -544,113 +544,23 @@ struct PostRunSummaryView: View {
     }
 
     private var photoReviewSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 10) {
-                Text(String(localized: "summary.photos.title", defaultValue: "Photos"))
-                    .font(.headline)
-
-                Spacer()
-
-                if !selectedPhotoIDs.isEmpty {
-                    Button {
-                        removeSelectedPhotos()
-                    } label: {
-                        Image(systemName: "trash")
-                            .frame(width: 32, height: 32)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.red)
-                    .accessibilityLabel(String(localized: "summary.photos.delete_selected", defaultValue: "Delete selected photos"))
-                    .accessibilityIdentifier("DeleteSelectedFinishPhotosButton")
-
-                    Button {
-                        selectedPhotoIDs.removeAll()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .frame(width: 32, height: 32)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel(String(localized: "common.cancel", defaultValue: "Cancel"))
-                } else {
-                    Button {
-                        Task {
-                            await analyticsManager?.track(.init(.photoCaptureAttempted, properties: [
-                                .sourceType: .string("finish_review"),
-                            ]))
-                        }
-                        isCameraPresented = true
-                    } label: {
-                        Image(systemName: "camera.fill")
-                            .frame(width: 32, height: 32)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.orange)
-                    .accessibilityLabel(String(localized: "summary.photos.take", defaultValue: "Take Photo"))
-                    .accessibilityIdentifier("TakeFinishPhotoButton")
-
-                    PhotosPicker(
-                        selection: $importedPhotoItems,
-                        matching: .images,
-                        photoLibrary: .shared()
-                    ) {
-                        Image(systemName: "photo.on.rectangle.angled")
-                            .frame(width: 32, height: 32)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.orange)
-                    .accessibilityLabel(String(localized: "summary.photos.import", defaultValue: "Import Photo"))
-                    .accessibilityIdentifier("ImportFinishPhotoButton")
+        ActivityPhotoReviewSection(
+            photos: draftPhotos,
+            selectedPhotoIDs: $selectedPhotoIDs,
+            importedPhotoItems: $importedPhotoItems,
+            identifierPrefix: "Finish",
+            onCapture: {
+                Task {
+                    await analyticsManager?.track(.init(.photoCaptureAttempted, properties: [
+                        .sourceType: .string("finish_review")
+                    ]))
                 }
-            }
-            .coordinatedTooltip(
-                .photoManagement,
-                isEligible: draftPhotos.count >= 2 && selectedPhotoIDs.isEmpty,
-                text: String(localized: "tooltip.photos", defaultValue: "Press and hold to select, delete, or reorder photos"),
-                arrowEdge: .bottom
-            )
-
-            if draftPhotos.isEmpty {
-                Text(String(localized: "summary.photos.empty", defaultValue: "No photo added"))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 12) {
-                        ForEach(Array(draftPhotos.enumerated()), id: \.element.id) { index, photo in
-                            if selectedPhotoIDs.contains(photo.id) {
-                                finishPhotoThumbnail(photo, index: index)
-                                    .draggable(photo.id.uuidString)
-                                    .dropDestination(for: String.self) { identifiers, _ in
-                                        guard let identifier = identifiers.first,
-                                              let sourceID = UUID(uuidString: identifier)
-                                        else { return false }
-                                        return movePhoto(sourceID, to: photo.id)
-                                    }
-                            } else {
-                                finishPhotoThumbnail(photo, index: index)
-                                    .dropDestination(for: String.self) { identifiers, _ in
-                                        guard let identifier = identifiers.first,
-                                              let sourceID = UUID(uuidString: identifier)
-                                        else { return false }
-                                        return movePhoto(sourceID, to: photo.id)
-                                    }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                }
-                .frame(height: 104)
-                .padding(.horizontal, -20)
-            }
-        }
-        .padding(.vertical, 16)
-        .padding(.horizontal, 20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 8)
-        .padding(.bottom, 8)
-        .accessibilityIdentifier("PostRunPhotoReviewSection")
+                isCameraPresented = true
+            },
+            onRemove: removeSelectedPhotos,
+            onMove: movePhoto,
+            thumbnail: finishPhotoThumbnail
+        )
     }
 
     private var photoViewerPresented: Binding<Bool> {

@@ -397,3 +397,5 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 - iOS `stretch_interface_used` records bounded `result=instructions_opened|options_opened|routines_opened|voice_enabled|voice_disabled|feedback_enabled|feedback_disabled`, stable `routine_id`, `source_type`, `stretch_customized`, and optional `activity_type`. It contains no instruction text or user content. Today uses the existing offered/started/dismissed funnel with `source_type=today`.
 
 - iOS activity editor emits `feature_exposed` with `feature=activity_editor` on opening and `feature=activity_editor_saved` after successful metadata save. No titles, metric values, or photo data are included.
+
+- The iOS shared photo management strip retains finish-review photo events and emits existing `photo_capture_attempted`, `photo_captured`, `photo_previewed`, `photo_removed`, and `photo_reordered` events for edit drafts with `source_type=activity_edit`. Capture events include only `location_attached` as a boolean; no images, coordinates, filenames, or user content are sent. Remove/reorder describe draft actions, with persistence confirmed by `activity_editor_saved`.
