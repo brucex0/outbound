@@ -2,7 +2,18 @@
 
 ## Profile lookup after disconnect and from People search
 
-- Android's independently loaded profile destination received 404 from the accepted-connections-only lookup for search results and disconnected runners. iOS already held basic identity and used this lookup only to supplement milestones, so its profile remained usable.
+### Root cause and prevention
+
+- The API did not newly start failing: commit `996c6326` (2026-08-31) introduced `/social/users/:id/profile` with a self-or-accepted-connection gate for shareable milestones. The 404 for an unconnected runner was its existing contract.
+- Previously Android passed a complete `SocialPerson` preview into the profile destination. iOS likewise renders that identity immediately and treats milestone lookup as optional. Neither required this API to open a search result.
+- The Android independent-route refactor changed navigation to person ID plus a destination-scoped ViewModel. Its first loader recovered identity only from cached connections/feed authors, then called the restricted endpoint. Search-only and disconnected runners were absent from those caches: the expected 404 became a whole-page unavailable error. This was a consumer/contract regression, rather than a backend outage or database migration failure.
+- Device diagnostics showed multiple profile GETs returning 404 while People search, connections, and Social home returned 200. This proves the observed failures were profile-specific; it does not establish that every accepted connection failed.
+- The five Compose profile tests supplied person/relationship state directly. They covered controls, but bypassed navigation, identity loading, API authorization, and disconnect/reopen state. Their passing result did not establish end-to-end profile behavior.
+- Fix `7d6244f0` makes authenticated basic identity lookup independent of acceptance, includes the current relationship, and retains accepted-only milestones and symmetric block enforcement. Existing profile-open analytics apply when loading succeeds. Route regression tests now cover these authorization boundaries.
+- Future route refactors must trace each new API consumer's eligibility and error contract before removing in-memory context. The remaining integration coverage should open a People search result through the real destination with empty caches, reconnect after disconnect, and verify accepted, pending, blocked, offline, and restored-navigation paths.
+
+### Fix verification
+
 - `backend/src/routes/social.profile.test.ts` exercises the real Hono profile route with stubbed database reads: accepted → disconnected reopen, both pending directions, both block directions, missing identities, self, and unauthenticated access. It verifies non-connections do not query milestones and blocks remain indistinguishable from missing identities.
 - Verification: backend TypeScript build and all eight focused route-test checks passed.
 - Focused command from `backend/`: `npm run build && node --test dist/routes/social.profile.test.js`.
