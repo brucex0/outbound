@@ -292,33 +292,53 @@ private fun recentKilocalories(activity: SavedActivity, weightKilograms: Double?
 
 @Composable
 fun ActivityHistoryRoute(
-    accountId: String,
-    unitSystem: MeasurementUnitSystem,
-    weightKilograms: Double?,
-    initialActivityId: String? = null,
-    onBack: () -> Unit,
-    onMessage: suspend (ActivityMessage) -> Unit,
-    onPublishRoute: suspend (String, String) -> Boolean,
-    onOpenGroupActivity: (String) -> Unit = {},
-    modifier: Modifier = Modifier,
+    accountId: String, unitSystem: MeasurementUnitSystem,
+    onOpenActivity: (String) -> Unit, onBack: () -> Unit,
+    onMessage: suspend (ActivityMessage) -> Unit, modifier: Modifier = Modifier,
     viewModel: ActivityViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(accountId, initialActivityId) {
-        viewModel.start(accountId)
-        initialActivityId?.let(viewModel::open)
-    }
+    LaunchedEffect(accountId) { viewModel.start(accountId) }
     LaunchedEffect(viewModel) { viewModel.messages.collect(onMessage) }
+    ActivityHistoryScreen(state, unitSystem, onOpenActivity, viewModel::loadMore, viewModel::createManual, onBack, modifier)
+}
+
+@Composable
+fun ActivityDetailDestination(
+    accountId: String, activityId: String, entrySource: String,
+    unitSystem: MeasurementUnitSystem, weightKilograms: Double?, onBack: () -> Unit,
+    onMessage: suspend (ActivityMessage) -> Unit, onPublishRoute: suspend (String, String) -> Boolean,
+    onOpenGroupActivity: (String) -> Unit, modifier: Modifier = Modifier,
+    viewModel: ActivityViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(accountId, activityId) {
+        viewModel.start(accountId, trackHistory = false)
+        viewModel.open(activityId, entrySource)
+    }
+    LaunchedEffect(viewModel) { viewModel.messages.collect { message ->
+        if (message == ActivityMessage.DELETED) onBack()
+        onMessage(message)
+    } }
     val selected = state.selected
-    if (selected == null) ActivityHistoryScreen(state, unitSystem, viewModel::open, viewModel::loadMore, viewModel::createManual, onBack, modifier)
-    else ActivityDetailScreen(
+    if (selected == null) {
+        Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.activity_back)) }
+            if (state.detailFailed) {
+                Text(stringResource(R.string.activity_detail_unavailable))
+                TextButton({ viewModel.open(activityId, entrySource) }) { Text(stringResource(R.string.activity_detail_retry)) }
+            } else CircularProgressIndicator()
+        }
+        return
+    }
+    ActivityDetailScreen(
         activity = selected,
         groupAttribution = state.groupAttribution,
         onOpenGroupActivity = onOpenGroupActivity,
         unitSystem = unitSystem,
         weightKilograms = weightKilograms,
         mutating = state.mutating,
-        onBack = viewModel::closeDetail,
+        onBack = onBack,
         onEdit = viewModel::editTitle,
         onDelete = viewModel::deleteSelected,
         onShareCard = { viewModel.shareCard(selected, unitSystem) },

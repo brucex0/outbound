@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="route_action_saved">Saved</string>
+    <string name="route_action_failed">Could not complete the action. Try again.</string>
+</resources>

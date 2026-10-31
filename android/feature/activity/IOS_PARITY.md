@@ -11,7 +11,7 @@
 
 ## States And Transitions
 
-- A stored activity opens from Me recent activity, activity history, notification, or a Social link to the synchronized personal activity.
+- A stored activity opens through an independent ID-based detail destination from Me recent activity, History, notifications, or a Social link to the synchronized personal activity. History is never inserted as a host. System and toolbar Back return to the actual caller; local/client and server IDs resolve independently, including uncached notification targets.
 - Me shows the latest three activities as lightweight rows inside the shared recent card: title, abbreviated date, rounded duration with calories when available, and trailing distance. The card exposes manual entry, Health Connect, and full-history actions with localized TalkBack labels and 48dp targets.
 - The map stays full screen behind collapsed, split, and expanded information-sheet positions. Dragging the grabber snaps to the nearest position; tapping it toggles split and expanded states.
 - Activities with no usable route show an accessible no-route state. Multi-segment routes preserve pause gaps; continuous routes use pace-colored segments.
@@ -34,7 +34,7 @@
 
 - English, Spanish, and Simplified Chinese copy is generated from `ios/Outbound/Outbound/Localizable.xcstrings`.
 - The grabber, map, photos, lightbox close action, Edit, Share, Back, and Delete expose semantic labels; section headers remain discoverable to TalkBack.
-- Opening detail emits `activity_detail_opened`. Recent-card actions emit the existing `me_destination_opened` event with a bounded destination and `entry_source=me_recent`. A displayed calculated calorie emits privacy-safe `feature_exposed(feature=completed_workout_calories)`.
+- Opening detail emits `activity_detail_opened` with the actual bounded entry source (`history`, `me_recent`, `notification`, or `deep_link`), without emitting a History exposure. Recent-card actions emit the existing `me_destination_opened` event with a bounded destination and `entry_source=me_recent`. A displayed calculated calorie emits privacy-safe `feature_exposed(feature=completed_workout_calories)`.
 - Share preview and actions emit `activity_share_previewed` and `activity_share_action` with the same bounded `source_type` and `result` values as iOS. Share previews also include the same coarse geotagged-photo `count_bucket` as iOS, excluding photo content, identifiers, and coordinates. Confirmed deletion uses the shared source/count-bucket contract.
 
 ## Reference Scenarios

@@ -37,9 +37,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         transferCode = intent.transferCode()
         if (intent.action == SpotifyOAuthClient.CALLBACK) SpotifyOAuthClient.complete(intent)
-        navigationUri = intent.navigationUri()
-        connectionCode = intent.connectionCode()
-        groupInviteToken = intent.groupInviteToken()
+        // Navigation restores its own stack. Replaying a consumed launch link would
+        // insert its destination again above whichever nested page was restored.
+        navigationUri = if (savedInstanceState == null) intent.navigationUri()
+            else savedInstanceState.getString(PENDING_NAVIGATION)?.let(Uri::parse)
+        connectionCode = if (savedInstanceState == null) intent.connectionCode()
+            else savedInstanceState.getString(PENDING_CONNECTION)
+        groupInviteToken = if (savedInstanceState == null) intent.groupInviteToken()
+            else savedInstanceState.getString(PENDING_GROUP_INVITE)
         enableEdgeToEdge()
         setContent {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
@@ -68,6 +73,19 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(PENDING_NAVIGATION, navigationUri?.toString())
+        outState.putString(PENDING_CONNECTION, connectionCode)
+        outState.putString(PENDING_GROUP_INVITE, groupInviteToken)
+    }
+
+    private companion object {
+        const val PENDING_NAVIGATION = "pending_navigation_uri"
+        const val PENDING_CONNECTION = "pending_connection_code"
+        const val PENDING_GROUP_INVITE = "pending_group_invite"
     }
 
     override fun onNewIntent(intent: Intent) {

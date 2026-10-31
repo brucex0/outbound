@@ -141,6 +141,10 @@ interface ActivityDao {
     suspend fun get(accountId: String, activityId: String): ActivityWithDetails?
 
     @Transaction
+    @Query("SELECT * FROM activities WHERE accountId = :accountId AND (activityId = :reference OR serverActivityId = :reference) ORDER BY CASE WHEN activityId = :reference THEN 0 ELSE 1 END LIMIT 1")
+    suspend fun getByReference(accountId: String, reference: String): ActivityWithDetails?
+
+    @Transaction
     @Query("SELECT * FROM activities WHERE accountId = :accountId AND activityId IN (:activityIds)")
     suspend fun getMany(accountId: String, activityIds: List<String>): List<ActivityWithDetails>
 

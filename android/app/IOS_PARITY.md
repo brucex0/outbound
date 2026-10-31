@@ -14,7 +14,7 @@
 - [x] Existing iPhone accounts can enter the deliberate one-time transfer/link flow without weakening normal Google sign-in.
 - [x] Primary navigation contains exactly Social, Today, and Me.
 - [x] Today is initially selected.
-- [x] Me → Connections uses a dedicated nested destination; dismissing Connections returns directly to Me without adding a Social tab entry. The existing `connections_opened` event retains `me_preview` as its entry source.
+- [x] Entity pages use independent ID-based routes, without inserting Social/History/library hosts. Connections is shared across all callers; `connections_opened` retains its bounded entry source. See `docs/android-navigation.md`.
 - [x] Assistant is a persistent launcher on every primary destination, not a fourth tab.
 - [x] Closing Assistant returns to the primary destination that opened it.
 - [x] Assistant deep links open the same destination.
@@ -52,7 +52,7 @@
 
 ### Reference Scenarios
 
-- Me → Connections → system Back or dialog close returns to Me in one step; Social/Me tab taps still work afterward. Also check Connections → profile → Back and My QR → Back. Device verification remains pending.
+- Execute the navigation matrix in `docs/android-navigation.md`, including Me/Trusted Contacts → Connections, profiles and nested posts, personal activity details, route details, notifications/links, and recreation. Record actual device coverage separately.
 
 - Online with no pending writes; airplane mode while on Today, Social, Me, and nested signed-in screens; restore connectivity with queued activity writes and confirm transient feedback; drain the outbox.
 - Begin and continue an activity offline; restore connectivity and confirm local recording remains active while sync resumes.

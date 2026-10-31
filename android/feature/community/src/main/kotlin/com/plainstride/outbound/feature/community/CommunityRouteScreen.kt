@@ -44,35 +44,33 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.put
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable fun CommunityRouteScreen(
+ accountId:String, onOpenRoute:(CommunityRoute)->Unit,
  library:RouteLibrary, scope:RouteScope, onScope:(RouteScope)->Unit, onRefresh:()->Job?, onSearch:(String)->Unit,
- onFollow:(com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration)->Unit, onBookmark:(CommunityRoute)->Unit,
  onImport:(Boolean)->Unit={}, bottomContentPadding:androidx.compose.ui.unit.Dp=0.dp, routeDetail:CommunityRoute?=null,
- routeDetailLoading:Boolean=false, onLoadDetail:(String)->Unit={}, onRemovePublished:(String)->Unit={}, onClearDetail:()->Unit={},
+ routeDetailLoading:Boolean=false, onLoadDetail:(String)->Unit={},
  unitSystem:com.plainstride.outbound.core.model.activity.MeasurementUnitSystem=com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric,
  onImportedDelete:()->Unit={}, importRequest:Int=0, searchQuery:String="", selectionMode:Boolean=false,
  initialSelection:CommunityRoute?=null, initialSelectionReverse:Boolean=false,
  onSelectRoute:(CommunityRoute?,Boolean)->Unit={_,_->}, onDismissSelection:()->Unit={},
 ) {
- SharedCommunityRouteLibrary(library,scope,onScope,onRefresh,onSearch,onFollow,onBookmark,onImport,routeDetail,routeDetailLoading,onLoadDetail,onRemovePublished,onClearDetail,unitSystem,onImportedDelete,bottomContentPadding,importRequest,searchQuery,selectionMode,initialSelection,initialSelectionReverse,onSelectRoute,onDismissSelection)
+ SharedCommunityRouteLibrary(accountId,onOpenRoute,library,scope,onScope,onRefresh,onSearch,onImport,routeDetail,routeDetailLoading,onLoadDetail,unitSystem,onImportedDelete,bottomContentPadding,importRequest,searchQuery,selectionMode,initialSelection,initialSelectionReverse,onSelectRoute,onDismissSelection)
 }
 
 @Composable
 private fun SharedCommunityRouteLibrary(
+ accountId:String, onOpenRoute:(CommunityRoute)->Unit,
  library:RouteLibrary,
  scope:RouteScope,
  onScope:(RouteScope)->Unit,
  onRefresh:()->Job?,
  onSearch:(String)->Unit,
- onFollow:(com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration)->Unit,
- onBookmark:(CommunityRoute)->Unit,
  onImport:(Boolean)->Unit,
  routeDetail:CommunityRoute?,
  routeDetailLoading:Boolean,
  onLoadDetail:(String)->Unit,
- onRemovePublished:(String)->Unit,
- onClearDetail:()->Unit,
  unitSystem:com.plainstride.outbound.core.model.activity.MeasurementUnitSystem,
  onImportedDelete:()->Unit,
  bottomContentPadding:androidx.compose.ui.unit.Dp,
@@ -82,20 +80,22 @@ private fun SharedCommunityRouteLibrary(
 ) {
  BackHandler(enabled=selectionMode,onBack=onDismissSelection)
  val context=LocalContext.current
+ val navigationViewModel: RouteDestinationViewModel = androidx.hilt.navigation.compose.hiltViewModel(key = "route_library_navigation")
+ val importedRoutes by navigationViewModel.imports.collectAsStateWithLifecycle()
+ LaunchedEffect(accountId) { navigationViewModel.startLibrary(accountId, initialSelection) }
+ RouteFeedback(navigationViewModel)
+ val openRoute: (CommunityRoute) -> Unit = { navigationViewModel.open(accountId, it, onOpenRoute) }
  val keyboardController=LocalSoftwareKeyboardController.current
  val coroutineScope=rememberCoroutineScope()
- var query by remember { mutableStateOf(searchQuery) }
+ var query by rememberSaveable { mutableStateOf(searchQuery) }
  var refreshing by remember { mutableStateOf(false) }
  var filterMenuExpanded by remember { mutableStateOf(false) }
- var selectedRoute by remember { mutableStateOf<CommunityRoute?>(null) }
  var selectedForToday by remember(initialSelection?.id) { mutableStateOf(initialSelection) }
  var pendingSelectionId by remember { mutableStateOf<String?>(null) }
  var reverseForToday by rememberSaveable(initialSelection?.id) { mutableStateOf(initialSelectionReverse) }
- var selectedImportedRoute by remember { mutableStateOf<CommunityRoute?>(null) }
  var confirmDeleteImported by remember { mutableStateOf<CommunityRoute?>(null) }
- var importedRoutes by remember(initialSelection?.id) { mutableStateOf(listOfNotNull(initialSelection?.takeIf { it.id.startsWith("import:") })) }
  var pendingNearby by remember { mutableStateOf(false) }
- var submittedQuery by remember { mutableStateOf(searchQuery.isNotBlank()) }
+ var submittedQuery by rememberSaveable { mutableStateOf(searchQuery.isNotBlank()) }
  val displayedRoutes = if(scope==RouteScope.MINE&&query.isNotBlank())library.routes.filter { it.name.contains(query.trim(),ignoreCase=true)||it.owner.displayName.contains(query.trim(),ignoreCase=true) } else library.routes
  var handledImportRequest by rememberSaveable { mutableStateOf(0) }
  val locationPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->pendingNearby=false;if(granted){query="";submittedQuery=false;onScope(RouteScope.NEARBY)}}
@@ -103,9 +103,12 @@ private fun SharedCommunityRouteLibrary(
   uri ?: return@rememberLauncherForActivityResult
   val route=runCatching{context.contentResolver.openInputStream(uri)?.bufferedReader()?.use{reader->importRoute(reader.readText(),uri.lastPathSegment)}}.getOrNull()
   if(route!=null){
-   importedRoutes=listOf(route)+importedRoutes.filterNot{it.id==route.id}
-   if(selectionMode){selectedForToday=route;pendingSelectionId=null;reverseForToday=false}else selectedRoute=route
-   onImport(true)
+   navigationViewModel.saveImport(accountId,route) { saved ->
+    onImport(saved)
+    if(saved) {
+     if(selectionMode){selectedForToday=route;pendingSelectionId=null;reverseForToday=false}else onOpenRoute(route)
+    }
+   }
   }else onImport(false)
  }
  LaunchedEffect(searchQuery) { query=searchQuery;submittedQuery=searchQuery.isNotBlank() }
@@ -187,7 +190,7 @@ private fun SharedCommunityRouteLibrary(
    items(importedRoutes,key=CommunityRoute::id){route->
     Row(Modifier.fillMaxWidth().heightIn(min=64.dp).clickable{
      if(selectionMode){if(selectedForToday?.id==route.id){selectedForToday=null;pendingSelectionId=null}else{selectedForToday=route;pendingSelectionId=null;reverseForToday=false}}
-     else selectedImportedRoute=route
+     else openRoute(route)
     }.padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
      RouteLibraryGlyph(Icons.Outlined.FileOpen)
      Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)) {Text(route.name,style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis);Text(stringResource(R.string.route_library_imported_device_private),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
@@ -210,7 +213,7 @@ private fun SharedCommunityRouteLibrary(
      if(selectedForToday?.id==route.id){selectedForToday=null;pendingSelectionId=null}
      else if(route.guidancePoints().size>=2){selectedForToday=route;pendingSelectionId=null;reverseForToday=false}
      else{selectedForToday=null;pendingSelectionId=route.id;reverseForToday=false;onLoadDetail(route.id)}
-    }else{selectedRoute=route;if(!route.id.startsWith("import:"))onLoadDetail(route.id)}
+    }else openRoute(route)
    }.padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
     RouteLibraryGlyph(if(route.routeShape=="loop")Icons.Outlined.Cached else Icons.Outlined.Timeline)
     Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)) {
@@ -240,20 +243,57 @@ private fun SharedCommunityRouteLibrary(
    selectedForToday=routeDetail
   }
  }
- selectedRoute?.let{selected->
-  val detail=routeDetail?.takeIf{it.id==selected.id}?:selected
-  EmbeddedCommunityRouteDetail(route=detail,loading=routeDetailLoading&&routeDetail?.id!=selected.id,unitSystem=unitSystem,onClose={selectedRoute=null;onClearDetail()},onRetry={onLoadDetail(selected.id)},onFollow={reverse->onFollow(CommunityRecordingCoordinator.launch(detail,reverse));selectedRoute=null;onClearDetail()},onBookmark={onBookmark(detail)},onRemovePublished={onRemovePublished(detail.id)})
- }
- selectedImportedRoute?.let { route ->
-  ImportedRoutePreview(route=route,onClose={selectedImportedRoute=null},onUse={onFollow(CommunityRecordingCoordinator.launch(route,false));selectedImportedRoute=null},onDelete={confirmDeleteImported=route})
- }
  confirmDeleteImported?.let { route ->
-  AlertDialog(onDismissRequest={confirmDeleteImported=null},title={Text(stringResource(R.string.route_import_delete_confirmation_title))},text={Text(stringResource(R.string.route_import_delete_confirmation_message))},confirmButton={TextButton({importedRoutes=importedRoutes.filterNot{it.id==route.id};confirmDeleteImported=null;if(selectedImportedRoute?.id==route.id)selectedImportedRoute=null;onImportedDelete()},colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.error)){Text(stringResource(R.string.route_import_action_delete))}},dismissButton={TextButton({confirmDeleteImported=null}){Text(stringResource(R.string.routes_close))}})
+  AlertDialog(onDismissRequest={confirmDeleteImported=null},title={Text(stringResource(R.string.route_import_delete_confirmation_title))},text={Text(stringResource(R.string.route_import_delete_confirmation_message))},confirmButton={TextButton({confirmDeleteImported=null;navigationViewModel.deleteImport(accountId,route.id,onImportedDelete)},colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.error)){Text(stringResource(R.string.route_import_action_delete))}},dismissButton={TextButton({confirmDeleteImported=null}){Text(stringResource(R.string.routes_close))}})
  }
 }
 
+@Composable
+fun CommunityRouteDetailDestination(
+ accountId: String, routeId: String,
+ unitSystem: com.plainstride.outbound.core.model.activity.MeasurementUnitSystem,
+ onFollow: (com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration) -> Unit,
+ onBack: () -> Unit, onChanged: () -> Unit, onImportedDelete: () -> Unit,
+ viewModel: RouteDestinationViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+) {
+ val route by viewModel.detail.collectAsStateWithLifecycle()
+ val loading by viewModel.loading.collectAsStateWithLifecycle()
+ var confirmDelete by remember { mutableStateOf(false) }
+ LaunchedEffect(accountId, routeId) { viewModel.load(accountId, routeId) }
+ RouteFeedback(viewModel)
+ val detail = route
+ if (detail == null) {
+  Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement=Arrangement.spacedBy(16.dp)) {
+   IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack,stringResource(R.string.routes_close)) }
+   if (loading) CircularProgressIndicator() else {
+    Text(stringResource(R.string.route_library_detail_unavailable_title))
+    TextButton({viewModel.load(accountId,routeId,force=true)}) { Text(stringResource(R.string.route_library_detail_retry)) }
+   }
+  }
+ } else if (routeId.startsWith("import:")) {
+  ImportedRoutePreview(detail,onBack,{onFollow(CommunityRecordingCoordinator.launch(detail,false))},{confirmDelete=true})
+ } else {
+  EmbeddedCommunityRouteDetail(detail,loading,unitSystem,onBack,{viewModel.load(accountId,routeId,force=true)},
+   {reverse->onFollow(CommunityRecordingCoordinator.launch(detail,reverse))},
+   {viewModel.bookmark(accountId,detail,onChanged)}, {viewModel.remove(accountId,detail){onChanged();onBack()}})
+ }
+ if(confirmDelete) AlertDialog(onDismissRequest={confirmDelete=false},
+  title={Text(stringResource(R.string.route_import_delete_confirmation_title))},
+  text={Text(stringResource(R.string.route_import_delete_confirmation_message))},
+  confirmButton={TextButton({confirmDelete=false;viewModel.deleteImport(accountId,routeId){onImportedDelete();onBack()}}){Text(stringResource(R.string.route_import_action_delete))}},
+  dismissButton={TextButton({confirmDelete=false}){Text(stringResource(R.string.routes_close))}})
+}
+
+@Composable
+private fun RouteFeedback(viewModel: RouteDestinationViewModel) {
+ val context=LocalContext.current
+ LaunchedEffect(viewModel) { viewModel.feedback.collect { success ->
+  android.widget.Toast.makeText(context,if(success) R.string.route_action_saved else R.string.route_action_failed,android.widget.Toast.LENGTH_SHORT).show()
+ } }
+}
+
 @Composable private fun ImportedRoutePreview(route:CommunityRoute,onClose:()->Unit,onUse:()->Unit,onDelete:()->Unit){
- Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
+ Box(Modifier.fillMaxSize()) {
   Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background) {
    Column(Modifier.fillMaxSize()) {
     Row(Modifier.fillMaxWidth().heightIn(min=56.dp).padding(horizontal=8.dp),verticalAlignment=Alignment.CenterVertically){IconButton(onClose){Icon(Icons.AutoMirrored.Outlined.ArrowBack,stringResource(R.string.routes_close))};Text(stringResource(R.string.route_import_preview_title),Modifier.weight(1f),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold)}
@@ -277,10 +317,10 @@ private fun routeDistanceLabel(meters:Double,unitSystem:com.plainstride.outbound
 
 @Composable private fun EmbeddedCommunityRouteDetail(route:CommunityRoute,loading:Boolean,unitSystem:com.plainstride.outbound.core.model.activity.MeasurementUnitSystem,onClose:()->Unit,onRetry:()->Unit,onFollow:(Boolean)->Unit,onBookmark:()->Unit,onRemovePublished:()->Unit){
  val context=LocalContext.current
- var bookmarked by remember(route.id){mutableStateOf(route.isBookmarked)}
- var reverse by remember(route.id){mutableStateOf(false)}
+ val bookmarked = route.isBookmarked
+ var reverse by rememberSaveable(route.id){mutableStateOf(false)}
  var confirmRemove by remember{mutableStateOf(false)}
- Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
+ Box(Modifier.fillMaxSize()) {
   Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background) {
    Column(Modifier.fillMaxSize()) {
     Row(Modifier.fillMaxWidth().heightIn(min=56.dp).padding(horizontal=8.dp),verticalAlignment=Alignment.CenterVertically){IconButton(onClose){Icon(Icons.AutoMirrored.Outlined.ArrowBack,stringResource(R.string.routes_close))};Text(route.name,Modifier.weight(1f),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis)}
@@ -301,11 +341,11 @@ private fun routeDistanceLabel(meters:Double,unitSystem:com.plainstride.outbound
       route.description?.takeIf(String::isNotBlank)?.let{Text(it,Modifier.padding(top=4.dp),style=MaterialTheme.typography.bodyMedium)}
      } }
      item { Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text(stringResource(R.string.routes_reverse),Modifier.weight(1f));Switch(reverse,{reverse=it})} }
-     item { Button({onFollow(reverse)},Modifier.fillMaxWidth().heightIn(min=48.dp)){Text(stringResource(R.string.route_library_action_start))} }
+     item { Button({onFollow(reverse)},Modifier.fillMaxWidth().heightIn(min=48.dp),enabled=route.guidancePoints().size>1){Text(stringResource(R.string.route_library_action_start))} }
      item { TextButton({shareRoute(context,route)},Modifier.fillMaxWidth(),enabled=route.guidancePoints().size>1){Text(stringResource(R.string.routes_export))} }
      item {
       if(route.isOwner)OutlinedButton({confirmRemove=true},Modifier.fillMaxWidth(),enabled=!loading){Icon(Icons.Outlined.Delete,null);Spacer(Modifier.width(8.dp));Text(stringResource(R.string.route_library_remove_published_action))}
-      else OutlinedButton({onBookmark();bookmarked=!bookmarked},Modifier.fillMaxWidth(),enabled=!loading){Icon(if(bookmarked)Icons.Outlined.BookmarkRemove else Icons.Outlined.Bookmark,null);Spacer(Modifier.width(8.dp));Text(stringResource(if(bookmarked)R.string.library_my_routes_remove else R.string.library_my_routes_save))}
+      else OutlinedButton({onBookmark()},Modifier.fillMaxWidth(),enabled=!loading){Icon(if(bookmarked)Icons.Outlined.BookmarkRemove else Icons.Outlined.Bookmark,null);Spacer(Modifier.width(8.dp));Text(stringResource(if(bookmarked)R.string.library_my_routes_remove else R.string.library_my_routes_save))}
      }
     }
    }

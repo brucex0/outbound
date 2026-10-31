@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="activity_detail_unavailable">This activity is unavailable. Check your connection and try again.</string>
+    <string name="activity_detail_retry">Try again</string>
+</resources>

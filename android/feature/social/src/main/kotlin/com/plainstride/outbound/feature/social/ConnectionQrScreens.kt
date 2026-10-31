@@ -67,8 +67,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -94,9 +92,6 @@ internal fun ConnectionQrScannerScreen(
     onOpened: () -> Unit,
     onPayload: (String) -> Unit,
     onClose: () -> Unit,
-) = Dialog(
-    onDismissRequest = onClose,
-    properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
 ) {
     val context = LocalContext.current
     val invalidCodeMessage = stringResource(R.string.social_not_connection_code)

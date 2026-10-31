@@ -11,7 +11,9 @@ import com.plainstride.outbound.core.network.*
 import com.plainstride.outbound.core.analytics.*
 
 enum class RouteScope { DISCOVERY, MINE, NEARBY }
+class RouteRequestException(val code: String, val status: Int?) : Exception(code)
 data class RouteLibrary(val routes: List<CommunityRoute> = emptyList(), val stale: Boolean = false)
+@javax.inject.Singleton
 class CommunityRouteRepository @Inject constructor(
  private val api: CommunityRoutesApi,
  private val tokens: AccessTokenProvider,
@@ -49,9 +51,41 @@ class CommunityRouteRepository @Inject constructor(
    )))
   }
  }
+ private val importLock = kotlinx.coroutines.sync.Mutex()
+ fun observeImports(accountId: String): Flow<List<CommunityRoute>> = cache.observe(accountId, "routes.imported", "library", "und").map { row ->
+  row?.let { decodeSnapshot<RoutesResponse>(it.payloadJson)?.routes }.orEmpty()
+ }
+ suspend fun saveImport(accountId: String, route: CommunityRoute) = updateImports(accountId) { routes -> listOf(route) + routes.filterNot { it.id == route.id } }
+ suspend fun deleteImport(accountId: String, id: String) = updateImports(accountId) { routes -> routes.filterNot { it.id == id } }
+ private suspend fun updateImports(accountId: String, update: (List<CommunityRoute>) -> List<CommunityRoute>) {
+  importLock.lock()
+  try {
+   val routes = observeImports(accountId).first()
+   cache.upsert(AccountCacheEntity(accountId, "routes.imported", "library", "und", PlainstrideJson.encodeToString(RoutesResponse(update(routes))), null, System.currentTimeMillis(), null))
+  } finally { importLock.unlock() }
+ }
+ suspend fun cacheDetail(accountId: String, route: CommunityRoute) {
+  if (route.id.startsWith("import:")) {
+   if (cachedDetail(accountId, route.id) == null) saveImport(accountId, route)
+  } else {
+   // Browsing a summary must not replace already cached canonical geometry.
+   if (route.geometry == null && cachedDetail(accountId, route.id)?.geometry != null) return
+   cache.upsert(AccountCacheEntity(accountId, "routes.detail", route.id, "und", PlainstrideJson.encodeToString(route), null, System.currentTimeMillis(), null))
+  }
+ }
+ suspend fun deleteCachedDetail(accountId: String, id: String) = cache.delete(accountId, "routes.detail", id, "und")
+ suspend fun cachedDetail(accountId: String, id: String): CommunityRoute? =
+  if (id.startsWith("import:")) observeImports(accountId).first().firstOrNull { it.id == id }
+  else cache.get(accountId, "routes.detail", id, "und")?.let { decodeSnapshot<CommunityRoute>(it.payloadJson) }
+ private inline fun <reified T> decodeSnapshot(payload: String): T? = try {
+  PlainstrideJson.decodeFromString<T>(payload)
+ } catch (error: kotlinx.serialization.SerializationException) {
+  android.util.Log.w("PlainstrideRoutes", "route_snapshot_decode failed type=${error.javaClass.simpleName}")
+  null
+ }
  suspend fun detail(id: String) = authenticated { apiCall { api.detail(it,id) } }
  suspend fun publish(activityId: String, name: String, description: String?) = authenticated { apiCall { api.publish(it,activityId,PublishRouteRequest(name,description)) } }
  suspend fun bookmark(id: String, add: Boolean) = authenticated { auth -> apiCall { if(add) api.bookmark(auth,id) else api.unbookmark(auth,id) } }.also { result->analytics.record(AnalyticsEvent("route_bookmark_changed",mapOf(AnalyticsProperty.Enabled to add,AnalyticsProperty.Result to if(result.isSuccess)"success" else "failure"))) }
  suspend fun remove(id: String) = authenticated { apiCall { api.remove(it,id) } }
- private suspend fun <T:Any> authenticated(call:suspend(String)->ApiResult<T>):Result<T>{ val token=tokens.validAccessToken()?:return Result.failure(IllegalStateException("signed_out")); return when(val result=call("Bearer $token")){ is ApiResult.Success->Result.success(result.value); is ApiResult.Failure->Result.failure(IllegalStateException(result.error.code.name)) } }
+ private suspend fun <T:Any> authenticated(call:suspend(String)->ApiResult<T>):Result<T>{ val token=tokens.validAccessToken()?:return Result.failure(IllegalStateException("signed_out")); return when(val result=call("Bearer $token")){ is ApiResult.Success->Result.success(result.value); is ApiResult.Failure->Result.failure(RouteRequestException(result.error.code.name, result.error.httpStatus)) } }
 }

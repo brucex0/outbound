@@ -76,10 +76,12 @@ Complete and commit the resulting catch-up work before moving the marker to the 
 
 ### Navigation Ownership
 
-- Keep each primary tab's local history for tab-specific flows. Social group detail, group creation, and activity planning stay owned by Social; Today workout and plan setup stay owned by Today.
-- Put a destination on the app-level navigation stack when the same entity detail is reachable from more than one primary tab. Current shared destinations include completed activity detail, Social feed activity detail, runner profiles, and planned activity detail opened from Today or Social.
-- Preserve the selected tab and its local history beneath an app-level destination. Back returns to the exact originating screen and scroll position. Notification and deep-link entry points route to the same destination.
-- Use the same ownership rule on iOS and Android even when each platform uses its native navigation API.
+- Preserve each primary tab's real local history and scroll position. Today workout/plan setup, Group creation/composition, pickers, and confirmations remain explicitly owned flows.
+- Entity pages are independently routable by stable IDs. Completed activities, Social posts, contacts/profiles, Groups, events, invitations, community/imported routes, and live sharing open directly on the app navigation stack.
+- Never insert or render an anchor tab/list (Social, History, Connections, or route library) merely to host another destination. Preserve only the actual originating screen underneath it. Toolbar Back and system Back return to that same caller.
+- Notifications, links, and in-app taps use the same canonical destination. Resolve opaque invite links into their target by replacing the resolver entry, without creating a Social entry.
+- Destination arguments carry IDs and bounded source/mode values, not shared mutable selection objects. A restored destination loads its own data and presents loading, unavailable, and retry states. See `docs/android-navigation.md` for implementation and verification.
+- Apply this ownership rule on both platforms when changing navigation; Android's shared destinations are implemented independently of tab presentation.
 
 The following table is the release checklist. A row may use an Android-native replacement, but it may not be omitted without an explicit product decision recorded in this document.
 

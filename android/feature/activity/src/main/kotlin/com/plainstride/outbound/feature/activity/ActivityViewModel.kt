@@ -49,6 +49,7 @@ enum class ActivityExportFormat(val extension: String, val mimeType: String) {
 data class ActivityExport(val uri: android.net.Uri, val mimeType: String, val fileName: String)
 
 data class ActivityUiState(
+    val detailLoading: Boolean = false, val detailFailed: Boolean = false,
     val accountId: String? = null,
     val page: ActivityPage = ActivityPage(emptyList(), 0, PAGE_SIZE, false),
     val loading: Boolean = true,
@@ -85,11 +86,11 @@ class ActivityViewModel @Inject constructor(
         }
     }
 
-    fun start(accountId: String) {
+    fun start(accountId: String, trackHistory: Boolean = true) {
         if (account.value == accountId) return
         account.value = accountId
         mutableState.value = mutableState.value.copy(accountId = accountId, loading = true)
-        analytics.record(AnalyticsEvent("activity_history_opened", mapOf(AnalyticsProperty.Source to "me")))
+        if (trackHistory) analytics.record(AnalyticsEvent("activity_history_opened", mapOf(AnalyticsProperty.Source to "me")))
     }
 
     fun loadMore() {
@@ -108,31 +109,45 @@ class ActivityViewModel @Inject constructor(
         )))
     }
 
-    fun open(activityId: String) {
+    fun open(activityId: String, source: String = "history") {
         val accountId = account.value ?: return
+        val selected = mutableState.value.selected
+        if (selected?.id == activityId || selected?.serverActivityId == activityId) return
         viewModelScope.launch {
-            mutableState.value = mutableState.value.copy(loading = true)
-            val activity = repository.activity(accountId, activityId)
-            mutableState.value = mutableState.value.copy(selected = activity, loading = false, groupAttribution = null)
-            if (activity != null) analytics.record(AnalyticsEvent("activity_detail_opened", mapOf(AnalyticsProperty.Source to "history")))
-            if (activity != null) launch {
-                repository.refreshActivity(accountId, activity.id)
-                if (account.value == accountId && mutableState.value.selected?.id == activity.id) {
-                    mutableState.value = mutableState.value.copy(selected = repository.activity(accountId, activity.id))
+            try {
+                mutableState.value = mutableState.value.copy(detailLoading = true, detailFailed = false)
+                var activity = repository.activity(accountId, activityId)
+                if (activity == null) {
+                    repository.refreshActivity(accountId, activityId)
+                    activity = repository.activity(accountId, activityId)
                 }
-                if (repository.correctElevationIfNeeded(accountId, activity.id)) {
-                    syncScheduler.schedule(accountId)
-                    val refreshed = repository.activity(accountId, activity.id)
-                    if (account.value == accountId && mutableState.value.selected?.id == activity.id) {
-                        mutableState.value = mutableState.value.copy(selected = refreshed)
+                mutableState.value = mutableState.value.copy(selected = activity, detailLoading = false, detailFailed = activity == null, groupAttribution = null)
+                if (activity == null) Log.w("PlainstrideActivity", "detail_load unavailable source=$source")
+                val loadedActivity = activity
+                if (loadedActivity != null) analytics.record(AnalyticsEvent("activity_detail_opened", mapOf(AnalyticsProperty.Source to source)))
+                if (loadedActivity != null) launch {
+                    repository.refreshActivity(accountId, loadedActivity.id)
+                    if (account.value == accountId && mutableState.value.selected?.id == loadedActivity.id) {
+                        mutableState.value = mutableState.value.copy(selected = repository.activity(accountId, loadedActivity.id))
+                    }
+                    if (repository.correctElevationIfNeeded(accountId, loadedActivity.id)) {
+                        syncScheduler.schedule(accountId)
+                        val refreshed = repository.activity(accountId, loadedActivity.id)
+                        if (account.value == accountId && mutableState.value.selected?.id == loadedActivity.id) {
+                            mutableState.value = mutableState.value.copy(selected = refreshed)
+                        }
                     }
                 }
-            }
-            activity?.activityEventId?.let { event ->
-                val detail = groups.detail(event)
-                if (account.value == accountId && mutableState.value.selected?.id == activity.id) {
-                    mutableState.value = mutableState.value.copy(groupAttribution = detail?.attribution(accountId))
+                loadedActivity?.activityEventId?.let { event ->
+                    val detail = groups.detail(event)
+                    if (account.value == accountId && mutableState.value.selected?.id == loadedActivity.id) {
+                        mutableState.value = mutableState.value.copy(groupAttribution = detail?.attribution(accountId))
+                    }
                 }
+            } catch (error: Exception) {
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                Log.w("PlainstrideActivity", "detail_load failed type=${error.javaClass.simpleName}")
+                mutableState.value = mutableState.value.copy(detailLoading = false, detailFailed = true)
             }
         }
     }

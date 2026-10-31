@@ -334,7 +334,7 @@ data class P0IntegrationState(
     fun trackPushOpened(destination: String, type: String) {
         analytics.record(AnalyticsEvent("push_notification_opened", mapOf(
             AnalyticsProperty.SourceType to if (type in setOf("cheer", "comment", "connectionRequest", "connectionAccepted", "runInvitation", "groupInvitation", "liveCheerInvitation")) type else "other",
-            AnalyticsProperty.Destination to if (destination in setOf("post", "connections", "event", "group", "invitation", "live", "activity", "inbox")) destination else "inbox",
+            AnalyticsProperty.Destination to if (destination in setOf("post", "connections", "event", "group", "group_run", "invitation", "live", "activity", "inbox")) destination else "inbox",
         )))
     }
     fun openInbox() = viewModelScope.launch {

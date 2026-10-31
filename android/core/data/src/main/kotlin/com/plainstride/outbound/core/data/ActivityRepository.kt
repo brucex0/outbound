@@ -135,8 +135,9 @@ class OfflineFirstActivityRepository(
         true
     }
     override suspend fun refreshActivity(accountId: String, activityId: String) {
-        val local = dao.get(accountId, activityId)?.toDomain() ?: return
-        val serverId = local.serverActivityId ?: return
+        val local = activity(accountId, activityId)
+        // An uncached notification carries a server ID; a local unsynced activity needs no fetch.
+        val serverId = if (local == null) activityId else local.serverActivityId ?: return
         val token = accessTokens.validAccessToken() ?: return
         val response = apiCall { api.activities("Bearer $token", 1, 0, ids = serverId, includeRoute = true) }
         if (response is ApiResult.Success && currentAccountId() == accountId) response.value.activities.forEach { mergeRemote(accountId, it) }
@@ -171,7 +172,7 @@ class OfflineFirstActivityRepository(
         }
     }
 
-    override suspend fun activity(accountId: String, activityId: String): SavedActivity? = dao.get(accountId, activityId)?.toDomain()
+    override suspend fun activity(accountId: String, activityId: String): SavedActivity? = dao.getByReference(accountId, activityId)?.toDomain()
 
     override suspend fun save(activity: SavedActivity) = persistAndEnqueue(activity.copy(deletedAt = null))
 

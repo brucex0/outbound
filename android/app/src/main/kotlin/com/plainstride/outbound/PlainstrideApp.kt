@@ -111,10 +111,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.dialog
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navDeepLink
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.plainstride.outbound.auth.AuthMessage
@@ -128,6 +126,7 @@ import com.plainstride.outbound.core.designsystem.PlainstrideFloatingAction
 import com.plainstride.outbound.core.designsystem.PlainstrideFloatingActionStyle
 import com.plainstride.outbound.core.designsystem.LocalPlainstrideThemeColors
 import com.plainstride.outbound.core.designsystem.PrimaryBottomToolbarClearance
+import com.plainstride.outbound.feature.activity.ActivityDetailDestination
 import com.plainstride.outbound.feature.activity.ActivityHistoryRoute
 import com.plainstride.outbound.feature.activity.ActivityMessage
 import com.plainstride.outbound.feature.activity.ActivityViewModel
@@ -172,6 +171,11 @@ import com.plainstride.outbound.feature.social.SocialViewModel
 import com.plainstride.outbound.feature.social.SocialActivityDetailDestination
 import com.plainstride.outbound.feature.social.SocialActivityEventDestination
 import com.plainstride.outbound.feature.social.SocialProfileDestination
+import com.plainstride.outbound.feature.social.ConnectionsDestination
+import com.plainstride.outbound.feature.social.ConnectionScannerDestination
+import com.plainstride.outbound.feature.social.SocialGroupDestination
+import com.plainstride.outbound.feature.social.SocialInvitationDestination
+import com.plainstride.outbound.feature.social.GroupInviteDestination
 import com.plainstride.outbound.feature.social.SocialPerson
 import com.plainstride.outbound.feature.social.R as SocialR
 import com.plainstride.outbound.feature.today.WorkoutLaunchIntent
@@ -183,6 +187,7 @@ import com.plainstride.outbound.feature.today.TodayRouteSelection
 import com.plainstride.outbound.core.designsystem.MapCoordinate
 import com.plainstride.outbound.core.model.Modality
 import com.plainstride.outbound.core.model.activity.MeasurementUnitSystem
+import com.plainstride.outbound.feature.community.CommunityRouteDetailDestination
 import com.plainstride.outbound.feature.community.CommunityRouteScreen
 import com.plainstride.outbound.feature.community.RouteScope
 import com.plainstride.outbound.feature.community.guidancePoints
@@ -213,12 +218,6 @@ private enum class TopLevelDestination(
     Today("today", R.string.tab_today, R.string.today_headline, R.string.today_body),
     Me("me", R.string.tab_me, R.string.me_headline, R.string.me_body),
 }
-
-private data class SocialNavigationTarget(
-    val type: String,
-    val id: String = "",
-    val entrySource: String = "deep_link",
-)
 
 @Composable
 fun PlainstrideApp(
@@ -305,12 +304,6 @@ private fun SignedInApp(
     val currentDestination = backStackEntry?.destination
     var recordingLaunch by remember { mutableStateOf(RecordingLaunchConfiguration()) }
     var selectingRouteForToday by rememberSaveable { mutableStateOf(false) }
-    var socialTarget by remember { mutableStateOf<SocialNavigationTarget?>(null) }
-    var sharedSocialProfile by remember { mutableStateOf<SocialPerson?>(null) }
-    var activityTarget by remember { mutableStateOf<String?>(null) }
-    var safetyTarget by remember { mutableStateOf<Pair<String,String>?>(null) }
-    var liveCheerEntrySource by remember { mutableStateOf("notification") }
-    var notificationDetailID by remember { mutableStateOf<String?>(null) }
     var reminderWorkoutId by remember { mutableStateOf<String?>(null) }
     var todayStartRequest by remember { mutableStateOf(0) }
     var todayRefreshRequest by remember { mutableStateOf(0) }
@@ -421,7 +414,6 @@ private fun SignedInApp(
         ?: activeShoes.firstOrNull()
     val selectedTodayShoeIdForLaunch = selectedTodayShoe?.id?.toString()
     val sharedSocialViewModel: SocialViewModel = hiltViewModel(key = "shared_social_$accountId")
-    val sharedSocialActivityViewModel: ActivityViewModel = hiltViewModel(key = "shared_social_activity_$accountId")
     val groupSocialState by sharedSocialViewModel.state.collectAsStateWithLifecycle()
     val groupLifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(groupLifecycleOwner, sharedSocialViewModel) {
@@ -556,33 +548,32 @@ private fun SignedInApp(
         val destination = navigationUri?.pathSegments?.firstOrNull() ?: return@LaunchedEffect
         navigationUri.getQueryParameter("type")?.let { integrationViewModel.trackPushOpened(destination, it) }
         integrationViewModel.refreshInbox()
-        when (destination) {
-            "today" -> { reminderWorkoutId=navigationUri.getQueryParameter("workout");navController.navigate(TopLevelDestination.Today.route) }
-            "assistant" -> { assistantEntryDestination = TopLevelDestination.entries.firstOrNull { it.route == currentDestination?.route }?.route ?: "me"; navController.navigate(ASSISTANT_ROUTE) }
-            "inbox" -> navController.navigate(NOTIFICATIONS_ROUTE)
-            "activity" -> { activityTarget=navigationUri.getQueryParameter("id");navController.navigate(ACTIVITY_HISTORY_ROUTE) }
-            "post" -> {
-                val id = navigationUri.getQueryParameter("id").orEmpty()
-                if (id.isNotBlank()) navController.navigate("$SOCIAL_ACTIVITY_DETAIL_ROUTE/${android.net.Uri.encode(id)}")
-                else navController.navigate(NOTIFICATIONS_ROUTE)
-            }
-            "connections", "event", "group", "invitation" -> { socialTarget=SocialNavigationTarget(destination, navigationUri.getQueryParameter("id").orEmpty());navController.navigate(TopLevelDestination.Social.route) }
-            "group" -> { safetyTarget="group" to navigationUri.getQueryParameter("id").orEmpty();navController.navigate(SAFETY_ROUTE) }
-            "live" -> { liveCheerEntrySource="notification";safetyTarget="live" to navigationUri.getQueryParameter("id").orEmpty();navController.navigate(SAFETY_ROUTE) }
-            else -> navController.navigate(NOTIFICATIONS_ROUTE)
+        val id = navigationUri.getQueryParameter("id").orEmpty()
+        val route = when (destination) {
+            "today" -> { reminderWorkoutId = navigationUri.getQueryParameter("workout"); TopLevelDestination.Today.route }
+            "assistant" -> { assistantEntryDestination = TopLevelDestination.entries.firstOrNull { it.route == currentDestination?.route }?.route ?: "me"; ASSISTANT_ROUTE }
+            "connections" -> AppDetailRoutes.connections("notification")
+            "activity" -> id.takeIf(String::isNotBlank)?.let { AppDetailRoutes.activity(it, "notification") }
+            "post" -> id.takeIf(String::isNotBlank)?.let(AppDetailRoutes::post)
+            "event" -> id.takeIf(String::isNotBlank)?.let { AppDetailRoutes.event(it, "notification") }
+            "group" -> id.takeIf(String::isNotBlank)?.let { AppDetailRoutes.group(it, "notification") }
+            "invitation" -> id.takeIf(String::isNotBlank)?.let(AppDetailRoutes::invitation)
+            "live" -> id.takeIf(String::isNotBlank)?.let { AppDetailRoutes.safety("live", it, "notification") }
+            "group_run" -> id.takeIf(String::isNotBlank)?.let { AppDetailRoutes.safety("group", it, "notification") }
+            else -> NOTIFICATIONS_ROUTE
         }
+        navController.navigate(route ?: NOTIFICATIONS_ROUTE) { launchSingleTop = true }
         onNavigationUriConsumed()
     }
     LaunchedEffect(connectionCode) {
         val code = connectionCode ?: return@LaunchedEffect
         rewardsViewModel.claimIncomingInvitation(code)
-        socialTarget = SocialNavigationTarget("connection_link", code)
-        navController.navigate(TopLevelDestination.Social.route) { launchSingleTop = true }
+        navController.navigate(AppDetailRoutes.connectionProfile(code)) { launchSingleTop = true }
+        onConnectionCodeConsumed()
     }
     LaunchedEffect(groupInviteToken) {
         val token = groupInviteToken ?: return@LaunchedEffect
-        socialTarget = SocialNavigationTarget("group_invite", token)
-        navController.navigate(TopLevelDestination.Social.route) { launchSingleTop = true }
+        navController.navigate(AppDetailRoutes.groupInvite(token)) { launchSingleTop = true }
         onGroupInviteConsumed()
     }
 
@@ -789,10 +780,8 @@ private fun SignedInApp(
             startDestination = TopLevelDestination.Today.route,
             modifier = Modifier.fillMaxWidth().weight(1f),
         ) {
-            val primaryRoutes = TopLevelDestination.entries.map { it.route to it } +
-                (ME_CONNECTIONS_ROUTE to TopLevelDestination.Social)
-            primaryRoutes.forEach { (route, destination) ->
-                composable(route) {
+            TopLevelDestination.entries.forEach { destination ->
+                composable(destination.route) {
                     if (destination == TopLevelDestination.Today) {
                         val todayViewModel: TodayViewModel = hiltViewModel()
                         ActivityStartWarmup(recordingViewModel)
@@ -806,7 +795,7 @@ private fun SignedInApp(
                             groupActivityContent = todayGroupEvent?.takeIf { !hasActiveSession }?.let { event ->
                                 { com.plainstride.outbound.feature.social.TodayGroupActivityCard(event,
                                     recordingSafetyViewModel.coordinator.isSharingEvent(event.id), groupRunJoining || recordingSafetyViewModel.coordinator.hasDifferentActiveGroup(event.id),
-                                    { navController.navigate("$SOCIAL_ACTIVITY_EVENT_ROUTE/${event.id}?source=today_group_activity") },
+                                    { navController.navigate(AppDetailRoutes.event(event.id, "today_group_activity")) },
                                     { toggleActivityLiveMap(event.id) }) }
                             },
                             completedToday = integration.completedToday,
@@ -909,7 +898,7 @@ private fun SignedInApp(
                             statisticsCached = integration.progress.isCached,
                             onMyQrCode = { navController.navigate(MY_QR_ROUTE) { launchSingleTop = true } },
                             onConnections = {
-                                navController.navigate(ME_CONNECTIONS_ROUTE) { launchSingleTop = true }
+                                navController.navigate(AppDetailRoutes.connections("me_preview")) { launchSingleTop = true }
                             },
                             onMyRoutes = {
                                 integrationViewModel.scope(com.plainstride.outbound.feature.community.RouteScope.MINE)
@@ -956,11 +945,9 @@ private fun SignedInApp(
                                         unitSystem = measurementUnitSystem,
                                         weightKilograms = integration.weightKilograms,
                                         onOpenActivity = { selectedId ->
-                                            activityTarget = selectedId
-                                            navController.navigate(ACTIVITY_HISTORY_ROUTE) { launchSingleTop = true }
+                                            navController.navigate(AppDetailRoutes.activity(selectedId, "me_recent")) { launchSingleTop = true }
                                         },
                                         onOpenAll = {
-                                            activityTarget = null
                                             navController.navigate(ACTIVITY_HISTORY_ROUTE) { launchSingleTop = true }
                                         },
                                         onImportHealth = { navController.navigate(HEALTH_ROUTE) { launchSingleTop = true } },
@@ -1047,60 +1034,123 @@ private fun SignedInApp(
                             onMessage = { message -> snackbar.showSnackbar(resources.getString(settingsMessageResource(message))) },
                         )
                     } else if (destination == TopLevelDestination.Social && accountId != null) {
-                        val isMeConnections = route == ME_CONNECTIONS_ROUTE
-                        var meConnectionsConsumed by rememberSaveable { mutableStateOf(false) }
-                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),if (isMeConnections) "connections".takeUnless { meConnectionsConsumed } else socialTarget?.type,if (isMeConnections) null else socialTarget?.id,targetEntrySource=if (isMeConnections) "me_preview" else socialTarget?.entrySource ?: "deep_link",onConnectionsClosed={ if (isMeConnections) navController.popBackStack() },inboxCount=NotificationPresentationPolicy.attentionCount(integration.notifications),unitSystem=measurementUnitSystem,onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE) { launchSingleTop = true }},onActivity={id->activityTarget=id;navController.navigate(ACTIVITY_HISTORY_ROUTE)},onMyInvite={if (isMeConnections) navController.popBackStack();navController.navigate(MY_QR_ROUTE){launchSingleTop=true}},onTargetConsumed={if (isMeConnections) meConnectionsConsumed=true else socialTarget=null},onConnectionLinkConsumed={socialTarget=null;onConnectionCodeConsumed()},onGroupInviteConsumed={socialTarget=null},onRoutesTabSelected={if(integration.routeScope!=RouteScope.DISCOVERY)integrationViewModel.scope(RouteScope.DISCOVERY)},onOpenSharedActivity={id->navController.navigate("$SOCIAL_ACTIVITY_DETAIL_ROUTE/$id")},onOpenSharedEvent={id,source->navController.navigate("$SOCIAL_ACTIVITY_EVENT_ROUTE/$id?source=$source")},onOpenSharedProfile={person->sharedSocialProfile=person;navController.navigate("$SOCIAL_PROFILE_ROUTE/${person.id}")},onOpenLiveCheer={id->liveCheerEntrySource="social_active_now";safetyTarget="live" to id;navController.navigate(SAFETY_ROUTE)},groupRun=sharedLiveGroupRun?.toSharedLiveRun(),groupRunJoining=groupRunJoining,onToggleActivityLiveMap=toggleActivityLiveMap,onStartGroupActivity={event->recordingLaunch=event.recordingLaunch();navController.navigate(RECORDING_ROUTE){launchSingleTop=true}},communityRoutesContent={ routeImportRequest -> CommunityRouteScreen(integration.routes,integration.routeScope,integrationViewModel::scope,integrationViewModel::refreshRoutes,integrationViewModel::search,{launch->recordingLaunch=launch;navController.navigate(RECORDING_ROUTE)},integrationViewModel::bookmark,integrationViewModel::trackRouteImport,bottomContentPadding=PrimaryBottomToolbarClearance,routeDetail=integration.selectedCommunityRoute,routeDetailLoading=integration.communityRouteLoading,onLoadDetail=integrationViewModel::loadCommunityRoute,onRemovePublished=integrationViewModel::removePublishedRoute,onClearDetail=integrationViewModel::clearCommunityRoute,unitSystem=measurementUnitSystem,onImportedDelete=integrationViewModel::trackImportedRouteDeleted,importRequest=routeImportRequest,searchQuery=integration.routeQuery)},notificationAccessAvailable=pushPermissionGranted,onEnableNotifications={integrationViewModel.trackPushPermissionPromptAction("social","enable");requestNotificationPermission(forPush=true,forReminder=reminderEnabled)},viewModel=sharedSocialViewModel)
+                        SocialRoute(
+                            accountId = accountId, localeTag = groupLocale,
+                            inboxCount = NotificationPresentationPolicy.attentionCount(integration.notifications),
+                            unitSystem = measurementUnitSystem,
+                            onConditions = { navController.navigate(TopLevelDestination.Today.route) },
+                            onCommunity = { navController.navigate(COMMUNITY_ROUTES_ROUTE) },
+                            onNotifications = { navController.navigate(NOTIFICATIONS_ROUTE) { launchSingleTop = true } },
+                            onOpenConnections = { source, adding -> navController.navigate(AppDetailRoutes.connections(source, adding)) },
+                            onOpenGroup = { id, source, invitation -> navController.navigate(AppDetailRoutes.group(id, source, invitation)) },
+                            onOpenInvitation = { navController.navigate(AppDetailRoutes.invitation(it)) },
+                            onRoutesTabSelected = { if (integration.routeScope != RouteScope.DISCOVERY) integrationViewModel.scope(RouteScope.DISCOVERY) },
+                            onOpenSharedActivity = { navController.navigate(AppDetailRoutes.post(it)) },
+                            onOpenSharedEvent = { id, source -> navController.navigate(AppDetailRoutes.event(id, source)) },
+                            onOpenSharedProfile = { navController.navigate(AppDetailRoutes.profile(it.id)) },
+                            onOpenLiveCheer = { navController.navigate(AppDetailRoutes.safety("live", it, "social_active_now")) },
+                            communityRoutesContent = { routeImportRequest ->
+                                CommunityRouteScreen(
+                                    accountId = accountId, onOpenRoute = { navController.navigate(AppDetailRoutes.route(it.id)) },
+                                    library = integration.routes, scope = integration.routeScope, onScope = integrationViewModel::scope,
+                                    onRefresh = integrationViewModel::refreshRoutes, onSearch = integrationViewModel::search,
+                                    onImport = integrationViewModel::trackRouteImport,
+                                    bottomContentPadding = PrimaryBottomToolbarClearance,
+                                    routeDetail = integration.selectedCommunityRoute, routeDetailLoading = integration.communityRouteLoading,
+                                    onLoadDetail = integrationViewModel::loadCommunityRoute,
+                                    unitSystem = measurementUnitSystem, onImportedDelete = integrationViewModel::trackImportedRouteDeleted,
+                                    importRequest = routeImportRequest, searchQuery = integration.routeQuery,
+                                )
+                            },
+                            notificationAccessAvailable = pushPermissionGranted,
+                            onEnableNotifications = { integrationViewModel.trackPushPermissionPromptAction("social", "enable"); requestNotificationPermission(forPush = true, forReminder = reminderEnabled) },
+                            viewModel = sharedSocialViewModel,
+                        )
                     } else {
                         FoundationScreen(destination, authState, authViewModel)
                     }
                 }
             }
-            composable("$SOCIAL_ACTIVITY_DETAIL_ROUTE/{postId}") { entry ->
-                val postId = entry.arguments?.getString("postId").orEmpty()
-                val socialViewModel = sharedSocialViewModel
-                val activityViewModel = sharedSocialActivityViewModel
-                SocialActivityDetailDestination(
-                    postId = postId,
-                    onOpenGroupActivity = { id -> navController.navigate("$SOCIAL_ACTIVITY_EVENT_ROUTE/$id?source=activity_detail") },
-                    unitSystem = measurementUnitSystem,
-                    viewModel = socialViewModel,
-                    activityViewModel = activityViewModel,
-                    onOpenSharedProfile = { person -> sharedSocialProfile = person; socialViewModel.trackProfileOpened(); navController.navigate("$SOCIAL_PROFILE_ROUTE/${person.id}") },
-                    onBack = { socialViewModel.closeActivityDetail(); navController.popBackStack() },
+            composable(AppDetailRoutes.Connections) { entry ->
+                ConnectionsDestination(
+                    accountId = requireNotNull(accountId), localeTag = groupLocale,
+                    entrySource = entry.arguments?.getString("source") ?: "deep_link",
+                    startsAdding = entry.arguments?.getString("adding") == "true",
+                    onOpenProfile = { navController.navigate(AppDetailRoutes.profile(it.id, "connections")) },
+                    onOpenInvitation = { navController.navigate(AppDetailRoutes.invitation(it)) },
+                    onOpenGroupInvitation = { id, invitation -> navController.navigate(AppDetailRoutes.group(id, "invitation", invitation)) },
+                    onScanQr = { navController.navigate(CONNECTION_SCANNER_ROUTE) },
+                    onMyQr = { navController.navigate(MY_QR_ROUTE) }, onBack = { navController.popBackStack() },
                 )
             }
-            composable("$SOCIAL_ACTIVITY_EVENT_ROUTE/{eventId}?source={source}") { entry ->
-                val eventId = entry.arguments?.getString("eventId").orEmpty()
-                val source = entry.arguments?.getString("source") ?: "social_upcoming"
-                val socialViewModel = sharedSocialViewModel
-                SocialActivityEventDestination(
-                    eventId = eventId,
-                    unitSystem = measurementUnitSystem,
-                    groupRun = sharedLiveGroupRun?.toSharedLiveRun(),
-                    groupRunJoining = groupRunJoining,
-                    onToggleActivityLiveMap = { toggleActivityLiveMap(eventId) },
-                    onStartActivity = { event ->
-                        recordingLaunch = event.recordingLaunch()
-                        navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
-                    },
-                    entrySource = source,
-                    viewModel = socialViewModel,
+            composable(CONNECTION_SCANNER_ROUTE) {
+                ConnectionScannerDestination(onCode = { code ->
+                    navController.popBackStack()
+                    navController.navigate(AppDetailRoutes.connectionProfile(code))
+                }, onBack = { navController.popBackStack() })
+            }
+            composable(AppDetailRoutes.Post) { entry ->
+                val socialViewModel: SocialViewModel = hiltViewModel()
+                val activityViewModel: ActivityViewModel = hiltViewModel()
+                SocialActivityDetailDestination(
+                    accountId = requireNotNull(accountId), localeTag = groupLocale,
+                    postId = entry.arguments?.getString("postId").orEmpty(),
+                    onOpenGroupActivity = { navController.navigate(AppDetailRoutes.event(it, "activity_detail")) },
+                    unitSystem = measurementUnitSystem, viewModel = socialViewModel, activityViewModel = activityViewModel,
+                    onOpenSharedProfile = { navController.navigate(AppDetailRoutes.profile(it.id, "activity_detail")) },
                     onBack = { navController.popBackStack() },
                 )
             }
-            composable("$SOCIAL_PROFILE_ROUTE/{personId}") { entry ->
-                val personId = entry.arguments?.getString("personId").orEmpty()
-                DisposableEffect(personId) { onDispose { if (sharedSocialProfile?.id == personId) sharedSocialProfile = null } }
-                val socialViewModel = sharedSocialViewModel
-                SocialProfileDestination(
-                    person = sharedSocialProfile?.takeIf { it.id == personId },
-                    viewModel = socialViewModel,
-                    onOpenSharedActivity = { post ->
-                        socialViewModel.openActivityDetail(post)
-                        navController.navigate("$SOCIAL_ACTIVITY_DETAIL_ROUTE/${post.id}")
-                    },
-                    onBack = { sharedSocialProfile = null; navController.popBackStack() },
+            composable(AppDetailRoutes.Event) { entry ->
+                val socialViewModel: SocialViewModel = hiltViewModel()
+                val eventId = entry.arguments?.getString("eventId").orEmpty()
+                SocialActivityEventDestination(
+                    accountId = requireNotNull(accountId), localeTag = groupLocale,
+                    eventId = eventId, entrySource = entry.arguments?.getString("source") ?: "social_upcoming",
+                    unitSystem = measurementUnitSystem, groupRun = sharedLiveGroupRun?.toSharedLiveRun(),
+                    groupRunJoining = groupRunJoining, onToggleActivityLiveMap = { toggleActivityLiveMap(eventId) },
+                    onStartActivity = { recordingLaunch = it.recordingLaunch(); navController.navigate(RECORDING_ROUTE) { launchSingleTop = true } },
+                    viewModel = socialViewModel, onBack = { navController.popBackStack() },
                 )
+            }
+            listOf(AppDetailRoutes.Profile, AppDetailRoutes.ConnectionProfile).forEach { route ->
+                composable(route) { entry ->
+                    val socialViewModel: SocialViewModel = hiltViewModel()
+                    SocialProfileDestination(
+                        accountId = requireNotNull(accountId), localeTag = groupLocale,
+                        personId = entry.arguments?.getString("personId"), connectionCode = entry.arguments?.getString("code"),
+                        entrySource = entry.arguments?.getString("source") ?: "connection_qr_code", viewModel = socialViewModel,
+                        onOpenSharedActivity = { navController.navigate(AppDetailRoutes.post(it.id)) },
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+            }
+            composable(AppDetailRoutes.Group) { entry ->
+                SocialGroupDestination(
+                    accountId = requireNotNull(accountId), localeTag = groupLocale,
+                    groupId = entry.arguments?.getString("groupId").orEmpty(),
+                    invitationId = entry.arguments?.getString("invitation")?.takeIf(String::isNotBlank),
+                    entrySource = entry.arguments?.getString("source") ?: "deep_link", unitSystem = measurementUnitSystem,
+                    onOpenEvent = { id, source -> navController.navigate(AppDetailRoutes.event(id, source)) },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(AppDetailRoutes.Invitation) { entry ->
+                val socialViewModel: SocialViewModel = hiltViewModel()
+                SocialInvitationDestination(
+                    accountId = requireNotNull(accountId), localeTag = groupLocale,
+                    invitationId = entry.arguments?.getString("id").orEmpty(), viewModel = socialViewModel,
+                    onOpenGroup = { id, invitation -> navController.navigate(AppDetailRoutes.group(id, "invitation", invitation)) {
+                        popUpTo(entry.destination.id) { inclusive = true }
+                    } }, onBack = { navController.popBackStack() },
+                )
+            }
+            composable(AppDetailRoutes.GroupInvite) { entry ->
+                val socialViewModel: SocialViewModel = hiltViewModel()
+                GroupInviteDestination(entry.arguments?.getString("token").orEmpty(), socialViewModel,
+                    onResolved = { id -> navController.navigate(AppDetailRoutes.group(id, "group_invite")) {
+                        popUpTo(entry.destination.id) { inclusive = true }
+                    } }, onBack = { navController.popBackStack() })
             }
             composable(ASSISTANT_ROUTE) {
                 AssistantRoute(
@@ -1206,14 +1256,20 @@ private fun SignedInApp(
             }
             composable(ACTIVITY_HISTORY_ROUTE) {
                 ActivityHistoryRoute(
-                    accountId = requireNotNull(accountId) { "Authenticated session is missing its account identifier." },
-                    unitSystem = measurementUnitSystem,
-                    weightKilograms = integration.weightKilograms,
-                    initialActivityId = activityTarget,
+                    accountId = requireNotNull(accountId), unitSystem = measurementUnitSystem,
+                    onOpenActivity = { navController.navigate(AppDetailRoutes.activity(it, "history")) },
                     onBack = { navController.popBackStack() },
-                    onMessage = { message -> snackbar.showSnackbar(resources.getString(activityMessageResource(message))) },
+                    onMessage = { message -> scope.launch { snackbar.showSnackbar(resources.getString(activityMessageResource(message))) }; Unit },
+                )
+            }
+            composable(AppDetailRoutes.Activity) { entry ->
+                ActivityDetailDestination(
+                    accountId = requireNotNull(accountId), activityId = entry.arguments?.getString("id").orEmpty(),
+                    entrySource = entry.arguments?.getString("source") ?: "deep_link", unitSystem = measurementUnitSystem,
+                    weightKilograms = integration.weightKilograms, onBack = { navController.popBackStack() },
+                    onMessage = { message -> scope.launch { snackbar.showSnackbar(resources.getString(activityMessageResource(message))) }; Unit },
                     onPublishRoute = integrationViewModel::publishSavedActivityRoute,
-                    onOpenGroupActivity = { id -> navController.navigate("$SOCIAL_ACTIVITY_EVENT_ROUTE/$id?source=activity_detail") },
+                    onOpenGroupActivity = { navController.navigate(AppDetailRoutes.event(it, "activity_detail")) },
                 )
             }
             composable(MUSIC_ROUTE) { MusicRoute(onClose = { navController.popBackStack() }) }
@@ -1223,7 +1279,7 @@ private fun SignedInApp(
                 )
                 ProgressRoute(progress, onAnalyticsEvent = integrationViewModel::trackProgressEvent, onRefresh = integrationViewModel::refreshStatistics)
             }
-            dialog(COMMUNITY_ROUTES_ROUTE, dialogProperties = DialogProperties(usePlatformDefaultWidth = false)) {
+            composable(COMMUNITY_ROUTES_ROUTE) {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Column(Modifier.fillMaxSize()) {
                         if (!selectingRouteForToday) Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1234,13 +1290,27 @@ private fun SignedInApp(
                         }
                         Box(Modifier.weight(1f)) {
                             key(selectingRouteForToday) {
-                                CommunityRouteScreen(integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search, { launch -> recordingLaunch=launch;navController.popBackStack();navController.navigate(RECORDING_ROUTE) }, integrationViewModel::bookmark,integrationViewModel::trackRouteImport,routeDetail=integration.selectedCommunityRoute,routeDetailLoading=integration.communityRouteLoading,onLoadDetail=integrationViewModel::loadCommunityRoute,onRemovePublished=integrationViewModel::removePublishedRoute,onClearDetail=integrationViewModel::clearCommunityRoute,unitSystem=measurementUnitSystem,searchQuery=integration.routeQuery,selectionMode=selectingRouteForToday,initialSelection=todaySelectedRoute,initialSelectionReverse=todayRouteReversed,onSelectRoute={route,reverse->val removedRoute=todaySelectedRoute.takeIf{route==null};todaySelectedRoute=route;todayRouteReversed=reverse;selectingRouteForToday=false;integrationViewModel.clearCommunityRoute();navController.popBackStack();if(removedRoute!=null)integrationViewModel.trackTodayRouteRemoved(removedRoute) else route?.let{integrationViewModel.trackTodayRouteSelected(it)}},onDismissSelection={selectingRouteForToday=false;integrationViewModel.clearCommunityRoute();navController.popBackStack()})
+                                CommunityRouteScreen(requireNotNull(accountId),{navController.navigate(AppDetailRoutes.route(it.id))},integration.routes, integration.routeScope, integrationViewModel::scope, integrationViewModel::refreshRoutes, integrationViewModel::search,integrationViewModel::trackRouteImport,routeDetail=integration.selectedCommunityRoute,routeDetailLoading=integration.communityRouteLoading,onLoadDetail=integrationViewModel::loadCommunityRoute,unitSystem=measurementUnitSystem,searchQuery=integration.routeQuery,selectionMode=selectingRouteForToday,initialSelection=todaySelectedRoute,initialSelectionReverse=todayRouteReversed,onSelectRoute={route,reverse->val removedRoute=todaySelectedRoute.takeIf{route==null};todaySelectedRoute=route;todayRouteReversed=reverse;selectingRouteForToday=false;integrationViewModel.clearCommunityRoute();navController.popBackStack();if(removedRoute!=null)integrationViewModel.trackTodayRouteRemoved(removedRoute) else route?.let{integrationViewModel.trackTodayRouteSelected(it)}},onDismissSelection={selectingRouteForToday=false;integrationViewModel.clearCommunityRoute();navController.popBackStack()})
                             }
                         }
                     }
                 }
             }
-            composable(SAFETY_ROUTE) { SafetyRoute(safetyTarget?.second, safetyTarget?.first ?: "group", integration.connections, accountId, measurementUnitSystem, liveCheerEntrySource = liveCheerEntrySource) }
+            composable(AppDetailRoutes.Route) { entry ->
+                CommunityRouteDetailDestination(
+                    accountId = requireNotNull(accountId), routeId = entry.arguments?.getString("routeId").orEmpty(),
+                    unitSystem = measurementUnitSystem,
+                    onFollow = { recordingLaunch = it; navController.navigate(RECORDING_ROUTE) },
+                    onBack = { navController.popBackStack() }, onChanged = { integrationViewModel.refreshRoutes() },
+                    onImportedDelete = integrationViewModel::trackImportedRouteDeleted,
+                )
+            }
+            composable(SAFETY_ROUTE) { SafetyRoute(connections = integration.connections, accountId = accountId, unitSystem = measurementUnitSystem) }
+            composable(AppDetailRoutes.Safety) { entry ->
+                SafetyRoute(targetId = entry.arguments?.getString("id"), targetKind = entry.arguments?.getString("kind") ?: "live",
+                    connections = integration.connections, accountId = accountId, unitSystem = measurementUnitSystem,
+                    liveCheerEntrySource = entry.arguments?.getString("source") ?: "notification")
+            }
             composable(TRUSTED_CONTACTS_ROUTE) {
                 TrustedContactsSettingsScreen(
                     connections = integration.connections,
@@ -1250,21 +1320,31 @@ private fun SignedInApp(
                     onDefaultSharingChange = cheerPickerViewModel::setSharesWithTrustedContactsByDefault,
                     onBack = { navController.popBackStack() },
                     onOpenConnections = {
-                        socialTarget = SocialNavigationTarget("connections", entrySource = "trusted_contacts")
-                        navController.navigate(TopLevelDestination.Social.route) { launchSingleTop = true }
+                        navController.navigate(AppDetailRoutes.connections("trusted_contacts")) { launchSingleTop = true }
                     },
                 )
             }
             composable(HEALTH_ROUTE) { HealthDestination(healthPermissions, healthViewModel::refresh) { navController.popBackStack() } }
-            composable(NOTIFICATIONS_ROUTE, deepLinks = listOf(navDeepLink { uriPattern = "plainstride://notification/{destination}?id={id}&notification={notification}" })) {
+            composable(NOTIFICATIONS_ROUTE) {
                 LaunchedEffect(Unit) { integrationViewModel.openInbox() }
                 NotificationInbox(integration.notifications) { item ->
                     integrationViewModel.openNotification(item)
-                    when(val destination = item.presentation.destination){ NotificationDestination.Connections -> { socialTarget=SocialNavigationTarget("connections", entrySource = "notification");navController.navigate(TopLevelDestination.Social.route) };is NotificationDestination.Activity -> { activityTarget=destination.id;navController.navigate(ACTIVITY_HISTORY_ROUTE) };is NotificationDestination.Post -> {navController.navigate("$SOCIAL_ACTIVITY_DETAIL_ROUTE/${android.net.Uri.encode(destination.id)}")};is NotificationDestination.Event -> {socialTarget=SocialNavigationTarget("event", destination.id);navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Invitation -> {socialTarget=SocialNavigationTarget("invitation", destination.id);navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Group -> {socialTarget=SocialNavigationTarget("group", destination.id);navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.GroupRun -> {safetyTarget="group" to destination.id;navController.navigate(SAFETY_ROUTE)};is NotificationDestination.Live -> {liveCheerEntrySource="notification";safetyTarget="live" to destination.id;navController.navigate(SAFETY_ROUTE)};NotificationDestination.Inbox -> {notificationDetailID=item.primary.id;navController.navigate(NOTIFICATION_DETAIL_ROUTE)} }
+                    val route = when (val destination = item.presentation.destination) {
+                        NotificationDestination.Connections -> AppDetailRoutes.connections("notification")
+                        is NotificationDestination.Activity -> AppDetailRoutes.activity(destination.id, "notification")
+                        is NotificationDestination.Post -> AppDetailRoutes.post(destination.id)
+                        is NotificationDestination.Event -> AppDetailRoutes.event(destination.id, "notification")
+                        is NotificationDestination.Invitation -> AppDetailRoutes.invitation(destination.id)
+                        is NotificationDestination.Group -> AppDetailRoutes.group(destination.id, "notification")
+                        is NotificationDestination.GroupRun -> AppDetailRoutes.safety("group", destination.id, "notification")
+                        is NotificationDestination.Live -> AppDetailRoutes.safety("live", destination.id, "notification")
+                        NotificationDestination.Inbox -> AppDetailRoutes.notification(item.primary.id)
+                    }
+                    navController.navigate(route) { launchSingleTop = true }
                 }
             }
-            composable(NOTIFICATION_DETAIL_ROUTE) {
-                NotificationDetail(integration.notifications.firstOrNull { it.id == notificationDetailID })
+            composable(AppDetailRoutes.Notification) { entry ->
+                NotificationDetail(integration.notifications.firstOrNull { it.id == entry.arguments?.getString("id") })
             }
             composable(REWARDS_ROUTE) { RewardsRoute(onBack = { navController.popBackStack() }, onRedeem = { navController.navigate(REWARD_REDEMPTION_ROUTE) }) }
             composable(REWARD_REDEMPTION_ROUTE) { RewardRedemptionRoute(onBack = { navController.popBackStack() }) }
@@ -1285,7 +1365,6 @@ private fun SignedInApp(
                 onDismiss = { cheerPickerVisible = false },
                 onSetUpTrustedContacts = {
                     cheerPickerVisible = false
-                    safetyTarget = null
                     navController.navigate(TRUSTED_CONTACTS_ROUTE)
                 },
                 onDone = { ids ->
@@ -1412,17 +1491,13 @@ private const val ASSISTANT_ROUTE = "assistant"
 private const val MY_QR_ROUTE = "my_qr"
 private const val MUSIC_ROUTE = "music"
 private const val ACTIVITY_HISTORY_ROUTE = "activity_history"
-private const val SOCIAL_ACTIVITY_DETAIL_ROUTE = "social_activity_detail"
-private const val SOCIAL_ACTIVITY_EVENT_ROUTE = "social_activity_event"
-private const val ME_CONNECTIONS_ROUTE = "me_connections"
-private const val SOCIAL_PROFILE_ROUTE = "social_profile"
+private const val CONNECTION_SCANNER_ROUTE = "connection_scanner"
 private const val PROGRESS_ROUTE = "progress"
 private const val COMMUNITY_ROUTES_ROUTE = "community_routes"
 private const val SAFETY_ROUTE = "safety"
 private const val TRUSTED_CONTACTS_ROUTE = "trusted_contacts"
 private const val HEALTH_ROUTE = "health"
 private const val NOTIFICATIONS_ROUTE = "notifications"
-private const val NOTIFICATION_DETAIL_ROUTE = "notification_detail"
 private const val REWARDS_ROUTE = "rewards"
 private const val REWARD_REDEMPTION_ROUTE = "reward-redemption"
 private const val INVITATION_CODE_ROUTE = "invitation-code"

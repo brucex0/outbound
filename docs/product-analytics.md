@@ -256,6 +256,8 @@ Identity completion during onboarding emits `onboarding_identity_prompt_viewed` 
 
 `paginated_list_page_loaded` records additional-page loads for `activity_history`, `activity_feed`, and `connections`. It includes only the list source, a coarse count bucket for newly revealed rows, and a coarse page-depth bucket; activity history also includes success/failure in `result`, so failed retries are observable; activity facts, connection identities, cursors, and exact totals are excluded.
 
+`route_detail_opened` records independent Android route-detail loading with only `source_type` (`community` or `imported`) and `result` (`success` or `failure`). Route IDs, names, geometry, and location are excluded.
+
 `social_profile_opened` records only the source surface for profile navigation through the shared social-profile link. It excludes the runner's name, username, profile ID, and connection ID.
 
 `connections_search_completed` measures successful and failed people searches with only the trigger (`autocomplete` or `submitted`), coarse input script (`han`, `latin`, `mixed`, or `other`), query-length bucket, result-count bucket, match mode (`none`, `literal`, `fuzzy`, `mixed`, `unknown`, or `unavailable`), and result. Match mode makes fuzzy-search usefulness measurable without identifying a search or result. The event never includes the query, matched names or usernames, profile IDs, or connection IDs.

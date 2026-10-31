@@ -71,107 +71,187 @@ import com.plainstride.outbound.feature.activity.ActivityExport
 import com.plainstride.outbound.feature.activity.ActivityViewModel
 import com.plainstride.outbound.feature.activity.R as ActivityR
 
-@Composable fun SocialRoute(accountId: String, localeTag: String, targetType:String?=null,targetId:String?=null,targetEntrySource:String="deep_link",inboxCount:Int=0,unitSystem:MeasurementUnitSystem=MeasurementUnitSystem.metric,onConditions:()->Unit={},onCommunity:()->Unit={},onNotifications:()->Unit={},onActivity:(String)->Unit={},onMyInvite:()->Unit={},onConnectionsClosed:()->Unit={},onTargetConsumed:()->Unit={},onConnectionLinkConsumed:()->Unit={},onGroupInviteConsumed:()->Unit={},onRoutesTabSelected:()->Unit={},onOpenSharedActivity:(String)->Unit={},onOpenSharedEvent:(String,String)->Unit={_,_->},onOpenSharedProfile:(SocialPerson)->Unit={},onOpenLiveCheer:(String)->Unit={},groupRun:SharedLiveRun?=null,groupRunJoining:Boolean=false,onToggleActivityLiveMap:(String)->Unit={},onStartGroupActivity:(SocialEvent)->Unit={},communityRoutesContent: @Composable (Int) -> Unit = {}, modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel(), notificationAccessAvailable: Boolean = true, onEnableNotifications: () -> Unit = {}) {
+@Composable
+fun SocialRoute(
+    accountId: String, localeTag: String, inboxCount: Int = 0,
+    unitSystem: MeasurementUnitSystem = MeasurementUnitSystem.metric,
+    onConditions: () -> Unit = {}, onCommunity: () -> Unit = {}, onNotifications: () -> Unit = {},
+    onOpenConnections: (String, Boolean) -> Unit,
+    onOpenGroup: (String, String, String?) -> Unit,
+    onOpenInvitation: (String) -> Unit,
+    onRoutesTabSelected: () -> Unit = {}, onOpenSharedActivity: (String) -> Unit,
+    onOpenSharedEvent: (String, String) -> Unit, onOpenSharedProfile: (SocialPerson) -> Unit,
+    onOpenLiveCheer: (String) -> Unit = {}, communityRoutesContent: @Composable (Int) -> Unit = {},
+    modifier: Modifier = Modifier, viewModel: SocialViewModel = hiltViewModel(),
+    notificationAccessAvailable: Boolean = true, onEnableNotifications: () -> Unit = {},
+) {
     var selectedTab by rememberSaveable { mutableStateOf(SocialFeatureTab.FEED) }
     var hasSelectedSocialTab by rememberSaveable { mutableStateOf(false) }
     var routeImportRequest by rememberSaveable { mutableStateOf(0) }
-    var createGroup by rememberSaveable { mutableStateOf(false) };var inviteGroup by remember { mutableStateOf<GroupSummary?>(null) };var inviteEvent by remember { mutableStateOf<SocialEvent?>(null) };var groupActivity by remember { mutableStateOf<GroupSummary?>(null) };var connectionsOpen by rememberSaveable { mutableStateOf(false) };var addConnectionFlow by rememberSaveable { mutableStateOf(false) }
-    var scannerOpen by rememberSaveable { mutableStateOf(false) }
-    var scannerFeedback by remember { mutableStateOf<String?>(null) }
+    var createGroup by rememberSaveable { mutableStateOf(false) }
     val feedListState = rememberLazyListState()
-    val context = LocalContext.current
-    val resources = LocalResources.current
-    val activityViewModel: ActivityViewModel = hiltViewModel()
     LaunchedEffect(accountId, localeTag) { viewModel.start(accountId, localeTag) }
-    val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(accountId, localeTag, lifecycleOwner) {
-        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            while (true) {
-                viewModel.refreshActiveNow()
-                delay(30_000)
-            }
-        }
-    }
+    SocialForegroundRefresh(viewModel)
     val state by viewModel.state.collectAsStateWithLifecycle()
+    SocialFeedback(viewModel)
     LaunchedEffect(state.loading, state.home.connections.size) {
         if (!state.loading && !hasSelectedSocialTab) {
             selectedTab = if (state.home.connections.none { it.relationship in setOf("accepted", "connected") }) SocialFeatureTab.PEOPLE else SocialFeatureTab.FEED
         }
     }
+    SocialScreen(state, selectedTab, { tab ->
+        hasSelectedSocialTab = true
+        selectedTab = tab
+        if (tab == SocialFeatureTab.FEED) viewModel.refresh()
+        if (tab == SocialFeatureTab.ROUTES) onRoutesTabSelected()
+        if (tab == SocialFeatureTab.GROUPS) { viewModel.refresh(); viewModel.refreshGroupDirectory() }
+        viewModel.trackSocialTabSelected(tab.analyticsValue)
+    }, inboxCount, unitSystem, viewModel::refresh, viewModel::search,
+        { person -> viewModel.prepareProfile(person) { onOpenSharedProfile(person) } },
+        { onOpenConnections("social_home_preview", false) },
+        { onOpenConnections("social_create_menu", true) },
+        { onOpenGroup(it.id, "groups", null) }, viewModel::openComments,
+        { onOpenSharedActivity(it.id) },
+        { type, id -> when (type) {
+            "event" -> onOpenSharedEvent(id, "social_upcoming")
+            "group" -> onOpenGroup(id, "groups", null)
+            "invitation" -> onOpenInvitation(id)
+        } }, onConditions, onCommunity, onNotifications, { routeImportRequest += 1 },
+        viewModel::toggleCheer, viewModel::joinGroup, viewModel::loadMore, viewModel::report,
+        viewModel::block, viewModel::deletePost,
+        { it.connectionId?.let(viewModel::acceptConnection) },
+        { it.connectionId?.let(viewModel::removeConnection) }, { createGroup = true },
+        communityRoutesContent, modifier, viewModel, feedListState, routeImportRequest,
+        notificationAccessAvailable, onEnableNotifications, onOpenLiveCheer,
+        onOpenGroupInvitation = { id, invitation -> onOpenGroup(id, "invitation", invitation) },
+    )
+    if (createGroup) GroupCreateScreen(state.home.connections.filter { it.relationship in setOf("accepted", "connected") },
+        { createGroup = false }, viewModel::trackGroupTemplateSelected) { template, name, city, people, complete ->
+        viewModel.createGroup(template, name, city, people, java.util.TimeZone.getDefault().id) { success ->
+            complete(success)
+            if (success) {
+                createGroup = false
+                viewModel.state.value.selectedGroupDetail?.let { onOpenGroup(it.id, "creation", null) }
+            }
+        }
+    }
+    SocialComments(state, viewModel)
+}
+
+@Composable
+private fun SocialForegroundRefresh(viewModel: SocialViewModel) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(viewModel, lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) { viewModel.refreshActiveNow(); delay(30_000) }
+        }
+    }
+}
+
+/** Feature feedback is collected by the visible destination's own ViewModel. */
+@Composable
+private fun SocialFeedback(viewModel: SocialViewModel) {
+    val context = LocalContext.current
+    val resources = LocalResources.current
     LaunchedEffect(viewModel) {
         viewModel.connectionEffects.collect { effect ->
             when (effect) {
-                is ConnectionEffect.ShareInvitation -> {
-                    val invitation = resources.getString(R.string.social_invitation_share_message, effect.url)
-                    context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, invitation)
-                    }, null))
-                }
-                is ConnectionEffect.Feedback -> {
-                    val message = resources.getString(connectionFeedbackResource(effect.value))
-                    if (scannerOpen && !effect.closeScanner) scannerFeedback = message
-                    else Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                    if (effect.closeScanner) scannerOpen = false
-                }
+                is ConnectionEffect.ShareInvitation -> context.startActivity(Intent.createChooser(
+                    Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,
+                        resources.getString(R.string.social_invitation_share_message, effect.url)), null))
+                is ConnectionEffect.Feedback -> Toast.makeText(context,
+                    connectionFeedbackResource(effect.value), Toast.LENGTH_SHORT).show()
             }
         }
     }
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { message ->
-            val text = when (message) {
-                SocialMessage.EVENT_JOINED -> resources.getString(com.plainstride.outbound.core.designsystem.R.string.group_activity_joined)
-                SocialMessage.EVENT_LEFT -> resources.getString(com.plainstride.outbound.core.designsystem.R.string.group_activity_left)
-                SocialMessage.EVENT_RSVP_FAILED -> resources.getString(com.plainstride.outbound.core.designsystem.R.string.group_activity_rsvp_error)
-                SocialMessage.GROUP_JOINED -> resources.getString(R.string.group_toast_joined)
-                SocialMessage.GROUP_DECLINED -> resources.getString(R.string.group_toast_declined)
-                SocialMessage.GROUP_INVITATION_FAILED -> resources.getString(R.string.group_invitation_action_failed)
-                SocialMessage.GROUP_CREATED -> resources.getString(R.string.group_toast_created)
-                SocialMessage.GROUP_CREATION_FAILED -> resources.getString(R.string.group_creation_failed)
-                SocialMessage.GROUP_SETTINGS_SAVED -> resources.getString(R.string.group_toast_saved)
-                SocialMessage.GROUP_SETTINGS_FAILED -> resources.getString(R.string.group_toast_save_failed)
+            val resource = when (message) {
+                SocialMessage.EVENT_JOINED -> com.plainstride.outbound.core.designsystem.R.string.group_activity_joined
+                SocialMessage.EVENT_LEFT -> com.plainstride.outbound.core.designsystem.R.string.group_activity_left
+                SocialMessage.EVENT_RSVP_FAILED -> com.plainstride.outbound.core.designsystem.R.string.group_activity_rsvp_error
+                SocialMessage.GROUP_JOINED -> R.string.group_toast_joined
+                SocialMessage.GROUP_DECLINED -> R.string.group_toast_declined
+                SocialMessage.GROUP_INVITATION_FAILED -> R.string.group_invitation_action_failed
+                SocialMessage.GROUP_CREATED -> R.string.group_toast_created
+                SocialMessage.GROUP_CREATION_FAILED -> R.string.group_creation_failed
+                SocialMessage.GROUP_SETTINGS_SAVED -> R.string.group_toast_saved
+                SocialMessage.GROUP_SETTINGS_FAILED -> R.string.group_toast_save_failed
+                SocialMessage.ACTION_FAILED -> R.string.social_profile_action_failed
                 else -> null
             }
-            text?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+            resource?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
         }
     }
-    LaunchedEffect(scannerFeedback) {
-        if (scannerFeedback == null) return@LaunchedEffect
-        kotlinx.coroutines.delay(2_000)
-        scannerFeedback = null
+}
+
+@Composable
+private fun SocialComments(state: SocialUiState, viewModel: SocialViewModel) {
+    state.selectedPost?.let { CommentsDialog(it, state.comments, viewModel::addComment, viewModel::deleteComment, viewModel::closeComments) }
+}
+
+@Composable
+fun ConnectionsDestination(
+    accountId: String, localeTag: String, entrySource: String, startsAdding: Boolean,
+    onOpenProfile: (SocialPerson) -> Unit, onOpenInvitation: (String) -> Unit,
+    onOpenGroupInvitation: (String, String) -> Unit, onScanQr: () -> Unit, onMyQr: () -> Unit,
+    onBack: () -> Unit, viewModel: SocialViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    var tracked by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(accountId, localeTag) { viewModel.start(accountId, localeTag, trackOpen = false) }
+    LaunchedEffect(entrySource) {
+        if (!tracked) { tracked = true; viewModel.trackConnectionsOpened(entrySource) }
     }
-    LaunchedEffect(targetType,targetId,targetEntrySource,state.loading){
-        if (!state.loading && targetType == "connections") {
-            connectionsOpen = true
-            addConnectionFlow = false
-            viewModel.trackConnectionsOpened(targetEntrySource)
-            onTargetConsumed()
-        }
-        else if (!state.loading && targetType == "connection_link" && !targetId.isNullOrBlank()) {
-            viewModel.openConnectionCodeProfile(targetId)
-            onConnectionLinkConsumed()
-        }
-        else if(!state.loading&&targetType=="group_invite"&&targetId!=null){viewModel.consumeGroupInvite(targetId);onGroupInviteConsumed()}
-        else if(!state.loading&&targetType!=null&&targetId!=null){
-            if (targetType == "event") onOpenSharedEvent(targetId, targetEntrySource) else viewModel.openTarget(targetType,targetId)
-            onTargetConsumed()
-        }
+    SocialForegroundRefresh(viewModel)
+    SocialFeedback(viewModel)
+    ConnectionsScreen(state, startsAdding, viewModel::search,
+        { person -> viewModel.prepareProfile(person) { onOpenProfile(person) } },
+        { onOpenInvitation(it.id) }, onOpenGroupInvitation, onScanQr, onMyQr,
+        viewModel::inviteByLink, { it.connectionId?.let(viewModel::acceptConnection) },
+        { it.connectionId?.let(viewModel::removeConnection) },
+        { it.connectionId?.let(viewModel::removeConnection) }, viewModel::loadMoreConnections, onBack)
+}
+
+@Composable
+fun ConnectionScannerDestination(onCode: (String) -> Unit, onBack: () -> Unit, viewModel: SocialViewModel = hiltViewModel()) {
+    ConnectionQrScannerScreen(false, null, viewModel::scannerOpened,
+        { payload -> connectionCodeFromPayload(payload)?.let(onCode) }, onBack)
+}
+
+@Composable
+fun SocialGroupDestination(
+    accountId: String, localeTag: String, groupId: String, invitationId: String?, entrySource: String,
+    unitSystem: MeasurementUnitSystem, onOpenEvent: (String, String) -> Unit,
+    onBack: () -> Unit, viewModel: SocialViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    var inviteGroup by remember { mutableStateOf<GroupSummary?>(null) }
+    var groupActivity by remember { mutableStateOf<GroupSummary?>(null) }
+    var opened by remember { mutableStateOf(false) }
+    LaunchedEffect(accountId, localeTag, groupId, invitationId) {
+        viewModel.start(accountId, localeTag, trackOpen = false)
+        if (viewModel.state.value.selectedGroupId != groupId) viewModel.loadGroup(groupId, entrySource, invitationId)
     }
-    val selectedActivityPost = state.selectedActivityPost?.let { selected -> state.home.posts.firstOrNull { it.id == selected.id } ?: selected }
-    if (state.selectedGroupId != null && (state.groupLoading || state.groupLoadFailed)) {
-        BackHandler { viewModel.closeGroup() }
-        GroupLoadingScreen(state.groupLoading, state.groupUnavailable, viewModel::retryGroup, viewModel::closeGroup)
+    LaunchedEffect(state.selectedGroupId) {
+        if (state.selectedGroupId != null) opened = true else if (opened) onBack()
+    }
+    SocialForegroundRefresh(viewModel)
+    SocialFeedback(viewModel)
+    if (state.selectedGroupDetail == null) {
+        BackHandler { onBack() }
+        GroupLoadingScreen(state.groupLoading, state.groupUnavailable, viewModel::retryGroup, onBack)
     } else if (state.selectedGroupDetail?.invitationPreview == true) {
-        BackHandler { viewModel.closeGroup() }
-        GroupInvitationPreviewScreen(state.selectedGroupDetail!!, state.groupInvitationResponding, viewModel::closeGroup) { accept ->
+        BackHandler { onBack() }
+        GroupInvitationPreviewScreen(state.selectedGroupDetail!!, state.groupInvitationResponding, onBack) { accept ->
             viewModel.respondToGroupPreview(state.selectedGroupDetail!!, accept)
         }
     } else if (state.selectedGroupDetail != null) {
         val group = state.selectedGroupDetail!!
-        BackHandler { viewModel.closeGroup() }
+        BackHandler { onBack() }
         GroupDetailScreen(
             group = group,
-            close = viewModel::closeGroup,
+            close = onBack,
             focus = { mode, target, next -> viewModel.setGroupFocus(group, mode, target, next) },
             archive = { viewModel.setGroupArchived(group, group.lifecycle != "archived") },
             invite = { viewModel.trackGroupInvitePickerOpened(); inviteGroup = group },
@@ -189,106 +269,12 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             loadMomentPhoto = viewModel::loadGroupMomentPhoto,
             planActivity = { groupActivity = group },
             requestJoin = { viewModel.joinGroup(group) },
-            openActivity = { eventId -> onOpenSharedEvent(eventId, "group_up_next") },
+            openActivity = { eventId -> onOpenEvent(eventId, "group_up_next") },
             publishNotice = { title, body, pinned -> viewModel.createGroupNotice(group, title, body, pinned) },
             markNoticesRead = { viewModel.markGroupNoticesRead(group) },
         )
-    } else if (selectedActivityPost == null) {
-        SocialScreen(state, selectedTab, { tab ->
-            hasSelectedSocialTab = true
-            selectedTab = tab
-            if (tab == SocialFeatureTab.FEED) viewModel.refresh()
-            if (tab == SocialFeatureTab.ROUTES) onRoutesTabSelected()
-            if (tab == SocialFeatureTab.GROUPS) { viewModel.refresh(); viewModel.refreshGroupDirectory() }
-            viewModel.trackSocialTabSelected(tab.analyticsValue)
-        }, inboxCount, unitSystem, viewModel::refresh, viewModel::search, { person -> viewModel.trackProfileOpened(); onOpenSharedProfile(person) }, { connectionsOpen = true; addConnectionFlow = false; viewModel.trackConnectionsOpened("social_home_preview") }, { connectionsOpen = true; addConnectionFlow = true; viewModel.search(""); viewModel.trackConnectionsOpened("social_create_menu") }, viewModel::openGroup, viewModel::openComments, { post -> viewModel.openActivityDetail(post); onOpenSharedActivity(post.id) }, { type, id -> if (type == "event") onOpenSharedEvent(id, "social_upcoming") else viewModel.openTarget(type, id) }, onConditions, onCommunity, onNotifications, { routeImportRequest += 1 }, viewModel::toggleCheer, { group ->
-            viewModel.joinGroup(group)
-        }, viewModel::loadMore, viewModel::report, viewModel::block, viewModel::deletePost, { person -> person.connectionId?.let(viewModel::acceptConnection) }, { person -> person.connectionId?.let(viewModel::removeConnection) }, {createGroup=true}, communityRoutesContent, modifier, viewModel = viewModel, feedListState = feedListState, routeImportRequest = routeImportRequest, notificationAccessAvailable = notificationAccessAvailable, onEnableNotifications = onEnableNotifications, onOpenLiveCheer = onOpenLiveCheer)
-    } else {
-        BackHandler { viewModel.closeActivityDetail() }
-        SocialActivityDetail(
-            post = selectedActivityPost,
-            onOpenGroupActivity = { onOpenSharedEvent(it, "activity_detail") },
-            unitSystem = unitSystem,
-            photos = state.activityDetailPhotos,
-            photosLoading = state.activityDetailPhotosLoading,
-            photoBytes = state.activityDetailPhotoBytes,
-            onBack = viewModel::closeActivityDetail,
-            openProfile = viewModel::openProfile,
-            cheer = { viewModel.toggleCheer(selectedActivityPost) },
-            comments = { viewModel.openComments(selectedActivityPost) },
-            trackSplitsViewed = viewModel::trackActivitySplitsViewed,
-            createShareCard = { post -> post.activity?.toSavedActivity(post)?.let { activityViewModel.shareCard(it, unitSystem, "social_feed") } },
-            trackShareAction = activityViewModel::trackSocialShareAction,
-            loadPhotoContent = viewModel::loadActivityPhotoContent,
-            trackPhotoPreview = viewModel::trackActivityPhotoPreviewed,
-            modifier = modifier,
-        )
+
     }
-    if (connectionsOpen) ConnectionsDialog(
-        state = state,
-        startsAdding = addConnectionFlow,
-        search = viewModel::search,
-        openProfile = viewModel::openProfile,
-        reviewInvitation = { invitation -> viewModel.openTarget("invitation", invitation.id) },
-        openGroupInvitation = { groupId -> viewModel.openTarget("group", groupId, "invitation") },
-        scanQr = { scannerFeedback = null; scannerOpen = true },
-        showQr = { connectionsOpen = false; addConnectionFlow = false; onMyInvite() },
-        inviteByLink = viewModel::inviteByLink,
-        acceptRequest = { person -> person.connectionId?.let(viewModel::acceptConnection) },
-        declineRequest = { person -> person.connectionId?.let(viewModel::removeConnection) },
-        cancelRequest = { person -> person.connectionId?.let(viewModel::removeConnection) },
-        loadMoreConnections = viewModel::loadMoreConnections,
-        close = { connectionsOpen = false; addConnectionFlow = false; viewModel.search(""); onConnectionsClosed() },
-    )
-    if (scannerOpen) ConnectionQrScannerScreen(
-        isProcessing = state.connectionProfileLoading,
-        serverMessage = scannerFeedback,
-        onOpened = viewModel::scannerOpened,
-        onPayload = { payload ->
-            connectionCodeFromPayload(payload)?.let { code ->
-                scannerOpen = false
-                viewModel.openConnectionCodeProfile(code)
-            }
-        },
-        onClose = { scannerOpen = false },
-    )
-    if (state.connectionProfileLoading) ConnectionProfileLoadingScreen()
-    state.selectedProfile?.let { selected ->
-        val person = selected.withConnection(state.home.connections)
-        val feedback = profileActionFeedback()
-        ProfileScreen(
-            person = person,
-            report = { viewModel.reportPerson(person, it, feedback) },
-            posts = state.home.posts.filter { it.author.id == person.id },
-            close = viewModel::closeProfile,
-            connect = { if (state.connectionProfileCode != null) viewModel.connectFromConnectionCode() else viewModel.connect(person) },
-            accept = { person.connectionId?.let(viewModel::acceptConnection) },
-            remove = { person.connectionId?.let { viewModel.disconnectProfile(it, viewModel::closeProfile, feedback) } },
-            isCurrentUser = state.connectionProfileIsSelf,
-            isProcessing = state.connectionRequestLoading,
-            openActivity = { post ->
-                viewModel.closeProfile()
-                viewModel.openActivityDetail(post)
-            },
-        )
-    }
-    state.selectedEvent?.let { event ->
-        BackHandler { viewModel.closeEvent() }
-        SocialEventDetailScreen(
-            event = event,
-            unitSystem = unitSystem,
-            close = viewModel::closeEvent,
-            rsvp = { going, mode -> viewModel.setEventRsvp(event, going, mode) },
-            invite = { inviteEvent = event },
-            refreshEvent = { viewModel.refreshEvent(event.id) },
-            groupRun = groupRun?.takeIf { it.activityEventId == event.id },
-            groupRunJoining = groupRunJoining,
-            onToggleActivityLiveMap = { onToggleActivityLiveMap(event.id) },
-            onStartActivity = { onStartGroupActivity(event) },
-        )
-    }
-    if(createGroup)GroupCreateScreen(state.home.connections.filter{it.relationship in setOf("accepted","connected")},{createGroup=false},viewModel::trackGroupTemplateSelected){template,name,city,people,onComplete->viewModel.createGroup(template,name,city,people,java.util.TimeZone.getDefault().id,onComplete)}
     inviteGroup?.let { group ->
         val currentGroup = state.selectedGroupDetail?.takeIf { it.id == group.id } ?: group
         val excludedIds = currentGroup.members.map { it.person.id }.toSet() +
@@ -299,15 +285,14 @@ import com.plainstride.outbound.feature.activity.R as ActivityR
             inviteGroup = null
         }
     }
-    inviteEvent?.let{event->PersonPickerDialog(stringResource(R.string.social_invite),state.home.connections,{inviteEvent=null}){person->viewModel.inviteToEvent(event,person);inviteEvent=null}}
     groupActivity?.let { group -> GroupActivityComposer(close = { groupActivity = null }, locationSelected = viewModel::trackGroupActivityLocation, mapOpened = viewModel::trackGroupActivityMapOpened) { body, completed -> viewModel.createGroupActivity(group, body, completed) } }
-    state.selectedInvitation?.let{invitation->AlertDialog(onDismissRequest=viewModel::closeTarget,title={Text(invitation.title)},confirmButton={TextButton({viewModel.respondToInvitation(invitation,true)}){Text(stringResource(R.string.social_accept))}},dismissButton={TextButton({viewModel.respondToInvitation(invitation,false)}){Text(stringResource(R.string.social_decline))}})}
-    state.selectedPost?.let { CommentsDialog(it, state.comments, viewModel::addComment, viewModel::deleteComment, viewModel::closeComments) }
+
 }
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun SocialActivityDetailDestination(
+    accountId: String, localeTag: String,
     postId: String,
     onOpenGroupActivity: (String) -> Unit,
     unitSystem: MeasurementUnitSystem,
@@ -317,30 +302,20 @@ fun SocialActivityDetailDestination(
     onBack: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val currentOnBack by rememberUpdatedState(onBack)
-    LaunchedEffect(postId) {
-        if (!viewModel.ensureActivityDetail(postId)) {
-            Toast.makeText(context, R.string.social_profile_action_failed, Toast.LENGTH_SHORT).show()
-            currentOnBack()
-        }
+    var loading by remember(postId) { mutableStateOf(true) }
+    var failed by remember(postId) { mutableStateOf(false) }
+    var attempt by remember(postId) { mutableStateOf(0) }
+    SocialFeedback(viewModel)
+    LaunchedEffect(accountId, localeTag, postId, attempt) {
+        viewModel.start(accountId, localeTag, trackOpen = false)
+        loading = true
+        failed = !viewModel.ensureActivityDetail(postId)
+        loading = false
     }
-    DisposableEffect(postId) { onDispose { viewModel.closeActivityDetail() } }
     val post = state.selectedActivityPost?.takeIf { it.id == postId }
         ?: state.home.posts.firstOrNull { it.id == postId }
     if (post == null) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.social_activity_feed)) },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.social_back))
-                        }
-                    },
-                )
-            },
-        ) { padding -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+        SocialDestinationStatus(!loading && failed, onBack) { attempt += 1 }
         return
     }
     SocialActivityDetail(
@@ -351,7 +326,7 @@ fun SocialActivityDetailDestination(
         photosLoading = state.activityDetailPhotosLoading,
         photoBytes = state.activityDetailPhotoBytes,
         onBack = onBack,
-        openProfile = { person -> viewModel.trackProfileOpened(); onOpenSharedProfile(person) },
+        openProfile = { person -> viewModel.prepareProfile(person) { onOpenSharedProfile(person) } },
         cheer = { viewModel.toggleCheer(post) },
         comments = { viewModel.openComments(post) },
         trackSplitsViewed = viewModel::trackActivitySplitsViewed,
@@ -360,11 +335,13 @@ fun SocialActivityDetailDestination(
         loadPhotoContent = viewModel::loadActivityPhotoContent,
         trackPhotoPreview = viewModel::trackActivityPhotoPreviewed,
     )
+    SocialComments(state, viewModel)
 }
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun SocialActivityEventDestination(
+    accountId: String, localeTag: String,
     eventId: String,
     unitSystem: MeasurementUnitSystem,
     groupRun: SharedLiveRun?,
@@ -376,32 +353,14 @@ fun SocialActivityEventDestination(
     onBack: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    LaunchedEffect(viewModel) { viewModel.messages.collect { message ->
-        val resource = when(message) {
-            SocialMessage.EVENT_JOINED -> com.plainstride.outbound.core.designsystem.R.string.group_activity_joined
-            SocialMessage.EVENT_LEFT -> com.plainstride.outbound.core.designsystem.R.string.group_activity_left
-            SocialMessage.EVENT_RSVP_FAILED -> com.plainstride.outbound.core.designsystem.R.string.group_activity_rsvp_error
-            else -> null
-        }
-        resource?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
-    } }
-    DisposableEffect(eventId) { onDispose { viewModel.closeEvent() } }
-    LaunchedEffect(eventId, entrySource) { viewModel.openTarget("event", eventId, entrySource) }
-    val event = state.selectedEvent
+    SocialFeedback(viewModel)
+    LaunchedEffect(accountId, localeTag, eventId, entrySource) {
+        viewModel.start(accountId, localeTag, trackOpen = false)
+        viewModel.loadEvent(eventId, entrySource)
+    }
+    val event = state.selectedEvent?.takeIf { it.id == eventId }
     if (event == null) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.social_upcoming)) },
-                    navigationIcon = {
-                        IconButton(onClick = { viewModel.closeEvent(); onBack() }) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.social_back))
-                        }
-                    },
-                )
-            },
-        ) { padding -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+        SocialDestinationStatus(state.destinationFailed, onBack) { viewModel.loadEvent(eventId, entrySource) }
         return
     }
     var inviting by remember(event.id) { mutableStateOf(false) }
@@ -415,44 +374,95 @@ fun SocialActivityEventDestination(
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 fun SocialProfileDestination(
-    person: SocialPerson?,
-    viewModel: SocialViewModel,
-    onOpenSharedActivity: (SocialPost) -> Unit,
-    onBack: () -> Unit,
+    accountId: String, localeTag: String,
+    personId: String? = null, connectionCode: String? = null, entrySource: String,
+    viewModel: SocialViewModel, onOpenSharedActivity: (SocialPost) -> Unit, onBack: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val load = { if (connectionCode != null) viewModel.openConnectionCodeProfile(connectionCode)
+        else personId?.let { viewModel.loadProfile(it, entrySource) }; Unit }
+    LaunchedEffect(accountId, localeTag, personId, connectionCode) {
+        viewModel.start(accountId, localeTag, trackOpen = false)
+        load()
+    }
+    SocialFeedback(viewModel)
+    val person = state.selectedProfile
     if (person == null) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.social_profile)) },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.social_back))
-                        }
-                    },
-                )
-            },
-        ) { padding -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+        SocialDestinationStatus(state.destinationFailed, onBack, load)
         return
     }
     val resolvedPerson = person.withConnection(state.home.connections)
     val feedback = profileActionFeedback()
     ProfileScreen(
-        person = resolvedPerson,
-        report = { viewModel.reportPerson(resolvedPerson, it, feedback) },
-        posts = state.home.posts.filter { it.author.id == person.id },
-        close = onBack,
-        connect = { viewModel.connect(person) },
+        person = resolvedPerson, report = { viewModel.reportPerson(resolvedPerson, it, feedback) },
+        posts = state.home.posts.filter { it.author.id == person.id }, close = onBack,
+        connect = { if (connectionCode != null) viewModel.connectFromConnectionCode() else viewModel.connect(person) },
         accept = { resolvedPerson.connectionId?.let(viewModel::acceptConnection) },
         remove = { resolvedPerson.connectionId?.let { viewModel.disconnectProfile(it, onBack, feedback) } },
-        isCurrentUser = false,
-        isProcessing = state.connectionRequestLoading,
-        useDialog = false,
-        openActivity = onOpenSharedActivity,
+        isCurrentUser = state.connectionProfileIsSelf, isProcessing = state.connectionRequestLoading,
+        useDialog = false, openActivity = onOpenSharedActivity,
     )
+}
+
+@Composable
+fun SocialInvitationDestination(
+    accountId: String, localeTag: String,
+    invitationId: String, viewModel: SocialViewModel,
+    onOpenGroup: (String, String) -> Unit, onBack: () -> Unit,
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    var responding by remember { mutableStateOf(false) }
+    LaunchedEffect(accountId, localeTag, invitationId) {
+        viewModel.start(accountId, localeTag, trackOpen = false)
+        viewModel.loadInvitation(invitationId)
+    }
+    SocialFeedback(viewModel)
+    val invitation = state.selectedInvitation
+    if (invitation == null) {
+        SocialDestinationStatus(state.destinationFailed, onBack) { viewModel.loadInvitation(invitationId) }
+        return
+    }
+    if (invitation.kind == "group" && invitation.objectId != null) {
+        LaunchedEffect(invitation.id) { onOpenGroup(invitation.objectId, invitation.id) }
+        return
+    }
+    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.social_back)) }
+        Text(invitation.title, style = MaterialTheme.typography.headlineSmall)
+        listOf(true, false).forEach { accept ->
+            Button(onClick = {
+                responding = true
+                viewModel.respondToInvitation(invitation, accept) { success ->
+                    responding = false
+                    if (success) onBack()
+                }
+            }, enabled = !responding) { Text(stringResource(if (accept) R.string.social_accept else R.string.social_decline)) }
+        }
+    }
+}
+
+@Composable
+fun GroupInviteDestination(token: String, viewModel: SocialViewModel, onResolved: (String) -> Unit, onBack: () -> Unit) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(token) { viewModel.resolveGroupInvite(token, onResolved) }
+    SocialFeedback(viewModel)
+    SocialDestinationStatus(state.destinationFailed, onBack) { viewModel.resolveGroupInvite(token, onResolved) }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun SocialDestinationStatus(failed: Boolean, onBack: () -> Unit, retry: () -> Unit) {
+    Scaffold(topBar = { TopAppBar(title = {}, navigationIcon = {
+        IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.social_back)) }
+    }) }) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            if (failed) {
+                Text(stringResource(R.string.social_destination_unavailable), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                TextButton(retry) { Text(stringResource(R.string.social_destination_retry)) }
+            } else CircularProgressIndicator()
+        }
+    }
 }
 
 private enum class SocialFeatureTab(val analyticsValue: String, val label: Int) {
@@ -487,7 +497,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable private fun SocialScreen(state: SocialUiState, selectedTab: SocialFeatureTab, selectTab: (SocialFeatureTab) -> Unit, inboxCount: Int, unitSystem: MeasurementUnitSystem, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, addConnection: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, requestRouteImport:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, communityRoutesContent: @Composable (Int) -> Unit, modifier: Modifier, viewModel: SocialViewModel, feedListState: LazyListState, routeImportRequest:Int, notificationAccessAvailable: Boolean, onEnableNotifications: () -> Unit, onOpenLiveCheer: (String) -> Unit) {
+@Composable private fun SocialScreen(state: SocialUiState, selectedTab: SocialFeatureTab, selectTab: (SocialFeatureTab) -> Unit, inboxCount: Int, unitSystem: MeasurementUnitSystem, refresh: () -> Unit, search: (String) -> Unit, openProfile: (SocialPerson) -> Unit, openConnections: () -> Unit, addConnection: () -> Unit, openGroup: (GroupSummary) -> Unit, comments: (SocialPost) -> Unit, openActivity:(SocialPost)->Unit, openTarget:(String,String)->Unit, conditions:()->Unit, community:()->Unit, notifications:()->Unit, requestRouteImport:()->Unit, cheer: (SocialPost) -> Unit, group: (GroupSummary) -> Unit, loadMore: () -> Unit, report: (SocialPost, String) -> Unit, block: (SocialPost) -> Unit, deletePost: (SocialPost) -> Unit, acceptRequest: (SocialPerson) -> Unit, declineRequest: (SocialPerson) -> Unit, createGroup:()->Unit, communityRoutesContent: @Composable (Int) -> Unit, modifier: Modifier, viewModel: SocialViewModel, feedListState: LazyListState, routeImportRequest:Int, notificationAccessAvailable: Boolean, onEnableNotifications: () -> Unit, onOpenLiveCheer: (String) -> Unit, onOpenGroupInvitation: (String, String) -> Unit) {
     var safetyPost by remember { mutableStateOf<SocialPost?>(null) }
     var blockConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
     var deletionConfirmationPost by remember { mutableStateOf<SocialPost?>(null) }
@@ -665,7 +675,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
                 items(acceptedConnections.take(8), key = SocialPerson::id) { person -> PersonRow(person) { openProfile(person) } }
             }
             SocialFeatureTab.GROUPS -> LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + PrimaryBottomToolbarClearance), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (groupInvitations.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_invite)) }; items(groupInvitations, key = SocialInvitation::id) { invitation -> InvitationCard(invitation, { openTarget("invitation", invitation.id) }) { invitation.objectId?.let { viewModel.openTarget("group", it, "invitation") } } } }
+                if (groupInvitations.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_invite)) }; items(groupInvitations, key = SocialInvitation::id) { invitation -> InvitationCard(invitation, { openTarget("invitation", invitation.id) }) { invitation.objectId?.let { onOpenGroupInvitation(it, invitation.id) } } } }
                 item { SectionHeader(stringResource(R.string.social_groups), action = stringResource(R.string.social_group_create), onAction = createGroup) }
                 if (state.home.groups.isEmpty() && !state.loading) item { CompanionCard(onClick = createGroup) { Text(stringResource(R.string.social_group_empty), fontWeight = FontWeight.SemiBold); Spacer(Modifier.height(10.dp)); Text(stringResource(R.string.social_group_create), fontWeight = FontWeight.Bold) } }
                 items(state.home.groups, key = GroupSummary::id) { item -> GroupCard(item, groupDisplayName(item, state.home.groups), { openGroup(item) }) { group(item) } }
@@ -796,13 +806,13 @@ fun SocialConnectionsPreview(
     }
 }
 @Composable
-private fun ConnectionsDialog(
+private fun ConnectionsScreen(
     state: SocialUiState,
     startsAdding: Boolean,
     search: (String) -> Unit,
     openProfile: (SocialPerson) -> Unit,
     reviewInvitation: (SocialInvitation) -> Unit,
-    openGroupInvitation: (String) -> Unit,
+    openGroupInvitation: (String, String) -> Unit,
     scanQr: () -> Unit,
     showQr: () -> Unit,
     inviteByLink: () -> Unit,
@@ -811,12 +821,14 @@ private fun ConnectionsDialog(
     cancelRequest: (SocialPerson) -> Unit,
     loadMoreConnections: () -> Unit,
     close: () -> Unit,
-) = Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+) {
     var addMenuExpanded by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
+    var focusedAdding by rememberSaveable { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
     LaunchedEffect(startsAdding) {
-        if (startsAdding) {
+        if (startsAdding && !focusedAdding) {
+            focusedAdding = true
             withFrameNanos { }
             focusRequester.requestFocus()
             keyboardController?.show()
@@ -855,7 +867,7 @@ private fun ConnectionsDialog(
                 if (state.searchResults.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_search_people)) }; items(state.searchResults, key = SocialPerson::id) { PersonRow(it) { openProfile(it) } } }
                 val incoming = state.home.connections.filter { it.relationship == "pending" && it.connectionDirection == "incoming" }
                 if (incoming.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_requests)) }; items(incoming, key = SocialPerson::id) { person -> RequesterCard(person, { openProfile(person) }, { acceptRequest(person) }, { declineRequest(person) }) } }
-                if (state.home.invitations.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_invite)) }; items(state.home.invitations, key = SocialInvitation::id) { invitation -> InvitationCard(invitation, { reviewInvitation(invitation) }) { if (invitation.kind == "group" && invitation.objectId != null) openGroupInvitation(invitation.objectId) else reviewInvitation(invitation) } } }
+                if (state.home.invitations.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_invite)) }; items(state.home.invitations, key = SocialInvitation::id) { invitation -> InvitationCard(invitation, { reviewInvitation(invitation) }) { if (invitation.kind == "group" && invitation.objectId != null) openGroupInvitation(invitation.objectId, invitation.id) else reviewInvitation(invitation) } } }
                 val accepted = state.home.connections.filter { it.relationship in setOf("accepted", "connected") }
                 if (accepted.isNotEmpty()) { item { SectionHeader(stringResource(R.string.social_connections)) }; items(accepted, key = SocialPerson::id) { PersonRow(it) { openProfile(it) } } }
                 val outgoing = state.home.connections.filter { it.relationship == "pending" && it.connectionDirection == "outgoing" }
@@ -1936,7 +1948,7 @@ private fun SocialEventDetailScreen(
         start?.let { java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date.from(it)) }
             ?: event.startsAt
     }
-    Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Box(Modifier.fillMaxSize()) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Scaffold(
                 topBar = {

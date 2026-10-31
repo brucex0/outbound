@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="activity_detail_unavailable">暂时无法打开此活动。请检查网络连接后重试。</string>
+    <string name="activity_detail_retry">重试</string>
+</resources>

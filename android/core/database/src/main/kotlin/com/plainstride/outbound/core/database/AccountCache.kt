@@ -58,6 +58,9 @@ interface AccountCacheDao {
     @Query("DELETE FROM account_cache WHERE accountId = :accountId AND expiresAtEpochMs IS NOT NULL AND expiresAtEpochMs <= :nowEpochMs")
     suspend fun deleteExpired(accountId: String, nowEpochMs: Long): Int
 
+    @Query("DELETE FROM account_cache WHERE accountId = :accountId AND namespace = :namespace AND cacheKey = :cacheKey AND localeTag = :localeTag")
+    suspend fun delete(accountId: String, namespace: String, cacheKey: String, localeTag: String)
+
     @Query("DELETE FROM account_cache WHERE accountId = :accountId")
     suspend fun deleteForAccount(accountId: String)
 }

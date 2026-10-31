@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="social_destination_unavailable">This page is unavailable. Check your connection and try again.</string>
+    <string name="social_destination_retry">Try again</string>
+</resources>

@@ -29,6 +29,8 @@ interface SocialRepository {
     suspend fun loadConnections(cursor: String?): Result<SocialPage<SocialPerson>>
     suspend fun searchPeople(query: String): Result<List<SocialPerson>>
     suspend fun profile(id: String): Result<SocialPerson>
+    suspend fun cacheProfilePreview(accountId: String, person: SocialPerson)
+    suspend fun cachedProfilePreview(accountId: String, personId: String): SocialPerson?
     suspend fun setCheer(postId: String, cheered: Boolean): Result<Unit>
     suspend fun loadPostPhotos(postId: String): Result<List<ActivityPhoto>>
     suspend fun downloadPostPhoto(photoId: String, thumbnail: Boolean = true): Result<ByteArray>
@@ -166,6 +168,18 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun loadConnections(cursor: String?) = authenticated { apiCall { api.connections(it, cursor) } }.map { response -> SocialPage(response.connections.map { it.person.copy(relationshipDetails = SocialRelationship(it.id, it.status, it.direction), relationship = it.status, isActive = it.isInActiveWorkout, connectionId = it.id, connectionDirection=it.direction) }, response.nextCursor) }
     override suspend fun searchPeople(query: String) = authenticated { apiCall { api.search(it, query.trim()) } }.map { it.people }
     override suspend fun profile(id: String) = authenticated { apiCall { api.profile(it, id) } }.map { it.person.copy(recognitions = it.recognitions) }
+    override suspend fun cacheProfilePreview(accountId: String, person: SocialPerson) {
+        cache.upsert(AccountCacheEntity(accountId, "social.profile-preview", person.id, "und",
+            PlainstrideJson.encodeToString(person), null, System.currentTimeMillis(), null))
+    }
+    override suspend fun cachedProfilePreview(accountId: String, personId: String): SocialPerson? {
+        val row = cache.get(accountId, "social.profile-preview", personId, "und") ?: return null
+        return try { PlainstrideJson.decodeFromString<SocialPerson>(row.payloadJson) }
+        catch (error: kotlinx.serialization.SerializationException) {
+            android.util.Log.w("PlainstrideSocial", "profile_preview_decode failed type=${error.javaClass.simpleName}")
+            null
+        }
+    }
     override suspend fun setCheer(postId: String, cheered: Boolean) = authenticated { auth -> apiCall { if (cheered) api.cheer(auth, postId) else api.removeCheer(auth, postId) } }
     override suspend fun loadPostPhotos(postId: String) = authenticated { apiCall { api.postPhotos(it, postId) } }.map { it.photos }
     override suspend fun downloadPostPhoto(photoId: String, thumbnail: Boolean): Result<ByteArray> {
