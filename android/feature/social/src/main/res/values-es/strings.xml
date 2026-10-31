@@ -170,4 +170,5 @@
     <string name="social_profile_action_failed">No se pudo completar la acción. Inténtalo de nuevo.</string>
     <string name="social_active_now_cheer_hint">Abre la pantalla de ánimo en directo</string>
     <string name="social_active_now_profile_hint">Abre el perfil de esta persona</string>
+    <string name="social_profile_request_sent">Enviada</string>
 </resources>

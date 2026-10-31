@@ -1803,6 +1803,14 @@ private fun ProfileScreen(
                         when {
                             isCurrentUser -> Unit
                             person.relationship == "none" -> TextButton(connect, enabled = !isProcessing) { Text(stringResource(R.string.social_connect)) }
+                            person.relationship == "pending" && person.connectionDirection == "outgoing" -> {
+                                Text(
+                                    stringResource(R.string.social_profile_request_sent),
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                             person.relationship == "pending" && person.connectionDirection == "incoming" -> {
                                 TextButton(remove, enabled = !isProcessing) { Text(stringResource(R.string.social_decline)) }
                                 TextButton(accept, enabled = !isProcessing) { Text(stringResource(R.string.social_accept)) }

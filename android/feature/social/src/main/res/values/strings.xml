@@ -170,4 +170,5 @@
     <string name="social_profile_action_failed">Could not complete the action. Try again.</string>
     <string name="social_active_now_cheer_hint">Opens the live Cheer screen</string>
     <string name="social_active_now_profile_hint">Opens this person’s profile</string>
+    <string name="social_profile_request_sent">Sent</string>
 </resources>
