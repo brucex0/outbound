@@ -151,6 +151,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case assistantLauncherAnimationShown = "assistant_launcher_animation_shown"
     case assistantLauncherOpened = "assistant_launcher_opened"
     case assistantMeaningfulEngagement = "assistant_meaningful_engagement"
+    case assistantInterpretationCompleted = "assistant_interpretation_completed"
     case homeWidgetOnboardingViewed = "home_widget_onboarding_viewed"
     case homeWidgetSetupActionSelected = "home_widget_setup_action_selected"
     case homeWidgetSetupStepViewed = "home_widget_setup_step_viewed"
@@ -512,6 +513,7 @@ enum ProductAnalyticsSchema {
         .assistantLauncherAnimationShown: [.destination, .entrySource],
         .assistantLauncherOpened: [.destination, .entrySource],
         .assistantMeaningfulEngagement: [.destination, .entrySource],
+        .assistantInterpretationCompleted: [.sourceType, .result],
         .homeWidgetOnboardingViewed: [.entrySource],
         .homeWidgetSetupActionSelected: [.entrySource, .selectionType],
         .homeWidgetSetupStepViewed: [.entrySource, .stepName],

@@ -417,8 +417,8 @@ struct AssistantView: View {
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
     @EnvironmentObject private var gearStore: GearStore
     @StateObject private var voiceCommandStore = AssistantVoiceCommandStore()
-    @State private var hasHandledVoiceActivityCommand = false
-    @State private var pendingVoiceCommandTask: Task<Void, Never>?
+    @State private var isInterpreting = false
+    @State private var pendingSendTask: Task<Void, Never>?
     @State private var pendingManualWorkoutDraft: ManualWorkoutDraft?
     @State private var showsManualWorkoutEntry = false
 
@@ -464,6 +464,10 @@ struct AssistantView: View {
                 .task {
                     assistantStore.ensureSeedMessage(context: assistantContext)
                 }
+                .onDisappear {
+                    pendingSendTask?.cancel()
+                    pendingSendTask = nil
+                }
                 .onChange(of: assistantStore.messages.count) { _, _ in
                     guard let lastID = assistantStore.messages.last?.id else { return }
                     withAnimation(.easeOut(duration: 0.22)) {
@@ -487,9 +491,11 @@ struct AssistantView: View {
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             Button("Reset") {
+                pendingManualWorkoutDraft = nil
                 assistantStore.reset(context: assistantContext)
             }
             .font(.subheadline.weight(.semibold))
+            .disabled(isInterpreting || assistantStore.isResponding)
         }
     }
 
@@ -522,16 +528,19 @@ struct AssistantView: View {
 
             ForEach(compactSuggestions) { suggestion in
                 Button {
+                    guard pendingSendTask == nil else { return }
                     trackMeaningfulEngagement(entrySource: "suggestion")
-                    Task {
+                    pendingSendTask = Task {
+                        defer { pendingSendTask = nil }
+                        assistantStore.draft = suggestion.prompt
                         if suggestion.id == "log-workout" {
-                            assistantStore.draft = suggestion.prompt
-                            await sendDraft(trackEngagement: false)
-                        } else if focusedActivity != nil {
-                            assistantStore.draft = suggestion.prompt
-                            await sendDraft(trackEngagement: false)
-                        } else if let target = await assistantStore.sendSuggestion(suggestion, context: assistantContext) {
-                            routeThroughApp(target)
+                            // A selected button is a fixed-format action, not language inference.
+                            pendingManualWorkoutDraft = ManualWorkoutDraft()
+                            assistantStore.draft = ""
+                            assistantStore.recordManualWorkoutTurn(userText: suggestion.prompt,
+                                assistantText: ManualWorkoutDraft.MissingField.activityType.question)
+                        } else {
+                            await sendDraft(trackEngagement: false, capability: suggestion.capability)
                         }
                     }
                 } label: {
@@ -551,6 +560,7 @@ struct AssistantView: View {
                     .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
+                .disabled(isInterpreting || assistantStore.isResponding)
             }
         }
     }
@@ -610,12 +620,20 @@ struct AssistantView: View {
                             .buttonStyle(.borderedProminent)
                             .tint(personaAccentColor)
                     }
+                    .disabled(isInterpreting || assistantStore.isResponding)
                 }
                 .padding(12)
                 .background(personaAccentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
             }
 
-            if assistantStore.isResponding {
+            Button("Enter workout details") {
+                trackMeaningfulEngagement(entrySource: "manual_entry")
+                showsManualWorkoutEntry = true
+            }
+            .buttonStyle(.bordered)
+            .disabled(isInterpreting || assistantStore.isResponding)
+
+            if assistantStore.isResponding || isInterpreting {
                 HStack(spacing: 10) {
                     ProgressView()
                     Text("Thinking...")
@@ -648,12 +666,16 @@ struct AssistantView: View {
                     .lineLimit(1...4)
 
                 Button {
-                    Task { await sendDraft() }
+                    guard pendingSendTask == nil else { return }
+                    pendingSendTask = Task {
+                        defer { pendingSendTask = nil }
+                        await sendDraft()
+                    }
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.system(size: 30))
                 }
-                .disabled(assistantStore.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || assistantStore.isResponding)
+                .disabled(assistantStore.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || assistantStore.isResponding || isInterpreting)
             }
         }
         .padding(.horizontal)
@@ -684,46 +706,6 @@ struct AssistantView: View {
     private func routeThroughApp(_ target: AssistantNavigationTarget) {
         appNavigationStore.open(target)
         dismiss()
-    }
-
-    @discardableResult
-    private func handleActivityCommandIfPresent(_ transcript: String) -> Bool {
-        if let intent = AssistantActivityCommandParser.parse(transcript, unitSystem: measurementPreferences.unitSystem) {
-            hasHandledVoiceActivityCommand = true
-            pendingVoiceCommandTask?.cancel()
-            pendingVoiceCommandTask = nil
-            assistantStore.draft = ""
-            assistantStore.recordPreparedActivityCommand(
-                transcript: transcript,
-                intent: intent,
-                context: assistantContext
-            )
-            appNavigationStore.prepareActivity(intent: intent)
-            dismiss()
-            return true
-        } else {
-            return false
-        }
-    }
-
-    private func handleLiveVoiceTranscript(_ transcript: String) {
-        guard !hasHandledVoiceActivityCommand else { return }
-        guard AssistantActivityCommandParser.parse(transcript, unitSystem: measurementPreferences.unitSystem) != nil else { return }
-        pendingVoiceCommandTask?.cancel()
-        pendingVoiceCommandTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 900_000_000)
-            guard !Task.isCancelled, !hasHandledVoiceActivityCommand else { return }
-            let latestTranscript = assistantStore.draft
-            guard AssistantActivityCommandParser.parse(latestTranscript, unitSystem: measurementPreferences.unitSystem) != nil else { return }
-            voiceCommandStore.cancelRecording()
-            handleActivityCommandIfPresent(latestTranscript)
-        }
-    }
-
-    private func handleVoiceTranscript(_ transcript: String) {
-        if !handleActivityCommandIfPresent(transcript) {
-            assistantStore.draft = transcript
-        }
     }
 
     private var compactSuggestions: [AssistantSuggestion] {
@@ -767,16 +749,70 @@ struct AssistantView: View {
         return String(localized: "Helping with \(screenName)")
     }
 
-    private func sendDraft(trackEngagement: Bool = true) async {
+    private func sendDraft(trackEngagement: Bool = true, capability: AssistantCapability? = nil) async {
         let prompt = assistantStore.draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !prompt.isEmpty else { return }
-        if trackEngagement {
-            trackMeaningfulEngagement(entrySource: "message")
+        guard !prompt.isEmpty, !isInterpreting, !assistantStore.isResponding else { return }
+        if trackEngagement { trackMeaningfulEngagement(entrySource: "message") }
+        isInterpreting = true
+        assistantStore.draft = ""
+        defer { isInterpreting = false }
+        let result = await assistantStore.interpretPrompt(prompt, context: assistantContext,
+            manualDraft: pendingManualWorkoutDraft, unitSystem: measurementPreferences.unitSystem)
+        await analyticsManager?.track(ProductAnalyticsEvent(.assistantInterpretationCompleted, properties: [
+            .sourceType: .string(result.source), .result: .string(result.result)
+        ]))
+        guard !Task.isCancelled, result.result != "cancelled" else { return }
+        if result.result == "invalid_input" {
+            assistantStore.draft = prompt
+            assistantStore.recordManualWorkoutTurn(userText: prompt, assistantText: String(localized:
+                "assistant.interpretation.too_long", defaultValue: "Please shorten your message to 4,000 characters."))
+            return
         }
-
-        if handleManualWorkoutPromptIfPresent(prompt) { return }
-        if handleActivityCommandIfPresent(prompt) { return }
-        if let target = await assistantStore.sendCurrentDraft(context: assistantContext) {
+        guard let interpretation = result.interpretation else {
+            assistantStore.recordManualWorkoutTurn(userText: prompt, assistantText: String(localized:
+                "assistant.interpretation.unavailable", defaultValue: "I couldn’t understand that request right now. Try again, or enter workout details directly."))
+            if pendingManualWorkoutDraft != nil { showsManualWorkoutEntry = true }
+            return
+        }
+        if interpretation.kind == "cancelManualWorkout", pendingManualWorkoutDraft != nil {
+            pendingManualWorkoutDraft = nil
+            assistantStore.recordManualWorkoutTurn(userText: prompt,
+                assistantText: String(localized: "assistant.manual.cancelled", defaultValue: "Workout draft cancelled."))
+            return
+        }
+        if interpretation.kind == "manualWorkout" {
+            let original = pendingManualWorkoutDraft ?? ManualWorkoutDraft()
+            guard let parsed = interpretation.updating(original) else {
+                pendingManualWorkoutDraft = original
+                assistantStore.recordManualWorkoutTurn(userText: prompt,
+                    assistantText: String(localized: "assistant.interpretation.clarify", defaultValue: "Please clarify the workout details, or enter them directly."))
+                return
+            }
+            pendingManualWorkoutDraft = parsed
+            let reply = interpretation.clarificationText ?? parsed.firstMissingField?.question
+                ?? String(localized: "I have the workout details. Review them before I save anything.")
+            assistantStore.recordManualWorkoutTurn(userText: prompt, assistantText: reply)
+            if parsed.firstMissingField == nil && interpretation.clarificationText == nil { showsManualWorkoutEntry = true }
+            return
+        }
+        if interpretation.kind == "prepareActivity" {
+            guard !isRecordingActive, interpretation.clarificationText == nil,
+                  let intent = interpretation.preparedActivity(unitSystem: measurementPreferences.unitSystem) else {
+                assistantStore.recordManualWorkoutTurn(userText: prompt,
+                    assistantText: interpretation.clarificationText ?? String(localized: "assistant.activity.clarify", defaultValue: "Please choose an activity and one distance or duration goal. Use the activity button to set it up directly."))
+                return
+            }
+            assistantStore.recordPreparedActivityCommand(transcript: prompt, intent: intent, context: assistantContext)
+            appNavigationStore.prepareActivity(intent: intent)
+            dismiss()
+            return
+        }
+        if let clarification = interpretation.clarificationText {
+            assistantStore.recordManualWorkoutTurn(userText: prompt, assistantText: clarification)
+            return
+        }
+        if let target = await assistantStore.sendInterpretedPrompt(prompt, interpretation: interpretation,
+            capability: capability, context: assistantContext) {
             routeThroughApp(target)
         }
     }
@@ -788,25 +824,6 @@ struct AssistantView: View {
             .entrySource: .string(entrySource)
         ])
         Task { await analyticsManager?.track(event) }
-    }
-
-    @discardableResult
-    private func handleManualWorkoutPromptIfPresent(_ prompt: String) -> Bool {
-        guard pendingManualWorkoutDraft != nil || ManualWorkoutPromptParser.beginsWorkoutLog(prompt) else {
-            return false
-        }
-        let parsed = ManualWorkoutPromptParser.parse(prompt, into: pendingManualWorkoutDraft ?? ManualWorkoutDraft())
-        pendingManualWorkoutDraft = parsed
-        assistantStore.draft = ""
-        let reply: String
-        if let missing = parsed.firstMissingField {
-            reply = missing.question
-        } else {
-            reply = String(localized: "I have the workout details. Review them before I save anything.")
-            showsManualWorkoutEntry = true
-        }
-        assistantStore.recordManualWorkoutTurn(userText: prompt, assistantText: reply)
-        return true
     }
 
     private func manualWorkoutSummary(_ draft: ManualWorkoutDraft) -> String {
@@ -984,7 +1001,7 @@ private final class AssistantVoiceCommandStore: ObservableObject {
     @available(iOS 26.0, *)
     private func startSpeechAnalyzerRecordingIfPossible() async -> Bool {
         let session = AssistantSpeechAnalyzerSession(
-            hints: AssistantActivityCommandParser.recognitionHints,
+            hints: AssistantRecognitionVocabulary.recognitionHints,
             onPartialTranscript: { [weak self] transcript in
                 guard let self else { return }
                 self.bestTranscript = transcript
@@ -1025,7 +1042,7 @@ private final class AssistantVoiceCommandStore: ObservableObject {
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         request.taskHint = .search
-        request.contextualStrings = AssistantActivityCommandParser.recognitionHints
+        request.contextualStrings = AssistantRecognitionVocabulary.recognitionHints
         recognitionRequest = request
 
         let audioSession = AVAudioSession.sharedInstance()

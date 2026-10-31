@@ -1,6 +1,144 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "assistant.interpretation.too_long": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please shorten your message to 4,000 characters."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acorta tu mensaje a un máximo de 4.000 caracteres."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请将消息缩短至 4,000 字以内。"
+          }
+        }
+      }
+    },
+    "assistant.interpretation.unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I couldn’t understand that request right now. Try again, or enter workout details directly."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No pude interpretar tu solicitud en este momento. Inténtalo de nuevo o introduce los datos del entrenamiento directamente."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂时无法理解这个请求。请重试，或直接填写运动详情。"
+          }
+        }
+      }
+    },
+    "assistant.interpretation.clarify": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please clarify the workout details, or enter them directly."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aclara los datos del entrenamiento o introdúcelos directamente."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请补充说明运动详情，或直接填写。"
+          }
+        }
+      }
+    },
+    "assistant.manual.cancelled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout draft cancelled."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se ha cancelado el borrador del entrenamiento."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已取消这条运动草稿。"
+          }
+        }
+      }
+    },
+    "assistant.activity.clarify": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please choose an activity and one distance or duration goal. Use the activity button to set it up directly."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige una actividad y un objetivo de distancia o duración. También puedes configurarla directamente con el botón de actividad."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请选择运动类型，以及距离或时长中的一个目标。也可以通过运动按钮直接设置。"
+          }
+        }
+      }
+    },
+    "Enter workout details": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter workout details"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Introducir datos del entrenamiento"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "填写运动详情"
+          }
+        }
+      }
+    },
     "activity.edit.title": {
       "comment": "Shared with Android activity; generated Android name: activity_edit_title. [android:activity] Generated Android name: activity_edit_title.",
       "localizations": {

@@ -2026,7 +2026,6 @@ struct AssistantDestinationDefinition: Hashable {
     let id: AssistantDestinationID
     let title: String
     let summary: String
-    let searchTerms: [String]
     let defaultAnchorID: String?
 }
 
@@ -2034,34 +2033,19 @@ struct AssistantDestinationDefinition: Hashable {
 /// Adding a page requires metadata here plus a destination renderer at the app composition root.
 enum AssistantDestinationRegistry {
     static let destinations: [AssistantDestinationDefinition] = [
-        .init(id: .today, title: String(localized: "Today"), summary: String(localized: "See today's suggested workout, readiness, and quick start."), searchTerms: ["today", "workout", "readiness", "quick run", "start run"], defaultAnchorID: "today.primary-action"),
-        .init(id: .social, title: String(localized: "Social"), summary: String(localized: "Find connections, groups, invitations, and shared activities."), searchTerms: ["social", "friends", "connections", "groups", "invitations"], defaultAnchorID: nil),
-        .init(id: .me, title: String(localized: "Me"), summary: String(localized: "Review your profile, progress, recent runs, and personal settings."), searchTerms: ["me", "profile", "progress", "personal"], defaultAnchorID: nil),
-        .init(id: .settings, title: String(localized: "Settings"), summary: String(localized: "Manage account, appearance, integrations, and app preferences."), searchTerms: ["settings", "preferences", "account"], defaultAnchorID: nil),
-        .init(id: .appearance, title: String(localized: "Appearance"), summary: String(localized: "Change the app's appearance mode or color theme."), searchTerms: ["appearance", "app theme", "theme", "color theme", "light mode", "dark mode"], defaultAnchorID: nil),
-        .init(id: .activityHistory, title: String(localized: "Activity history"), summary: String(localized: "Review completed and saved activities."), searchTerms: ["activity history", "my activities", "past activities", "saved runs", "recent runs"], defaultAnchorID: "activity-history.content"),
-        .init(id: .guideSettings, title: String(localized: "Live Guidance settings"), summary: String(localized: "Choose voice, coaching tone, and spoken update frequency."), searchTerms: ["guide", "companion settings", "voice", "coaching tone", "spoken updates"], defaultAnchorID: "guide-settings.content"),
-        .init(id: .settingsAppleHealth, title: String(localized: "Apple Health"), summary: String(localized: "Manage Apple Health permissions and workout integration."), searchTerms: ["health", "apple health", "healthkit", "health permission"], defaultAnchorID: "apple-health.content"),
-        .init(id: .settingsAppleMusic, title: String(localized: "Apple Music"), summary: String(localized: "Learn where to connect and choose music for an activity."), searchTerms: ["music", "apple music", "playlist", "music permission"], defaultAnchorID: "apple-music.content")
+        .init(id: .today, title: String(localized: "Today"), summary: String(localized: "See today's suggested workout, readiness, and quick start."), defaultAnchorID: "today.primary-action"),
+        .init(id: .social, title: String(localized: "Social"), summary: String(localized: "Find connections, groups, invitations, and shared activities."), defaultAnchorID: nil),
+        .init(id: .me, title: String(localized: "Me"), summary: String(localized: "Review your profile, progress, recent runs, and personal settings."), defaultAnchorID: nil),
+        .init(id: .settings, title: String(localized: "Settings"), summary: String(localized: "Manage account, appearance, integrations, and app preferences."), defaultAnchorID: nil),
+        .init(id: .appearance, title: String(localized: "Appearance"), summary: String(localized: "Change the app's appearance mode or color theme."), defaultAnchorID: nil),
+        .init(id: .activityHistory, title: String(localized: "Activity history"), summary: String(localized: "Review completed and saved activities."), defaultAnchorID: "activity-history.content"),
+        .init(id: .guideSettings, title: String(localized: "Live Guidance settings"), summary: String(localized: "Choose voice, coaching tone, and spoken update frequency."), defaultAnchorID: "guide-settings.content"),
+        .init(id: .settingsAppleHealth, title: String(localized: "Apple Health"), summary: String(localized: "Manage Apple Health permissions and workout integration."), defaultAnchorID: "apple-health.content"),
+        .init(id: .settingsAppleMusic, title: String(localized: "Apple Music"), summary: String(localized: "Learn where to connect and choose music for an activity."), defaultAnchorID: "apple-music.content")
     ]
 
     static func definition(for id: AssistantDestinationID) -> AssistantDestinationDefinition {
         destinations.first { $0.id == id }!
-    }
-
-    static func infer(from prompt: String) -> AssistantNavigationTarget? {
-        let prompt = prompt.lowercased()
-        let navigationWords = ["open", "show me", "take me", "go to", "navigate", "where", "find", "change", "choose", "pick"]
-        guard navigationWords.contains(where: prompt.contains) else { return nil }
-
-        let ranked = destinations.map { definition in
-            let score = definition.searchTerms.reduce(0) { score, term in
-                score + (prompt.contains(term) ? term.count : 0)
-            }
-            return (definition: definition, score: score)
-        }
-        guard let match = ranked.max(by: { $0.score < $1.score }), match.score > 0 else { return nil }
-        return AssistantNavigationTarget(destination: match.definition.id)
     }
 
     static var productContext: String {
@@ -2086,9 +2070,7 @@ struct AssistantNavigationTarget: Codable, Hashable, Identifiable {
     static let guideSettings = Self(destination: .guideSettings)
     static let activityHistory = Self(destination: .activityHistory)
 
-    static func infer(from prompt: String) -> AssistantNavigationTarget? {
-        AssistantDestinationRegistry.infer(from: prompt)
-    }
+
 }
 
 enum AssistantAuthor: String, Codable {
@@ -2298,15 +2280,36 @@ final class AssistantStore: ObservableObject {
         persistMessages()
     }
 
-    func sendCurrentDraft(context: AssistantContext) async -> AssistantNavigationTarget? {
-        let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        draft = ""
-        return await send(trimmed, capability: nil, context: context)
-    }
-
-    func sendSuggestion(_ suggestion: AssistantSuggestion, context: AssistantContext) async -> AssistantNavigationTarget? {
-        await send(suggestion.prompt, capability: suggestion.capability, context: context)
+    func interpretPrompt(_ prompt: String, context: AssistantContext,
+                         manualDraft: ManualWorkoutDraft? = nil,
+                         unitSystem: MeasurementUnitSystem = .metric) async -> LocalAssistantInterpretResult {
+        let formatter = ISO8601DateFormatter()
+        let now = Date()
+        let localDateFormatter = DateFormatter()
+        localDateFormatter.calendar = Calendar(identifier: .gregorian)
+        localDateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        localDateFormatter.timeZone = TimeZone(identifier: context.timeZoneIdentifier) ?? .current
+        localDateFormatter.dateFormat = "yyyy-MM-dd"
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = localDateFormatter.timeZone
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: now) ?? now
+        let draftContext = manualDraft.map {
+            "activity=\($0.activityType?.rawValue ?? "unknown"), minutes=\($0.durationMinutes.map(String.init) ?? "unknown"), meters=\($0.distanceMeters.map { String($0) } ?? "unknown"), startedAt=\(formatter.string(from: $0.startedAt)), indoor=\($0.isIndoor)"
+        } ?? "none"
+        return await LocalIntelligence.interpret(.init(
+            prompt: prompt,
+            context: """
+            Current instant: \(formatter.string(from: now)); time zone: \(context.timeZoneIdentifier).
+            Local calendar dates: today \(localDateFormatter.string(from: now)); yesterday \(localDateFormatter.string(from: yesterday)).
+            App language: \(AppLanguage.currentIdentifier); measurement preference: \(unitSystem).
+            Screen: \(context.currentScreen ?? "unknown"); recording active: \(context.isRecordingActive).
+            Existing workout ID: \(context.currentWorkoutID ?? "none").
+            Pending manual workout draft: \(draftContext).
+            Allowed destinations (ID: description):
+            \(AssistantDestinationRegistry.destinations.map { "\($0.id.rawValue): \($0.summary)" }.joined(separator: "\n"))
+            """,
+            messages: messages.suffix(4).map { .init(role: $0.author == .user ? "user" : "assistant", text: String($0.text.prefix(400))) }
+        ))
     }
 
     func reset(context: AssistantContext) {
@@ -2404,14 +2407,15 @@ final class AssistantStore: ObservableObject {
         persistMessages()
     }
 
-    private func send(
+    func sendInterpretedPrompt(
         _ prompt: String,
-        capability: AssistantCapability?,
+        interpretation: LocalAssistantInterpretation?,
+        capability: AssistantCapability? = nil,
         context: AssistantContext
     ) async -> AssistantNavigationTarget? {
         ensureSeedMessage(context: context)
-        let inferredCapability = capability ?? Self.inferCapability(from: prompt)
-        let navigationTarget = AssistantNavigationTarget.infer(from: prompt)
+        let inferredCapability = capability ?? interpretation?.resolvedCapability ?? .discover
+        let navigationTarget = interpretation?.navigationTarget
         messages.append(
             AssistantMessage(
                 author: .user,
@@ -2429,11 +2433,13 @@ final class AssistantStore: ObservableObject {
             replyText = await makeReply(
                 for: prompt,
                 capability: inferredCapability,
-                context: context
+                context: context,
+                task: interpretation?.resolvedTask
             )
             isResponding = false
         }
 
+        guard !Task.isCancelled else { return nil }
         messages.append(
             AssistantMessage(
                 author: .assistant,
@@ -2449,12 +2455,18 @@ final class AssistantStore: ObservableObject {
     private func makeReply(
         for prompt: String,
         capability: AssistantCapability,
-        context: AssistantContext
+        context: AssistantContext,
+        task: CompanionTask?
     ) async -> String {
+        let effectiveTask: CompanionTask = context.isRecordingActive ? .liveGuidance : task ?? .productHelp
+        if effectiveTask == .productHelp, let local = await LocalIntelligence.generateReply(
+            prompt: prompt, capability: capability, context: context,
+            messages: recentMessagesForAPI()
+        ), !Self.isGenericFailureReply(local) { return local }
         let groundedPrompt = Self.groundedProductPrompt(prompt, capability: capability)
         do {
             let response = try await APIClient.shared.sendCompanionTurn(CompanionTurnRequestDTO(
-                task: Self.companionTask(for: prompt, capability: capability, context: context),
+                task: effectiveTask,
                 surface: context.isRecordingActive ? .liveSession : .assistant,
                 prompt: groundedPrompt,
                 conversationKey: "ios-main-assistant",
@@ -2467,11 +2479,13 @@ final class AssistantStore: ObservableObject {
                 timeZoneIdentifier: context.timeZoneIdentifier,
                 signals: []
             ))
+            guard !Task.isCancelled else { return "" }
             pendingCompanionConfirmation = response.confirmationRequest
             let message = response.message.trimmingCharacters(in: .whitespacesAndNewlines)
             if !message.isEmpty { return message }
         } catch {
-            Self.logger.warning("Companion turn unavailable; using legacy assistant fallback: \(error.localizedDescription, privacy: .public)")
+            if Task.isCancelled || (error as? URLError)?.code == .cancelled { return "" }
+            Self.logger.warning("Companion turn unavailable; using legacy assistant fallback error_type=\(String(reflecting: type(of: error)), privacy: .public) code=\((error as NSError).code)")
         }
         do {
             let remote = try await APIClient.shared.chatWithAssistant(AssistantChatRequest(
@@ -2488,19 +2502,22 @@ final class AssistantStore: ObservableObject {
                 ),
                 messages: recentMessagesForAPI()
             ))
+            guard !Task.isCancelled else { return "" }
             let message = remote.message.trimmingCharacters(in: .whitespacesAndNewlines)
             if !message.isEmpty, !Self.isGenericFailureReply(message) {
                 return message
             }
             Self.logger.warning("Assistant remote returned unusable message for capability \(capability.rawValue, privacy: .public).")
         } catch {
-            Self.logger.error("Assistant remote request failed: \(String(describing: error), privacy: .public)")
+            if Task.isCancelled || (error as? URLError)?.code == .cancelled { return "" }
+            Self.logger.error("Assistant remote request failed error_type=\(String(reflecting: type(of: error)), privacy: .public) code=\((error as NSError).code)")
         }
 
-        if let generated = await AssistantFoundationModelResponder.generateReply(
+        if let generated = await LocalIntelligence.generateReply(
             prompt: prompt,
             capability: capability,
-            context: context
+            context: context,
+            messages: recentMessagesForAPI()
         ), !Self.isGenericFailureReply(generated) {
             return generated
         }
@@ -2508,37 +2525,11 @@ final class AssistantStore: ObservableObject {
         return fallbackReply(for: prompt, capability: capability, context: context)
     }
 
-    private static func companionTask(
-        for prompt: String,
-        capability: AssistantCapability,
-        context: AssistantContext
-    ) -> CompanionTask {
-        if context.isRecordingActive { return .liveGuidance }
-        if context.currentScreen?.localizedCaseInsensitiveContains("Today") == true { return .adaptToday }
-        let normalized = routingPrompt(for: prompt).lowercased()
-        if normalized.contains("today") || normalized.contains("short on time") || normalized.contains("tired") || normalized.contains("sore") {
-            return .adaptToday
-        }
-        switch capability {
-        case .plan: return .prepareWeek
-        case .discover, .navigate, .support: return .productHelp
-        case .brainstorm: return .answerTrainingQuestion
-        }
-    }
-
     private func fallbackReply(
         for prompt: String,
         capability: AssistantCapability,
         context: AssistantContext
     ) -> String {
-        if Self.looksLikeExternalDiscoveryRequest(prompt) {
-            return String(localized: """
-            I cannot browse or show live outside listings from inside Plainstride yet.
-
-            If you are planning time around Vancouver, I can still help turn that into an active outing: pick a walk, run, or ride window, then use the orange activity button when you are ready to record it.
-            """)
-        }
-
         switch capability {
         case .discover:
 #if OUTBOUND_ENABLE_SOCIAL
@@ -2650,40 +2641,6 @@ final class AssistantStore: ObservableObject {
         }
     }
 
-    // Localized suggestion text stays visible in the conversation and goes to
-    // the model unchanged; deterministic classification keeps its original route.
-    private static func routingPrompt(for prompt: String) -> String {
-        let presets = [
-            "I’m new here. What should I try first in Plainstride?",
-            "Help me understand the main setup steps and where to fix things if something feels off.",
-            "Brainstorm a few ways this app could better support motivation, exploration, and sharing.",
-            "Use what you know about my activity and help me make a simple plan for this week.",
-            "Make today’s workout easier",
-            "Why is this the right workout for me today?"
-        ]
-        return presets.first {
-            prompt == NSLocalizedString($0, bundle: .main, value: $0, comment: "Assistant preset routing")
-        } ?? prompt
-    }
-
-    private static func inferCapability(from prompt: String) -> AssistantCapability {
-        let lowercased = routingPrompt(for: prompt).lowercased()
-
-        if lowercased.contains("where") || lowercased.contains("find") || lowercased.contains("go to") || lowercased.contains("navigate") {
-            return .navigate
-        }
-        if lowercased.contains("help") || lowercased.contains("issue") || lowercased.contains("stuck") || lowercased.contains("support") || lowercased.contains("setup") {
-            return .support
-        }
-        if lowercased.contains("idea") || lowercased.contains("brainstorm") || lowercased.contains("could") || lowercased.contains("should we") {
-            return .brainstorm
-        }
-        if lowercased.contains("plan") || lowercased.contains("week") || lowercased.contains("schedule") || lowercased.contains("goal") {
-            return .plan
-        }
-        return .discover
-    }
-
     private static func isGenericFailureReply(_ reply: String) -> Bool {
         let normalized = reply
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -2693,119 +2650,8 @@ final class AssistantStore: ObservableObject {
             || normalized == "sorry, something went wrong."
     }
 
-    private static func looksLikeExternalDiscoveryRequest(_ prompt: String) -> Bool {
-        let lowercased = prompt.lowercased()
-        guard lowercased.contains("show me") || lowercased.contains("find") || lowercased.contains("search") else {
-            return false
-        }
-
-        let outboundTerms = [
-            "activity", "activities", "run", "walk", "ride", "bike", "guide",
-            "goal", "plan", "history", "settings", "music", "health"
-        ]
-        return !outboundTerms.contains { lowercased.contains($0) }
-    }
-
     private static func decode<T: Decodable>(_ type: T.Type, from data: Data?) -> T? {
         guard let data else { return nil }
         return try? JSONDecoder().decode(type, from: data)
     }
 }
-
-enum AssistantFoundationModelResponder {
-    @MainActor
-    static func generateReply(
-        prompt: String,
-        capability: AssistantCapability,
-        context: AssistantContext
-    ) async -> String? {
-        #if canImport(FoundationModels)
-        if #available(iOS 26.0, macOS 26.0, *) {
-            let session = AssistantFoundationModelSession.shared
-            guard session.isAvailable else { return nil }
-            return try? await session.reply(to: prompt, capability: capability, context: context)
-        }
-        #endif
-        return nil
-    }
-}
-
-#if canImport(FoundationModels)
-import FoundationModels
-
-@available(iOS 26.0, macOS 26.0, *)
-@MainActor
-private final class AssistantFoundationModelSession {
-    static let shared = AssistantFoundationModelSession()
-
-    private let model = SystemLanguageModel.default
-
-    var isAvailable: Bool {
-        guard case .available = model.availability else { return false }
-        return true
-    }
-
-    func reply(
-        to prompt: String,
-        capability: AssistantCapability,
-        context: AssistantContext
-    ) async throws -> String {
-        let session = LanguageModelSession(model: model) {
-            """
-            You are Plainstride's in-app assistant.
-            Help with product discovery, app navigation, user support, brainstorming, and planning.
-            Be concise, specific to the app, and action-oriented.
-            Avoid mentioning internal implementation details.
-            """
-        }
-
-        let appMap: String
-#if OUTBOUND_ENABLE_SOCIAL
-        appMap = """
-        - Me: motivation, companion settings, highlights, activity history, settings
-        - Social: Groups, rivals
-        - Floating orange button: start or resume a live session
-        """
-#else
-        appMap = """
-        - Me: motivation, companion settings, highlights, activity history, settings
-        - Floating orange button: start or resume a live session
-        """
-#endif
-
-        let response = try await session.respond(
-            to: """
-            Capability: \(capability.title)
-            Guide: \(context.guideName)
-            Saved activities: \(context.activityCount)
-            Weekly distance: \(String(format: "%.1f", context.weeklyDistanceKilometers)) km
-            Goal summary: \(context.currentGoalSummary ?? "No active goal.")
-
-            App map:
-            \(appMap)
-
-            User request: \(prompt)
-
-            Answer in 2 to 4 short paragraphs. Offer a next step when useful.
-            """,
-            generating: AssistantGeneratedReply.self,
-            options: GenerationOptions(
-                sampling: .greedy,
-                temperature: 0.2,
-                maximumResponseTokens: 220
-            )
-        )
-
-        return response.content.text
-            .replacingOccurrences(of: "\r\n", with: "\n")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-}
-
-@available(iOS 26.0, macOS 26.0, *)
-@Generable
-private struct AssistantGeneratedReply {
-    @Guide(description: "A concise assistant reply in 2 to 4 short paragraphs.")
-    let text: String
-}
-#endif

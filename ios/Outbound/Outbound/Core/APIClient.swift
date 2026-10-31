@@ -190,6 +190,10 @@ final class APIClient {
         return data
     }
 
+    func interpretAssistant(_ request: LocalAssistantInterpretRequest) async throws -> LocalAssistantInterpretation {
+        try await post("/assistant/interpret", body: request)
+    }
+
     func chatWithAssistant(_ request: AssistantChatRequest) async throws -> AssistantChatResponse {
         try await post("/assistant/chat", body: request)
     }

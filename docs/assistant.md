@@ -68,7 +68,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 
 ## Destination And Highlight Framework
 
-- `AssistantDestinationRegistry` is the source of truth for assistant-reachable pages and general app information. Each entry has a stable ID, title, description, search terms, and optional default highlight anchor.
+- `AssistantDestinationRegistry` is the source of truth for assistant-reachable pages and general app information. Each entry has a stable ID, title, description, and optional default highlight anchor.
 - `AssistantNavigationTarget` is a typed request containing a destination and optional anchor. The model never receives permission to name or manipulate arbitrary SwiftUI views.
 - `AppNavigationStore` coordinates tab selection, detail navigation, and the pending highlight across app surfaces.
 - Add `.assistantHighlightAnchor("stable.anchor.id")` to an important control or content region to make it spotlightable. Anchors are opt-in because SwiftUI does not expose a reliable semantic runtime inventory of every view.
@@ -111,15 +111,11 @@ Conversation transcripts are not durable runner memory. The backend stores a bou
   - current goal summary line, when present
   - current screen and recording state
   - current device time zone, so backend date questions such as "yesterday" use the user's local day
-- Activity-start commands are deterministic V1 actions, not open-ended chat. The speech request uses command-specific recognition hints, and the parser normalizes common short-command variants such as `ten kay run`, `5 k`, and `thirty minute run`. Phrases such as `start a 10K run` or `bike for 45 minutes` prepare the shared activity start page with the parsed session goal, then require the user to tap Start. The composer Send button uses the same parser before falling back to assistant chat. Assistant microphone input is currently unavailable; typed activity-start commands remain supported.
-- The `Log a workout` quick start enters a manual-workout conversation before interpreting follow-up text. Past-tense or past-time descriptions route to Add Workout, and distance plus pace descriptions can derive duration for review (for example, 2 miles at 10 min pace becomes 20 minutes).
-- Manual-workout duration replies accept English number words through ninety-nine (including hyphenated forms), `a/an hour`, `half an hour`, and Spanish `una hora` / `media hora`, alongside existing numeric English, Spanish, and Chinese units. This parser is iOS-only; Android uses its Me-tab manual-entry form. These replies retain the existing `assistant_meaningful_engagement` event without recording prompt text or duration values.
+- Free-form activity-start requests use structured local intelligence. Requests such as `start a 10K run` or `bike for 45 minutes` prepare the shared activity start page with the extracted goal and require a final Start tap. Assistant microphone input remains unavailable; the dormant speech bridge retains fixed recognition vocabulary only.
+- `Log a workout` is an explicit button action that starts a manual draft. Free-form logging requests and follow-ups use structured Apple Intelligence interpretation, with authenticated server interpretation as fallback. Missing fields prompt for clarification; the form remains available for direct entry. A completed draft still requires review and Save.
 - Today workout customization uses the global transcript and the authenticated companion action path. The assistant only reports success after the planned-workout mutation executes, then refetches `TrainingPlanStore` so the Today card immediately reflects the canonical workout and its updated steps. The action response includes a concise description of the changed fields; failures retain the original card and produce an explicit error response. Local activity-goal customization remains available for preparing a new unsaved activity, but it must not claim to have edited a persisted Today workout.
 - Users can explicitly ask the assistant to recalibrate, reassess, review, or update their training plan. This runs the bounded server-side AI planning evaluation against recent training, recovery state, adherence, feedback, and upcoming workouts. If the current plan remains appropriate, the assistant says so without creating a mutation. If the evaluator finds a useful change, the assistant presents it through the existing confirmation card and only applies or rejects the underlying personalization adjustment after the user's decision. Manual assistant reviews share the planning cooldown, and no separate plan-card entry point is exposed.
-- The response stack is:
-  - try the backend assistant chat endpoint first
-  - fall back to Apple Foundation Models when available on device
-  - fall back again to deterministic local copy so the UI still works everywhere
+- Product-help prose prefers Apple Intelligence with the current destination catalog and bounded conversation. Training, live coaching, and persisted plan changes retain the server companion/action flow. Server failures can still use bounded on-device reply generation and localized offline copy.
 - Generic provider failure text such as `Sorry, something went wrong. Please try again.` is treated as unusable and falls through to deterministic local copy; backend transport errors are logged under the `Assistant` OSLog category for device debugging.
 - Backend chat keeps provider keys on the server rather than in the iOS app.
 - The assistant backend uses the Google GenAI SDK with `gemini-3.8-flash` (override with `APP_AI_MODEL`), low thinking, schema-constrained JSON, and a 20-second deadline. Authentication uses `GEMINI_API_KEY` locally or Vertex runtime identity via `GEMINI_VERTEX_PROJECT_ID`/`GOOGLE_CLOUD_PROJECT`; `APP_AI_KEY` and `APP_AI_BASE_URL` are no longer used for assistant calls. Existing bounded context, action permissions, and local fallbacks remain unchanged.
@@ -131,69 +127,24 @@ Conversation transcripts are not durable runner memory. The backend stores a bou
   - passes the same recent activity summaries into the model prompt for richer history and planning answers
 - Do not expose arbitrary SQL or raw database rows to the model. Add backend tool functions with typed input/output when the assistant needs more app capability.
 
-## Voice Recognition Upgrade Path
+## Local Language Interpretation
 
-Current state:
+- `App/LocalIntelligence.swift` owns the shared interpretation contract and Apple Foundation Models implementation. `@Generable` enums restrict operation, capability, task, sport, destination, and unit choices. It checks iOS 26+, model availability, and app-locale support; unsupported inputs or generation failures fall back to `POST /v1/assistant/interpret`.
+- Each turn supplies the current draft, current instant/time zone, measurement preference, current screen/workout ID, allowed destination catalog, and at most four recent messages of 400 characters each. Local generation has a 15-second cancellation deadline; messages over 4,000 characters ask the user to shorten the input rather than silently truncating it. App locale is explicit in model instructions. A fresh bounded session avoids retaining hidden state after Reset.
+- Interpretation covers completed-workout logging, new activity preparation, navigation, assistant capability/task routing, cancellation, and clarification. Number words and multilingual phrases are interpreted semantically; there is no keyword/regex fallback for arbitrary assistant text.
+- The model proposes values only. Swift validates ranges and fixed-format dates/times, converts units, sums duration components, and derives duration from distance/pace. Missing fields preserve the draft; invalid values do not modify it. Activity setup supports one distance or duration goal and retains the final Start tap. Manual workouts retain review and Save. Existing plan/workout mutations remain server-authoritative and confirmation-gated.
+- If both interpreters are unavailable, the assistant explains the failure and offers direct workout entry. An in-progress draft is preserved and opens in the review form. `Enter workout details` is always available as an explicit form action. Dismissed assistant sends are cancelled before local actions execute.
+- `assistant_interpretation_completed` records only `source_type` (`apple`, `server`, or `none`) and `result` (`success`, `unavailable`, `invalid_input`, or `cancelled`). Existing engagement instrumentation remains. No prompt, model output, duration, distance, date, or destination selection is added to this event. Diagnostics contain operation/provider and safe error type/code only.
+- The unused `TodayActivityCompanionSheet` and `TodayActivityCustomizer` duplicate parsers are removed. The older unreferenced onboarding view/analyzer remains outside the production onboarding flow; current plan-intake interpretation already uses the backend context/confirmation contract.
+- Fixed-format numeric form fields, App Intent parameters, API payloads, import files, and internal editorial label envelopes remain deterministic. Speech transcription is separate from language interpretation; the assistant microphone remains hidden. `AssistantRecognitionVocabulary` only supplies fixed recognition hints for the dormant bridge.
+- Rollout: deploy the backend interpretation route before distributing this iOS change. There is no database migration. Android behavior is unchanged; the endpoint contract can be reused by a future Android interpreter.
 
-- The assistant microphone uses `SpeechAnalyzer` with `SpeechTranscriber` on iOS 26+.
-- The SpeechAnalyzer path reserves the transcriber locale through `AssetInventory`, installs missing speech assets when needed, and converts mic buffers into one of `SpeechTranscriber.availableCompatibleAudioFormats` before creating `AnalyzerInput`.
-- Older OS versions still use `SFSpeechRecognizer`.
-- Both paths show local live partial transcripts and then run the deterministic parser for activity-start commands.
-- The app gives speech recognition command-specific hints for short activity phrases.
-- This keeps V1 simple and native, but recognition quality can still be brittle for commands such as `start a 10K run`.
+Manual verification before release:
 
-Recommended next step:
-
-- Keep Apple Speech as the live preview and offline fallback.
-- Record the short push-to-talk utterance locally.
-- After speech settles, send the short audio clip to the backend instead of trusting the local transcript.
-- Backend transcribes with OpenAI `gpt-4o-mini-transcribe` by default, or `gpt-4o-transcribe` when accuracy matters more than cost.
-- Use a transcription prompt that biases toward Outbound command vocabulary:
-  - sports: `run`, `bike`, `ride`
-  - goals: `3K`, `5K`, `10K`, `kilometers`, `miles`, `20 minutes`, `30 minutes`, `45 minutes`
-  - intents: `start`, `set up`, `go for`, `ride for`
-- Run the existing deterministic `AssistantActivityCommandParser` on the returned transcript.
-- If backend transcription fails, fall back to the Apple Speech transcript already shown in the composer.
-
-Why this shape:
-
-- OpenAI's speech-to-text endpoint supports `gpt-4o-mini-transcribe` and `gpt-4o-transcribe`, which are intended to improve accuracy over older Whisper-style transcription.
-- The file-based transcription path is enough for short push-to-talk commands and avoids adding a streaming WebSocket path immediately.
-- OpenAI Realtime transcription is the better fit only if Outbound later needs continuous, low-latency workout conversation with server-side voice activity detection.
-- Third-party realtime ASR providers such as Deepgram or AssemblyAI may be worth evaluating for always-on or very low-latency voice, but they add another vendor and streaming integration before the product clearly needs it.
-
-Suggested backend contract:
-
-```http
-POST /v1/assistant/transcribe-command
-Content-Type: multipart/form-data
-
-audio=<short m4a/wav clip>
-```
-
-Response:
-
-```json
-{
-  "transcript": "start a 10K run",
-  "confidence": "usable",
-  "source": "openai:gpt-4o-mini-transcribe"
-}
-```
-
-Client behavior:
-
-- Show Apple Speech partials while recording so the UI feels responsive.
-- Show a brief `Checking command...` state after speech ends.
-- If the backend transcript parses into an activity command, open `RecordView` with the goal selected.
-- If it does not parse, leave the best transcript in the composer for editing or normal assistant chat.
-
-Useful references:
-
-- OpenAI speech-to-text guide: https://platform.openai.com/docs/guides/speech-to-text
-- OpenAI `gpt-4o-mini-transcribe`: https://platform.openai.com/docs/models/gpt-4o-mini-transcribe
-- OpenAI `gpt-4o-transcribe`: https://platform.openai.com/docs/models/gpt-4o-transcribe
-- OpenAI Realtime transcription: https://platform.openai.com/docs/guides/realtime-transcription
+- English `one hour`, Spanish `una hora`, and Chinese `一个小时` during an active manual draft resolve to 60 minutes; mixed hour/minute phrases retain both components.
+- Follow-up corrections preserve other fields; explicit outdoor changes clear indoor; relative dates use the current local date and time zone; distance plus per-unit pace derives duration.
+- Questions and negated commands do not open recording or save workouts. Ambiguous or unsupported goals ask for clarification. Nothing starts or saves before the existing user confirmation.
+- Exercise Apple available/unavailable, unsupported language, server failure, cancellation, and Reset. Confirm direct form entry remains available and no prompt/output appears in diagnostics or analytics.
 
 ### Siri And App Intents
 
@@ -278,8 +229,9 @@ Useful references:
 
 ## File Map
 
-- `ios/Outbound/Outbound/App/OutboundApp.swift`: assistant capabilities, message model, store, persistence, and optional Apple Foundation Models responder.
-- `ios/Outbound/Outbound/App/AssistantActivityCommandParser.swift`: deterministic parser for short voice activity commands.
+- `ios/Outbound/Outbound/App/OutboundApp.swift`: assistant capabilities, message model, store, persistence, and server-owned companion response/action flow.
+- `ios/Outbound/Outbound/App/LocalIntelligence.swift`: structured local interpretation, bounded generation, validation, and server fallback.
+- `ios/Outbound/Outbound/App/AssistantRecognitionVocabulary.swift`: fixed hints for the dormant speech bridge.
 - `ios/Outbound/Outbound/App/OutboundActivityIntents.swift`: App Intents and App Shortcuts for Siri/system activity prep.
 - `ios/Outbound/Outbound/App/PreparedActivityLaunch.swift`: persisted pending activity launch request shared by App Intents and the app shell.
 - `ios/Outbound/Outbound/Core/APIClient.swift`: assistant chat request/response transport to the backend.
@@ -287,7 +239,8 @@ Useful references:
 - `ios/Outbound/Outbound/Activity/RecordView.swift`: compact live-session assistant entry.
 - `ios/Outbound/Outbound/App/ProfileView.swift`: assistant screen, quick starts, message bubbles, composer, and speech recognition bridge.
 - `backend/src/routes/assistant.ts`: assistant chat endpoint.
-- `backend/src/services/ai.ts`: Anthropic-backed assistant reply generation.
+- `backend/src/services/assistantInterpretation.ts`: schema-validated server interpretation fallback.
+- `backend/src/services/ai.ts`: configured-provider assistant reply generation.
 
 ## Extension Ideas
 
