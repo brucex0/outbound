@@ -10,7 +10,10 @@ android {
     namespace = "com.plainstride.outbound.feature.social"
     compileSdk = 36
     compileSdkMinor = 1
-    defaultConfig { minSdk = 26 }
+    defaultConfig {
+        minSdk = 26
+        testInstrumentationRunner = "com.plainstride.outbound.feature.social.ProfileTestRunner"
+    }
     buildFeatures { compose = true }
 }
 
@@ -42,5 +45,12 @@ dependencies {
     implementation("com.google.zxing:core:3.5.3")
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("com.google.dagger:hilt-android-testing:${libs.versions.hilt.get()}")
+    kspAndroidTest(libs.hilt.compiler)
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
     debugImplementation(libs.compose.ui.tooling)
 }

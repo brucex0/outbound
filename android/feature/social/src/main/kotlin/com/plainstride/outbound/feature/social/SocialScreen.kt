@@ -1772,7 +1772,7 @@ internal fun JsonElement?.routeCoordinates(): List<MapCoordinate> {
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ProfileScreen(
+internal fun ProfileScreen(
     person: SocialPerson,
     report: (ReportReason) -> Unit,
     posts: List<SocialPost>,

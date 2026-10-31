@@ -1,5 +1,16 @@
 # Social QA
 
+## Android profile connection regression
+
+- `ProfileScreenTest` renders the production Compose profile with deterministic relationship state and no backend calls. It covers Connect → persistent, non-clickable Sent in navigation and QR/dialog presentations, reopening a pending profile, incoming Accept/Decline callbacks, disconnect confirmation, and disabled Connect during processing.
+- Verification: all five tests passed on the connected Samsung SM-S901U1 (Android 16).
+- This is screen-level coverage; repository/network mutation success and QR scanning are outside this fixture.
+- Run on a connected Android device or emulator from `android/`:
+
+```sh
+./gradlew :feature:social:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.plainstride.outbound.feature.social.ProfileScreenTest
+```
+
 ## 2026-10-09 live assistant contrast
 
 - The live assistant uses a white icon on a dark translucent circle with a visible border, shadow, and 44-point tap target, so pale map tiles cannot wash it out. Opens reuse `assistant_launcher_opened` with `entry_source=live_activity`.
