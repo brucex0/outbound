@@ -879,6 +879,19 @@ final class ActivityStore: ObservableObject {
                     for fixture in Self.uiTestActivityFixtures {
                         try await persistence.replaceOrInsert(fixture)
                     }
+                    if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedPhotoDraft"),
+                       let fixture = Self.uiTestActivityFixtures.first(where: { $0.title == "Golden Gate Easy Run" }) {
+                        let captures: [(UIImage, PhotoMetadata)] = [1_000.0, 2_000.0].enumerated().map { index, distance in
+                            let image = UIGraphicsImageRenderer(size: CGSize(width: 240, height: 180)).image { context in
+                                (index == 0 ? UIColor.systemBlue : UIColor.systemGreen).setFill()
+                                context.fill(CGRect(x: 0, y: 0, width: 240, height: 180))
+                            }
+                            return (image, PhotoMetadata(takenAt: fixture.startedAt.addingTimeInterval(Double(index + 1) * 300),
+                                paceAtShot: fixture.avgPace, hrAtShot: nil, distAtShot: distance,
+                                coordinate: nil, captureContext: .active))
+                        }
+                        _ = try await persistence.updatePhotos(for: fixture, keeping: [], adding: captures)
+                    }
                 }
                 // Unlike in-memory UI seeds, these fixtures exercise disk writes
                 // and can be reopened after a fresh app process.

@@ -55,7 +55,96 @@ final class SavedActivityPhotoUITests: XCTestCase {
     }
 
     @MainActor
-    private func launchPhotoEditingApp(restore: Bool = false) -> XCUIApplication {
+    func testPhotoStripPreviewSelectionMixedReorderDeleteAndPersistence() {
+        let app = launchPhotoEditingApp(seedPhotos: true)
+        openRecentActivity(app)
+        openPhotoEditor(app)
+        assertPhotoCount(2, prefix: "EditActivityPhoto-", in: app)
+        let firstCaption = editPhoto(0, in: app).label
+        let secondCaption = editPhoto(1, in: app).label
+        XCTAssertNotEqual(firstCaption, secondCaption)
+        previewPhoto(0, in: app)
+
+        capturePhoto(app)
+        assertPhotoCount(3, prefix: "EditActivityPhoto-", in: app)
+        previewPhoto(2, in: app)
+        let addedCaption = editPhoto(2, in: app).label
+        editPhoto(2, in: app).press(forDuration: 0.6)
+        XCTAssertTrue(editPhoto(2, in: app).isSelected)
+        editPhoto(2, in: app).press(forDuration: 0.6, thenDragTo: editPhoto(0, in: app))
+        assertCaption(addedCaption, index: 0, in: app)
+        assertCaption(firstCaption, index: 1, in: app)
+        XCTAssertTrue(editPhoto(0, in: app).isSelected)
+        app.buttons["EditActivityCancelPhotoSelectionButton"].tap()
+        editPhoto(1, in: app).press(forDuration: 0.6)
+        XCTAssertTrue(editPhoto(1, in: app).isSelected)
+        app.buttons["EditActivityDeleteSelectedPhotosButton"].tap()
+        assertPhotoCount(2, prefix: "EditActivityPhoto-", in: app)
+        assertCaption(addedCaption, index: 0, in: app)
+        assertCaption(secondCaption, index: 1, in: app)
+        attach(app, name: "Shared edit strip after mixed reorder and deletion")
+        saveEditor(app)
+
+        app.terminate()
+        let restored = launchPhotoEditingApp(restore: true)
+        openRecentActivity(restored)
+        openPhotoEditor(restored)
+        assertPhotoCount(2, prefix: "EditActivityPhoto-", in: restored)
+        assertCaption(addedCaption, index: 0, in: restored)
+        assertCaption(secondCaption, index: 1, in: restored)
+        previewPhoto(0, in: restored)
+        attach(restored, name: "Mixed photo order survives relaunch")
+    }
+
+    @MainActor
+    func testCancelDiscardsPhotoAdditionsDeletionAndReordering() {
+        let app = launchPhotoEditingApp(seedPhotos: true)
+        openRecentActivity(app)
+        openPhotoEditor(app)
+        let firstCaption = editPhoto(0, in: app).label
+        let secondCaption = editPhoto(1, in: app).label
+        editPhoto(0, in: app).press(forDuration: 0.6)
+        editPhoto(0, in: app).press(forDuration: 0.6, thenDragTo: editPhoto(1, in: app))
+        assertCaption(secondCaption, index: 0, in: app)
+        app.buttons["EditActivityDeleteSelectedPhotosButton"].tap()
+        assertPhotoCount(1, prefix: "EditActivityPhoto-", in: app)
+        capturePhoto(app)
+        assertPhotoCount(2, prefix: "EditActivityPhoto-", in: app)
+        app.navigationBars["Edit Activity"].buttons["Cancel"].tap()
+        XCTAssertTrue(app.buttons["Discard Changes"].waitForExistence(timeout: 5))
+        app.buttons["Discard Changes"].tap()
+        XCTAssertTrue(app.buttons["Edit activity"].waitForExistence(timeout: 5))
+        openPhotoEditor(app)
+        assertPhotoCount(2, prefix: "EditActivityPhoto-", in: app)
+        assertCaption(firstCaption, index: 0, in: app)
+        assertCaption(secondCaption, index: 1, in: app)
+        XCTAssertFalse(app.buttons["Save Changes"].isEnabled)
+        attach(app, name: "Cancel restores original photos and order")
+    }
+
+    @MainActor
+    private func editPhoto(_ index: Int, in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)["EditActivityPhoto-\(index)"].firstMatch
+    }
+
+    @MainActor
+    private func assertCaption(_ caption: String, index: Int, in app: XCUIApplication) {
+        let expected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", caption), object: editPhoto(index, in: app))
+        XCTAssertEqual(XCTWaiter.wait(for: [expected], timeout: 5), .completed, app.debugDescription)
+    }
+
+    @MainActor
+    private func previewPhoto(_ index: Int, in app: XCUIApplication) {
+        editPhoto(index, in: app).tap()
+        let close = app.buttons["CloseEditActivityPhotoPreviewButton"]
+        XCTAssertTrue(close.waitForExistence(timeout: 5), app.debugDescription)
+        attach(app, name: "Edit photo preview \(index)")
+        close.tap()
+        XCTAssertTrue(app.navigationBars["Edit Activity"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    private func launchPhotoEditingApp(restore: Bool = false, seedPhotos: Bool = false) -> XCUIApplication {
         addUIInterruptionMonitor(withDescription: "Photo library access") { alert in
             for label in ["Allow Full Access", "Allow Access to All Photos", "Allow", "OK"] {
                 if alert.buttons[label].exists { alert.buttons[label].tap(); return true }
@@ -66,6 +155,8 @@ final class SavedActivityPhotoUITests: XCTestCase {
         for tip in ["activity_overflow", "music_discovery", "theme_discovery", "photo_management", "save_route"] {
             arguments += ["-tooltip.\(tip).dismissed.v1", "YES"]
         }
+        arguments += ["-measurement_unit_system_v1", "metric"]
+        if seedPhotos { arguments.append("-OutboundUITestSeedPhotoDraft") }
         if restore { arguments.append("-OutboundUITestRestorePhotoEditing") }
         return launchFixtureApp(extraArguments: arguments)
     }
@@ -122,10 +213,18 @@ final class SavedActivityPhotoUITests: XCTestCase {
     private func saveMetadata(_ app: XCUIApplication, title: String) {
         let field = app.textFields["EditActivityTitle"]
         field.tap()
-        if let current = field.value as? String {
-            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+        field.press(forDuration: 1.2)
+        let selectAll = app.menuItems["Select All"]
+        let selectAllButton = app.buttons["Select All"]
+        if selectAll.waitForExistence(timeout: 2) {
+            selectAll.tap()
+        } else {
+            XCTAssertTrue(selectAllButton.waitForExistence(timeout: 2), app.debugDescription)
+            selectAllButton.tap()
         }
+        field.typeText(XCUIKeyboardKey.delete.rawValue)
         field.typeText(title)
+        XCTAssertEqual(field.value as? String, title)
         saveEditor(app)
         XCTAssertTrue(app.buttons["Edit activity"].waitForExistence(timeout: 5), app.debugDescription)
     }

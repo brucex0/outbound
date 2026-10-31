@@ -12,7 +12,10 @@ case "$flow" in
     print 'Results: fresh /tmp/plainstride-ui-flow.XXXXXX directory (log + xcresult screenshots).'
     print 'Optional OUTBOUND_UI_SIMULATOR_RUNTIME selects the runtime for a temporary simulator.'
     exit 0 ;;
-  activity-photos) test_name='SavedActivityPhotoUITests' ;;
+  activity-photos)
+    test_name='SavedActivityPhotoUITests'
+    additional_tests+=('-only-testing:OutboundUITests/OutboundUITests/testPostRunSummaryCanManageCapturedPhotos')
+    ;;
   launch-controls)
     test_name='LaunchControlUITests'
     additional_tests+=('-only-testing:OutboundUITests/OutboundUITests/testTodayFreestyleStartOpensRecordingFlowAndCanFinish')

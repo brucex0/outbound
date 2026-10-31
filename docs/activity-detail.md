@@ -40,14 +40,16 @@ Limitations vs Strava and category expectations:
 
 ## Activity editor
 
-- The editor groups activity identity, photos, workout metrics, and gear, with a persistent Save Changes action and discard confirmation.
+- The editor groups activity identity, photos, workout metrics, and gear in scrolling cards, with a persistent Save Changes action and discard confirmation. Keep the photo strip out of `Form`/`List` rows: their collection-view drag handling prevents the strip’s native drop destinations from receiving reorders.
 - Save review and edit share `ActivityPhotoReviewSection`: camera/library actions, tap to preview, long press to select, delete selection, and drag selected photos to reorder. The top route/photo pager remains specific to save review.
 - Edit keeps existing file/remote photo references and new captures/imports in one ordered draft. Save Changes persists the photo draft; Cancel discards it. Existing images are not decoded and re-encoded for metadata edits or reordering.
 - New imports retain the existing EXIF-aware importer and activity placement logic. Saved previews use the existing cached image/zoom view; newly added photos use their in-memory image.
 - Mixed saved/new ordering is passed to photo persistence as a validated permutation of retained photos followed by new captures. The default remains append-only for other callers.
 - Metadata and photo persistence are sequential: if photo saving fails after metadata succeeds, the editor retains the draft for retry; it does not roll metadata back.
 - Distance follows the measurement preference with a permanent unit suffix and locale-aware decimals. Unchanged displayed distance preserves exact stored meters. Duration uses labeled hours/minutes/seconds; totals edits retain route/split samples.
-- Manual checks still required: save-page gesture parity; edit preview, selection, delete, mixed-photo reorder, camera/library import, Cancel, failed save/retry, reopen, and Photos album export enabled/disabled. Cover local/cached/remote images and rotated/mirrored imports.
+- The shared thumbnail constrains its image before laying out captions, preserving fill/crop behavior while keeping caption text inside the tile. Shared controls retain their own accessibility identifiers instead of inheriting a container identifier.
+- Automated simulator coverage: `./scripts/run-ui-flow.sh activity-photos` checks the save-page regression, edit preview/selection/delete, mixed-photo drag order, camera/library import, Cancel, metadata save, real album export, and relaunch persistence. All five cases passed on iOS 26.5 on 2026-10-30; screenshot review confirmed captions and restored photo ordering.
+- Remaining manual checks: failed save/retry, album export disabled, remote-only images, rotated/mirrored imports, and physical camera capture.
 
 ## Strava Comparison
 

@@ -42,6 +42,7 @@ struct ActivityPhotoReviewSection<Photo: Identifiable, Thumbnail: View>: View wh
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
                     .accessibilityLabel(String(localized: "common.cancel", defaultValue: "Cancel"))
+                    .accessibilityIdentifier("\(identifierPrefix)CancelPhotoSelectionButton")
                 } else {
                     Button {
                         onCapture()
@@ -115,7 +116,7 @@ struct ActivityPhotoReviewSection<Photo: Identifiable, Thumbnail: View>: View wh
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 8)
         .padding(.bottom, 8)
-        .accessibilityIdentifier(identifierPrefix == "Finish" ? "PostRunPhotoReviewSection" : "\(identifierPrefix)PhotoReviewSection")
+        .accessibilityElement(children: .contain)
     }
 
 }

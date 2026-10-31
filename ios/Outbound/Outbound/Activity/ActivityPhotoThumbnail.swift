@@ -48,6 +48,8 @@ struct ActivityPhotoThumbnail<Content: View>: View {
     private var thumbnail: some View {
         ZStack(alignment: .bottomLeading) {
             content
+                .frame(width: 116, height: 104)
+                .clipped()
             LinearGradient(
                 colors: [.clear, .black.opacity(0.7)],
                 startPoint: .center,

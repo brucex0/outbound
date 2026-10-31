@@ -2176,17 +2176,17 @@ private struct EditActivityView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Activity") {
-                    LabeledContent("Title") {
-                        TextField("Title", text: $title)
-                            .multilineTextAlignment(.trailing)
-                            .accessibilityIdentifier("EditActivityTitle")
+            ScrollView {
+                VStack(spacing: 20) {
+                    editorCard("Activity") {
+                        LabeledContent("Title") {
+                            TextField("Title", text: $title)
+                                .multilineTextAlignment(.trailing)
+                                .accessibilityIdentifier("EditActivityTitle")
+                        }
+                        DatePicker("Date", selection: $startedAt)
                     }
-                    DatePicker("Date", selection: $startedAt)
-                }
 
-                Section {
                     ActivityPhotoReviewSection(
                         photos: draftPhotos,
                         selectedPhotoIDs: $selectedPhotoIDs,
@@ -2200,41 +2200,43 @@ private struct EditActivityView: View {
                         onMove: movePhoto,
                         thumbnail: photoThumbnail
                     )
-                    .listRowInsets(EdgeInsets())
-                }
+                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20))
 
-                Section("activity.edit.details") {
-                    HStack {
-                        Text("Distance")
-                        Spacer()
-                        TextField("Distance", text: $distanceText)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                        Text(units.distanceUnit).foregroundStyle(.secondary)
-                    }
-                    VStack(alignment: .leading) {
-                        Text("Duration")
+                    editorCard("activity.edit.details") {
                         HStack {
-                            durationInput("activity.edit.hours", value: $hours)
-                            durationInput("activity.edit.minutes", value: $minutes)
-                            durationInput("activity.edit.seconds", value: $seconds)
+                            Text("Distance")
+                            Spacer()
+                            TextField("Distance", text: $distanceText)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                            Text(units.distanceUnit).foregroundStyle(.secondary)
+                        }
+                        VStack(alignment: .leading) {
+                            Text("Duration")
+                            HStack {
+                                durationInput("activity.edit.hours", value: $hours)
+                                durationInput("activity.edit.minutes", value: $minutes)
+                                durationInput("activity.edit.seconds", value: $seconds)
+                            }
+                        }
+                        LabeledContent("session.metric.average_pace", value: pacePreview)
+                        if !validMetrics {
+                            Text("activity.edit.invalid").font(.caption).foregroundStyle(.red)
                         }
                     }
-                    LabeledContent("session.metric.average_pace", value: pacePreview)
-                    if !validMetrics {
-                        Text("activity.edit.invalid").font(.caption).foregroundStyle(.red)
-                    }
-                }
 
-                Section("Gear") {
-                    Picker("Shoes", selection: $shoeID) {
-                        Text("None").tag(UUID?.none)
-                        ForEach(gearStore.activeShoes) { shoe in
-                            Text(shoe.displayName).tag(Optional(shoe.id))
+                    editorCard("Gear") {
+                        Picker("Shoes", selection: $shoeID) {
+                            Text("None").tag(UUID?.none)
+                            ForEach(gearStore.activeShoes) { shoe in
+                                Text(shoe.displayName).tag(Optional(shoe.id))
+                            }
                         }
                     }
                 }
+                .padding(16)
             }
+            .background(Color(.systemGroupedBackground))
             .disabled(isSaving || isImporting)
             .safeAreaInset(edge: .bottom) {
                 Button {
@@ -2318,6 +2320,7 @@ private struct EditActivityView: View {
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button(String(localized: "common.close", defaultValue: "Close")) { previewedPhotoID = nil }
+                            .accessibilityIdentifier("CloseEditActivityPhotoPreviewButton")
                     }
                 }
             }
@@ -2326,6 +2329,16 @@ private struct EditActivityView: View {
             guard !items.isEmpty else { return }
             Task { await importPhotos(items) }
         }
+    }
+
+    private func editorCard<Content: View>(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(title).font(.headline)
+            content()
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20))
     }
 
     private var photoMetadata: PhotoMetadata {
