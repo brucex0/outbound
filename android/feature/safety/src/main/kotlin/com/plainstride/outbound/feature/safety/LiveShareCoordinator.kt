@@ -30,6 +30,17 @@ class LiveShareCoordinator @Inject constructor(
     private val analytics: ProductAnalytics,
     @ApplicationContext context: Context,
 ) {
+    // Follower location snapshots stay in memory and are cleared with the account.
+    private val followerSnapshots = java.util.concurrent.ConcurrentHashMap<String, InvitedLiveShare>()
+    private val groupSnapshots = java.util.concurrent.ConcurrentHashMap<String, GroupRun>()
+    fun cachedGroupRun(id: String) = mutableGroup.value?.takeIf { it.id == id } ?: groupSnapshots[id]
+    suspend fun groupRunDetail(id: String) = authenticated { auth -> apiCall { api.groupRun(auth, id) } }.onSuccess {
+        if (groupSnapshots.size >= 32) groupSnapshots.clear()
+        groupSnapshots[id] = it
+        // Viewing another session must not replace the user's active participation.
+        if (mutableGroup.value?.id == id) saveGroup(it)
+    }.onFailure { if ((it as? SafetyRequestException)?.status in setOf(403, 404)) groupSnapshots.remove(id) }
+    fun cachedInvitedShare(id: String) = followerSnapshots[id]
     private val preferences = context.getSharedPreferences("live_share_state", Context.MODE_PRIVATE)
     private val realtimeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Mutex()
@@ -105,7 +116,7 @@ class LiveShareCoordinator @Inject constructor(
  }
  suspend fun recordingEnded()=end()
  suspend fun end():Result<Unit>{val share=mutableActive.value?:return Result.success(Unit);return authenticated{apiCall{api.end(it,share.id)}}.map{clear();Unit}.also{result->analytics.record(AnalyticsEvent("live_share_ended",mapOf(AnalyticsProperty.Result to if(result.isSuccess)"success" else "failure")))}}
- fun clear(){shareRealtime?.close();shareRealtime=null;shareRealtimeId=null;followerRealtime?.close();followerRealtime=null;armed=null;mutableArmed.value=null;mutableActive.value=null;lastPoint=null;lastShareCheckpointAt=0;lastSentAt=0;lastSentRecordedAt=null;preferences.edit().clear().apply()}
+ fun clear(){groupSnapshots.clear();followerSnapshots.clear();shareRealtime?.close();shareRealtime=null;shareRealtimeId=null;followerRealtime?.close();followerRealtime=null;armed=null;mutableArmed.value=null;mutableActive.value=null;lastPoint=null;lastShareCheckpointAt=0;lastSentAt=0;lastSentRecordedAt=null;preferences.edit().clear().apply()}
  suspend fun registerToken(token:String,bundle:String,locale:String)=authenticated{apiCall{api.register(it,PushDeviceRequest(token,appBundle=bundle,locale=locale))}}.map{Unit}
  suspend fun unregisterToken(token:String)=authenticated{apiCall{api.unregister(it,token)}}.map{Unit}
  suspend fun inbox()=authenticated{apiCall{api.inbox(it)}}
@@ -141,7 +152,10 @@ class LiveShareCoordinator @Inject constructor(
  }
  suspend fun liveShare(id:String)=authenticated{apiCall{api.liveShare(it,id)}}.onSuccess(::saveActive)
  suspend fun invitedShares()=authenticated{apiCall{api.invitedShares(it)}}.map{it.sessions}
- suspend fun invitedShare(id:String)=authenticated{apiCall{api.invitedShare(it,id)}}
+ suspend fun invitedShare(id:String)=authenticated{apiCall{api.invitedShare(it,id)}}.onSuccess {
+  if(followerSnapshots.size>=32) followerSnapshots.clear()
+  followerSnapshots[id]=it
+ }.onFailure { if((it as? SafetyRequestException)?.status in setOf(403,404)) followerSnapshots.remove(id) }
  suspend fun sendVoiceCheer(id:String,audioBase64:String,durationMs:Int)=authenticated{apiCall{api.sendVoiceCheer(it,id,VoiceCheerRequest(audioBase64=audioBase64,durationMs=durationMs.coerceIn(250,15_000)))}}.also{result->analytics.record(AnalyticsEvent("live_voice_cheer_sent",mapOf(AnalyticsProperty.Result to if(result.isSuccess)"success" else "failure")))}
  suspend fun pendingVoiceCheer():Result<VoiceCheer?> {
   val share=mutableActive.value?:return Result.success(null)
@@ -157,7 +171,7 @@ class LiveShareCoordinator @Inject constructor(
   val run=mutableGroup.value?:return Result.success(Unit)
   return leaveGroupRun(run.id,finished).map{Unit}
  }
- suspend fun leaveGroupRun(id:String,finished:Boolean)=authenticated{auth->apiCall{if(finished)api.finishGroupRun(auth,id)else api.leaveGroupRun(auth,id)}}.onSuccess{clearGroup()}
+ suspend fun leaveGroupRun(id:String,finished:Boolean)=authenticated{auth->apiCall{if(finished)api.finishGroupRun(auth,id)else api.leaveGroupRun(auth,id)}}.onSuccess{groupSnapshots.remove(id);if(mutableGroup.value?.id==id)clearGroup()}
  suspend fun updateRecording(point:LiveLocation,paceSecondsPerKilometer:Double?,activityEventId:String?=null){
   update(point.copy(currentPaceSecsPerKm=paceSecondsPerKilometer))
   val run=mutableGroup.value?:return
@@ -217,7 +231,9 @@ class LiveShareCoordinator @Inject constructor(
   val timestamp=map["recordedAt"] as? String?:return
   mutableGroup.value=old.copy(participants=old.participants.map{p->if(p.userId!=senderId)p else p.copy(status="active",lastLocationAt=timestamp,lastLocation=GroupRunPoint(lat,lon,(map["altitudeM"] as? Number)?.toDouble(),(map["accuracyM"] as? Number)?.toDouble()),lastActivitySnapshot=GroupRunProgress((map["elapsedSeconds"] as? Number)?.toInt()?:0,(map["distanceM"] as? Number)?.toDouble()?:0.0,(map["paceSecondsPerKM"] as? Number)?.toDouble()))})
  }
- private suspend fun<T:Any>authenticated(call:suspend(String)->ApiResult<T>):Result<T>{val token=tokens.validAccessToken()?:return Result.failure(IllegalStateException("signed_out"));return when(val value=call("Bearer $token")){is ApiResult.Success->Result.success(value.value);is ApiResult.Failure->Result.failure(IllegalStateException(value.error.code.name))}}
+ private suspend fun<T:Any>authenticated(call:suspend(String)->ApiResult<T>):Result<T>{val token=tokens.validAccessToken()?:return Result.failure(IllegalStateException("signed_out"));return when(val value=call("Bearer $token")){is ApiResult.Success->Result.success(value.value);is ApiResult.Failure->Result.failure(SafetyRequestException(value.error.code.name, value.error.httpStatus))}}
  private fun haversine(a:LiveLocation,b:LiveLocation):Double{val p1=Math.toRadians(a.latitude);val p2=Math.toRadians(b.latitude);val dp=p2-p1;val dl=Math.toRadians(b.longitude-a.longitude);val h=kotlin.math.sin(dp/2)*kotlin.math.sin(dp/2)+kotlin.math.cos(p1)*kotlin.math.cos(p2)*kotlin.math.sin(dl/2)*kotlin.math.sin(dl/2);return 6371000*2*kotlin.math.atan2(kotlin.math.sqrt(h),kotlin.math.sqrt(1-h))}
  private companion object{const val ACTIVE="active";const val ARMED="armed";const val GROUP="group";const val REALTIME_TAG="PlainstrideRealtime"}
 }
+
+class SafetyRequestException(val category: String, val status: Int?) : Exception(category)

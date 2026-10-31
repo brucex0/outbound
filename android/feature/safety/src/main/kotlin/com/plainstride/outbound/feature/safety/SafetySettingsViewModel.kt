@@ -24,6 +24,8 @@ import java.time.Instant
  private val mutableContacts=MutableStateFlow<List<TrustedContact>>(emptyList());val trustedContacts=mutableContacts.asStateFlow()
  private val mutableDefaultSharing=MutableStateFlow(false);val sharesWithTrustedContactsByDefault=mutableDefaultSharing.asStateFlow()
  val activeShare=liveShare.active
+ private val mutableGroupDetail=MutableStateFlow<GroupRun?>(null);val groupDetail=mutableGroupDetail.asStateFlow()
+ private val mutableGroupDetailLoading=MutableStateFlow(false);val groupDetailLoading=mutableGroupDetailLoading.asStateFlow()
  val groupRun=liveShare.group
  val groupJoining=liveShare.groupJoining
  val selectedRecipientIds=liveShare.selectedRecipientIds
@@ -84,7 +86,24 @@ import java.time.Instant
  fun configureCheerRecipients(ids:Set<String>){liveShare.configureRecipients(ids.toList())}
  fun createGroup()=viewModelScope.launch{liveShare.createGroupRun(CreateGroupRunRequest())}
  fun joinGroup(invite:String)=viewModelScope.launch{liveShare.joinGroupRun(invite)}
- fun openGroup(id:String)=viewModelScope.launch{liveShare.groupRun(id)}
+ fun openGroup(id:String)=viewModelScope.launch{
+  mutableGroupDetail.value=liveShare.cachedGroupRun(id)
+  mutableGroupDetailLoading.value=true
+  liveShare.groupRunDetail(id).onSuccess{mutableGroupDetail.value=it}.onFailure{
+   if((it as? SafetyRequestException)?.status in setOf(403,404))mutableGroupDetail.value=null
+   Log.w(REALTIME_TAG,"group_detail_load failed type=${it.javaClass.simpleName} status=${(it as? SafetyRequestException)?.status}")
+  }
+  analytics.record(com.plainstride.outbound.core.analytics.AnalyticsEvent("group_run_detail_loaded",mapOf(
+   com.plainstride.outbound.core.analytics.AnalyticsProperty.Result to if(mutableGroupDetail.value!=null)"success" else "failure",
+  )))
+  mutableGroupDetailLoading.value=false
+ }
+ fun leaveGroupDetail(id:String,onComplete:(Boolean)->Unit)=viewModelScope.launch{
+  val result=liveShare.leaveGroupRun(id,false)
+  result.onFailure{Log.w(REALTIME_TAG,"group_detail_leave failed type=${it.javaClass.simpleName} status=${(it as? SafetyRequestException)?.status}")}
+  analytics.record(com.plainstride.outbound.core.analytics.AnalyticsEvent("group_run_leave_result",mapOf(com.plainstride.outbound.core.analytics.AnalyticsProperty.Result to if(result.isSuccess)"success" else "failure")))
+  onComplete(result.isSuccess)
+ }
  fun refreshGroup(id:String)=viewModelScope.launch{liveShare.groupRun(id)}
  fun joinActivityGroupRun(activityEventId:String)=viewModelScope.launch{liveShare.joinActivityGroupRun(activityEventId)}
  fun isSharingEvent(activityEventId:String)=liveShare.isSharingEvent(activityEventId)
@@ -93,6 +112,10 @@ import java.time.Instant
  fun openLiveShare(id:String,entrySource:String="notification") {
   if(BuildConfig.DEBUG) Log.d(REALTIME_TAG,"follower_open_requested")
   if(followerTrackShareId!=id){followerTrackShareId=id;mutableFollowerTrack.value=emptyList()}
+  if(mutableFollower.value?.id!=id) {
+   mutableFollower.value=liveShare.cachedInvitedShare(id)
+   mutableFollower.value?.let(::seedFollowerTrack)
+  }
   followerRefreshJob?.cancel()
   followerRefreshJob=null
   viewModelScope.launch {
@@ -125,7 +148,8 @@ import java.time.Instant
      liveShare.stopWatchingFollower()
     }
    }.onFailure {
-    if(BuildConfig.DEBUG) Log.e(REALTIME_TAG,"follower_snapshot_load_failed error=${it.javaClass.simpleName}")
+    if((it as? SafetyRequestException)?.status in setOf(403,404)) mutableFollower.value=null
+    Log.w(REALTIME_TAG,"follower_snapshot_load_failed type=${it.javaClass.simpleName} status=${(it as? SafetyRequestException)?.status}")
     if(mutableFollower.value?.id!=id) mutableFollowerMessage.value="load_failed"
    }
    mutableFollowerLoading.value=false

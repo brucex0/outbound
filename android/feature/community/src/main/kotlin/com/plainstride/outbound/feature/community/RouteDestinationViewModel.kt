@@ -54,7 +54,13 @@ class RouteDestinationViewModel @Inject constructor(
             if (!id.startsWith("import:")) repository.detail(id).onSuccess {
                 repository.cacheDetail(account, it)
                 mutableDetail.value = it
-            }.onFailure { logFailure("route_detail_refresh", it) }
+            }.onFailure {
+                if ((it as? RouteRequestException)?.status in setOf(403, 404)) {
+                    repository.deleteCachedDetail(account, id)
+                    mutableDetail.value = null
+                }
+                logFailure("route_detail_refresh", it)
+            }
             if (mutableDetail.value == null) Log.i("PlainstrideRoutes", "route_detail_load unavailable")
             analytics.record(AnalyticsEvent("route_detail_opened", mapOf(
                 AnalyticsProperty.SourceType to if (id.startsWith("import:")) "imported" else "community",

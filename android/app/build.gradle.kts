@@ -15,6 +15,7 @@ android {
         applicationId = "com.plainstride.outbound"
         minSdk = 26
         targetSdk = 36
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = providers.environmentVariable("PLAINSTRIDE_VERSION_CODE").orElse("1").get().toInt()
         versionName = providers.environmentVariable("PLAINSTRIDE_VERSION_NAME").orElse("1.0").get()
         buildConfigField("String", "API_BASE_URL", "\"https://outbound-api-186140050970.us-central1.run.app\"")
@@ -81,6 +82,18 @@ android {
             manifestPlaceholders["usesCleartextTraffic"] = "true"
             manifestPlaceholders["appLabel"] = "PlainstrideD"
         }
+        create("navigationTest") {
+            initWith(getByName("debug"))
+            matchingFallbacks += "debug"
+            applicationIdSuffix = ".navigationtest"
+            buildConfigField("String", "API_BASE_URL", "\"http://127.0.0.1:18787/\"")
+            listOf("FIREBASE_APPLICATION_ID", "FIREBASE_API_KEY", "FIREBASE_PROJECT_ID", "REVENUECAT_PUBLIC_SDK_KEY").forEach {
+                buildConfigField("String", it, "\"\"")
+            }
+            listOf("google_app_id", "google_api_key", "project_id", "gcm_defaultSenderId").forEach { resValue("string", it, "") }
+            manifestPlaceholders["appLabel"] = "Plainstride Navigation Fixtures"
+            manifestPlaceholders["mapsApiKey"] = ""
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -93,6 +106,8 @@ android {
             isJniDebuggable = false
         }
     }
+
+    testBuildType = "navigationTest"
 
     buildFeatures {
         buildConfig = true
@@ -179,5 +194,12 @@ dependencies {
     implementation(libs.androidx.health.connect)
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
+    androidTestImplementation("androidx.test:core-ktx:1.7.0")
+    androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     debugImplementation(libs.compose.ui.tooling)
 }

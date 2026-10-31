@@ -396,3 +396,37 @@ fun TrustedConnectionPickerDialog(
         dismissButton = { TextButton(close) { Text(stringResource(android.R.string.cancel)) } },
     )
 }
+
+
+@Composable
+internal fun SafetyDetailFrame(onBack: () -> Unit, content: @Composable () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(com.plainstride.outbound.feature.social.R.string.social_back)) }
+        Box(Modifier.weight(1f)) { content() }
+    }
+}
+
+@Composable
+internal fun GroupRunDetailScreen(group: GroupRun?, loading: Boolean, retry: () -> Unit, share: (String) -> Unit, leave: () -> Unit) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding=PaddingValues(16.dp), verticalArrangement=Arrangement.spacedBy(12.dp)) {
+        if(group==null) item {
+            if(loading) CircularProgressIndicator() else {
+                Text(stringResource(com.plainstride.outbound.feature.social.R.string.social_destination_unavailable))
+                TextButton(retry) { Text(stringResource(com.plainstride.outbound.feature.social.R.string.social_destination_retry)) }
+            }
+        } else {
+            item { Text(group.title ?: stringResource(R.string.safety_group_title), style=MaterialTheme.typography.headlineMedium) }
+            val located=group.participants.mapNotNull{it.lastLocation?.let{point->MapCoordinate(point.latitude,point.longitude)}}
+            if(located.isNotEmpty()) item { PlainstrideRouteMap(located,Modifier.fillMaxWidth().height(220.dp)) }
+            items(group.participants,key=GroupRunParticipant::id) { participant ->
+                ListItem(headlineContent={Text(participant.displayName)},supportingContent={Text(stringResource(R.string.safety_group_progress,participant.lastActivitySnapshot?.distanceM?.div(1000.0)?:0.0))})
+            }
+            item {
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    group.inviteURL?.let { url -> OutlinedButton({share(url)}) {Text(stringResource(R.string.safety_share_link))} }
+                    if(group.status=="active" && group.participants.any{it.userId==group.currentUserId && it.status in setOf("active","stale")}) Button(leave) {Text(stringResource(R.string.safety_group_leave))}
+                }
+            }
+        }
+    }
+}

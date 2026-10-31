@@ -55,6 +55,7 @@ sealed interface ConnectionEffect {
 @HiltViewModel class SocialViewModel @Inject constructor(
     private val groups: com.plainstride.outbound.core.data.GroupActivityRepository,
     private val repository: SocialRepository,
+    private val destinations: SocialDestinationCache,
     private val analytics: ProductAnalytics,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(SocialUiState())
@@ -330,12 +331,11 @@ sealed interface ConnectionEffect {
     ))
     suspend fun ensureActivityDetail(postId: String): Boolean {
         if (mutableState.value.selectedActivityPost?.id == postId) return true
-        val cached = mutableState.value.home.posts.firstOrNull { it.id == postId }
+        val account = accountId
+        val cached = account?.let { destinations.post(it, postId) }
+            ?: mutableState.value.home.posts.firstOrNull { it.id == postId }
             ?: cachedHome()?.posts?.firstOrNull { it.id == postId }
-        if (cached != null) {
-            openActivityDetail(cached)
-            return true
-        }
+        if (cached != null) openActivityDetail(cached)
         // Notifications can refer to posts older than the currently loaded feed.
         var cursor: String? = null
         val visited = mutableSetOf<String?>()
@@ -345,20 +345,23 @@ sealed interface ConnectionEffect {
             val page = result.getOrElse { error ->
                 if (error is kotlinx.coroutines.CancellationException) throw error
                 android.util.Log.w("PlainstrideSocial", "notification_post_load failed category=${(error as? SocialException)?.reason ?: SocialError.UNEXPECTED} status=${(error as? SocialException)?.httpStatus} type=${error.javaClass.simpleName}")
-                return false
+                return cached != null
             }
             page.items.firstOrNull { it.id == postId }?.let {
+                if (account != null) destinations.savePost(account, it)
                 openActivityDetail(it)
                 return true
             }
             cursor = page.nextCursor ?: break
         }
         android.util.Log.i("PlainstrideSocial", "notification_post_load unavailable in visible feed")
+        closeActivityDetail()
         return false
     }
 
     fun openActivityDetail(post: SocialPost) {
         val activity = post.activity ?: return
+        val firstOpen = mutableState.value.selectedActivityPost?.id != post.id
         activityPhotoJob?.cancel()
         mutableState.update { it.copy(
             selectedActivityPost = post,
@@ -366,12 +369,12 @@ sealed interface ConnectionEffect {
             activityDetailPhotosLoading = activity.totalPhotoCount > activity.photos.size,
             activityDetailPhotoBytes = emptyMap(),
         ) }
-        trackActivityDetailOpened()
-        if (activity.recognitions.isNotEmpty()) analytics.record(AnalyticsEvent("activity_recognition_viewed", mapOf(
+        if (firstOpen) trackActivityDetailOpened()
+        if (firstOpen && activity.recognitions.isNotEmpty()) analytics.record(AnalyticsEvent("activity_recognition_viewed", mapOf(
             AnalyticsProperty.SourceType to "social_feed",
             AnalyticsProperty.CountBucket to countBucket(activity.recognitions.size),
         )))
-        if (activity.energyKilocalories != null) analytics.record(AnalyticsEvent("feature_exposed", mapOf(
+        if (firstOpen && activity.energyKilocalories != null) analytics.record(AnalyticsEvent("feature_exposed", mapOf(
             AnalyticsProperty.Feature to "completed_workout_calories",
             AnalyticsProperty.SourceType to "social_feed",
         )))
@@ -436,7 +439,8 @@ sealed interface ConnectionEffect {
         } catch (error: Exception) {
             if (error is CancellationException) throw error
             logGroupFailure("profile_preview_store", error)
-            messages.emit(SocialMessage.ACTION_FAILED)
+            // Cache storage is best effort; the ID-addressed page can still fetch online.
+            onReady()
         }
     }
     private suspend fun cachedHome(): SocialHome? = accountId?.let { account ->
@@ -453,8 +457,16 @@ sealed interface ConnectionEffect {
         if (cached != null) mutableState.update { it.copy(selectedProfile = cached) }
         val result = repository.profile(id)
         result.onSuccess { person ->
+            try { accountId?.let { repository.cacheProfilePreview(it, person) } }
+            catch (error: Exception) {
+                if (error is CancellationException) throw error
+                logGroupFailure("profile_preview_store", error)
+            }
             mutableState.update { it.copy(selectedProfile = person, destinationLoading = false) }
-        }.onFailure { destinationFailure("profile_load", it) }
+        }.onFailure {
+            if ((it as? SocialException)?.reason in setOf(SocialError.FORBIDDEN, SocialError.NOT_FOUND)) mutableState.update { state -> state.copy(selectedProfile = null) }
+            destinationFailure("profile_load", it)
+        }
         if (result.isSuccess || cached != null) analytics.record(AnalyticsEvent("social_profile_opened", mapOf(
             AnalyticsProperty.Source to "social", AnalyticsProperty.EntrySource to entrySource,
         )))
@@ -464,27 +476,44 @@ sealed interface ConnectionEffect {
         if (mutableState.value.selectedEvent?.id == id) return@launch
         eventEntrySource = entrySource
         mutableState.update { it.copy(destinationLoading = true, destinationFailed = false) }
+        val account = accountId
+        val cached = account?.let { destinations.event(it, id) }
+            ?: cachedHome()?.let { home -> (home.upcomingRuns + home.pastEvents).firstOrNull { it.id == id } }
+        if (cached != null) mutableState.update { it.copy(selectedEvent = cached) }
         repository.event(id).onSuccess { event ->
+            if (account != null) destinations.saveEvent(account, event)
             mutableState.update { it.copy(selectedEvent = event, destinationLoading = false) }
             analytics.record(AnalyticsEvent("activity_event_detail_opened", mapOf(AnalyticsProperty.EntrySource to entrySource)))
-        }.onFailure { destinationFailure("event_load", it) }
+        }.onFailure {
+            if ((it as? SocialException)?.reason in setOf(SocialError.FORBIDDEN, SocialError.NOT_FOUND)) mutableState.update { state -> state.copy(selectedEvent = null) }
+            destinationFailure("event_load", it)
+        }
     }
 
     fun loadInvitation(id: String) = viewModelScope.launch {
         if (mutableState.value.selectedInvitation?.id == id) return@launch
         mutableState.update { it.copy(destinationLoading = true, destinationFailed = false) }
         val account = accountId ?: return@launch
+        val initial = destinations.invitation(account, id)
+            ?: cachedHome()?.invitations?.firstOrNull { it.id == id || it.objectId == id }
+        if (initial != null) mutableState.update { it.copy(selectedInvitation = initial) }
         val refresh = repository.refresh(account, localeTag, SocialPage(emptyList(), null))
         val cached = repository.observeHome(account, localeTag).first()
         val home = (cached as? CachedSocialHome.Available)?.value ?: mutableState.value.home
         val invitation = home.invitations.firstOrNull { it.id == id || it.objectId == id }
-        if (invitation == null) destinationFailure("invitation_load", refresh.exceptionOrNull() ?: SocialException(SocialError.NOT_FOUND))
-        else mutableState.update { it.copy(selectedInvitation = invitation, destinationLoading = false) }
+        if (invitation == null) {
+            if (refresh.isSuccess) mutableState.update { it.copy(selectedInvitation = null) }
+            destinationFailure("invitation_load", refresh.exceptionOrNull() ?: SocialException(SocialError.NOT_FOUND))
+        } else {
+            destinations.saveInvitation(account, invitation)
+            mutableState.update { it.copy(selectedInvitation = invitation, destinationLoading = false) }
+        }
     }
 
     fun resolveGroupInvite(token: String, onResolved: (String) -> Unit) = viewModelScope.launch {
         mutableState.update { it.copy(destinationLoading = true, destinationFailed = false) }
         repository.consumeGroupInvite(token).onSuccess { group ->
+            accountId?.let { destinations.saveGroup(it, group, null) }
             analytics.record(AnalyticsEvent("group_invite_link_consumed", mapOf(AnalyticsProperty.Result to "success")))
             onResolved(group.id)
         }.onFailure {
@@ -513,7 +542,12 @@ sealed interface ConnectionEffect {
         groupLoadJob?.cancel()
         mutableState.update { it.copy(selectedGroupId = id, selectedGroupInvitationId = targetInvitationId, selectedGroupDetail = null, groupLoading = true, groupLoadFailed = false, groupUnavailable = false) }
         groupLoadJob = viewModelScope.launch {
+            val account = accountId
+            val cached = account?.let { destinations.group(it, id, targetInvitationId) }
+                ?: cachedHome()?.groups?.firstOrNull { it.id == id }
+            if (cached != null && mutableState.value.selectedGroupId == id) mutableState.update { it.copy(selectedGroupDetail = cached) }
             repository.group(id, targetInvitationId).onSuccess { group ->
+                if (account != null) destinations.saveGroup(account, group, targetInvitationId)
                 if (mutableState.value.selectedGroupId != id) return@onSuccess
                 mutableState.update { it.copy(selectedGroupDetail = group, groupLoading = false) }
                 analytics.record(AnalyticsEvent("group_opened", mapOf(
@@ -526,7 +560,7 @@ sealed interface ConnectionEffect {
                 if (mutableState.value.selectedGroupId != id) return@onFailure
                 logGroupFailure("load group detail", error)
                 val unavailable = (error as? SocialException)?.reason in setOf(SocialError.FORBIDDEN, SocialError.NOT_FOUND, SocialError.CONFLICT)
-                mutableState.update { it.copy(groupLoading = false, groupLoadFailed = true, groupUnavailable = unavailable) }
+                mutableState.update { it.copy(selectedGroupDetail = if (unavailable) null else it.selectedGroupDetail, groupLoading = false, groupLoadFailed = true, groupUnavailable = unavailable) }
             }
         }
     }
@@ -625,8 +659,13 @@ sealed interface ConnectionEffect {
             (mutableState.value.connectionProfileCode == code && mutableState.value.selectedProfile != null)) return
         mutableState.update { it.copy(connectionProfileLoading = true, destinationLoading = true, destinationFailed = false, selectedProfile = null, connectionProfileCode = null, connectionProfileIsSelf = false) }
         viewModelScope.launch {
+            val account = accountId ?: return@launch
+            destinations.connection(account, code)?.let { preview ->
+                mutableState.update { it.copy(selectedProfile = preview.person, connectionProfileCode = code, connectionProfileIsSelf = preview.isSelf) }
+            }
             repository.connectionLinkPreview(code).fold(
                 onSuccess = { preview ->
+                    destinations.saveConnection(account, code, preview)
                     mutableState.update { it.copy(
                         connectionProfileLoading = false, destinationLoading = false,
                         selectedProfile = preview.person,
@@ -636,6 +675,10 @@ sealed interface ConnectionEffect {
                     analytics.record(AnalyticsEvent("social_profile_opened", mapOf(AnalyticsProperty.EntrySource to "connection_qr_code")))
                 },
                 onFailure = { error ->
+                    if ((error as? SocialException)?.reason in setOf(SocialError.FORBIDDEN, SocialError.NOT_FOUND)) {
+                        destinations.remove(account, "connection", code)
+                        mutableState.update { it.copy(selectedProfile = null, connectionProfileCode = null) }
+                    }
                     mutableState.update { it.copy(connectionProfileLoading = false) }
                     destinationFailure("connection_profile_load", error)
                     val reason = (error as? SocialException)?.reason

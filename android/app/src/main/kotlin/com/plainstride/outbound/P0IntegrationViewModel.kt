@@ -64,6 +64,7 @@ data class P0IntegrationState(
 
 @HiltViewModel class P0IntegrationViewModel @Inject constructor(
     private val routes: CommunityRouteRepository, private val safety: LiveShareCoordinator,
+    private val destinationCache: com.plainstride.outbound.core.database.AccountCacheDao,
     private val activities: ActivityRepository,
     private val today: TodayRepository,
     private val social: SocialRepository,
@@ -324,6 +325,14 @@ data class P0IntegrationState(
         return safety.inbox().fold(onSuccess = { response ->
             if (accountId != requestedAccount) return@fold false
             mutable.update { it.copy(notifications = response.notifications) }
+            try {
+                response.notifications.forEach { item ->
+                    destinationCache.upsert(com.plainstride.outbound.core.database.AccountCacheEntity(requestedAccount, "inbox.detail", item.id, "und", PlainstrideJson.encodeToString(item), null, System.currentTimeMillis(), null))
+                }
+            } catch (error: Exception) {
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                android.util.Log.w("PlainstrideInbox", "inbox_cache_write failed type=${error.javaClass.simpleName}")
+            }
             true
         }, onFailure = { error ->
             if (error is kotlinx.coroutines.CancellationException) throw error

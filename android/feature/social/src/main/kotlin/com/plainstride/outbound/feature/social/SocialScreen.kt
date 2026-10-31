@@ -313,7 +313,6 @@ fun SocialActivityDetailDestination(
         loading = false
     }
     val post = state.selectedActivityPost?.takeIf { it.id == postId }
-        ?: state.home.posts.firstOrNull { it.id == postId }
     if (post == null) {
         SocialDestinationStatus(!loading && failed, onBack) { attempt += 1 }
         return

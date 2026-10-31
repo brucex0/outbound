@@ -49,6 +49,7 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
     androidTestImplementation("com.google.dagger:hilt-android-testing:${libs.versions.hilt.get()}")
     kspAndroidTest(libs.hilt.compiler)
     debugImplementation("androidx.compose.ui:ui-test-manifest")

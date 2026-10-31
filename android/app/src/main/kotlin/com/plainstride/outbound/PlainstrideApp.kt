@@ -1309,7 +1309,7 @@ private fun SignedInApp(
             composable(AppDetailRoutes.Safety) { entry ->
                 SafetyRoute(targetId = entry.arguments?.getString("id"), targetKind = entry.arguments?.getString("kind") ?: "live",
                     connections = integration.connections, accountId = accountId, unitSystem = measurementUnitSystem,
-                    liveCheerEntrySource = entry.arguments?.getString("source") ?: "notification")
+                    liveCheerEntrySource = entry.arguments?.getString("source") ?: "notification", onBack = { navController.popBackStack() })
             }
             composable(TRUSTED_CONTACTS_ROUTE) {
                 TrustedContactsSettingsScreen(
@@ -1344,7 +1344,7 @@ private fun SignedInApp(
                 }
             }
             composable(AppDetailRoutes.Notification) { entry ->
-                NotificationDetail(integration.notifications.firstOrNull { it.id == entry.arguments?.getString("id") })
+                NotificationDestination(requireNotNull(accountId), requireNotNull(entry.arguments?.getString("id")), onBack = { navController.popBackStack() })
             }
             composable(REWARDS_ROUTE) { RewardsRoute(onBack = { navController.popBackStack() }, onRedeem = { navController.navigate(REWARD_REDEMPTION_ROUTE) }) }
             composable(REWARD_REDEMPTION_ROUTE) { RewardRedemptionRoute(onBack = { navController.popBackStack() }) }

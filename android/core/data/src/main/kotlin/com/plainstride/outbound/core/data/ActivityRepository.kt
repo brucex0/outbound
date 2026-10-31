@@ -476,7 +476,7 @@ class OfflineFirstActivityRepository(
     }
 
     private suspend fun mergeRemote(accountId: String, remote: RemoteActivityDto, preserveRoute: Boolean = false): Boolean = database.withTransaction {
-        val clientId = remote.clientActivityId ?: return@withTransaction false
+        val clientId = remote.clientActivityId ?: dao.getByReference(accountId, remote.id)?.activity?.activityId ?: remote.id
         val local = dao.get(accountId, clientId)?.toDomain()
         val remoteUpdated = parseEpoch(remote.clientUpdatedAt ?: remote.updatedAt)
         if (local != null && parseEpoch(local.localUpdatedAt) > remoteUpdated) return@withTransaction false
@@ -489,7 +489,7 @@ class OfflineFirstActivityRepository(
             return@withTransaction true
         }
         val snapshot = remote.clientData
-        val decoded = snapshot.toDomain(accountId, remote) ?: return@withTransaction false
+        val decoded = snapshot.toDomain(accountId, remote.copy(clientActivityId = clientId)) ?: return@withTransaction false
         // Keep private local files attached when a server refresh supplies metadata only.
         val localPhotos = local?.photos.orEmpty()
         val remotePhotoIds = decoded.photos.mapTo(mutableSetOf()) { it.id }
@@ -591,7 +591,7 @@ private fun JsonObject.toDomain(accountId: String, remote: RemoteActivityDto): S
     val routePoints = remote.route?.get("points")?.jsonArray?.mapNotNull(::trackPoint).orEmpty()
     val health = objectValue("healthMetrics")
     SavedActivity(
-        id = remote.clientActivityId!!, accountId = accountId, serverActivityId = remote.id,
+        id = remote.clientActivityId ?: remote.id, accountId = accountId, serverActivityId = remote.id,
         type = ActivityType.valueOf(remote.activityType),
         title = remote.title, guideNudge = stringValue("guideNudge") ?: "",
         reflection = remote.reflection?.let { ActivityReflection(it.title, it.body, it.highlight, it.progressNote) },

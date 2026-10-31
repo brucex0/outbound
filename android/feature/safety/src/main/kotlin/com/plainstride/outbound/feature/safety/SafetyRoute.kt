@@ -28,11 +28,14 @@ fun SafetyRoute(
     unitSystem: MeasurementUnitSystem = MeasurementUnitSystem.metric,
     viewModel: SafetySettingsViewModel = hiltViewModel(),
     liveCheerEntrySource: String = "notification",
+    onBack: () -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val contacts by viewModel.trustedContacts.collectAsStateWithLifecycle()
     val activeShare by viewModel.activeShare.collectAsStateWithLifecycle()
     val groupRun by viewModel.groupRun.collectAsStateWithLifecycle()
+    val groupDetail by viewModel.groupDetail.collectAsStateWithLifecycle()
+    val groupDetailLoading by viewModel.groupDetailLoading.collectAsStateWithLifecycle()
     val follower by viewModel.follower.collectAsStateWithLifecycle()
     val followerTrack by viewModel.followerTrack.collectAsStateWithLifecycle()
     val followerLoading by viewModel.followerLoading.collectAsStateWithLifecycle()
@@ -60,7 +63,17 @@ fun SafetyRoute(
             confirm = { contact -> pickingConnection = false; viewModel.add(contact) },
         )
     }
-    if(targetKind=="live"&&targetId!=null){LiveCheerFollowerScreen(follower,followerTrack,followerLoading,followerMessage,unitSystem,viewModel::sendVoiceCheer);return}
+    if(targetId!=null){
+        SafetyDetailFrame(onBack) {
+            if(targetKind=="live") LiveCheerFollowerScreen(follower?.takeIf{it.id==targetId},followerTrack,followerLoading,followerMessage,unitSystem,viewModel::sendVoiceCheer)
+            else GroupRunDetailScreen(groupDetail?.takeIf{it.id==targetId}?.let{cached -> groupRun?.takeIf{it.id==targetId} ?: cached},groupDetailLoading,{viewModel.openGroup(targetId)},share,{
+                viewModel.leaveGroupDetail(targetId){success ->
+                    if(success)onBack() else android.widget.Toast.makeText(context,com.plainstride.outbound.feature.social.R.string.social_profile_action_failed,android.widget.Toast.LENGTH_SHORT).show()
+                }
+            })
+        }
+        return
+    }
     SafetySettingsScreen(
         contacts = contacts,
         permission = permission,
