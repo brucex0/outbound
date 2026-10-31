@@ -55,18 +55,30 @@ struct LocalAssistantInterpretation: Codable, Sendable {
         }
     }
 
-    func updating(_ original: ManualWorkoutDraft) -> ManualWorkoutDraft? {
+    var diagnosticOperation: String {
+        switch kind {
+        case "manualWorkout", "prepareActivity", "navigate", "conversation", "cancelManualWorkout": return kind
+        default: return "unknown"
+        }
+    }
+
+    enum ValidationFailure: String, Error {
+        case sport, duration, distance, pace, dateOrTime = "date_or_time"
+        case conflictingGoals = "conflicting_goals", destination, operation
+    }
+
+    func updateResult(_ original: ManualWorkoutDraft) -> Result<ManualWorkoutDraft, ValidationFailure> {
         var draft = original
         if let sport {
-            guard let type = SportType(rawValue: sport) else { return nil }
+            guard let type = SportType(rawValue: sport) else { return .failure(.sport) }
             draft.activityType = type.activityType
         }
         if durationHours != nil || durationMinutes != nil || durationSeconds != nil {
-            guard let seconds = resolvedDurationSeconds else { return nil }
+            guard let seconds = resolvedDurationSeconds else { return .failure(.duration) }
             draft.durationMinutes = max(1, Int((seconds / 60).rounded()))
         }
         if distanceValue != nil {
-            guard let meters = distanceMeters else { return nil }
+            guard let meters = distanceMeters else { return .failure(.distance) }
             draft.distanceMeters = meters
         }
         if draft.durationMinutes == nil, let distance = draft.distanceMeters,
@@ -74,40 +86,55 @@ struct LocalAssistantInterpretation: Codable, Sendable {
             let pace = (paceMinutes ?? 0) * 60 + (paceSeconds ?? 0)
             guard [paceMinutes, paceSeconds].compactMap({ $0 }).allSatisfy({ $0.isFinite && $0 >= 0 }),
                   pace.isFinite, (1...36_000).contains(pace),
-                  paceUnit == "kilometers" || paceUnit == "miles" else { return nil }
+                  paceUnit == "kilometers" || paceUnit == "miles" else { return .failure(.pace) }
             let seconds = distance / (paceUnit == "miles" ? 1_609.344 : 1_000) * pace
-            guard seconds.isFinite, (1...2_592_000).contains(seconds) else { return nil }
+            guard seconds.isFinite, (1...2_592_000).contains(seconds) else { return .failure(.pace) }
             draft.durationMinutes = max(1, Int((seconds / 60).rounded()))
         }
         if localDate != nil || localTime != nil {
-            guard let date = resolvedDate(relativeTo: draft.startedAt) else { return nil }
+            guard let date = resolvedDate(relativeTo: draft.startedAt) else { return .failure(.dateOrTime) }
             draft.startedAt = date
         }
         if let isIndoor { draft.isIndoor = isIndoor }
-        return draft
+        return .success(draft)
     }
 
-    func preparedActivity(unitSystem: MeasurementUnitSystem) -> SessionIntent? {
-        guard kind == "prepareActivity", let sport, let type = SportType(rawValue: sport) else { return nil }
+    func preparationResult(unitSystem: MeasurementUnitSystem) -> Result<SessionIntent, ValidationFailure> {
+        guard kind == "prepareActivity", let sport, let type = SportType(rawValue: sport) else { return .failure(.sport) }
         let goal: ActivityGoal
         if distanceValue != nil {
-            guard let meters = distanceMeters, (100...200_000).contains(meters) else { return nil }
+            guard let meters = distanceMeters, (100...200_000).contains(meters) else { return .failure(.distance) }
             // The setup UI supports one goal. Ask rather than silently dropping a second one.
-            guard durationHours == nil, durationMinutes == nil, durationSeconds == nil else { return nil }
+            guard durationHours == nil, durationMinutes == nil, durationSeconds == nil else { return .failure(.conflictingGoals) }
             goal = .distanceMeters(meters)
         } else if durationHours != nil || durationMinutes != nil || durationSeconds != nil {
-            guard let seconds = resolvedDurationSeconds, (60...43_200).contains(seconds) else { return nil }
+            guard let seconds = resolvedDurationSeconds, (60...43_200).contains(seconds) else { return .failure(.duration) }
             goal = .timeSeconds(Int(seconds.rounded()))
         } else {
-            guard distanceUnit == nil else { return nil }
+            guard distanceUnit == nil else { return .failure(.distance) }
             goal = .freestyle
         }
-        return SessionIntent(
+        return .success(SessionIntent(
             id: "assistant-\(UUID().uuidString)", sport: type, title: type.displayName,
             detail: String(format: String(localized: "activity.freestyle.detail.format", defaultValue: "%@ • no preset target"), locale: .autoupdatingCurrent, type.displayName),
             guideLine: String(localized: "activity.freestyle.companion", defaultValue: "Start easy and settle into a comfortable rhythm."),
             startLabel: String(localized: "Start activity")
-        ).replacingGoal(goal, unitSystem: unitSystem)
+        ).replacingGoal(goal, unitSystem: unitSystem))
+    }
+
+    func validationFailure(manualDraft: ManualWorkoutDraft?) -> ValidationFailure? {
+        switch kind {
+        case "manualWorkout":
+            if case .failure(let reason) = updateResult(manualDraft ?? ManualWorkoutDraft()) { return reason }
+        case "prepareActivity":
+            if clarificationText == nil,
+               case .failure(let reason) = preparationResult(unitSystem: .metric) { return reason }
+        case "navigate":
+            if clarificationText == nil, navigationTarget == nil { return .destination }
+        case "conversation", "cancelManualWorkout": break
+        default: return .operation
+        }
+        return nil
     }
 
     private func resolvedDate(relativeTo original: Date) -> Date? {
@@ -150,29 +177,43 @@ struct LocalAssistantInterpretResult {
 enum LocalIntelligence {
     private static let logger = Logger(subsystem: "com.plainstride", category: "LocalIntelligence")
 
-    static let instructions = """
-    Interpret one Plainstride assistant turn into the supplied schema. Never execute actions or claim success.
-    Understand the user's language, number words, negation, corrections, and follow-up references.
-    kind: manualWorkout to log an already completed activity or continue the supplied manual draft;
-    prepareActivity only for an explicit request to prepare a NEW activity, not past activity or a question;
-    navigate only for an explicit request to open an allowed destination; cancelManualWorkout only to cancel the draft;
-    otherwise conversation. Questions, negated commands, hypothetical commands, and quoted commands are not requests to start or log an activity.
-    Capability: discover, navigate, support, brainstorm, plan. Task: answer_training_question, adapt_today,
-    prepare_week, post_run_reflection, live_guidance, inspect_memory, product_help.
-    Requests to change today's existing workout or review a training plan are conversation; the server owns these mutations.
-    Extract only quantities, dates, and indoor/outdoor settings explicitly supplied or unambiguously corrected.
-    Extract new or corrected values only from the latest prompt; history is reference context, not new input.
-    Missing values MUST be null. Do not fill unspecified values from typical workouts or prior drafts.
-    Preserve duration components: one hour thirty minutes = durationHours 1, durationMinutes 30.
-    Extract distanceValue and distanceUnit (meters/kilometers/miles); do not convert units or compute pace-derived duration.
-    Pace uses paceMinutes and paceSeconds per paceUnit (kilometers/miles). An unspecified pace unit uses the stated distance unit or measurement preference. Resolve relative dates using today's date and time zone.
-    localDate is YYYY-MM-DD, localTime is HH:mm, both in the person's time zone. Leave unspecified time null.
-    Sports: run, bike, walk, hike, swim, strength, mobility. Destination must be an ID from the supplied catalog.
-    If ambiguous, use conversation (or manualWorkout with missing fields for an ongoing log) and a short clarification.
-    clarification must be in the requested app language. Never diagnose health issues or invent workout/plan data.
+    private static let routingInstructions = """
+    The JSON prompt field is the latest user message. The context and messages fields are reference only.
+    Route ONLY that latest message. Never treat reference context or history as a new command.
+    Choose manualWorkout for a request to log an already completed workout, or a follow-up supplying a field of
+    the supplied pending manual draft (for example Swim or one hour). Missing workout fields do not make routing ambiguous.
+    Choose prepareActivity only for an explicit request to prepare a NEW workout.
+    Choose navigate for an explicit request to open one allowed destination.
+    Choose cancelManualWorkout only when the person asks to cancel the pending workout draft.
+    All questions, negated/hypothetical/quoted commands, requests to change today's existing workout, and plan
+    reviews are conversation. For conversation, choose the appropriate capability and task; the server owns plan changes.
+    Examples: Make today's workout easier -> conversation(plan, adapt_today).
+    Log a workout I already completed -> manualWorkout. With a pending draft, Swim -> manualWorkout.
+    With a pending draft, Swim one hour -> manualWorkout. Start a one hour swim -> prepareActivity.
+    Only use clarification for truly ambiguous intent, not for missing workout details. Use the app language.
+    Never execute an action or claim that an action succeeded.
     """
 
-    static func interpret(_ request: LocalAssistantInterpretRequest) async -> LocalAssistantInterpretResult {
+    private static let workoutInstructions = """
+    The JSON prompt field is the latest user message. The context and messages fields are reference only.
+    Extract workout fields ONLY from prompt. The operation is already chosen; do not classify again.
+    Use notMentioned for EVERY field not explicitly supplied or unambiguously corrected in that message.
+    Never copy values from history, the current instant, or the pending draft into missing fields.
+    Examples: Swim -> sport swim; every other field notMentioned.
+    One hour -> duration components(hours:1, minutes:0, seconds:0); every other field notMentioned.
+    Swim one hour -> sport swim and duration components(1,0,0); every other field notMentioned.
+    One hour thirty minutes -> duration components(1,30,0). One minute thirty seconds -> components(0,1,30).
+    Only when a duration is mentioned, unused components are zero. Otherwise the whole duration is notMentioned.
+    Zero minutes is an explicit quantity, not notMentioned. Keep explicitly supplied values for app validation.
+    Preserve distance and pace units; do not convert units or compute duration from pace.
+    A pace without a per-unit uses the stated distance unit or the measurement preference.
+    Resolve an explicitly supplied relative date against the local calendar dates in context; otherwise date notMentioned.
+    Use clock time only if explicitly supplied. Indoor/outdoor must also be explicit.
+    Clarification is notNeeded for clear input, including input missing required fields: the app asks for missing fields.
+    Only ask a brief clarification for genuinely ambiguous details; write it in the app language.
+    """
+
+    static func interpret(_ request: LocalAssistantInterpretRequest, manualDraft: ManualWorkoutDraft? = nil) async -> LocalAssistantInterpretResult {
         guard request.prompt.count <= 4_000 else { return .init(interpretation: nil, source: "none", result: "invalid_input") }
         guard !Task.isCancelled else { return .init(interpretation: nil, source: "none", result: "cancelled") }
         #if canImport(FoundationModels)
@@ -181,12 +222,21 @@ enum LocalIntelligence {
             if case .available = model.availability, model.supportsLocale(AppLanguage.speechLocale) {
                 do {
                     let data = try JSONEncoder().encode(request)
-                    let value = try await generate(
-                        prompt: String(decoding: data, as: UTF8.self), instructions: instructions,
-                        generating: GeneratedAssistantInterpretation.self, maximumTokens: 600
-                    ).value
+                    let prompt = String(decoding: data, as: UTF8.self)
+                    let route = try await generate(prompt: prompt, instructions: routingInstructions,
+                        generating: GeneratedAssistantRoute.self, maximumTokens: 200)
+                    var value = route.value
+                    if value.kind == "manualWorkout" || value.kind == "prepareActivity" {
+                        let fields = try await generate(prompt: prompt, instructions: workoutInstructions,
+                            generating: GeneratedWorkoutFields.self, maximumTokens: 450)
+                        fields.apply(to: &value)
+                    }
                     try Task.checkCancellation()
-                    return .init(interpretation: value, source: "apple", result: "success")
+                    if let failure = value.validationFailure(manualDraft: manualDraft) {
+                        logger.warning("Assistant interpretation rejected provider=apple operation=\(value.diagnosticOperation, privacy: .public) field=\(failure.rawValue, privacy: .public); using server")
+                    } else {
+                        return .init(interpretation: value, source: "apple", result: "success")
+                    }
                 } catch is CancellationError {
                     return .init(interpretation: nil, source: "apple", result: "cancelled")
                 } catch {
@@ -203,6 +253,10 @@ enum LocalIntelligence {
         do {
             let interpretation = try await APIClient.shared.interpretAssistant(request)
             try Task.checkCancellation()
+            if let failure = interpretation.validationFailure(manualDraft: manualDraft) {
+                logger.warning("Assistant interpretation rejected provider=server operation=\(interpretation.diagnosticOperation, privacy: .public) field=\(failure.rawValue, privacy: .public)")
+                return .init(interpretation: nil, source: "server", result: "invalid_output")
+            }
             return .init(interpretation: interpretation, source: "server", result: "success")
         } catch is CancellationError {
             return .init(interpretation: nil, source: "server", result: "cancelled")
@@ -298,47 +352,114 @@ enum LocalIntelligence {
 #if canImport(FoundationModels)
 @available(iOS 26.0, *)
 @Generable
-private struct GeneratedAssistantInterpretation: Sendable {
-    var kind: Kind
-    var capability: Capability
-    var task: TaskKind
-    var destination: Destination?
-    var sport: Sport?
-    @Guide(description: "Hours component explicitly supplied in the latest turn; nil if missing.")
-    var durationHours: Double?
-    @Guide(description: "Minutes component, excluding any hours component; nil if missing.")
-    var durationMinutes: Double?
-    var durationSeconds: Double?
-    var distanceValue: Double?
-    var distanceUnit: DistanceUnit?
-    var paceMinutes: Double?
-    var paceSeconds: Double?
-    var paceUnit: PaceUnit?
-    var localDate: String?
-    var localTime: String?
-    var isIndoor: Bool?
-    @Guide(description: "A brief question only for ambiguous input; nil for clear input or routine missing draft fields.")
-    var clarification: String?
+private struct GeneratedAssistantRoute: Sendable {
+    var intent: Intent
 
-    @Generable enum Kind: String, Sendable { case manualWorkout, prepareActivity, navigate, conversation, cancelManualWorkout }
+    @Generable enum Intent: Sendable {
+        case manualWorkout
+        case prepareActivity
+        case navigate(destination: Destination)
+        case conversation(capability: Capability, task: TaskKind)
+        case cancelManualWorkout
+        case clarify(question: String)
+    }
     @Generable enum Capability: String, Sendable { case discover, navigate, support, brainstorm, plan }
     @Generable enum TaskKind: String, Sendable {
         case answer_training_question, adapt_today, prepare_week, post_run_reflection, live_guidance, inspect_memory, product_help
     }
-    @Generable enum Sport: String, Sendable { case run, bike, walk, hike, swim, strength, mobility }
-    @Generable enum DistanceUnit: String, Sendable { case meters, kilometers, miles }
-    @Generable enum PaceUnit: String, Sendable { case kilometers, miles }
     @Generable enum Destination: String, Sendable {
         case social, today, me, settings, appearance, settingsAppleMusic, settingsAppleHealth, guideSettings, activityHistory
     }
 
     var value: LocalAssistantInterpretation {
-        .init(kind: kind.rawValue, capability: capability.rawValue, task: task.rawValue,
-              destination: destination?.rawValue, sport: sport?.rawValue,
-              durationHours: durationHours, durationMinutes: durationMinutes, durationSeconds: durationSeconds,
-              distanceValue: distanceValue, distanceUnit: distanceUnit?.rawValue,
-              paceMinutes: paceMinutes, paceSeconds: paceSeconds, paceUnit: paceUnit?.rawValue,
-              localDate: localDate, localTime: localTime, isIndoor: isIndoor, clarification: clarification)
+        var value = LocalAssistantInterpretation(kind: "conversation", capability: "discover", task: "product_help")
+        switch intent {
+        case .manualWorkout: value.kind = "manualWorkout"; value.capability = "plan"
+        case .prepareActivity: value.kind = "prepareActivity"; value.capability = "plan"
+        case .navigate(let destination):
+            value.kind = "navigate"; value.capability = "navigate"; value.destination = destination.rawValue
+        case .conversation(let capability, let task):
+            value.capability = capability.rawValue; value.task = task.rawValue
+        case .cancelManualWorkout: value.kind = "cancelManualWorkout"; value.capability = "plan"
+        case .clarify(let question): value.clarification = question
+        }
+        return value
+    }
+}
+
+@available(iOS 26.0, *)
+@Generable
+private struct GeneratedWorkoutFields: Sendable {
+    @Guide(description: "Only a sport explicitly supplied in the latest message; otherwise notMentioned.")
+    var sport: Sport
+    @Guide(description: "Only a duration explicitly supplied in the latest message; otherwise notMentioned.")
+    var duration: Duration
+    var distance: Distance
+    var pace: Pace
+    var date: WorkoutDate
+    var time: WorkoutTime
+    var setting: Setting
+    var clarification: Clarification
+
+    @Generable enum Sport: String, Sendable { case notMentioned, run, bike, walk, hike, swim, strength, mobility }
+    @Generable enum Duration: Sendable {
+        case notMentioned
+        case components(hours: Double, minutes: Double, seconds: Double)
+    }
+    @Generable enum Distance: Sendable {
+        case notMentioned
+        case meters(Double)
+        case kilometers(Double)
+        case miles(Double)
+    }
+    @Generable enum Pace: Sendable {
+        case notMentioned
+        case perKilometer(minutes: Double, seconds: Double)
+        case perMile(minutes: Double, seconds: Double)
+    }
+    @Generable enum WorkoutDate: Sendable {
+        case notMentioned
+        case calendarDate(year: Int, month: Int, day: Int)
+    }
+    @Generable enum WorkoutTime: Sendable {
+        case notMentioned
+        case clock(hour: Int, minute: Int)
+    }
+    @Generable enum Setting: Sendable { case notMentioned, indoor, outdoor }
+    @Generable enum Clarification: Sendable { case notNeeded, question(String) }
+
+    func apply(to value: inout LocalAssistantInterpretation) {
+        if sport != .notMentioned { value.sport = sport.rawValue }
+        switch duration {
+        case .notMentioned: break
+        case .components(let hours, let minutes, let seconds):
+            value.durationHours = hours; value.durationMinutes = minutes; value.durationSeconds = seconds
+        }
+        switch distance {
+        case .notMentioned: break
+        case .meters(let amount): value.distanceValue = amount; value.distanceUnit = "meters"
+        case .kilometers(let amount): value.distanceValue = amount; value.distanceUnit = "kilometers"
+        case .miles(let amount): value.distanceValue = amount; value.distanceUnit = "miles"
+        }
+        switch pace {
+        case .notMentioned: break
+        case .perKilometer(let minutes, let seconds): value.paceMinutes = minutes; value.paceSeconds = seconds; value.paceUnit = "kilometers"
+        case .perMile(let minutes, let seconds): value.paceMinutes = minutes; value.paceSeconds = seconds; value.paceUnit = "miles"
+        }
+        if case .calendarDate(let year, let month, let day) = date {
+            value.localDate = (1900...2200).contains(year) && (1...12).contains(month) && (1...31).contains(day)
+                ? String(format: "%04d-%02d-%02d", year, month, day) : "invalid"
+        }
+        if case .clock(let hour, let minute) = time {
+            value.localTime = (0...23).contains(hour) && (0...59).contains(minute)
+                ? String(format: "%02d:%02d", hour, minute) : "invalid"
+        }
+        switch setting {
+        case .notMentioned: break
+        case .indoor: value.isIndoor = true
+        case .outdoor: value.isIndoor = false
+        }
+        if case .question(let question) = clarification { value.clarification = question }
     }
 }
 @available(iOS 26.0, *)

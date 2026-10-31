@@ -2309,7 +2309,7 @@ final class AssistantStore: ObservableObject {
             \(AssistantDestinationRegistry.destinations.map { "\($0.id.rawValue): \($0.summary)" }.joined(separator: "\n"))
             """,
             messages: messages.suffix(4).map { .init(role: $0.author == .user ? "user" : "assistant", text: String($0.text.prefix(400))) }
-        ))
+        ), manualDraft: manualDraft)
     }
 
     func reset(context: AssistantContext) {

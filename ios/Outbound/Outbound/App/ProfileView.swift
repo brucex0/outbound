@@ -782,7 +782,7 @@ struct AssistantView: View {
         }
         if interpretation.kind == "manualWorkout" {
             let original = pendingManualWorkoutDraft ?? ManualWorkoutDraft()
-            guard let parsed = interpretation.updating(original) else {
+            guard case .success(let parsed) = interpretation.updateResult(original) else {
                 pendingManualWorkoutDraft = original
                 assistantStore.recordManualWorkoutTurn(userText: prompt,
                     assistantText: String(localized: "assistant.interpretation.clarify", defaultValue: "Please clarify the workout details, or enter them directly."))
@@ -797,7 +797,7 @@ struct AssistantView: View {
         }
         if interpretation.kind == "prepareActivity" {
             guard !isRecordingActive, interpretation.clarificationText == nil,
-                  let intent = interpretation.preparedActivity(unitSystem: measurementPreferences.unitSystem) else {
+                  case .success(let intent) = interpretation.preparationResult(unitSystem: measurementPreferences.unitSystem) else {
                 assistantStore.recordManualWorkoutTurn(userText: prompt,
                     assistantText: interpretation.clarificationText ?? String(localized: "assistant.activity.clarify", defaultValue: "Please choose an activity and one distance or duration goal. Use the activity button to set it up directly."))
                 return
