@@ -62,9 +62,10 @@ enum ManualWorkoutPromptParser {
             draft.isIndoor = true
         }
 
-        if let duration = firstNumber(in: value, before: ["minutes", "minute", "mins", "minutos", "minuto", "分钟"]) {
+        let durationText = normalizedDurationText(value)
+        if let duration = firstNumber(in: durationText, before: ["minutes", "minute", "mins", "minutos", "minuto", "分钟"]) {
             draft.durationMinutes = max(1, Int(duration.rounded()))
-        } else if let hours = firstNumber(in: value, before: ["hours", "hour", "hrs", "hora", "horas", "小时"]) {
+        } else if let hours = firstNumber(in: durationText, before: ["hours", "hour", "hrs", "hora", "horas", "小时"]) {
             draft.durationMinutes = max(1, Int((hours * 60).rounded()))
         }
 
@@ -85,6 +86,39 @@ enum ManualWorkoutPromptParser {
 
         return draft
     }
+
+    // Normalize only quantities attached to duration units; leave dates, sport,
+    // distance, and pace parsing on the original text.
+    private static func normalizedDurationText(_ value: String) -> String {
+        let units = #"(?:hours?|hrs|minutes?|mins|minutos?|horas?|小时|分钟)"#
+        var result = value
+        for (words, number) in durationWordNumbers {
+            let pattern = #"(?<![\p{L}\p{N}])"#
+                + NSRegularExpression.escapedPattern(for: words)
+                    .replacingOccurrences(of: " ", with: #"[\s-]+"#)
+                + #"\s+(?="# + units + #"(?![\p{L}]))"#
+            result = result.replacingOccurrences(of: pattern, with: "\(number) ", options: .regularExpression)
+        }
+        return result
+    }
+
+    private static let durationWordNumbers: [(String, String)] = {
+        let small = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+                     "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
+                     "seventeen", "eighteen", "nineteen"]
+        var numbers = small.enumerated().map { ($0.element, String($0.offset + 1)) }
+        for (index, tens) in ["twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"].enumerated() {
+            let base = (index + 2) * 10
+            numbers.append((tens, String(base)))
+            for ones in 1...9 {
+                numbers.append(("\(tens) \(small[ones - 1])", String(base + ones)))
+            }
+        }
+        numbers += [("half an", "0.5"), ("half a", "0.5"), ("half", "0.5"),
+                    ("an", "1"), ("a", "1"), ("una", "1"), ("un", "1"), ("media", "0.5")]
+        // Match compound phrases before their trailing words (twenty five before five).
+        return numbers.sorted { $0.0.count > $1.0.count }
+    }()
 
     private static func paceMinutesPerDistanceUnit(in value: String) -> (value: Double, isPerMile: Bool)? {
         let pattern = #"([0-9]+(?:[\.,][0-9]+)?)\s*(?:minutes|minute|mins|min)?\s*(?:per\s*)?(mile|mi|kilometer|kilometre|km)?\s*pace"#
