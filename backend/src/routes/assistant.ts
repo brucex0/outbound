@@ -1,3 +1,4 @@
+import { assistantInterpretRequestSchema, interpretAssistant } from "../services/assistantInterpretation.js";
 import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
@@ -33,6 +34,17 @@ const assistantContextSchema = z.object({
   currentScreen: z.string().optional().nullable(),
   isRecordingActive: z.boolean().optional().default(false),
   timeZoneIdentifier: z.string().optional().nullable(),
+});
+
+router.post("/interpret", zValidator("json", assistantInterpretRequestSchema), async (c) => {
+  if (!getAuthenticatedIdentity(c)) return c.json({ error: "Authentication required" }, 401);
+  try {
+    return c.json(await interpretAssistant(c.req.valid("json"), c.get("locale")));
+  } catch (error) {
+    // Provider error messages may contain input/output: log only a safe error class.
+    console.warn("Assistant interpretation failed", { operation: "assistant_interpret", errorType: error instanceof Error ? error.name : "unknown" });
+    return c.json({ error: "Assistant interpretation unavailable" }, 503);
+  }
 });
 
 router.post(

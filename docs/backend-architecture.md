@@ -38,6 +38,13 @@ Current gaps:
 - Use deterministic rules for safety-critical progression logic and AI for explanation, summarization, and rewriting.
 - Prefer app-shaped API responses over exposing raw database rows.
 
+## Assistant Interpretation Boundary
+
+- `POST /v1/assistant/interpret` is an authenticated, rate-limited language interpretation endpoint, used when iOS Apple Intelligence is unavailable or fails. It accepts a prompt (up to 4,000 characters), bounded context (8,000), and up to six role/text messages (1,000 characters each).
+- `services/assistantInterpretation.ts` uses the existing structured-AI reliability layer with a 12-second budget and schema validation. Output is an operation, capability/task, optional allowed destination/sport, explicit duration/distance/pace components, local date/time, indoor flag, and clarification. It never executes a mutation or reads account data.
+- Client validation, review, and existing server confirmation remain the action boundary. Missing fields are null and preserve the current draft. No schema migration is required. Deploy this route before releasing the iOS typed-interpreter client; existing Android and companion endpoints remain unchanged.
+- Invalid requests return validation errors; unauthenticated calls return 401; generation failure returns a generic 503. Logs contain only operation/error class, while the reliability layer records safe provider diagnostics. Prompt, context, draft values, and model output are not logged.
+
 ## Personalization Contracts
 
 - `backend/src/services/personalization/contracts.ts` owns runtime-validated V1 DTOs for calibration, confidence-bearing runner insights, readiness, workout feedback, and adjustment proposals.
