@@ -1,5 +1,13 @@
 # Social QA
 
+## Profile lookup after disconnect and from People search
+
+- Android's independently loaded profile destination received 404 from the accepted-connections-only lookup for search results and disconnected runners. iOS already held basic identity and used this lookup only to supplement milestones, so its profile remained usable.
+- `backend/src/routes/social.profile.test.ts` exercises the real Hono profile route with stubbed database reads: accepted → disconnected reopen, both pending directions, both block directions, missing identities, self, and unauthenticated access. It verifies non-connections do not query milestones and blocks remain indistinguishable from missing identities.
+- Verification: backend TypeScript build and all eight focused route-test checks passed.
+- Focused command from `backend/`: `npm run build && node --test dist/routes/social.profile.test.js`.
+
+
 ## Android profile connection regression
 
 - `ProfileScreenTest` renders the production Compose profile with deterministic relationship state and no backend calls. It covers Connect → persistent, non-clickable Sent in navigation and QR/dialog presentations, reopening a pending profile, incoming Accept/Decline callbacks, disconnect confirmation, and disabled Connect during processing.

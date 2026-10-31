@@ -564,7 +564,8 @@ router.get("/users/:id/profile", async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
   const personId = c.req.param("id");
-  if (personId !== user.id && !(await acceptedConnectionIDs(user.id)).includes(personId)) {
+  const isSelf = personId === user.id;
+  if (!isSelf && (await blockedUserIDs(user.id)).includes(personId)) {
     return c.json({ error: "Profile not found." }, 404);
   }
   const person = await getPrismaClient().user.findUnique({
@@ -572,9 +573,26 @@ router.get("/users/:id/profile", async (c) => {
     select: socialPersonSelect,
   });
   if (!person) return c.json({ error: "Profile not found." }, 404);
+  const relationship = isSelf ? null : await getPrismaClient().connection.findFirst({
+    where: {
+      OR: [
+        { requesterId: user.id, addresseeId: personId },
+        { requesterId: personId, addresseeId: user.id },
+      ],
+    },
+  });
   return c.json({
-    person: compactPerson(person),
-    recognitions: await recognitionAwards(personId, true),
+    // Basic identity is already discoverable through People. Milestones still
+    // require an accepted connection; opening a profile never creates one.
+    person: {
+      ...compactPerson(person),
+      relationship: relationship ? {
+        id: relationship.id,
+        status: relationship.status,
+        direction: relationship.requesterId === user.id ? "outgoing" : "incoming",
+      } : null,
+    },
+    recognitions: isSelf || relationship?.status === "accepted" ? await recognitionAwards(personId, true) : [],
   });
 });
 
