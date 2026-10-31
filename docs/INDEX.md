@@ -24,6 +24,7 @@ Primary flow:
 
 | Task | Open | Contains |
 | --- | --- | --- |
+| Git push corruption, SSH upload pacing, and local transport configuration | `docs/git-transport.md` | Verified upload workaround, setup, throughput tradeoff, and removal |
 | App flow, Swift files, recording, camera, persistence, guide analysis | `docs/ios-architecture.md` | Source layout, module responsibilities, current recording and AI guide shape |
 | Android public-release port, parity contract, platform substitutions, phases, and release gates | `docs/android-port.md` | Full-scope Kotlin/Compose architecture, cross-platform contract strategy, phase deliverables, verification gates, and release definition of done |
 | Android shell connectivity status and offline/reconnect UI parity | `android/app/IOS_PARITY.md` | iOS connectivity authority, Android monitor and banners, pending sync behavior, accessibility, and reference scenarios |
