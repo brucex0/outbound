@@ -317,6 +317,14 @@ fun SocialActivityDetailDestination(
     onBack: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val currentOnBack by rememberUpdatedState(onBack)
+    LaunchedEffect(postId) {
+        if (!viewModel.ensureActivityDetail(postId)) {
+            Toast.makeText(context, R.string.social_profile_action_failed, Toast.LENGTH_SHORT).show()
+            currentOnBack()
+        }
+    }
     DisposableEffect(postId) { onDispose { viewModel.closeActivityDetail() } }
     val post = state.selectedActivityPost?.takeIf { it.id == postId }
         ?: state.home.posts.firstOrNull { it.id == postId }
@@ -334,9 +342,6 @@ fun SocialActivityDetailDestination(
             },
         ) { padding -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
         return
-    }
-    LaunchedEffect(postId) {
-        if (state.selectedActivityPost?.id != postId) viewModel.openActivityDetail(post)
     }
     SocialActivityDetail(
         post = post,

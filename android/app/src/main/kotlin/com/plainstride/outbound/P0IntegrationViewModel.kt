@@ -314,23 +314,54 @@ data class P0IntegrationState(
         if(result.isSuccess)refreshRoutes()
         return result.isSuccess
     }
-    fun refreshInbox()=viewModelScope.launch{safety.inbox().onSuccess{response->mutable.update{it.copy(notifications=response.notifications)}}}
-    fun openInbox() {
-        val items = NotificationPresentationPolicy.items(mutable.value.notifications)
-        val readAt = Instant.now().toString()
-        mutable.update { state -> state.copy(notifications = state.notifications.map { notification ->
-            if (notification.readAt == null) notification.copy(readAt = readAt) else notification
-        }) }
-        analytics.record(AnalyticsEvent("notification_center_opened", mapOf(
-            AnalyticsProperty.CountBucket to notificationCountBucket(items.size),
+    private val inboxMutex = kotlinx.coroutines.sync.Mutex()
+    fun refreshInbox() = viewModelScope.launch {
+        inboxMutex.lock()
+        try { loadInbox() } finally { inboxMutex.unlock() }
+    }
+    private suspend fun loadInbox(): Boolean {
+        val requestedAccount = accountId ?: return false
+        return safety.inbox().fold(onSuccess = { response ->
+            if (accountId != requestedAccount) return@fold false
+            mutable.update { it.copy(notifications = response.notifications) }
+            true
+        }, onFailure = { error ->
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            android.util.Log.w("PlainstrideInbox", "inbox_refresh failed type=${error.javaClass.simpleName}")
+            false
+        })
+    }
+    fun trackPushOpened(destination: String, type: String) {
+        analytics.record(AnalyticsEvent("push_notification_opened", mapOf(
+            AnalyticsProperty.SourceType to if (type in setOf("cheer", "comment", "connectionRequest", "connectionAccepted", "runInvitation", "groupInvitation", "liveCheerInvitation")) type else "other",
+            AnalyticsProperty.Destination to if (destination in setOf("post", "connections", "event", "group", "invitation", "live", "activity", "inbox")) destination else "inbox",
         )))
-        items.groupBy { it.presentation.section }.forEach { (section, sectionItems) ->
-            analytics.record(AnalyticsEvent("notification_section_exposed", mapOf(
-                AnalyticsProperty.Section to section.analyticsValue,
-                AnalyticsProperty.CountBucket to notificationCountBucket(sectionItems.size),
+    }
+    fun openInbox() = viewModelScope.launch {
+        inboxMutex.lock()
+        try {
+            if (!loadInbox()) return@launch
+            val items = NotificationPresentationPolicy.items(mutable.value.notifications)
+            val readAt = Instant.now().toString()
+            mutable.update { state -> state.copy(notifications = state.notifications.map { notification ->
+                if (notification.readAt == null) notification.copy(readAt = readAt) else notification
+            }) }
+            analytics.record(AnalyticsEvent("notification_center_opened", mapOf(
+                AnalyticsProperty.CountBucket to notificationCountBucket(items.size),
             )))
-        }
-        viewModelScope.launch { safety.markInboxRead() }
+            items.groupBy { it.presentation.section }.forEach { (section, sectionItems) ->
+                analytics.record(AnalyticsEvent("notification_section_exposed", mapOf(
+                    AnalyticsProperty.Section to section.analyticsValue,
+                    AnalyticsProperty.CountBucket to notificationCountBucket(sectionItems.size),
+                )))
+            }
+            safety.markInboxRead().onFailure { error ->
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                android.util.Log.w("PlainstrideInbox", "inbox_mark_read failed type=${error.javaClass.simpleName}")
+                // Restore server read state after a failed write.
+                loadInbox()
+            }
+        } finally { inboxMutex.unlock() }
     }
     fun openNotification(item: NotificationCenterItem) {
         analytics.record(AnalyticsEvent("notification_action_selected", mapOf(

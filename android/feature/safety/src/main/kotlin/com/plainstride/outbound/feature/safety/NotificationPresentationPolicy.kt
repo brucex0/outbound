@@ -112,6 +112,9 @@ object NotificationPresentationPolicy {
         }
     }
 
+    fun attentionCount(notifications: List<InboxNotification>): Int =
+        notifications.count { it.readAt == null || presentationFor(it.type, it.objectId).section == NotificationCenterSection.NEEDS_YOU }
+
     fun actionableAttentionCount(notifications: List<InboxNotification>): Int =
         notifications.count { presentationFor(it.type, it.objectId).section == NotificationCenterSection.NEEDS_YOU }
 

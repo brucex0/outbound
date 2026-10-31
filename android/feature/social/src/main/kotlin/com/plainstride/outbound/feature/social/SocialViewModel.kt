@@ -327,6 +327,34 @@ sealed interface ConnectionEffect {
         "photo_previewed",
         mapOf(AnalyticsProperty.SourceType to "activity_detail_carousel"),
     ))
+    suspend fun ensureActivityDetail(postId: String): Boolean {
+        if (mutableState.value.selectedActivityPost?.id == postId) return true
+        val cached = mutableState.value.home.posts.firstOrNull { it.id == postId }
+        if (cached != null) {
+            openActivityDetail(cached)
+            return true
+        }
+        // Notifications can refer to posts older than the currently loaded feed.
+        var cursor: String? = null
+        val visited = mutableSetOf<String?>()
+        while (visited.add(cursor)) {
+            currentCoroutineContext().ensureActive()
+            val result = repository.loadFeed(cursor)
+            val page = result.getOrElse { error ->
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                android.util.Log.w("PlainstrideSocial", "notification_post_load failed category=${(error as? SocialException)?.reason ?: SocialError.UNEXPECTED} status=${(error as? SocialException)?.httpStatus} type=${error.javaClass.simpleName}")
+                return false
+            }
+            page.items.firstOrNull { it.id == postId }?.let {
+                openActivityDetail(it)
+                return true
+            }
+            cursor = page.nextCursor ?: break
+        }
+        android.util.Log.i("PlainstrideSocial", "notification_post_load unavailable in visible feed")
+        return false
+    }
+
     fun openActivityDetail(post: SocialPost) {
         val activity = post.activity ?: return
         activityPhotoJob?.cancel()

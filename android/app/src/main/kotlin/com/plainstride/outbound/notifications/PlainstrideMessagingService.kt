@@ -18,6 +18,7 @@ class PlainstrideMessagingService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
+        InboxUpdates.changes.tryEmit(Unit)
         val type = message.data["type"]?.take(48) ?: return
         val objectId = message.data["objectId"]?.take(160).orEmpty()
         val notificationId = message.data["notificationId"]?.take(160).orEmpty()
@@ -25,7 +26,7 @@ class PlainstrideMessagingService : FirebaseMessagingService() {
         manager.createNotificationChannel(NotificationChannel(CHANNEL_SOCIAL, getString(R.string.notification_channel_social), NotificationManager.IMPORTANCE_DEFAULT))
         val destination = NotificationPresentationPolicy.deepLinkDestination(type, objectId)
         val intent = Intent(this, MainActivity::class.java).apply {
-            data = Uri.Builder().scheme("plainstride").authority("notification").appendPath(destination).appendQueryParameter("id", objectId).appendQueryParameter("notification", notificationId).build()
+            data = Uri.Builder().scheme("plainstride").authority("notification").appendPath(destination).appendQueryParameter("id", objectId).appendQueryParameter("notification", notificationId).appendQueryParameter("type", type).build()
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
         val pending = PendingIntent.getActivity(this, notificationId.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
@@ -35,4 +36,9 @@ class PlainstrideMessagingService : FirebaseMessagingService() {
     }
 
     companion object { const val PREFERENCES="push_registration"; const val TOKEN="fcm_token"; const val CHANNEL_SOCIAL="social" }
+}
+
+/** Refresh durable inbox data; never retain push copy or account identifiers here. */
+object InboxUpdates {
+    val changes = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 }

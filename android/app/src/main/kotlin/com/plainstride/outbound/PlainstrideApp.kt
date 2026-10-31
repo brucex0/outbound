@@ -396,13 +396,14 @@ private fun SignedInApp(
         pushPermissionLauncher.launch(permission)
     }
     val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner, context) {
+    DisposableEffect(lifecycleOwner, context, accountId) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 val accessAvailable = notificationAccessAvailable(context)
                 if (accessAvailable != pushPermissionGranted) integrationViewModel.trackPushPermissionResult(accessAvailable)
                 pushPermissionGranted = accessAvailable
                 notificationPermissionRequested = notificationPermissionPreferences.getBoolean("requested", false)
+                if (accountId != null) integrationViewModel.refreshInbox()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -545,14 +546,27 @@ private fun SignedInApp(
             navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
         }
     }
-    LaunchedEffect(navigationUri) {
+    LaunchedEffect(accountId) {
+        if (accountId != null) com.plainstride.outbound.notifications.InboxUpdates.changes.collect {
+            integrationViewModel.refreshInbox()
+        }
+    }
+    LaunchedEffect(navigationUri, accountId) {
+        if (accountId == null) return@LaunchedEffect
         val destination = navigationUri?.pathSegments?.firstOrNull() ?: return@LaunchedEffect
+        navigationUri.getQueryParameter("type")?.let { integrationViewModel.trackPushOpened(destination, it) }
+        integrationViewModel.refreshInbox()
         when (destination) {
             "today" -> { reminderWorkoutId=navigationUri.getQueryParameter("workout");navController.navigate(TopLevelDestination.Today.route) }
             "assistant" -> { assistantEntryDestination = TopLevelDestination.entries.firstOrNull { it.route == currentDestination?.route }?.route ?: "me"; navController.navigate(ASSISTANT_ROUTE) }
             "inbox" -> navController.navigate(NOTIFICATIONS_ROUTE)
             "activity" -> { activityTarget=navigationUri.getQueryParameter("id");navController.navigate(ACTIVITY_HISTORY_ROUTE) }
-            "connections", "event", "group", "post", "invitation" -> { socialTarget=SocialNavigationTarget(destination, navigationUri.getQueryParameter("id").orEmpty());navController.navigate(TopLevelDestination.Social.route) }
+            "post" -> {
+                val id = navigationUri.getQueryParameter("id").orEmpty()
+                if (id.isNotBlank()) navController.navigate("$SOCIAL_ACTIVITY_DETAIL_ROUTE/${android.net.Uri.encode(id)}")
+                else navController.navigate(NOTIFICATIONS_ROUTE)
+            }
+            "connections", "event", "group", "invitation" -> { socialTarget=SocialNavigationTarget(destination, navigationUri.getQueryParameter("id").orEmpty());navController.navigate(TopLevelDestination.Social.route) }
             "group" -> { safetyTarget="group" to navigationUri.getQueryParameter("id").orEmpty();navController.navigate(SAFETY_ROUTE) }
             "live" -> { liveCheerEntrySource="notification";safetyTarget="live" to navigationUri.getQueryParameter("id").orEmpty();navController.navigate(SAFETY_ROUTE) }
             else -> navController.navigate(NOTIFICATIONS_ROUTE)
@@ -853,7 +867,7 @@ private fun SignedInApp(
                                 todayRouteReversed = reverse
                             },
                             useFahrenheit = settingsState.preferences.temperature == com.plainstride.outbound.feature.settings.TemperatureUnit.Fahrenheit,
-                            inboxCount = NotificationPresentationPolicy.actionableAttentionCount(integration.notifications),
+                            inboxCount = NotificationPresentationPolicy.attentionCount(integration.notifications),
                             startRequest = todayStartRequest,
                             refreshRequest = todayRefreshRequest,
                             onMessage = { message ->
@@ -875,7 +889,7 @@ private fun SignedInApp(
                                 forceOnboardingReplay = true
                                 onboardingResolved = false
                             },
-                            inboxCount = NotificationPresentationPolicy.actionableAttentionCount(integration.notifications),
+                            inboxCount = NotificationPresentationPolicy.attentionCount(integration.notifications),
                             onNotifications = { navController.navigate(NOTIFICATIONS_ROUTE) { launchSingleTop = true } },
                             connections = integration.connections,
                             insights = integration.insights.map { MeInsight(it.id, it.label, it.value, it.confidence.replaceFirstChar(Char::uppercase)) },
@@ -1032,7 +1046,7 @@ private fun SignedInApp(
                             onMessage = { message -> snackbar.showSnackbar(resources.getString(settingsMessageResource(message))) },
                         )
                     } else if (destination == TopLevelDestination.Social && accountId != null) {
-                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.type,socialTarget?.id,targetEntrySource=socialTarget?.entrySource ?: "deep_link",inboxCount=NotificationPresentationPolicy.actionableAttentionCount(integration.notifications),unitSystem=measurementUnitSystem,onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE) { launchSingleTop = true }},onActivity={id->activityTarget=id;navController.navigate(ACTIVITY_HISTORY_ROUTE)},onMyInvite={navController.navigate(MY_QR_ROUTE){launchSingleTop=true}},onTargetConsumed={socialTarget=null},onConnectionLinkConsumed={socialTarget=null;onConnectionCodeConsumed()},onGroupInviteConsumed={socialTarget=null},onRoutesTabSelected={if(integration.routeScope!=RouteScope.DISCOVERY)integrationViewModel.scope(RouteScope.DISCOVERY)},onOpenSharedActivity={id->navController.navigate("$SOCIAL_ACTIVITY_DETAIL_ROUTE/$id")},onOpenSharedEvent={id,source->navController.navigate("$SOCIAL_ACTIVITY_EVENT_ROUTE/$id?source=$source")},onOpenSharedProfile={person->sharedSocialProfile=person;navController.navigate("$SOCIAL_PROFILE_ROUTE/${person.id}")},onOpenLiveCheer={id->liveCheerEntrySource="social_active_now";safetyTarget="live" to id;navController.navigate(SAFETY_ROUTE)},groupRun=sharedLiveGroupRun?.toSharedLiveRun(),groupRunJoining=groupRunJoining,onToggleActivityLiveMap=toggleActivityLiveMap,onStartGroupActivity={event->recordingLaunch=event.recordingLaunch();navController.navigate(RECORDING_ROUTE){launchSingleTop=true}},communityRoutesContent={ routeImportRequest -> CommunityRouteScreen(integration.routes,integration.routeScope,integrationViewModel::scope,integrationViewModel::refreshRoutes,integrationViewModel::search,{launch->recordingLaunch=launch;navController.navigate(RECORDING_ROUTE)},integrationViewModel::bookmark,integrationViewModel::trackRouteImport,bottomContentPadding=PrimaryBottomToolbarClearance,routeDetail=integration.selectedCommunityRoute,routeDetailLoading=integration.communityRouteLoading,onLoadDetail=integrationViewModel::loadCommunityRoute,onRemovePublished=integrationViewModel::removePublishedRoute,onClearDetail=integrationViewModel::clearCommunityRoute,unitSystem=measurementUnitSystem,onImportedDelete=integrationViewModel::trackImportedRouteDeleted,importRequest=routeImportRequest,searchQuery=integration.routeQuery)},notificationAccessAvailable=pushPermissionGranted,onEnableNotifications={integrationViewModel.trackPushPermissionPromptAction("social","enable");requestNotificationPermission(forPush=true,forReminder=reminderEnabled)},viewModel=sharedSocialViewModel)
+                        SocialRoute(accountId, resources.configuration.locales[0].toLanguageTag(),socialTarget?.type,socialTarget?.id,targetEntrySource=socialTarget?.entrySource ?: "deep_link",inboxCount=NotificationPresentationPolicy.attentionCount(integration.notifications),unitSystem=measurementUnitSystem,onConditions={navController.navigate(TopLevelDestination.Today.route)},onCommunity={navController.navigate(COMMUNITY_ROUTES_ROUTE)},onNotifications={navController.navigate(NOTIFICATIONS_ROUTE) { launchSingleTop = true }},onActivity={id->activityTarget=id;navController.navigate(ACTIVITY_HISTORY_ROUTE)},onMyInvite={navController.navigate(MY_QR_ROUTE){launchSingleTop=true}},onTargetConsumed={socialTarget=null},onConnectionLinkConsumed={socialTarget=null;onConnectionCodeConsumed()},onGroupInviteConsumed={socialTarget=null},onRoutesTabSelected={if(integration.routeScope!=RouteScope.DISCOVERY)integrationViewModel.scope(RouteScope.DISCOVERY)},onOpenSharedActivity={id->navController.navigate("$SOCIAL_ACTIVITY_DETAIL_ROUTE/$id")},onOpenSharedEvent={id,source->navController.navigate("$SOCIAL_ACTIVITY_EVENT_ROUTE/$id?source=$source")},onOpenSharedProfile={person->sharedSocialProfile=person;navController.navigate("$SOCIAL_PROFILE_ROUTE/${person.id}")},onOpenLiveCheer={id->liveCheerEntrySource="social_active_now";safetyTarget="live" to id;navController.navigate(SAFETY_ROUTE)},groupRun=sharedLiveGroupRun?.toSharedLiveRun(),groupRunJoining=groupRunJoining,onToggleActivityLiveMap=toggleActivityLiveMap,onStartGroupActivity={event->recordingLaunch=event.recordingLaunch();navController.navigate(RECORDING_ROUTE){launchSingleTop=true}},communityRoutesContent={ routeImportRequest -> CommunityRouteScreen(integration.routes,integration.routeScope,integrationViewModel::scope,integrationViewModel::refreshRoutes,integrationViewModel::search,{launch->recordingLaunch=launch;navController.navigate(RECORDING_ROUTE)},integrationViewModel::bookmark,integrationViewModel::trackRouteImport,bottomContentPadding=PrimaryBottomToolbarClearance,routeDetail=integration.selectedCommunityRoute,routeDetailLoading=integration.communityRouteLoading,onLoadDetail=integrationViewModel::loadCommunityRoute,onRemovePublished=integrationViewModel::removePublishedRoute,onClearDetail=integrationViewModel::clearCommunityRoute,unitSystem=measurementUnitSystem,onImportedDelete=integrationViewModel::trackImportedRouteDeleted,importRequest=routeImportRequest,searchQuery=integration.routeQuery)},notificationAccessAvailable=pushPermissionGranted,onEnableNotifications={integrationViewModel.trackPushPermissionPromptAction("social","enable");requestNotificationPermission(forPush=true,forReminder=reminderEnabled)},viewModel=sharedSocialViewModel)
                     } else {
                         FoundationScreen(destination, authState, authViewModel)
                     }
@@ -1243,7 +1257,7 @@ private fun SignedInApp(
                 LaunchedEffect(Unit) { integrationViewModel.openInbox() }
                 NotificationInbox(integration.notifications) { item ->
                     integrationViewModel.openNotification(item)
-                    when(val destination = item.presentation.destination){ NotificationDestination.Connections -> { socialTarget=SocialNavigationTarget("connections", entrySource = "notification");navController.navigate(TopLevelDestination.Social.route) };is NotificationDestination.Activity -> { activityTarget=destination.id;navController.navigate(ACTIVITY_HISTORY_ROUTE) };is NotificationDestination.Post -> {socialTarget=SocialNavigationTarget("post", destination.id);navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Event -> {socialTarget=SocialNavigationTarget("event", destination.id);navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Invitation -> {socialTarget=SocialNavigationTarget("invitation", destination.id);navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Group -> {socialTarget=SocialNavigationTarget("group", destination.id);navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.GroupRun -> {safetyTarget="group" to destination.id;navController.navigate(SAFETY_ROUTE)};is NotificationDestination.Live -> {liveCheerEntrySource="notification";safetyTarget="live" to destination.id;navController.navigate(SAFETY_ROUTE)};NotificationDestination.Inbox -> {notificationDetailID=item.primary.id;navController.navigate(NOTIFICATION_DETAIL_ROUTE)} }
+                    when(val destination = item.presentation.destination){ NotificationDestination.Connections -> { socialTarget=SocialNavigationTarget("connections", entrySource = "notification");navController.navigate(TopLevelDestination.Social.route) };is NotificationDestination.Activity -> { activityTarget=destination.id;navController.navigate(ACTIVITY_HISTORY_ROUTE) };is NotificationDestination.Post -> {navController.navigate("$SOCIAL_ACTIVITY_DETAIL_ROUTE/${android.net.Uri.encode(destination.id)}")};is NotificationDestination.Event -> {socialTarget=SocialNavigationTarget("event", destination.id);navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Invitation -> {socialTarget=SocialNavigationTarget("invitation", destination.id);navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.Group -> {socialTarget=SocialNavigationTarget("group", destination.id);navController.navigate(TopLevelDestination.Social.route)};is NotificationDestination.GroupRun -> {safetyTarget="group" to destination.id;navController.navigate(SAFETY_ROUTE)};is NotificationDestination.Live -> {liveCheerEntrySource="notification";safetyTarget="live" to destination.id;navController.navigate(SAFETY_ROUTE)};NotificationDestination.Inbox -> {notificationDetailID=item.primary.id;navController.navigate(NOTIFICATION_DETAIL_ROUTE)} }
                 }
             }
             composable(NOTIFICATION_DETAIL_ROUTE) {

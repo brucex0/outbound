@@ -86,8 +86,16 @@ class MainActivity : ComponentActivity() {
         return uri.getQueryParameter("code")?.take(32)
     }
 
-    private fun Intent.navigationUri(): Uri? = data?.takeIf { uri ->
-        uri.scheme == "plainstride" && uri.host == "notification"
+    private fun Intent.navigationUri(): Uri? {
+        data?.takeIf { it.scheme == "plainstride" && it.host == "notification" }?.let { return it }
+        // Background FCM notification messages launch the activity with data extras.
+        val type = getStringExtra("type")?.take(48) ?: return null
+        val objectId = getStringExtra("objectId")?.take(160).orEmpty()
+        val notificationId = getStringExtra("notificationId")?.take(160).orEmpty()
+        val destination = com.plainstride.outbound.feature.safety.NotificationPresentationPolicy.deepLinkDestination(type, objectId)
+        return Uri.Builder().scheme("plainstride").authority("notification")
+            .appendPath(destination).appendQueryParameter("id", objectId)
+            .appendQueryParameter("notification", notificationId).appendQueryParameter("type", type).build()
     }
 
     private fun Intent.connectionCode(): String? {
