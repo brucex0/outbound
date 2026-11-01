@@ -626,12 +626,14 @@ struct AssistantView: View {
                 .background(personaAccentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
             }
 
-            Button("Enter workout details") {
-                trackMeaningfulEngagement(entrySource: "manual_entry")
-                showsManualWorkoutEntry = true
+            if let draft = pendingManualWorkoutDraft, draft.firstMissingField != nil {
+                Button("Enter workout details") {
+                    trackMeaningfulEngagement(entrySource: "manual_entry")
+                    showsManualWorkoutEntry = true
+                }
+                .buttonStyle(.bordered)
+                .disabled(isInterpreting || assistantStore.isResponding)
             }
-            .buttonStyle(.bordered)
-            .disabled(isInterpreting || assistantStore.isResponding)
 
             if assistantStore.isResponding || isInterpreting {
                 HStack(spacing: 10) {
