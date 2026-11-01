@@ -5,7 +5,6 @@ import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
-import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -67,8 +66,6 @@ interface SocialApiService {
     @PUT("v1/social/posts/{id}/cheer") suspend fun cheer(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
     @DELETE("v1/social/posts/{id}/cheer") suspend fun removeCheer(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
     @GET("v1/social/posts/{id}/photos") suspend fun postPhotos(@Header("Authorization") auth: String, @Path("id") id: String): Response<SocialPostPhotosResponse>
-    @Streaming @GET("v1/media/activity-photos/{id}/thumbnail") suspend fun activityPhotoThumbnail(@Header("Authorization") auth: String, @Path("id") id: String): Response<ResponseBody>
-    @Streaming @GET("v1/media/activity-photos/{id}/content") suspend fun activityPhotoContent(@Header("Authorization") auth: String, @Path("id") id: String): Response<ResponseBody>
     @DELETE("v1/social/posts/{id}") suspend fun deletePost(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
     @POST("v1/social/reports") suspend fun reportPost(@Header("Authorization") auth: String, @Body body: ReportBody): Response<Unit>
     @POST("v1/social/users/{id}/block") suspend fun block(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>

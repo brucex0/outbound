@@ -97,6 +97,7 @@ class OfflineFirstActivityRepository(
     private val api: ActivitiesApiService,
     private val accessTokens: AccessTokenProvider,
     private val mediaStore: ActivityMediaStore,
+    private val photos: ActivityPhotoRepository,
     private val analytics: ProductAnalytics,
     private val currentAccountId: () -> String?,
     private val now: () -> Instant = Instant::now,
@@ -138,13 +139,15 @@ class OfflineFirstActivityRepository(
         val local = activity(accountId, activityId)
         // An uncached notification carries a server ID; a local unsynced activity needs no fetch.
         val serverId = if (local == null) activityId else local.serverActivityId ?: return
-        val token = accessTokens.validAccessToken() ?: return
-        val response = apiCall { api.activities("Bearer $token", 1, 0, ids = serverId, includeRoute = true) }
-        if (response is ApiResult.Success && currentAccountId() == accountId) response.value.activities.forEach { mergeRemote(accountId, it) }
-        else Log.w("PlainstrideActivity", "detail_refresh_failed category=${(response as? ApiResult.Failure)?.error?.code?.name ?: "account_changed"}")
-        cacheActivityPhotos(accountId, local?.id ?: activityId, "Bearer $token")
+        val token = accessTokens.validAccessToken()
+        if (token != null) {
+            val response = apiCall { api.activities("Bearer $token", 1, 0, ids = serverId, includeRoute = true) }
+            if (response is ApiResult.Success && currentAccountId() == accountId) response.value.activities.forEach { mergeRemote(accountId, it) }
+            else Log.w("PlainstrideActivity", "detail_refresh_failed category=${(response as? ApiResult.Failure)?.error?.code?.name ?: "account_changed"}")
+        }
+        cacheActivityPhotos(accountId, local?.id ?: activityId)
     }
-    private suspend fun cacheActivityPhotos(accountId: String, activityId: String, authorization: String) =
+    private suspend fun cacheActivityPhotos(accountId: String, activityId: String) =
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             val snapshot = activity(accountId, activityId) ?: return@withContext
             for (photo in snapshot.photos) {
@@ -156,13 +159,7 @@ class OfflineFirstActivityRepository(
                         try { mediaStore.read(path).isNotEmpty() } catch (_: java.io.FileNotFoundException) { false }
                     } ?: false
                     if (cached) continue
-                    val response = api.activityPhotoContent(authorization, remoteId)
-                    val bytes = response.body()?.use { it.bytes() }
-                    if (!response.isSuccessful || bytes == null || bytes.isEmpty()) {
-                        response.errorBody()?.close()
-                        Log.w("PlainstrideActivity", "photo_download_failed status=${response.code()}")
-                        continue
-                    }
+                    val bytes = photos.load(remoteId).getOrNull() ?: continue
                     if (currentAccountId() != accountId) return@withContext
                     val path = mediaStore.write(accountId, snapshot.id, bytes)
                     val attached = database.withTransaction {
@@ -176,7 +173,6 @@ class OfflineFirstActivityRepository(
                         }
                     }
                     if (!attached) mediaStore.delete(path)
-                    else analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "activity_photo_cached")))
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: Exception) {

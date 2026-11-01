@@ -160,6 +160,9 @@ interface ActivityDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertSplits(splits: List<ActivitySplitEntity>)
 
+    @Query("SELECT p.* FROM activity_photos p INNER JOIN activities a ON a.activityId = p.activityId AND a.accountId = p.accountId WHERE p.accountId = :accountId AND p.remotePhotoId = :photoId AND p.localRelativePath IS NOT NULL AND a.deletedAtEpochMs IS NULL LIMIT 1")
+    suspend fun photoByRemoteId(accountId: String, photoId: String): ActivityPhotoEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertPhotos(photos: List<ActivityPhotoEntity>)
 

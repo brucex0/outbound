@@ -90,7 +90,10 @@ internal fun SocialRoutePreview(
         if (photoCacheKey == null || value != null) return@produceState
         val bytes = withContext(Dispatchers.IO) {
             val downloaded = photoUrl?.let { runCatching { loadPhotoThumbnail(it) }.getOrNull() }
-            downloaded ?: absolutePhotoUrl?.let { url ->
+            // Activity media failures stay with the shared authenticated loader.
+            // Other preview URLs retain their existing public-image fallback.
+            val activityMedia = photoUrl?.let { android.net.Uri.parse(it).pathSegments.contains("activity-photos") } == true
+            downloaded ?: absolutePhotoUrl?.takeUnless { activityMedia }?.let { url ->
                 runCatching {
                     dependencies.httpClient().newCall(Request.Builder().url(url).build()).execute().use { response ->
                         if (response.isSuccessful) response.body?.bytes() else null

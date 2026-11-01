@@ -8,10 +8,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import com.plainstride.outbound.core.database.AccountCacheDao
 import com.plainstride.outbound.core.database.AccountCacheEntity
 import com.plainstride.outbound.core.network.*
@@ -91,6 +89,7 @@ class OfflineFirstSocialRepository @Inject constructor(
     private val api: SocialApiService,
     private val tokens: AccessTokenProvider,
     private val cache: AccountCacheDao,
+    private val photos: com.plainstride.outbound.core.data.ActivityPhotoRepository,
 ) : SocialRepository {
     private val mutex = Mutex()
 
@@ -217,18 +216,12 @@ class OfflineFirstSocialRepository @Inject constructor(
 
     override suspend fun setCheer(postId: String, cheered: Boolean) = authenticated { auth -> apiCall { if (cheered) api.cheer(auth, postId) else api.removeCheer(auth, postId) } }
     override suspend fun loadPostPhotos(postId: String) = authenticated { apiCall { api.postPhotos(it, postId) } }.map { it.photos }
-    override suspend fun downloadPostPhoto(photoId: String, thumbnail: Boolean): Result<ByteArray> {
-        val body = authenticated { auth ->
-            apiCall { if (thumbnail) api.activityPhotoThumbnail(auth, photoId) else api.activityPhotoContent(auth, photoId) }
-        }.getOrElse { return Result.failure(it) }
-        return try {
-            Result.success(withContext(Dispatchers.IO) { body.use { it.bytes() } })
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (error: Exception) {
-            Result.failure(error)
+    override suspend fun downloadPostPhoto(photoId: String, thumbnail: Boolean): Result<ByteArray> =
+        photos.load(photoId, thumbnail).recoverCatching { error ->
+            if (error is CancellationException) throw error
+            val failure = (error as? com.plainstride.outbound.core.data.ActivityPhotoException)?.failure
+            throw if (failure != null) SocialException(failure.toSocialError(), failure.httpStatus) else error
         }
-    }
     override suspend fun connect(personId: String) = authenticated { apiCall { api.connect(it, IdBody(personId)) } }
     override suspend fun accept(connectionId: String) = authenticated { apiCall { api.accept(it, connectionId) } }
     override suspend fun removeConnection(connectionId: String) = authenticated { apiCall { api.removeConnection(it, connectionId) } }

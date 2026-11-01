@@ -159,6 +159,10 @@ data class RemoteActivityDto(
 
 interface ActivitiesApiService {
     @retrofit2.http.Streaming
+    @GET("v1/media/activity-photos/{id}/thumbnail")
+    suspend fun activityPhotoThumbnail(@Header("Authorization") authorization: String, @Path("id") id: String): Response<okhttp3.ResponseBody>
+
+    @retrofit2.http.Streaming
     @GET("v1/media/activity-photos/{id}/content")
     suspend fun activityPhotoContent(@Header("Authorization") authorization: String, @Path("id") id: String): Response<okhttp3.ResponseBody>
 

@@ -20,6 +20,7 @@ import com.plainstride.outbound.core.database.AccountCacheDao
 import com.plainstride.outbound.core.database.AccountDatabaseOperations
 import com.plainstride.outbound.core.database.PlainstrideDatabase
 import com.plainstride.outbound.core.database.PlainstrideDatabaseFactory
+import com.plainstride.outbound.core.data.ActivityPhotoRepository
 import com.plainstride.outbound.core.data.ActivityMediaStore
 import com.plainstride.outbound.core.data.ActivityRepository
 import com.plainstride.outbound.core.data.OfflineFirstActivityRepository
@@ -198,6 +199,18 @@ object FoundationModule {
     @Provides @Singleton fun activityMediaStore(@ApplicationContext context: Context): ActivityMediaStore =
         ActivityMediaStore(context)
 
+    @Provides @Singleton fun activityPhotoRepository(
+        @ApplicationContext context: Context,
+        api: ActivitiesApiService,
+        tokens: AccessTokenProvider,
+        database: PlainstrideDatabase,
+        media: ActivityMediaStore,
+        analytics: ProductAnalytics,
+        sessions: SessionCoordinator,
+    ): ActivityPhotoRepository = ActivityPhotoRepository(context, api, tokens, database.activityDao(), media, analytics,
+        currentAccountId = { (sessions.state.value as? com.plainstride.outbound.core.auth.SessionState.SignedIn)?.accountId },
+    )
+
     @Provides @Singleton fun activitySyncScheduler(@ApplicationContext context: Context): ActivitySyncScheduler =
         WorkManagerActivitySyncScheduler(context)
 
@@ -206,9 +219,10 @@ object FoundationModule {
         api: ActivitiesApiService,
         accessTokens: AccessTokenProvider,
         mediaStore: ActivityMediaStore,
+        photos: ActivityPhotoRepository,
         analytics: ProductAnalytics,
         sessions: SessionCoordinator,
-    ): ActivityRepository = OfflineFirstActivityRepository(database, api, accessTokens, mediaStore, analytics,
+    ): ActivityRepository = OfflineFirstActivityRepository(database, api, accessTokens, mediaStore, photos, analytics,
         currentAccountId = { (sessions.state.value as? com.plainstride.outbound.core.auth.SessionState.SignedIn)?.accountId },
     )
 

@@ -228,9 +228,11 @@ Safe-area strategy:
 
 - Indoor launch explicitly disables GPS stop accounting, and this choice is retained in recovery state, so stationary treadmill sessions keep their unpaused timer duration.
 
-## Android restored photo cache
+## Android shared photo repository
 
-- Stored detail (including Recents) downloads missing remote originals through the authenticated media endpoint into private storage after refreshing metadata. Offline reopening uses the original JPEG with the existing EXIF decoder; no recompression occurs. Failures retain placeholders, log diagnostics, and retry on reopening.
-- Cache attachment checks the account, deletion, photo revision, and latest local reference, then updates only the photo row without enqueueing an activity edit.
-- Successful fills emit `feature_exposed` with only `feature=activity_photo_cached`. Existing detail and photo-view events remain unchanged.
-- Manual acceptance pending: add a photo on iPhone after saving, open Android Recents strip/lightbox, reopen offline, and compare with the feed.
+- `core/data/ActivityPhotoRepository` is the singleton byte loader for stored detail (including Recents), Social feed thumbnails/detail/lightbox, and Group moments. Social keeps its share-safe metadata and complete-gallery endpoint; stored detail keeps private activity metadata. Both media adapters use the same authenticated content/thumbnail endpoints and remote photo IDs.
+- The account-scoped disk cache separates thumbnails from originals, coalesces concurrent requests, refreshes entries after 15 minutes, and caps disposable media at 64 MiB. Originals already attached to an active local activity are reused directly, without duplicating that file in the cache. Feed-loaded originals can populate Recents without another download. Cache misses retry through the authenticated endpoint; 401/403/404/410 invalidate the requested cached representation. Account changes discard in-flight results.
+- Stored detail attaches downloaded originals to private activity media for offline use. Attachment checks account, deletion, photo revision, and latest local reference before updating only the photo row; it does not enqueue an activity edit. Disposable shared cache eviction requires no database reset or migration.
+- The repository stores exact downloaded bytes with no decode, resize, recompression, or metadata rewrite. Existing per-surface image decoders, EXIF handling, crop/fit behavior, and lightbox quality remain unchanged.
+- Successful shared cache fills emit `feature_exposed` with only `feature=activity_photo_cached`; cache hits emit no duplicate fill event. Existing detail and photo-view events remain unchanged. Diagnostics contain only operation, representation, status, and exception type.
+- Manual acceptance pending: add a photo on iPhone after saving; compare Android Feed and Recents strip/lightbox; open Feed original then Recents and reverse; reopen offline; check cache eviction, account switch, rotated/mirrored photos, and deleted photos. Compile checks do not establish visual equivalence.
