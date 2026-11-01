@@ -275,7 +275,10 @@ final class OutboundUITests: XCTestCase {
 
     @MainActor
     func testPostRunSummaryCanManageCapturedPhotos() throws {
-        let app = launchApp(extraArguments: ["-OutboundDebugPostRunSummary", "-measurement_unit_system_v1", "metric"])
+        let app = launchApp(extraArguments: [
+            "-OutboundDebugPostRunSummary", "-measurement_unit_system_v1", "metric",
+            "-tooltip.photo_management.dismissed.v1", "YES",
+        ])
         let first = app.descendants(matching: .any)["FinishPhotoThumbnail-0"].firstMatch
         reveal(first, in: app)
         XCTAssertEqual(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "FinishPhotoThumbnail-")).count, 3)

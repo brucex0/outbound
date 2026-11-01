@@ -648,10 +648,20 @@ private final class ShakeDetectorViewController: UIViewController {
         onShake?()
     }
 
+    private func containsTextInputResponder(in view: UIView) -> Bool {
+        if view.isFirstResponder && view is UITextInput { return true }
+        return view.subviews.contains { containsTextInputResponder(in: $0) }
+    }
+
     private func claimFirstResponderWhenReady() {
         guard isEnabled else { return }
         Task { @MainActor [weak self] in
-            guard let self, self.isEnabled, self.viewIfLoaded?.window != nil else { return }
+            guard let self, self.isEnabled, let window = self.viewIfLoaded?.window else { return }
+            // Selection menus and keyboard windows can make the app window key
+            // again while editing. Never take first responder from text input;
+            // keyboardDidHide will give shake detection another opportunity.
+            let windows = window.windowScene?.windows ?? [window]
+            guard !windows.contains(where: { self.containsTextInputResponder(in: $0) }) else { return }
             self.becomeFirstResponder()
         }
     }

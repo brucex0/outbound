@@ -7,23 +7,26 @@ final class GroupRecoveryUITests: XCTestCase {
         let fixture = try GroupRecoveryFixture()
         let baseURL = try fixture.start()
         defer { fixture.stop() }
-        let app = XCUIApplication()
         let baseArguments = [
-            "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
-            "-OutboundDisableFirebase", "-OutboundUseMockMusic", "-OutboundSkipOnboarding",
-            "-OutboundUITestSeedData", "-OutboundAPIBaseURL", baseURL,
-            "-preferred_session_page_v1", "map", "-voice_guide_enabled_v1", "NO",
-            "-home_widget_onboarding_seen_v1", "YES",
-            "-push_notification_permission_primer_seen_v1", "YES",
-            "-watch.startWatchApp", "NO", "-auto_pause_running_enabled_v1", "NO",
-            "-new_user_onboarding_completed_v2.UI test session", "YES"
+            "-OutboundAPIBaseURL", baseURL, "-preferred_session_page_v1", "map"
         ]
-        app.launchArguments = baseArguments + ["-OutboundGroupRecoveryUITestSetup", "-OutboundUITestResetRecording"]
+        // Settle first-install system permissions before arming the recovery
+        // fixture. This test owns recovery, not permission-prompt/start timing.
+        let app = launchFixtureApp(extraArguments: baseArguments)
+        app.terminate()
+        app.launchArguments.append("-OutboundGroupRecoveryUITestSetup")
         app.launch()
-        dismissLocationDialog(in: app)
+        dismissFixturePermissionAlerts(app)
+        let joined = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            fixture.requestCount("POST /live/group-runs/activity-events/ui-recovery-event") == 1
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [joined], timeout: 10), .completed)
         let start = app.buttons["tab.start"]
         XCTAssertTrue(start.waitForExistence(timeout: 20), app.debugDescription)
-        start.tap()
+        // iOS 27 can report {-1, -1} for this custom dock's AX hit point.
+        // Tap its visible bounds, then require the real recording controls.
+        XCTAssertTrue(app.frame.contains(start.frame))
+        start.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         let pause = app.buttons["Pause activity"]
         XCTAssertTrue(pause.waitForExistence(timeout: 20), app.debugDescription)
         pause.press(forDuration: 1.2)
@@ -33,9 +36,9 @@ final class GroupRecoveryUITests: XCTestCase {
         for restart in 1...2 {
             app.terminate()
             // Deliberately omit setup: all event/session context must come from disk.
-            app.launchArguments = baseArguments
+            app.launchArguments.removeAll { $0 == "-OutboundGroupRecoveryUITestSetup" || $0 == "-OutboundUITestResetRecording" }
             app.launch()
-            dismissLocationDialog(in: app)
+            dismissFixturePermissionAlerts(app)
             XCTAssertTrue(app.buttons["Resume activity"].waitForExistence(timeout: 20), "Restart \(restart): \(app.debugDescription)")
             verifyGroupUI(in: app)
             let screenshot = XCTAttachment(screenshot: app.screenshot())
@@ -70,12 +73,5 @@ final class GroupRecoveryUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Stop sharing"].waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertFalse(app.buttons["Share live map with attendees"].exists)
         panel.tap()
-    }
-
-    @MainActor
-    private func dismissLocationDialog(in app: XCUIApplication) {
-        if app.buttons["Close"].waitForExistence(timeout: 2), app.staticTexts["Enable location"].exists {
-            app.buttons["Close"].tap()
-        }
     }
 }

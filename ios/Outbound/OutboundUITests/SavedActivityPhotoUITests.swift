@@ -104,7 +104,9 @@ final class SavedActivityPhotoUITests: XCTestCase {
         let firstCaption = editPhoto(0, in: app).label
         let secondCaption = editPhoto(1, in: app).label
         editPhoto(0, in: app).press(forDuration: 0.6)
-        editPhoto(0, in: app).press(forDuration: 0.6, thenDragTo: editPhoto(1, in: app))
+        XCTAssertTrue(editPhoto(0, in: app).isSelected)
+        editPhoto(0, in: app).press(forDuration: 1, thenDragTo: editPhoto(1, in: app),
+                                   withVelocity: .slow, thenHoldForDuration: 0.5)
         assertCaption(secondCaption, index: 0, in: app)
         app.buttons["EditActivityDeleteSelectedPhotosButton"].tap()
         assertPhotoCount(1, prefix: "EditActivityPhoto-", in: app)
@@ -224,7 +226,8 @@ final class SavedActivityPhotoUITests: XCTestCase {
         }
         field.typeText(XCUIKeyboardKey.delete.rawValue)
         field.typeText(title)
-        XCTAssertEqual(field.value as? String, title)
+        let replaced = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", title), object: field)
+        XCTAssertEqual(XCTWaiter.wait(for: [replaced], timeout: 5), .completed, app.debugDescription)
         saveEditor(app)
         XCTAssertTrue(app.buttons["Edit activity"].waitForExistence(timeout: 5), app.debugDescription)
     }
