@@ -472,6 +472,23 @@ private fun SignedInApp(
             }
         }
     }
+    LaunchedEffect(accountId, currentRoute, todayGroupEvent?.id, todayGroupEvent?.joined, selectedRecordingEventId, hasActiveSession, groupRunJoining) {
+        val event = todayGroupEvent ?: return@LaunchedEffect
+        if (accountId == null || hasActiveSession || currentRoute != TopLevelDestination.Today.route) return@LaunchedEffect
+        val joinChoiceKey = "join_choice_${event.id}"
+        if (event.joined && selectedRecordingEventId == null && !groupRecordingPreferences.contains(joinChoiceKey)) {
+            selectedRecordingEventId = event.id
+            groupRecordingPreferences.edit().putString("selected_event", event.id).putBoolean(joinChoiceKey, true).apply()
+            integrationViewModel.trackGroupRecordingSelection(true, "today_rsvp_default")
+        }
+        val shareDefaultKey = "share_default_applied_${event.id}"
+        if (selectedRecordingEventId == event.id && !groupRecordingPreferences.getBoolean(shareDefaultKey, false)
+            && !recordingSafetyViewModel.coordinator.hasDifferentActiveGroup(event.id) && !groupRunJoining) {
+            // Apply once, before the request: a refresh or later Stop sharing must never re-enable it.
+            groupRecordingPreferences.edit().putBoolean(shareDefaultKey, true).apply()
+            if (!recordingSafetyViewModel.coordinator.isSharingEvent(event.id)) toggleActivityLiveMap(event.id)
+        }
+    }
     val stopActivityLiveMap: () -> Unit = {
         recordingSafetyViewModel.coordinator.group.value?.let { run ->
             scope.launch {
@@ -829,7 +846,7 @@ private fun SignedInApp(
                                     joined = selectedRecordingEventId == event.id,
                                     onJoinChanged = { joined ->
                                         selectedRecordingEventId = event.id.takeIf { joined }
-                                        groupRecordingPreferences.edit().putString("selected_event", selectedRecordingEventId).apply()
+                                        groupRecordingPreferences.edit().putString("selected_event", selectedRecordingEventId).putBoolean("join_choice_${event.id}", joined).apply()
                                         integrationViewModel.trackGroupRecordingSelection(joined)
                                         if (!joined && recordingSafetyViewModel.coordinator.isSharingEvent(event.id)) toggleActivityLiveMap(event.id)
                                     }) }

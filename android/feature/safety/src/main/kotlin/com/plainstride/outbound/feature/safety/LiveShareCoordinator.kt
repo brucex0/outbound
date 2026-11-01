@@ -202,6 +202,10 @@ class LiveShareCoordinator @Inject constructor(
   try {
   val run=mutableGroup.value?.takeIf{it.id==id}
   if(run!=null) {
+   run.activityEventId?.let { eventId ->
+    applicationContext.getSharedPreferences("group_recording_${run.currentUserId}", Context.MODE_PRIVATE)
+     .edit().putBoolean("share_default_applied_${eventId}", true).apply()
+   }
    saveGroup(run.copy(participants=run.participants.map{if(it.userId==run.currentUserId)it.copy(status=if(finished)"finished" else "left",lastLocationAt=null,lastLocation=null,lastActivitySnapshot=null)else it}))
   }
   val result=authenticated{auth->apiCall{if(finished)api.finishGroupRun(auth,id)else api.leaveGroupRun(auth,id)}}
