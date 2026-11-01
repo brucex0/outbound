@@ -13,6 +13,8 @@ Open when adding a destination, changing a link/notification entry point, or inv
 
 ## Implementation
 
+- `MainActivity` uses `singleTask` so launcher, link, and callback intents reuse the existing shell through `onNewIntent`. Assistant destination actions dismiss the assistant in the shell, ignore repeated outgoing taps, and reuse the current tab when it already matches. Tab switches retain normal saved-tab behavior.
+
 - `android/app/.../AppDetailRoutes.kt` owns route patterns and encoded route builders. Navigation arguments contain identity plus bounded source/mode values.
 - `PlainstrideApp.kt` registers pages and dispatches in-app, notification, connection-link, and Group-invite entry points to those routes. `MainActivity` consumes notification intents and saves only pending links across recreation, preventing a consumed launch link from being replayed above a restored nested page. The inbox has no competing automatic deep-link handler.
 - Me connection avatars open the tapped person’s ID-based profile directly; Back returns to Me. The Connections heading’s `All` action opens the full list. The preview requires an explicit profile callback so it cannot silently route avatar taps to the list.
@@ -38,6 +40,7 @@ Use manual UI checks; do not run the test suite without an explicit request.
 
 | Entry | Required return behavior |
 | --- | --- |
+| Me / Today / Social → Companion → Open Me (including repeated taps) | One Me tab; Back never reveals a duplicate Me or Companion; launcher/link reentry retains one shell activity |
 | Me → Connections (All) → system/toolbar Back | Me in one step; Social/Me tab presses still work |
 | Trusted Contacts → Connections → Back | Trusted Contacts; no Social entry |
 | Social Feed/People → profile → post → Back → Back | Same profile, then original tab/list position |
@@ -96,3 +99,9 @@ ANDROID_SERIAL=emulator-5556 ./android/test-navigation.sh
 - Three focused `NavigationInteractionTest` cases passed on the isolated Pixel 10 emulator: Social community route → Today in reverse → explicit Start with cycling type and canonical latitude/longitude order; forward selection → Change → Close retains the route; imported route → Today → Remove retains the device-local import without a route-detail network request.
 - Assertions cover the Today route card, selected direction, Change/Remove controls, absence of standalone setup, and recording configuration only after Start.
 - Fixture app and instrumentation APK assembly passed. Map tile/polyline rendering, GPS acquisition, live recording, full process death, and altitude handling are outside these tests.
+
+## Verification Record — Assistant Shell Reuse
+
+- Source review: opening the current tab only dismisses Companion; switching tabs uses the existing saved-tab navigation; settings still requests Me settings; music/history/health keep direct navigation. Repeated outgoing navigation taps are ignored.
+- `MainActivity` now reuses the existing task instance for external reentry; pending-link handling remains in `onNewIntent`.
+- Build-only verification: debug APK assembly and release Kotlin compilation. No test suite was run. Physical-device Back behavior, repeated taps, saved-tab restoration, and launcher/link/OAuth reentry still require manual verification.

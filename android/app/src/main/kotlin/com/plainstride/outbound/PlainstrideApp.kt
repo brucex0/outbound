@@ -1172,23 +1172,25 @@ private fun SignedInApp(
                     requireNotNull(accountId),
                     screen = assistantEntryDestination,
                     onClose = { navController.popBackStack() },
-                    onNavigate = { route ->
-                        when (route) {
-                            "today", "social", "me" -> navController.navigate(route) {
-                                popUpTo(TopLevelDestination.Today.route) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                            "settings" -> {
-                                settingsRequest += 1
-                                navController.navigate(TopLevelDestination.Me.route) {
+                    onNavigate = navigate@{ route ->
+                        // Dismiss and route in one host-owned handoff. Ignore repeated
+                        // taps from the outgoing assistant composition.
+                        if (navController.currentDestination?.route != ASSISTANT_ROUTE) return@navigate
+                        navController.popBackStack()
+                        val target = when (route) {
+                            "today", "social", "me", MUSIC_ROUTE, ACTIVITY_HISTORY_ROUTE, HEALTH_ROUTE -> route
+                            else -> TopLevelDestination.Me.route
+                        }
+                        integrationViewModel.trackAssistantDestinationOpened(target)
+                        if (route == "settings") settingsRequest += 1
+                        if (navController.currentDestination?.route != target) {
+                            navController.navigate(target) {
+                                if (TopLevelDestination.entries.any { it.route == target }) {
                                     popUpTo(TopLevelDestination.Today.route) { saveState = true }
-                                    launchSingleTop = true
                                     restoreState = true
                                 }
+                                launchSingleTop = true
                             }
-                            MUSIC_ROUTE, ACTIVITY_HISTORY_ROUTE, HEALTH_ROUTE -> navController.navigate(route) { launchSingleTop = true }
-                            else -> navController.navigate("me") { launchSingleTop = true }
                         }
                     },
                     onPrepareActivity = { sport, distanceMeters, durationSeconds ->

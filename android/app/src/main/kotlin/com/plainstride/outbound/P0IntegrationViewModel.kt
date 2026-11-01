@@ -423,6 +423,10 @@ data class P0IntegrationState(
         AnalyticsProperty.Destination to destination,
         AnalyticsProperty.EntrySource to entrySource,
     )))
+    fun trackAssistantDestinationOpened(destination: String) = analytics.record(AnalyticsEvent("assistant_destination_opened", mapOf(
+        AnalyticsProperty.Destination to destination,
+        AnalyticsProperty.EntrySource to "assistant",
+    )))
     fun trackAssistantLauncherEligibleExposure(destination: String) = analytics.record(AnalyticsEvent("assistant_launcher_eligible_exposure", mapOf(
         AnalyticsProperty.Destination to destination,
         AnalyticsProperty.EntrySource to "app_shell",

@@ -128,7 +128,7 @@ fun AssistantRoute(
                                 }
                                 Text(message.text, color = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
                                 message.navigationTarget?.let { target ->
-                                        TextButton(onClick = { onClose(); onNavigate(target) }) {
+                                        TextButton(onClick = { onNavigate(target) }) {
                                         Text(stringResource(R.string.assistant_accessibility_open_destination, destinationLabel(target)))
                                     }
                                 }
