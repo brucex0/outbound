@@ -92,6 +92,14 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 - The Reset button clears the stored conversation and restores the seeded intro message.
 - Text sends and suggestions retain the existing `assistant_meaningful_engagement` analytics contract; hiding the unsupported microphone adds no new input events.
 
+## Shared Product Knowledge
+
+- `shared/assistant/product-knowledge.txt` supplies bounded feature facts and action limits to backend replies/interpretation and both client reply paths. It is model context, not display copy.
+- After editing it, run `python3 scripts/generate-assistant-knowledge.py` and commit all three generated runtime files with their respective platform changes. Verify synchronization with `python3 scripts/generate-assistant-knowledge.py --check`.
+- Keep the catalog grounded in existing screens. Missing catalog entries or assistant actions are not evidence that a feature is unavailable. Corrections must be checked against feature facts rather than earlier assistant claims.
+- Navigation remains limited to each client’s typed catalog; use a containing screen and explain remaining manual steps when a nested feature lacks a direct link. Existing bounded destination analytics remain unchanged; no prompts or feature content enter analytics.
+- Manual verification: ask about shoes, appearance, records, integrations, routes, sharing, and stretches; repeat with a correction after a wrong reply. Check questions and negated requests do not execute actions, unknown features do not receive invented availability claims, and opening a parent screen never claims a nested change completed. Model/device verification is required; compilation alone does not establish language understanding.
+
 ## Response Strategy
 
 ### Unified companion path

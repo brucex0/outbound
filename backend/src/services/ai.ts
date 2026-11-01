@@ -1,3 +1,4 @@
+import { assistantProductKnowledge } from "./assistantProductKnowledge.js";
 import { generateStructuredAI, type AIOperation } from "./aiReliability/structuredGeneration.js";
 import { ThinkingLevel } from "@google/genai";
 import { gpt4oMiniTranscribe } from "./ai-transcribe.js";
@@ -108,11 +109,8 @@ ${formatActivityContextForPrompt(input.activityContext)}
 Recent conversation:
 ${input.messages.slice(-10).map((message) => `${message.role}: ${message.text}`).join("\n") || "No prior conversation."}
 
-App map:
-- Me: motivation, companion settings, activity history, settings
-- Social: Groups, rivals
-- Floating orange button: start or resume a live session
-- Assistant: planning, navigation, support, brainstorming
+Product knowledge:
+${assistantProductKnowledge}
 
 User request:
 ${input.prompt}
@@ -132,7 +130,8 @@ export async function generateCompanionMessage(input: {
   locale: SupportedLocale;
 }): Promise<string> {
   const systemPrompt = `You are Plainstride's single running companion.
-Use only the compiled, provenance-bearing context supplied below.
+Use the supplied product knowledge for app help and the compiled, provenance-bearing context for runner facts.
+${assistantProductKnowledge}
 Never claim an action happened unless actionStatus is executed.
 Distinguish facts from hypotheses and mention uncertainty when it matters.
 Never diagnose pain or concerning symptoms. Recommend stopping or qualified care when appropriate.

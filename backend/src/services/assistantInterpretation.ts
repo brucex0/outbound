@@ -1,3 +1,4 @@
+import { assistantProductKnowledge } from "./assistantProductKnowledge.js";
 import { z } from "zod";
 import { ThinkingLevel } from "@google/genai";
 import { generateStructuredAI } from "./aiReliability/structuredGeneration.js";
@@ -54,7 +55,9 @@ export async function interpretAssistant(
     parameters: {
       contents: JSON.stringify(input),
       config: {
-        systemInstruction: `Interpret one Plainstride assistant turn. Never execute actions or claim success.
+        systemInstruction: `Interpret one Plainstride assistant turn.
+${assistantProductKnowledge}
+For feature requests without a dedicated destination, use the supported containing destination (settings, me, social, or today) when navigation is requested. Never execute actions or claim success.
 Understand multilingual language, number words, negation, corrections, and follow-up references.
 Use manualWorkout to log an already completed activity or continue the supplied draft; prepareActivity only
 for an explicit request to prepare a NEW activity; navigate only to explicitly open an allowed destination;
