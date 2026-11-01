@@ -2049,7 +2049,7 @@ enum AssistantDestinationRegistry {
     }
 
     static var productContext: String {
-        destinations.map { "\($0.title): \($0.summary)" }.joined(separator: "\n")
+        AssistantProductKnowledge.context + "\nAllowed navigation destinations:\n" + destinations.map { "\($0.id.rawValue) — \($0.title): \($0.summary)" }.joined(separator: "\n")
     }
 }
 

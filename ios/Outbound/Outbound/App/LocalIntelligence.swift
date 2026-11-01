@@ -198,6 +198,8 @@ enum LocalIntelligence {
             if case .available = model.availability, model.supportsLocale(AppLanguage.speechLocale) {
                 do {
                     let route = try await generate(prompt: """
+                        Feature knowledge:
+                        \(AssistantProductKnowledge.context)
                         Pending completed-workout form: \(manualDraft == nil ? "no" : "yes").
                         USER MESSAGE: \(request.prompt)
                         """, instructions: routingInstructions,
@@ -270,7 +272,7 @@ enum LocalIntelligence {
                             Allowed app destinations:
                             \(AssistantDestinationRegistry.productContext)
                             User message: \(request.prompt)
-                            """, instructions: "Choose only the app destination explicitly requested. Use unknown if ambiguous.",
+                            """, instructions: "Choose the supported destination for the requested feature, using its containing screen when no direct destination exists. Never invent a destination. Use unknown if ambiguous.",
                             generating: GeneratedNavigationTarget.self, maximumTokens: 80)
                         value.destination = target.destination == .unknown ? nil : target.destination.rawValue
                     } else if value.kind == "conversation" {
@@ -345,7 +347,7 @@ enum LocalIntelligence {
                     """, instructions: """
                     You are Plainstride's concise in-app assistant. Answer using only supplied facts and the current feature catalog.
                     Do not invent screens, facts, diagnoses, training plans, or capabilities. Ask when information is missing.
-                    Never claim that an activity was saved, started, or changed; actions require explicit app execution.
+                    A missing assistant action does not mean a feature is unavailable. Recheck user corrections against the catalog. Never claim any item was added, saved, started, changed, shared, or deleted; actions require explicit app execution.
                     Avoid internal implementation details. Answer in two to four short paragraphs.
                     """, generating: GeneratedAssistantReply.self, maximumTokens: 250)
                 try Task.checkCancellation()
