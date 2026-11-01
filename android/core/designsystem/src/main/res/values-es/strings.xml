@@ -16,4 +16,7 @@
     <string name="group_activity_join_recording">Unirme a esta carrera</string>
     <string name="group_activity_share_location">Compartir ubicación en tiempo real</string>
     <string name="group_activity_share_location_detail">Los participantes pueden ver tu ubicación mientras grabas la actividad.</string>
+    <string name="group_activity_join_short">Unirme</string>
+    <string name="group_activity_join_accessibility">Unirme a esta carrera en grupo</string>
+    <string name="group_activity_share_location_short">Compartir ubicación</string>
 </resources>

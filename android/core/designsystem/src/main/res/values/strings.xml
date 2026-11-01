@@ -16,4 +16,7 @@
     <string name="group_activity_join_recording">Join this run</string>
     <string name="group_activity_share_location">Share live location</string>
     <string name="group_activity_share_location_detail">Attendees can see your location while you record.</string>
+    <string name="group_activity_join_short">Join</string>
+    <string name="group_activity_join_accessibility">Join this group run</string>
+    <string name="group_activity_share_location_short">Share location</string>
 </resources>

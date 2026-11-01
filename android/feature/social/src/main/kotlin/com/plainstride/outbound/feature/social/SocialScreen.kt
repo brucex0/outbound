@@ -2264,7 +2264,7 @@ private fun profileActionFeedback(): (Boolean) -> Unit {
 
 @Composable
 fun TodayGroupActivityCard(event: SocialEvent, sharing: Boolean, busy: Boolean, onOpen: () -> Unit, onToggleLiveMap: () -> Unit, joined: Boolean, onJoinChanged: (Boolean) -> Unit) {
-    val joinLabel = stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_join_recording)
+    val joinLabel = stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_join_accessibility)
     val locationLabel = stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_share_location)
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2273,15 +2273,17 @@ fun TodayGroupActivityCard(event: SocialEvent, sharing: Boolean, busy: Boolean, 
                 Text(event.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 event.group?.name?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = joined, onCheckedChange = onJoinChanged, modifier = Modifier.semantics { contentDescription = joinLabel })
-                Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_join_recording))
+            HorizontalDivider()
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(Modifier.width(IntrinsicSize.Max).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = joined, onCheckedChange = onJoinChanged, modifier = Modifier.semantics { contentDescription = joinLabel })
+                    Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_join_short), Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodyMedium)
+                }
+                Row(Modifier.width(IntrinsicSize.Max).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_share_location_short), Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodyMedium)
+                    Switch(checked = sharing, onCheckedChange = { if (it != sharing) onToggleLiveMap() }, enabled = joined && !busy, modifier = Modifier.semantics { contentDescription = locationLabel })
+                }
             }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_share_location), Modifier.weight(1f))
-                Switch(checked = sharing, onCheckedChange = { if (it != sharing) onToggleLiveMap() }, enabled = joined && !busy, modifier = Modifier.semantics { contentDescription = locationLabel })
-            }
-            Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_share_location_detail), style = MaterialTheme.typography.bodySmall)
         }
     }
 }
