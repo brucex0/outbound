@@ -571,21 +571,20 @@ struct ActivityDetailView: View {
                 } label: {
                     HStack(spacing: 10) {
                         Text(String(localized: "activity.elevation.section", defaultValue: "Elevation"))
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .font(.subheadline.weight(.semibold))
                         Spacer()
                         if let elevationGainM = currentActivity.elevationGainM {
                             Text(unitSystem.elevationString(meters: elevationGainM))
-                                .font(.caption2.weight(.semibold))
+                                .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                         Image(systemName: "chevron.down")
-                            .font(.caption2.weight(.semibold))
+                            .font(.caption2)
                             .foregroundStyle(.secondary)
                             .rotationEffect(.degrees(showElevationProfile ? 180 : 0))
                     }
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 12)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
