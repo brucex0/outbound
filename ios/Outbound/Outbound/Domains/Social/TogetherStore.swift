@@ -905,6 +905,7 @@ final class TogetherStore: ObservableObject {
     }
 
     private static var uiTestFixture: TogetherResponseDTO {
+        let todayJoinTest = ProcessInfo.processInfo.arguments.contains("-OutboundTodayGroupJoinUITest")
         let group = TogetherGroupDTO(
             id: "ui-test-group",
             name: "Golden Gate Community",
@@ -916,15 +917,18 @@ final class TogetherStore: ObservableObject {
         return TogetherResponseDTO(
             upcomingRuns: [
                 ActivityEventDTO(
-                    id: "ui-test-saturday-5k",
-                    title: "Saturday waterfront 5K",
-                    startsAt: Date().addingTimeInterval(86_400),
+                    id: todayJoinTest ? "ui-recovery-event" : "ui-test-saturday-5k",
+                    title: todayJoinTest ? "Recovery group run" : "Saturday waterfront 5K",
+                    startsAt: Date().addingTimeInterval(todayJoinTest ? -60 : 86_400),
                     locationName: "Crissy Field",
                     paceNote: "Conversational pace",
                     group: group,
                     creator: maya,
                     groups: [TogetherRunGroupDTO(id: "ui-test-social", label: "Social", distanceMeters: 5_000, paceMinSeconds: 330, paceMaxSeconds: 390)],
-                    compatibility: TogetherCompatibilityDTO(groupId: "ui-test-social", explanation: "This easy group matches your current training week.")
+                    compatibility: TogetherCompatibilityDTO(groupId: "ui-test-social", explanation: "This easy group matches your current training week."),
+                    canParticipate: todayJoinTest ? true : nil,
+                    currentUserGoing: todayJoinTest ? true : nil,
+                    status: todayJoinTest ? "active" : nil
                 ),
             ],
             groups: [group],

@@ -69,6 +69,8 @@ extension ActivityFlowCoordinator {
         }
         self.liveActivityManager.end(using: self.recorder.liveSnapshot, unitSystem: self.dependencies.measurementPreferences.unitSystem)
         self.dependencies.liveShareStore.end(finalSnapshot: self.recorder.liveSnapshot)
+        ActivityFlowStore.shared.completeEvent(self.activeIntent?.activityEvent?.id
+            ?? (self.dependencies.liveGroupStore.isSharing ? self.dependencies.liveGroupStore.activeSession?.activityEventId : nil))
         self.dependencies.liveGroupStore.finishActivity()
         self.guide.deactivate()
         Task { await self.dependencies.musicStore.endWorkoutPlaybackIfNeeded() }

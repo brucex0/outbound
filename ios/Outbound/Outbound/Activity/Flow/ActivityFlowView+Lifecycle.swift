@@ -126,7 +126,7 @@ extension ActivityFlowView {
         .onChange(of: model.live.activePage) { _, newPage in
             model.handleLivePageChange(newPage)
         }
-        .onChange(of: model.dependencies.liveGroupStore.activeSession?.id) { _, sessionID in
+        .onChange(of: model.dependencies.liveGroupStore.isSharing ? model.dependencies.liveGroupStore.activeSession?.id : nil) { _, sessionID in
             model.recorder.updateLiveGroupRecoveryContext(sessionID: sessionID)
         }
         .onChange(of: model.setup.plannedIntent) { _, intent in

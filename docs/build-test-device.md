@@ -472,3 +472,11 @@ Assertions cover the retained event title, exactly one assistant button, five at
 Verified on iPhone 17 Pro / iOS 26.5 Simulator: one initial join, two app restarts, two reads of the same live-map session, with all group UI assertions passing. This covers recordings started by the current build; older journals without group context cannot reconstruct it.
 
 Verified 2026-11-01 singleton extension on iPhone 17 Pro / iOS 27.0: one focused UI test passed, zero failures/skips, including three scene reactivations, two recoveries, and idle relaunch after discard.
+
+### Today group selection and per-user sharing regression
+
+`./scripts/run-group-recovery-ui-test.sh` also runs `testTodayJoinAndIndependentLocationSharing`: checks the Today checkbox, proves checking it does not join a location session, enables the separate switch, starts from Today, verifies group attribution in the live panel, disables only the current runner's sharing, and confirms another attendee remains sharing. Finish/discard/relaunch must remove the completed event's Today controls. The simulator-only fixture supplies an eligible event and indoor setup; it does not bypass the real checkbox, start/countdown, or recorder.
+
+The live disclosure's header owns its accessibility identifier; assigning it to the whole disclosure overrides native child switch identifiers on iOS 27. Tests tap the native switch thumb, not the label center.
+
+Verified 2026-11-01 on iPhone 17 Pro / iOS 27.0: both focused UI regressions passed, zero failures/skips. The new Today scenario caught and fixed a countdown reset caused by mutating setup intent during start; event attribution now joins the immutable recording start intent. UI results: `/tmp/outbound-group-controls-ui-results-3/GroupRecovery.xcresult`. Android build and backend compile/deploy are separate checks; no cross-device location delivery or physical-phone installation was verified in this run.

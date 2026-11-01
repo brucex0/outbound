@@ -202,6 +202,8 @@ struct ActivityEventDTO: Codable, Identifiable, Sendable {
     var status: String? = nil
     var participationMode: String? = nil
     var currentUserRole: String? = nil
+    var currentUserOutcome: String? = nil
+    var currentUserAttendanceMode: String? = nil
 }
 
 extension SessionIntent {

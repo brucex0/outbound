@@ -143,6 +143,7 @@ final class LiveGroupStore: ObservableObject {
     private var pollingTask: Task<Void, Never>?
     private var realtime: AblySessionTransport?
     private var realtimeSessionID: String?
+    private var sharingRevision = 0
     private var lastCheckpointAt: Date?
 #if DEBUG
     private var isDebugTestGroupRun = false
@@ -153,7 +154,11 @@ final class LiveGroupStore: ObservableObject {
     }
 
     var isSharing: Bool {
-        activeSession?.isActive == true
+        guard activeSession?.isActive == true else { return false }
+#if DEBUG
+        if isDebugTestGroupRun { return true }
+#endif
+        return participants.contains { $0.isCurrentUser && ($0.status == "active" || $0.status == "stale") }
     }
 
     var visibleParticipants: [LiveGroupParticipant] {
@@ -184,7 +189,7 @@ final class LiveGroupStore: ObservableObject {
     }
 
     func createGroup(intent: SessionIntent?) async -> LiveGroupStartPresentation? {
-        guard activeSession == nil else {
+        guard !isSharing else {
             if let inviteURL = activeSession?.inviteURL {
                 return LiveGroupStartPresentation(
                     url: inviteURL,
@@ -287,13 +292,20 @@ final class LiveGroupStore: ObservableObject {
     }
 
     func joinActivityEvent(_ activityEventID: String) async {
-        guard activeSession == nil else { return }
+        guard !isSharing, !isJoining else { return }
+        sharingRevision += 1
+        let revision = sharingRevision
         isJoining = true
         lastErrorMessage = nil
         defer { isJoining = false }
 
         do {
             let response = try await api.joinLiveGroupRun(activityEventID: activityEventID)
+            guard revision == sharingRevision else {
+                // Finish won while consent was being enabled; undo only our membership.
+                _ = try await api.leaveLiveGroupRun(sessionID: response.id)
+                return
+            }
             apply(response)
             connectRealtime(sessionID: response.id)
         } catch {
@@ -303,7 +315,7 @@ final class LiveGroupStore: ObservableObject {
     }
 
     func ingest(_ snapshot: ActiveSessionSnapshot) {
-        guard let session = activeSession, session.isActive, snapshot.isActive else { return }
+        guard let session = activeSession, isSharing, snapshot.isActive else { return }
         guard let location = snapshot.location else { return }
 #if DEBUG
         if isDebugTestGroupRun {
@@ -350,6 +362,7 @@ final class LiveGroupStore: ObservableObject {
                     )
                 )
                 await MainActor.run {
+                    guard activeSession?.id == session.id, isSharing else { return }
                     apply(response)
                     isUpdating = false
                     lastErrorMessage = nil
@@ -364,7 +377,8 @@ final class LiveGroupStore: ObservableObject {
     }
 
     func finishActivity() {
-        guard let sessionID = activeSession?.id else { return }
+        sharingRevision += 1
+        guard let sessionID = activeSession?.id, isSharing else { return }
 #if DEBUG
         if isDebugTestGroupRun {
             isDebugTestGroupRun = false
@@ -372,37 +386,34 @@ final class LiveGroupStore: ObservableObject {
             return
         }
 #endif
+        markCurrentUserInactive(status: "finished")
+        Task { [api] in
+            do {
+                _ = try await api.finishLiveGroupRunParticipation(sessionID: sessionID)
+            } catch {
+                ActivityDiagnosticLog.error(.sync, "Event sharing finish failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                lastErrorMessage = String(localized: "group.activity.live_error", table: "GroupActivity")
+            }
+        }
+    }
+
+    private func markCurrentUserInactive(status: String) {
+        sharingRevision += 1
         updateTask?.cancel()
         updateTask = nil
+        realtime?.close()
+        realtime = nil
+        realtimeSessionID = nil
         lastSentAt = nil
         lastSentDistanceM = nil
         isUpdating = false
-
-        Task { [api] in
-            do {
-                let response = try await api.finishLiveGroupRunParticipation(sessionID: sessionID)
-                await MainActor.run {
-                    apply(response)
-                    if activeSession?.isActive == true {
-                        if response.participants.first(where: { $0.userId == response.currentUserId })?.status == "active" {
-                            connectRealtime(sessionID: sessionID)
-                        } else {
-                            realtime?.close()
-                            realtime = nil
-                            realtimeSessionID = nil
-                        }
-                    } else {
-                        realtime?.close()
-                        realtime = nil
-                    }
-                    lastErrorMessage = nil
-                }
-            } catch {
-                await MainActor.run {
-                    lastErrorMessage = "Could not finish group participation."
-                }
-            }
+        participants = participants.map { old in
+            guard old.isCurrentUser else { return old }
+            return LiveGroupParticipant(id: old.id, userId: old.userId, displayName: old.displayName,
+                status: status, joinedAt: old.joinedAt, leftAt: Date(), lastLocationAt: nil,
+                coordinate: nil, distanceM: nil, paceSecondsPerKM: nil, isCurrentUser: true)
         }
+        // Retain the roster; local consent is not the group's lifetime.
     }
 
     func stopFromManagementControl() {
@@ -415,7 +426,7 @@ final class LiveGroupStore: ObservableObject {
     }
 
     func leave() {
-        guard let sessionID = activeSession?.id else { return }
+        guard let sessionID = activeSession?.id, isSharing else { return }
 #if DEBUG
         if isDebugTestGroupRun {
             isDebugTestGroupRun = false
@@ -423,9 +434,15 @@ final class LiveGroupStore: ObservableObject {
             return
         }
 #endif
-        stopLocalState(markEnded: true)
+        markCurrentUserInactive(status: "left")
+        isJoining = true
         Task { [api] in
-            _ = try? await api.leaveLiveGroupRun(sessionID: sessionID)
+            defer { isJoining = false }
+            do { _ = try await api.leaveLiveGroupRun(sessionID: sessionID) }
+            catch {
+                ActivityDiagnosticLog.error(.sync, "Event sharing leave failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                lastErrorMessage = String(localized: "group.activity.live_error", table: "GroupActivity")
+            }
         }
     }
 
@@ -454,10 +471,11 @@ final class LiveGroupStore: ObservableObject {
         realtime = AblySessionTransport(kind: "group_run", sessionID: sessionID, api: api) { [weak self] message in
             guard message.name == "location" || message.name == "participant.changed" else { return }
             Task { @MainActor [weak self] in
-                guard let self else { return }
+                guard let self, self.activeSession?.id == sessionID, self.isSharing else { return }
                 if message.name == "location", let senderID = message.clientId, let payload = message.data as? [String: Any] {
                     self.applyRealtimeLocation(senderID: senderID, payload: payload)
-                } else if let response = try? await self.api.fetchLiveGroupRun(sessionID: sessionID) {
+                } else if let response = try? await self.api.fetchLiveGroupRun(sessionID: sessionID),
+                          self.activeSession?.id == sessionID, self.isSharing {
                     self.apply(response)
                 }
             }
@@ -469,6 +487,7 @@ final class LiveGroupStore: ObservableObject {
               let latitude = (payload["latitude"] as? NSNumber)?.doubleValue,
               let longitude = (payload["longitude"] as? NSNumber)?.doubleValue else { return }
         let old = participants[index]
+        guard old.status == "active" || old.status == "stale" else { return }
         let recordedAt = (payload["recordedAt"] as? String).flatMap(ISO8601DateFormatter().date(from:)) ?? Date()
         participants[index] = LiveGroupParticipant(
             id: old.id, userId: old.userId, displayName: old.displayName, status: "active",

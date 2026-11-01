@@ -1930,16 +1930,10 @@ struct ActivityEventDetailView: View {
             }
             if canManageActivityLiveMap {
                 Section(String(localized: "record.setup.run_options", defaultValue: "Run options")) {
-                    Button {
-                        toggleActivityLiveMapSharing()
-                    } label: {
-                        Label(
-                            isSharingLiveMapForThisActivity
-                                ? String(localized: "record.group.event.stop", defaultValue: "Stop sharing")
-                                : String(localized: "record.group.event.share", defaultValue: "Share live map with attendees"),
-                            systemImage: isSharingLiveMapForThisActivity ? "location.slash" : "person.2.wave.2.fill"
-                        )
-                    }
+                    Toggle(String(localized: "group.activity.share_location", table: "GroupActivity"),
+                           isOn: Binding(get: { isSharingLiveMapForThisActivity }, set: { enabled in
+                        if enabled != isSharingLiveMapForThisActivity { toggleActivityLiveMapSharing() }
+                    }))
                     .disabled(liveGroupStore.isJoining || hasDifferentActiveLiveMap)
 
                     if isSharingLiveMapForThisActivity {
@@ -2243,12 +2237,12 @@ struct ActivityEventDetailView: View {
     }
 
     private var isSharingLiveMapForThisActivity: Bool {
-        liveGroupStore.activeSession?.isActive == true
+        liveGroupStore.isSharing
             && liveGroupStore.activeSession?.activityEventId == run.id
     }
 
     private var hasDifferentActiveLiveMap: Bool {
-        liveGroupStore.activeSession?.isActive == true && !isSharingLiveMapForThisActivity
+        liveGroupStore.isSharing && !isSharingLiveMapForThisActivity
     }
 
     private func toggleActivityLiveMapSharing() {

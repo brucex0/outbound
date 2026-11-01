@@ -14,6 +14,66 @@ final class ActivityFlowStore: ObservableObject {
 
     var hasUnfinishedSession: Bool { coordinator?.hasUnfinishedSession == true }
 
+    private var selectionKey: String { "group.recording.selection.\(AuthStore.currentUserId ?? "signed-out")" }
+    private var completedKey: String { "group.recording.completed.\(AuthStore.currentUserId ?? "signed-out")" }
+    var selectedEvent: ActivityEventLaunchContext? {
+        guard let data = UserDefaults.standard.data(forKey: selectionKey) else { return nil }
+        do { return try JSONDecoder().decode(ActivityEventLaunchContext.self, from: data) }
+        catch {
+            ActivityDiagnosticLog.error(.persistence, "Group recording selection decode failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+            UserDefaults.standard.removeObject(forKey: selectionKey)
+            return nil
+        }
+    }
+    func selectedEventForStart(in events: [ActivityEventDTO]) -> ActivityEventLaunchContext? {
+        guard let selected = selectedEvent, !hasCompletedEvent(selected.id),
+              events.contains(where: { event in
+                  event.id == selected.id && event.currentUserOutcome == nil
+                    && ["scheduled", "active"].contains(event.status ?? "scheduled")
+                    && (event.currentUserGoing == true || event.canParticipate == true)
+                    && (Calendar.current.isDateInToday(event.startsAt) || event.status == "active")
+              }) else { return nil }
+        return selected
+    }
+    func hasCompletedEvent(_ id: String) -> Bool {
+        (UserDefaults.standard.stringArray(forKey: completedKey) ?? []).contains(id)
+    }
+    func completeEvent(_ id: String?) {
+        guard let id else { return }
+        objectWillChange.send()
+        var completed = Set(UserDefaults.standard.stringArray(forKey: completedKey) ?? [])
+        completed.insert(id)
+        UserDefaults.standard.set(Array(completed), forKey: completedKey)
+        if selectedEvent?.id == id { UserDefaults.standard.removeObject(forKey: selectionKey) }
+    }
+    func setJoined(_ event: ActivityEventDTO, joined: Bool) {
+        guard !hasUnfinishedSession else { return }
+        objectWillChange.send()
+        let context = ActivityEventLaunchContext(id: event.id, title: event.title,
+            role: event.currentUserRole ?? "participant", attendanceMode: event.currentUserAttendanceMode, organizerName: event.creator.displayName)
+        if joined {
+            do { UserDefaults.standard.set(try JSONEncoder().encode(context), forKey: selectionKey) }
+            catch {
+                ActivityDiagnosticLog.error(.persistence, "Group recording selection encode failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                return
+            }
+        } else {
+            UserDefaults.standard.removeObject(forKey: selectionKey)
+            if coordinator?.dependencies.liveGroupStore.activeSession?.activityEventId == event.id {
+                coordinator?.dependencies.liveGroupStore.leave()
+            }
+        }
+        if var intent = coordinator?.setup.plannedIntent {
+            // A cancelled countdown may already have copied the selection into setup.
+            // Clear that copy so unchecking really starts solo; start reapplies a checked event.
+            intent.activityEvent = nil
+            coordinator?.setup.plannedIntent = intent
+        }
+        coordinator?.track(.init(.groupActivityRecordingSelectionChanged, properties: [
+            .selectionType: .string(joined ? "joined" : "solo"), .entrySource: .string("today")
+        ]))
+    }
+
     func resolve(initialIntent: SessionIntent?, dependencies: ActivityFlowDependencies, preferences: ActivityFlowPreferences, host: ActivityFlowHost, reduceMotion: Bool, analyticsManager: AnalyticsManager?) -> ActivityFlowCoordinator {
         if let coordinator { return coordinator }
         let coordinator = ActivityFlowCoordinator(initialIntent: initialIntent, dependencies: dependencies, preferences: preferences, host: host, reduceMotion: reduceMotion, analyticsManager: analyticsManager)
@@ -80,6 +140,22 @@ final class ActivityFlowCoordinator: ObservableObject {
             || isStartingActivity || isWaitingForLocation || isCountingDown
             || review.pendingActivity != nil || review.postSaveCelebrationActivity != nil
             || review.postSaveStretchContext != nil
+    }
+
+    func attachActivityEventIfRecording(_ event: ActivityEventLaunchContext?) {
+        guard let event, recorder.state != .idle, review.pendingActivity == nil,
+              activeIntent?.activityEvent == nil else { return }
+        var intent = activeIntent ?? setup.plannedIntent ?? .freestyleRun
+        intent.activityEvent = event
+        activeIntent = intent
+        recorder.attachActivityEvent(event)
+        dependencies.socialStore.prepareToRecord(activityEventID: event.id)
+        activityStartedWithGroupRun = true
+        ActivityEventParticipationSync.shared.enqueueStart(eventID: event.id)
+        Task { await ActivityEventParticipationSync.shared.flush() }
+        track(.init(.groupActivityRecordingSelectionChanged, properties: [
+            .selectionType: .string("joined"), .entrySource: .string("group_activity")
+        ]))
     }
 
     var canStartRecording: Bool {

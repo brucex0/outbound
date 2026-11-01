@@ -380,6 +380,7 @@ struct MainTabView: View {
         reviewOpportunity = nil
         selectedAppTab = .today
         if activityFlowStore.hasUnfinishedSession {
+            activityFlowStore.coordinator?.attachActivityEventIfRecording(intent?.activityEvent)
             if activeLaunch == nil {
                 activeLaunch = RecordLaunch(intent: activityFlowStore.coordinator?.activeIntent ?? activityFlowStore.coordinator?.setup.plannedIntent)
             }

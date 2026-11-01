@@ -276,7 +276,7 @@ struct SessionIntent: Identifiable, Hashable {
     let workoutReference: SessionWorkoutReference?
     let workoutCues: [SessionWorkoutCue]
     let raceIntent: RaceExecutionIntent?
-    let activityEvent: ActivityEventLaunchContext?
+    var activityEvent: ActivityEventLaunchContext?
     let startedFromWorkoutReminder: Bool
 
     init(

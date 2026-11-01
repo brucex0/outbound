@@ -57,6 +57,9 @@ struct OutboundApp: App {
             || ProcessInfo.processInfo.arguments.contains("-OutboundUITestResetRecording")),
            ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData") {
             // Explicit seeded scenarios start clean; recovery tests omit reset on relaunch.
+            for key in UserDefaults.standard.dictionaryRepresentation().keys where key.hasPrefix("group.recording.") {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
             ActiveSessionJournal.clear(reason: .discarded)
             _ = ActiveSessionPhotoJournal.clear()
         }

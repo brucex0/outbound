@@ -196,6 +196,7 @@ struct LiveMapView: View {
     }
 
     private func toggleEventLiveMap() {
+        track(.init(.groupActivityLocationSharingChanged, properties: [.selectionType: .string(isSharingEventLiveMap ? "off" : "on"), .result: .string("requested")]))
         if isSharingEventLiveMap {
             liveGroupStore.stopFromManagementControl()
         } else if let event = intent?.activityEvent {

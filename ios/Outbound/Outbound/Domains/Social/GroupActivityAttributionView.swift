@@ -110,41 +110,49 @@ struct GroupActivityPresenceView: View {
     @State private var hasTrackedPresence = false
 
     var body: some View {
-        DisclosureGroup(isExpanded: $isExpanded) {
-            ScrollView {
-                VStack(spacing: 8) {
-                    ForEach(participants) { participant in
-                        HStack {
-                            SocialAvatar(name: participant.person.displayName, avatarURL: participant.person.avatarUrl)
-                            Text(participant.person.displayName)
-                            Spacer()
-                            Text(status(participant)).foregroundStyle(.secondary)
-                        }.font(.caption)
+        VStack(alignment: .leading, spacing: 8) {
+            Button { isExpanded.toggle() } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Label(title ?? String(localized: "group.activity.label", table: "GroupActivity"), systemImage: "person.2.fill")
+                            .font(.subheadline.weight(.semibold))
+                        Text(String(format: String(localized: "group.activity.counts", table: "GroupActivity"),
+                                    participants.filter { $0.status == "going" }.count, participants.filter { $0.startedAt != nil }.count,
+                                    participants.filter { $0.outcome == "completed" || $0.outcome == "no_recording" }.count))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption.weight(.semibold))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("live.group.activity")
+            .accessibilityValue(isExpanded ? "1" : "0")
+            if isExpanded {
+                ScrollView {
+                    VStack(spacing: 8) {
+                        ForEach(participants) { participant in
+                            HStack {
+                                SocialAvatar(name: participant.person.displayName, avatarURL: participant.person.avatarUrl)
+                                Text(participant.person.displayName)
+                                Spacer()
+                                Text(status(participant)).foregroundStyle(.secondary)
+                            }.font(.caption)
+                        }
                     }
                 }
-            }
-            .frame(maxHeight: 180)
-            if let onToggleLiveMap {
-                Button(action: onToggleLiveMap) {
-                    Label(isSharingLiveMap
-                          ? String(localized: "record.group.event.stop", defaultValue: "Stop sharing")
-                          : String(localized: "record.group.event.share", defaultValue: "Share live map with attendees"),
-                          systemImage: isSharingLiveMap ? "location.slash" : "person.2.wave.2.fill")
+                .frame(maxHeight: 180)
+                if let onToggleLiveMap {
+                    Toggle(String(localized: "group.activity.share_location", table: "GroupActivity"),
+                           isOn: Binding(get: { isSharingLiveMap }, set: { if $0 != isSharingLiveMap { onToggleLiveMap() } }))
+                        .accessibilityIdentifier("live.group.shareLocation")
+                        .font(.caption.weight(.semibold))
+                        .disabled(isLiveMapBusy)
                 }
-                .font(.caption.weight(.semibold))
-                .disabled(isLiveMapBusy)
-            }
-        } label: {
-            VStack(alignment: .leading, spacing: 3) {
-                Label(title ?? String(localized: "group.activity.label", table: "GroupActivity"), systemImage: "person.2.fill")
-                    .font(.subheadline.weight(.semibold))
-                Text(String(format: String(localized: "group.activity.counts", table: "GroupActivity"),
-                            participants.filter { $0.status == "going" }.count, participants.filter { $0.startedAt != nil }.count,
-                            participants.filter { $0.outcome == "completed" || $0.outcome == "no_recording" }.count))
-                    .font(.caption).foregroundStyle(.secondary)
             }
         }
-        .accessibilityIdentifier("live.group.activity")
         .task(id: eventID) {
             while !Task.isCancelled {
                 do {

@@ -65,6 +65,7 @@ extension ActivityFlowCoordinator {
     }
 
     func toggleRecordingEventLiveMap() {
+        self.track(.init(.groupActivityLocationSharingChanged, properties: [.selectionType: .string(self.isSharingRecordingEventLiveMap ? "off" : "on"), .result: .string("requested")]))
         if self.isSharingRecordingEventLiveMap {
             self.dependencies.liveGroupStore.stopFromManagementControl()
         } else if let event = (self.activeIntent ?? self.setup.plannedIntent)?.activityEvent {
@@ -223,11 +224,20 @@ extension ActivityFlowCoordinator {
         guard self.canStartRecording, !self.isCountingDown, !self.isStartingActivity else { return }
         self.guide.setSpeechEnabled(self.voiceGuideSpeechEnabled)
         self.isStartingActivity = true
-        let intent = self.setup.plannedIntent
+        var recordingIntent = self.setup.plannedIntent
+        if let selected = ActivityFlowStore.shared.selectedEvent,
+           recordingIntent?.activityEvent == nil || recordingIntent?.activityEvent?.id == selected.id {
+            // Attribution belongs to this recording. Mutating setup here would
+            // trigger prepare(intent:) and reset a countdown already in progress.
+            var selectedIntent = recordingIntent ?? .freestyleRun
+            selectedIntent.activityEvent = ActivityFlowStore.shared.selectedEventForStart(in: self.dependencies.socialStore.state.upcomingRuns)
+            recordingIntent = selectedIntent
+        }
+        let intent = recordingIntent
         if let activityEventID = intent?.activityEvent?.id {
             self.dependencies.socialStore.prepareToRecord(activityEventID: activityEventID)
         }
-        self.beginRecordingAfterLiveShareSetup()
+        self.beginRecordingAfterLiveShareSetup(intent: intent)
         self.isStartingActivity = false
 
         guard !self.dependencies.connectivityStore.isOffline else { return }
@@ -373,9 +383,11 @@ extension ActivityFlowCoordinator {
 #if DEBUG
     func configureRequestedGroupRecoveryTestIfNeeded() {
         guard self.host.isVisible, self.recorder.state == .idle, !self.didConfigureRequestedGroupRecoveryTest,
-              ProcessInfo.processInfo.arguments.contains("-OutboundGroupRecoveryUITestSetup") else { return }
+              ProcessInfo.processInfo.arguments.contains("-OutboundGroupRecoveryUITestSetup")
+                || ProcessInfo.processInfo.arguments.contains("-OutboundTodayGroupJoinUITest") else { return }
         self.didConfigureRequestedGroupRecoveryTest = true
         self.setup.isIndoorSession = true
+        if ProcessInfo.processInfo.arguments.contains("-OutboundTodayGroupJoinUITest") { return }
         Task {
             await self.dependencies.liveGroupStore.joinActivityEvent("ui-recovery-event")
             self.setup.plannedIntent = SessionIntent(
@@ -441,12 +453,12 @@ extension ActivityFlowCoordinator {
         self.showCamera = true
     }
 
-    func beginRecordingAfterLiveShareSetup(companionBrief: CompanionSessionBriefDTO? = nil) {
+    func beginRecordingAfterLiveShareSetup(intent: SessionIntent? = nil, companionBrief: CompanionSessionBriefDTO? = nil) {
         ActiveSessionPhotoJournal.replace(with: self.live.capturedPhotos)
         self.review.pendingActivity = nil
         self.live.activePage = self.preferredSessionPage
         self.live.isLiveWorkoutPanelExpanded = false
-        self.activeIntent = self.setup.plannedIntent
+        self.activeIntent = intent ?? self.setup.plannedIntent
 #if DEBUG
         if !self.isRunSimulationEnabled {
             self.recorder.locationManager.prepareForRecording(

@@ -73,6 +73,65 @@ final class GroupRecoveryUITests: XCTestCase {
     }
 
     @MainActor
+    func testTodayJoinAndIndependentLocationSharing() throws {
+        continueAfterFailure = false
+        let fixture = try GroupRecoveryFixture()
+        let baseURL = try fixture.start()
+        defer { fixture.stop() }
+        let app = launchFixtureApp(extraArguments: ["-OutboundAPIBaseURL", baseURL,
+            "-preferred_session_page_v1", "map"])
+        app.terminate()
+        app.launchArguments.append("-OutboundTodayGroupJoinUITest")
+        app.launch()
+        dismissFixturePermissionAlerts(app)
+
+        let join = app.buttons["today.group.join"]
+        XCTAssertTrue(join.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertEqual(join.value as? String, "0")
+        join.tap()
+        XCTAssertEqual(join.value as? String, "1")
+        XCTAssertEqual(fixture.requestCount("POST /live/group-runs/activity-events/ui-recovery-event"), 0,
+                       "Joining a recording must not consent to location sharing")
+        let share = app.switches["today.group.shareLocation"]
+        XCTAssertTrue(share.waitForExistence(timeout: 5))
+        share.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        let enabled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            fixture.requestCount("POST /live/group-runs/activity-events/ui-recovery-event") == 1
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 10), .completed)
+        let start = app.buttons["tab.start"]
+        XCTAssertTrue(start.waitForExistence(timeout: 10))
+        start.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let pause = app.buttons["Pause activity"]
+        XCTAssertTrue(pause.waitForExistence(timeout: 20), app.debugDescription)
+        pause.press(forDuration: 1.2)
+        XCTAssertTrue(app.buttons["Resume activity"].waitForExistence(timeout: 10))
+        verifyGroupUI(in: app)
+
+        let panel = app.buttons.matching(identifier: "live.group.activity").firstMatch
+        panel.tap()
+        let liveSwitch = app.switches["live.group.shareLocation"]
+        XCTAssertTrue(liveSwitch.waitForExistence(timeout: 5))
+        liveSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        let disabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "0"), object: liveSwitch)
+        XCTAssertEqual(XCTWaiter.wait(for: [disabled], timeout: 5), .completed)
+        XCTAssertEqual(app.buttons["live.group.participant.person-1"].value as? String, "Not sharing location")
+        XCTAssertEqual(app.buttons["live.group.participant.person-2"].value as? String, "Sharing location",
+                       "Stopping my sharing must preserve the other attendee's status")
+        panel.tap()
+        app.buttons["Finish activity"].tap()
+        XCTAssertTrue(app.buttons["ClosePostRunSummaryButton"].waitForExistence(timeout: 10))
+        discardReview(app)
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "-OutboundUITestResetRecording" }
+        app.launch()
+        dismissFixturePermissionAlerts(app)
+        XCTAssertTrue(app.buttons["tab.start"].waitForExistence(timeout: 20), app.debugDescription)
+        XCTAssertFalse(app.buttons["today.group.join"].exists)
+        XCTAssertFalse(app.switches["today.group.shareLocation"].exists)
+    }
+
+    @MainActor
     private func verifyGroupUI(in app: XCUIApplication) {
         let panel = app.buttons.matching(identifier: "live.group.activity")
             .matching(NSPredicate(format: "label CONTAINS %@", "Recovery group run")).firstMatch
@@ -88,8 +147,9 @@ final class GroupRecoveryUITests: XCTestCase {
         XCTAssertEqual(firstPill.value as? String, "Sharing location")
         XCTAssertTrue(app.buttons["live.group.participant.person-2"].label.contains("Alice"))
         panel.tap()
-        XCTAssertTrue(app.buttons["Stop sharing"].waitForExistence(timeout: 5), app.debugDescription)
-        XCTAssertFalse(app.buttons["Share live map with attendees"].exists)
+        let locationSwitch = app.switches["live.group.shareLocation"]
+        XCTAssertTrue(locationSwitch.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertEqual(locationSwitch.value as? String, "1")
         panel.tap()
     }
 }

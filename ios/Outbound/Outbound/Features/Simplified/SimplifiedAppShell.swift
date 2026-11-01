@@ -792,6 +792,7 @@ struct SharedActivityEventButton<Label: View>: View {
 }
 
 private struct SimplifiedTodayView: View {
+    @EnvironmentObject private var activityFlowStore: ActivityFlowStore
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.outboundTheme) private var theme
     @Environment(\.analyticsManager) private var analyticsManager
@@ -1193,7 +1194,9 @@ private struct SimplifiedTodayView: View {
 
     private var activityEventToday: ActivityEventDTO? {
         socialStore.state.upcomingRuns.first {
-            guard $0.currentUserGoing == true || $0.canParticipate == true else { return false }
+            guard !activityFlowStore.hasCompletedEvent($0.id), $0.currentUserOutcome == nil,
+                  ["scheduled", "active"].contains($0.status ?? "scheduled"),
+                  $0.currentUserGoing == true || $0.canParticipate == true else { return false }
             return Calendar.current.isDateInToday($0.startsAt) || $0.status == "active"
         }
     }
@@ -1242,15 +1245,7 @@ private struct SimplifiedTodayView: View {
                             locationName: event.locationName,
                             note: event.paceNote
                         )
-                        Label(
-                            String(
-                                localized: "today.group_activity.paired_format",
-                                defaultValue: "Paired with \(todayWorkoutName) · \(todayTotalDuration)"
-                            ),
-                            systemImage: "checkmark.circle.fill"
-                        )
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
+
                     }
                     .contentShape(Rectangle())
                 }
@@ -1258,64 +1253,51 @@ private struct SimplifiedTodayView: View {
             .buttonStyle(.plain)
             .accessibilityHint(String(localized: "social.event.open_details", defaultValue: "Opens activity details"))
 
-            if event.canParticipate == true {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(String(localized: "record.setup.run_options", defaultValue: "Run options"))
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
+            if event.canParticipate == true || event.currentUserGoing == true {
+                VStack(alignment: .leading, spacing: 10) {
                     Button {
-                        toggleTodayActivityLiveMapSharing(for: event)
+                        activityFlowStore.setJoined(event, joined: activityFlowStore.selectedEvent?.id != event.id)
                     } label: {
-                        Label(
-                            isSharingLiveMap(for: event)
-                                ? String(localized: "record.group.event.stop", defaultValue: "Stop sharing")
-                                : String(localized: "record.group.event.share", defaultValue: "Share live map with attendees"),
-                            systemImage: isSharingLiveMap(for: event) ? "location.slash" : "person.2.wave.2.fill"
-                        )
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
+                        Label(String(localized: "group.activity.join_recording", table: "GroupActivity"),
+                              systemImage: activityFlowStore.selectedEvent?.id == event.id ? "checkmark.square.fill" : "square")
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .buttonStyle(.plain)
-                    .disabled(liveGroupStore.isJoining || hasDifferentActiveLiveMap(for: event))
+                    .accessibilityIdentifier("today.group.join")
+                    .accessibilityAddTraits(activityFlowStore.selectedEvent?.id == event.id ? .isSelected : [])
+                    .accessibilityValue(activityFlowStore.selectedEvent?.id == event.id ? "1" : "0")
+                    .disabled(activityFlowStore.hasUnfinishedSession)
 
-                    if isSharingLiveMap(for: event) {
-                        Text(liveGroupStore.statusSummary)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else if hasDifferentActiveLiveMap(for: event) {
-                        Text(String(
-                            localized: "record.group.event.other_active",
-                            defaultValue: "Finish sharing your current group run before joining this one"
-                        ))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    }
-                    if let message = liveGroupStore.lastErrorMessage {
-                        Text(message)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.orange)
-                    }
+                    Toggle(String(localized: "group.activity.share_location", table: "GroupActivity"),
+                           isOn: Binding(get: { isSharingLiveMap(for: event) }, set: { enabled in
+                        if enabled != isSharingLiveMap(for: event) { toggleTodayActivityLiveMapSharing(for: event) }
+                    }))
+                    .accessibilityIdentifier("today.group.shareLocation")
+                    .disabled(liveGroupStore.isJoining || hasDifferentActiveLiveMap(for: event)
+                              || activityFlowStore.selectedEvent?.id != event.id)
+                    Text(String(localized: "group.activity.share_location_detail", table: "GroupActivity"))
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, OutboundSpacing.standard)
                 .padding(.vertical, OutboundSpacing.compact)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: OutboundRadius.card, style: .continuous))
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: OutboundRadius.card))
             }
         }
     }
 
     private func isSharingLiveMap(for event: ActivityEventDTO) -> Bool {
-        liveGroupStore.activeSession?.isActive == true
+        liveGroupStore.isSharing
             && liveGroupStore.activeSession?.activityEventId == event.id
     }
 
     private func hasDifferentActiveLiveMap(for event: ActivityEventDTO) -> Bool {
-        liveGroupStore.activeSession?.isActive == true && !isSharingLiveMap(for: event)
+        liveGroupStore.isSharing && !isSharingLiveMap(for: event)
     }
 
     private func toggleTodayActivityLiveMapSharing(for event: ActivityEventDTO) {
+        Task { await analyticsManager?.track(.init(.groupActivityLocationSharingChanged, properties: [
+            .selectionType: .string(isSharingLiveMap(for: event) ? "off" : "on"), .result: .string("requested")
+        ])) }
         if isSharingLiveMap(for: event) {
             liveGroupStore.stopFromManagementControl()
             return

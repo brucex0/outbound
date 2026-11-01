@@ -421,3 +421,9 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - iOS automatic `photo_album_export_completed.count_bucket` counts only camera photos eligible for export; library imports are excluded before permission requests and produce no export event when no camera photos remain. Existing `photo_captured.location_attached` reflects resolved asset/EXIF GPS after placement. Metadata diagnostics contain availability booleans and bounded placement reasons only, never asset IDs, file paths, dates, or coordinates.
 
 - Android `photo_import_location_access` records only `source_type=activity_edit|finish_photo_library` and `result=requested|granted|denied` for optional photo-metadata access. Existing `photo_captured.location_attached` reflects actual plausible GPS for imports, without camera-route fallback. Automatic album event counts exclude imports, and imported-only saves emit no album event. Import diagnostics contain operation/error type or bounded placement reason only; no URIs, filenames, photo IDs, dates, or coordinates are logged.
+
+### Group recording selection and location consent
+
+- `group_activity_recording_selection_changed`: `selection_type=joined|solo`, `entry_source=today|group_activity`. Records explicit next-recording selection or attaching an existing unlinked recording.
+- `group_activity_location_sharing_changed`: `selection_type=on|off`, `result=requested|success|failure`. Records the current user's location consent operation independently from recording linkage. Existing `group_run_join_attempted` / `group_run_joined` events retain their transport semantics.
+- Neither event includes account, event, recording, participant identifiers, titles, or coordinates.

@@ -874,6 +874,12 @@ final class ActivityRecorder: ObservableObject {
         }
     }
 
+    func attachActivityEvent(_ event: ActivityEventLaunchContext) {
+        guard state != .idle, recordingActivityEvent == nil else { return }
+        recordingActivityEvent = event
+        persistJournal(force: true)
+    }
+
     func updateLiveGroupRecoveryContext(sessionID: String?) {
         guard state != .idle else { return }
         recordingLiveGroupSessionID = sessionID
