@@ -68,6 +68,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -302,7 +303,11 @@ private fun SignedInApp(
     }
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = backStackEntry?.destination
+    var selectedTab by rememberSaveable { mutableStateOf(TopLevelDestination.Today.route) }
+    val tabStateHolder = rememberSaveableStateHolder()
+    val currentRoute = if (backStackEntry?.destination?.route == APP_SHELL_ROUTE) selectedTab
+        else backStackEntry?.destination?.route
+
     var recordingLaunch by remember { mutableStateOf(RecordingLaunchConfiguration()) }
     var selectingRouteForToday by rememberSaveable { mutableStateOf(false) }
     var reminderWorkoutId by remember { mutableStateOf<String?>(null) }
@@ -334,6 +339,12 @@ private fun SignedInApp(
     val healthViewModel:HealthIntegrationViewModel=hiltViewModel()
     val healthPermissions by healthViewModel.permissions.collectAsStateWithLifecycle()
     val integrationViewModel: P0IntegrationViewModel = hiltViewModel()
+    fun selectTab(route: String) {
+        if (selectedTab != route) integrationViewModel.trackPrimaryTabSelected(route)
+        selectedTab = route
+        // Tabs are state within the one shell, never navigation destinations.
+        navController.popBackStack(APP_SHELL_ROUTE, inclusive = false)
+    }
     val cheerPickerViewModel: SafetySettingsViewModel = hiltViewModel()
     val connectivityViewModel: ConnectivityViewModel = hiltViewModel()
     val connectivityState by connectivityViewModel.state.collectAsStateWithLifecycle()
@@ -461,8 +472,8 @@ private fun SignedInApp(
             }
         }
     }
-    LaunchedEffect(currentDestination?.route, pushPermissionGranted) {
-        if (currentDestination?.route == TopLevelDestination.Social.route && !pushPermissionGranted) {
+    LaunchedEffect(currentRoute, pushPermissionGranted) {
+        if (currentRoute == TopLevelDestination.Social.route && !pushPermissionGranted) {
             integrationViewModel.trackPushPermissionPromptExposed("social")
         }
     }
@@ -497,8 +508,8 @@ private fun SignedInApp(
         todayStartJob?.cancel()
         recordingViewModel.cancelCountdown()
     }
-    LaunchedEffect(currentDestination?.route) {
-        if (currentDestination?.route != TopLevelDestination.Today.route && currentDestination?.route != RECORDING_ROUTE) {
+    LaunchedEffect(currentRoute) {
+        if (currentRoute != TopLevelDestination.Today.route && currentRoute != RECORDING_ROUTE) {
             todayStartJob?.cancel()
         }
     }
@@ -532,9 +543,9 @@ private fun SignedInApp(
     LaunchedEffect(accountId) {
         accountId?.let { activeRecordingViewModel.recover(it, recordingLocationPermission(context)) }
     }
-    LaunchedEffect(hasActiveSession, currentDestination?.route) {
+    LaunchedEffect(hasActiveSession, currentRoute) {
         if (!hasActiveSession) suppressRecordingRecovery = false
-        if (hasActiveSession && !suppressRecordingRecovery && currentDestination?.route != RECORDING_ROUTE) {
+        if (hasActiveSession && !suppressRecordingRecovery && currentRoute != RECORDING_ROUTE) {
             navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
         }
     }
@@ -560,7 +571,7 @@ private fun SignedInApp(
         val id = navigationUri.getQueryParameter("id").orEmpty()
         val route = when (destination) {
             "today" -> { reminderWorkoutId = navigationUri.getQueryParameter("workout"); TopLevelDestination.Today.route }
-            "assistant" -> { assistantEntryDestination = TopLevelDestination.entries.firstOrNull { it.route == currentDestination?.route }?.route ?: "me"; ASSISTANT_ROUTE }
+            "assistant" -> { assistantEntryDestination = TopLevelDestination.entries.firstOrNull { it.route == currentRoute }?.route ?: "me"; ASSISTANT_ROUTE }
             "connections" -> AppDetailRoutes.connections("notification")
             "activity" -> id.takeIf(String::isNotBlank)?.let { AppDetailRoutes.activity(it, "notification") }
             "post" -> id.takeIf(String::isNotBlank)?.let(AppDetailRoutes::post)
@@ -571,7 +582,8 @@ private fun SignedInApp(
             "group_run" -> id.takeIf(String::isNotBlank)?.let { AppDetailRoutes.safety("group", it, "notification") }
             else -> NOTIFICATIONS_ROUTE
         }
-        navController.navigate(route ?: NOTIFICATIONS_ROUTE) { launchSingleTop = true }
+        if (route == TopLevelDestination.Today.route) selectTab(route)
+        else navController.navigate(route ?: NOTIFICATIONS_ROUTE) { launchSingleTop = true }
         onNavigationUriConsumed()
     }
     LaunchedEffect(connectionCode) {
@@ -591,7 +603,7 @@ private fun SignedInApp(
         contentWindowInsets = WindowInsets.safeDrawing,
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
-            val primaryDestination = TopLevelDestination.entries.firstOrNull { it.route == currentDestination?.route }
+            val primaryDestination = TopLevelDestination.entries.firstOrNull { it.route == currentRoute }
             if (primaryDestination != null) {
                 val lifecycleOwner = LocalLifecycleOwner.current
                 val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsStateWithLifecycle(
@@ -723,11 +735,7 @@ private fun SignedInApp(
                                     if (isContextualStart) {
                                         todayStartRequest += 1
                                     } else {
-                                        navController.navigate(destination.route) {
-                                            popUpTo(TopLevelDestination.Today.route) { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
+                                        selectTab(destination.route)
                                     }
                                 },
                                 icon = {
@@ -771,14 +779,14 @@ private fun SignedInApp(
             start = contentPadding.calculateStartPadding(layoutDirection),
             top = contentPadding.calculateTopPadding(),
             end = contentPadding.calculateEndPadding(layoutDirection),
-            bottom = if (TopLevelDestination.entries.any { it.route == currentDestination?.route }) {
+            bottom = if (TopLevelDestination.entries.any { it.route == currentRoute }) {
                 WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()
             } else {
                 contentPadding.calculateBottomPadding()
             },
         )
         Column(Modifier.fillMaxSize().padding(contentInsets).consumeWindowInsets(contentInsets)) {
-        if (currentDestination?.route != RECORDING_ROUTE && connectivityState.isOffline) {
+        if (currentRoute != RECORDING_ROUTE && connectivityState.isOffline) {
             ConnectivityBanner(
                 connectivityState,
                 Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp),
@@ -786,11 +794,12 @@ private fun SignedInApp(
         }
         NavHost(
             navController = navController,
-            startDestination = TopLevelDestination.Today.route,
+            startDestination = APP_SHELL_ROUTE,
             modifier = Modifier.fillMaxWidth().weight(1f),
         ) {
-            TopLevelDestination.entries.forEach { destination ->
-                composable(destination.route) {
+            composable(APP_SHELL_ROUTE) {
+                val destination = TopLevelDestination.entries.first { it.route == selectedTab }
+                tabStateHolder.SaveableStateProvider(destination.route) {
                     if (destination == TopLevelDestination.Today) {
                         val todayViewModel: TodayViewModel = hiltViewModel()
                         ActivityStartWarmup(recordingViewModel)
@@ -1052,7 +1061,7 @@ private fun SignedInApp(
                             accountId = accountId, localeTag = groupLocale,
                             inboxCount = NotificationPresentationPolicy.attentionCount(integration.notifications),
                             unitSystem = measurementUnitSystem,
-                            onConditions = { navController.navigate(TopLevelDestination.Today.route) },
+                            onConditions = { selectTab(TopLevelDestination.Today.route) },
                             onCommunity = { navController.navigate(COMMUNITY_ROUTES_ROUTE) },
                             onNotifications = { navController.navigate(NOTIFICATIONS_ROUTE) { launchSingleTop = true } },
                             onOpenConnections = { source, adding -> navController.navigate(AppDetailRoutes.connections(source, adding)) },
@@ -1183,14 +1192,10 @@ private fun SignedInApp(
                         }
                         integrationViewModel.trackAssistantDestinationOpened(target)
                         if (route == "settings") settingsRequest += 1
-                        if (navController.currentDestination?.route != target) {
-                            navController.navigate(target) {
-                                if (TopLevelDestination.entries.any { it.route == target }) {
-                                    popUpTo(TopLevelDestination.Today.route) { saveState = true }
-                                    restoreState = true
-                                }
-                                launchSingleTop = true
-                            }
+                        if (TopLevelDestination.entries.any { it.route == target }) {
+                            selectTab(target)
+                        } else {
+                            navController.navigate(target) { launchSingleTop = true }
                         }
                     },
                     onPrepareActivity = { sport, distanceMeters, durationSeconds ->
@@ -1245,17 +1250,11 @@ private fun SignedInApp(
                         photoMessage?.let { message ->
                             scope.launch { snackbar.showSnackbar(resources.getString(message)) }
                         }
-                        navController.navigate(TopLevelDestination.Me.route) {
-                            popUpTo(TopLevelDestination.Today.route) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        selectTab(TopLevelDestination.Me.route)
                     },
                     onExit = {
                         suppressRecordingRecovery = true
-                        navController.navigate(TopLevelDestination.Today.route) {
-                            popUpTo(RECORDING_ROUTE) { inclusive = true }
-                        }
+                        selectTab(TopLevelDestination.Today.route)
                     },
                     groupRun=sharedLiveGroupRun?.toSharedLiveRun(),
                     groupRunJoining=groupRunJoining,
@@ -1324,11 +1323,7 @@ private fun SignedInApp(
                         integrationViewModel.clearCommunityRoute()
                         integrationViewModel.trackTodayRouteSelected(route)
                         if (reverse) integrationViewModel.trackTodayRouteDirection(true)
-                        navController.navigate(TopLevelDestination.Today.route) {
-                            popUpTo(TopLevelDestination.Today.route) { saveState = true }
-                            launchSingleTop = true
-                            // Do not restore the route-detail stack when switching to Today.
-                        }
+                        selectTab(TopLevelDestination.Today.route)
                     },
                     onBack = { navController.popBackStack() }, onChanged = { integrationViewModel.refreshRoutes() },
                     onImportedDelete = integrationViewModel::trackImportedRouteDeleted,
@@ -1516,6 +1511,7 @@ private fun MeBenefitDestinationCard(
 }
 
 private const val RECORDING_ROUTE = "recording"
+private const val APP_SHELL_ROUTE = "app_shell"
 private const val ASSISTANT_ROUTE = "assistant"
 private const val MY_QR_ROUTE = "my_qr"
 private const val MUSIC_ROUTE = "music"

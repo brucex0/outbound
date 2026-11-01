@@ -419,6 +419,9 @@ data class P0IntegrationState(
         AnalyticsProperty.EntrySource to entrySource,
         AnalyticsProperty.SelectionType to selection,
     )))
+    fun trackPrimaryTabSelected(destination: String) = analytics.record(AnalyticsEvent("primary_tab_selected", mapOf(
+        AnalyticsProperty.Destination to destination,
+    )))
     fun trackAssistantOpened(destination: String, entrySource: String = "persistent_launcher") = analytics.record(AnalyticsEvent("assistant_launcher_opened", mapOf(
         AnalyticsProperty.Destination to destination,
         AnalyticsProperty.EntrySource to entrySource,

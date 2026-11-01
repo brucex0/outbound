@@ -7,13 +7,13 @@ Open when adding a destination, changing a link/notification entry point, or inv
 - Always navigate with the entity ID (plus bounded context). The destination resolves that ID from its account-scoped cache first, then refreshes from the network; it never requires an object or selected state supplied by its caller. Persist a newly fetched snapshot for later offline/restored entry.
 - Push the requested page directly over its actual caller. Do not insert or render a tab/list as a host for an entity page.
 - Toolbar Back and system Back pop the same destination; neither switches a detail into a list.
-- Social, Today, and Me remain the three primary tabs. Detail pages hide the primary toolbar and retain the caller's saved tab/list state.
+- Social, Today, and Me are singleton tab states within one `app_shell` destination, never stacked routes. Selecting a tab replaces the selected tab in place; system Back at any tab root leaves the app. Detail pages stack above the shell, hide the primary toolbar, and return to the selected tab with its saved list state.
 - A cold link uses the shell's normal launch/restored root as the fallback caller; it does not manufacture Social, History, or a route-library entry.
 - Pickers, comments, photo/share previews, confirmations, Group creation/composition, and Today route selection are explicit contextual flows. They may preserve their real owner underneath, but cannot serve as implicit anchors for external detail entry.
 
 ## Implementation
 
-- `MainActivity` uses `singleTask` so launcher, link, and callback intents reuse the existing shell through `onNewIntent`. Assistant destination actions dismiss the assistant in the shell, ignore repeated outgoing taps, and reuse the current tab when it already matches. Tab switches retain normal saved-tab behavior.
+- `MainActivity` uses `singleTask` so launcher, link, and callback intents reuse the existing shell through `onNewIntent`. Assistant destination actions dismiss the assistant in the shell, ignore repeated outgoing taps, and reuse the current tab when it already matches. Tab switches update the shell’s saveable selection, with per-tab saveable UI state and shell-scoped ViewModels. All tab handoffs (toolbar, assistant, reminders, recording completion/exit, and route selection) use `selectTab`; none navigate to a tab route.
 
 - `android/app/.../AppDetailRoutes.kt` owns route patterns and encoded route builders. Navigation arguments contain identity plus bounded source/mode values.
 - `PlainstrideApp.kt` registers pages and dispatches in-app, notification, connection-link, and Group-invite entry points to those routes. `MainActivity` consumes notification intents and saves only pending links across recreation, preventing a consumed launch link from being replayed above a restored nested page. The inbox has no competing automatic deep-link handler.
@@ -24,7 +24,7 @@ Open when adding a destination, changing a link/notification entry point, or inv
 - Events, Groups (including invitation context), invitations, posts, and connection-code previews use account-cache snapshots under `social.detail.*`; profile snapshots remain under `social.profile-preview`. Cached content renders while HTTP refresh runs. Known forbidden/not-found responses clear visible content; transient failures retain a usable cached page.
 - Group invitations resolve to the canonical Group page with an invitation ID; Group-invite token resolvers replace themselves with the Group route. Event invitation actions remain on their independent destination.
 - Community route detail loads by route ID, using an account-scoped cached snapshot for offline fallback. Imported routes are stored in the existing account cache under `routes.imported/library/und`, remain device-local, and resolve by their `import:` ID. Existing account-cache cleanup removes these rows alongside other account caches; no Room schema change or migration is required.
-- Route-detail `Use route` selects the route and direction, then switches to the existing Today root with its map and launch dock. It saves the caller tab stack and does not restore a nested Today detail stack or start recording automatically.
+- Route-detail `Use route` selects the route and direction, then switches to the existing Today root with its map and launch dock. It preserves per-tab UI state and does not restore a nested Today detail stack or start recording automatically.
 - Route library screens only browse/select; they navigate to the shared detail page. Today retains its explicit selection mode. Successful bookmark/removal refreshes the source library; deletion returns to the real caller.
 - Safety/live and informational notification details resolve their route ID independently. Informational inbox snapshots use `inbox.detail/<id>/und`; live follower and Group-run snapshots remain bounded in memory, without adding persistent location storage. Viewing a Group-run does not replace another active participation, and its leave action addresses the viewed session. Group-run links render the session alone, without Safety settings as a host. These details carry their kind/ID in the back stack rather than shell selection variables. Warm/cold `group_run` links use the same live-group destination as inbox taps.
 
@@ -40,6 +40,7 @@ Use manual UI checks; do not run the test suite without an explicit request.
 
 | Entry | Required return behavior |
 | --- | --- |
+| Switch Social / Today / Me repeatedly, then system Back | Leave the app in one press; no previous primary tab |
 | Me / Today / Social → Companion → Open Me (including repeated taps) | One Me tab; Back never reveals a duplicate Me or Companion; launcher/link reentry retains one shell activity |
 | Me → Connections (All) → system/toolbar Back | Me in one step; Social/Me tab presses still work |
 | Trusted Contacts → Connections → Back | Trusted Contacts; no Social entry |
@@ -105,3 +106,10 @@ ANDROID_SERIAL=emulator-5556 ./android/test-navigation.sh
 - Source review: opening the current tab only dismisses Companion; switching tabs uses the existing saved-tab navigation; settings still requests Me settings; music/history/health keep direct navigation. Repeated outgoing navigation taps are ignored.
 - `MainActivity` now reuses the existing task instance for external reentry; pending-link handling remains in `onNewIntent`.
 - Build-only verification: debug APK assembly and release Kotlin compilation. No test suite was run. Physical-device Back behavior, repeated taps, saved-tab restoration, and launcher/link/OAuth reentry still require manual verification.
+
+## Verification Record — Singleton Primary Tabs
+
+- Debug APK assembly and release Kotlin compilation passed; no test suite was run.
+- Samsung SM-S901U1: Today → Companion → Open Me, repeated Companion → Open Me from Me, then one system Back returned to the launcher. Social and Today root Back also returned to the launcher.
+- Me → Social → Me retained the scrolled Me position. Me → My Routes → system Back returned directly to the same scrolled Me page.
+- Source review covered all primary-tab handoffs, saved selection/UI state, shell-owned ViewModels, and unchanged ID-based detail routes. Full process death, notification reentry, recording save/exit, and route-detail Use route were not exercised on device in this change.
