@@ -32,6 +32,7 @@ interface SocialRepository {
     suspend fun profile(id: String): Result<SocialPerson>
     suspend fun cacheProfilePreview(accountId: String, person: SocialPerson)
     suspend fun cachedProfilePreview(accountId: String, personId: String): SocialPerson?
+    suspend fun cachePost(accountId: String, localeTag: String, post: SocialPost)
     suspend fun setCheer(postId: String, cheered: Boolean): Result<Unit>
     suspend fun loadPostPhotos(postId: String): Result<List<ActivityPhoto>>
     suspend fun downloadPostPhoto(photoId: String, thumbnail: Boolean = true): Result<ByteArray>
@@ -205,6 +206,14 @@ class OfflineFirstSocialRepository @Inject constructor(
             null
         }
     }
+    override suspend fun cachePost(accountId: String, localeTag: String, post: SocialPost) = mutex.withLock {
+        val row = cache.get(accountId, NAMESPACE, HOME, localeTag) ?: return@withLock
+        val home = PlainstrideJson.decodeFromString<SocialHome>(row.payloadJson)
+        cache.upsert(row.copy(payloadJson = PlainstrideJson.encodeToString(home.copy(
+            posts = home.posts.map { if (it.id == post.id) post else it },
+        ))))
+    }
+
     override suspend fun setCheer(postId: String, cheered: Boolean) = authenticated { auth -> apiCall { if (cheered) api.cheer(auth, postId) else api.removeCheer(auth, postId) } }
     override suspend fun loadPostPhotos(postId: String) = authenticated { apiCall { api.postPhotos(it, postId) } }.map { it.photos }
     override suspend fun downloadPostPhoto(photoId: String, thumbnail: Boolean): Result<ByteArray> {

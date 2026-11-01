@@ -1104,7 +1104,7 @@ private fun SignedInApp(
                 }, onBack = { navController.popBackStack() })
             }
             composable(AppDetailRoutes.Post) { entry ->
-                val socialViewModel: SocialViewModel = hiltViewModel()
+                val socialViewModel = sharedSocialViewModel
                 val activityViewModel: ActivityViewModel = hiltViewModel()
                 SocialActivityDetailDestination(
                     accountId = requireNotNull(accountId), localeTag = groupLocale,

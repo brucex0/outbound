@@ -96,7 +96,14 @@ sealed interface ConnectionEffect {
             when (cached) {
                 CachedSocialHome.Empty -> Unit
                 is CachedSocialHome.Available -> {
-                    mutableState.update { it.copy(home = cached.value, loading = false, offline = cached.stale) }
+                    mutableState.update { state -> state.copy(
+                        home = cached.value.copy(posts = cached.value.posts.map { incoming ->
+                            val pending = state.home.posts.firstOrNull { it.id == incoming.id && it.id in cheerRequests }
+                            if (pending != null) incoming.copy(viewerHasCheered = pending.viewerHasCheered, cheerCount = pending.cheerCount) else incoming
+                        }), loading = false, offline = cached.stale,
+                        selectedActivityPost = state.selectedActivityPost?.let { selected -> cached.value.posts.firstOrNull { it.id == selected.id && it.id !in cheerRequests } ?: selected },
+                        selectedPost = state.selectedPost?.let { selected -> cached.value.posts.firstOrNull { it.id == selected.id && it.id !in cheerRequests } ?: selected },
+                    ) }
                     if (trackHomeExposure && !activityFeedLoadTracked) trackActivityFeedLoaded(cached.value.posts)
                 }
             }
@@ -223,7 +230,48 @@ sealed interface ConnectionEffect {
             mutableState.update { it.copy(connectionsLoadingMore = false) }
         }
     }
-    fun toggleCheer(post: SocialPost) = mutate("social_cheer_toggled") { repository.setCheer(post.id, !post.viewerHasCheered).getOrThrow(); refresh() }
+    private val cheerRequests = mutableSetOf<String>()
+
+    /** Feed, activity detail and the comment drawer always receive the same post mutation. */
+    private fun updatePost(id: String, transform: (SocialPost) -> SocialPost) {
+        mutableState.update { state -> state.copy(
+            home = state.home.copy(posts = state.home.posts.map { if (it.id == id) transform(it) else it }),
+            selectedActivityPost = state.selectedActivityPost?.let { if (it.id == id) transform(it) else it },
+            selectedPost = state.selectedPost?.let { if (it.id == id) transform(it) else it },
+        ) }
+    }
+
+    private suspend fun persistPost(id: String) {
+        val account = accountId ?: return
+        val state = mutableState.value
+        val post = state.home.posts.firstOrNull { it.id == id }
+            ?: state.selectedActivityPost?.takeIf { it.id == id } ?: return
+        try {
+            repository.cachePost(account, localeTag, post)
+            destinations.savePost(account, post)
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            // The server mutation succeeded; a local cache failure must not report it as failed.
+            logPresenceFailure("post_cache_write", error)
+        }
+    }
+
+    fun toggleCheer(post: SocialPost) {
+        if (!cheerRequests.add(post.id)) return
+        val current = mutableState.value.home.posts.firstOrNull { it.id == post.id }
+            ?: mutableState.value.selectedActivityPost?.takeIf { it.id == post.id } ?: post
+        val cheered = !current.viewerHasCheered
+        updatePost(post.id) { it.copy(viewerHasCheered = cheered, cheerCount = (current.cheerCount + if (cheered) 1 else -1).coerceAtLeast(0)) }
+        mutate("social_cheer_toggled") {
+            try {
+                repository.setCheer(post.id, cheered).getOrElse { error ->
+                    updatePost(post.id) { it.copy(viewerHasCheered = current.viewerHasCheered, cheerCount = current.cheerCount) }
+                    throw error
+                }
+                persistPost(post.id)
+            } finally { cheerRequests.remove(post.id) }
+        }
+    }
     fun trackSocialTabSelected(tab: String) = analytics.record(AnalyticsEvent("social_tab_selected", mapOf(
         AnalyticsProperty.SelectionType to tab,
         AnalyticsProperty.EntrySource to "tab_row",
@@ -323,8 +371,8 @@ sealed interface ConnectionEffect {
     suspend fun ensureActivityDetail(postId: String): Boolean {
         if (mutableState.value.selectedActivityPost?.id == postId) return true
         val account = accountId
-        val cached = account?.let { destinations.post(it, postId) }
-            ?: mutableState.value.home.posts.firstOrNull { it.id == postId }
+        val cached = mutableState.value.home.posts.firstOrNull { it.id == postId }
+            ?: account?.let { destinations.post(it, postId) }
             ?: cachedHome()?.posts?.firstOrNull { it.id == postId }
         if (cached != null) openActivityDetail(cached)
         // Notifications can refer to posts older than the currently loaded feed.
@@ -354,7 +402,8 @@ sealed interface ConnectionEffect {
         val activity = post.activity ?: return
         val firstOpen = mutableState.value.selectedActivityPost?.id != post.id
         activityPhotoJob?.cancel()
-        mutableState.update { it.copy(
+        mutableState.update { state -> state.copy(
+            home = state.home.copy(posts = state.home.posts.map { if (it.id == post.id) post else it }),
             selectedActivityPost = post,
             activityDetailPhotos = activity.photos,
             activityDetailPhotosLoading = activity.totalPhotoCount > activity.photos.size,
@@ -604,21 +653,51 @@ sealed interface ConnectionEffect {
     fun report(post: SocialPost, reason: String) = mutate("social_content_reported", SocialMessage.REPORTED) { repository.reportPost(post.id, ReportReason.entries.firstOrNull { it.wireValue == reason } ?: ReportReason.OTHER).getOrThrow() }
     fun deletePost(post: SocialPost) = mutate("social_post_deleted") { repository.deletePost(post.id).getOrThrow(); refresh() }
     fun block(post: SocialPost) = mutate("social_person_blocked", SocialMessage.BLOCKED) { repository.block(post.author.id).getOrThrow(); refresh() }
-    fun openComments(post:SocialPost)=viewModelScope.launch{repository.comments(post.id).onSuccess{comments->mutableState.update{it.copy(selectedPost=post,comments=comments)}};analytics.record(AnalyticsEvent("social_comments_opened"))}
-    fun closeComments()=mutableState.update{it.copy(selectedPost=null,comments=emptyList())}
-    fun addComment(body:String){
-        val post=mutableState.value.selectedPost?:return
-        val clean=body.trim();if(clean.isEmpty())return
-        viewModelScope.launch { repository.addComment(post.id,clean).fold(onSuccess={comment->
-            mutableState.update{state->state.copy(comments=state.comments+comment,selectedPost=state.selectedPost?.copy(commentCount=state.selectedPost.commentCount+1),home=state.home.copy(posts=state.home.posts.map{if(it.id==post.id)it.copy(commentCount=it.commentCount+1)else it}))}
-            messages.emit(SocialMessage.ACTION_COMPLETE);analytics.record(AnalyticsEvent("social_comment_created",mapOf(AnalyticsProperty.Result to "success")))
-        },onFailure={messages.emit(SocialMessage.ACTION_FAILED);analytics.record(AnalyticsEvent("social_comment_created",mapOf(AnalyticsProperty.Result to "failure")))}) }
+    fun openComments(post: SocialPost) = viewModelScope.launch {
+        repository.comments(post.id).onSuccess { comments ->
+            mutableState.update { state -> state.copy(
+                selectedPost = state.home.posts.firstOrNull { it.id == post.id }
+                    ?: state.selectedActivityPost?.takeIf { it.id == post.id } ?: post,
+                comments = comments,
+            ) }
+        }.onFailure { error ->
+            if (error is CancellationException) throw error
+            logPresenceFailure("comments_load", error)
+            messages.emit(SocialMessage.ACTION_FAILED)
+        }
+        analytics.record(AnalyticsEvent("social_comments_opened"))
     }
-    fun deleteComment(comment:SocialComment){
-        val post=mutableState.value.selectedPost?:return;val previous=mutableState.value
-        mutableState.update{state->state.copy(comments=state.comments.filterNot{it.id==comment.id},selectedPost=state.selectedPost?.copy(commentCount=(state.selectedPost.commentCount-1).coerceAtLeast(0)),home=state.home.copy(posts=state.home.posts.map{if(it.id==post.id)it.copy(commentCount=(it.commentCount-1).coerceAtLeast(0))else it}))}
-        viewModelScope.launch { repository.deleteComment(comment.id).onSuccess{messages.emit(SocialMessage.ACTION_COMPLETE);analytics.record(AnalyticsEvent("social_comment_deleted",mapOf(AnalyticsProperty.Result to "success")))}.onFailure{mutableState.value=previous;messages.emit(SocialMessage.ACTION_FAILED);analytics.record(AnalyticsEvent("social_comment_deleted",mapOf(AnalyticsProperty.Result to "failure")))}}
+    fun closeComments() = mutableState.update { it.copy(selectedPost = null, comments = emptyList()) }
+    fun addComment(body: String) {
+        val post = mutableState.value.selectedPost ?: return
+        val clean = body.trim(); if (clean.isEmpty()) return
+        mutate("social_comment_created") {
+            val comment = repository.addComment(post.id, clean).getOrThrow()
+            updatePost(post.id) { it.copy(commentCount = it.commentCount + 1) }
+            mutableState.update { if (it.selectedPost?.id == post.id) it.copy(comments = (it.comments + comment).distinctBy { item -> item.id }) else it }
+            persistPost(post.id)
+        }
     }
+    fun deleteComment(comment: SocialComment) {
+        val post = mutableState.value.selectedPost ?: return
+        val previousIndex = mutableState.value.comments.indexOfFirst { it.id == comment.id }
+        if (previousIndex < 0) return
+        updatePost(post.id) { it.copy(commentCount = (it.commentCount - 1).coerceAtLeast(0)) }
+        mutableState.update { it.copy(comments = it.comments.filterNot { item -> item.id == comment.id }) }
+        mutate("social_comment_deleted") {
+            repository.deleteComment(comment.id).getOrElse { error ->
+                updatePost(post.id) { it.copy(commentCount = it.commentCount + 1) }
+                mutableState.update { state ->
+                    if (state.selectedPost?.id == post.id && state.comments.none { it.id == comment.id }) {
+                        state.copy(comments = state.comments.toMutableList().apply { add(previousIndex.coerceAtMost(size), comment) })
+                    } else state
+                }
+                throw error
+            }
+            persistPost(post.id)
+        }
+    }
+
     fun setEventRsvp(event:SocialEvent,going:Boolean,mode:String="in_person")=mutate("social_event_rsvp_changed", success = if(going) SocialMessage.EVENT_JOINED else SocialMessage.EVENT_LEFT, failure = SocialMessage.EVENT_RSVP_FAILED){val result = repository.setEventRsvp(event.id,going,mode); analytics.record(AnalyticsEvent("activity_event_rsvp_result", mapOf(AnalyticsProperty.EntrySource to eventEntrySource, AnalyticsProperty.SelectionType to if(going) "join" else "leave", AnalyticsProperty.Result to if(result.isSuccess) "success" else "failure"))); result.getOrThrow();repository.event(event.id).onSuccess{updated->mutableState.update{it.copy(selectedEvent=updated)}};refresh()}
     fun refreshEvent(eventId:String)=viewModelScope.launch{repository.event(eventId).onSuccess{updated->mutableState.update{state->if(state.selectedEvent?.id==eventId)state.copy(selectedEvent=updated)else state}}}
     fun inviteToEvent(event:SocialEvent,person:SocialPerson?)=mutate("social_event_invitation_sent"){repository.inviteToEvent(event.id,person?.id).getOrThrow()}
