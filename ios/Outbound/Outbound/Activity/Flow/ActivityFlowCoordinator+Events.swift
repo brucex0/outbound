@@ -201,11 +201,20 @@ extension ActivityFlowCoordinator {
     func importPreActivityPhoto(_ item: PhotosPickerItem?) {
         guard let item else { return }
         Task {
-            guard let data = try? await item.loadTransferable(type: Data.self),
-                  let image = UIImage(data: data)
-            else { return }
+            guard let photo = await ActivityPhotoImporter.importItem(item, downsample: false) else {
+                ActivityDiagnosticLog.error(.persistence, "Pre-activity photo import failed: unavailable image")
+                return
+            }
             await MainActor.run {
-                self.replacePreActivityPhoto(with: image)
+                let metadata = PhotoMetadata(
+                    takenAt: photo.takenAt ?? Date(),
+                    paceAtShot: nil,
+                    hrAtShot: nil,
+                    distAtShot: 0,
+                    coordinate: photo.coordinate,
+                    captureContext: .preActivity
+                )
+                self.replacePreActivityPhoto(with: photo.image, metadata: metadata)
                 self.setup.selectedPreActivityPhotoItem = nil
             }
         }

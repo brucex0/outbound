@@ -10,7 +10,7 @@ import UIKit
 /// recovered from EXIF when available.
 ///
 /// `PhotosPicker` runs out of process and needs no photo-library permission;
-/// it hands back a copy of the original file. Reading that file (rather than a
+/// the picker requests the current file representation. Reading that file (rather than a
 /// decoded `UIImage`) is what keeps the capture date, and usually the GPS
 /// coordinate, intact.
 struct ImportedActivityPhoto {
@@ -44,18 +44,18 @@ enum ActivityPhotoImporter {
     /// cap in check without losing display quality for full-screen viewing.
     nonisolated static let maxPixelSize = 2048
 
-    static func importItem(_ item: PhotosPickerItem) async -> ImportedActivityPhoto? {
+    static func importItem(_ item: PhotosPickerItem, downsample: Bool = true) async -> ImportedActivityPhoto? {
         guard let file = try? await item.loadTransferable(type: PickedPhotoFile.self) else {
             return nil
         }
         defer { try? FileManager.default.removeItem(at: file.url) }
-        return load(fileURL: file.url)
+        return load(fileURL: file.url, downsample: downsample)
     }
 
-    static func load(fileURL: URL) -> ImportedActivityPhoto? {
+    static func load(fileURL: URL, downsample: Bool = true) -> ImportedActivityPhoto? {
         let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
         guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, sourceOptions),
-              let image = downsampledImage(from: source)
+              let image = downsample ? downsampledImage(from: source) : UIImage(contentsOfFile: fileURL.path)
         else { return nil }
 
         var takenAt: Date?
@@ -195,7 +195,7 @@ struct ActivityPhotoPlacementContext {
             paceAtShot: avgPace,
             hrAtShot: heartRateBPM,
             distAtShot: distance(at: takenAt),
-            coordinate: plausibleCoordinate(photo.coordinate, at: takenAt),
+            coordinate: plausibleCoordinate(photo.coordinate),
             captureContext: captureContext(at: takenAt)
         )
     }
@@ -225,14 +225,13 @@ struct ActivityPhotoPlacementContext {
         return .active
     }
 
-    private func plausibleCoordinate(_ coordinate: CLLocationCoordinate2D?, at date: Date) -> CLLocationCoordinate2D? {
-        guard let coordinate, !samples.isEmpty else { return nil }
-        guard let nearest = samples.min(by: {
-            abs($0.timestamp.timeIntervalSince(date)) < abs($1.timestamp.timeIntervalSince(date))
+    private func plausibleCoordinate(_ coordinate: CLLocationCoordinate2D?) -> CLLocationCoordinate2D? {
+        guard let coordinate, CLLocationCoordinate2DIsValid(coordinate), !samples.isEmpty else { return nil }
+        // Capture timestamps can be absent or use a different time zone. GPS
+        // plausibility is spatial; a time mismatch must not erase valid GPS.
+        guard samples.contains(where: {
+            haversineMeters(coordinate, $0.coordinate) <= Self.plausibleRadiusM
         }) else { return nil }
-        guard haversineMeters(coordinate, nearest.coordinate) <= Self.plausibleRadiusM else {
-            return nil
-        }
         return coordinate
     }
 

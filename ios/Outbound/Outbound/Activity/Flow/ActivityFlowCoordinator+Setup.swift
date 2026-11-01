@@ -365,12 +365,12 @@ extension ActivityFlowCoordinator {
         ]))
     }
 
-    func replacePreActivityPhoto(with image: UIImage) {
+    func replacePreActivityPhoto(with image: UIImage, metadata: PhotoMetadata? = nil) {
         self.removePreActivityPhoto()
         let coordinate = self.recorder.locationManager.location?.coordinate
         let photo = (
             image,
-            PhotoMetadata(
+            metadata ?? PhotoMetadata(
                 takenAt: Date(),
                 paceAtShot: nil,
                 hrAtShot: nil,
@@ -383,7 +383,7 @@ extension ActivityFlowCoordinator {
         ActiveSessionPhotoJournal.append(photo)
         self.track(.init(.photoCaptured, properties: [
             .sourceType: .string("pre_activity"),
-            .locationAttached: .boolean(coordinate != nil)
+            .locationAttached: .boolean(photo.1.coordinate != nil)
         ]))
         self.host.onPreActivityPhotoChange?(image)
     }

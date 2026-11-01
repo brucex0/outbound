@@ -415,3 +415,5 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 ### Single recording entry
 
 - `activity_recording_entry`: `entry_source` is `app` or `group_activity`; `result` is `prepared` or `reused_existing`. Opening an existing recording/review does not emit a new `activity_started` event. No recording IDs, event IDs, or user content are included.
+
+- iOS photo import location fixes retain existing `photo_captured.location_attached` instrumentation, including pre-activity imports; the boolean reflects the imported metadata. No capture times or coordinates enter analytics.

@@ -58,6 +58,7 @@ struct ActivityPhotoReviewSection<Photo: Identifiable, Thumbnail: View>: View wh
                     PhotosPicker(
                         selection: $importedPhotoItems,
                         matching: .images,
+                        preferredItemEncoding: .current,
                         photoLibrary: .shared()
                     ) {
                         Image(systemName: "photo.on.rectangle.angled")
