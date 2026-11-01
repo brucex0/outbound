@@ -33,7 +33,24 @@ router.post("/group-runs/activity-events/:activityEventId", async (c) => {
   const prisma = getPrismaClient();
   const activityEventId = c.req.param("activityEventId");
   const event = await eligibleActivityEvent(user.id, activityEventId);
-  if (!event || !["scheduled", "active"].includes(event.status)) {
+  if (!event) {
+    console.warn("group_live_map_join", { result: "rejected", reason: "ineligible", status: 403 });
+    return c.json({ error: "Activity live map is unavailable." }, 403);
+  }
+  // The scheduled end starts result reconciliation, not the end of a runner's
+  // recording. Only already-started, unresolved participants may join then.
+  const continuingParticipant = event.status === "reconciling"
+    && Date.now() < event.endsAt.getTime() + 4 * 60 * 60 * 1000
+    ? await prisma.activityEventParticipant.findUnique({
+      where: { activityEventId_userId: { activityEventId, userId: user.id } },
+      select: { startedAt: true, outcome: true, status: true },
+    })
+    : null;
+  const canContinue = continuingParticipant?.startedAt != null
+    && continuingParticipant.outcome == null
+    && continuingParticipant.status !== "left";
+  if (!["scheduled", "active"].includes(event.status) && !canContinue) {
+    console.warn("group_live_map_join", { result: "rejected", reason: "event_state", status: 403 });
     return c.json({ error: "Activity live map is unavailable." }, 403);
   }
 
@@ -98,7 +115,10 @@ router.post("/group-runs/activity-events/:activityEventId", async (c) => {
     });
     activeSession = await requireActiveSession(session.id);
   }
-  if (!activeSession) return c.json({ error: "This Group live map has ended." }, 410);
+  if (!activeSession) {
+    console.warn("group_live_map_join", { result: "rejected", reason: "session_ended", status: 410 });
+    return c.json({ error: "This Group live map has ended." }, 410);
+  }
 
   await prisma.liveGroupParticipant.upsert({
     where: { sessionId_userId: { sessionId: activeSession.id, userId: user.id } },
@@ -121,6 +141,9 @@ router.post("/group-runs/activity-events/:activityEventId", async (c) => {
     include: { participants: true },
   });
   void publishAbly(ablyChannel("group_run", activeSession.id), "participant.changed", {}).catch(() => false);
+  console.info("group_live_map_join", {
+    result: "joined", phase: canContinue ? "reconciling" : "scheduled_or_active",
+  });
   return c.json(groupRunPayload(updated, user.id));
 });
 

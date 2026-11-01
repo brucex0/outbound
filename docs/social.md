@@ -157,6 +157,8 @@ Production schema rollout uses the Cloud Run database job documented in `docs/ba
 
 - The live map shows a separate row of at most five attendee pills below the activity panel, including attendees who have not joined location sharing. Pills reuse Social avatars and show first names, adding a last-name initial for duplicate first names across the roster. The location icon indicates active sharing; tapping focuses an available location or shows a temporary localized unavailable toast. The expanded activity panel retains the full attendee list. Both top controls and pills hide while the workout dashboard is expanded.
 
+- Event live-map joining remains available during the four-hour reconciliation window for eligible participants who already started and have no resolved outcome and have not left. The scheduled end does not stop an ongoing recording from opting into mutual sharing. New participants, resolved participants, cancelled/completed events, and expired live sessions remain excluded. `group_live_map_join` server events record aggregate join results and rejection categories without user IDs or locations.
+
 - Active recording recovery persists the activity-event launch context and existing live-map session ID in the session journal. Restart restores the event title, attendee panel, pills, and saved event attribution; it reconnects an existing active membership rather than joining a new session. Ended/left memberships are not resumed.
 
 
