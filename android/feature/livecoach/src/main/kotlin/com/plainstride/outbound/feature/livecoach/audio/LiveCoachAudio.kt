@@ -331,7 +331,7 @@ class LiveCoachPlaybackCoordinator @Inject constructor(
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
-                android.util.Log.w("PlainstrideLiveCoach", "Stream playback failed: ${error.javaClass.simpleName}")
+                android.util.Log.w("PlainstrideLiveCoach", "Stream playback failed moment=${request.moment.wireValue} type=${error.javaClass.simpleName}")
                 recordProviderFallback(startedAtNanos, mode, accessReason)
             }
         }
@@ -376,6 +376,7 @@ class LiveCoachPlaybackCoordinator @Inject constructor(
 
     private fun result(source: PlaybackSource, played: Boolean, moment: LiveCoachMoment) =
         PlaybackResult(source, played).also {
+            if (!played) android.util.Log.w("PlainstrideLiveCoach", "Cue audio unavailable moment=${moment.wireValue} source=${source.wireValue}")
             analytics.record(AnalyticsEvent("live_coach_playback", mapOf(
                 AnalyticsProperty.Source to source.wireValue,
                 AnalyticsProperty.Result to if (played) "success" else "unavailable",

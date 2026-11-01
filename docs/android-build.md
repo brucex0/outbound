@@ -89,3 +89,17 @@ version code `1` and version name `1.0`.
 ## Tests
 
 Do not run the test suite unless explicitly requested. Each Android phase still needs its documented build, lint, static, and manual verification gate.
+
+## Recording Voice Audio
+
+Countdown and tap-to-talk stats use navigation speech attributes on the media
+stream, matching AI guidance routing. Do not use hidden stream 9: Samsung device
+logs showed successful synthesis at TTS volume 0/15 while media was 14/15.
+`activity_voice_enqueue` reports cue category, enqueue result, and media route
+without speech text. Enqueue success does not establish audibility.
+
+Manual acceptance: with media audible and the separate TTS volume at zero, hear
+three-two-one-Go and requested stats on speaker and headphones. Periodic
+distance/time updates use cloud coaching audio; verify a distance/time milestone
+separately, including network timeout behavior. No device listening verification
+was completed for this routing correction.
