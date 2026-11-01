@@ -14,7 +14,9 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 @Serializable data class SyncedTrustedContacts(val contractVersion:Int=1,val contactUserIds:List<String> = emptyList(),val defaultContactUserId:String?=null,val updatedAt:String?=null)
 @Serializable data class PutTrustedContactsRequest(val contactUserIds:List<String>,val defaultContactUserId:String?=null)
 @Serializable data class PutTrustedContactsResponse(val contractVersion:Int=1,val contactUserIds:List<String>,val defaultContactUserId:String?=null,val updatedAt:String?=null)
-@Serializable data class CreateLiveShareRequest(val activityId:String?=null,val recipientUserIds:List<String> = emptyList(),val sport:String?=null,val title:String?=null,val expiresInSeconds:Int=14400)
+// Omit absent optional strings: the server accepts omission, not JSON null.
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+@Serializable data class CreateLiveShareRequest(@kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER) val activityId:String?=null,val recipientUserIds:List<String> = emptyList(),@kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER) val sport:String?=null,@kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER) val title:String?=null,val expiresInSeconds:Int=14400)
 @Serializable data class LiveShare(val id:String,val shareURL:String?=null,val status:String,val startedAt:String,val expiresAt:String,val stale:Boolean=false)
 @Serializable data class LiveLocation(val recordedAt:String,val latitude:Double,val longitude:Double,val altitudeM:Double?=null,val accuracyM:Double?=null,val elapsedSeconds:Int,val distanceM:Double,val currentPaceSecsPerKm:Double?=null,val heartRate:Int?=null)
 @Serializable data class LiveRunner(val id:String,val displayName:String,val username:String?=null,val avatarUrl:String?=null)

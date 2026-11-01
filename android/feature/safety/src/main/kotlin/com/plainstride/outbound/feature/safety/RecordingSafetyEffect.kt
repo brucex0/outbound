@@ -58,6 +58,7 @@ fun RecordingSafetyEffect(
  onGroupRunState:(SharedLiveRun?)->Unit={},
  viewModel:RecordingSafetyViewModel=hiltViewModel(),
 ){
+ val context=androidx.compose.ui.platform.LocalContext.current
  val coordinator=viewModel.coordinator;val prior=remember{mutableStateOf<RecordingStatus?>(null)};val heard=viewModel.heard
  LaunchedEffect(activityEventId) {
   coordinator.group.collect { group ->
@@ -67,7 +68,9 @@ fun RecordingSafetyEffect(
  LaunchedEffect(snapshot.status,snapshot.sessionId,activityEventId){
   val previous=prior.value;prior.value=snapshot.status
   when(snapshot.status){
-   RecordingStatus.ACTIVE->coordinator.recordingStarted(snapshot.sessionId)
+   RecordingStatus.ACTIVE->coordinator.recordingStarted(snapshot.sessionId).onFailure {
+    android.widget.Toast.makeText(context,R.string.live_cheer_invitation_failed,android.widget.Toast.LENGTH_LONG).show()
+   }
    RecordingStatus.AWAITING_SAVE->{coordinator.recordingEnded();coordinator.finishRecordingGroupRun(activityEventId)}
    RecordingStatus.IDLE->if(previous!=null&&previous!=RecordingStatus.IDLE){coordinator.recordingEnded();coordinator.finishRecordingGroupRun(activityEventId)}
    else->Unit

@@ -97,7 +97,11 @@ class LiveShareCoordinator @Inject constructor(
    armed=null;mutableArmed.value=null;preferences.edit().remove(ARMED).apply()
   }else saveArmed(CreateLiveShareRequest(recipientUserIds=recipients))
  }
- suspend fun recordingStarted(activityId:String?=null):Result<LiveShare?>{if(mutableActive.value!=null)return Result.success(mutableActive.value);val request=armed?:return Result.success(null);armed=null;mutableArmed.value=null;preferences.edit().remove(ARMED).apply();return start(request.copy(activityId=activityId)).map{it}}
+ suspend fun recordingStarted(activityId:String?=null):Result<LiveShare?>{if(mutableActive.value!=null)return Result.success(mutableActive.value);val request=armed?:return Result.success(null);return start(request.copy(activityId=activityId)).onSuccess {
+  armed=null;mutableArmed.value=null;preferences.edit().remove(ARMED).apply()
+ }.onFailure {
+  Log.w(REALTIME_TAG,"live_share_start failed type=${it.javaClass.simpleName} status=${(it as? SafetyRequestException)?.status} category=${(it as? SafetyRequestException)?.category}")
+ }.map{it}}
  suspend fun start(request:CreateLiveShareRequest):Result<LiveShare> = authenticated{apiCall{api.create(it,request)}}.onSuccess{lastShareCheckpointAt=0;lastPoint=null;lastSentAt=0;lastSentRecordedAt=null;saveActive(it)}.also{result->analytics.record(AnalyticsEvent("live_share_started",mapOf(AnalyticsProperty.Result to if(result.isSuccess)"success" else "failure")))}
  suspend fun update(point:LiveLocation):Result<LiveShare?> = lock.withLock {
   val share=mutableActive.value?:return Result.success(null)

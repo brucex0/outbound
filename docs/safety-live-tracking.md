@@ -47,6 +47,8 @@ Default behavior:
 - do not expose photos, exact home address history, or past activities
 - show the runner an obvious active-sharing indicator during the whole session
 
+Android omits absent optional strings when creating live shares because the backend rejects explicit nulls. Failed creation retains the pending selection, records the existing `live_share_started` failure outcome, logs safe status/category diagnostics, and shows a temporary toast. A later recording transition can retry; no background retry is scheduled.
+
 ### Separate Safety Escalation
 
 Outside the cheering experience:
