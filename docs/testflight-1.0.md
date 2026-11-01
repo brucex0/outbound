@@ -8,7 +8,7 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
 - Version: `1.7.10`
-- Build: `62`
+- Build: `63`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -20,12 +20,11 @@ Open this for the current TestFlight upload and public App Store release. Produc
 
 ## Submission Status
 
-- Version 1.7.10 (62) passed unsigned Release compilation, signed archive/export, packaged-bundle preflight, upload, and Apple processing. Assigned to internal TestFlight group `Plainstride Team` with English beta release notes.
-- Public submission is blocked: `POST /v1/appStoreVersions` returned HTTP 403 because the configured Developer API key cannot manage public versions. Browser sign-in also stalled before authenticated access. This build is **not submitted for public release**.
-- Finish in the signed-in App Store Connect UI: create 1.7.10, select build 62, copy **App Store What's New** below, choose automatic release after approval, save, add for review, submit, and verify **Waiting for Review**. Retain existing store metadata and screenshots.
+- Version 1.7.10 (63) passed unsigned Release compilation, signed archive/export, packaged-bundle preflight, upload, and Apple processing on October 31, 2026. Assigned to internal TestFlight group `Plainstride Team` with English beta release notes.
+- Marketing version remains `1.7.10`; only the build number increased. This release was uploaded to TestFlight without public App Store submission.
 - No tests or physical-device acceptance run were performed for this release.
-- Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.10-62/`; upload ID `8ab0e665-fd5b-473b-b066-a5d066d2c2b0`. Do not rebuild or re-upload to finish submission.
-- Prior release: 1.7.9 (61) was submitted October 22, 2026, with all eight iPhone and four Watch screenshots reporting `COMPLETE`.
+- Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.10-63/`; upload ID `060f38fd-7c8f-4e32-938f-913253746722`. Do not rebuild or re-upload to finish any remaining distribution setup.
+- Prior build 1.7.10 (62) completed TestFlight processing; its public submission was blocked by Developer-key permissions and browser sign-in. Prior public submission: 1.7.9 (61), October 22, 2026.
 
 ## App Store Positioning Experiment
 
@@ -74,12 +73,12 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- [iOS] Clarify saved activity summary and stabilize Share styling
-- [iOS] Restore account stretch routines and launch defaults across phones
-- [BE] Add revisioned account configuration storage and sync contract
-- [iOS] Add run routines and complete orange vector artwork
-- [BE] Add finite run warm-up and cooldown audio cues
-- Plus 6 more fixes and improvements
+- [iOS] Extract workout feedback into reusable sheet
+- [iOS] Match elevation section typography to splits
+- [iOS] Shorten duration-only assistant replies
+- [iOS] Ground assistant extraction in supplied workout facts
+- [iOS] Separate assistant routing and validate extracted workout fields
+- Plus 13 more fixes and improvements
 
 ### App Store What's New
 
@@ -201,6 +200,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.7.10 (62)`, validate, and upload from Xcode Organizer.
+- Archive `1.7.10 (63)`, validate, and upload from Xcode Organizer.
 - After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.
