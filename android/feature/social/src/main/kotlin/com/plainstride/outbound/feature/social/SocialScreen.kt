@@ -40,8 +40,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -1799,18 +1798,28 @@ private fun CommentsDialog(
     val density = androidx.compose.ui.platform.LocalDensity.current
     val windowHeight = with(density) { LocalWindowInfo.current.containerSize.height.toDp() }
     val bottomInset = with(density) { maxOf(WindowInsets.ime.getBottom(this), WindowInsets.navigationBars.getBottom(this)).toDp() }
-    var contentTop by remember { mutableStateOf(0.dp) }
-    ModalBottomSheet(onDismissRequest = close, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)) {
-        // Keep the sheet's anchors stable while fitting the composer into its visible portion.
-        BoxWithConstraints(Modifier.fillMaxWidth().fillMaxHeight(.92f).onGloballyPositioned {
-            contentTop = with(density) { it.positionInWindow().y.toDp() }
-        }) {
-            val visibleHeight = (windowHeight - contentTop - bottomInset).coerceIn(0.dp, maxHeight)
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    ModalBottomSheet(
+        onDismissRequest = close,
+        sheetState = sheetState,
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
+    ) {
+        // The outer height owns the anchors. Only measure the inner viewport as the sheet moves;
+        // publishing window coordinates to composition causes an inset/anchor feedback loop.
+        Box(Modifier.fillMaxWidth().fillMaxHeight(.92f)) {
             Scaffold(
-                modifier = Modifier.fillMaxWidth().height(visibleHeight),
+                modifier = Modifier.fillMaxWidth().layout { measurable, constraints ->
+                    // Offset is unavailable during the very first measure, before anchors exist.
+                    val offset = try { sheetState.requireOffset() } catch (_: IllegalStateException) { 0f }
+                    val available = (windowHeight - bottomInset - 48.dp).roundToPx() - offset.toInt()
+                    val height = available.coerceIn(0, constraints.maxHeight)
+                    val placeable = measurable.measure(constraints.copy(minHeight = height, maxHeight = height))
+                    layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
+                },
                 contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 topBar = { TopAppBar(
                     title = { Text(stringResource(R.string.social_comments_count, comments.size)) },
+                    windowInsets = WindowInsets(0, 0, 0, 0),
                     actions = { IconButton(close) { Icon(Icons.Outlined.Close, stringResource(R.string.social_close_comments)) } },
                 ) },
                 snackbarHost = { SnackbarHost(snackbar) },
