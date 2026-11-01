@@ -33,6 +33,7 @@
 
 ## Analytics And Accessibility
 
+- Login keeps the email-use explanation off the welcome screen, gives the “Better together” badge 24 dp of space before the companion copy, and embeds underlined legal links in the localized acceptance sentence.
 - Authentication legal links emit `legal_document_opened` with the authentication entry source and never send the URL.
 - Assistant opening emits `assistant_launcher_opened` with `destination` and `entry_source`.
 - Opening the notification inbox emits `notification_inbox_opened`; unread state clears locally when the inbox becomes visible and is synchronized through the read-all endpoint.

@@ -80,6 +80,11 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -1739,7 +1744,7 @@ private fun SignInScreen(
         Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp, vertical = 18.dp)) {
             Text(stringResource(R.string.auth_wordmark), style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.weight(0.35f))
-            WelcomeOrbit(Modifier.fillMaxWidth())
+            WelcomeOrbit(Modifier.fillMaxWidth().padding(bottom = 24.dp))
             Text(stringResource(R.string.auth_companion_eyebrow), Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
             Text(stringResource(R.string.auth_companion_headline), Modifier.fillMaxWidth().padding(top = 10.dp), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
             Spacer(Modifier.weight(0.65f))
@@ -1749,7 +1754,6 @@ private fun SignInScreen(
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(14.dp),
             ) { Text(stringResource(if (state.operation == null) R.string.continue_with_google else R.string.signing_in)) }
-            Text(stringResource(R.string.auth_google_explanation), Modifier.fillMaxWidth().padding(top = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
             TextButton(onClick = { showsTransfer = !showsTransfer }, enabled = state.operation == null) {
                 Text(stringResource(R.string.transfer_existing_account))
             }
@@ -1779,11 +1783,34 @@ private fun SignInScreen(
                     Text(stringResource(if (state.operation == AuthOperation.Redeem) R.string.transfer_connecting else R.string.transfer_connect))
                 }
             }
-            Text(stringResource(R.string.auth_terms_notice), style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), textAlign = TextAlign.Center)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                TextButton(onClick = { viewModel.trackLegal("terms"); uriHandler.openUri("https://plainstride.ai/terms") }) { Text(stringResource(R.string.auth_terms_link)) }
-                TextButton(onClick = { viewModel.trackLegal("privacy"); uriHandler.openUri("https://plainstride.ai/privacy") }) { Text(stringResource(R.string.auth_privacy_link)) }
-            }
+            val termsLabel = stringResource(R.string.auth_terms_link)
+            val privacyLabel = stringResource(R.string.auth_privacy_link)
+            val legalNotice = stringResource(R.string.auth_terms_notice, termsLabel, privacyLabel)
+            val linkStyles = TextLinkStyles(SpanStyle(
+                color = MaterialTheme.colorScheme.primary,
+                textDecoration = TextDecoration.Underline,
+            ))
+            Text(
+                text = buildAnnotatedString {
+                    append(legalNotice)
+                    listOf(
+                        Triple(termsLabel, "terms", "https://plainstride.ai/terms"),
+                        Triple(privacyLabel, "privacy", "https://plainstride.ai/privacy"),
+                    ).forEach { (label, document, url) ->
+                        val start = legalNotice.indexOf(label)
+                        if (start >= 0) {
+                            addLink(LinkAnnotation.Url(url, linkStyles) {
+                                viewModel.trackLegal(document)
+                                uriHandler.openUri(url)
+                            }, start, start + label.length)
+                        }
+                    }
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }
