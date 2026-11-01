@@ -73,6 +73,7 @@ import com.plainstride.outbound.core.model.activity.SavedActivity
 import com.plainstride.outbound.feature.activity.ActivityRoutePublishDialog
 import com.plainstride.outbound.feature.activity.ActivityExport
 import com.plainstride.outbound.feature.activity.ActivityViewModel
+import com.plainstride.outbound.feature.activity.decodeActivityPhoto
 import com.plainstride.outbound.feature.activity.R as ActivityR
 
 @Composable
@@ -1508,7 +1509,7 @@ private fun SocialActivityDetail(
                     HorizontalPager(state = pagerState, modifier = Modifier.weight(1f)) { page ->
                         val photo = photos[page]
                         val bytes = photoBytes["content:${photo.id}"] ?: photoBytes[photo.id]
-                        val bitmap = remember(bytes) { bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) } }
+                        val bitmap = remember(bytes) { bytes?.let(::decodeActivityPhoto) }
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             if (bitmap != null) Image(bitmap.asImageBitmap(), stringResource(R.string.social_activity_photo), Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                             else CircularProgressIndicator(color = androidx.compose.ui.graphics.Color.White)
@@ -1607,7 +1608,7 @@ private fun SocialCheerAvatarsButton(post: SocialPost, onClick: () -> Unit) {
 
 @Composable
 private fun SocialActivityPhotoTile(photo: ActivityPhoto, index: Int, count: Int, bytes: ByteArray?, selected: Boolean, unitSystem: MeasurementUnitSystem, onClick: () -> Unit) {
-    val bitmap = remember(bytes) { bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) } }
+    val bitmap = remember(bytes) { bytes?.let(::decodeActivityPhoto) }
     Box(
         Modifier.size(width = 116.dp, height = 104.dp).clip(RoundedCornerShape(12.dp))
             .border(if (selected) 3.dp else 0.dp, if (selected) MaterialTheme.colorScheme.tertiary else androidx.compose.ui.graphics.Color.Transparent, RoundedCornerShape(12.dp))

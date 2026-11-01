@@ -8,7 +8,7 @@ import android.util.Log
 import java.io.ByteArrayInputStream
 
 /** BitmapFactory returns raw pixels; Compose does not apply the JPEG EXIF orientation. */
-internal fun decodeActivityPhoto(bytes: ByteArray): Bitmap? {
+fun decodeActivityPhoto(bytes: ByteArray): Bitmap? {
     val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: run {
         Log.w("ActivityPhoto", "decode: unsupported or invalid image bytes")
         return null

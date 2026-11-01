@@ -201,7 +201,7 @@ Safe-area strategy:
 
 ## Photo Orientation Regression Guard
 
-- Android activity-detail strip and lightbox share `ActivityPhotoDecoder.kt`, which applies all eight EXIF orientations (including mirroring) to full-resolution in-memory pixels before Compose renders or remembers them. Original JPEG bytes and metadata remain unchanged; reopening decodes the same stored bytes with the same transform. This rendering correction leaves the analytics contract unchanged and adds no image metadata to events.
+- Android activity-detail and Social photo strips and lightboxes share `ActivityPhotoDecoder.kt`, which applies all eight EXIF orientations (including mirroring) to full-resolution in-memory pixels before Compose renders or remembers them. Original JPEG bytes and metadata remain unchanged; reopening decodes the same stored bytes with the same transform. This rendering correction leaves the analytics contract unchanged and adds no image metadata to events.
 
 - Full-size ImageIO decodes must transfer EXIF orientation to `UIImage`; thumbnail decodes already apply `kCGImageSourceCreateThumbnailWithTransform`. Never wrap untransformed camera pixels with the default `.up` orientation.
 - Introduced by `015087c5` (2026-09-18): the shared cache replaced UIKit decoding with ImageIO, preserving orientation only for thumbnails. Upright-only fixtures and compile checks missed the visual mismatch.
