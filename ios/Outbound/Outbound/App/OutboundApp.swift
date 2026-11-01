@@ -2223,22 +2223,22 @@ final class AssistantStore: ObservableObject {
             prompt: String(localized: "I’m new here. What should I try first in Plainstride?")
         ),
         AssistantSuggestion(
-            id: "support-setup",
+            id: "support",
             capability: .support,
-            title: String(localized: "Help me set up"),
-            prompt: String(localized: "Help me understand the main setup steps and where to fix things if something feels off.")
+            title: String(localized: "assistant.assistant.suggestion.support", defaultValue: "Help me set up"),
+            prompt: String(localized: "assistant.assistant.prompt.support", defaultValue: "Help me understand the main setup steps and where to fix things if something feels off.")
         ),
         AssistantSuggestion(
-            id: "brainstorm-features",
+            id: "brainstorm",
             capability: .brainstorm,
-            title: String(localized: "Brainstorm ideas"),
-            prompt: String(localized: "Help me brainstorm a few fresh ways to make my workouts more enjoyable and stay motivated. Tailor the ideas to my goals and recent activity, and ask what’s getting in my way if you need more context.")
+            title: String(localized: "assistant.assistant.suggestion.brainstorm", defaultValue: "Brainstorm ideas"),
+            prompt: String(localized: "assistant.assistant.prompt.brainstorm", defaultValue: "Help me brainstorm a few fresh ways to make my workouts more enjoyable and stay motivated. Tailor the ideas to my goals and recent activity, and ask what’s getting in my way if you need more context.")
         ),
         AssistantSuggestion(
-            id: "plan-week",
+            id: "plan",
             capability: .plan,
-            title: String(localized: "Plan my week"),
-            prompt: String(localized: "Use what you know about my activity and help me make a simple plan for this week.")
+            title: String(localized: "assistant.assistant.suggestion.plan", defaultValue: "Plan my week"),
+            prompt: String(localized: "assistant.assistant.prompt.plan", defaultValue: "Use what you know about my activity and help me make a simple plan for this week.")
         )
     ]
 

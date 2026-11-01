@@ -92,6 +92,21 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 - The Reset button clears the stored conversation and restores the seeded intro message.
 - Text sends and suggestions retain the existing `assistant_meaningful_engagement` analytics contract; hiding the unsupported microphone adds no new input events.
 
+## Shared Shortcut Contract
+
+- Both platforms use these IDs, ordering, and conditions:
+
+| Context | Shortcut IDs, in order | Labels |
+| --- | --- | --- |
+| Today with an available workout | `today-easier`, `today-why`, `today-history` | Make this workout easier; Why this workout?; Open activity history |
+| All other contexts, including Today without a workout | `log-workout`, `plan`, `support`, `brainstorm` | Log a workout; Plan my week; Help me set up; Brainstorm ideas |
+
+- Android reads workout availability from the same shell-scoped Today state as the visible Today screen. Loading or failed states without a usable suggestion show general shortcuts; a usable cached suggestion still counts as available.
+- Shortcut labels and prompts use the `assistant.assistant.*` entries in `Localizable.xcstrings`, also used to generate Android resources. Preserve identical translations and prompt meaning across platforms.
+- History taps open the existing typed activity-history destination directly, without language interpretation or a model call. Log a workout retains each platform’s existing manual-entry flow.
+- Every shortcut tap retains `assistant_meaningful_engagement` with bounded destination and `entry_source: suggestion`; no shortcut text, workout details, or runner data enters analytics.
+- Manual verification: compare ordered shortcuts on Today with a workout, Today without one, Me, Social, and recording; repeat with cached/offline suggestions and all three languages. History must open activity history, and general shortcuts must still perform their existing actions.
+
 ## Shared Product Knowledge
 
 - `shared/assistant/product-knowledge.txt` supplies bounded feature facts and action limits to backend replies/interpretation and both client reply paths. It is model context, not display copy.

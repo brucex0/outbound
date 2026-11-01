@@ -1,6 +1,305 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "assistant.assistant.prompt.today.history": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开我的运动记录"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre mi historial de actividades"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open my activity history"
+          }
+        }
+      },
+      "comment": "[android:assistant] Shared iOS/Android assistant shortcut prompt."
+    },
+    "assistant.assistant.today.history": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "查看运动记录"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir historial de actividades"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open activity history"
+          }
+        }
+      },
+      "comment": "[android:assistant] Shared iOS/Android assistant shortcut label."
+    },
+    "assistant.assistant.prompt.today.why": {
+      "comment": "[android:assistant] Shared iOS/Android assistant shortcut prompt.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为什么今天适合做这次训练？"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Por qué este entrenamiento es adecuado para mí hoy?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Why is this the right workout for me today?"
+          }
+        }
+      }
+    },
+    "assistant.assistant.today.why": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Por qué este entrenamiento?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "为什么安排这项训练？"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Why this workout?"
+          }
+        }
+      },
+      "comment": "[android:assistant] Shared iOS/Android assistant shortcut label."
+    },
+    "assistant.assistant.prompt.today.easier": {
+      "comment": "[android:assistant] Shared iOS/Android assistant shortcut prompt.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "降低今天训练的难度"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz el entrenamiento de hoy más fácil"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Make today’s workout easier"
+          }
+        }
+      }
+    },
+    "assistant.assistant.today.easier": {
+      "comment": "[android:assistant] Shared iOS/Android assistant shortcut label.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "降低这次训练的难度"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haz este entrenamiento más fácil"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Make this workout easier"
+          }
+        }
+      }
+    },
+    "assistant.assistant.suggestion.brainstorm": {
+      "comment": "[android:assistant] Shared iOS/Android assistant shortcut label.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一起想点子"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explorar ideas"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brainstorm ideas"
+          }
+        }
+      }
+    },
+    "assistant.assistant.prompt.support": {
+      "comment": "[android:assistant] Shared iOS/Android assistant shortcut prompt.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "帮我了解主要设置步骤，以及遇到问题时该去哪里调整。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explícame los pasos principales de configuración y dónde corregir algo si no funciona bien."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Help me understand the main setup steps and where to fix things if something feels off."
+          }
+        }
+      }
+    },
+    "assistant.assistant.suggestion.support": {
+      "comment": "[android:assistant] Shared iOS/Android assistant shortcut label.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "帮我完成设置"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayúdame a configurarlo"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Help me set up"
+          }
+        }
+      }
+    },
+    "assistant.assistant.prompt.plan": {
+      "comment": "[android:assistant] Shared iOS/Android assistant shortcut prompt.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "根据你对我运动情况的了解，帮我简单安排本周的活动。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa lo que sabes de mi actividad para ayudarme a organizar un plan sencillo para esta semana."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use what you know about my activity and help me make a simple plan for this week."
+          }
+        }
+      }
+    },
+    "assistant.assistant.suggestion.plan": {
+      "comment": "[android:assistant] Shared iOS/Android assistant shortcut label.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安排我的一周"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Organiza mi semana"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plan my week"
+          }
+        }
+      }
+    },
+    "assistant.assistant.prompt.log.workout": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registrar un entrenamiento que ya completé"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记录一次已完成的锻炼"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log a workout I already completed"
+          }
+        }
+      },
+      "comment": "[android:assistant] Shared iOS/Android assistant shortcut prompt."
+    },
+    "assistant.assistant.suggestion.log.workout": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registrar un entrenamiento"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记录锻炼"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log a workout"
+          }
+        }
+      },
+      "comment": "[android:assistant] Shared iOS/Android assistant shortcut label."
+    },
     "assistant.assistant.fallback.brainstorm": {
       "comment": "[android:assistant] Personal workout brainstorming offline reply.",
       "localizations": {
@@ -25,7 +324,7 @@
       }
     },
     "assistant.assistant.prompt.brainstorm": {
-      "comment": "[android:assistant] Personal workout brainstorming prompt.",
+      "comment": "[android:assistant] Shared iOS/Android assistant shortcut prompt.",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {

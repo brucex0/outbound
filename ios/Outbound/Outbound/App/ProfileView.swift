@@ -530,6 +530,10 @@ struct AssistantView: View {
                 Button {
                     guard pendingSendTask == nil else { return }
                     trackMeaningfulEngagement(entrySource: "suggestion")
+                    if suggestion.id == "today-history" {
+                        routeThroughApp(.activityHistory)
+                        return
+                    }
                     pendingSendTask = Task {
                         defer { pendingSendTask = nil }
                         assistantStore.draft = suggestion.prompt
@@ -714,18 +718,23 @@ struct AssistantView: View {
         if focusedActivity != nil {
             return [
                 AssistantSuggestion(
-                    id: "today-adjust",
+                    id: "today-easier",
                     capability: .plan,
-                    title: String(localized: "Make this workout easier"),
-                    prompt: String(localized: "Make today’s workout easier")
+                    title: String(localized: "assistant.assistant.today.easier", defaultValue: "Make this workout easier"),
+                    prompt: String(localized: "assistant.assistant.prompt.today.easier", defaultValue: "Make today’s workout easier")
                 ),
                 AssistantSuggestion(
-                    id: "today-explain",
+                    id: "today-why",
                     capability: .discover,
-                    title: String(localized: "Why this workout?"),
-                    prompt: String(localized: "Why is this the right workout for me today?")
+                    title: String(localized: "assistant.assistant.today.why", defaultValue: "Why this workout?"),
+                    prompt: String(localized: "assistant.assistant.prompt.today.why", defaultValue: "Why is this the right workout for me today?")
                 ),
-                assistantStore.suggestions.first { $0.capability == .navigate }
+                AssistantSuggestion(
+                    id: "today-history",
+                    capability: .navigate,
+                    title: String(localized: "assistant.assistant.today.history", defaultValue: "Open activity history"),
+                    prompt: String(localized: "assistant.assistant.prompt.today.history", defaultValue: "Open my activity history")
+                )
             ]
             .compactMap { $0 }
         }
@@ -733,11 +742,10 @@ struct AssistantView: View {
             AssistantSuggestion(
                 id: "log-workout",
                 capability: .plan,
-                title: String(localized: "Log a workout"),
-                prompt: String(localized: "Log a workout I already completed")
+                title: String(localized: "assistant.assistant.suggestion.log.workout", defaultValue: "Log a workout"),
+                prompt: String(localized: "assistant.assistant.prompt.log.workout", defaultValue: "Log a workout I already completed")
             ),
             assistantStore.suggestions.first { $0.capability == .plan },
-            assistantStore.suggestions.first { $0.capability == .navigate },
             assistantStore.suggestions.first { $0.capability == .support },
             assistantStore.suggestions.first { $0.capability == .brainstorm }
         ]
