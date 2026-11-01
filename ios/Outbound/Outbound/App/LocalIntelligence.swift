@@ -178,39 +178,15 @@ enum LocalIntelligence {
     private static let logger = Logger(subsystem: "com.plainstride", category: "LocalIntelligence")
 
     private static let routingInstructions = """
-    The JSON prompt field is the latest user message. The context and messages fields are reference only.
-    Route ONLY that latest message. Never treat reference context or history as a new command.
-    Choose manualWorkout for a request to log an already completed workout, or a follow-up supplying a field of
-    the supplied pending manual draft (for example Swim or one hour). Missing workout fields do not make routing ambiguous.
-    Choose prepareActivity only for an explicit request to prepare a NEW workout.
-    Choose navigate for an explicit request to open one allowed destination.
-    Choose cancelManualWorkout only when the person asks to cancel the pending workout draft.
-    All questions, negated/hypothetical/quoted commands, requests to change today's existing workout, and plan
-    reviews are conversation. For conversation, choose the appropriate capability and task; the server owns plan changes.
-    Examples: Make today's workout easier -> conversation(plan, adapt_today).
-    Log a workout I already completed -> manualWorkout. With a pending draft, Swim -> manualWorkout.
-    With a pending draft, Swim one hour -> manualWorkout. Start a one hour swim -> prepareActivity.
-    Only use clarification for truly ambiguous intent, not for missing workout details. Use the app language.
-    Never execute an action or claim that an action succeeded.
-    """
-
-    private static let workoutInstructions = """
-    The JSON prompt field is the latest user message. The context and messages fields are reference only.
-    Extract workout fields ONLY from prompt. The operation is already chosen; do not classify again.
-    Use notMentioned for EVERY field not explicitly supplied or unambiguously corrected in that message.
-    Never copy values from history, the current instant, or the pending draft into missing fields.
-    Examples: Swim -> sport swim; every other field notMentioned.
-    One hour -> duration components(hours:1, minutes:0, seconds:0); every other field notMentioned.
-    Swim one hour -> sport swim and duration components(1,0,0); every other field notMentioned.
-    One hour thirty minutes -> duration components(1,30,0). One minute thirty seconds -> components(0,1,30).
-    Only when a duration is mentioned, unused components are zero. Otherwise the whole duration is notMentioned.
-    Zero minutes is an explicit quantity, not notMentioned. Keep explicitly supplied values for app validation.
-    Preserve distance and pace units; do not convert units or compute duration from pace.
-    A pace without a per-unit uses the stated distance unit or the measurement preference.
-    Resolve an explicitly supplied relative date against the local calendar dates in context; otherwise date notMentioned.
-    Use clock time only if explicitly supplied. Indoor/outdoor must also be explicit.
-    Clarification is notNeeded for clear input, including input missing required fields: the app asks for missing fields.
-    Only ask a brief clarification for genuinely ambiguous details; write it in the app language.
+    Classify the user's message into one category. Do not answer or extract workout fields.
+    beginManualWorkout: asking to log a completed workout without supplying any workout facts.
+    manualWorkout: supplying facts about a completed workout, or answering the pending completed-workout form.
+    prepareActivity: an explicit request to start/begin/prepare a new activity.
+    navigate: an explicit request to open an app page.
+    cancelManualWorkout: an explicit request to cancel the pending completed-workout form.
+    conversation: questions, negated/hypothetical/quoted commands, and changes to existing workouts or plans.
+    A pending completed-workout form makes short sport/duration replies manualWorkout.
+    A start request is prepareActivity, never manualWorkout. A negated command is conversation.
     """
 
     static func interpret(_ request: LocalAssistantInterpretRequest, manualDraft: ManualWorkoutDraft? = nil) async -> LocalAssistantInterpretResult {
@@ -221,15 +197,82 @@ enum LocalIntelligence {
             let model = SystemLanguageModel.default
             if case .available = model.availability, model.supportsLocale(AppLanguage.speechLocale) {
                 do {
-                    let data = try JSONEncoder().encode(request)
-                    let prompt = String(decoding: data, as: UTF8.self)
-                    let route = try await generate(prompt: prompt, instructions: routingInstructions,
-                        generating: GeneratedAssistantRoute.self, maximumTokens: 200)
+                    let route = try await generate(prompt: """
+                        Pending completed-workout form: \(manualDraft == nil ? "no" : "yes").
+                        USER MESSAGE: \(request.prompt)
+                        """, instructions: routingInstructions,
+                        generating: GeneratedAssistantRoute.self, maximumTokens: 80)
                     var value = route.value
-                    if value.kind == "manualWorkout" || value.kind == "prepareActivity" {
-                        let fields = try await generate(prompt: prompt, instructions: workoutInstructions,
-                            generating: GeneratedWorkoutFields.self, maximumTokens: 450)
-                        fields.apply(to: &value)
+                    if (value.kind == "manualWorkout" && route.kind != .beginManualWorkout) || value.kind == "prepareActivity" {
+                        let sport = try await generate(prompt: "Which specific sport, if any, is named in this message?\nMessage: \(request.prompt)",
+                            instructions: "Identify the explicitly named sport only, including sport-specific verbs in the input language. Do not infer a sport from workout/activity or a duration.",
+                            generating: GeneratedWorkoutSport.self, maximumTokens: 150)
+                        if sport.sport != .none { value.sport = sport.sport.rawValue }
+                        let durationPhrase = try await sourcePhrase(in: request.prompt, describing: "an amount of time")
+                        if grounded(durationPhrase, in: request.prompt) {
+                            let duration = try await generate(prompt: durationPhrase,
+                                instructions: "Extract the stated duration as hour, minute and second components. Do not convert units. Unused components are zero.",
+                                generating: GeneratedWorkoutDuration.self, maximumTokens: 100)
+                            let isWholeMessage = durationPhrase.caseInsensitiveCompare(request.prompt.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame
+                            var acceptDuration = !isWholeMessage
+                            if !acceptDuration { acceptDuration = try await confirmsFact(in: durationPhrase, question: "express an amount of time") }
+                            if acceptDuration {
+                                value.durationHours = duration.hours; value.durationMinutes = duration.minutes; value.durationSeconds = duration.seconds
+                            }
+                        }
+                        var presence = GeneratedWorkoutPresence()
+                        let checks: [(WritableKeyPath<GeneratedWorkoutPresence, Bool>, String, String)] = [
+                            (\.distance, "a distance quantity", "express a distance quantity"),
+                            (\.pace, "a pace", "express a pace as time per distance"),
+                            (\.date, "a calendar day", "specify a calendar day"),
+                            (\.time, "a clock time of day", "specify a clock time of day rather than an elapsed duration"),
+                            (\.setting, "an indoor or outdoor setting", "mean indoors or outdoors")
+                        ]
+                        for (field, description, question) in checks {
+                            let phrase = try await sourcePhrase(in: request.prompt, describing: description)
+                            // A whole sport request is not a citation for an independent optional fact.
+                            if sport.sport != .none,
+                               phrase.caseInsensitiveCompare(request.prompt.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame {
+                                continue
+                            }
+                            if grounded(phrase, in: request.prompt) {
+                                presence[keyPath: field] = try await confirmsFact(in: phrase, question: question)
+                            }
+                        }
+                        if presence.hasAdditionalFields {
+                            let details = try await generate(prompt: "Reference context: \(request.context)\nUSER MESSAGE: \(request.prompt)", instructions: """
+                                Extract only additional workout facts explicitly supplied in USER MESSAGE.
+                                For every category, copy its exact source phrase from that message; use an empty phrase when absent.
+                                Never copy reference context into source phrases. Never infer defaults.
+                                Keep distance and pace units. Resolve explicitly stated relative dates against reference calendar dates.
+                                Unused numeric values may be zero; they are ignored when the corresponding source phrase is empty.
+                                Clarification is notNeeded for clear input or missing fields. Ask only about genuinely ambiguous input.
+                                """, generating: GeneratedWorkoutDetails.self, maximumTokens: 650)
+                            details.apply(to: &value, latestMessage: request.prompt, presence: presence)
+                            // A duration cited from within the pace phrase is not an independent elapsed goal.
+                            if presence.pace, grounded(details.pacePhrase, in: request.prompt),
+                               grounded(durationPhrase, in: details.pacePhrase) {
+                                value.durationHours = nil; value.durationMinutes = nil; value.durationSeconds = nil
+                            }
+                        }
+                    } else if value.kind == "navigate" {
+                        let target = try await generate(prompt: """
+                            Allowed app destinations:
+                            \(AssistantDestinationRegistry.productContext)
+                            User message: \(request.prompt)
+                            """, instructions: "Choose only the app destination explicitly requested. Use unknown if ambiguous.",
+                            generating: GeneratedNavigationTarget.self, maximumTokens: 80)
+                        value.destination = target.destination == .unknown ? nil : target.destination.rawValue
+                    } else if value.kind == "conversation" {
+                        let routing = try await generate(prompt: request.prompt, instructions: """
+                            Choose a capability and task for this Plainstride conversation.
+                            Changes or questions about today's existing workout: plan, adapt_today.
+                            Weekly plans and plan reviews: plan, prepare_week.
+                            App features/settings/support: discover or support, product_help.
+                            General training questions: brainstorm, answer_training_question.
+                            """, generating: GeneratedConversationRoute.self, maximumTokens: 100)
+                        value.capability = routing.capability.rawValue
+                        value.task = routing.task.rawValue
                     }
                     try Task.checkCancellation()
                     if let failure = value.validationFailure(manualDraft: manualDraft) {
@@ -309,19 +352,52 @@ enum LocalIntelligence {
     }
 
     #if canImport(FoundationModels)
-    private enum GenerationFailure: Error { case deadlineExceeded }
+    private enum GenerationFailure: Error { case deadlineExceeded, invalidConfirmation }
 
     @available(iOS 26.0, *)
     private static func generate<Value: Generable & Sendable>(prompt: String, instructions: String,
                                                              generating: Value.Type, maximumTokens: Int) async throws -> Value {
         let session = LanguageModelSession(model: .default, instructions: instructions
             + "\nThe person's locale is \(AppLanguage.speechLocale.identifier). You MUST respond in \(AppLanguage.currentIdentifier).")
+        return try await withGenerationDeadline {
+            let response = try await session.respond(to: prompt, generating: generating,
+                options: GenerationOptions(sampling: .greedy, maximumResponseTokens: maximumTokens))
+            return response.content
+        }
+    }
+
+    @available(iOS 26.0, *)
+    private static func sourcePhrase(in message: String, describing fact: String) async throws -> String {
+        // Text-span extraction avoids forcing absent facts into a numeric schema.
+        let session = LanguageModelSession(instructions: "Extract text spans only. Copy original words exactly. Output NONE if no matching span exists.")
+        return try await withGenerationDeadline {
+            let response = try await session.respond(to: "Copy the words expressing \(fact) from this text.\nText: \(message)",
+                options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 150))
+            return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+    }
+
+    @available(iOS 26.0, *)
+    private static func confirmsFact(in phrase: String, question: String) async throws -> Bool {
+        let session = LanguageModelSession(instructions: "Answer the question with YES or NO only.")
+        let reply = try await withGenerationDeadline {
+            try await session.respond(to: "Does the phrase '\(phrase)' \(question)?",
+                options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 20))
+        }
+        switch reply.content.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters)).uppercased() {
+        case "YES": return true
+        case "NO": return false
+        default: throw GenerationFailure.invalidConfirmation
+        }
+    }
+
+    @available(iOS 26.0, *)
+    private static func withGenerationDeadline<Value: Sendable>(_ operation: @escaping @MainActor () async throws -> Value) async throws -> Value {
         let generation = Task { @MainActor in
             do {
-                let response = try await session.respond(to: prompt, generating: generating,
-                    options: GenerationOptions(sampling: .greedy, maximumResponseTokens: maximumTokens))
+                let value = try await operation()
                 try Task.checkCancellation()
-                return response.content
+                return value
             } catch {
                 if Task.isCancelled { throw CancellationError() }
                 throw error
@@ -353,113 +429,107 @@ enum LocalIntelligence {
 @available(iOS 26.0, *)
 @Generable
 private struct GeneratedAssistantRoute: Sendable {
-    var intent: Intent
-
-    @Generable enum Intent: Sendable {
-        case manualWorkout
-        case prepareActivity
-        case navigate(destination: Destination)
-        case conversation(capability: Capability, task: TaskKind)
-        case cancelManualWorkout
-        case clarify(question: String)
-    }
-    @Generable enum Capability: String, Sendable { case discover, navigate, support, brainstorm, plan }
-    @Generable enum TaskKind: String, Sendable {
-        case answer_training_question, adapt_today, prepare_week, post_run_reflection, live_guidance, inspect_memory, product_help
-    }
-    @Generable enum Destination: String, Sendable {
-        case social, today, me, settings, appearance, settingsAppleMusic, settingsAppleHealth, guideSettings, activityHistory
-    }
-
+    @Guide(description: "The category of the user's current message, considering whether a completed-workout form is pending.")
+    var kind: Kind
+    @Generable enum Kind: String, Sendable { case beginManualWorkout, manualWorkout, prepareActivity, navigate, cancelManualWorkout, conversation }
     var value: LocalAssistantInterpretation {
-        var value = LocalAssistantInterpretation(kind: "conversation", capability: "discover", task: "product_help")
-        switch intent {
-        case .manualWorkout: value.kind = "manualWorkout"; value.capability = "plan"
-        case .prepareActivity: value.kind = "prepareActivity"; value.capability = "plan"
-        case .navigate(let destination):
-            value.kind = "navigate"; value.capability = "navigate"; value.destination = destination.rawValue
-        case .conversation(let capability, let task):
-            value.capability = capability.rawValue; value.task = task.rawValue
-        case .cancelManualWorkout: value.kind = "cancelManualWorkout"; value.capability = "plan"
-        case .clarify(let question): value.clarification = question
-        }
-        return value
+        let operation = kind == .beginManualWorkout ? "manualWorkout" : kind.rawValue
+        let capability = kind == .navigate ? "navigate" : (kind == .conversation ? "discover" : "plan")
+        return .init(kind: operation, capability: capability, task: "product_help")
     }
 }
 
 @available(iOS 26.0, *)
 @Generable
-private struct GeneratedWorkoutFields: Sendable {
-    @Guide(description: "Only a sport explicitly supplied in the latest message; otherwise notMentioned.")
+private struct GeneratedConversationRoute: Sendable {
+    var capability: Capability
+    var task: TaskKind
+    @Generable enum Capability: String, Sendable { case discover, navigate, support, brainstorm, plan }
+    @Generable enum TaskKind: String, Sendable {
+        case answer_training_question, adapt_today, prepare_week, post_run_reflection, live_guidance, inspect_memory, product_help
+    }
+}
+
+@available(iOS 26.0, *)
+@Generable
+private struct GeneratedNavigationTarget: Sendable {
+    var destination: Destination
+    @Generable enum Destination: String, Sendable {
+        case unknown, social, today, me, settings, appearance, settingsAppleMusic, settingsAppleHealth, guideSettings, activityHistory
+    }
+}
+
+/// Checks a model-provided citation against the input; it does not interpret user language.
+private func grounded(_ phrase: String, in message: String) -> Bool {
+    let quote = phrase.trimmingCharacters(in: .whitespacesAndNewlines)
+    return !quote.isEmpty && message.range(of: quote, options: .caseInsensitive) != nil
+}
+
+@available(iOS 26.0, *)
+private struct GeneratedWorkoutPresence: Sendable {
+    var distance = false
+    var pace = false
+    var date = false
+    var time = false
+    var setting = false
+    var hasAdditionalFields: Bool { distance || pace || date || time || setting }
+}
+
+@available(iOS 26.0, *)
+@Generable
+private struct GeneratedWorkoutSport: Sendable {
+    @Guide(description: "Explain whether the message names a specific sport. Generic workout/activity and elapsed durations do not name a sport.")
+    var analysis: String
+    @Guide(description: "The explicitly named sport, or none when absent.")
     var sport: Sport
-    @Guide(description: "Only a duration explicitly supplied in the latest message; otherwise notMentioned.")
-    var duration: Duration
-    var distance: Distance
-    var pace: Pace
+    @Generable enum Sport: String, Sendable { case none, swim, run, bike, walk, hike, strength, mobility }
+}
+
+@available(iOS 26.0, *)
+@Generable
+private struct GeneratedWorkoutDuration: Sendable {
+    var hours: Double
+    var minutes: Double
+    var seconds: Double
+}
+
+@available(iOS 26.0, *)
+@Generable
+private struct GeneratedWorkoutDetails: Sendable {
+    var distancePhrase: String
+    var distanceAmount: Double
+    var distanceUnit: DistanceUnit
+    var pacePhrase: String
+    var paceMinutes: Double
+    var paceSeconds: Double
+    var paceUnit: PaceUnit
+    var datePhrase: String
     var date: WorkoutDate
+    var timePhrase: String
     var time: WorkoutTime
-    var setting: Setting
+    var settingPhrase: String
+    var isIndoor: Bool
     var clarification: Clarification
 
-    @Generable enum Sport: String, Sendable { case notMentioned, run, bike, walk, hike, swim, strength, mobility }
-    @Generable enum Duration: Sendable {
-        case notMentioned
-        case components(hours: Double, minutes: Double, seconds: Double)
-    }
-    @Generable enum Distance: Sendable {
-        case notMentioned
-        case meters(Double)
-        case kilometers(Double)
-        case miles(Double)
-    }
-    @Generable enum Pace: Sendable {
-        case notMentioned
-        case perKilometer(minutes: Double, seconds: Double)
-        case perMile(minutes: Double, seconds: Double)
-    }
-    @Generable enum WorkoutDate: Sendable {
-        case notMentioned
-        case calendarDate(year: Int, month: Int, day: Int)
-    }
-    @Generable enum WorkoutTime: Sendable {
-        case notMentioned
-        case clock(hour: Int, minute: Int)
-    }
-    @Generable enum Setting: Sendable { case notMentioned, indoor, outdoor }
+    @Generable enum DistanceUnit: String, Sendable { case meters, kilometers, miles }
+    @Generable enum PaceUnit: String, Sendable { case kilometers, miles }
+    @Generable struct WorkoutDate: Sendable { var year: Int; var month: Int; var day: Int }
+    @Generable struct WorkoutTime: Sendable { var hour: Int; var minute: Int }
     @Generable enum Clarification: Sendable { case notNeeded, question(String) }
 
-    func apply(to value: inout LocalAssistantInterpretation) {
-        if sport != .notMentioned { value.sport = sport.rawValue }
-        switch duration {
-        case .notMentioned: break
-        case .components(let hours, let minutes, let seconds):
-            value.durationHours = hours; value.durationMinutes = minutes; value.durationSeconds = seconds
+    func apply(to value: inout LocalAssistantInterpretation, latestMessage: String, presence: GeneratedWorkoutPresence) {
+        if presence.distance, grounded(distancePhrase, in: latestMessage) { value.distanceValue = distanceAmount; value.distanceUnit = distanceUnit.rawValue }
+        if presence.pace, grounded(pacePhrase, in: latestMessage) { value.paceMinutes = paceMinutes; value.paceSeconds = paceSeconds; value.paceUnit = paceUnit.rawValue }
+        if presence.date, grounded(datePhrase, in: latestMessage) {
+            value.localDate = (1900...2200).contains(date.year) && (1...12).contains(date.month) && (1...31).contains(date.day)
+                ? String(format: "%04d-%02d-%02d", date.year, date.month, date.day) : "invalid"
         }
-        switch distance {
-        case .notMentioned: break
-        case .meters(let amount): value.distanceValue = amount; value.distanceUnit = "meters"
-        case .kilometers(let amount): value.distanceValue = amount; value.distanceUnit = "kilometers"
-        case .miles(let amount): value.distanceValue = amount; value.distanceUnit = "miles"
+        if presence.time, grounded(timePhrase, in: latestMessage) {
+            value.localTime = (0...23).contains(time.hour) && (0...59).contains(time.minute)
+                ? String(format: "%02d:%02d", time.hour, time.minute) : "invalid"
         }
-        switch pace {
-        case .notMentioned: break
-        case .perKilometer(let minutes, let seconds): value.paceMinutes = minutes; value.paceSeconds = seconds; value.paceUnit = "kilometers"
-        case .perMile(let minutes, let seconds): value.paceMinutes = minutes; value.paceSeconds = seconds; value.paceUnit = "miles"
-        }
-        if case .calendarDate(let year, let month, let day) = date {
-            value.localDate = (1900...2200).contains(year) && (1...12).contains(month) && (1...31).contains(day)
-                ? String(format: "%04d-%02d-%02d", year, month, day) : "invalid"
-        }
-        if case .clock(let hour, let minute) = time {
-            value.localTime = (0...23).contains(hour) && (0...59).contains(minute)
-                ? String(format: "%02d:%02d", hour, minute) : "invalid"
-        }
-        switch setting {
-        case .notMentioned: break
-        case .indoor: value.isIndoor = true
-        case .outdoor: value.isIndoor = false
-        }
-        if case .question(let question) = clarification { value.clarification = question }
+        if presence.setting, grounded(settingPhrase, in: latestMessage) { value.isIndoor = isIndoor }
+        // Required-field questions are owned by the app, not inferred from optional details.
     }
 }
 @available(iOS 26.0, *)
