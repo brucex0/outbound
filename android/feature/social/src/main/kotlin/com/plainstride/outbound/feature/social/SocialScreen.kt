@@ -2283,8 +2283,8 @@ fun TodayGroupActivityCard(event: SocialEvent, sharing: Boolean, busy: Boolean, 
         contentColor = foreground,
         shadowElevation = 6.dp,
     ) {
-        Column(Modifier.background(Brush.linearGradient(theme.heroGradient)).padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Column(Modifier.fillMaxWidth().clickable(onClick = onOpen), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.background(Brush.linearGradient(theme.heroGradient)).padding(horizontal = 18.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(Modifier.fillMaxWidth().clickable(onClick = onOpen), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_today),
                         Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = secondary)
@@ -2297,7 +2297,7 @@ fun TodayGroupActivityCard(event: SocialEvent, sharing: Boolean, busy: Boolean, 
                         Text(start.format(java.time.format.DateTimeFormatter.ofPattern("d", locale)),
                             style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                     }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(event.name, style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp), fontWeight = FontWeight.SemiBold)
                         val time = start?.let { DateUtils.formatDateTime(context, it.toInstant().toEpochMilli(), DateUtils.FORMAT_SHOW_TIME) }
                         val whenAndWhere = listOfNotNull(time, event.locationName?.takeIf(String::isNotBlank)).joinToString(" · ")
@@ -2307,9 +2307,6 @@ fun TodayGroupActivityCard(event: SocialEvent, sharing: Boolean, busy: Boolean, 
                         }
                         event.paceNote?.takeIf(String::isNotBlank)?.let {
                             Text(it, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp), color = secondary)
-                        }
-                        if (event.participationMode == "hybrid") {
-                            Icon(Icons.Outlined.Groups, stringResource(R.string.social_hybrid), Modifier.size(18.dp), tint = secondary)
                         }
                     }
                 }
