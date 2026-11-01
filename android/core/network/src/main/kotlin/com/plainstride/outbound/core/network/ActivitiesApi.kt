@@ -158,6 +158,10 @@ data class RemoteActivityDto(
 @Serializable data class CachedActivityVersions(val records: List<CachedActivityVersion>)
 
 interface ActivitiesApiService {
+    @retrofit2.http.Streaming
+    @GET("v1/media/activity-photos/{id}/content")
+    suspend fun activityPhotoContent(@Header("Authorization") authorization: String, @Path("id") id: String): Response<okhttp3.ResponseBody>
+
     @POST("v1/activities/cached-changes") suspend fun cachedChanges(@Header("Authorization") authorization: String, @Body body: CachedActivityVersions): Response<ActivityListResponse>
 
     @GET("v1/statistics") suspend fun statistics(@Header("Authorization") authorization: String, @Query("timeZone") timeZone: String, @Query("firstWeekday") firstWeekday: Int): Response<JsonObject>

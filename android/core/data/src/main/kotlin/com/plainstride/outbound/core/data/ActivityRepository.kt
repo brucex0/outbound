@@ -142,7 +142,49 @@ class OfflineFirstActivityRepository(
         val response = apiCall { api.activities("Bearer $token", 1, 0, ids = serverId, includeRoute = true) }
         if (response is ApiResult.Success && currentAccountId() == accountId) response.value.activities.forEach { mergeRemote(accountId, it) }
         else Log.w("PlainstrideActivity", "detail_refresh_failed category=${(response as? ApiResult.Failure)?.error?.code?.name ?: "account_changed"}")
+        cacheActivityPhotos(accountId, local?.id ?: activityId, "Bearer $token")
     }
+    private suspend fun cacheActivityPhotos(accountId: String, activityId: String, authorization: String) =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val snapshot = activity(accountId, activityId) ?: return@withContext
+            for (photo in snapshot.photos) {
+                if (currentAccountId() != accountId) return@withContext
+                val remoteId = photo.remotePhotoId ?: continue
+                try {
+                    val cached = photo.localRelativePath?.let { path ->
+                        // A missing cache file is expected and can be downloaded again.
+                        try { mediaStore.read(path).isNotEmpty() } catch (_: java.io.FileNotFoundException) { false }
+                    } ?: false
+                    if (cached) continue
+                    val response = api.activityPhotoContent(authorization, remoteId)
+                    val bytes = response.body()?.use { it.bytes() }
+                    if (!response.isSuccessful || bytes == null || bytes.isEmpty()) {
+                        response.errorBody()?.close()
+                        Log.w("PlainstrideActivity", "photo_download_failed status=${response.code()}")
+                        continue
+                    }
+                    if (currentAccountId() != accountId) return@withContext
+                    val path = mediaStore.write(accountId, snapshot.id, bytes)
+                    val attached = database.withTransaction {
+                        val latest = activity(accountId, snapshot.id)
+                        val target = latest?.photos?.firstOrNull { it.id == photo.id && it.remotePhotoId == remoteId && it.remoteUpdatedAt == photo.remoteUpdatedAt }
+                        if (currentAccountId() != accountId || latest == null || latest.deletedAt != null || target == null
+                            || target.localRelativePath != photo.localRelativePath) false
+                        else {
+                            dao.upsertPhotos(listOf(target.copy(localRelativePath = path).toEntity(latest)))
+                            true
+                        }
+                    }
+                    if (!attached) mediaStore.delete(path)
+                    else analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "activity_photo_cached")))
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    Log.w("PlainstrideActivity", "photo_download_failed type=${error.javaClass.simpleName}")
+                }
+            }
+        }
+
     private suspend fun refreshCachedMetadata(accountId: String, authorization: String) {
         val cached = dao.observeAll(accountId).first().mapNotNull { row -> row.activity.serverActivityId?.let { com.plainstride.outbound.core.network.CachedActivityVersion(it, row.activity.serverUpdatedAtEpochMs?.let { time -> Instant.ofEpochMilli(time).toString() }) } }
         for (batch in cached.chunked(200)) {

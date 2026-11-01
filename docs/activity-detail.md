@@ -227,3 +227,10 @@ Safe-area strategy:
 - The observation-based correction also labels Social feed duration as Moving Time. It does not rewrite an existing activity from a screenshot: previously omitted stationary observations cannot establish a reliable corrected duration from the saved simplified route alone.
 
 - Indoor launch explicitly disables GPS stop accounting, and this choice is retained in recovery state, so stationary treadmill sessions keep their unpaused timer duration.
+
+## Android restored photo cache
+
+- Stored detail (including Recents) downloads missing remote originals through the authenticated media endpoint into private storage after refreshing metadata. Offline reopening uses the original JPEG with the existing EXIF decoder; no recompression occurs. Failures retain placeholders, log diagnostics, and retry on reopening.
+- Cache attachment checks the account, deletion, photo revision, and latest local reference, then updates only the photo row without enqueueing an activity edit.
+- Successful fills emit `feature_exposed` with only `feature=activity_photo_cached`. Existing detail and photo-view events remain unchanged.
+- Manual acceptance pending: add a photo on iPhone after saving, open Android Recents strip/lightbox, reopen offline, and compare with the feed.
