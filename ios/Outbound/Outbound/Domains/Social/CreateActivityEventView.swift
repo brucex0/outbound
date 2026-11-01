@@ -431,6 +431,7 @@ struct CreateActivityEventView: View {
 }
 
 struct ActivityEventSummaryContent: View {
+    var showsAttendanceIcon: Bool = true
     let title: String
     let startsAt: Date
     let locationName: String?
@@ -448,10 +449,12 @@ struct ActivityEventSummaryContent: View {
                 Text([startsAt.formatted(date: .omitted, time: .shortened), locationName].compactMap { $0 }.joined(separator: " · "))
                     .font(.subheadline).foregroundStyle(.secondary)
                 if let note { Text(note).font(.subheadline).foregroundStyle(.secondary) }
-                Image(systemName: "person.2.wave.2")
-                    .accessibilityLabel(String(localized: "social.event.flexible_location", defaultValue: "Flexible attendance"))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(OutboundPalette.companion)
+                if showsAttendanceIcon {
+                    Image(systemName: "person.2.wave.2")
+                        .accessibilityLabel(String(localized: "social.event.flexible_location", defaultValue: "Flexible attendance"))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(OutboundPalette.companion)
+                }
             }
         }
     }

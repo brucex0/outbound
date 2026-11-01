@@ -1240,6 +1240,7 @@ private struct SimplifiedTodayView: View {
                                 .foregroundStyle(.tertiary)
                         }
                         ActivityEventSummaryContent(
+                            showsAttendanceIcon: false,
                             title: event.title,
                             startsAt: event.startsAt,
                             locationName: event.locationName,
