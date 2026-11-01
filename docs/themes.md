@@ -77,3 +77,5 @@ The selected theme is also injected through `EnvironmentValues.outboundTheme`. A
 - Dismissal is stored under `theme_discovery_tip_dismissed_v1`.
 - The presentation count is stored under `theme_discovery_tip_presentation_count_v1`.
 - The permanent Settings entry remains available after the temporary tip disappears.
+
+- Victory Gold hero gradients use the secondary gold as the middle stop on both platforms, in light and dark appearance; using the darker accent here makes Android hero cards and floating controls visibly brown compared with iOS.

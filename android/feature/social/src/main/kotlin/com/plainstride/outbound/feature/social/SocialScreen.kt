@@ -51,6 +51,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -2264,24 +2265,77 @@ private fun profileActionFeedback(): (Boolean) -> Unit {
 
 @Composable
 fun TodayGroupActivityCard(event: SocialEvent, sharing: Boolean, busy: Boolean, onOpen: () -> Unit, onToggleLiveMap: () -> Unit, joined: Boolean, onJoinChanged: (Boolean) -> Unit) {
+    val theme = LocalPlainstrideThemeColors.current
+    val foreground = theme.heroForeground
+    val secondary = foreground.copy(alpha = 0.65f)
+    val context = LocalContext.current
+    val locale = LocalResources.current.configuration.locales[0]
+    val start = remember(event.startsAt) {
+        runCatching { java.time.Instant.parse(event.startsAt).atZone(java.time.ZoneId.systemDefault()) }
+            .onFailure { android.util.Log.w("PlainstrideGroups", "today_card_date_parse type=${it.javaClass.simpleName}") }.getOrNull()
+    }
     val joinLabel = stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_join_accessibility)
     val locationLabel = stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_share_location)
-    OutlinedCard(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Column(Modifier.fillMaxWidth().clickable(onClick = onOpen)) {
-                Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_today), style = MaterialTheme.typography.labelSmall)
-                Text(event.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                event.group?.name?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = androidx.compose.ui.graphics.Color.Transparent,
+        contentColor = foreground,
+        shadowElevation = 6.dp,
+    ) {
+        Column(Modifier.background(Brush.linearGradient(theme.heroGradient)).padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.fillMaxWidth().clickable(onClick = onOpen), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_today),
+                        Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = secondary)
+                    Icon(Icons.Outlined.ChevronRight, null, Modifier.size(16.dp), tint = foreground.copy(alpha = 0.4f))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+                    if (start != null) Column(Modifier.width(44.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(start.format(java.time.format.DateTimeFormatter.ofPattern("EEE", locale)).uppercase(locale),
+                            style = MaterialTheme.typography.labelSmall)
+                        Text(start.format(java.time.format.DateTimeFormatter.ofPattern("d", locale)),
+                            style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(event.name, style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp), fontWeight = FontWeight.SemiBold)
+                        val time = start?.let { DateUtils.formatDateTime(context, it.toInstant().toEpochMilli(), DateUtils.FORMAT_SHOW_TIME) }
+                        val whenAndWhere = listOfNotNull(time, event.locationName?.takeIf(String::isNotBlank)).joinToString(" · ")
+                        if (whenAndWhere.isNotEmpty()) Text(whenAndWhere, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp), color = secondary)
+                        event.group?.name?.takeIf(String::isNotBlank)?.let {
+                            Text(it, style = MaterialTheme.typography.bodySmall, color = secondary)
+                        }
+                        event.paceNote?.takeIf(String::isNotBlank)?.let {
+                            Text(it, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp), color = secondary)
+                        }
+                        if (event.participationMode == "hybrid") {
+                            Icon(Icons.Outlined.Groups, stringResource(R.string.social_hybrid), Modifier.size(18.dp), tint = secondary)
+                        }
+                    }
+                }
             }
-            HorizontalDivider()
+            HorizontalDivider(color = foreground.copy(alpha = 0.12f))
             FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Row(Modifier.width(IntrinsicSize.Max).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = joined, onCheckedChange = onJoinChanged, modifier = Modifier.semantics { contentDescription = joinLabel })
-                    Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_join_short), Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodyMedium)
+                    Checkbox(checked = joined, onCheckedChange = onJoinChanged,
+                        colors = CheckboxDefaults.colors(checkedColor = foreground, uncheckedColor = foreground, checkmarkColor = theme.heroGradient.first()),
+                        modifier = Modifier.semantics { contentDescription = joinLabel })
+                    Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_join_short), Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp))
                 }
                 Row(Modifier.width(IntrinsicSize.Max).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_share_location_short), Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodyMedium)
-                    Switch(checked = sharing, onCheckedChange = { if (it != sharing) onToggleLiveMap() }, enabled = joined && !busy, modifier = Modifier.semantics { contentDescription = locationLabel })
+                    Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_share_location_short), Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp))
+                    Switch(checked = sharing, onCheckedChange = { if (it != sharing) onToggleLiveMap() }, enabled = joined && !busy,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = androidx.compose.ui.graphics.Color.White,
+                            checkedTrackColor = theme.accent,
+                            uncheckedThumbColor = androidx.compose.ui.graphics.Color.White,
+                            uncheckedTrackColor = foreground.copy(alpha = 0.16f),
+                            uncheckedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                            disabledUncheckedThumbColor = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.45f),
+                            disabledUncheckedTrackColor = foreground.copy(alpha = 0.1f),
+                            disabledUncheckedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                        ),
+                        modifier = Modifier.semantics { contentDescription = locationLabel })
                 }
             }
         }

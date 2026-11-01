@@ -47,8 +47,8 @@ private fun colors(
 
 private val ThemePalettes = mapOf(
     PlainstrideThemeId.VictoryGold to AdaptiveThemeColors(
-        colors(Color(0xFFD18200), Color(0xFFFFC41F), Color(0xFF8C5200), Color(0xFFFFF099), heroEnd = Color(0xFFE88C00), heroForeground = Color(0xFF291A03)),
-        colors(Color(0xFFFFB821), Color(0xFFFFD659), Color(0xFFC27A08), Color(0xFFE8B32E), heroEnd = Color(0xFFBA6900), heroForeground = Color(0xFF211400))),
+        colors(Color(0xFFD18200), Color(0xFFFFC41F), Color(0xFF8C5200), Color(0xFFFFF099), heroMiddle = Color(0xFFFFC41F), heroEnd = Color(0xFFE88C00), heroForeground = Color(0xFF291A03)),
+        colors(Color(0xFFFFB821), Color(0xFFFFD659), Color(0xFFC27A08), Color(0xFFE8B32E), heroMiddle = Color(0xFFFFD659), heroEnd = Color(0xFFBA6900), heroForeground = Color(0xFF211400))),
     PlainstrideThemeId.Indigo to AdaptiveThemeColors(
         colors(Color(0xFF4740C7), Color(0xFF8061EB), Color(0xFF1F9485), Color(0xFF2E2994)),
         colors(Color(0xFF857AFF), Color(0xFFB39EFF), Color(0xFF3BC2AD), Color(0xFF383085))),
