@@ -1,4 +1,5 @@
 import MapKit
+import OSLog
 import SwiftUI
 import UIKit
 
@@ -281,11 +282,16 @@ struct LiveMapView: View {
 
             VStack(spacing: 12) {
                 if !isWorkoutPanelExpanded, let routeGuidance = recorder.routeGuidanceSnapshot {
-                    RouteGuidanceStatusView(
-                        snapshot: routeGuidance,
-                        unitSystem: measurementPreferences.unitSystem
-                    )
-                    .padding(.horizontal, 16)
+                    if routeGuidance.state == .acquiring, routeStartCoordinate != nil {
+                        Button(action: openRouteStartDirections) {
+                            RouteGuidanceStatusView(snapshot: routeGuidance, unitSystem: measurementPreferences.unitSystem)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 16)
+                    } else {
+                        RouteGuidanceStatusView(snapshot: routeGuidance, unitSystem: measurementPreferences.unitSystem)
+                            .padding(.horizontal, 16)
+                    }
                 }
 
                 statusCard(expandedHeight: expandedHeight)
@@ -438,6 +444,31 @@ struct LiveMapView: View {
         let horizontalPadding = max(rect.width * 0.12, 1_500)
         let verticalPadding = max(rect.height * 0.12, 1_500)
         mapPosition = .rect(rect.insetBy(dx: -horizontalPadding, dy: -verticalPadding))
+    }
+
+    private func openRouteStartDirections() {
+        guard let coordinate = routeStartCoordinate,
+              CLLocationCoordinate2DIsValid(coordinate) else { return }
+        // Endpoints are preserved in the working geometry, including reverse direction.
+        // Omitting the origin lets Maps use the current location.
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "maps.apple.com"
+        components.path = "/"
+        components.queryItems = [
+            URLQueryItem(name: "daddr", value: "\(coordinate.latitude),\(coordinate.longitude)"),
+            URLQueryItem(name: "dirflg", value: "d")
+        ]
+        guard let url = components.url else { return }
+        UIApplication.shared.open(url) { opened in
+            track(.init(.routeStartDirectionsOpened, properties: [
+                .result: .string(opened ? "success" : "failure")
+            ]))
+            guard !opened else { return }
+            Logger(subsystem: "plainstride.outbound", category: "RouteNavigation")
+                .error("Open route-start directions failed provider=apple_maps")
+            participantToast = String(localized: "route.directions.open_failed", defaultValue: "Couldn’t open Maps. Try again.")
+        }
     }
 
     private func trackRouteDisplayIfNeeded() {

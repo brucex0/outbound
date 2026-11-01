@@ -1,6 +1,28 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "route.directions.open_failed": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t open Maps. Try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo abrir Mapas. Inténtalo de nuevo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法打开地图，请重试。"
+          }
+        }
+      }
+    },
     "assistant.assistant.prompt.today.history": {
       "localizations": {
         "zh-Hans": {
