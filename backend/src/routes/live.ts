@@ -37,19 +37,9 @@ router.post("/group-runs/activity-events/:activityEventId", async (c) => {
     console.warn("group_live_map_join", { result: "rejected", reason: "ineligible", status: 403 });
     return c.json({ error: "Activity live map is unavailable." }, 403);
   }
-  // The scheduled end starts result reconciliation, not the end of a runner's
-  // recording. Only already-started, unresolved participants may join then.
-  const continuingParticipant = event.status === "reconciling"
-    && Date.now() < event.endsAt.getTime() + 4 * 60 * 60 * 1000
-    ? await prisma.activityEventParticipant.findUnique({
-      where: { activityEventId_userId: { activityEventId, userId: user.id } },
-      select: { startedAt: true, outcome: true, status: true },
-    })
-    : null;
-  const canContinue = continuingParticipant?.startedAt != null
-    && continuingParticipant.outcome == null
-    && continuingParticipant.status !== "left";
-  if (!["scheduled", "active"].includes(event.status) && !canContinue) {
+  // Event timing and saved outcomes do not end an explicit live-map opt-in.
+  // Keep organizer cancellation and the eligibility/block checks authoritative.
+  if (!["scheduled", "active", "reconciling", "completed"].includes(event.status)) {
     console.warn("group_live_map_join", { result: "rejected", reason: "event_state", status: 403 });
     return c.json({ error: "Activity live map is unavailable." }, 403);
   }
@@ -88,11 +78,14 @@ router.post("/group-runs/activity-events/:activityEventId", async (c) => {
   if (!session) return c.json({ error: "Could not open this Group live map." }, 500);
 
   let activeSession = await requireActiveSession(session.id);
-  if (!activeSession && session.status === "ended" && session.activityEventId === activityEventId) {
+  let renewedSession = false;
+  // refreshSessionStatus may have just expired the initially active session.
+  // Match persisted terminal states rather than the stale session.status above.
+  if (!activeSession && session.activityEventId === activityEventId) {
     const now = new Date();
     await prisma.$transaction(async (transaction) => {
       const reopened = await transaction.liveGroupSession.updateMany({
-        where: { id: session.id, activityEventId, status: "ended" },
+        where: { id: session.id, activityEventId, status: { in: ["ended", "expired"] } },
         data: {
           status: "active",
           endedAt: null,
@@ -101,6 +94,8 @@ router.post("/group-runs/activity-events/:activityEventId", async (c) => {
         },
       });
       if (reopened.count > 0) {
+        renewedSession = true;
+        // A new opt-in must never revive anyone else's old location or consent.
         await transaction.liveGroupParticipant.updateMany({
           where: { sessionId: session.id },
           data: {
@@ -142,7 +137,7 @@ router.post("/group-runs/activity-events/:activityEventId", async (c) => {
   });
   void publishAbly(ablyChannel("group_run", activeSession.id), "participant.changed", {}).catch(() => false);
   console.info("group_live_map_join", {
-    result: "joined", phase: canContinue ? "reconciling" : "scheduled_or_active",
+    result: "joined", phase: event.status, renewedSession,
   });
   return c.json(groupRunPayload(updated, user.id));
 });
@@ -408,18 +403,22 @@ async function refreshSessionStatus(sessionId: string) {
   if (session.status !== "active" || session.endedAt) return session;
   if (session.expiresAt > new Date()) return session;
 
-  return prisma.liveGroupSession.update({
+  const now = new Date();
+  await prisma.$transaction(async (transaction) => {
+    // An older in-flight read must not expire a session another join renewed.
+    const expired = await transaction.liveGroupSession.updateMany({
+      where: { id: session.id, status: "active", endedAt: null, expiresAt: session.expiresAt },
+      data: { status: "expired", endedAt: now },
+    });
+    if (expired.count > 0) {
+      await transaction.liveGroupParticipant.updateMany({
+        where: { sessionId: session.id, status: "active" },
+        data: { status: "finished", leftAt: now },
+      });
+    }
+  });
+  return prisma.liveGroupSession.findUnique({
     where: { id: session.id },
-    data: {
-      status: "expired",
-      endedAt: session.endedAt ?? new Date(),
-      participants: {
-        updateMany: {
-          where: { status: "active" },
-          data: { status: "finished", leftAt: new Date() },
-        },
-      },
-    },
     include: { participants: true },
   });
 }
