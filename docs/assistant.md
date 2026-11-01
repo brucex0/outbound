@@ -61,7 +61,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 - `answer`: explain or summarize a feature, screen, or state
 - `navigate`: point users to the right place in the app
 - `support`: explain setup, integrations, or likely fixes
-- `brainstorm`: generate options for routines, goals, or product ideas
+- `brainstorm`: generate personal ideas for workout enjoyment, motivation, routines, and goals. The quick-start prompt asks for ideas tailored to the user’s goals and recent activity, with a clarifying question when needed; the offline reply keeps the same personal focus. Suggestion taps retain the existing `assistant_meaningful_engagement` event (`entry_source: suggestion`) without logging prompt text.
 - `plan`: turn vague intent into a simple next step or weekly structure
 - `suggest_session`: propose a likely next workout or direction
 - `summarize_progress`: reflect recent activity or goal momentum

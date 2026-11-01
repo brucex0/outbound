@@ -66667,19 +66667,19 @@
         }
       }
     },
-    "Brainstorm a few ways this app could better support motivation, exploration, and sharing.": {
-      "comment": "[platform:ios] Built-in interface and training vocabulary.",
+    "Help me brainstorm a few fresh ways to make my workouts more enjoyable and stay motivated. Tailor the ideas to my goals and recent activity, and ask what’s getting in my way if you need more context.": {
+      "comment": "[platform:ios] Personal workout brainstorming prompt; asks for ideas for the user’s training and motivation.",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "一起想想，这款应用还可以怎样更好地帮助我保持动力、探索和分享。"
+            "value": "帮我一起想几个新点子，让锻炼更有趣，也更有动力坚持下去。请结合我的目标和近期运动情况来建议；如果还需要了解什么，可以问问我最近遇到了哪些困难。"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Propón algunas ideas para que esta app apoye mejor la motivación, la exploración y el intercambio."
+            "value": "Ayúdame a pensar en ideas nuevas para disfrutar más de mis entrenamientos y mantener la motivación. Adáptalas a mis objetivos y mi actividad reciente, y pregúntame qué me está dificultando entrenar si necesitas más contexto."
           }
         }
       }
@@ -68197,36 +68197,25 @@
         }
       }
     },
-    "A strong direction would be to make the assistant feel like a concierge, not just a chatbot.\n\nGood ideas to explore:\nGive it guided prompts for finding features, choosing a guide vibe, and building a comeback plan.\nLet it turn vague intent like “I only have 20 minutes” into a suggested session.\nUse it in Social to suggest Groups, challenges, or rivalry nudges based on recent activity.": {
-      "comment": "[platform:ios] Offline assistant reply.",
+    "assistant.brainstorm.personal_ideas": {
+      "comment": "[platform:ios] Offline ideas for the user’s workout enjoyment and motivation.",
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Here are a few ideas to try:\n\nChoose a route you’re curious about, pair an easy workout with a favorite playlist, or invite someone to join you. On a busy day, aim for a short, manageable session.\n\nWhat’s getting in your way most right now: boredom, time, or motivation?"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "一个值得探索的方向，是让助手像贴心的服务伙伴，而不只是聊天工具。\n\n可以尝试这些点子：\n通过引导式提问发现功能、选择伙伴风格、制定重返训练的计划。\n把“我只有20分钟”这样的想法变成一次推荐训练。\n根据近期运动，在“社交”里推荐群组、挑战或跑友互动。"
+            "value": "可以试试这几个点子：\n\n选一条你一直想探索的路线，轻松锻炼时听喜欢的歌单，或约个人一起运动。忙的时候，就安排一次简短、轻松能完成的锻炼。\n\n你现在最大的困难是什么：觉得无聊、没时间，还是缺乏动力？"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Una buena dirección sería que el asistente se sintiera como un acompañante atento, además de un chat.\n\nIdeas para explorar:\nOfrecer preguntas guiadas para descubrir funciones, elegir el estilo del compañero y preparar un plan de vuelta al entrenamiento.\nConvertir ideas como «solo tengo 20 minutos» en una sesión sugerida.\nSugerir grupos, retos o interacciones en Social según la actividad reciente."
-          }
-        }
-      }
-    },
-    "A strong direction would be to make the assistant feel like a concierge, not just a chatbot.\n\nGood ideas to explore:\nGive it guided prompts for finding features, choosing a guide vibe, and building a comeback plan.\nLet it turn vague intent like “I only have 20 minutes” into a suggested session.\nUse it to explain progress, route history, and the next realistic training step from recent activity.": {
-      "comment": "[platform:ios] Offline assistant reply.",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "一个值得探索的方向，是让助手像贴心的服务伙伴，而不只是聊天工具。\n\n可以尝试这些点子：\n通过引导式提问发现功能、选择伙伴风格、制定重返训练的计划。\n把“我只有20分钟”这样的想法变成一次推荐训练。\n根据近期运动解释进步、路线历史，以及下一步切实可行的训练。"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Una buena dirección sería que el asistente se sintiera como un acompañante atento, además de un chat.\n\nIdeas para explorar:\nOfrecer preguntas guiadas para descubrir funciones, elegir el estilo del compañero y preparar un plan de vuelta al entrenamiento.\nConvertir ideas como «solo tengo 20 minutos» en una sesión sugerida.\nExplicar el progreso, el historial de rutas y el siguiente paso realista según la actividad reciente."
+            "value": "Aquí tienes algunas ideas para probar:\n\nElige una ruta que te dé curiosidad, escucha tu música favorita durante un entrenamiento suave o invita a alguien a acompañarte. Si tienes un día ocupado, busca una sesión corta y llevadera.\n\n¿Qué te lo está poniendo más difícil ahora: el aburrimiento, la falta de tiempo o la motivación?"
           }
         }
       }

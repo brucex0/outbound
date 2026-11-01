@@ -2232,7 +2232,7 @@ final class AssistantStore: ObservableObject {
             id: "brainstorm-features",
             capability: .brainstorm,
             title: String(localized: "Brainstorm ideas"),
-            prompt: String(localized: "Brainstorm a few ways this app could better support motivation, exploration, and sharing.")
+            prompt: String(localized: "Help me brainstorm a few fresh ways to make my workouts more enjoyable and stay motivated. Tailor the ideas to my goals and recent activity, and ask what’s getting in my way if you need more context.")
         ),
         AssistantSuggestion(
             id: "plan-week",
@@ -2571,25 +2571,13 @@ final class AssistantStore: ObservableObject {
             If something feels broken, tell me the exact step and what you expected to happen. I’ll turn it into a short troubleshooting path instead of generic advice.
             """)
         case .brainstorm:
-#if OUTBOUND_ENABLE_SOCIAL
-            return String(localized: """
-            A strong direction would be to make the assistant feel like a concierge, not just a chatbot.
+            return String(localized: "assistant.brainstorm.personal_ideas", defaultValue: """
+            Here are a few ideas to try:
 
-            Good ideas to explore:
-            Give it guided prompts for finding features, choosing a guide vibe, and building a comeback plan.
-            Let it turn vague intent like “I only have 20 minutes” into a suggested session.
-            Use it in Social to suggest Groups, challenges, or rivalry nudges based on recent activity.
-            """)
-#else
-            return String(localized: """
-            A strong direction would be to make the assistant feel like a concierge, not just a chatbot.
+            Choose a route you’re curious about, pair an easy workout with a favorite playlist, or invite someone to join you. On a busy day, aim for a short, manageable session.
 
-            Good ideas to explore:
-            Give it guided prompts for finding features, choosing a guide vibe, and building a comeback plan.
-            Let it turn vague intent like “I only have 20 minutes” into a suggested session.
-            Use it to explain progress, route history, and the next realistic training step from recent activity.
+            What’s getting in your way most right now: boredom, time, or motivation?
             """)
-#endif
         case .plan:
             let goalLine = context.currentGoalSummary ?? String(localized: "No active weekly goal yet.")
             let activityLine: String
