@@ -410,6 +410,7 @@ enum ActiveSessionPhotoJournal {
         let latitude: Double?
         let longitude: Double?
         let captureContext: PhotoCaptureContext
+        let isImported: Bool?
 
         init(metadata: PhotoMetadata) {
             id = UUID()
@@ -420,6 +421,7 @@ enum ActiveSessionPhotoJournal {
             latitude = metadata.coordinate?.latitude
             longitude = metadata.coordinate?.longitude
             captureContext = metadata.captureContext
+            isImported = metadata.isImported
         }
 
         var fileName: String {
@@ -438,7 +440,8 @@ enum ActiveSessionPhotoJournal {
                 hrAtShot: hrAtShot,
                 distAtShot: distAtShot,
                 coordinate: coordinate,
-                captureContext: captureContext
+                captureContext: captureContext,
+                isImported: isImported ?? false
             )
         }
     }

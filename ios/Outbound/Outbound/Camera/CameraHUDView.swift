@@ -1756,4 +1756,5 @@ struct PhotoMetadata {
     let distAtShot: Double
     let coordinate: CLLocationCoordinate2D?
     let captureContext: PhotoCaptureContext
+    var isImported: Bool = false
 }

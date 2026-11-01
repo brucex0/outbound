@@ -417,3 +417,5 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - `activity_recording_entry`: `entry_source` is `app` or `group_activity`; `result` is `prepared` or `reused_existing`. Opening an existing recording/review does not emit a new `activity_started` event. No recording IDs, event IDs, or user content are included.
 
 - iOS photo import location fixes retain existing `photo_captured.location_attached` instrumentation, including pre-activity imports; the boolean reflects the imported metadata. No capture times or coordinates enter analytics.
+
+- iOS automatic `photo_album_export_completed.count_bucket` counts only camera photos eligible for export; library imports are excluded before permission requests and produce no export event when no camera photos remain. Existing `photo_captured.location_attached` reflects resolved asset/EXIF GPS after placement. Metadata diagnostics contain availability booleans and bounded placement reasons only, never asset IDs, file paths, dates, or coordinates.

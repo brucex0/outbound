@@ -42,7 +42,8 @@ final class ActivityPhotoAlbumExporter {
     private init() {}
 
     func exportPhotos(from activity: SavedActivity) async -> ActivityPhotoAlbumExportOutcome {
-        guard ActivityPhotoAlbumPreferences.savesPhotos, !activity.photos.isEmpty else { return .skipped }
+        let capturedPhotos = activity.photos.filter { !$0.isImported }
+        guard ActivityPhotoAlbumPreferences.savesPhotos, !capturedPhotos.isEmpty else { return .skipped }
 
         let authorization = await authorizationStatus()
         guard authorization == .authorized || authorization == .limited else {
@@ -53,7 +54,7 @@ final class ActivityPhotoAlbumExporter {
         let exportedIdentifiers = Set(
             UserDefaults.standard.stringArray(forKey: exportedPhotoIdentifiersKey) ?? []
         )
-        let pendingPhotos = activity.photos.filter { !exportedIdentifiers.contains($0.id.uuidString) }
+        let pendingPhotos = capturedPhotos.filter { !exportedIdentifiers.contains($0.id.uuidString) }
         guard !pendingPhotos.isEmpty else { return .alreadySaved }
 
         do {

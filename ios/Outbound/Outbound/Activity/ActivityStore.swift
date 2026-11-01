@@ -1474,7 +1474,8 @@ final class ActivityStore: ObservableObject {
             relativePath: photo.relativePath,
             remotePhotoId: remotePhotoId,
             remoteUploadedAt: remoteUploadedAt,
-            remoteThumbnailURL: remoteThumbnailURL ?? photo.remoteThumbnailURL
+            remoteThumbnailURL: remoteThumbnailURL ?? photo.remoteThumbnailURL,
+            isImported: photo.isImported
         )
     }
 
@@ -1570,7 +1571,7 @@ final class ActivityStore: ObservableObject {
         await analyticsManager?.track(.init(.photoAlbumExportCompleted, properties: [
             .result: .string(result),
             .sourceType: .string("automatic"),
-            .countBucket: .string(ProductAnalyticsBucket.count(activity.photos.count))
+            .countBucket: .string(ProductAnalyticsBucket.count(activity.photos.filter { !$0.isImported }.count))
         ]))
     }
 

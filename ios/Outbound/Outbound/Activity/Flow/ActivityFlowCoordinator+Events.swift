@@ -212,7 +212,8 @@ extension ActivityFlowCoordinator {
                     hrAtShot: nil,
                     distAtShot: 0,
                     coordinate: photo.coordinate,
-                    captureContext: .preActivity
+                    captureContext: .preActivity,
+                    isImported: true
                 )
                 self.replacePreActivityPhoto(with: photo.image, metadata: metadata)
                 self.setup.selectedPreActivityPhotoItem = nil

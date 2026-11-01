@@ -1,13 +1,14 @@
 import CoreLocation
 import CoreTransferable
 import ImageIO
+import Photos
 import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
 import UIKit
 
-/// A photo picked from the user's library whose original file metadata was
-/// recovered from EXIF when available.
+/// A photo picked from the user's library, with asset metadata when authorized
+/// and file EXIF as the permission-free fallback.
 ///
 /// `PhotosPicker` runs out of process and needs no photo-library permission;
 /// the picker requests the current file representation. Reading that file (rather than a
@@ -45,11 +46,50 @@ enum ActivityPhotoImporter {
     nonisolated static let maxPixelSize = 2048
 
     static func importItem(_ item: PhotosPickerItem, downsample: Bool = true) async -> ImportedActivityPhoto? {
-        guard let file = try? await item.loadTransferable(type: PickedPhotoFile.self) else {
+        do {
+            guard let file = try await item.loadTransferable(type: PickedPhotoFile.self) else {
+                ActivityDiagnosticLog.error(.persistence, "Photo import failed operation=load_transfer reason=no_file")
+                return nil
+            }
+            defer {
+                do { try FileManager.default.removeItem(at: file.url) }
+                catch {
+                    ActivityDiagnosticLog.error(.persistence, "Photo import cleanup failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                }
+            }
+            guard let decoded = load(fileURL: file.url, downsample: downsample) else {
+                ActivityDiagnosticLog.error(.persistence, "Photo import failed operation=decode_file")
+                return nil
+            }
+            // Photos may store adjusted location/date on the library asset rather
+            // than embedding them in the transferred image. Use existing access;
+            // importing pixels must not request broader library permission.
+            let authorization = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+            var asset: PHAsset?
+            if authorization == .authorized || authorization == .limited,
+               let identifier = item.itemIdentifier {
+                asset = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil).firstObject
+            }
+            let assetCoordinate = asset?.location?.coordinate
+            let coordinate = assetCoordinate.flatMap { CLLocationCoordinate2DIsValid($0) ? $0 : nil }
+                ?? decoded.coordinate
+            ActivityDiagnosticLog.notice(
+                .persistence,
+                "Photo import metadata asset_available=\(asset != nil) file_location=\(decoded.coordinate != nil) asset_location=\(assetCoordinate != nil) resolved_location=\(coordinate != nil)"
+            )
+            return ImportedActivityPhoto(
+                image: decoded.image,
+                takenAt: asset?.creationDate ?? decoded.takenAt,
+                coordinate: coordinate
+            )
+        } catch is CancellationError {
+            return nil
+        } catch {
+            let nsError = error as NSError
+            if Task.isCancelled || (nsError.domain == NSCocoaErrorDomain && nsError.code == NSUserCancelledError) { return nil }
+            ActivityDiagnosticLog.error(.persistence, "Photo import failed operation=load_transfer error=\(ActivityDiagnosticLog.errorCategory(error))")
             return nil
         }
-        defer { try? FileManager.default.removeItem(at: file.url) }
-        return load(fileURL: file.url, downsample: downsample)
     }
 
     static func load(fileURL: URL, downsample: Bool = true) -> ImportedActivityPhoto? {
@@ -190,13 +230,21 @@ struct ActivityPhotoPlacementContext {
 
     func metadata(for photo: ImportedActivityPhoto) -> PhotoMetadata {
         let takenAt = photo.takenAt ?? Date()
+        let coordinate = plausibleCoordinate(photo.coordinate)
+        let placementResult: String
+        if coordinate != nil { placementResult = "gps" }
+        else if photo.coordinate == nil { placementResult = "missing_gps" }
+        else if samples.isEmpty { placementResult = "missing_route" }
+        else { placementResult = "outside_route" }
+        ActivityDiagnosticLog.notice(.persistence, "Imported photo placement result=\(placementResult)")
         return PhotoMetadata(
             takenAt: takenAt,
             paceAtShot: avgPace,
             hrAtShot: heartRateBPM,
             distAtShot: distance(at: takenAt),
-            coordinate: plausibleCoordinate(photo.coordinate),
-            captureContext: captureContext(at: takenAt)
+            coordinate: coordinate,
+            captureContext: captureContext(at: takenAt),
+            isImported: true
         )
     }
 

@@ -699,13 +699,14 @@ struct PostRunPhoto: Identifiable {
     let metadata: PhotoMetadata
     /// True when the photo came from the user's library rather than the
     /// in-app camera. Imported photos carry metadata recovered from EXIF.
-    let isImported: Bool
+    var isImported: Bool { metadata.isImported }
 
     init(id: UUID = UUID(), image: UIImage, metadata: PhotoMetadata, isImported: Bool = false) {
         self.id = id
         self.image = image
+        var metadata = metadata
+        metadata.isImported = metadata.isImported || isImported
         self.metadata = metadata
-        self.isImported = isImported
     }
 
     init(_ photo: (UIImage, PhotoMetadata)) {

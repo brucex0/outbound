@@ -47,7 +47,7 @@ extension ActivityFlowView {
                     .buttonStyle(.borderedProminent)
                     .tint(.orange)
 
-                    PhotosPicker(selection: binding(\.setup.selectedPreActivityPhotoItem), matching: .images, preferredItemEncoding: .current) {
+                    PhotosPicker(selection: binding(\.setup.selectedPreActivityPhotoItem), matching: .images, preferredItemEncoding: .current, photoLibrary: .shared()) {
                         Image(systemName: "photo.on.rectangle")
                             .font(.headline)
                             .frame(width: 44, height: 44)

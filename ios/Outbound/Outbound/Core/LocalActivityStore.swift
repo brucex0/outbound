@@ -214,7 +214,7 @@ private nonisolated enum LocalActivityStore {
             }
             return SavedPhoto(id: photo.id, takenAt: photo.takenAt, paceAtShot: photo.paceAtShot, hrAtShot: photo.hrAtShot, distAtShot: photo.distAtShot,
                               coordinate: photo.coordinate, captureContext: photo.captureContext, relativePath: "\(activityID.uuidString)/photos/\(fileName)",
-                              remotePhotoId: photo.remotePhotoId, remoteUploadedAt: photo.remoteUploadedAt, remoteThumbnailURL: photo.remoteThumbnailURL)
+                              remotePhotoId: photo.remotePhotoId, remoteUploadedAt: photo.remoteUploadedAt, remoteThumbnailURL: photo.remoteThumbnailURL, isImported: photo.isImported)
         }
     }
 
@@ -279,7 +279,8 @@ private nonisolated enum LocalActivityStore {
                 captureContext: capture.1.captureContext,
                 relativePath: "\(activity.id.uuidString)/photos/\(fileName)",
                 remotePhotoId: nil,
-                remoteUploadedAt: nil
+                remoteUploadedAt: nil,
+                isImported: capture.1.isImported
             )
         }
         let combinedPhotos = photos + addedPhotos
@@ -1387,6 +1388,7 @@ nonisolated struct SavedPhoto: Codable, Identifiable {
     let distAtShot: Double
     let coordinate: SavedCoordinate?
     let captureContext: PhotoCaptureContext
+    let isImported: Bool
     let relativePath: String
     let remotePhotoId: String?
     let remoteUploadedAt: Date?
@@ -1400,6 +1402,7 @@ nonisolated struct SavedPhoto: Codable, Identifiable {
         distAtShot = metadata.distAtShot
         coordinate = metadata.coordinate.map { SavedCoordinate(coordinate: $0) }
         captureContext = metadata.captureContext
+        isImported = metadata.isImported
         self.relativePath = relativePath
         remotePhotoId = nil
         remoteUploadedAt = nil
@@ -1409,7 +1412,7 @@ nonisolated struct SavedPhoto: Codable, Identifiable {
     nonisolated init(
         id: UUID, takenAt: Date, paceAtShot: Double?, hrAtShot: Int?, distAtShot: Double,
         coordinate: SavedCoordinate?, captureContext: PhotoCaptureContext, relativePath: String,
-        remotePhotoId: String?, remoteUploadedAt: Date?, remoteThumbnailURL: String? = nil
+        remotePhotoId: String?, remoteUploadedAt: Date?, remoteThumbnailURL: String? = nil, isImported: Bool = false
     ) {
         self.id = id
         self.takenAt = takenAt
@@ -1418,6 +1421,7 @@ nonisolated struct SavedPhoto: Codable, Identifiable {
         self.distAtShot = distAtShot
         self.coordinate = coordinate
         self.captureContext = captureContext
+        self.isImported = isImported
         self.relativePath = relativePath
         self.remotePhotoId = remotePhotoId
         self.remoteUploadedAt = remoteUploadedAt
@@ -1433,6 +1437,7 @@ nonisolated struct SavedPhoto: Codable, Identifiable {
         distAtShot = try c.decode(Double.self, forKey: .distAtShot)
         coordinate = try c.decodeIfPresent(SavedCoordinate.self, forKey: .coordinate)
         captureContext = (try? c.decode(PhotoCaptureContext.self, forKey: .captureContext)) ?? .active
+        isImported = try c.decodeIfPresent(Bool.self, forKey: .isImported) ?? false
         relativePath = try c.decode(String.self, forKey: .relativePath)
         remotePhotoId = try c.decodeIfPresent(String.self, forKey: .remotePhotoId)
         remoteUploadedAt = try c.decodeIfPresent(Date.self, forKey: .remoteUploadedAt)

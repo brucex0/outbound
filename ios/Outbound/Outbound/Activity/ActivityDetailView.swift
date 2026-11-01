@@ -1610,11 +1610,13 @@ private struct ActivityRouteMapRepresentable: UIViewRepresentable {
             }
 
             let photoSignature = photos
-                .map { "\($0.id.uuidString):\($0.relativePath)" }
+                .map { "\($0.id.uuidString):\($0.relativePath):\($0.coordinate?.latitude.description ?? "nil"):\($0.coordinate?.longitude.description ?? "nil")" }
                 .joined(separator: ",")
             if photoSignature != previousPhotoSignature {
                 mapView.removeAnnotations(mapView.annotations)
-                mapView.addAnnotations(photos.compactMap(ActivityRoutePhotoAnnotation.init(photo:)))
+                let annotations = photos.compactMap(ActivityRoutePhotoAnnotation.init(photo:))
+                mapView.addAnnotations(annotations)
+                ActivityDiagnosticLog.notice(.persistence, "Route photo annotations refreshed photos=\(ActivityDiagnosticLog.countBucket(photos.count)) pins=\(ActivityDiagnosticLog.countBucket(annotations.count))")
                 previousPhotoSignature = photoSignature
             }
 
@@ -2409,7 +2411,7 @@ private struct EditActivityView: View {
         isImporting = true
         defer { isImporting = false; importedPhotoItems = [] }
         trackPhoto(.photoCaptureAttempted)
-        let placement = ActivityPhotoPlacementContext(activity: activity)
+        let placement = ActivityPhotoPlacementContext(activity: activityStore.activity(id: activity.id) ?? activity)
         for item in items {
             guard let imported = await ActivityPhotoImporter.importItem(item) else {
                 ActivityDiagnosticLog.error(.persistence, "Activity edit photo import failed: unavailable image or metadata")
