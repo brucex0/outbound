@@ -230,6 +230,13 @@ After clearing the legacy reservation, deliver the preserved IPA with
   Developer key again returned 403 on attaching the public build; use the
   signed-in UI or a suitably scoped owner-provided key.
 
+- **October 31, 2026 — 1.7.10 (64), beta setup:** upload and Apple
+  processing succeeded, but the release-note PATCH returned curl error 28 after
+  60 seconds with no response. The documented `--beta-setup-only` retry published
+  the notes and confirmed membership in `Plainstride Team` without another build
+  or upload. Upload ID: `082e2baf-fed7-4998-a2ba-de0b9b65ae75`;
+  IPA SHA-256: `32def4d4697942878895f7b890a90410cabc13067e27a4e55c72f37758321cf4`. Final state: processed and available to the internal group.
+
 ### Keep release lessons current
 
 - Before publishing or recovering a stalled upload, read this runbook and inspect
