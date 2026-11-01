@@ -2,7 +2,7 @@ import XCTest
 
 final class GroupRecoveryUITests: XCTestCase {
     @MainActor
-    func testGroupRecordingSurvivesTwoAppRestarts() throws {
+    func testSingleGroupRecordingSurvivesSceneReentryAndRestarts() throws {
         continueAfterFailure = false
         let fixture = try GroupRecoveryFixture()
         let baseURL = try fixture.start()
@@ -33,6 +33,17 @@ final class GroupRecoveryUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Resume activity"].waitForExistence(timeout: 10))
         verifyGroupUI(in: app)
 
+        // Repeated scene transitions must preserve the same paused recording.
+        for entry in 1...3 {
+            XCUIDevice.shared.press(.home)
+            app.activate()
+            XCTAssertTrue(app.buttons["Resume activity"].waitForExistence(timeout: 10),
+                          "Activation \(entry) must retain the paused recording: \(app.debugDescription)")
+            XCTAssertFalse(app.buttons["Pause activity"].exists)
+            XCTAssertEqual(app.buttons.matching(identifier: "Finish activity").count, 1)
+            verifyGroupUI(in: app)
+        }
+
         for restart in 1...2 {
             app.terminate()
             // Deliberately omit setup: all event/session context must come from disk.
@@ -52,6 +63,13 @@ final class GroupRecoveryUITests: XCTestCase {
         app.buttons["Finish activity"].tap()
         XCTAssertTrue(app.buttons["ClosePostRunSummaryButton"].waitForExistence(timeout: 5))
         discardReview(app)
+        // A second coordinator must not leave a recoverable copy after finishing.
+        app.terminate()
+        app.launch()
+        dismissFixturePermissionAlerts(app)
+        XCTAssertTrue(app.buttons["tab.start"].waitForExistence(timeout: 20), app.debugDescription)
+        XCTAssertFalse(app.buttons["Resume activity"].exists)
+        XCTAssertFalse(app.buttons["Finish activity"].exists)
     }
 
     @MainActor

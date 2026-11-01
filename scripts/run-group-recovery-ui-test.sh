@@ -11,7 +11,7 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
-runtime_id="$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; r=[x for x in json.load(sys.stdin)["runtimes"] if x.get("isAvailable") and x["identifier"].startswith("com.apple.CoreSimulator.SimRuntime.iOS-")]; print(sorted(r,key=lambda x: tuple(map(int,x["version"].split("."))))[-1]["identifier"])')"
+runtime_id="$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; r=[x for x in json.load(sys.stdin)["runtimes"] if x.get("isAvailable") and x["identifier"].startswith("com.apple.CoreSimulator.SimRuntime.iOS-") and any(d["identifier"] == "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro" for d in x.get("supportedDeviceTypes", []))]; print(sorted(r,key=lambda x: tuple(map(int,x["version"].split("."))))[-1]["identifier"])')"
 simulator_id="$(xcrun simctl create "Outbound Recovery UI Test" com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro "$runtime_id")"
 xcrun simctl boot "$simulator_id"
 xcrun simctl bootstatus "$simulator_id" -b >/dev/null
