@@ -1111,6 +1111,7 @@ private fun SignedInApp(
                     postId = entry.arguments?.getString("postId").orEmpty(),
                     onOpenGroupActivity = { navController.navigate(AppDetailRoutes.event(it, "activity_detail")) },
                     unitSystem = measurementUnitSystem, viewModel = socialViewModel, activityViewModel = activityViewModel,
+                    onPublishRoute = { id, name -> integrationViewModel.publishSavedActivityRoute(id, name, "social_activity_detail") },
                     onOpenSharedProfile = { navController.navigate(AppDetailRoutes.profile(it.id, "activity_detail")) },
                     onBack = { navController.popBackStack() },
                 )
@@ -1282,7 +1283,7 @@ private fun SignedInApp(
                     entrySource = entry.arguments?.getString("source") ?: "deep_link", unitSystem = measurementUnitSystem,
                     weightKilograms = integration.weightKilograms, onBack = { navController.popBackStack() },
                     onMessage = { message -> scope.launch { snackbar.showSnackbar(resources.getString(activityMessageResource(message))) }; Unit },
-                    onPublishRoute = integrationViewModel::publishSavedActivityRoute,
+                    onPublishRoute = { id, name -> integrationViewModel.publishSavedActivityRoute(id, name) },
                     onOpenGroupActivity = { navController.navigate(AppDetailRoutes.event(it, "activity_detail")) },
                 )
             }
@@ -1341,7 +1342,7 @@ private fun SignedInApp(
             composable(HEALTH_ROUTE) { HealthDestination(healthPermissions, healthViewModel::refresh) { navController.popBackStack() } }
             composable(NOTIFICATIONS_ROUTE) {
                 LaunchedEffect(Unit) { integrationViewModel.openInbox() }
-                NotificationInbox(integration.notifications) { item ->
+                NotificationInbox(integration.notifications, onBack = { navController.popBackStack() }) { item ->
                     integrationViewModel.openNotification(item)
                     val route = when (val destination = item.presentation.destination) {
                         NotificationDestination.Connections -> AppDetailRoutes.connections("notification")

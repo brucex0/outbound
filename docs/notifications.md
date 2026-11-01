@@ -2,6 +2,10 @@
 
 Open this when changing notification creation, delivery, device registration, foreground behavior, or tap routing.
 
+## Android Navigation
+
+- Notification Center uses a persistent top app bar with a Back arrow that pops the navigation stack. System Back follows the same path; opening notifications retains the center beneath their destination. Existing notification-open and inbox analytics remain unchanged.
+
 ## Product Contract
 
 - The backend notification record is the source of truth. Push is a best-effort delivery channel, not a second inbox.

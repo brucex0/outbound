@@ -1,3 +1,12 @@
 <resources>
     <string name="social_comments">Abrir comentarios</string><string name="social_comments_for">Comentarios en la publicación de %1$s</string><string name="social_add_comment">Añadir un comentario</string><string name="social_post_comment">Publicar</string><string name="social_delete_comment">Eliminar comentario</string><string name="social_award_badge">Insignia de logro</string>
+
+    <string name="social_comments_count">Comentarios (%1$d)</string>
+    <string name="social_close_comments">Cerrar comentarios</string>
+    <string name="social_comments_empty_title">Aún no hay comentarios</string>
+    <string name="social_comments_empty_body">Sé la primera persona en dar ánimos.</string>
+    <string name="social_comment_actions">Acciones del comentario</string>
+    <string name="social_report_comment">Reportar comentario</string>
+    <string name="social_comment_failed_retry">No se pudo publicar el comentario. Toca para volver a intentarlo.</string>
+    <string name="social_comment_restore">Recuperar borrador</string>
 </resources>

@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
 import androidx.compose.material.icons.filled.Notifications
@@ -39,6 +40,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -67,6 +71,7 @@ import com.plainstride.outbound.core.model.activity.SharedLiveRun
 import com.plainstride.outbound.core.model.activity.ActivityTrackPoint
 import com.plainstride.outbound.core.model.activity.ActivityType
 import com.plainstride.outbound.core.model.activity.SavedActivity
+import com.plainstride.outbound.feature.activity.ActivityRoutePublishDialog
 import com.plainstride.outbound.feature.activity.ActivityExport
 import com.plainstride.outbound.feature.activity.ActivityViewModel
 import com.plainstride.outbound.feature.activity.R as ActivityR
@@ -187,7 +192,9 @@ private fun SocialFeedback(viewModel: SocialViewModel) {
 
 @Composable
 private fun SocialComments(state: SocialUiState, viewModel: SocialViewModel) {
-    state.selectedPost?.let { CommentsDialog(it, state.comments, viewModel::addComment, viewModel::deleteComment, viewModel::closeComments) }
+    state.selectedPost?.let { CommentsDialog(it, state.comments, state.commentsLoading, viewModel::addComment, viewModel::deleteComment, viewModel::reportComment) {
+        viewModel.closeComments()
+    } }
 }
 
 @Composable
@@ -298,6 +305,7 @@ fun SocialActivityDetailDestination(
     unitSystem: MeasurementUnitSystem,
     viewModel: SocialViewModel,
     activityViewModel: ActivityViewModel,
+    onPublishRoute: suspend (String, String) -> Boolean,
     onOpenSharedProfile: (SocialPerson) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -339,6 +347,8 @@ fun SocialActivityDetailDestination(
         trackShareAction = activityViewModel::trackSocialShareAction,
         loadPhotoContent = viewModel::loadActivityPhotoContent,
         trackPhotoPreview = viewModel::trackActivityPhotoPreviewed,
+        onPublishRoute = onPublishRoute,
+        trackSaveRouteExposed = viewModel::trackSaveRouteExposed,
     )
     SocialComments(state, viewModel)
 }
@@ -1101,6 +1111,8 @@ private fun SocialActivityDetail(
     trackShareAction: (String) -> Unit,
     loadPhotoContent: (String) -> Unit,
     trackPhotoPreview: () -> Unit,
+    onPublishRoute: suspend (String, String) -> Boolean,
+    trackSaveRouteExposed: () -> Unit,
     onOpenGroupActivity: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -1114,6 +1126,17 @@ private fun SocialActivityDetail(
     var lightboxPhotoIndex by rememberSaveable(post.id) { mutableIntStateOf(-1) }
     var cheerersOpen by rememberSaveable(post.id) { mutableStateOf(false) }
     var shareExport by remember { mutableStateOf<ActivityExport?>(null) }
+    var publishRoute by rememberSaveable(post.id) { mutableStateOf(false) }
+    var routeName by rememberSaveable(post.id) { mutableStateOf(activity.title) }
+    val canPublishRoute = post.isCurrentUser && route.size > 1
+    LaunchedEffect(post.id, canPublishRoute) { if (canPublishRoute) trackSaveRouteExposed() }
+    if (publishRoute && canPublishRoute) ActivityRoutePublishDialog(
+        activityId = activity.id,
+        routeName = routeName,
+        onRouteNameChange = { routeName = it },
+        onPublishRoute = onPublishRoute,
+        onDismiss = { publishRoute = false },
+    )
     val context = LocalContext.current
     val markers = remember(photos, selectedPhotoIndex) {
         photos.mapIndexedNotNull { index, photo ->
@@ -1203,6 +1226,9 @@ private fun SocialActivityDetail(
                     if (shareExport == null) Toast.makeText(context, context.getString(ActivityR.string.activity_failed), Toast.LENGTH_SHORT).show()
                 }) {
                     Icon(Icons.Outlined.Share, stringResource(ActivityR.string.activity_share))
+                }
+                if (canPublishRoute) IconButton(onClick = { publishRoute = true }) {
+                    Icon(Icons.Outlined.AddLocationAlt, stringResource(ActivityR.string.activity_route_publish_action))
                 }
             },
             modifier = Modifier.align(Alignment.TopCenter),
@@ -1754,7 +1780,89 @@ private fun String.plusDuration(durationSecs: Int?): String = runCatching {
         .toString()
 }.getOrDefault(this)
 
-@Composable private fun CommentsDialog(post:SocialPost,comments:List<SocialComment>,add:(String)->Unit,delete:(SocialComment)->Unit,close:()->Unit){var body by rememberSaveable{mutableStateOf("")};AlertDialog(onDismissRequest=close,title={Text(stringResource(R.string.social_comments_for,post.author.displayName))},text={Column{LazyColumn(Modifier.heightIn(max=320.dp)){items(comments,key=SocialComment::id){comment->Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(comment.author.displayName,fontWeight=FontWeight.SemiBold);Text(comment.body)};if(comment.canDelete)IconButton({delete(comment)}){Icon(Icons.Outlined.Delete,stringResource(R.string.social_delete_comment))}}}};OutlinedTextField(body,{body=it.take(500)},Modifier.fillMaxWidth(),label={Text(stringResource(R.string.social_add_comment))})}},confirmButton={TextButton({if(body.isNotBlank()){add(body);body=""}}){Text(stringResource(R.string.social_post_comment))}},dismissButton={TextButton(close){Text(stringResource(R.string.social_done))}})}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CommentsDialog(
+    post: SocialPost,
+    comments: List<SocialComment>,
+    loading: Boolean,
+    add: (String, (Boolean) -> Unit) -> Unit,
+    delete: (SocialComment) -> Unit,
+    report: (SocialComment) -> Unit,
+    close: () -> Unit,
+) {
+    var draft by rememberSaveable(post.id) { mutableStateOf("") }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val failedMessage = stringResource(R.string.social_comment_failed_retry)
+    val retryLabel = stringResource(R.string.social_comment_restore)
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val windowHeight = with(density) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val bottomInset = with(density) { maxOf(WindowInsets.ime.getBottom(this), WindowInsets.navigationBars.getBottom(this)).toDp() }
+    var contentTop by remember { mutableStateOf(0.dp) }
+    ModalBottomSheet(onDismissRequest = close, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)) {
+        // Keep the sheet's anchors stable while fitting the composer into its visible portion.
+        BoxWithConstraints(Modifier.fillMaxWidth().fillMaxHeight(.92f).onGloballyPositioned {
+            contentTop = with(density) { it.positionInWindow().y.toDp() }
+        }) {
+            val visibleHeight = (windowHeight - contentTop - bottomInset).coerceIn(0.dp, maxHeight)
+            Scaffold(
+                modifier = Modifier.fillMaxWidth().height(visibleHeight),
+                contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                topBar = { TopAppBar(
+                    title = { Text(stringResource(R.string.social_comments_count, comments.size)) },
+                    actions = { IconButton(close) { Icon(Icons.Outlined.Close, stringResource(R.string.social_close_comments)) } },
+                ) },
+                snackbarHost = { SnackbarHost(snackbar) },
+                bottomBar = { Surface(tonalElevation = 3.dp) {
+                    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(draft, { draft = it.take(500) }, Modifier.weight(1f), placeholder = { Text(stringResource(R.string.social_add_comment)) }, maxLines = 4)
+                        IconButton(onClick = {
+                            val body = draft
+                            draft = ""
+                            add(body) { succeeded ->
+                                if (!succeeded) scope.launch {
+                                    if (snackbar.showSnackbar(failedMessage, retryLabel, duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed) draft = body
+                                }
+                            }
+                        }, enabled = draft.isNotBlank() && !loading) {
+                            Icon(Icons.AutoMirrored.Outlined.Send, stringResource(R.string.social_post_comment))
+                        }
+                    }
+                } },
+            ) { padding ->
+                LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                    if (loading) item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+                    if (!loading && comments.isEmpty()) item {
+                        Column(Modifier.fillMaxWidth().padding(vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Outlined.ChatBubbleOutline, null, Modifier.size(40.dp))
+                            Text(stringResource(R.string.social_comments_empty_title), style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.social_comments_empty_body), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    items(comments, key = SocialComment::id) { comment ->
+                        var menu by remember { mutableStateOf(false) }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+                            SocialAvatar(comment.author)
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(comment.author.displayName, fontWeight = FontWeight.SemiBold)
+                                RelativeActivityTime(comment.createdAt)
+                                Text(comment.body)
+                            }
+                            Box {
+                                IconButton({ menu = true }) { Icon(Icons.Outlined.MoreHoriz, stringResource(R.string.social_comment_actions)) }
+                                DropdownMenu(menu, { menu = false }) {
+                                    DropdownMenuItem(text = { Text(stringResource(R.string.social_report_comment)) }, onClick = { menu = false; report(comment) })
+                                    if (comment.canDelete) DropdownMenuItem(text = { Text(stringResource(R.string.social_delete_comment)) }, onClick = { menu = false; delete(comment) })
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 internal fun JsonElement?.routeCoordinates(): List<MapCoordinate> {
     val root = this as? JsonObject ?: return emptyList()

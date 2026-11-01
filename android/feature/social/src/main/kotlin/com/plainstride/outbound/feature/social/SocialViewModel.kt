@@ -32,6 +32,7 @@ data class SocialUiState(
     val groupLoadFailed: Boolean = false, val groupUnavailable: Boolean = false,
     val groupInvitationResponding: Boolean = false,
     val selectedPost:SocialPost?=null,val comments:List<SocialComment> = emptyList(),
+    val commentsLoading: Boolean = false,
     val selectedActivityPost: SocialPost? = null,
     val activityDetailPhotos: List<ActivityPhoto> = emptyList(),
     val activityDetailPhotosLoading: Boolean = false,
@@ -68,6 +69,7 @@ sealed interface ConnectionEffect {
     private var groupDirectoryJob: Job? = null
     private var groupLoadJob: Job? = null
     private var activityPhotoJob: Job? = null
+    private var commentsLoadJob: Job? = null
     private var activityFeedLoadTracked = false
     private var feedPagesLoaded = 1
     private var connectionPagesLoaded = 1
@@ -653,31 +655,39 @@ sealed interface ConnectionEffect {
     fun report(post: SocialPost, reason: String) = mutate("social_content_reported", SocialMessage.REPORTED) { repository.reportPost(post.id, ReportReason.entries.firstOrNull { it.wireValue == reason } ?: ReportReason.OTHER).getOrThrow() }
     fun deletePost(post: SocialPost) = mutate("social_post_deleted") { repository.deletePost(post.id).getOrThrow(); refresh() }
     fun block(post: SocialPost) = mutate("social_person_blocked", SocialMessage.BLOCKED) { repository.block(post.author.id).getOrThrow(); refresh() }
-    fun openComments(post: SocialPost) = viewModelScope.launch {
-        repository.comments(post.id).onSuccess { comments ->
-            mutableState.update { state -> state.copy(
-                selectedPost = state.home.posts.firstOrNull { it.id == post.id }
-                    ?: state.selectedActivityPost?.takeIf { it.id == post.id } ?: post,
-                comments = comments,
-            ) }
-        }.onFailure { error ->
-            if (error is CancellationException) throw error
-            logPresenceFailure("comments_load", error)
-            messages.emit(SocialMessage.ACTION_FAILED)
+    fun openComments(post: SocialPost) {
+        commentsLoadJob?.cancel()
+        mutableState.update { it.copy(selectedPost = post, comments = emptyList(), commentsLoading = true) }
+        commentsLoadJob = viewModelScope.launch {
+            repository.comments(post.id).onSuccess { comments ->
+                mutableState.update { if (it.selectedPost?.id == post.id) it.copy(comments = comments, commentsLoading = false) else it }
+            }.onFailure { error ->
+                if (error is CancellationException) throw error
+                logPresenceFailure("comments_load", error)
+                mutableState.update { it.copy(commentsLoading = false) }
+                messages.emit(SocialMessage.ACTION_FAILED)
+            }
         }
         analytics.record(AnalyticsEvent("social_comments_opened"))
     }
-    fun closeComments() = mutableState.update { it.copy(selectedPost = null, comments = emptyList()) }
-    fun addComment(body: String) {
+    fun closeComments() {
+        commentsLoadJob?.cancel()
+        mutableState.update { it.copy(selectedPost = null, comments = emptyList(), commentsLoading = false) }
+    }
+    fun addComment(body: String, feedback: (Boolean) -> Unit) {
         val post = mutableState.value.selectedPost ?: return
         val clean = body.trim(); if (clean.isEmpty()) return
-        mutate("social_comment_created") {
+        mutate("social_comment_created", feedback = feedback, emitFailureMessage = false) {
             val comment = repository.addComment(post.id, clean).getOrThrow()
             updatePost(post.id) { it.copy(commentCount = it.commentCount + 1) }
             mutableState.update { if (it.selectedPost?.id == post.id) it.copy(comments = (it.comments + comment).distinctBy { item -> item.id }) else it }
             persistPost(post.id)
         }
     }
+    fun reportComment(comment: SocialComment) = mutate("social_content_reported", SocialMessage.REPORTED) {
+        repository.reportComment(comment.id).getOrThrow()
+    }
+    fun trackSaveRouteExposed() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "save_route")))
     fun deleteComment(comment: SocialComment) {
         val post = mutableState.value.selectedPost ?: return
         val previousIndex = mutableState.value.comments.indexOfFirst { it.id == comment.id }
@@ -875,6 +885,7 @@ sealed interface ConnectionEffect {
         success: SocialMessage = SocialMessage.ACTION_COMPLETE,
         feedback: ((Boolean) -> Unit)? = null,
         failure: SocialMessage = SocialMessage.ACTION_FAILED,
+        emitFailureMessage: Boolean = true,
         block: suspend () -> Unit,
     ) = viewModelScope.launch {
         runCatching { block() }.onSuccess {
@@ -886,7 +897,7 @@ sealed interface ConnectionEffect {
             val socialError = error as? SocialException
             Log.w("SocialViewModel", "$event failed (type=${error.javaClass.simpleName}, status=${socialError?.httpStatus}, reason=${socialError?.reason})")
             feedback?.invoke(false)
-            messages.emit(failure)
+            if (emitFailureMessage) messages.emit(failure)
             analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "failure")))
         }
     }

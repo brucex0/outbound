@@ -1,3 +1,12 @@
 <resources>
     <string name="social_comments">打开评论</string><string name="social_comments_for">%1$s 的动态评论</string><string name="social_add_comment">添加评论</string><string name="social_post_comment">发布</string><string name="social_delete_comment">删除评论</string><string name="social_award_badge">成就徽章</string>
+
+    <string name="social_comments_count">评论（%1$d）</string>
+    <string name="social_close_comments">关闭评论</string>
+    <string name="social_comments_empty_title">暂无评论</string>
+    <string name="social_comments_empty_body">送上第一份鼓励吧。</string>
+    <string name="social_comment_actions">评论操作</string>
+    <string name="social_report_comment">举报评论</string>
+    <string name="social_comment_failed_retry">评论发布失败，点按以重试。</string>
+    <string name="social_comment_restore">恢复草稿</string>
 </resources>

@@ -309,10 +309,15 @@ data class P0IntegrationState(
         routes.refresh(id,locale,requestedScope,query,coarse(location?.latitude),coarse(location?.longitude))
     };return routeRefreshJob}
     fun bookmark(route:CommunityRoute)=viewModelScope.launch{routes.bookmark(route.id,!route.isBookmarked);refreshRoutes()}
-    suspend fun publishSavedActivityRoute(activityId:String,name:String):Boolean {
-        analytics.record(AnalyticsEvent("route_publish_started",mapOf(AnalyticsProperty.EntrySource to "me_activity_detail")))
+    suspend fun publishSavedActivityRoute(activityId:String,name:String,entrySource:String = "me_activity_detail"):Boolean {
+        analytics.record(AnalyticsEvent("route_publish_started",mapOf(AnalyticsProperty.EntrySource to entrySource)))
         val result=routes.publish(activityId,name,null)
-        analytics.record(AnalyticsEvent(if(result.isSuccess)"route_publish_completed" else "route_publish_failed",mapOf(AnalyticsProperty.EntrySource to "me_activity_detail")+if(result.isFailure)mapOf(AnalyticsProperty.ErrorCategory to "request_failed") else emptyMap()))
+        result.onFailure { error ->
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            val requestError = error as? com.plainstride.outbound.feature.community.RouteRequestException
+            android.util.Log.w("PlainstrideRoutes", "route_publish failed status=${requestError?.status} category=${requestError?.code ?: error.javaClass.simpleName}")
+        }
+        analytics.record(AnalyticsEvent(if(result.isSuccess)"route_publish_completed" else "route_publish_failed",mapOf(AnalyticsProperty.EntrySource to entrySource)+if(result.isFailure)mapOf(AnalyticsProperty.ErrorCategory to "request_failed") else emptyMap()))
         if(result.isSuccess)refreshRoutes()
         return result.isSuccess
     }

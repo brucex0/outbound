@@ -440,7 +440,6 @@ private fun ActivityDetailScreen(
     modifier: Modifier,
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
     val calorieEstimate = remember(activity, weightKilograms) {
         activity.energyKilocalories?.takeIf { it > 0 }
             ?: WorkoutCalorieEstimator.estimate(
@@ -468,7 +467,6 @@ private fun ActivityDetailScreen(
     var delete by rememberSaveable { mutableStateOf(false) }
     var publishRoute by rememberSaveable(activity.id) { mutableStateOf(false) }
     var routeName by rememberSaveable(activity.id) { mutableStateOf(activity.title) }
-    var publishingRoute by remember { mutableStateOf(false) }
     var sharePreview by remember { mutableStateOf<ActivityExport?>(null) }
     var selectedPhotoIndex by rememberSaveable(activity.id) { mutableStateOf(firstLocatedPhotoIndex(activity.photos)) }
     var lightboxPhotoIndex by rememberSaveable(activity.id) { mutableStateOf<Int?>(null) }
@@ -628,23 +626,12 @@ private fun ActivityDetailScreen(
         }
     }
     if (edit) EditTitleDialog(activity.title, { edit = false }, { onEdit(it); edit = false })
-    if (publishRoute) AlertDialog(
-        onDismissRequest = { if(!publishingRoute)publishRoute=false },
-        title = { Text(stringResource(R.string.activity_route_publish_title)) },
-        text = { Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(routeName,{routeName=it.take(80)},label={Text(stringResource(R.string.activity_route_publish_name))},singleLine=true)
-            Text(stringResource(R.string.activity_route_publish_privacy),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
-        } },
-        confirmButton = { TextButton(onClick={
-            publishingRoute=true
-            coroutineScope.launch {
-                val succeeded=onPublishRoute(activity.serverActivityId?:activity.id,routeName.trim())
-                publishingRoute=false
-                if(succeeded)publishRoute=false
-                Toast.makeText(context,context.getString(if(succeeded)R.string.activity_route_publish_success else R.string.activity_route_publish_failed),Toast.LENGTH_SHORT).show()
-            }
-        },enabled=routeName.isNotBlank()&&!publishingRoute){if(publishingRoute)CircularProgressIndicator(Modifier.size(18.dp)) else Text(stringResource(R.string.activity_route_publish_confirm))} },
-        dismissButton = { TextButton(onClick={publishRoute=false},enabled=!publishingRoute){Text(stringResource(R.string.activity_cancel))} },
+    if (publishRoute) ActivityRoutePublishDialog(
+        activityId = activity.serverActivityId ?: activity.id,
+        routeName = routeName,
+        onRouteNameChange = { routeName = it },
+        onPublishRoute = onPublishRoute,
+        onDismiss = { publishRoute = false },
     )
     if (delete) AlertDialog(onDismissRequest = { delete = false }, title = { Text(stringResource(R.string.activity_delete_title)) },
         text = { Text(stringResource(R.string.activity_delete_body)) },
@@ -1269,4 +1256,38 @@ private fun haversineMeters(first: ActivityTrackPoint, second: ActivityTrackPoin
 
 private fun Context.shareExport(export: ActivityExport) {
     startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType(export.mimeType).putExtra(Intent.EXTRA_STREAM, export.uri).putExtra(Intent.EXTRA_TITLE, export.fileName).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), getString(R.string.activity_export)))
+}
+
+/** Shared owner-only route publication confirmation for stored and Social activity details. */
+@Composable
+fun ActivityRoutePublishDialog(
+    activityId: String,
+    routeName: String,
+    onRouteNameChange: (String) -> Unit,
+    onPublishRoute: suspend (String, String) -> Boolean,
+    onDismiss: () -> Unit,
+) {
+    var publishing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = { if (!publishing) onDismiss() },
+        title = { Text(stringResource(R.string.activity_route_publish_title)) },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedTextField(routeName, { onRouteNameChange(it.take(80)) }, label = { Text(stringResource(R.string.activity_route_publish_name)) }, singleLine = true)
+            Text(stringResource(R.string.activity_route_publish_privacy), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } },
+        confirmButton = { TextButton(onClick = {
+            publishing = true
+            scope.launch {
+                val succeeded = onPublishRoute(activityId, routeName.trim())
+                publishing = false
+                if (succeeded) onDismiss()
+                Toast.makeText(context, context.getString(if (succeeded) R.string.activity_route_publish_success else R.string.activity_route_publish_failed), Toast.LENGTH_SHORT).show()
+            }
+        }, enabled = routeName.isNotBlank() && !publishing) {
+            if (publishing) CircularProgressIndicator(Modifier.size(18.dp)) else Text(stringResource(R.string.activity_route_publish_confirm))
+        } },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !publishing) { Text(stringResource(R.string.activity_cancel)) } },
+    )
 }

@@ -1,3 +1,12 @@
 <resources>
     <string name="social_comments">Open comments</string><string name="social_comments_for">Comments on %1$s’s post</string><string name="social_add_comment">Add a comment</string><string name="social_post_comment">Post</string><string name="social_delete_comment">Delete comment</string><string name="social_award_badge">Achievement badge</string>
+
+    <string name="social_comments_count">Comments (%1$d)</string>
+    <string name="social_close_comments">Close comments</string>
+    <string name="social_comments_empty_title">No comments yet</string>
+    <string name="social_comments_empty_body">Add the first bit of encouragement.</string>
+    <string name="social_comment_actions">Comment actions</string>
+    <string name="social_report_comment">Report comment</string>
+    <string name="social_comment_failed_retry">Comment failed to post. Tap to try again.</string>
+    <string name="social_comment_restore">Restore draft</string>
 </resources>

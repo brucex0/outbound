@@ -282,64 +282,71 @@ private fun CheerInvitationRow(person: SocialPerson, checked: Boolean, onToggle:
 
 private fun Set<String>.toggle(id: String): Set<String> = if (id in this) this - id else this + id
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationInbox(
     notifications: List<InboxNotification>,
+    onBack: () -> Unit,
     onOpen: (NotificationCenterItem) -> Unit,
 ) {
     val presentations = remember(notifications) { NotificationPresentationPolicy.items(notifications) }
-    LazyColumn(
-        Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        item { Text(stringResource(R.string.inbox_title), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold) }
-        NotificationCenterSection.entries.forEach { section ->
-            val sectionItems = presentations.filter { it.presentation.section == section }
-            if (sectionItems.isNotEmpty()) {
-                item("section:${section.name}") {
-                    Text(
-                        text = stringResource(
-                            when (section) {
-                                NotificationCenterSection.NEEDS_YOU -> R.string.inbox_needs_you
-                                NotificationCenterSection.UPDATES -> R.string.inbox_updates
-                                NotificationCenterSection.CHEERS_AND_MILESTONES -> R.string.inbox_cheers_milestones
-                            },
-                        ),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                }
-                items(sectionItems, key = NotificationCenterItem::id) { item ->
-                    OutlinedCard({ onOpen(item) }, Modifier.fillMaxWidth()) {
-                        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
-                            Icon(
-                                imageVector = when (section) {
-                                    NotificationCenterSection.NEEDS_YOU -> Icons.Outlined.NotificationsActive
-                                    NotificationCenterSection.UPDATES -> Icons.Outlined.Notifications
-                                    NotificationCenterSection.CHEERS_AND_MILESTONES -> Icons.Outlined.FavoriteBorder
+    Column(Modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text(stringResource(R.string.inbox_title)) },
+            navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.trusted_contacts_back)) } },
+        )
+        LazyColumn(
+            Modifier.weight(1f),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            NotificationCenterSection.entries.forEach { section ->
+                val sectionItems = presentations.filter { it.presentation.section == section }
+                if (sectionItems.isNotEmpty()) {
+                    item("section:${section.name}") {
+                        Text(
+                            text = stringResource(
+                                when (section) {
+                                    NotificationCenterSection.NEEDS_YOU -> R.string.inbox_needs_you
+                                    NotificationCenterSection.UPDATES -> R.string.inbox_updates
+                                    NotificationCenterSection.CHEERS_AND_MILESTONES -> R.string.inbox_cheers_milestones
                                 },
-                                contentDescription = null,
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(item.primary.message, fontWeight = if (item.unread) FontWeight.SemiBold else FontWeight.Normal)
-                                if (item.additionalCount > 0) {
-                                    Text(
-                                        stringResource(R.string.inbox_additional_count, item.additionalCount),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
+                            ),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
+                    items(sectionItems, key = NotificationCenterItem::id) { item ->
+                        OutlinedCard({ onOpen(item) }, Modifier.fillMaxWidth()) {
+                            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
+                                Icon(
+                                    imageVector = when (section) {
+                                        NotificationCenterSection.NEEDS_YOU -> Icons.Outlined.NotificationsActive
+                                        NotificationCenterSection.UPDATES -> Icons.Outlined.Notifications
+                                        NotificationCenterSection.CHEERS_AND_MILESTONES -> Icons.Outlined.FavoriteBorder
+                                    },
+                                    contentDescription = null,
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(item.primary.message, fontWeight = if (item.unread) FontWeight.SemiBold else FontWeight.Normal)
+                                    if (item.additionalCount > 0) {
+                                        Text(
+                                            stringResource(R.string.inbox_additional_count, item.additionalCount),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
+                                if (item.unread) Badge()
                             }
-                            if (item.unread) Badge()
                         }
                     }
                 }
             }
+            if (notifications.isEmpty()) item { Text(stringResource(R.string.inbox_empty), Modifier.padding(24.dp)) }
         }
-        if (notifications.isEmpty()) item { Text(stringResource(R.string.inbox_empty), Modifier.padding(24.dp)) }
     }
 }
 
