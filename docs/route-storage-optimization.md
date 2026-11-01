@@ -36,7 +36,7 @@ The in-memory iOS/Android models remain normal route points. Encoding happens on
 
 ### Social route previews
 
-`/v1/social/home` and `/v1/social/together` return routes as `polyline5` previews capped at 120 points. The payload includes the encoded shape, decoded point count, and geographic bounds; it intentionally omits timestamps, altitude, accuracy, visibility, and elevation attribution. This keeps the paginated feed small while activity sync remains the source for full-fidelity route data.
+`/v1/social/home` and `/v1/social/together` return routes as `polyline5` previews capped at 120 points. The payload includes the encoded shape, decoded point count, and geographic bounds; it intentionally omits timestamps, altitude, accuracy, visibility, and elevation attribution. The preview also carries metric and imperial split summaries (distance, recorded time, and available elevation delta) calculated from the full route before simplification; no point timestamps are exposed. See `docs/activity-detail.md` for split semantics. This keeps the paginated feed small while activity sync remains the source for full-fidelity route data.
 
 ## Sampling policy
 

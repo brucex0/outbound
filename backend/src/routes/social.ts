@@ -17,6 +17,7 @@ import {
   recognitionAwards,
 } from "../services/recognition.js";
 import { assertGroupMember } from "../services/groups.js";
+import { activitySplits } from "../services/activitySplits.js";
 import { decodeStoredActivityRoute } from "../services/activityRouteCodec.js";
 import { socialFeedPhotoMetadata } from "../services/socialFeedPhotoMetadata.js";
 import { compactPerson } from "../services/apiAssetURLs.js";
@@ -1554,6 +1555,10 @@ function socialRoutePayload(routeBlob: Uint8Array | null | undefined, routeMetad
   return {
     format: "polyline5",
     encodedPolyline: encodePolyline5(points),
+    splits: {
+      metric: activitySplits(route.points, 1000),
+      imperial: activitySplits(route.points, 1609.344),
+    },
     pointCount: points.length,
     bounds,
   };
