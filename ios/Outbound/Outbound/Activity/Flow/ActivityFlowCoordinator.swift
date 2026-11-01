@@ -46,9 +46,31 @@ final class ActivityFlowStore: ObservableObject {
         UserDefaults.standard.set(Array(completed), forKey: completedKey)
         if selectedEvent?.id == id { UserDefaults.standard.removeObject(forKey: selectionKey) }
     }
-    func setJoined(_ event: ActivityEventDTO, joined: Bool) {
+    private func joinChoiceKey(_ id: String) -> String { "\(selectionKey).join_choice.\(id)" }
+    private func shareDefaultKey(_ id: String) -> String { "\(selectionKey).share_default_applied.\(id)" }
+
+    func applyParticipationDefault(_ event: ActivityEventDTO) {
+        guard !hasUnfinishedSession, event.currentUserGoing == true, selectedEvent == nil,
+              UserDefaults.standard.object(forKey: joinChoiceKey(event.id)) == nil else { return }
+        setJoined(event, joined: true, entrySource: "today_rsvp_default")
+    }
+
+    func rememberLocationSharingChoice(for eventID: String) {
+        UserDefaults.standard.set(true, forKey: shareDefaultKey(eventID))
+    }
+
+    func consumeLocationSharingDefault(_ event: ActivityEventDTO) -> Bool {
+        guard !hasUnfinishedSession, selectedEvent?.id == event.id,
+              !UserDefaults.standard.bool(forKey: shareDefaultKey(event.id)) else { return false }
+        // Consume before the request so refreshes and later opt-outs cannot re-enable sharing.
+        UserDefaults.standard.set(true, forKey: shareDefaultKey(event.id))
+        return true
+    }
+
+    func setJoined(_ event: ActivityEventDTO, joined: Bool, entrySource: String = "today") {
         guard !hasUnfinishedSession else { return }
         objectWillChange.send()
+        UserDefaults.standard.set(joined, forKey: joinChoiceKey(event.id))
         let context = ActivityEventLaunchContext(id: event.id, title: event.title,
             role: event.currentUserRole ?? "participant", attendanceMode: event.currentUserAttendanceMode, organizerName: event.creator.displayName)
         if joined {
@@ -70,7 +92,7 @@ final class ActivityFlowStore: ObservableObject {
             coordinator?.setup.plannedIntent = intent
         }
         coordinator?.track(.init(.groupActivityRecordingSelectionChanged, properties: [
-            .selectionType: .string(joined ? "joined" : "solo"), .entrySource: .string("today")
+            .selectionType: .string(joined ? "joined" : "solo"), .entrySource: .string(entrySource)
         ]))
     }
 

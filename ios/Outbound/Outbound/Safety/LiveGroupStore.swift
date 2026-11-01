@@ -427,6 +427,9 @@ final class LiveGroupStore: ObservableObject {
 
     func leave() {
         guard let sessionID = activeSession?.id, isSharing else { return }
+        if let eventID = activeSession?.activityEventId {
+            ActivityFlowStore.shared.rememberLocationSharingChoice(for: eventID)
+        }
 #if DEBUG
         if isDebugTestGroupRun {
             isDebugTestGroupRun = false

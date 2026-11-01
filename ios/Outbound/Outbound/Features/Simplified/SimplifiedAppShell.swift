@@ -1270,6 +1270,13 @@ private struct SimplifiedTodayView: View {
                 }
             }
         }
+        .task(id: "\(event.id):\(event.currentUserGoing == true):\(activityFlowStore.selectedEvent?.id ?? ""):\(isSelected):\(liveGroupStore.isJoining)") {
+            guard isSelected else { return }
+            activityFlowStore.applyParticipationDefault(event)
+            guard !hasDifferentActiveLiveMap(for: event), !liveGroupStore.isJoining,
+                  activityFlowStore.consumeLocationSharingDefault(event) else { return }
+            if !isSharingLiveMap(for: event) { toggleTodayActivityLiveMapSharing(for: event) }
+        }
     }
 
     private func todayGroupJoinButton(_ event: ActivityEventDTO) -> some View {
