@@ -173,33 +173,7 @@ async function socialHome(c: Context<AppEnv>) {
       take: 10,
     }),
     prisma.groupMember.findMany({ where: { userId: user.id, status: "active" }, include: { group: true } }),
-    prisma.post.findMany({
-      where: {
-        userId: { in: [user.id, ...connections] },
-        activityId: { not: null },
-        visibility: { in: ["connections", "public"] },
-        deletedAt: null,
-        ...(feedCursor ? {
-          OR: [
-            { activity: { startedAt: { lt: feedCursor.createdAt } } },
-            { activity: { startedAt: feedCursor.createdAt }, id: { lt: feedCursor.id } },
-          ],
-        } : {}),
-      },
-      include: {
-        user: { select: socialPersonSelect },
-        activity: { select: socialPostActivitySelect },
-        reactions: { select: { id: true, userId: true, type: true, user: { select: socialPersonSelect } }, orderBy: { createdAt: "asc" as const } },
-        comments: {
-          include: { author: { select: socialPersonSelect } },
-          orderBy: { createdAt: "asc" },
-          take: 2,
-        },
-        _count: { select: { comments: true } },
-      },
-      orderBy: [{ activity: { startedAt: "desc" } }, { id: "desc" }],
-      take: socialFeedPageSize + 1,
-    }),
+    socialPostsPage(user.id, connections, feedCursor),
     prisma.invitation.findMany({
       where: { recipientId: user.id, status: "pending", expiresAt: { gt: new Date() }, activityEventId: { not: null } },
       include: { sender: { select: socialPersonSelect }, activityEvent: { select: { id: true, title: true } } },
@@ -208,6 +182,69 @@ async function socialHome(c: Context<AppEnv>) {
     }),
   ]);
 
+  return c.json({
+    upcomingRuns: upcomingRuns.map((activity) => activityEventPayload(activity, user.id, connections)),
+    pastEvents: pastEvents.map((activity) => activityEventPayload(activity, user.id, connections)),
+    groups: memberships.map((membership) => ({ ...membership.group, role: membership.role })),
+    posts: posts.posts,
+    invitations: invitations.map((invitation) => ({ id: invitation.id, kind: "activityEvent", title: invitation.activityEvent?.title ?? "Activity invitation", sender: compactPerson(invitation.sender), objectId: invitation.activityEventId })),
+    nextFeedCursor: posts.nextFeedCursor,
+  });
+}
+
+router.get("/posts", async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const connections = await acceptedConnectionIDs(user.id);
+  const personId = c.req.query("userId");
+  if (personId !== undefined && personId !== user.id && !connections.includes(personId)) {
+    console.warn("[social] posts rejected reason=not_connected status=404");
+    return c.json({ error: "Profile not found." }, 404);
+  }
+  const cursorValue = c.req.query("cursor");
+  const cursor = cursorValue ? decodeFeedCursor(cursorValue) : null;
+  if (cursorValue && !cursor) {
+    console.warn("[social] posts rejected reason=invalid_cursor status=400");
+    return c.json({ error: "Invalid activity feed cursor." }, 400);
+  }
+  return c.json(await socialPostsPage(user.id, connections, cursor, personId));
+});
+
+async function socialPostsPage(
+  viewerId: string,
+  connections: string[],
+  feedCursor: ReturnType<typeof decodeFeedCursor>,
+  personId?: string,
+) {
+  const prisma = getPrismaClient();
+  const posts = await prisma.post.findMany({
+    where: {
+      userId: personId ?? { in: [viewerId, ...connections] },
+      activityId: { not: null },
+      activity: { deletedAt: null },
+      visibility: { in: ["connections", "public"] },
+      deletedAt: null,
+      ...(feedCursor ? {
+        OR: [
+          { activity: { startedAt: { lt: feedCursor.createdAt } } },
+          { activity: { startedAt: feedCursor.createdAt }, id: { lt: feedCursor.id } },
+        ],
+      } : {}),
+    },
+    include: {
+      user: { select: socialPersonSelect },
+      activity: { select: socialPostActivitySelect },
+      reactions: { select: { id: true, userId: true, type: true, user: { select: socialPersonSelect } }, orderBy: { createdAt: "asc" as const } },
+      comments: {
+        include: { author: { select: socialPersonSelect } },
+        orderBy: { createdAt: "asc" },
+        take: 2,
+      },
+      _count: { select: { comments: true } },
+    },
+    orderBy: [{ activity: { startedAt: "desc" } }, { id: "desc" }],
+    take: socialFeedPageSize + 1,
+  });
   const feedPosts = posts.slice(0, socialFeedPageSize);
   const lastFeedPost = feedPosts.at(-1);
   const lastFeedTimestamp = lastFeedPost?.activity?.startedAt;
@@ -220,22 +257,18 @@ async function socialHome(c: Context<AppEnv>) {
       ? [{ userId: post.userId, clientActivityId: post.activity.clientActivityId }]
       : []
   ));
-  const activityRecognitions = await activityRecognitionsForActivities(activityRecognitionSources, user.id);
+  const activityRecognitions = await activityRecognitionsForActivities(activityRecognitionSources, viewerId);
 
-  return c.json({
-    upcomingRuns: upcomingRuns.map((activity) => activityEventPayload(activity, user.id, connections)),
-    pastEvents: pastEvents.map((activity) => activityEventPayload(activity, user.id, connections)),
-    groups: memberships.map((membership) => ({ ...membership.group, role: membership.role })),
+  return {
     posts: await Promise.all(feedPosts.map((post) => postPayload(
       post,
-      user.id,
+      viewerId,
       activityRecognitions.get(post.activity?.clientActivityId
         ? activityRecognitionKey(post.userId, post.activity.clientActivityId)
         : "") ?? [],
     ))),
-    invitations: invitations.map((invitation) => ({ id: invitation.id, kind: "activityEvent", title: invitation.activityEvent?.title ?? "Activity invitation", sender: compactPerson(invitation.sender), objectId: invitation.activityEventId })),
     nextFeedCursor,
-  });
+  };
 }
 
 function encodeFeedCursor(createdAt: Date, id: string) {

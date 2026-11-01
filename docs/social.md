@@ -1,5 +1,11 @@
 # Social
 
+## Friend profile activity history
+
+- `GET /v1/social/posts?userId=<id>&cursor=<opaque cursor>` returns `posts` and `nextFeedCursor`; omit `userId` for the connection feed.
+- The endpoint and Social home share one query and Social activity payload, ordered by activity start time and post ID descending, 12 posts per page.
+- A target must be the viewer or an accepted, unblocked connection. Each page rechecks access and includes only nondeleted activities/posts visible to connections.
+
 ## Current Social implementation
 
 This section is an archived pre-consolidation reference. `docs/run-groups.md` defines the implemented Group destination, API, persistence model, and authorization contract; endpoint and terminology descriptions below must not be used for new work.
