@@ -456,10 +456,23 @@ struct TogetherActivityPhotosResponseDTO: Codable, Sendable {
     let photos: [TogetherActivityPhotoDTO]
 }
 
+struct TogetherActivitySplitsDTO: Codable, Sendable, Equatable {
+    let metric: [TogetherActivitySplitDTO]
+    let imperial: [TogetherActivitySplitDTO]
+}
+
+struct TogetherActivitySplitDTO: Codable, Sendable, Equatable {
+    let number: Int
+    let timeSeconds: Double
+    let distanceMeters: Double
+    let elevationChangeM: Double?
+}
+
 struct TogetherActivityRouteDTO: Codable, Sendable, Equatable {
     let format: String
     let encodedPolyline: String
     let pointCount: Int
+    var splits: TogetherActivitySplitsDTO? = nil
     let bounds: TogetherActivityRouteBoundsDTO
 
     nonisolated var coordinates: [[Double]] {

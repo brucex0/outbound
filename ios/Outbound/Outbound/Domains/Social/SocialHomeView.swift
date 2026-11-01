@@ -4026,6 +4026,8 @@ struct SocialActivityDetailView: View {
                 ),
                 eventAttribution: activity.eventAttribution,
                 usesStoredActivity: false,
+                hasRecordedRouteTiming: false,
+                sharedRouteSplits: activity.route?.splits,
                 showsShareControl: currentPost.isCurrentUser,
                 showsEditControl: false,
                 showsPrivateDetails: false,
@@ -4277,6 +4279,8 @@ private extension TogetherActivityDTO {
         let resolvedStartedAt = startedAt ?? postCreatedAt.addingTimeInterval(TimeInterval(-duration))
         let resolvedEndedAt = endedAt ?? resolvedStartedAt.addingTimeInterval(TimeInterval(duration))
         let coordinates = route?.coordinates ?? []
+        // These timestamps satisfy the map adapter only; the preview has no recorded timing.
+        // Social detail must not derive splits or pace coloring from them.
         let routePoints = coordinates.enumerated().compactMap { index, coordinate -> SavedRoutePoint? in
             guard coordinate.count >= 2 else { return nil }
             let progress = coordinates.count > 1 ? Double(index) / Double(coordinates.count - 1) : 0

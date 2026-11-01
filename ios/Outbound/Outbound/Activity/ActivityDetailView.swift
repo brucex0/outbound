@@ -11,6 +11,8 @@ struct ActivityDetailView: View {
     let activity: SavedActivity
     private let eventAttribution: GroupActivityAttribution?
     private let usesStoredActivity: Bool
+    private let sharedRouteSplits: TogetherActivitySplitsDTO?
+    private let hasRecordedRouteTiming: Bool
     private let showsShareControl: Bool
     private let showsEditControl: Bool
     private let showsPrivateDetails: Bool
@@ -44,12 +46,15 @@ struct ActivityDetailView: View {
     @State private var isPublishRoutePresented = false
     @State private var publishedRouteMessage: String?
     @State private var hasTrackedSaveRouteExposure = false
+    @State private var hasTrackedSharedSplitsExposure = false
     @State private var hasTrackedCalorieExposure = false
 
     init(
         activity: SavedActivity,
         eventAttribution: GroupActivityAttribution? = nil,
         usesStoredActivity: Bool = true,
+        hasRecordedRouteTiming: Bool = true,
+        sharedRouteSplits: TogetherActivitySplitsDTO? = nil,
         showsShareControl: Bool = true,
         showsEditControl: Bool = true,
         showsPrivateDetails: Bool = true,
@@ -61,6 +66,8 @@ struct ActivityDetailView: View {
         self.activity = activity
         self.eventAttribution = eventAttribution
         self.usesStoredActivity = usesStoredActivity
+        self.hasRecordedRouteTiming = hasRecordedRouteTiming
+        self.sharedRouteSplits = sharedRouteSplits
         self.showsShareControl = showsShareControl
         self.showsEditControl = showsEditControl
         self.showsPrivateDetails = showsPrivateDetails
@@ -159,11 +166,29 @@ struct ActivityDetailView: View {
     }
 
     private var splits: [ActivitySplit] {
-        computeSplits(from: currentActivity.routePoints, unitSystem: unitSystem)
+        if let sharedRouteSplits {
+            let recorded = unitSystem == .metric ? sharedRouteSplits.metric : sharedRouteSplits.imperial
+            return recorded.compactMap { split in
+                guard split.distanceMeters.isFinite, split.distanceMeters > 0,
+                      split.timeSeconds.isFinite, split.timeSeconds >= 0 else { return nil }
+                return ActivitySplit(
+                    number: split.number,
+                    timeSeconds: Int(split.timeSeconds.rounded()),
+                    pace: split.timeSeconds / (split.distanceMeters / 1000),
+                    distanceMeters: split.distanceMeters,
+                    elevationChangeM: split.elevationChangeM,
+                    heartRateBPM: nil
+                )
+            }
+        }
+        // Shape-only previews use placeholder timestamps, which cannot establish pace.
+        guard hasRecordedRouteTiming else { return [] }
+        return computeSplits(from: currentActivity.routePoints, unitSystem: unitSystem)
     }
 
     private var paceSegments: [(startIndex: Int, endIndex: Int, pace: Double)] {
-        computePaceSegments(from: currentActivity.routePoints)
+        guard hasRecordedRouteTiming else { return [] }
+        return computePaceSegments(from: currentActivity.routePoints)
     }
 
     private var elevationProfilePoints: [ActivityElevationProfilePoint] {
@@ -367,6 +392,12 @@ struct ActivityDetailView: View {
         }
         .onAppear {
             selectFirstLocatedPhotoIfNeeded()
+            if sharedRouteSplits != nil, !hasTrackedSharedSplitsExposure {
+                hasTrackedSharedSplitsExposure = true
+                track(.init(.featureExposed, properties: [
+                    .feature: .string("social_activity_recorded_splits"),
+                ]))
+            }
             if !activityRecognitions.isEmpty {
                 track(.init(.activityRecognitionViewed, properties: [
                     .sourceType: .string(routePublicationEntrySource),
