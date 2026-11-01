@@ -158,3 +158,12 @@ Production schema rollout uses the Cloud Run database job documented in `docs/ba
 - The live map shows a separate row of at most five attendee pills below the activity panel, including attendees who have not joined location sharing. Pills reuse Social avatars and show first names, adding a last-name initial for duplicate first names across the roster. The location icon indicates active sharing; tapping focuses an available location or shows a temporary localized unavailable toast. The expanded activity panel retains the full attendee list. Both top controls and pills hide while the workout dashboard is expanded.
 
 - Active recording recovery persists the activity-event launch context and existing live-map session ID in the session journal. Restart restores the event title, attendee panel, pills, and saved event attribution; it reconnects an existing active membership rather than joining a new session. Ended/left memberships are not resumed.
+
+
+## Android Shared Connection State
+
+- Social, Me, and accepted-connection pickers observe the account/locale-scoped Room `social.home/current` snapshot through `SocialRepository.observeHome`.
+- Full refresh, lightweight connection refresh, and connection pagination publish their roster/cursor to that same snapshot. ViewModels do not keep a separately refreshed roster. Repository writes are serialized, retain the loaded page range, and preserve unrelated cached feed/Group data and its expiry on roster-only updates.
+- The app shell refreshes inbox and connections on foreground entry, every 30 seconds while resumed, and on foreground push receipt, regardless of the selected tab. Social additionally refreshes active-now state while visible. Me does not need to be reopened for a newly accepted connection to appear.
+- Regression coverage lives in `NavigationInteractionTest`: Social quick refresh → Me, push → bell and roster, missing push callback → foreground poll, and pagination retention across consumers.
+- Verification (2026-10-31): 25 app interaction tests and 5 profile-control tests passed with `ANDROID_SERIAL=emulator-5556 ./android/test-navigation.sh`; debug assembly and release Kotlin compilation passed. Push tests exercise the foreground invalidation signal and missed-callback polling against local HTTP fixtures; live FCM delivery was not replayed.

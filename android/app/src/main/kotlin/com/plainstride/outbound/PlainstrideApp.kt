@@ -203,6 +203,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import android.content.Intent
 import android.provider.Settings
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.coroutineScope
@@ -396,7 +397,6 @@ private fun SignedInApp(
                 if (accessAvailable != pushPermissionGranted) integrationViewModel.trackPushPermissionResult(accessAvailable)
                 pushPermissionGranted = accessAvailable
                 notificationPermissionRequested = notificationPermissionPreferences.getBoolean("requested", false)
-                if (accountId != null) integrationViewModel.refreshInbox()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -538,9 +538,18 @@ private fun SignedInApp(
             navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
         }
     }
+    LaunchedEffect(accountId, lifecycleOwner) {
+        if (accountId != null) lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            // Also runs immediately when collection starts after ON_RESUME already happened.
+            while (true) {
+                integrationViewModel.refreshSocialState("foreground")
+                delay(30_000)
+            }
+        }
+    }
     LaunchedEffect(accountId) {
         if (accountId != null) com.plainstride.outbound.notifications.InboxUpdates.changes.collect {
-            integrationViewModel.refreshInbox()
+            integrationViewModel.refreshSocialState("push")
         }
     }
     LaunchedEffect(navigationUri, accountId) {

@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import com.plainstride.outbound.core.data.ActivityRepository
 import com.plainstride.outbound.feature.community.*
 import com.plainstride.outbound.feature.health.*
@@ -74,6 +75,7 @@ data class P0IntegrationState(
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val mutable = MutableStateFlow(P0IntegrationState(pushEnabled=context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES,Context.MODE_PRIVATE).getBoolean(PUSH_ENABLED,true))); val state = mutable.asStateFlow()
+    private var socialObservation: Job? = null
     private var activityObservation: Job? = null
     private var statisticsObservation: Job? = null
     private var pendingObservation: Job? = null
@@ -195,17 +197,16 @@ data class P0IntegrationState(
                 snapshot?.let { value -> mutable.update { it.copy(insights = value.insights) } }
             }
         }
-        viewModelScope.launch {
-            launch {
-                social.observeHome(accountId, locale).collect { cached ->
-                    if (cached is CachedSocialHome.Available) mutable.update { state -> state.copy(
-                        connections = cached.value.connections.filter { it.relationship in setOf("accepted", "connected") },
-                        recognitions = cached.value.recognitions,
-                    ) }
-                }
+        socialObservation?.cancel()
+        socialObservation = viewModelScope.launch {
+            social.observeHome(accountId, locale).collect { cached ->
+                if (this@P0IntegrationViewModel.accountId == accountId && cached is CachedSocialHome.Available) mutable.update { state -> state.copy(
+                    connections = cached.value.connections.filter { it.relationship in setOf("accepted", "connected") },
+                    recognitions = cached.value.recognitions,
+                ) }
             }
-            social.refresh(accountId, locale)
         }
+        viewModelScope.launch { social.refresh(accountId, locale) }
         refreshRoutes()
         refreshInbox()
         registerPush()
@@ -315,6 +316,24 @@ data class P0IntegrationState(
         if(result.isSuccess)refreshRoutes()
         return result.isSuccess
     }
+    /** Refresh shared durable state independently of the currently selected tab. */
+    suspend fun refreshSocialState(source: String) = kotlinx.coroutines.coroutineScope {
+        val account = accountId ?: return@coroutineScope
+        val requestedLocale = locale
+        val inbox = async { inboxMutex.lock(); try { loadInbox() } finally { inboxMutex.unlock() } }
+        val roster = async { social.refreshConnections(account, requestedLocale, mutable.value.connections.size) }
+        val inboxSucceeded = inbox.await()
+        val rosterResult = roster.await()
+        rosterResult.onFailure { error ->
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            android.util.Log.w("PlainstrideSocial", "shared_connections_refresh failed type=${error.javaClass.simpleName} status=${(error as? com.plainstride.outbound.feature.social.SocialException)?.httpStatus}")
+        }
+        if (accountId == account) analytics.record(AnalyticsEvent("social_state_refresh_result", mapOf(
+            AnalyticsProperty.SourceType to if(source=="push") "push" else "foreground",
+            AnalyticsProperty.Result to if(inboxSucceeded && rosterResult.isSuccess) "success" else "failure",
+        )))
+    }
+
     private val inboxMutex = kotlinx.coroutines.sync.Mutex()
     fun refreshInbox() = viewModelScope.launch {
         inboxMutex.lock()

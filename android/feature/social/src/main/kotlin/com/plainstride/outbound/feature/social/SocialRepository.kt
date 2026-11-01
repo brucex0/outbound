@@ -3,6 +3,7 @@ package com.plainstride.outbound.feature.social
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.CancellationException
@@ -23,10 +24,10 @@ sealed interface CachedSocialHome {
 interface SocialRepository {
     fun observeHome(accountId: String, localeTag: String): Flow<CachedSocialHome>
     suspend fun refresh(accountId: String, localeTag: String, retainedConnections: SocialPage<SocialPerson> = SocialPage(emptyList())): Result<Unit>
-    suspend fun refreshConnections(retainedCount: Int): Result<SocialPage<SocialPerson>>
+    suspend fun refreshConnections(accountId: String, localeTag: String, retainedCount: Int): Result<SocialPage<SocialPerson>>
     suspend fun invitedLiveSessions(): Result<List<ActiveLiveSession>>
     suspend fun loadFeed(cursor: String?): Result<SocialPage<SocialPost>>
-    suspend fun loadConnections(cursor: String?): Result<SocialPage<SocialPerson>>
+    suspend fun loadConnections(accountId: String, localeTag: String, cursor: String?): Result<SocialPage<SocialPerson>>
     suspend fun searchPeople(query: String): Result<List<SocialPerson>>
     suspend fun profile(id: String): Result<SocialPerson>
     suspend fun cacheProfilePreview(accountId: String, person: SocialPerson)
@@ -97,9 +98,11 @@ class OfflineFirstSocialRepository @Inject constructor(
     }
 
     override suspend fun refresh(accountId: String, localeTag: String, retainedConnections: SocialPage<SocialPerson>) = mutex.withLock {
+        val stored = (observeHome(accountId, localeTag).first() as? CachedSocialHome.Available)?.value
+        val retained = stored?.let { SocialPage(it.connections, it.connectionNextCursor) } ?: retainedConnections
         authenticated { auth -> coroutineScope {
             val home = async { apiCall { api.home(auth) } }
-            val connections = async { fetchConnections(auth, retainedConnections.items.size) }
+            val connections = async { fetchConnections(auth, maxOf(retained.items.size, retainedConnections.items.size)) }
             val groups = async { apiCall { api.groups(auth) } }
             val awards = async { apiCall { api.awards(auth) } }
             val groupInvitations = async { apiCall { api.groupInvitations(auth) } }
@@ -117,7 +120,7 @@ class OfflineFirstSocialRepository @Inject constructor(
                                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
                                     android.util.Log.w("PlainstrideSocial", "connections_refresh failed category=${connectionResult.error.code} status=${connectionResult.error.httpStatus}")
                                     // Connection availability must not prevent refreshing the feed.
-                                    retainedConnections
+                                    retained
                                 }
                             }
                             ApiResult.Success(core.value.copy(
@@ -139,9 +142,26 @@ class OfflineFirstSocialRepository @Inject constructor(
 
     override suspend fun invitedLiveSessions() = authenticated { apiCall { api.invitedLiveSessions(it) } }.map { it.sessions }
 
-    override suspend fun refreshConnections(retainedCount: Int) = authenticated {
-        fetchConnections(it, retainedCount)
-    }.map { response -> SocialPage(response.connections.map { it.toPerson() }, response.nextCursor) }
+    override suspend fun refreshConnections(accountId: String, localeTag: String, retainedCount: Int) = mutex.withLock {
+        val cachedCount = (observeHome(accountId, localeTag).first() as? CachedSocialHome.Available)?.value?.connections?.size ?: 0
+        authenticated { fetchConnections(it, maxOf(retainedCount, cachedCount)) }
+            .map { response -> SocialPage(response.connections.map { it.toPerson() }, response.nextCursor) }
+            .mapCatching { page -> storeConnections(accountId, localeTag, page, append = false); page }
+            .onFailure { if (it is CancellationException) throw it }
+    }
+
+    /** Publish every roster response to the same Room snapshot observed by Social, Me and pickers. */
+    private suspend fun storeConnections(accountId: String, localeTag: String, page: SocialPage<SocialPerson>, append: Boolean) {
+        val cached = (observeHome(accountId, localeTag).first() as? CachedSocialHome.Available)?.value ?: SocialHome()
+        val home = cached.copy(
+            connections = if (append) (cached.connections + page.items).distinctBy { it.connectionId ?: it.id } else page.items,
+            connectionNextCursor = page.nextCursor,
+        )
+        val row = cache.get(accountId, NAMESPACE, HOME, localeTag)
+        val now = System.currentTimeMillis()
+        // A roster-only refresh must not mark unrelated feed/group data fresh.
+        cache.upsert(AccountCacheEntity(accountId, NAMESPACE, HOME, localeTag, PlainstrideJson.encodeToString(home), row?.etag, now, if (row == null) now else row.expiresAtEpochMs))
+    }
 
     private suspend fun fetchConnections(auth: String, retainedCount: Int): ApiResult<ConnectionsResponse> {
         val connections = mutableListOf<ConnectionDto>()
@@ -165,7 +185,12 @@ class OfflineFirstSocialRepository @Inject constructor(
     )
 
     override suspend fun loadFeed(cursor: String?) = authenticated { apiCall { api.feed(it, cursor) } }.map { SocialPage(it.posts, it.nextCursor) }
-    override suspend fun loadConnections(cursor: String?) = authenticated { apiCall { api.connections(it, cursor) } }.map { response -> SocialPage(response.connections.map { it.person.copy(relationshipDetails = SocialRelationship(it.id, it.status, it.direction), relationship = it.status, isActive = it.isInActiveWorkout, connectionId = it.id, connectionDirection=it.direction) }, response.nextCursor) }
+    override suspend fun loadConnections(accountId: String, localeTag: String, cursor: String?) = mutex.withLock {
+        authenticated { apiCall { api.connections(it, cursor) } }
+            .map { response -> SocialPage(response.connections.map { it.toPerson() }, response.nextCursor) }
+            .mapCatching { page -> storeConnections(accountId, localeTag, page, append = cursor != null); page }
+            .onFailure { if (it is CancellationException) throw it }
+    }
     override suspend fun searchPeople(query: String) = authenticated { apiCall { api.search(it, query.trim()) } }.map { it.people }
     override suspend fun profile(id: String) = authenticated { apiCall { api.profile(it, id) } }.map { it.person.copy(recognitions = it.recognitions) }
     override suspend fun cacheProfilePreview(accountId: String, person: SocialPerson) {

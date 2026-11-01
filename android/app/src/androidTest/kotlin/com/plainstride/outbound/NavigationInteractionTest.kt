@@ -18,6 +18,8 @@ import com.plainstride.outbound.core.model.activity.SavedActivity
 import com.plainstride.outbound.core.model.activity.ActivityType
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
+import androidx.lifecycle.ViewModelProvider
 import okhttp3.mockwebserver.*
 import org.junit.*
 import java.net.InetAddress
@@ -63,7 +65,7 @@ class NavigationInteractionTest {
                     val path = request.requestUrl!!.encodedPath
                     requests.add(path)
                     if (path == gatedPath) gate?.await(20, TimeUnit.SECONDS)
-                    return responses[path]?.let { MockResponse().setResponseCode(statuses[path] ?: 200).setHeader("Content-Type", "application/json").setBody(it) }
+                    return (responses[request.path] ?: responses[path])?.let { MockResponse().setResponseCode(statuses[path] ?: 200).setHeader("Content-Type", "application/json").setBody(it) }
                         ?: MockResponse().setResponseCode(404).setHeader("Content-Type", "application/json").setBody("{}")
                 }
             }
@@ -342,6 +344,79 @@ class NavigationInteractionTest {
         click(label)
         ui.waitUntil(10_000){ui.mainClock.advanceTimeBy(500);ui.onAllNodesWithContentDescription("Me").fetchSemanticsNodes().isNotEmpty()}
         Assert.assertTrue(requests.contains("$path/participants/me/leave"))
+    }
+
+    @Test fun socialQuickRefreshPublishesConnectionsToMeFromTheSameCache() {
+        launch(); me()
+        val added=SocialPerson("new-person","New Connection")
+        responses["/v1/social/connections"]=PlainstrideJson.encodeToString(ConnectionsResponse(listOf(
+            ConnectionDto("fixture-connection","accepted","outgoing",SocialPerson("roster-person","Roster Contact")),
+            ConnectionDto("new-connection","accepted","outgoing",added),
+        )))
+        lateinit var social: SocialViewModel
+        scenario!!.onActivity { social=ViewModelProvider(it)["shared_social_fixture-self",SocialViewModel::class.java] }
+        runBlocking { social.refreshActiveNow() }
+        shown("New")
+        runBlocking {
+            val cached=dependencies.social().observeHome("fixture-self",context.resources.configuration.locales[0].toLanguageTag()).first() as CachedSocialHome.Available
+            Assert.assertTrue(cached.value.connections.any{it.id==added.id && it.relationship=="accepted"})
+            Assert.assertTrue(cached.value.posts.any{it.id==post.id})
+        }
+        ui.onNodeWithContentDescription("Social").performClick(); click("People"); shown("New Connection")
+        me(); shown("New")
+    }
+
+    @Test fun foregroundPushRefreshesAcceptanceBadgeAndConnectionWhileStayingOnMe() {
+        launch(); me()
+        responses["/v1/social/notifications"]=PlainstrideJson.encodeToString(InboxResponse(listOf(
+            InboxNotification("accepted-notice","connectionAccepted","new-connection","Connection accepted",createdAt="2026-10-31T08:00:00Z"),
+        )))
+        responses["/v1/social/connections"]=PlainstrideJson.encodeToString(ConnectionsResponse(listOf(
+            ConnectionDto("new-connection","accepted","outgoing",SocialPerson("new-person","New Connection")),
+        )))
+        com.plainstride.outbound.notifications.InboxUpdates.changes.tryEmit(Unit)
+        shown("New")
+        ui.waitUntil(10_000){ui.mainClock.advanceTimeBy(500); ui.onAllNodes(hasContentDescription("Notification Center") and hasText("1")).fetchSemanticsNodes().isNotEmpty()}
+        ui.onNode(hasContentDescription("Notification Center") and hasText("1")).assertExists()
+        responses["/v1/social/notifications/read-all"]="{}"
+        ui.onNodeWithContentDescription("Notification Center").performClick(); shown("Connection accepted")
+        ui.waitUntil(10_000){requests.contains("/v1/social/notifications/read-all")}
+        responses["/v1/social/notifications"]=PlainstrideJson.encodeToString(InboxResponse(listOf(
+            InboxNotification("accepted-notice","connectionAccepted","new-connection","Connection accepted",readAt="2026-10-31T09:00:00Z",createdAt="2026-10-31T08:00:00Z"),
+        )))
+        back(); shown("New")
+        ui.onNodeWithContentDescription("Notification Center").assert(hasText("1").not())
+    }
+
+    @Test fun foregroundPollRecoversAcceptanceBadgeWithoutPushCallback() {
+        launch(); me()
+        responses["/v1/social/notifications"]=PlainstrideJson.encodeToString(InboxResponse(listOf(
+            InboxNotification("accepted-notice","connectionAccepted",message="Connection accepted",createdAt="2026-10-31T08:00:00Z"),
+        )))
+        ui.mainClock.advanceTimeBy(31_000)
+        ui.waitUntil(10_000){ui.mainClock.advanceTimeBy(500);ui.onAllNodes(hasContentDescription("Notification Center") and hasText("1")).fetchSemanticsNodes().isNotEmpty()}
+        // The acceptance counts because it is unread, even though it is informational.
+        ui.onNode(hasContentDescription("Notification Center") and hasText("1")).assertExists()
+    }
+
+    @Test fun pagedConnectionsPublishToMeAndRemainWhenAnotherConsumerRefreshes() {
+        val locale=context.resources.configuration.locales[0].toLanguageTag()
+        responses["/v1/social/connections"]=PlainstrideJson.encodeToString(ConnectionsResponse(listOf(
+            ConnectionDto("fixture-connection","accepted","outgoing",SocialPerson("roster-person","Roster Contact")),
+        ),"next"))
+        responses["/v1/social/connections?cursor=next"]=PlainstrideJson.encodeToString(ConnectionsResponse(listOf(
+            ConnectionDto("new-connection","accepted","outgoing",SocialPerson("new-person","New Connection")),
+        )))
+        launch(); me()
+        runBlocking { dependencies.social().loadConnections("fixture-self",locale,"next").getOrThrow() }
+        shown("New")
+        runBlocking {
+            dependencies.social().refreshConnections("fixture-self",locale,0).getOrThrow()
+            val cached=dependencies.social().observeHome("fixture-self",locale).first() as CachedSocialHome.Available
+            Assert.assertEquals(setOf("roster-person","new-person"),cached.value.connections.map{it.id}.toSet())
+            Assert.assertNull(cached.value.connectionNextCursor)
+            Assert.assertTrue(cached.value.posts.any{it.id==post.id})
+        }
     }
 
 }

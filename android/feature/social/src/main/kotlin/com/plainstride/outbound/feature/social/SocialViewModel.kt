@@ -120,13 +120,8 @@ sealed interface ConnectionEffect {
         val account = accountId ?: return@coroutineScope
         val connections = async {
             connectionRefreshLock.withLock {
-                repository.refreshConnections(mutableState.value.home.connections.size)
-                    .onSuccess { page ->
-                        currentCoroutineContext().ensureActive()
-                        if (accountId == account) mutableState.update { state -> state.copy(home = state.home.copy(
-                            connections = page.items, connectionNextCursor = page.nextCursor,
-                        )) }
-                    }.onFailure { logPresenceFailure("connections_refresh", it) }
+                repository.refreshConnections(account, localeTag, mutableState.value.home.connections.size)
+                    .onFailure { logPresenceFailure("connections_refresh", it) }
             }
         }
         val live = async { refreshLiveSessions() }
@@ -216,18 +211,14 @@ sealed interface ConnectionEffect {
             mutableState.update { it.copy(connectionsLoadingMore = true, connectionsLoadFailed = false) }
             connectionRefreshLock.withLock {
                 val latestCursor = mutableState.value.home.connectionNextCursor
-                if (latestCursor != null) repository.loadConnections(latestCursor).onSuccess { page ->
-                    mutableState.update { state -> state.copy(home = state.home.copy(
-                        connections = (state.home.connections + page.items).distinctBy { it.connectionId ?: it.id },
-                        connectionNextCursor = page.nextCursor,
-                    )) }
+                if (latestCursor != null) repository.loadConnections(accountId ?: return@withLock, localeTag, latestCursor).onSuccess { page ->
                     connectionPagesLoaded += 1
                     analytics.record(AnalyticsEvent("paginated_list_page_loaded", mapOf(
                         AnalyticsProperty.Source to "connections",
                         AnalyticsProperty.CountBucket to countBucket(page.items.size),
                         AnalyticsProperty.PageDepthBucket to when { connectionPagesLoaded == 2 -> "page_2"; connectionPagesLoaded <= 4 -> "pages_3_4"; else -> "page_5_plus" },
                     )))
-                }.onFailure { mutableState.update { it.copy(connectionsLoadFailed = true) } }
+                }.onFailure { logPresenceFailure("connections_page_load", it); mutableState.update { it.copy(connectionsLoadFailed = true) } }
             }
             mutableState.update { it.copy(connectionsLoadingMore = false) }
         }
