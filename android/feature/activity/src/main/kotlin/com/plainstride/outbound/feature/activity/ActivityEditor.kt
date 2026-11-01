@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
@@ -38,6 +39,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -45,7 +47,8 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -119,8 +122,6 @@ internal fun ActivityEditor(inputActivity: SavedActivity, inputUnits: Measuremen
     )) { mutableListOf<File>() }
     var cameraPath by rememberSaveable { mutableStateOf<String?>(null) }
     val busy = saving || importing
-    val titleLabel = stringResource(R.string.activity_title)
-    val distanceLabel = stringResource(R.string.activity_distance)
     val h = hours.toIntOrNull(); val m = minutes.toIntOrNull(); val s = seconds.toIntOrNull()
     val duration = (h ?: 0) * 3600 + (m ?: 0) * 60 + (s ?: 0)
     val separator = DecimalFormatSymbols.getInstance().decimalSeparator
@@ -182,6 +183,7 @@ internal fun ActivityEditor(inputActivity: SavedActivity, inputUnits: Measuremen
     }
     LaunchedEffect(activity.id) {
         viewModel.trackEditor()
+        viewModel.trackEditor("activity_editor_expanded_inputs")
         try { shoes = viewModel.editorShoes(activity.accountId) }
         catch (error: kotlinx.coroutines.CancellationException) { throw error }
         catch (error: Exception) { failed("edit_shoes_load", error, R.string.activity_failed) }
@@ -222,10 +224,7 @@ internal fun ActivityEditor(inputActivity: SavedActivity, inputUnits: Measuremen
         ) { padding ->
             Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 EditorCard(stringResource(R.string.editor_activity)) {
-                    EditorRow(stringResource(R.string.activity_title)) {
-                        BasicTextField(title, { title = it }, enabled = !busy, singleLine = true,
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.End), modifier = Modifier.weight(1f).semantics { contentDescription = titleLabel })
-                    }
+                    EditorTitleInput(title, { title = it }, enabled = !busy)
                     EditorRow(stringResource(R.string.editor_date)) {
                         val date = Instant.parse(start).atZone(ZoneId.systemDefault())
                         TextButton(enabled = !busy, onClick = {
@@ -289,11 +288,7 @@ internal fun ActivityEditor(inputActivity: SavedActivity, inputUnits: Measuremen
                     if (importing) LinearProgressIndicator(Modifier.fillMaxWidth())
                 }
                 EditorCard(stringResource(R.string.editor_details)) {
-                    EditorRow(stringResource(R.string.activity_distance)) {
-                        BasicTextField(distance, { distance = it }, enabled = !busy, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.End), modifier = Modifier.weight(1f).semantics { contentDescription = distanceLabel })
-                        Text(if (units == MeasurementUnitSystem.metric) "km" else "mi", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    EditorDistanceInput(distance, { distance = it }, units, enabled = !busy)
                     Text(stringResource(R.string.editor_duration))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         EditorDuration(hours, { hours = it }, R.string.editor_hours, !busy, Modifier.weight(1f))
@@ -325,6 +320,41 @@ internal fun ActivityEditor(inputActivity: SavedActivity, inputUnits: Measuremen
         dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text(stringResource(R.string.activity_cancel)) } })
     preview?.let { index -> ActivityPhotoLightbox(photos.map { it.photo.copy(localRelativePath = it.importPath ?: it.photo.localRelativePath) }, index,
         photoBytes = { path -> if (path.startsWith("/")) editorReadPhoto(path) else viewModel.photoBytes(path) }, onSelected = { preview = it }, onClose = { preview = null }) }
+}
+
+/** Full-width, wrapping title keeps both ends of long activity names reachable while editing. */
+@Composable
+internal fun EditorTitleInput(value: String, onValueChange: (String) -> Unit, enabled: Boolean) {
+    val focusManager = LocalFocusManager.current
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        enabled = enabled,
+        label = { Text(stringResource(R.string.activity_title)) },
+        minLines = 2,
+        maxLines = 4,
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+    )
+}
+
+@Composable
+internal fun EditorDistanceInput(value: String, onValueChange: (String) -> Unit, units: MeasurementUnitSystem, enabled: Boolean) {
+    val focusManager = LocalFocusManager.current
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        enabled = enabled,
+        label = { Text(stringResource(R.string.activity_distance)) },
+        suffix = { Text(if (units == MeasurementUnitSystem.metric) "km" else "mi") },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+    )
 }
 
 @Composable private fun EditorCard(title: String?, content: @Composable ColumnScope.() -> Unit) {
