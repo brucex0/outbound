@@ -112,6 +112,15 @@ Data is not sold. Social publishing, live sharing, Health Connect, microphone, n
 - The pending country review was restarted to include the production binary rollout. Do not mistake the earlier country-only submission for a submitted binary.
 - Evidence: ignored `artifacts/play-store/production-submitted-us-canada.jpg`. Continue treating Android as unreleased until Bruce explicitly confirms release, per `AGENTS.md`.
 
+### October 31 Update Submission
+
+- Bruce requested a new Android release. Build `1.0.1` (4) uses committed source `7ad610ba` in an isolated repository worktree; unrelated local edits are excluded.
+- Production already reports `1.0` (3) as completed. Update `1.0.1` (4) was submitted through Play Console with a 10% staged rollout across the existing US/Canada availability. Play shows **Changes in review**, with automated quick checks still running. Managed publishing is off; approval can start the staged rollout automatically. Availability of this update is not yet confirmed.
+- The existing protected `~/.config/plainstride/play-publisher.json` service account obtains the Android Publisher scope and can upload bundles/mappings and update tracks, but `edits.validate` returned HTTP 403 (`PERMISSION_DENIED`). Its uncommitted edit was discarded; publishing continued through the existing owner Play Console session. The active personal `gcloud` account cannot request the Publisher scope. Do not treat successful upload/track update as evidence of permission to validate or commit.
+- Signed `:app:bundleRelease`, fail-closed release configuration checks, vital lint, R8, and bundle signature verification passed. Play Console showed no blocking errors and the existing optional native-debug-symbol warning; ReTrace mapping is attached. Supported device counts were unchanged.
+- Release evidence is retained under ignored `artifacts/play-store/release-1.0.1-4/`: AAB, mapping, merged manifest, version inputs, source SHA, dependency report, endpoint checks, and `submitted-for-review.png`. The discarded API edit responses are upload evidence only, not submission evidence.
+- Production `/health`, privacy, and support endpoints returned HTTP 200. `https://plainstride.ai/.well-known/assetlinks.json` returned HTTP 403, so app-link association remains unverified. Authenticated live-coach catalog, account deletion, device runtime, audible coaching, recording endurance, and accessibility were not exercised for this update. No tests were run.
+
 ## Dependencies And Notices
 
 - Generate the release dependency graph with `./gradlew :app:dependencies --configuration releaseRuntimeClasspath` and archive it with the release.
