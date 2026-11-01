@@ -774,7 +774,7 @@ fun SocialConnectionsPreview(
     connections: List<SocialPerson>,
     loading: Boolean = false,
     onOpenAll: () -> Unit,
-    onOpenProfile: (SocialPerson) -> Unit = { onOpenAll() },
+    onOpenProfile: (SocialPerson) -> Unit,
 ) = when {
     loading -> ConnectionsPlaceholder()
     connections.isEmpty() -> EmptyCard(stringResource(R.string.social_connections_empty), Icons.Outlined.PersonAdd)

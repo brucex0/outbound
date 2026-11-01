@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -172,6 +173,7 @@ fun MeRoute(
     statisticsCached: Boolean = false,
     onMyQrCode: () -> Unit = {},
     onConnections: () -> Unit = {},
+    onConnectionProfile: (SocialPerson) -> Unit,
     onMyRoutes: () -> Unit = {},
     onOpenProgressInsights: () -> Unit = {},
     onMeDestination: (String) -> Unit = {},
@@ -199,6 +201,7 @@ fun MeRoute(
             accountWeeklyMinutes, accountWeeklyDistanceMeters, accountWeeklyActivityCount, statisticsAvailable, statisticsCached,
             onMyQrCode = onMyQrCode,
             onConnections = { onMeDestination("connections"); onConnections() },
+            onConnectionProfile = { onMeDestination("connection_profile"); onConnectionProfile(it) },
             onMyRoutes = { onMeDestination("my_routes"); onMyRoutes() },
             onOpenProgressInsights = onOpenProgressInsights,
             inboxCount = inboxCount,
@@ -247,6 +250,7 @@ private fun MeOverview(
     statisticsCached: Boolean,
     onMyQrCode: () -> Unit,
     onConnections: () -> Unit,
+    onConnectionProfile: (SocialPerson) -> Unit,
     onMyRoutes: () -> Unit,
     onOpenProgressInsights: () -> Unit,
     inboxCount: Int,
@@ -296,8 +300,14 @@ private fun MeOverview(
                 }
             } }
             item { benefitsContent() }
-            item { SectionTitle(stringResource(R.string.me_connections)) }
-            item { SocialConnectionsPreview(connections, onOpenAll = onConnections) }
+            item {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    SectionTitle(stringResource(R.string.me_connections))
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onConnections, Modifier.padding(end = 12.dp)) { Text(stringResource(SocialR.string.social_all)) }
+                }
+            }
+            item { SocialConnectionsPreview(connections, onOpenAll = onConnections, onOpenProfile = onConnectionProfile) }
             item { SectionTitle(stringResource(R.string.current_focus)) }
             item {
                 OutlinedCard(Modifier.fillMaxWidth()) {

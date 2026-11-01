@@ -909,6 +909,11 @@ private fun SignedInApp(
                             onConnections = {
                                 navController.navigate(AppDetailRoutes.connections("me_preview")) { launchSingleTop = true }
                             },
+                            onConnectionProfile = { person ->
+                                sharedSocialViewModel.prepareProfile(person) {
+                                    navController.navigate(AppDetailRoutes.profile(person.id, "me_preview")) { launchSingleTop = true }
+                                }
+                            },
                             onMyRoutes = {
                                 integrationViewModel.scope(com.plainstride.outbound.feature.community.RouteScope.MINE)
                                 navController.navigate(COMMUNITY_ROUTES_ROUTE) { launchSingleTop = true }

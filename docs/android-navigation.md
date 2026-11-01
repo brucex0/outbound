@@ -15,6 +15,7 @@ Open when adding a destination, changing a link/notification entry point, or inv
 
 - `android/app/.../AppDetailRoutes.kt` owns route patterns and encoded route builders. Navigation arguments contain identity plus bounded source/mode values.
 - `PlainstrideApp.kt` registers pages and dispatches in-app, notification, connection-link, and Group-invite entry points to those routes. `MainActivity` consumes notification intents and saves only pending links across recreation, preventing a consumed launch link from being replayed above a restored nested page. The inbox has no competing automatic deep-link handler.
+- Me connection avatars open the tapped person’s ID-based profile directly; Back returns to Me. The Connections heading’s `All` action opens the full list. The preview requires an explicit profile callback so it cannot silently route avatar taps to the list.
 - Connections is a reusable destination, not a Social-hosted dialog. Me, Social, Trusted Contacts, and notifications open the same page with the corresponding `connections_opened` entry source. QR scanning and personal QR navigation preserve Connections as their real caller.
 - Personal activity History is a list destination. Server-only activities retain a known local identity or use their server ID when no client activity ID exists, including activities from other supported sources. `ActivityDetailDestination` loads by local/client or server ID and returns directly to its caller; loading it does not emit `activity_history_opened`. Missing local activities can fetch by server ID without loading History.
 - Social post, profile, Group, event, and invitation pages use destination-scoped ViewModels. A profile loads by person ID or opaque connection code. Search/feed/contact taps persist their already-exposed share-safe preview in the account cache (`social.profile-preview/<personId>/und`) before navigating. The current profile API refreshes basic identity and connection state for self, accepted, pending, and unconnected people; cached previews preserve offline/restored presentation. Recognitions remain subject to the backend's connection/privacy rules. Opening a nested activity/profile/event does not clear the calling destination's state.
@@ -36,7 +37,7 @@ Use manual UI checks; do not run the test suite without an explicit request.
 
 | Entry | Required return behavior |
 | --- | --- |
-| Me → Connections → system/toolbar Back | Me in one step; Social/Me tab presses still work |
+| Me → Connections (All) → system/toolbar Back | Me in one step; Social/Me tab presses still work |
 | Trusted Contacts → Connections → Back | Trusted Contacts; no Social entry |
 | Social Feed/People → profile → post → Back → Back | Same profile, then original tab/list position |
 | Connections → profile → post → Back → Back | Same profile, then Connections with its query/position |
@@ -80,3 +81,9 @@ ANDROID_SERIAL=emulator-5556 ./android/test-navigation.sh
 - Final activity identity refinement: cached and uncached server-ID cases rerun, including refresh without a client ID preserving one existing local record.
 - Debug APK assembly and release Kotlin compilation passed. `bash -n android/test-navigation.sh` and `git diff --check` passed.
 - No physical-phone or production-data interaction. Full process death, production realtime, camera/file-picker UI, and map rendering remain unverified by this fixture suite.
+
+
+## Verification Record — Me Avatar Profile Follow-Up
+
+- Three affected app navigation tests passed on the isolated emulator: avatar → cached profile while HTTP is blocked → recreation → system/toolbar Back to Me; `All` → Connections with responsive tabs; Connections search → profile/activity with query retention.
+- Navigation fixture APK assembly, instrumentation compilation, and release Kotlin compilation passed. Avatar taps now record `me_destination_opened` with `destination=connection_profile`, followed by the existing profile-open event with `entry_source=me_preview`.

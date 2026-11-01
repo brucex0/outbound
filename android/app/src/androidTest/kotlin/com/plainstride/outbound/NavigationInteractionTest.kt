@@ -106,15 +106,15 @@ class NavigationInteractionTest {
     private fun back() { InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK); ui.mainClock.advanceTimeBy(1000); ui.waitForIdle() }
 
     @Test fun meConnectionsBackKeepsTabsResponsive() {
-        launch(); me(); click("Roster"); shown("Connections")
+        launch(); me(); click("All"); shown("Connections")
         back(); shown("Roster")
         ui.onNodeWithContentDescription("Social").performClick(); shown("Feed")
-        me(); click("Roster"); shown("Connections")
+        me(); click("All"); shown("Connections")
         click("Done"); shown("Roster")
     }
 
     @Test fun searchProfileUsesIdCacheThenNetworkAndReturnsToQuery() {
-        launch(); me(); click("Roster"); shown("Connections")
+        launch(); me(); click("All"); shown("Connections")
         ui.onNode(hasSetTextAction()).performTextInput("fixture")
         shown("Fixture Contact")
         gatedPath = "/v1/social/users/fixture-person/profile"; gate = CountDownLatch(1)
@@ -417,6 +417,20 @@ class NavigationInteractionTest {
             Assert.assertNull(cached.value.connectionNextCursor)
             Assert.assertTrue(cached.value.posts.any{it.id==post.id})
         }
+    }
+
+    @Test fun meConnectionAvatarOpensProfileAndBackReturnsDirectlyToMe() {
+        val contact=SocialPerson("roster-person","Roster Contact",relationshipDetails=SocialRelationship("fixture-connection","accepted","outgoing"))
+        responses["/v1/social/users/roster-person/profile"]=PlainstrideJson.encodeToString(ProfileResponse(contact))
+        gatedPath="/v1/social/users/roster-person/profile"; gate=CountDownLatch(1)
+        launch(); me(); click("Roster"); shown("Profile"); shown("Roster Contact")
+        ui.waitUntil(10_000){requests.contains(gatedPath)}
+        gate!!.countDown()
+        scenario!!.recreate(); shown("Profile")
+        back(); shown("Roster"); ui.onNodeWithContentDescription("Settings").assertExists()
+        click("Roster"); shown("Profile")
+        ui.onNodeWithContentDescription("Back").performClick(); shown("Roster")
+        ui.onNodeWithContentDescription("Settings").assertExists()
     }
 
 }
