@@ -379,6 +379,11 @@ router.post("/", zValidator("json", createSchema), async (c) => {
     userId: resolvedUserId,
   };
 
+  const recording = body.clientData?.recordingSession as { sessionUUID?: unknown } | undefined;
+  const sessionUUID = typeof recording?.sessionUUID === "string"
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recording.sessionUUID)
+    ? recording.sessionUUID.toLowerCase() : null;
+
   let activity;
   let wasCreated = false;
   let routeCompletionRecorded = false;
@@ -394,6 +399,65 @@ router.post("/", zValidator("json", createSchema), async (c) => {
           { AND: [{ clientData: { path: ["source", "kind"], equals: source.kind } }, { clientData: { path: ["source", "externalID"], equals: source.externalID } }] },
         ] }, orderBy: { createdAt: "asc" } });
         if (canonical) return { activity: canonical, routeCompletionRecorded: false, created: false };
+      }
+      if ((body.clientData?.source as { kind?: unknown } | undefined)?.kind === "outbound" && sessionUUID) {
+        // Recovery or another save surface can choose a new local activity UUID
+        // for an already-saved recording. Serialize by the recording identity.
+        await transaction.$queryRaw`SELECT 1::int AS locked FROM pg_advisory_xact_lock(hashtextextended(${resolvedUserId + ":recording:" + sessionUUID}, 0))`;
+        const canonical = await transaction.activity.findFirst({
+          where: { userId: resolvedUserId, deletedAt: null, OR: [
+            { recordingSessionID: sessionUUID },
+            { clientData: { path: ["recordingSession", "sessionUUID"], equals: sessionUUID } },
+            { clientData: { path: ["recordingSession", "sessionUUID"], equals: sessionUUID.toUpperCase() } },
+          ] },
+          orderBy: [
+            { durationSecs: { sort: "desc", nulls: "last" } },
+            { distanceM: { sort: "desc", nulls: "last" } },
+            { createdAt: "asc" },
+          ],
+        });
+        if (canonical) {
+          if (body.clientActivityId && canonical.clientActivityId === body.clientActivityId) {
+            const updated = await updateExistingActivity(canonical.id, transaction);
+            return { ...updated, created: false };
+          }
+          const extras = canonical.clientData as Record<string, unknown> | null;
+          const newer = !canonical.clientUpdatedAt || !body.clientUpdatedAt
+            || new Date(body.clientUpdatedAt) >= canonical.clientUpdatedAt;
+          const fuller = (body.durationSecs ?? 0) >= (canonical.durationSecs ?? 0)
+            && (body.distanceM ?? 0) >= (canonical.distanceM ?? 0)
+            && ((body.durationSecs ?? 0) > (canonical.durationSecs ?? 0)
+              || (body.distanceM ?? 0) > (canonical.distanceM ?? 0));
+          let resolved = canonical;
+          if (canonical.followedRouteId && resolvedFollowedRouteId
+            && canonical.followedRouteId !== resolvedFollowedRouteId) {
+            throw new RouteAssociationConflictError("A saved activity cannot be reassigned to a different followed route.");
+          }
+          if (newer && fuller && !extras?.manualEdits) {
+            resolved = await transaction.activity.update({ where: { id: canonical.id }, data: {
+              ...activityData, clientActivityId: canonical.clientActivityId,
+              followedRouteId: canonical.followedRouteId ?? resolvedFollowedRouteId,
+            } });
+            const facts = activityFact(resolved);
+            await transaction.activity.update({ where: { id: resolved.id }, data: {
+              statisticsFacts: facts as unknown as Prisma.InputJsonValue,
+              ...identityColumns(facts), updatedAt: resolved.updatedAt,
+            } });
+            await transaction.user.update({ where: { id: resolvedUserId }, data: { statisticsRevision: { increment: 1 } } });
+          }
+          const extended = resolved !== canonical;
+          if (resolvedFollowedRouteId && !resolved.followedRouteId) {
+            resolved = await transaction.activity.update({ where: { id: resolved.id }, data: { followedRouteId: resolvedFollowedRouteId } });
+          }
+          if (body.followedRouteCompleted && resolvedFollowedRouteId) {
+            await recordRouteCompletion(transaction, resolved.id, resolvedFollowedRouteId);
+          }
+          console.info("activity_recording_identity", { result: extended ? "extended" : "reused" });
+          return {
+            activity: resolved, created: false,
+            routeCompletionRecorded: body.followedRouteCompleted === true && resolvedFollowedRouteId != null,
+          };
+        }
       }
       const createdActivity = await transaction.activity.create({
         data: activityData,
@@ -418,8 +482,8 @@ router.post("/", zValidator("json", createSchema), async (c) => {
       };
     });
 
-  const updateExistingActivity = (existingActivityId: string) =>
-    prisma.$transaction(async (transaction) => {
+  const updateExistingActivity = (existingActivityId: string, transaction?: Prisma.TransactionClient) => {
+    const update = async (transaction: Prisma.TransactionClient) => {
       const existing = await transaction.activity.findUniqueOrThrow({
         where: { id: existingActivityId },
       });
@@ -479,7 +543,9 @@ router.post("/", zValidator("json", createSchema), async (c) => {
         activity: updatedActivity,
         routeCompletionRecorded: body.followedRouteCompleted === true && resolvedFollowedRouteId != null,
       };
-    });
+    };
+    return transaction ? update(transaction) : prisma.$transaction(update);
+  };
 
   try {
     if (body.clientActivityId) {
@@ -491,7 +557,8 @@ router.post("/", zValidator("json", createSchema), async (c) => {
       } as const;
       const existing = await prisma.activity.findUnique({ where: uniqueActivity });
 
-      if (existing) {
+      const isRecordingUpload = (body.clientData?.source as { kind?: unknown } | undefined)?.kind === "outbound" && sessionUUID;
+      if (existing && !isRecordingUpload) {
         const result = await updateExistingActivity(existing.id);
         activity = result.activity;
         routeCompletionRecorded = result.routeCompletionRecorded;

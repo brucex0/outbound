@@ -30,6 +30,12 @@ Open this when changing account totals, Progress, statistics caches, history syn
 - Pending local changes remain visible in activity history, with statistics explicitly pending until the server acknowledges and a complete snapshot refreshes. They are not added blindly to cached aggregates, so acknowledgement cannot double-count them.
 - Existing local-only iOS mode remains explicitly based on local data; it is not the source for authenticated account totals.
 
+## Recording Save Identity
+
+- Plainstride recording uploads with different client activity IDs are reconciled by exact recording session UUID, scoped to the authenticated account. A transaction lock serializes concurrent saves; the response returns the canonical client ID so installed iOS clients adopt it and retain photos.
+- A shorter/stale copy cannot overwrite the fuller saved recording. A newer copy can extend the canonical record when both duration and distance are at least as complete, without replacing manual edits or changing its client ID. Same-client-ID edits retain their existing behavior. No time-overlap or Group-event-ID guessing is used.
+- `activity_recording_identity` logs only `reused`/`extended` results; recording IDs, user data, and metrics are excluded.
+
 ## History And Media
 
 - Background synchronization uploads pending writes, checks changes/tombstones for already-cached IDs in batches of at most 200, and fetches one recent history page.
