@@ -1315,7 +1315,19 @@ private fun SignedInApp(
                 CommunityRouteDetailDestination(
                     accountId = requireNotNull(accountId), routeId = entry.arguments?.getString("routeId").orEmpty(),
                     unitSystem = measurementUnitSystem,
-                    onFollow = { recordingLaunch = it; navController.navigate(RECORDING_ROUTE) },
+                    onFollow = { route, reverse ->
+                        todaySelectedRoute = route
+                        todayRouteReversed = reverse
+                        selectingRouteForToday = false
+                        integrationViewModel.clearCommunityRoute()
+                        integrationViewModel.trackTodayRouteSelected(route)
+                        if (reverse) integrationViewModel.trackTodayRouteDirection(true)
+                        navController.navigate(TopLevelDestination.Today.route) {
+                            popUpTo(TopLevelDestination.Today.route) { saveState = true }
+                            launchSingleTop = true
+                            // Do not restore the route-detail stack when switching to Today.
+                        }
+                    },
                     onBack = { navController.popBackStack() }, onChanged = { integrationViewModel.refreshRoutes() },
                     onImportedDelete = integrationViewModel::trackImportedRouteDeleted,
                 )

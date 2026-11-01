@@ -22,6 +22,7 @@ Open when adding a destination, changing a link/notification entry point, or inv
 - Events, Groups (including invitation context), invitations, posts, and connection-code previews use account-cache snapshots under `social.detail.*`; profile snapshots remain under `social.profile-preview`. Cached content renders while HTTP refresh runs. Known forbidden/not-found responses clear visible content; transient failures retain a usable cached page.
 - Group invitations resolve to the canonical Group page with an invitation ID; Group-invite token resolvers replace themselves with the Group route. Event invitation actions remain on their independent destination.
 - Community route detail loads by route ID, using an account-scoped cached snapshot for offline fallback. Imported routes are stored in the existing account cache under `routes.imported/library/und`, remain device-local, and resolve by their `import:` ID. Existing account-cache cleanup removes these rows alongside other account caches; no Room schema change or migration is required.
+- Route-detail `Use route` selects the route and direction, then switches to the existing Today root with its map and launch dock. It saves the caller tab stack and does not restore a nested Today detail stack or start recording automatically.
 - Route library screens only browse/select; they navigate to the shared detail page. Today retains its explicit selection mode. Successful bookmark/removal refreshes the source library; deletion returns to the real caller.
 - Safety/live and informational notification details resolve their route ID independently. Informational inbox snapshots use `inbox.detail/<id>/und`; live follower and Group-run snapshots remain bounded in memory, without adding persistent location storage. Viewing a Group-run does not replace another active participation, and its leave action addresses the viewed session. Group-run links render the session alone, without Safety settings as a host. These details carry their kind/ID in the back stack rather than shell selection variables. Warm/cold `group_run` links use the same live-group destination as inbox taps.
 
@@ -46,6 +47,7 @@ Use manual UI checks; do not run the test suite without an explicit request.
 | Inbox → activity/post/profile/event/Group/invitation → Back | Inbox; no synthetic Social/History entry |
 | Cold/warm connection and Group invite links | Requested target; no inserted Social entry |
 | Social Routes / Me My Routes → route detail → Back | Actual originating library and scroll/filter state |
+| Social Routes / Me My Routes → route detail → Use route | Today map shows selected route and direction; Change/Remove available; recording waits for Start |
 | Imported route → detail → Back / delete | Actual library; deleted import removed from library |
 | Connections → QR / scanner → profile → Back | Actual previous page; no hidden Social host |
 | Event/Group → nested event → Back | Same original detail, including its local state |

@@ -252,7 +252,7 @@ private fun SharedCommunityRouteLibrary(
 fun CommunityRouteDetailDestination(
  accountId: String, routeId: String,
  unitSystem: com.plainstride.outbound.core.model.activity.MeasurementUnitSystem,
- onFollow: (com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration) -> Unit,
+ onFollow: (CommunityRoute, Boolean) -> Unit,
  onBack: () -> Unit, onChanged: () -> Unit, onImportedDelete: () -> Unit,
  viewModel: RouteDestinationViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
@@ -271,10 +271,10 @@ fun CommunityRouteDetailDestination(
    }
   }
  } else if (routeId.startsWith("import:")) {
-  ImportedRoutePreview(detail,onBack,{onFollow(CommunityRecordingCoordinator.launch(detail,false))},{confirmDelete=true})
+  ImportedRoutePreview(detail,onBack,{onFollow(detail,false)},{confirmDelete=true})
  } else {
   EmbeddedCommunityRouteDetail(detail,loading,unitSystem,onBack,{viewModel.load(accountId,routeId,force=true)},
-   {reverse->onFollow(CommunityRecordingCoordinator.launch(detail,reverse))},
+   {reverse->onFollow(detail,reverse)},
    {viewModel.bookmark(accountId,detail,onChanged)}, {viewModel.remove(accountId,detail){onChanged();onBack()}})
  }
  if(confirmDelete) AlertDialog(onDismissRequest={confirmDelete=false},
