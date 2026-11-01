@@ -89,3 +89,10 @@ ANDROID_SERIAL=emulator-5556 ./android/test-navigation.sh
 
 - Three affected app navigation tests passed on the isolated emulator: avatar → cached profile while HTTP is blocked → recreation → system/toolbar Back to Me; `All` → Connections with responsive tabs; Connections search → profile/activity with query retention.
 - Navigation fixture APK assembly, instrumentation compilation, and release Kotlin compilation passed. Avatar taps now record `me_destination_opened` with `destination=connection_profile`, followed by the existing profile-open event with `entry_source=me_preview`.
+
+
+## Verification Record — Route Selection Handoff
+
+- Three focused `NavigationInteractionTest` cases passed on the isolated Pixel 10 emulator: Social community route → Today in reverse → explicit Start with cycling type and canonical latitude/longitude order; forward selection → Change → Close retains the route; imported route → Today → Remove retains the device-local import without a route-detail network request.
+- Assertions cover the Today route card, selected direction, Change/Remove controls, absence of standalone setup, and recording configuration only after Start.
+- Fixture app and instrumentation APK assembly passed. Map tile/polyline rendering, GPS acquisition, live recording, full process death, and altitude handling are outside these tests.

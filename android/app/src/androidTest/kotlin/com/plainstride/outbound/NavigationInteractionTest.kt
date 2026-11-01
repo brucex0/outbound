@@ -309,6 +309,98 @@ class NavigationInteractionTest {
         back(); ui.onNodeWithContentDescription("Me").assertExists()
     }
 
+    private fun guidanceRoute(id: String, name: String, activityType: String = "cycling") = CommunityRoute(
+        id, name, activityType = activityType, distanceM = 2500.0, routeShape = "point_to_point",
+        owner = RouteOwner("fixture-self", "Fixture Self"),
+        geometry = PlainstrideJson.parseToJsonElement(
+            """{"type":"LineString","coordinates":[[-122.12,47.67,12],[-122.11,47.68,18],[-122.10,47.69,15]]}"""
+        ) as kotlinx.serialization.json.JsonObject,
+    )
+
+    private fun openSocialRoute(route: CommunityRoute) {
+        responses["/v1/routes/search"] = PlainstrideJson.encodeToString(RoutesResponse(listOf(route.copy(geometry = null))))
+        responses["/v1/routes/${route.id}"] = PlainstrideJson.encodeToString(route)
+        launch()
+        ui.waitUntil(20_000) { ui.mainClock.advanceTimeBy(500); ui.onAllNodesWithContentDescription("Social").fetchSemanticsNodes().isNotEmpty() }
+        ui.onNodeWithContentDescription("Social").performClick()
+        click("Routes"); click(route.name)
+        ui.waitUntil(20_000) {
+            ui.mainClock.advanceTimeBy(500)
+            requests.contains("/v1/routes/${route.id}") && ui.onAllNodesWithContentDescription("Social").fetchSemanticsNodes().isEmpty()
+        }
+        ui.onNode(hasScrollAction() and SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
+            .performScrollToNode(hasText("Use route"))
+        ui.waitUntil(20_000) {
+            ui.mainClock.advanceTimeBy(500)
+            ui.onAllNodes(hasText("Use route") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    private fun assertTodayRoute(name: String, reverse: Boolean) {
+        ui.waitUntil(20_000) {
+            ui.mainClock.advanceTimeBy(500)
+            ui.onAllNodesWithContentDescription("Remove route").fetchSemanticsNodes().isNotEmpty() &&
+                ui.onAllNodesWithText("Use route").fetchSemanticsNodes().isEmpty()
+        }
+        shown(name)
+        ui.onNodeWithText("Change").assertExists()
+        ui.onNodeWithContentDescription("Remove route").assertExists()
+        ui.onNodeWithText(if (reverse) "Reverse" else "As saved").assertIsSelected()
+        ui.onNodeWithText("Use route").assertDoesNotExist()
+        ui.onNodeWithText("Start activity").assertDoesNotExist()
+        ui.onNodeWithContentDescription("Me").assertExists()
+    }
+
+    @Test fun socialRouteUseOpensTodayInReverseAndOnlyStartConfiguresRecording() {
+        val route = guidanceRoute("fixture-guidance", "Fixture Cycling Route")
+        openSocialRoute(route)
+        ui.onNode(isToggleable()).performScrollTo().performClick()
+        ui.onNodeWithText("Use route").performScrollTo().performClick()
+        assertTodayRoute(route.name, reverse = true)
+        lateinit var recording: com.plainstride.outbound.feature.recording.RecordingViewModel
+        scenario!!.onActivity { recording = ViewModelProvider(it)[com.plainstride.outbound.feature.recording.RecordingViewModel::class.java] }
+        Assert.assertNull(recording.state.value.launch.followedRoute)
+        // Route selection waits for the shell's explicit Start before configuring recording.
+        ui.onNodeWithContentDescription("Start").performClick()
+        ui.waitUntil(10_000) { ui.mainClock.advanceTimeBy(500); recording.state.value.launch.followedRoute != null }
+        val launch = recording.state.value.launch
+        Assert.assertEquals(com.plainstride.outbound.feature.recording.ActivityKind.CYCLING, launch.activityKind)
+        Assert.assertEquals(route.id, launch.followedRoute!!.id)
+        Assert.assertTrue(launch.followedRoute!!.reverse)
+        Assert.assertEquals(listOf(47.67, 47.68, 47.69), launch.followedRoute!!.points.map { it.latitude })
+        Assert.assertEquals(listOf(-122.12, -122.11, -122.10), launch.followedRoute!!.points.map { it.longitude })
+    }
+
+    @Test fun socialRouteUseOpensTodayForwardAndChangeCancelKeepsSelection() {
+        val route = guidanceRoute("fixture-forward", "Fixture Forward Route")
+        openSocialRoute(route)
+        ui.onNodeWithText("Use route").performClick()
+        assertTodayRoute(route.name, reverse = false)
+        click("Change")
+        ui.waitUntil(10_000) { ui.mainClock.advanceTimeBy(500); ui.onAllNodesWithContentDescription("Close").fetchSemanticsNodes().isNotEmpty() }
+        ui.onNodeWithContentDescription("Close").performClick()
+        assertTodayRoute(route.name, reverse = false)
+        ui.onNodeWithContentDescription("Remove route").performClick()
+        ui.waitUntil(10_000) { ui.mainClock.advanceTimeBy(500); ui.onAllNodesWithText(route.name).fetchSemanticsNodes().isEmpty() }
+        ui.onNodeWithText(route.name).assertDoesNotExist()
+        ui.onNodeWithContentDescription("Remove route").assertDoesNotExist()
+    }
+
+    @Test fun importedRouteUseOpensTodayAndRemovalKeepsLocalImport() {
+        val route = guidanceRoute("import:guidance", "Fixture Imported Guidance", "hiking")
+        runBlocking { dependencies.routes().saveImport("fixture-self", route) }
+        launch(); me()
+        ui.onNode(hasScrollAction() and SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
+            .performScrollToNode(hasText("My Routes"))
+        click("My Routes"); click(route.name); shown("Preview Route"); click("Use route")
+        assertTodayRoute(route.name, reverse = false)
+        ui.onNodeWithContentDescription("Remove route").performClick()
+        ui.waitUntil(10_000) { ui.mainClock.advanceTimeBy(500); ui.onAllNodesWithText(route.name).fetchSemanticsNodes().isEmpty() }
+        ui.onNodeWithText(route.name).assertDoesNotExist()
+        runBlocking { Assert.assertNotNull(dependencies.routes().cachedDetail("fixture-self", route.id)) }
+        Assert.assertFalse(requests.contains("/v1/routes/${route.id}"))
+    }
+
     @Test fun importedRouteRestoresByIdAndDeletionReturnsToItsLibrary() {
         val route=CommunityRoute("import:fixture", "Imported Fixture Route", activityType="running",distanceM=5000.0,routeShape="loop",owner=RouteOwner("fixture-self","Fixture Self"))
         runBlocking { dependencies.routes().saveImport("fixture-self",route) }
