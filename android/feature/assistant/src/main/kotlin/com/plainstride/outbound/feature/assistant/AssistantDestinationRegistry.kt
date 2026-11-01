@@ -5,8 +5,8 @@ import android.content.Context
 internal enum class AssistantDestination(val routeId: String, val resource: Int, val summaryResource: Int, val terms: List<String>) {
     Today("today", R.string.assistant_destination_today, R.string.assistant_destination_today_summary, listOf("today", "workout", "readiness", "quick run", "start run")),
     Social("social", R.string.assistant_destination_social, R.string.assistant_destination_social_summary, listOf("social", "friends", "connections", "groups", "invitations")),
-    Me("me", R.string.assistant_destination_me, R.string.assistant_destination_me_summary, listOf("me", "profile", "progress", "personal")),
-    Settings("settings", R.string.assistant_destination_settings, R.string.assistant_destination_settings_summary, listOf("settings", "preferences", "account")),
+    Me("me", R.string.assistant_destination_me, R.string.assistant_destination_me_summary, listOf("me", "profile", "progress", "personal", "personal record", "race prediction")),
+    Settings("settings", R.string.assistant_destination_settings, R.string.assistant_destination_settings_summary, listOf("settings", "preferences", "account", "gear", "shoe", "sneaker", "footwear")),
     Appearance("settings", R.string.assistant_destination_appearance, R.string.assistant_destination_appearance_summary, listOf("appearance", "app theme", "theme", "color theme", "light mode", "dark mode")),
     ActivityHistory("activity_history", R.string.assistant_destination_history, R.string.assistant_destination_history_summary, listOf("activity history", "my activities", "past activities", "saved runs", "recent runs")),
     LiveGuidance("settings", R.string.assistant_destination_live_guidance, R.string.assistant_destination_live_guidance_summary, listOf("guide settings", "companion settings", "voice", "coaching tone", "spoken updates")),
@@ -28,7 +28,7 @@ internal object AssistantDestinationRegistry {
     }
 
     fun titleResource(destination: AssistantDestination) = destination.resource
-    fun productContext(context: Context) = AssistantDestination.entries.joinToString("\n") {
+    fun productContext(context: Context) = AssistantProductKnowledge.context + "\nAllowed navigation destinations:\n" + AssistantDestination.entries.joinToString("\n") {
         "${context.getString(it.resource)}: ${context.getString(it.summaryResource)}"
     }
 }
