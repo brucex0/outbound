@@ -406,3 +406,5 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 
 
 Android shared inbox/roster refresh emits `social_state_refresh_result` with only `source_type=foreground|push` and `result=success|failure`. It excludes notification content, relationship/account IDs, names, and exact counts.
+
+- iOS `workout_feedback_opened` records `source_type=finish_review` when the save-review Feedback entry opens the reusable editor. It includes no selections, workout identifiers, coaching text, or sensor values. Existing submission events are unchanged.

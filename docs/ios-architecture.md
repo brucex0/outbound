@@ -190,3 +190,8 @@ Verification: simulator build-only compile, source-path review, and manual seede
 - `docs/runner-utilities.md`: runner-utility roadmap for remaining import/export breadth, fuller HR/cadence ingestion, and device/source polish.
 
 - `Guide/LiveCoachPreparationStore.swift` starts account-scoped coaching preparation from the visible idle Run launch screen, deduplicates generation requests, and discards obsolete selection results. `LiveCoachSessionController` starts with a ready plan or immediate fallback, then adopts a matching completed plan without interrupting recording; see `docs/live-coach-operations.md` for API, cache, and lifetime rules.
+
+## Workout Feedback Presentation
+
+- Save review offers a compact Feedback row that opens `Activity/WorkoutFeedbackView.swift` in a sheet. It includes effort, conditional continuation capacity, and live-guidance feedback only when cues were spoken.
+- Any presenter can launch `WorkoutFeedbackView` with bindings for the three draft selections and an optional guidance report. The presenter owns submission and workout/activity context; Done and swipe dismissal retain edits without submitting. Save review continues submitting only when Save Activity is tapped.

@@ -28,6 +28,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case activityLocationPermissionChanged = "activity_location_permission_changed"
     case activityFinished = "activity_finished"
     case appReviewRequested = "app_review_requested"
+    case workoutFeedbackOpened = "workout_feedback_opened"
     case activitySaved = "activity_saved"
     case activitySaveIneligibleShown = "activity_save_ineligible_shown"
     case stretchInterfaceUsed = "stretch_interface_used"
@@ -569,6 +570,7 @@ enum ProductAnalyticsSchema {
         .liveGuidanceCueSpoken: [.momentType, .coachingContract],
         .liveGuidanceCueEvaluated: [.momentType, .result],
         .liveGuidanceChallengeSelected: [.selectionType],
+        .workoutFeedbackOpened: [.sourceType],
         .liveGuidanceFeedbackSubmitted: [.selectionType, .cueCountBucket],
         .liveGuidancePreparationResult: [.sourceType, .result],
         .liveGuidanceProviderResult: [.sourceType, .result, .audioMode, .accessReason, .latencyBucket],
