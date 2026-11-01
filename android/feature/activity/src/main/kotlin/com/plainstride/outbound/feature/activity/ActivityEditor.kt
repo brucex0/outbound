@@ -8,7 +8,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -146,7 +145,7 @@ internal fun ActivityEditor(inputActivity: SavedActivity, inputUnits: Measuremen
                             val directory = File(context.cacheDir, "activity_exports").apply { mkdirs() }
                             val file = File.createTempFile("edit-photo-", ".jpg", directory)
                             temporaryFiles += file
-                            context.contentResolver.openInputStream(uri)?.use { input -> file.outputStream().use { input.copyTo(it) } } ?: error("Image unavailable")
+                            copyActivityPhotoSource(context, uri, file)
                             check(file.length() > 0)
                             // Read placement before normalizing to the same bounded JPEG model as iOS.
                             val options = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -164,7 +163,7 @@ internal fun ActivityEditor(inputActivity: SavedActivity, inputUnits: Measuremen
             } finally { importing = false }
         }
     }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { importUris(it) }
+    val picker = rememberActivityPhotoImportLauncher(viewModel::trackPhotoLocationPermission) { importUris(it) }
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         val file = cameraPath?.let(::File)
         if (success && file != null) importUris(listOf(Uri.fromFile(file)), captured = true)
@@ -250,7 +249,7 @@ internal fun ActivityEditor(inputActivity: SavedActivity, inputUnits: Measuremen
                                 if (context.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED) launchCamera()
                                 else cameraPermission.launch(android.Manifest.permission.CAMERA)
                             }) { Icon(Icons.Outlined.CameraAlt, stringResource(R.string.editor_take_photo), tint = MaterialTheme.colorScheme.primary) }
-                            IconButton(enabled = !busy, onClick = { viewModel.trackEditorPhoto("photo_capture_attempted"); picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) { Icon(Icons.Outlined.PhotoLibrary, stringResource(R.string.editor_import_photo), tint = MaterialTheme.colorScheme.primary) }
+                            IconButton(enabled = !busy, onClick = { viewModel.trackEditorPhoto("photo_capture_attempted"); picker() }) { Icon(Icons.Outlined.PhotoLibrary, stringResource(R.string.editor_import_photo), tint = MaterialTheme.colorScheme.primary) }
                         }
                     }
                     if (photos.isEmpty()) Text(stringResource(R.string.editor_no_photos), color = MaterialTheme.colorScheme.onSurfaceVariant)

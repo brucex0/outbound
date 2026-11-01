@@ -149,6 +149,8 @@ import com.plainstride.outbound.core.model.activity.DistanceUnit
 import com.plainstride.outbound.core.model.activity.ElevationUnit
 import com.plainstride.outbound.core.model.activity.SavedActivity
 import com.plainstride.outbound.feature.activity.ActivitySharingPreview
+import com.plainstride.outbound.feature.activity.rememberActivityPhotoImportLauncher
+import com.plainstride.outbound.feature.activity.copyActivityPhotoSource
 import com.plainstride.outbound.core.model.activity.MeasurementUnitSystem
 import com.plainstride.outbound.core.model.activity.SharedLiveRun
 import com.plainstride.outbound.core.model.activity.SessionFormatting
@@ -478,7 +480,7 @@ fun RecordingRoute(
         pendingPhoto = null
         viewModel.setPendingMedia(false)
     }
-    val importPhotoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+    val importPhotoLauncher = rememberActivityPhotoImportLauncher(viewModel::trackPhotoLocationPermission) { uris ->
         if (uris.isNotEmpty()) scope.launch {
             val directory = File(context.filesDir, "activity_photos").apply { mkdirs() }
             val imported = uris.mapNotNull { uri ->
@@ -611,7 +613,7 @@ fun RecordingRoute(
                 onSelect = viewModel::setReflection,
                 onCapacitySelect = viewModel::setContinuationCapacity,
                 onTakePhoto = { capturePhoto("finish_review") },
-                onImportPhotos = { viewModel.trackPhotoAttempt("finish_photo_library"); importPhotoLauncher.launch("image/*") },
+                onImportPhotos = { viewModel.trackPhotoAttempt("finish_photo_library"); importPhotoLauncher() },
                 onPhotoPreviewed = viewModel::trackPhotoPreviewed,
                 onRemovePhotos = { paths -> paths.forEach { File(it).delete() }; viewModel.setPhotoPaths(ui.photoPaths - paths.toSet()); viewModel.trackPhotoRemoved() },
                 onReorderPhotos = { paths -> viewModel.setPhotoPaths(paths); viewModel.trackPhotoReordered() },
@@ -619,7 +621,7 @@ fun RecordingRoute(
                     val reflection = ui.reflection
                     val review = RecordedActivityReview(snapshot, reflection, ui.continuationCapacity, ui.photoPaths, ui.importedPhotoPaths)
                     val needsLegacyStoragePermission = saveActivityPhotosToAlbum &&
-                        ui.photoPaths.isNotEmpty() &&
+                        ui.photoPaths.any { it !in ui.importedPhotoPaths } &&
                         Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
                         context.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
                             PackageManager.PERMISSION_GRANTED
@@ -2016,8 +2018,7 @@ private fun importFinishPhoto(context: Context, uri: Uri, directory: File): File
     val source = File(directory, "${UUID.randomUUID()}.source")
     val destination = File(directory, "${UUID.randomUUID()}.jpg")
     return runCatching {
-        context.contentResolver.openInputStream(uri)?.use { input -> source.outputStream().use(input::copyTo) }
-            ?: return null
+        copyActivityPhotoSource(context, uri, source)
         val originalExif = ExifInterface(source)
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(source.absolutePath, bounds)
@@ -2053,7 +2054,10 @@ private fun importFinishPhoto(context: Context, uri: Uri, directory: File): File
         if (scaled !== oriented && scaled !== decoded) scaled.recycle()
         if (oriented !== scaled) oriented.recycle()
         destination
-    }.getOrElse { destination.delete(); null }.also { source.delete() }
+    }.getOrElse { error ->
+        Log.w("PlainstrideRecording", "finish_photo_import failed type=${error.javaClass.simpleName}")
+        destination.delete(); null
+    }.also { source.delete() }
 }
 
 @Composable private fun WorkoutStepRow(index: Int, step: StructuredWorkoutStep) = Card(Modifier.fillMaxWidth()) {

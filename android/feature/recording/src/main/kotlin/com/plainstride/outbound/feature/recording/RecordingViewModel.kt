@@ -417,6 +417,12 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.LocationAttached to (snapshot.value.latestLocation != null),
         )))
     }
+    fun trackPhotoLocationPermission(result: String) {
+        analytics.record(AnalyticsEvent("photo_import_location_access", mapOf(
+            AnalyticsProperty.SourceType to "finish_photo_library", AnalyticsProperty.Result to result,
+        )))
+    }
+
     fun addImportedFinishPhotos(paths: List<String>) {
         if (paths.isEmpty()) return
         val current = mutableState.value
@@ -425,7 +431,7 @@ class RecordingViewModel @Inject constructor(
             importedPhotoPaths = current.importedPhotoPaths + paths,
             pendingMedia = false,
         )
-        val locationAttached = paths.any { path -> finishPhotoMetadata(File(path), snapshot.value).latitude != null }
+        val locationAttached = paths.any { path -> finishPhotoMetadata(File(path), snapshot.value, isImported = true).latitude != null }
         analytics.record(AnalyticsEvent("photo_captured", mapOf(
             AnalyticsProperty.SourceType to "finish_photo_library",
             AnalyticsProperty.LocationAttached to locationAttached,
@@ -655,7 +661,7 @@ class RecordingViewModel @Inject constructor(
                 val bytes = file.readBytes()
                 val persistedPhotoPath = media.write(accountId, sessionId, bytes)
                 persistedPhotoPaths += persistedPhotoPath
-                val photoMetadata = finishPhotoMetadata(file, snapshot)
+                val photoMetadata = finishPhotoMetadata(file, snapshot, isImported = file.path in review.importedPhotoPaths)
                 ActivityPhoto(
                     id = UUID.randomUUID().toString(),
                     takenAt = photoMetadata.takenAt.toString(),
@@ -691,9 +697,10 @@ class RecordingViewModel @Inject constructor(
             )
             activities.save(savedActivity)
             syncScheduler.schedule(accountId)
-            val photoAlbumExport = if (savePhotoToAlbum && sourcePhotos.isNotEmpty()) {
+            val cameraPhotos = sourcePhotos.filter { it.path !in review.importedPhotoPaths }
+            val photoAlbumExport = if (savePhotoToAlbum && cameraPhotos.isNotEmpty()) {
                 runCatching {
-                    photoAlbumExporter.export(sourcePhotos.first(), sessionId, savedAt.toEpochMilli())
+                    photoAlbumExporter.export(cameraPhotos.first(), sessionId, savedAt.toEpochMilli())
                 }.getOrDefault(ActivityPhotoAlbumExportResult.FAILED).also { result ->
                     analytics.record(AnalyticsEvent("photo_album_export_completed", mapOf(
                         AnalyticsProperty.Result to when (result) {
@@ -703,7 +710,7 @@ class RecordingViewModel @Inject constructor(
                             ActivityPhotoAlbumExportResult.FAILED -> "failure"
                         },
                         AnalyticsProperty.SourceType to "automatic",
-                        AnalyticsProperty.CountBucket to sourcePhotos.size.coerceAtMost(10).toString(),
+                        AnalyticsProperty.CountBucket to cameraPhotos.size.coerceAtMost(10).toString(),
                     )))
                 }
             } else {
@@ -786,7 +793,7 @@ class RecordingViewModel @Inject constructor(
         val captureContext: String,
     )
 
-    private fun finishPhotoMetadata(file: File, snapshot: RecordingSnapshot): FinishPhotoMetadata {
+    private fun finishPhotoMetadata(file: File, snapshot: RecordingSnapshot, isImported: Boolean): FinishPhotoMetadata {
         val exif = runCatching { ExifInterface(file) }.getOrNull()
         val exifTime = exif?.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
             ?: exif?.getAttribute(ExifInterface.TAG_DATETIME_DIGITIZED)
@@ -814,11 +821,26 @@ class RecordingViewModel @Inject constructor(
             if (exif?.getLatLong(out) == true) out[0].toDouble() to out[1].toDouble() else null
         }
         val embeddedCoordinate = exifCoordinate?.takeIf { candidate ->
-            routeCoordinate != null && distanceMeters(candidate.first, candidate.second, routeCoordinate.first, routeCoordinate.second) <= 500.0
+            candidate.first.isFinite() && candidate.second.isFinite() &&
+                candidate.first in -90.0..90.0 && candidate.second in -180.0..180.0 &&
+                if (isImported) {
+                    samples.any { distanceMeters(candidate.first, candidate.second, it.latitude, it.longitude) <= 500.0 }
+                } else {
+                    routeCoordinate != null && distanceMeters(candidate.first, candidate.second, routeCoordinate.first, routeCoordinate.second) <= 500.0
+                }
         }
         // Camera photos often have no GPS EXIF. Their capture time still identifies a
         // route sample, including the first sample for a pre-run photo.
-        val attachedCoordinate = embeddedCoordinate ?: routeCoordinate
+        val attachedCoordinate = embeddedCoordinate ?: routeCoordinate.takeUnless { isImported }
+        if (isImported) {
+            val result = when {
+                embeddedCoordinate != null -> "gps"
+                exifCoordinate == null -> "missing_gps"
+                samples.isEmpty() -> "missing_route"
+                else -> "outside_route"
+            }
+            Log.i("PlainstrideRecording", "imported_photo_placement result=$result")
+        }
         val captureContext = when {
             takenAt.isBefore(start) -> "pre_activity"
             !takenAt.isBefore(end) -> "paused"

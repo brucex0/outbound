@@ -174,6 +174,12 @@ class ActivityViewModel @Inject constructor(
         analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to feature)))
     }
 
+    fun trackPhotoLocationPermission(result: String) {
+        analytics.record(AnalyticsEvent("photo_import_location_access", mapOf(
+            AnalyticsProperty.SourceType to "activity_edit", AnalyticsProperty.Result to result,
+        )))
+    }
+
     fun trackEditorPhoto(name: String, locationAttached: Boolean? = null) {
         val properties = mutableMapOf<AnalyticsProperty, Any>(AnalyticsProperty.SourceType to "activity_edit")
         locationAttached?.let { properties[AnalyticsProperty.LocationAttached] = it }
