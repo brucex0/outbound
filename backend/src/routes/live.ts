@@ -275,8 +275,10 @@ router.patch(
       paceSecondsPerKM: body.paceSecondsPerKM ?? null,
     };
 
-    await getPrismaClient().liveGroupParticipant.update({
-      where: { sessionId_userId: { sessionId: session.id, userId: user.id } },
+    // Consent is owned by join/leave, never by a delayed location checkpoint.
+    // The predicate and write must be atomic with concurrent leave/finish.
+    const checkpoint = await getPrismaClient().liveGroupParticipant.updateMany({
+      where: { sessionId: session.id, userId: user.id, status: { in: ["active", "stale"] } },
       data: {
         status: "active",
         leftAt: null,
@@ -285,6 +287,11 @@ router.patch(
         lastActivitySnapshot: activitySnapshot,
       },
     });
+
+    if (checkpoint.count === 0) {
+      console.info("group_live_location_update", { result: "rejected", reason: "not_sharing", status: 409 });
+      return c.json({ error: "Location sharing is off." }, 409);
+    }
 
     const updated = await getPrismaClient().liveGroupSession.findUniqueOrThrow({
       where: { id: session.id },

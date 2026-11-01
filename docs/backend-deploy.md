@@ -456,3 +456,7 @@ Coaching preplanning adds `LiveCoachPreparation` and `LiveCoachSession.preparati
 
 - Verified 2026-10-20 (America/Los_Angeles): revision `outbound-api-00235-dum` serves 100% of traffic; all prior environment/secret bindings were preserved, exact-image schema job `outbound-db-push-6m5fn` succeeded, planning maintenance uses the same image, and production `/health` returned 200. The affected missing profile was persisted with a usable pace reference.
 - Synthetic runtime calls through the configured `gpt-6-luna` succeeded on their first attempts: Simplified Chinese activity analysis in 4.64 seconds and English weekly review in 4.78 seconds. Backend build and focused recovery/task-isolation/provider/locale checks passed; no test suite ran. Phone audio alerts have not been reverified. The temporary repair job and candidate tag were removed.
+
+## Per-user live location consent guard
+
+`PATCH /v1/live/group-runs/:id/participants/me/location` updates only an active/stale membership through one conditional database write. A checkpoint arriving after Leave or Finish returns `409` and cannot reactivate that participant. Only an explicit join can enable sharing again. `group_live_location_update` logs bounded rejection result/reason/status without identifiers or location. No schema migration or data reset is required.
