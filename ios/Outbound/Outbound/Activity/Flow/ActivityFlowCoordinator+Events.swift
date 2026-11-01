@@ -111,12 +111,6 @@ extension ActivityFlowCoordinator {
             // snapshot for the next outdoor start.
             self.recorder.locationManager.requestCurrentLocation()
             self.recorder.locationManager.refreshForForeground()
-            if self.host.startImmediately {
-                // Event launches use the same location gate as every other
-                // start surface. This keeps permission/GPS prompts before
-                // the countdown instead of interrupting it afterward.
-                self.ensureLocationReadyThenStart()
-            }
         } else if self.dependencies.phoneWorkoutCoordinator.origin == .appleWatch {
             self.adoptWatchInitiatedSessionIfNeeded()
         }

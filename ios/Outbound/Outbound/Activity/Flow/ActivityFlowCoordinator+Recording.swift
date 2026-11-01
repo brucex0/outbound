@@ -12,6 +12,7 @@ extension ActivityFlowCoordinator {
         recoveredAfterFinish: Bool,
         initiatedByWatch: Bool = false
     ) {
+        guard self.recorder.state != .idle, self.review.pendingActivity == nil else { return }
         guard !self.live.isCapturingSessionPhoto else { return }
         self.cancelStartCountdown(returnToSetup: true)
         if !initiatedByWatch {

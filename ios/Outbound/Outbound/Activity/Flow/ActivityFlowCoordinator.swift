@@ -5,6 +5,23 @@ import MapKit
 
 import Combine
 
+/// The app owns one flow for its entire lifetime; views only observe it.
+@MainActor
+final class ActivityFlowStore: ObservableObject {
+    static let shared = ActivityFlowStore()
+    private(set) var coordinator: ActivityFlowCoordinator?
+    private init() {}
+
+    var hasUnfinishedSession: Bool { coordinator?.hasUnfinishedSession == true }
+
+    func resolve(initialIntent: SessionIntent?, dependencies: ActivityFlowDependencies, preferences: ActivityFlowPreferences, host: ActivityFlowHost, reduceMotion: Bool, analyticsManager: AnalyticsManager?) -> ActivityFlowCoordinator {
+        if let coordinator { return coordinator }
+        let coordinator = ActivityFlowCoordinator(initialIntent: initialIntent, dependencies: dependencies, preferences: preferences, host: host, reduceMotion: reduceMotion, analyticsManager: analyticsManager)
+        self.coordinator = coordinator
+        return coordinator
+    }
+}
+
 @MainActor
 final class ActivityFlowCoordinator: ObservableObject {
     let dependencies: ActivityFlowDependencies
@@ -13,7 +30,7 @@ final class ActivityFlowCoordinator: ObservableObject {
     var analyticsManager: AnalyticsManager?
     var reduceMotion: Bool
 
-    let setup: ActivitySetupViewModel
+    @Published private(set) var setup: ActivitySetupViewModel
     let live = LiveActivityViewModel()
     let review = ActivityReviewViewModel()
     let countdown = ActivityCountdownViewModel()
@@ -23,7 +40,7 @@ final class ActivityFlowCoordinator: ObservableObject {
     let guide = VirtualGuide()
     let liveActivityManager = SessionLiveActivityManager()
     let workoutPresence = WorkoutPresenceController()
-    let launchPreferenceStore: ActivityLaunchPreferenceStore
+    private(set) var launchPreferenceStore: ActivityLaunchPreferenceStore
     @Published var showCamera = false
     @Published var activeIntent: SessionIntent? = nil
     @Published var isAssistantPresented = false
@@ -54,14 +71,89 @@ final class ActivityFlowCoordinator: ObservableObject {
 #endif
 
     private var observations = Set<AnyCancellable>()
+    private var setupObservation: AnyCancellable?
+    private var launchPreferenceObservation: AnyCancellable?
+    private var lastLaunchID: UUID?
 
-    init(initialIntent: SessionIntent?, dependencies: ActivityFlowDependencies, preferences: ActivityFlowPreferences, host: ActivityFlowHost, reduceMotion: Bool, analyticsManager: AnalyticsManager?) {
+    var hasUnfinishedSession: Bool {
+        sessionController.phase != .setup || recorder.state != .idle
+            || isStartingActivity || isWaitingForLocation || isCountingDown
+            || review.pendingActivity != nil || review.postSaveCelebrationActivity != nil
+            || review.postSaveStretchContext != nil
+    }
+
+    var canStartRecording: Bool {
+        (sessionController.phase == .setup || sessionController.phase == .preflighting)
+            && recorder.state == .idle && review.pendingActivity == nil
+            && review.postSaveCelebrationActivity == nil && review.postSaveStretchContext == nil
+    }
+
+    func receiveLaunch(id: UUID, intent: SessionIntent?, startImmediately: Bool) {
+        guard lastLaunchID != id else { return }
+        let isFirstLaunch = lastLaunchID == nil
+        lastLaunchID = id
+        // Only this app-owned recorder may restore the journal, once per process.
+        restoreInterruptedPhotosIfNeeded()
+        restoreInterruptedSessionIfNeeded()
+        let entrySource = startImmediately ? "group_activity" : "app"
+        guard !hasUnfinishedSession else {
+            track(.init(.activityRecordingEntry, properties: [
+                .entrySource: .string(entrySource), .result: .string("reused_existing")
+            ]))
+            ActivityDiagnosticLog.notice(.lifecycle, "Recording entry reused existing app session")
+            return
+        }
+        if !isFirstLaunch {
+            cancelStartCountdown(returnToSetup: true)
+            cancelLocationWait()
+            launchPreferenceStore = ActivityLaunchPreferenceStore(userID: AuthStore.currentUserId)
+            setup = ActivitySetupViewModel(dependencies: dependencies, preferences: preferences, launchPreferenceStore: launchPreferenceStore)
+            observeSetup()
+            observeLaunchPreferences()
+            setup.plannedIntent = intent ?? .freestyleRun
+            setup.plannedWorkoutIntent = intent
+            setup.selectedGoalMode = intent == nil ? .freestyle : .planned
+            setup.selectedWorkoutChoice = intent == nil ? .sport(.run) : .planned
+            setup.selectedRouteDistanceMeters = intent?.preparedRoute.map(Self.calculatePreparedRouteDistance)
+            activeIntent = nil
+            showCamera = false
+            live.capturedPhotos = []
+            live.isCapturingSessionPhoto = false
+            live.isLiveWorkoutPanelExpanded = false
+            didTrackSetupView = false
+            exposedFeatures = []
+            reachedGoalThresholds = []
+            didAutoStopAtGoal = false
+            sessionController.prepare(intent: setup.plannedIntent)
+            launchCoordinator.prepare(intent: setup.plannedIntent)
+            host.onPreActivityPhotoChange?(nil)
+        }
+        track(.init(.activityRecordingEntry, properties: [
+            .entrySource: .string(entrySource), .result: .string("prepared")
+        ]))
+        prepareSetupSurface()
+        if startImmediately { ensureLocationReadyThenStart() }
+    }
+
+    private func observeLaunchPreferences() {
+        launchPreferenceObservation = launchPreferenceStore.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
+    }
+
+    private func observeSetup() {
+        setupObservation = setup.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
+    }
+
+    fileprivate init(initialIntent: SessionIntent?, dependencies: ActivityFlowDependencies, preferences: ActivityFlowPreferences, host: ActivityFlowHost, reduceMotion: Bool, analyticsManager: AnalyticsManager?) {
         self.dependencies = dependencies
         self.preferences = preferences
         self.host = host
         self.reduceMotion = reduceMotion
         self.analyticsManager = analyticsManager
-        recorder = ActivityRecorder(locationManager: LocationManager())
+        recorder = ActivityRecorder.shared
         launchPreferenceStore = ActivityLaunchPreferenceStore(userID: AuthStore.currentUserId)
         setup = ActivitySetupViewModel(dependencies: dependencies, preferences: preferences, launchPreferenceStore: launchPreferenceStore)
         setup.plannedIntent = initialIntent ?? .freestyleRun
@@ -78,11 +170,11 @@ final class ActivityFlowCoordinator: ObservableObject {
                 self.applyLearnedGoalModeIfNeeded()
             }
             .store(in: &observations)
-        observe(setup)
+        observeSetup()
         observe(live)
         observe(review)
         observe(countdown)
-        observe(launchPreferenceStore)
+        observeLaunchPreferences()
         observe(recorder)
         observe(guide)
         observe(launchCoordinator)

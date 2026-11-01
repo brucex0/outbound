@@ -103,6 +103,9 @@ extension ActivityFlowView {
         .onChange(of: model.showsEmbeddedLiveSurface, initial: true) { _, liveSurfaceVisible in
             host.onLiveSurfaceVisibilityChange?(liveSurfaceVisible)
         }
+        .onChange(of: launchID, initial: true) { _, id in
+            model.receiveLaunch(id: id, intent: initialIntent, startImmediately: host.startImmediately)
+        }
         .onAppear {
             model.handleAppearance()
         }
@@ -111,7 +114,7 @@ extension ActivityFlowView {
     var recordLifecycleSurface: some View {
         recordStateSurface
         .ignoresSafeArea(.keyboard, edges: .bottom)
-        .task {
+        .task(id: launchID) {
             await model.prepareServices()
         }
         .task(id: model.coachingPreparationKey) {

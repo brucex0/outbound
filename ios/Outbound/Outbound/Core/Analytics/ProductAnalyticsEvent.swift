@@ -18,6 +18,7 @@ enum AnalyticsValue: Sendable, Equatable {
 
 enum ProductEventName: String, Sendable, CaseIterable {
     case appStartupResolved = "app_startup_resolved"
+    case activityRecordingEntry = "activity_recording_entry"
     case activitySetupViewed = "activity_setup_viewed"
     case activityConfigurationChanged = "activity_configuration_changed"
     case liveGuidanceExecutionCoaching = "live_guidance_execution_coaching"
@@ -368,6 +369,7 @@ enum ProductAnalyticsSchema {
 
     nonisolated private static let eventKeys: [ProductEventName: Set<ProductPropertyKey>] = [
         .appStartupResolved: [.destination, .latencyBucket, .sourceType],
+        .activityRecordingEntry: [.entrySource, .result],
         .activitySetupViewed: [.entrySource],
         .activityConfigurationChanged: [.changeType, .selectionType, .activityType, .goalType, .targetBucket, .sourceType, .pacingStrategy],
         .activityStarted: [.entrySource, .activityType, .goalType, .targetBucket, .musicEnabled, .routeSelected, .shoeSelected, .preRunPhotoAdded, .groupRunEnabled, .liveShareEnabled, .indoor, .voiceGuideEnabled, .autoPauseEnabled, .autoStopAtGoal, .dogCompanionEnabled, .participantCountBucket],

@@ -1821,6 +1821,8 @@ struct ActivityEventDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.analyticsManager) private var analyticsManager
+    @EnvironmentObject private var appNavigationStore: AppNavigationStore
+    @EnvironmentObject private var activityFlowStore: ActivityFlowStore
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     @EnvironmentObject private var liveGroupStore: LiveGroupStore
@@ -1834,7 +1836,6 @@ struct ActivityEventDetailView: View {
     @State private var isAttendanceChoicePresented = false
     @State private var invitationToDelete: ActivityEventPendingInvitationDTO?
     @State private var deletingInvitationIDs: Set<String> = []
-    @State private var isActivityStartPresented = false
     @State private var isLocationPermissionPromptPresented = false
     @State private var isActivityStartPendingPermission = false
     @State private var isEditPresented = false
@@ -2100,23 +2101,6 @@ struct ActivityEventDetailView: View {
                 .background(.bar)
             }
         }
-        .fullScreenCover(isPresented: $isActivityStartPresented) {
-            RecordView(
-                initialIntent: SessionIntent.freestyleRun.paired(
-                    with: run,
-                    attendanceMode: detail?.currentUserAttendanceMode
-                ),
-                isVisible: true,
-                startImmediately: true,
-                onLocationPermissionRequired: {
-                    isActivityStartPresented = false
-                    isLocationPermissionPromptPresented = true
-                },
-                onCloseRequest: { shouldKeepAlive in
-                    if !shouldKeepAlive { isActivityStartPresented = false }
-                }
-            )
-        }
         .alert(
             String(localized: "record.location.permission.title", defaultValue: "Enable location"),
             isPresented: $isLocationPermissionPromptPresented
@@ -2291,6 +2275,10 @@ struct ActivityEventDetailView: View {
     }
 
     private func startActivity() {
+        if activityFlowStore.hasUnfinishedSession {
+            presentActivityStart()
+            return
+        }
         startLocationManager.refreshForForeground()
         guard startLocationManager.isLocationPermissionGranted else {
             isActivityStartPendingPermission = true
@@ -2302,8 +2290,13 @@ struct ActivityEventDetailView: View {
 
     private func presentActivityStart() {
         isActivityStartPendingPermission = false
-        socialStore.prepareToRecord(activityEventID: run.id)
-        isActivityStartPresented = true
+        // Every entry point opens the one app-owned flow, including re-entry
+        // while another activity is paused, reviewing, saving, or celebrating.
+        appNavigationStore.closeAllSharedDestinations()
+        dismiss()
+        appNavigationStore.prepareActivityEvent(
+            run, attendanceMode: detail?.currentUserAttendanceMode, startImmediately: true
+        )
     }
 
     private func continuePendingEventStartIfReady() {

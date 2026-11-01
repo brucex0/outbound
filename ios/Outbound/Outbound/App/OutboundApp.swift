@@ -14,6 +14,7 @@ struct OutboundApp: App {
     @StateObject private var goalStore = GoalStore()
     @StateObject private var trainingPlanStore = TrainingPlanStore()
     @StateObject private var assistantStore = AssistantStore()
+    @StateObject private var activityFlowStore = ActivityFlowStore.shared
     @StateObject private var appNavigationStore = AppNavigationStore()
     @StateObject private var healthAuthorizationStore = HealthAuthorizationStore()
     @StateObject private var healthImportStore = HealthImportStore()
@@ -231,6 +232,7 @@ struct OutboundApp: App {
             .environmentObject(trainingPlanStore)
             .environmentObject(assistantStore)
             .environmentObject(appNavigationStore)
+            .environmentObject(activityFlowStore)
             .environmentObject(healthAuthorizationStore)
             .environmentObject(phoneWorkoutCoordinator)
             .environmentObject(healthImportStore)
@@ -2122,6 +2124,7 @@ final class AppNavigationStore: ObservableObject {
     @Published private(set) var pendingActivityEvent: ActivityEventDTO?
     @Published var sharedDestinations: [SharedAppDestination] = []
     @Published var pendingLiveCheerPresentation: LiveCheerPresentationRequest?
+    private(set) var pendingActivityEventStartImmediately = false
     private(set) var pendingActivityEventAttendanceMode: String?
 
     func open(_ target: AssistantNavigationTarget) {
@@ -2133,7 +2136,8 @@ final class AppNavigationStore: ObservableObject {
         pendingActivityIntent = intent
     }
 
-    func prepareActivityEvent(_ event: ActivityEventDTO, attendanceMode: String?) {
+    func prepareActivityEvent(_ event: ActivityEventDTO, attendanceMode: String?, startImmediately: Bool = false) {
+        pendingActivityEventStartImmediately = startImmediately
         pendingActivityEventAttendanceMode = attendanceMode
         pendingActivityEvent = event
     }
@@ -2180,6 +2184,7 @@ final class AppNavigationStore: ObservableObject {
     func consumePreparedActivityEvent() {
         pendingActivityEvent = nil
         pendingActivityEventAttendanceMode = nil
+        pendingActivityEventStartImmediately = false
     }
 }
 

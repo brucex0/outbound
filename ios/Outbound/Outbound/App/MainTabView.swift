@@ -8,6 +8,7 @@ struct MainTabView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var assistantStore: AssistantStore
+    @EnvironmentObject private var activityFlowStore: ActivityFlowStore
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
     @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
@@ -134,7 +135,7 @@ struct MainTabView: View {
             guard selectedAppTab == SimplifiedAppTab.today else { return }
             // Review and post-save are recorder-idle too. Keep their owning
             // RecordView alive when saving refreshes today's recommendation.
-            guard activitySessionState == .idle, !isActivityFullscreenVisible else { return }
+            guard !activityFlowStore.hasUnfinishedSession, !isActivityFullscreenVisible else { return }
             let activeIntent = activeLaunch?.intent
             guard activeIntent == nil || activeIntent == previousIntent else { return }
             guard activeIntent != intent else { return }
@@ -166,12 +167,13 @@ struct MainTabView: View {
         }
         .onChange(of: appNavigationStore.pendingActivityEvent?.id) { _, eventID in
             guard eventID != nil, let event = appNavigationStore.pendingActivityEvent else { return }
-            let intent = (personalTodayIntent ?? .freestyleRun).paired(
+            let baseIntent = appNavigationStore.pendingActivityEventStartImmediately
+                ? SessionIntent.freestyleRun : (personalTodayIntent ?? .freestyleRun)
+            let intent = baseIntent.paired(
                 with: event,
                 attendanceMode: appNavigationStore.pendingActivityEventAttendanceMode
             )
-            socialStore.prepareToRecord(activityEventID: event.id)
-            presentActivity(intent: intent)
+            presentActivity(intent: intent, startImmediately: appNavigationStore.pendingActivityEventStartImmediately)
             appNavigationStore.consumePreparedActivityEvent()
         }
         .onChange(of: workoutNotificationScheduler.pendingReminder?.id) { _, _ in
@@ -342,6 +344,7 @@ struct MainTabView: View {
     private var activityLaunchSurface: AnyView {
         if let launch = activeLaunch {
             return AnyView(RecordView(
+                launchID: launch.id,
                 initialIntent: launch.intent,
                 isVisible: isActivityVisible && selectedAppTab == .today,
                 isEmbeddedInToday: true,
@@ -350,6 +353,7 @@ struct MainTabView: View {
                 routeSelectionRequest: routeSelectionRequest,
                 routeRemovalRequest: routeRemovalRequest,
                 groupRunRequest: groupRunRequest,
+                startImmediately: launch.startImmediately,
                 onGoalModeChange: { launchGoalMode = $0 },
                 onPlanBuilderRequested: {
                     onboardingStore.beginPlanBuilder(source: .plannedButton)
@@ -367,22 +371,27 @@ struct MainTabView: View {
                         isActivityVisible = true
                     }
                 }
-            )
-            .id(launch.id))
+            ))
         }
         return AnyView(EmptyView())
     }
 
-    private func presentActivity(intent: SessionIntent? = nil) {
+    private func presentActivity(intent: SessionIntent? = nil, startImmediately: Bool = false) {
         reviewOpportunity = nil
-        if let activeLaunch, activitySessionState != .idle {
-            self.activeLaunch = activeLaunch
+        selectedAppTab = .today
+        if activityFlowStore.hasUnfinishedSession {
+            if activeLaunch == nil {
+                activeLaunch = RecordLaunch(intent: activityFlowStore.coordinator?.activeIntent ?? activityFlowStore.coordinator?.setup.plannedIntent)
+            }
             isActivityVisible = true
+            activityFlowStore.coordinator?.track(.init(.activityRecordingEntry, properties: [
+                .entrySource: .string(startImmediately ? "group_activity" : "app"),
+                .result: .string("reused_existing")
+            ]))
             return
         }
 
-        selectedAppTab = .today
-        activeLaunch = RecordLaunch(intent: intent)
+        activeLaunch = RecordLaunch(intent: intent, startImmediately: startImmediately)
         preActivityRoute = intent?.preparedRoute
         activitySessionState = .idle
         activityElapsedSeconds = 0
@@ -447,6 +456,7 @@ struct MainTabView: View {
     }
 
     private func prepareTodayLaunchForCurrentPlan() {
+        guard !activityFlowStore.hasUnfinishedSession else { return }
         let intent = defaultTodayIntent
         activeLaunch = RecordLaunch(intent: intent)
         launchGoalMode = trainingPlanStore.activePlan == nil ? .freestyle : .planned
@@ -599,6 +609,12 @@ private struct NotificationPermissionPrimerHost: View {
 private struct RecordLaunch: Identifiable {
     let id = UUID()
     let intent: SessionIntent?
+    let startImmediately: Bool
+
+    init(intent: SessionIntent?, startImmediately: Bool = false) {
+        self.intent = intent
+        self.startImmediately = startImmediately
+    }
 }
 
 enum ActivitySessionPortalState {

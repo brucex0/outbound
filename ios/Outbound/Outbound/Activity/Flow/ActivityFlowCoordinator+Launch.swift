@@ -81,7 +81,7 @@ extension ActivityFlowCoordinator {
     }
 
     func startRecording() {
-        guard self.recorder.state == .idle, !self.isCountingDown else { return }
+        guard self.canStartRecording, !self.isCountingDown else { return }
         guard !self.isStartingActivity else { return }
 #if DEBUG
         if self.isRunSimulationEnabled {
@@ -107,7 +107,7 @@ extension ActivityFlowCoordinator {
     }
 
     func ensureLocationReadyThenStart(isUserInitiated: Bool = true) {
-        guard self.recorder.state == .idle, !self.isCountingDown else { return }
+        guard self.canStartRecording, !self.isCountingDown else { return }
 #if DEBUG
         if self.isRunSimulationEnabled {
             self.startRecording()
@@ -155,6 +155,9 @@ extension ActivityFlowCoordinator {
         self.launchCoordinator.cancel()
         if self.recorder.state == .idle {
             self.recorder.locationManager.cancelPreparation()
+            if self.sessionController.phase == .preflighting || self.sessionController.phase == .countdown {
+                self.sessionController.prepare(intent: self.setup.plannedIntent)
+            }
         }
     }
 
@@ -162,6 +165,7 @@ extension ActivityFlowCoordinator {
         guard isUserInitiated else { return }
         self.cancelLocationWait()
         self.isWaitingForLocation = true
+        self.sessionController.beginPreflight()
         if let onLocationPermissionRequired = self.host.onLocationPermissionRequired {
             onLocationPermissionRequired()
         } else {
@@ -216,7 +220,7 @@ extension ActivityFlowCoordinator {
     }
 
     func beginStartRecording() {
-        guard self.recorder.state == .idle, !self.isCountingDown, !self.isStartingActivity else { return }
+        guard self.canStartRecording, !self.isCountingDown, !self.isStartingActivity else { return }
         self.guide.setSpeechEnabled(self.voiceGuideSpeechEnabled)
         self.isStartingActivity = true
         let intent = self.setup.plannedIntent
@@ -519,7 +523,9 @@ extension ActivityFlowCoordinator {
     }
 
     func completeStartCountdown() {
-        guard self.recorder.state == .idle else {
+        guard self.recorder.state == .idle,
+              self.review.pendingActivity == nil,
+              self.sessionController.phase == .countdown || self.sessionController.phase == .preflighting else {
             self.countdown.countdownStep = nil
             self.countdown.countdownTask = nil
             return
@@ -648,6 +654,9 @@ extension ActivityFlowCoordinator {
         }
         self.guide.deactivate()
         self.activeIntent = nil
+        if self.recorder.state == .idle {
+            self.sessionController.prepare(intent: self.setup.plannedIntent)
+        }
         if returnToSetup {
             self.showCamera = false
         }

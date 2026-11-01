@@ -29,6 +29,7 @@ enum HeartRateIngestionSource: String, Codable {
 
 @MainActor
 final class ActivityRecorder: ObservableObject {
+    static let shared = ActivityRecorder(ownedLocationManager: LocationManager())
     @Published var state: RecordingState = .idle
     @Published var elapsedSeconds: Int = 0
     @Published var distanceMeters: Double = 0
@@ -119,9 +120,16 @@ final class ActivityRecorder: ObservableObject {
         }
     }
 
-    init(locationManager: LocationManager) {
-        self.locationManager = locationManager
-        locationCancellable = locationManager.$location.sink { [weak self] location in
+#if DEBUG
+    // Existing metrics/unit probes may own isolated recorders; app code uses shared.
+    convenience init(locationManager: LocationManager) {
+        self.init(ownedLocationManager: locationManager)
+    }
+#endif
+
+    private init(ownedLocationManager: LocationManager) {
+        self.locationManager = ownedLocationManager
+        locationCancellable = ownedLocationManager.$location.sink { [weak self] location in
             self?.handleLocationUpdate(location)
         }
         restoreJournalIfPresent()
@@ -138,6 +146,10 @@ final class ActivityRecorder: ObservableObject {
         activityEvent: ActivityEventLaunchContext? = nil,
         liveGroupSessionID: String? = nil
     ) {
+        guard state == .idle else {
+            ActivityDiagnosticLog.notice(.lifecycle, "Recording start ignored reason=session_in_progress")
+            return
+        }
 #if DEBUG
         resetRunSimulation()
 #endif

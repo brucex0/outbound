@@ -8,14 +8,18 @@ struct ActivityFlowView: View {
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     @Environment(\.outboundTheme) var theme
     @FocusState var focusedCustomGoalKind: CustomGoalKind?
-    @StateObject var model: ActivityFlowCoordinator
+    @ObservedObject var model: ActivityFlowCoordinator
     let host: ActivityFlowHost
+    let launchID: UUID
+    let initialIntent: SessionIntent?
     // A value snapshot ensures external AppStorage edits invalidate this host.
     // Coordinator accessors read the persisted values live across view updates.
     let preferenceValues: [String]
 
-    init(initialIntent: SessionIntent?, dependencies: ActivityFlowDependencies, preferences: ActivityFlowPreferences, host: ActivityFlowHost, reduceMotion: Bool, analyticsManager: AnalyticsManager?) {
+    init(owner: ActivityFlowStore, launchID: UUID, initialIntent: SessionIntent?, dependencies: ActivityFlowDependencies, preferences: ActivityFlowPreferences, host: ActivityFlowHost, reduceMotion: Bool, analyticsManager: AnalyticsManager?) {
         self.host = host
+        self.launchID = launchID
+        self.initialIntent = initialIntent
         var values: [String] = []
         values.append(String(describing: preferences.preferredSessionPageRawValue.wrappedValue))
         values.append(String(describing: preferences.isVoiceGuideEnabled.wrappedValue))
@@ -29,7 +33,7 @@ struct ActivityFlowView: View {
         values.append(String(describing: preferences.routeTestMode.wrappedValue))
 #endif
         preferenceValues = values
-        _model = StateObject(wrappedValue: ActivityFlowCoordinator(initialIntent: initialIntent, dependencies: dependencies, preferences: preferences, host: host, reduceMotion: reduceMotion, analyticsManager: analyticsManager))
+        _model = ObservedObject(wrappedValue: owner.resolve(initialIntent: initialIntent, dependencies: dependencies, preferences: preferences, host: host, reduceMotion: reduceMotion, analyticsManager: analyticsManager))
     }
 
     var body: some View {

@@ -12,7 +12,8 @@ Open when changing activity setup, countdown, live recording, finish/review, or 
 
 ## Boundaries
 
-- `RecordView`: dependency-composition adapter retaining the existing initializer for Today and Group callers. Resolve environment dependencies and persisted preferences here.
+- `ActivityFlowStore.shared`: app-owned lifetime for the sole `ActivityFlowCoordinator`; only this store can construct the coordinator. `ActivityRecorder.shared` owns the sole production recorder and restores its recovery journal once.
+- `RecordView`: the single recording host in `MainTabView`; resolves environment dependencies and persisted preferences. Group, Today, reminders, and Watch entry points route to this host instead of presenting another recorder.
 - `ActivityFlowView`: retained flow presentation and lifecycle subscription host. Keep modifier ordering and subscriptions together; split setup, live, and completion presentation into focused files.
 - `ActivityFlowCoordinator`: activity operations and cross-screen transitions through the existing session controller; receives explicit dependency and host-context values. Operations are grouped into launch/recovery, recording, completion/save, setup, lifecycle-event, and analytics files.
 - `ActivitySetupViewModel`: launch selection, per-sport drafts, goal editor state, formatting/validation, route-intent construction, recommendations, and provider setup actions.
@@ -22,7 +23,7 @@ Open when changing activity setup, countdown, live recording, finish/review, or 
 - Pure goal presets/recommendations and countdown presentation live outside the flow host.
 - Existing domain services remain direct dependencies. Do not add forwarding service wrappers that merely rename `ActivityRecorder` or `ActivityStore`.
 
-The coordinator owns the screen models for one retained flow. Screen changes and existing observable domain services invalidate the flow through explicit observation; SwiftUI focus and environment values remain in views.
+The singleton coordinator owns the screen models for the app’s retained flow. Screen changes and existing observable domain services invalidate the flow through explicit observation; SwiftUI focus and environment values remain in views.
 
 ## Preference Tap Pipeline
 
@@ -39,8 +40,10 @@ The coordinator owns the screen models for one retained flow. Screen changes and
 - Review uses the finished snapshot and existing `PostRunSummaryView` route presentation.
 - Share existing map surface/geometry helpers, not mutable camera state between screens. Replacing map renderers is outside this behavior-preserving extraction.
 - Reusable plan setup presents as a full-screen cover above the retained main shell when `OnboardingStore.isPresented` changes after startup. First-use onboarding retains its startup destination; finishing the reusable builder returns to the same Today draft. The existing builder analytics retain their presentation source.
-- Today and Group use the same `RecordView` adapter and flow implementation. Preserve embedded Today and immediate standalone Group launch, permission prompts, and return destinations.
-- Current Group detail owns a standalone flow presentation; Today retains its own flow. Moving both to one app-owned session and changing conflict/return routing is a separate navigation migration, not claimed as implemented here.
+- Today retains the only `RecordView`/`ActivityFlowView`; its identity is stable across launch requests. Group Start closes its detail presentation and sends a request to that host, preserving its event/attendance context and immediate permission/GPS/countdown path.
+- Re-entry during preflight, countdown, active/paused recording, review, save, or celebration reveals the existing session. It never changes that session’s intent, event attribution, photos, sharing, or review. Only setup can accept a new launch; setup drafts are refreshed without reconstructing the coordinator, recorder, or live screen.
+- Finish requires an active/paused recorder and no existing review; save accepts only the current pending review ID. These guards prevent stale finish/save callbacks from writing another activity or recovery checkpoint.
+- `activity_recording_entry` records `entry_source=app|group_activity` and `result=prepared|reused_existing`; it contains no activity/event/session IDs or personal data.
 
 ## Implementation Sequence
 
@@ -82,3 +85,9 @@ The coordinator owns the screen models for one retained flow. Screen changes and
 - UI regressions use the custom dock and current Social/photo flows. Seeded scenarios explicitly clear synthetic recording journals; group recovery retains its journal across two relaunches and owns its loopback API fixture.
 - Requested verification passed: 15 Swift Package tests and all 91 unique iOS tests (69 unit, 22 UI) on a fresh iPhone 17 / iOS 26.5 simulator. The full scheme includes all six Watch scenarios and six launch configurations. Photo coverage checks preview, long-press selection, drag reordering, deletion, and the saved photo count.
 - Manual device verification must be reported separately: a build does not verify GPS, camera, Watch, audio, map gestures, or visual transitions.
+
+### Single app-owned recording repair (2026-11-01)
+
+- Connected-device logs confirmed a second in-process journal recovery while the original Group recording remained alive, followed by separate normal and recovered saves. Group no longer constructs its own flow.
+- Verification: Debug arm64 iOS Simulator build and clean incremental build passed. A standalone Swift probe using the production owner, launch/ownership guards, cancellation methods, and session controller with stub domain services confirmed one coordinator/recorder identity, preserved intent/photos across all seven in-flight phases, next-session reuse, idempotent launch requests, and release after countdown/GPS cancellation. Source audit confirms one production recording host and one private production recorder constructor.
+- No test suite ran. Visual navigation, real-device GPS/camera/audio, and paired Watch behavior were not manually reverified. The new build was not installed on a phone.

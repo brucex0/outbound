@@ -6,6 +6,7 @@ import MapKit
 struct RecordView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.analyticsManager) private var analyticsManager
+    @EnvironmentObject private var activityFlowStore: ActivityFlowStore
     @EnvironmentObject var activityStore: ActivityStore
     @EnvironmentObject var guideStore: GuideStore
     @EnvironmentObject var guideCatalog: GuideCatalogStore
@@ -39,6 +40,7 @@ struct RecordView: View {
 #if DEBUG
     @AppStorage("debug_route_test_mode") private var routeTestMode = false
 #endif
+    private let launchID: UUID
     private let initialIntent: SessionIntent?
     let isVisible: Bool
     private let isEmbeddedInToday: Bool
@@ -61,6 +63,7 @@ struct RecordView: View {
     private let onLiveSurfaceVisibilityChange: ((Bool) -> Void)?
 
     init(
+        launchID: UUID,
         initialIntent: SessionIntent? = nil,
         isVisible: Bool = true,
         isEmbeddedInToday: Bool = false,
@@ -81,6 +84,7 @@ struct RecordView: View {
         onElapsedTimeChange: ((Int) -> Void)? = nil,
         onLiveSurfaceVisibilityChange: ((Bool) -> Void)? = nil
     ) {
+        self.launchID = launchID
         self.initialIntent = initialIntent
         self.shouldApplySmartGoalDefault = initialIntent == nil
         self.isVisible = isVisible
@@ -113,6 +117,8 @@ struct RecordView: View {
         let _ = routeTestMode
 #endif
         ActivityFlowView(
+            owner: activityFlowStore,
+            launchID: launchID,
             initialIntent: initialIntent,
             dependencies: ActivityFlowDependencies(
                 activityStore: activityStore,

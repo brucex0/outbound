@@ -9,7 +9,8 @@ extension ActivityFlowCoordinator {
         photos: [(UIImage, PhotoMetadata)],
         reflection: FinishReflection
     ) async -> Bool {
-        guard self.sessionController.beginSaving() else { return false }
+        guard self.review.pendingActivity?.id == activity.id,
+              self.sessionController.beginSaving() else { return false }
         // Persist the best result already available; never wait for the network.
         let correctedSummary = self.review.pendingActivity.flatMap {
             $0.id == activity.id ? $0.summary : nil
