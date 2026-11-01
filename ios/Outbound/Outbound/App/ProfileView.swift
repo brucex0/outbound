@@ -756,10 +756,14 @@ struct AssistantView: View {
         isInterpreting = true
         assistantStore.draft = ""
         defer { isInterpreting = false }
+        let interpretationStarted = ContinuousClock.now
         let result = await assistantStore.interpretPrompt(prompt, context: assistantContext,
             manualDraft: pendingManualWorkoutDraft, unitSystem: measurementPreferences.unitSystem)
+        let elapsed = interpretationStarted.duration(to: .now).components
+        let milliseconds = Double(elapsed.seconds) * 1_000 + Double(elapsed.attoseconds) / 1_000_000_000_000_000
         await analyticsManager?.track(ProductAnalyticsEvent(.assistantInterpretationCompleted, properties: [
-            .sourceType: .string(result.source), .result: .string(result.result)
+            .sourceType: .string(result.source), .result: .string(result.result),
+            .latencyBucket: .string(ProductAnalyticsBucket.latency(milliseconds: milliseconds))
         ]))
         guard !Task.isCancelled, result.result != "cancelled" else { return }
         if result.result == "invalid_input" {

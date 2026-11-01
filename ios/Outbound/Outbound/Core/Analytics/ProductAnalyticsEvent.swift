@@ -513,7 +513,7 @@ enum ProductAnalyticsSchema {
         .assistantLauncherAnimationShown: [.destination, .entrySource],
         .assistantLauncherOpened: [.destination, .entrySource],
         .assistantMeaningfulEngagement: [.destination, .entrySource],
-        .assistantInterpretationCompleted: [.sourceType, .result],
+        .assistantInterpretationCompleted: [.sourceType, .result, .latencyBucket],
         .homeWidgetOnboardingViewed: [.entrySource],
         .homeWidgetSetupActionSelected: [.entrySource, .selectionType],
         .homeWidgetSetupStepViewed: [.entrySource, .stepName],

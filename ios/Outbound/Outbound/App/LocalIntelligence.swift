@@ -204,55 +204,65 @@ enum LocalIntelligence {
                         generating: GeneratedAssistantRoute.self, maximumTokens: 80)
                     var value = route.value
                     if (value.kind == "manualWorkout" && route.kind != .beginManualWorkout) || value.kind == "prepareActivity" {
-                        let sport = try await generate(prompt: "Which specific sport, if any, is named in this message?\nMessage: \(request.prompt)",
-                            instructions: "Identify the explicitly named sport only, including sport-specific verbs in the input language. Do not infer a sport from workout/activity or a duration.",
-                            generating: GeneratedWorkoutSport.self, maximumTokens: 150)
-                        if sport.sport != .none { value.sport = sport.sport.rawValue }
                         let durationPhrase = try await sourcePhrase(in: request.prompt, describing: "an amount of time")
+                        let isWholeMessage = durationPhrase.caseInsensitiveCompare(request.prompt.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame
+                        var isDurationReply = false
+                        if value.kind == "manualWorkout", manualDraft != nil, isWholeMessage {
+                            isDurationReply = try await confirmsFact(in: durationPhrase, question: "consist only of an elapsed duration")
+                        }
+                        var sport: GeneratedWorkoutSport.Sport = .none
+                        if !isDurationReply {
+                            let extracted = try await generate(prompt: "Which specific sport, if any, is named in this message?\nMessage: \(request.prompt)",
+                                instructions: "Identify the explicitly named sport only, including sport-specific verbs in the input language. Do not infer a sport from workout/activity or a duration.",
+                                generating: GeneratedWorkoutSport.self, maximumTokens: 150)
+                            sport = extracted.sport
+                            if sport != .none { value.sport = sport.rawValue }
+                        }
                         if grounded(durationPhrase, in: request.prompt) {
                             let duration = try await generate(prompt: durationPhrase,
                                 instructions: "Extract the stated duration as hour, minute and second components. Do not convert units. Unused components are zero.",
                                 generating: GeneratedWorkoutDuration.self, maximumTokens: 100)
-                            let isWholeMessage = durationPhrase.caseInsensitiveCompare(request.prompt.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame
-                            var acceptDuration = !isWholeMessage
+                            var acceptDuration = isDurationReply || !isWholeMessage
                             if !acceptDuration { acceptDuration = try await confirmsFact(in: durationPhrase, question: "express an amount of time") }
                             if acceptDuration {
                                 value.durationHours = duration.hours; value.durationMinutes = duration.minutes; value.durationSeconds = duration.seconds
                             }
                         }
-                        var presence = GeneratedWorkoutPresence()
-                        let checks: [(WritableKeyPath<GeneratedWorkoutPresence, Bool>, String, String)] = [
-                            (\.distance, "a distance quantity", "express a distance quantity"),
-                            (\.pace, "a pace", "express a pace as time per distance"),
-                            (\.date, "a calendar day", "specify a calendar day"),
-                            (\.time, "a clock time of day", "specify a clock time of day rather than an elapsed duration"),
-                            (\.setting, "an indoor or outdoor setting", "mean indoors or outdoors")
-                        ]
-                        for (field, description, question) in checks {
-                            let phrase = try await sourcePhrase(in: request.prompt, describing: description)
-                            // A whole sport request is not a citation for an independent optional fact.
-                            if sport.sport != .none,
-                               phrase.caseInsensitiveCompare(request.prompt.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame {
-                                continue
+                        if !isDurationReply {
+                            var presence = GeneratedWorkoutPresence()
+                            let checks: [(WritableKeyPath<GeneratedWorkoutPresence, Bool>, String, String)] = [
+                                (\.distance, "a distance quantity", "express a distance quantity"),
+                                (\.pace, "a pace", "express a pace as time per distance"),
+                                (\.date, "a calendar day", "specify a calendar day"),
+                                (\.time, "a clock time of day", "specify a clock time of day rather than an elapsed duration"),
+                                (\.setting, "an indoor or outdoor setting", "mean indoors or outdoors")
+                            ]
+                            for (field, description, question) in checks {
+                                let phrase = try await sourcePhrase(in: request.prompt, describing: description)
+                                // A whole sport request is not a citation for an independent optional fact.
+                                if sport != .none,
+                                   phrase.caseInsensitiveCompare(request.prompt.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame {
+                                    continue
+                                }
+                                if grounded(phrase, in: request.prompt) {
+                                    presence[keyPath: field] = try await confirmsFact(in: phrase, question: question)
+                                }
                             }
-                            if grounded(phrase, in: request.prompt) {
-                                presence[keyPath: field] = try await confirmsFact(in: phrase, question: question)
-                            }
-                        }
-                        if presence.hasAdditionalFields {
-                            let details = try await generate(prompt: "Reference context: \(request.context)\nUSER MESSAGE: \(request.prompt)", instructions: """
-                                Extract only additional workout facts explicitly supplied in USER MESSAGE.
-                                For every category, copy its exact source phrase from that message; use an empty phrase when absent.
-                                Never copy reference context into source phrases. Never infer defaults.
-                                Keep distance and pace units. Resolve explicitly stated relative dates against reference calendar dates.
-                                Unused numeric values may be zero; they are ignored when the corresponding source phrase is empty.
-                                Clarification is notNeeded for clear input or missing fields. Ask only about genuinely ambiguous input.
-                                """, generating: GeneratedWorkoutDetails.self, maximumTokens: 650)
-                            details.apply(to: &value, latestMessage: request.prompt, presence: presence)
-                            // A duration cited from within the pace phrase is not an independent elapsed goal.
-                            if presence.pace, grounded(details.pacePhrase, in: request.prompt),
-                               grounded(durationPhrase, in: details.pacePhrase) {
-                                value.durationHours = nil; value.durationMinutes = nil; value.durationSeconds = nil
+                            if presence.hasAdditionalFields {
+                                let details = try await generate(prompt: "Reference context: \(request.context)\nUSER MESSAGE: \(request.prompt)", instructions: """
+                                    Extract only additional workout facts explicitly supplied in USER MESSAGE.
+                                    For every category, copy its exact source phrase from that message; use an empty phrase when absent.
+                                    Never copy reference context into source phrases. Never infer defaults.
+                                    Keep distance and pace units. Resolve explicitly stated relative dates against reference calendar dates.
+                                    Unused numeric values may be zero; they are ignored when the corresponding source phrase is empty.
+                                    Clarification is notNeeded for clear input or missing fields. Ask only about genuinely ambiguous input.
+                                    """, generating: GeneratedWorkoutDetails.self, maximumTokens: 650)
+                                details.apply(to: &value, latestMessage: request.prompt, presence: presence)
+                                // A duration cited from within the pace phrase is not an independent elapsed goal.
+                                if presence.pace, grounded(details.pacePhrase, in: request.prompt),
+                                   grounded(durationPhrase, in: details.pacePhrase) {
+                                    value.durationHours = nil; value.durationMinutes = nil; value.durationSeconds = nil
+                                }
                             }
                         }
                     } else if value.kind == "navigate" {
