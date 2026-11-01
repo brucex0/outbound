@@ -16,7 +16,7 @@
     <string name="assistant_suggestion_support">Help me set up</string>
     <string name="assistant_prompt_support">Help me understand the main setup steps and where to fix things if something feels off.</string>
     <string name="assistant_suggestion_brainstorm">Brainstorm ideas</string>
-    <string name="assistant_prompt_brainstorm">Brainstorm a few ways this app could better support motivation, exploration, and sharing.</string>
+    <string name="assistant_prompt_brainstorm">Help me brainstorm a few fresh ways to make my workouts more enjoyable and stay motivated. Tailor the ideas to my goals and recent activity, and ask what’s getting in my way if you need more context.</string>
     <string name="assistant_suggestion_plan">Plan my week</string>
     <string name="assistant_prompt_plan">Use what you know about my activity and help me make a simple plan for this week.</string>
     <string name="assistant_suggestion_log_workout">Log a workout</string>
@@ -36,7 +36,7 @@
     <string name="assistant_fallback_discover">I’m here to help you find features, understand your progress, and choose a useful next step. Try the activity button for a quick session or open Me to review your history.</string>
     <string name="assistant_fallback_navigate">I can point you to Today, Social, Me, Settings, activity history, music, or Health. Tell me which one you want to open.</string>
     <string name="assistant_fallback_support">Tell me what you were trying to do and what happened. I can help with account setup, companion settings, Health Connect, music, or activity recording.</string>
-    <string name="assistant_fallback_brainstorm">We could make your next step easier by choosing a short session, setting a weekly focus, or finding a way to stay motivated. Which direction sounds useful?</string>
+    <string name="assistant_fallback_brainstorm">Here are a few ideas to try:\n\nChoose a route you’re curious about, pair an easy workout with a favorite playlist, or invite someone to join you. On a busy day, aim for a short, manageable session.\n\nWhat’s getting in your way most right now: boredom, time, or motivation?</string>
     <string name="assistant_fallback_plan">Start with a realistic week: one easy session, one focused session, and one flexible session. Adjust the number of days to fit your schedule and recovery.</string>
     <string name="assistant_fallback_today">I can help adapt today’s workout. Tell me whether you have less time, feel tired or sore, or want to understand why this workout was suggested.</string>
     <string name="assistant_product_context">User request: %1$s\n\nUse this current Plainstride feature catalog as the source of truth. Do not invent pages or capabilities:\n%2$s</string>

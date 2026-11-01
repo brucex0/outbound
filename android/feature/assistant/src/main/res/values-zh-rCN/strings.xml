@@ -16,7 +16,7 @@
     <string name="assistant_suggestion_support">帮我完成设置</string>
     <string name="assistant_prompt_support">请介绍主要设置步骤，以及遇到问题时该去哪里处理。</string>
     <string name="assistant_suggestion_brainstorm">一起想些点子</string>
-    <string name="assistant_prompt_brainstorm">请想想这个应用可以怎样更好地支持动力、探索和分享。</string>
+    <string name="assistant_prompt_brainstorm">帮我一起想几个新点子，让锻炼更有趣，也更有动力坚持下去。请结合我的目标和近期运动情况来建议；如果还需要了解什么，可以问问我最近遇到了哪些困难。</string>
     <string name="assistant_suggestion_plan">规划本周训练</string>
     <string name="assistant_prompt_plan">根据你了解的我的活动情况，帮我制定一个简单的本周计划。</string>
     <string name="assistant_suggestion_log_workout">记录训练</string>
@@ -36,7 +36,7 @@
     <string name="assistant_fallback_discover">我可以帮你查找功能、了解进度，并选择下一步。点按活动按钮可快速开始，也可以打开“我的”查看历史。</string>
     <string name="assistant_fallback_navigate">我可以带你前往“今日”、“社交”、“我的”、“设置”、活动历史、音乐或健康。告诉我想打开哪里。</string>
     <string name="assistant_fallback_support">告诉我你正在尝试什么，以及发生了什么。我可以协助处理账户设置、伙伴偏好、Health Connect、音乐或活动记录。</string>
-    <string name="assistant_fallback_brainstorm">我们可以通过短时训练、每周重点或保持动力的方法，让下一步更容易。你觉得哪种方式有用？</string>
+    <string name="assistant_fallback_brainstorm">可以试试这几个点子：\n\n选一条你一直想探索的路线，轻松锻炼时听喜欢的歌单，或约个人一起运动。忙的时候，就安排一次简短、轻松能完成的锻炼。\n\n你现在最大的困难是什么：觉得无聊、没时间，还是缺乏动力？</string>
     <string name="assistant_fallback_plan">先安排一个切实可行的训练周：一次轻松训练、一次有重点的训练，再加一次灵活训练。根据日程和恢复情况调整天数。</string>
     <string name="assistant_fallback_today">我可以调整今天的训练。告诉我你是否时间变少、感觉疲惫或酸痛，或者想了解推荐原因。</string>
     <string name="assistant_product_context">用户请求：%1$s\n\n请以这份最新的 Plainstride 功能目录为准，不要编造页面或功能：\n%2$s</string>

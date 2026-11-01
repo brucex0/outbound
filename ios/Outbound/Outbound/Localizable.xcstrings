@@ -1,6 +1,52 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "assistant.assistant.fallback.brainstorm": {
+      "comment": "[android:assistant] Personal workout brainstorming offline reply.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Here are a few ideas to try:\\n\\nChoose a route you’re curious about, pair an easy workout with a favorite playlist, or invite someone to join you. On a busy day, aim for a short, manageable session.\\n\\nWhat’s getting in your way most right now: boredom, time, or motivation?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可以试试这几个点子：\\n\\n选一条你一直想探索的路线，轻松锻炼时听喜欢的歌单，或约个人一起运动。忙的时候，就安排一次简短、轻松能完成的锻炼。\\n\\n你现在最大的困难是什么：觉得无聊、没时间，还是缺乏动力？"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquí tienes algunas ideas para probar:\\n\\nElige una ruta que te dé curiosidad, escucha tu música favorita durante un entrenamiento suave o invita a alguien a acompañarte. Si tienes un día ocupado, busca una sesión corta y llevadera.\\n\\n¿Qué te lo está poniendo más difícil ahora: el aburrimiento, la falta de tiempo o la motivación?"
+          }
+        }
+      }
+    },
+    "assistant.assistant.prompt.brainstorm": {
+      "comment": "[android:assistant] Personal workout brainstorming prompt.",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "帮我一起想几个新点子，让锻炼更有趣，也更有动力坚持下去。请结合我的目标和近期运动情况来建议；如果还需要了解什么，可以问问我最近遇到了哪些困难。"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayúdame a pensar en ideas nuevas para disfrutar más de mis entrenamientos y mantener la motivación. Adáptalas a mis objetivos y mi actividad reciente, y pregúntame qué me está dificultando entrenar si necesitas más contexto."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Help me brainstorm a few fresh ways to make my workouts more enjoyable and stay motivated. Tailor the ideas to my goals and recent activity, and ask what’s getting in my way if you need more context."
+          }
+        }
+      }
+    },
     "workout.feedback.added": {
       "extractionState": "manual",
       "localizations": {

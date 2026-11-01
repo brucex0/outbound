@@ -18,6 +18,7 @@ Open this file when changing Android assistant behavior, its launcher entry poin
 - Persistent launcher is available from Social, Today, and Me. The live recording HUD exposes a compact assistant entry alongside voice commands.
 - The persistent launcher begins its animation after 500 ms in the foreground, then scales up, tilts, brightens with a shimmer, and emits an expanding ring before a spring settle and 2.8-second pause. Android mirrors the iOS motion and resets it when the app leaves the foreground.
 - The assistant starts with a persisted introduction and offers the same contextual quick starts as iOS: Today workout prompts when available, otherwise Log a workout, Plan, Support, and Brainstorm.
+- Brainstorm quick starts and offline replies focus on the user’s workout enjoyment and motivation, using the same English, Spanish, and Simplified Chinese copy as iOS. Suggestion taps retain `assistant_meaningful_engagement` with the existing bounded entry source; prompt text stays out of analytics.
 - The conversation stores the user's original text for display and transcript history; product context is added only to the service request and is never rendered as a message.
 - The typed composer stays above the software keyboard. Assistant microphone input is not supported on Android; recording voice commands remain available in the recording flow.
 - Turns send the current surface, inferred companion task, bounded recent transcript, and device time zone to `POST /v1/companion/turns`. Assistant text and actions remain separate from analytics.
@@ -29,7 +30,7 @@ Open this file when changing Android assistant behavior, its launcher entry poin
 
 ## Shared resources, analytics, accessibility
 
-- Assistant copy is translated in `src/main/res/values/strings.xml`, `values-es/strings.xml`, and `values-zh-rCN/strings.xml`.
+- Brainstorm prompt/fallback translations are authored in the canonical iOS catalog and generated into Android resources. Assistant copy is translated in `src/main/res/values/strings.xml`, `values-es/strings.xml`, and `values-zh-rCN/strings.xml`.
 - The event contract uses `assistant_launcher_opened` and `assistant_meaningful_engagement`, with only a bounded destination and entry source. Prompts, responses, workout details, and runner data are never included.
 - The launcher has a localized accessibility label. Suggestion, send, confirmation, and navigation actions use native Compose buttons and keep the active recording controls visible behind the assistant route.
 - Companion request recent-message objects contain only role and text. Account IDs remain in the repository key and are not added to request content or analytics.
