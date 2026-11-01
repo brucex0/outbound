@@ -13,4 +13,7 @@
     <string name="location_permission_enable">开启定位</string>
     <string name="location_permission_message">户外活动需要位置信息来绘制路线并记录配速。授予权限后即可开始；如果之前拒绝过，请前往设置开启。</string>
     <string name="location_permission_title">开启定位</string>
+    <string name="group_activity_join_recording">参加这次跑步</string>
+    <string name="group_activity_share_location">共享实时位置</string>
+    <string name="group_activity_share_location_detail">记录运动时，参加者可以看到你的位置。</string>
 </resources>

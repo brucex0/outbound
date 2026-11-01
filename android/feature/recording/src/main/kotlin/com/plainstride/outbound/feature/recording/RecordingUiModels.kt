@@ -67,6 +67,7 @@ enum class RecordingGoalType { FREESTYLE, DISTANCE, TIME, CALORIES, WORKOUT }
     val startImmediately: Boolean = false,
     val companionType: ActivityCompanionType? = null,
     val activityEventId: String? = null,
+    val activityEventTitle: String? = null,
 )
 
 enum class RecordingSurfaceMode { MAP, CAMERA }

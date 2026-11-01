@@ -103,3 +103,11 @@ three-two-one-Go and requested stats on speaker and headphones. Periodic
 distance/time updates use cloud coaching audio; verify a distance/time milestone
 separately, including network timeout behavior. No device listening verification
 was completed for this routing correction.
+
+## Group recording controls verification
+
+- Build with `JAVA_HOME=/Library/Java/JavaVirtualMachines/openjdk-17.jdk/Contents/Home ANDROID_HOME="$HOME/Library/Android/sdk" ./gradlew :app:assembleDebug --max-workers=2 --no-parallel`.
+- Today event selection attaches only the event ID; all three Today start paths retain their workout/goal/route/test configuration. Group Start can attach an unlinked active/paused recording and persists the updated launch context.
+- Inspect checkbox and location-switch behavior, individual attendee status after toggling, and removal of Today controls after finish on an Android/iPhone pair. Device delivery and process-death recovery need separate runtime verification; do not infer them from compilation.
+
+Verified 2026-11-01: `:app:assembleDebug` passed for the group checkbox, separate location switch, completion cleanup, retained attendee roster, and consent revision guards. No Android UI suite or physical-device verification was performed for this change.

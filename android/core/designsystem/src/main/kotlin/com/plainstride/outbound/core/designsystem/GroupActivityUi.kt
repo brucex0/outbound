@@ -1,5 +1,7 @@
 package com.plainstride.outbound.core.designsystem
 
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -64,7 +66,12 @@ import com.plainstride.outbound.core.model.activity.*
                         Text(groupParticipantStatus(participant), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } }
                 }
-                TextButton(onClick = onToggle, enabled = !busy) { Text(stringResource(if (sharing) R.string.group_activity_stop_sharing else R.string.group_activity_share)) }
+                val locationLabel = stringResource(R.string.group_activity_share_location)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(locationLabel, Modifier.weight(1f))
+                    Switch(checked = sharing, onCheckedChange = { if (it != sharing) onToggle() }, enabled = !busy,
+                        modifier = Modifier.semantics { contentDescription = locationLabel })
+                }
             }
         }
     }

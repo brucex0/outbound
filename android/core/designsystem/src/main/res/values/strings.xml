@@ -13,4 +13,7 @@
     <string name="location_permission_enable">Enable location</string>
     <string name="location_permission_message">Outdoor activities need location to map your route and record pace. Grant access to start, or turn it on in Settings if it was denied before.</string>
     <string name="location_permission_title">Enable location</string>
+    <string name="group_activity_join_recording">Join this run</string>
+    <string name="group_activity_share_location">Share live location</string>
+    <string name="group_activity_share_location_detail">Attendees can see your location while you record.</string>
 </resources>

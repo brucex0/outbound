@@ -32,6 +32,7 @@ class LiveShareCoordinator @Inject constructor(
 ) {
     // Follower location snapshots stay in memory and are cleared with the account.
     private val followerSnapshots = java.util.concurrent.ConcurrentHashMap<String, InvitedLiveShare>()
+    private val applicationContext = context.applicationContext
     private val groupSnapshots = java.util.concurrent.ConcurrentHashMap<String, GroupRun>()
     fun cachedGroupRun(id: String) = mutableGroup.value?.takeIf { it.id == id } ?: groupSnapshots[id]
     suspend fun groupRunDetail(id: String) = authenticated { auth -> apiCall { api.groupRun(auth, id) } }.onSuccess {
@@ -72,10 +73,11 @@ class LiveShareCoordinator @Inject constructor(
     private var groupRealtime: AblySessionTransport? = null
     private var groupRealtimeId: String? = null
     private var lastGroupCheckpointAt = 0L
+    private val groupConsentRevision = java.util.concurrent.atomic.AtomicLong()
     private val mutableGroupJoining = MutableStateFlow(false)
     val groupJoining = mutableGroupJoining.asStateFlow()
     init {
-        mutableGroup.value?.takeIf { it.status == "active" }?.let { connectGroupRealtime(it.id) }
+        mutableGroup.value?.takeIf { run -> run.status == "active" && run.participants.any { it.userId == run.currentUserId && it.status in setOf("active", "stale") } }?.let { connectGroupRealtime(it.id) }
         mutableActive.value?.takeIf { it.status == "active" }?.let { connectShareRealtime(it.id) }
     }
 
@@ -125,13 +127,18 @@ class LiveShareCoordinator @Inject constructor(
  suspend fun unregisterToken(token:String)=authenticated{apiCall{api.unregister(it,token)}}.map{Unit}
  suspend fun inbox()=authenticated{apiCall{api.inbox(it)}}
  suspend fun markInboxRead()=authenticated{apiCall{api.readAll(it)}}.map{Unit}
- suspend fun createGroupRun(request:CreateGroupRunRequest)=authenticated{apiCall{api.createGroupRun(it,request)}}.onSuccess(::saveGroup)
- suspend fun joinGroupRun(invite:String)=authenticated{apiCall{api.joinGroupRun(it,JoinGroupRunRequest(invite.trim()))}}.onSuccess(::saveGroup)
- suspend fun groupRun(id:String)=authenticated{apiCall{api.groupRun(it,id)}}.onSuccess(::saveGroup)
+ suspend fun createGroupRun(request:CreateGroupRunRequest)=authenticated{apiCall{api.createGroupRun(it,request)}}.onSuccess { saveGroup(it,allowConsent=true) }
+ suspend fun joinGroupRun(invite:String)=authenticated{apiCall{api.joinGroupRun(it,JoinGroupRunRequest(invite.trim()))}}.onSuccess { saveGroup(it,allowConsent=true) }
+ suspend fun groupRun(id:String):Result<GroupRun> {
+  val revision=groupConsentRevision.get()
+  return authenticated{apiCall{api.groupRun(it,id)}}.onSuccess{if(groupConsentRevision.get()==revision)saveGroup(it)}
+ }
  suspend fun refreshGroup(id:String)=groupRun(id)
  suspend fun joinActivityGroupRun(activityEventId:String):Result<GroupRun>{
+  val revision=groupConsentRevision.incrementAndGet()
   if(hasDifferentActiveGroup(activityEventId))return Result.failure(IllegalStateException("another_group_active"))
   mutableGroupJoining.value=true
+  analytics.record(AnalyticsEvent("group_activity_location_sharing_changed",mapOf(AnalyticsProperty.SelectionType to "on",AnalyticsProperty.Result to "requested")))
   analytics.record(AnalyticsEvent("group_run_join_attempted"))
   return try {
    authenticated { auth ->
@@ -140,7 +147,11 @@ class LiveShareCoordinator @Inject constructor(
     if (result is ApiResult.Failure) Log.w(REALTIME_TAG, "event_live_map_join status=${result.error.httpStatus} category=${result.error.code}")
     result
    }.onSuccess { run ->
-    saveGroup(run)
+    if(groupConsentRevision.get()!=revision) {
+     authenticated{auth->apiCall{api.leaveGroupRun(auth,run.id)}}.onFailure{Log.w(REALTIME_TAG,"cancelled_event_join_leave failed type=${it.javaClass.simpleName}")}
+     return@onSuccess
+    }
+    saveGroup(run,allowConsent=true)
     val count = when(run.participants.size) { 0 -> "0"; 1 -> "1"; in 2..3 -> "2_3"; in 4..7 -> "4_7"; else -> "8_plus" }
     analytics.record(AnalyticsEvent("group_run_joined", mapOf(AnalyticsProperty.ParticipantCountBucket to count)))
    }
@@ -148,10 +159,15 @@ class LiveShareCoordinator @Inject constructor(
  }
  fun isSharingEvent(activityEventId:String):Boolean=mutableGroup.value?.let{run->run.status=="active"&&run.activityEventId==activityEventId&&run.participants.any{it.userId==run.currentUserId&&it.status in setOf("active","stale")}}==true
  fun hasDifferentActiveGroup(activityEventId:String):Boolean=mutableGroup.value?.let{run->run.status=="active"&&run.activityEventId!=activityEventId&&run.participants.any{it.userId==run.currentUserId&&it.status in setOf("active","stale")}}==true
- suspend fun finishRecordingGroupRun(activityEventId:String?){
+ suspend fun finishRecordingGroupRun(accountId:String?){
+  groupConsentRevision.incrementAndGet()
   val run=mutableGroup.value?:return
-  if(run.activityEventId!=activityEventId)return
-  if(run.participants.none{it.userId==run.currentUserId&&it.status in setOf("active","stale")}){clearGroup();return}
+  run.activityEventId?.let { event ->
+   if(accountId==null)return@let
+   val prefs=applicationContext.getSharedPreferences("group_recording_${accountId}",Context.MODE_PRIVATE)
+   prefs.edit().putStringSet("completed_events",prefs.getStringSet("completed_events",emptySet()).orEmpty()+event).remove("selected_event").apply()
+  }
+  if(run.participants.none{it.userId==run.currentUserId&&it.status in setOf("active","stale")})return
   leaveGroupRun(run.id,true)
  }
  suspend fun liveShare(id:String)=authenticated{apiCall{api.liveShare(it,id)}}.onSuccess(::saveActive)
@@ -170,12 +186,30 @@ class LiveShareCoordinator @Inject constructor(
   return authenticated { apiCall { api.markVoiceCheerPlayed(it,share.id,cheer.id) } }
  }
  suspend fun acknowledgeVoiceCheer(shareId:String,cheerId:String)=authenticated { apiCall { api.acknowledgeVoiceCheer(it,shareId,cheerId) } }
- suspend fun updateGroupRun(id:String,point:GroupLocationUpdate)=authenticated{apiCall{api.updateGroupLocation(it,id,point)}}.onSuccess(::saveGroup)
+ suspend fun updateGroupRun(id:String,point:GroupLocationUpdate):Result<GroupRun> {
+  val revision=groupConsentRevision.get()
+  return authenticated{apiCall{api.updateGroupLocation(it,id,point)}}.onSuccess{response->
+  if(groupConsentRevision.get()==revision && mutableGroup.value?.let{run->run.id==id&&run.participants.any{it.userId==run.currentUserId&&it.status in setOf("active","stale")}}==true)saveGroup(response)
+  }
+ }
  suspend fun leaveGroupRun(finished:Boolean):Result<Unit>{
   val run=mutableGroup.value?:return Result.success(Unit)
   return leaveGroupRun(run.id,finished).map{Unit}
  }
- suspend fun leaveGroupRun(id:String,finished:Boolean)=authenticated{auth->apiCall{if(finished)api.finishGroupRun(auth,id)else api.leaveGroupRun(auth,id)}}.onSuccess{groupSnapshots.remove(id);if(mutableGroup.value?.id==id)clearGroup()}
+ suspend fun leaveGroupRun(id:String,finished:Boolean):Result<GroupRun> {
+  groupConsentRevision.incrementAndGet()
+  mutableGroupJoining.value=true
+  try {
+  val run=mutableGroup.value?.takeIf{it.id==id}
+  if(run!=null) {
+   saveGroup(run.copy(participants=run.participants.map{if(it.userId==run.currentUserId)it.copy(status=if(finished)"finished" else "left",lastLocationAt=null,lastLocation=null,lastActivitySnapshot=null)else it}))
+  }
+  val result=authenticated{auth->apiCall{if(finished)api.finishGroupRun(auth,id)else api.leaveGroupRun(auth,id)}}
+  result.onFailure{Log.w(REALTIME_TAG,"event_sharing_leave failed type=${it.javaClass.simpleName}")}
+  analytics.record(AnalyticsEvent("group_activity_location_sharing_changed",mapOf(AnalyticsProperty.SelectionType to "off",AnalyticsProperty.Result to if(result.isSuccess)"success" else "failure")))
+  return result
+  } finally { mutableGroupJoining.value=false }
+ }
  suspend fun updateRecording(point:LiveLocation,paceSecondsPerKilometer:Double?,activityEventId:String?=null){
   update(point.copy(currentPaceSecsPerKm=paceSecondsPerKilometer))
   val run=mutableGroup.value?:return
@@ -191,10 +225,12 @@ class LiveShareCoordinator @Inject constructor(
   }
   lastGroupSentAt=now;lastGroupPoint=point
  }
- private fun saveGroup(value:GroupRun){
+ private fun saveGroup(response:GroupRun,allowConsent:Boolean=false){
+  val previous=mutableGroup.value?.takeIf{it.id==response.id}?.participants?.firstOrNull{it.userId==response.currentUserId}
+  val value=if(!allowConsent&&previous!=null&&previous.status !in setOf("active","stale"))response.copy(participants=response.participants.map{if(it.userId==response.currentUserId)previous else it})else response
   mutableGroup.value=value
   preferences.edit().putString(GROUP,PlainstrideJson.encodeToString(value)).apply()
-  if(value.status=="active")connectGroupRealtime(value.id)
+  if(value.status=="active"&&value.participants.any{it.userId==value.currentUserId&&it.status in setOf("active","stale")})connectGroupRealtime(value.id)
   if(value.participants.none{it.userId==value.currentUserId&&it.status in setOf("active","stale")}){
    groupRealtime?.close();groupRealtime=null;groupRealtimeId=null
    lastGroupPoint=null
@@ -223,6 +259,7 @@ class LiveShareCoordinator @Inject constructor(
   groupRealtime?.close();groupRealtimeId=id
   lastGroupCheckpointAt=0;lastGroupSentAt=0;lastGroupPoint=null
   groupRealtime=AblySessionTransport.connect(channelName="plainstride:group_run:$id",tokenProvider={issueRealtimeToken("group_run",id)},onMessage={name,clientId,data->
+   if(mutableGroup.value?.let{it.id==id&&it.participants.any{p->p.userId==it.currentUserId&&p.status in setOf("active","stale")}}!=true)return@connect
    if(name=="location"&&clientId!=null)applyGroupLocation(clientId,data)
    else if(name=="participant.changed")realtimeScope.launch{groupRun(id)}
   })
@@ -231,6 +268,7 @@ class LiveShareCoordinator @Inject constructor(
  private fun applyGroupLocation(senderId:String,value:Any?){
   val map=value as? Map<*,*>?:return
   val old=mutableGroup.value?:return
+  if(old.participants.none{it.userId==senderId&&it.status in setOf("active","stale")})return
   val lat=(map["latitude"] as? Number)?.toDouble()?:return;val lon=(map["longitude"] as? Number)?.toDouble()?:return
   val timestamp=map["recordedAt"] as? String?:return
   mutableGroup.value=old.copy(participants=old.participants.map{p->if(p.userId!=senderId)p else p.copy(status="active",lastLocationAt=timestamp,lastLocation=GroupRunPoint(lat,lon,(map["altitudeM"] as? Number)?.toDouble(),(map["accuracyM"] as? Number)?.toDouble()),lastActivitySnapshot=GroupRunProgress((map["elapsedSeconds"] as? Number)?.toInt()?:0,(map["distanceM"] as? Number)?.toDouble()?:0.0,(map["paceSecondsPerKM"] as? Number)?.toDouble()))})

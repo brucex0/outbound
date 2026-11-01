@@ -442,7 +442,10 @@ private fun SignedInApp(
 
     val groupLocale = resources.configuration.locales[0].toLanguageTag()
     LaunchedEffect(accountId, groupLocale) { accountId?.let { sharedSocialViewModel.start(it, groupLocale, trackOpen = false) } }
+    val groupRecordingPreferences = remember(accountId) { context.getSharedPreferences("group_recording_${accountId}", android.content.Context.MODE_PRIVATE) }
+    var selectedRecordingEventId by remember(accountId) { mutableStateOf(groupRecordingPreferences.getString("selected_event", null)) }
     val todayGroupEvent = groupSocialState.home.upcomingRuns.firstOrNull { event ->
+        event.currentUserOutcome == null && !groupRecordingPreferences.getStringSet("completed_events", emptySet()).orEmpty().contains(event.id) &&
         (event.joined || event.canParticipate == true) && event.status in setOf("scheduled", "active") &&
             (event.status == "active" || runCatching { java.time.Instant.parse(event.startsAt).atZone(java.time.ZoneId.systemDefault()).toLocalDate() == java.time.LocalDate.now() }.onFailure { android.util.Log.w("PlainstrideGroups", "today_event_start_parse type=${it.javaClass.simpleName}") }.getOrDefault(false))
     }
@@ -484,7 +487,10 @@ private fun SignedInApp(
     }
     fun launchTodayRecording() {
         if (todayStartJob?.isActive == true) return
-        val configuration = recordingLaunch
+        val configuration = recordingLaunch.copy(
+            activityEventId = todayGroupEvent?.id?.takeIf { it == selectedRecordingEventId },
+            activityEventTitle = todayGroupEvent?.name?.takeIf { todayGroupEvent.id == selectedRecordingEventId },
+        )
         todayStartJob = scope.launch {
             try {
                 recordingViewModel.configure(configuration, measurementUnitSystem)
@@ -819,7 +825,14 @@ private fun SignedInApp(
                                 { com.plainstride.outbound.feature.social.TodayGroupActivityCard(event,
                                     recordingSafetyViewModel.coordinator.isSharingEvent(event.id), groupRunJoining || recordingSafetyViewModel.coordinator.hasDifferentActiveGroup(event.id),
                                     { navController.navigate(AppDetailRoutes.event(event.id, "today_group_activity")) },
-                                    { toggleActivityLiveMap(event.id) }) }
+                                    { toggleActivityLiveMap(event.id) },
+                                    joined = selectedRecordingEventId == event.id,
+                                    onJoinChanged = { joined ->
+                                        selectedRecordingEventId = event.id.takeIf { joined }
+                                        groupRecordingPreferences.edit().putString("selected_event", selectedRecordingEventId).apply()
+                                        integrationViewModel.trackGroupRecordingSelection(joined)
+                                        if (!joined && recordingSafetyViewModel.coordinator.isSharingEvent(event.id)) toggleActivityLiveMap(event.id)
+                                    }) }
                             },
                             completedToday = integration.completedToday,
                             onStartWorkout = { intent, options ->
@@ -1138,7 +1151,13 @@ private fun SignedInApp(
                     eventId = eventId, entrySource = entry.arguments?.getString("source") ?: "social_upcoming",
                     unitSystem = measurementUnitSystem, groupRun = sharedLiveGroupRun?.toSharedLiveRun(),
                     groupRunJoining = groupRunJoining, onToggleActivityLiveMap = { toggleActivityLiveMap(eventId) },
-                    onStartActivity = { recordingLaunch = it.recordingLaunch(); navController.navigate(RECORDING_ROUTE) { launchSingleTop = true } },
+                    onStartActivity = { event ->
+                        if (hasActiveSession) {
+                            recordingViewModel.attachGroupActivity(event.id, event.name)
+                            recordingLaunch = recordingViewModel.state.value.launch
+                        } else recordingLaunch = event.recordingLaunch()
+                        navController.navigate(RECORDING_ROUTE) { launchSingleTop = true }
+                    },
                     viewModel = socialViewModel, onBack = { navController.popBackStack() },
                 )
             }

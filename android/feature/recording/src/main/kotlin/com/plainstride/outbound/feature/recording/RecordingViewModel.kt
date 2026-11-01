@@ -165,6 +165,11 @@ class RecordingViewModel @Inject constructor(
                     rememberStartedConfiguration()
                 }
                 val event = mutableState.value.launch.activityEventId
+                if (value.status == RecordingStatus.AWAITING_SAVE && event != null) {
+                    val preferences = context.getSharedPreferences("group_recording_${value.accountId}", Context.MODE_PRIVATE)
+                    val completed = preferences.getStringSet("completed_events", emptySet()).orEmpty() + event
+                    preferences.edit().putStringSet("completed_events", completed).remove("selected_event").apply()
+                }
                 if (value.status == RecordingStatus.ACTIVE && event != null && registeredSession != value.sessionId) {
                     registeredSession = value.sessionId
                     groups.enqueueStart(event)
@@ -193,6 +198,18 @@ class RecordingViewModel @Inject constructor(
         )
         AccountConfigurationStore.set("launch/lastSport", AccountConfigurationValue(selection = sport))
         AccountConfigurationStore.set("launch/$sport", AccountConfigurationValue(launch = preference))
+    }
+
+    fun attachGroupActivity(eventId: String, eventTitle: String) {
+        if (snapshot.value.status !in setOf(RecordingStatus.ACTIVE, RecordingStatus.PAUSED)) return
+        if (mutableState.value.launch.activityEventId != null) return
+        val launch = mutableState.value.launch.copy(activityEventId = eventId, activityEventTitle = eventTitle)
+        mutableState.value = mutableState.value.copy(launch = launch)
+        startedWithGroup = true
+        context.getSharedPreferences(LAUNCH_PREFERENCES, Context.MODE_PRIVATE).edit().putString(LAUNCH_KEY, launchJson.encodeToString(launch)).apply()
+        groups.enqueueStart(eventId)
+        viewModelScope.launch { groups.flush(); refreshGroupParticipants() }
+        analytics.record(AnalyticsEvent("group_activity_recording_selection_changed", mapOf(AnalyticsProperty.SelectionType to "joined", AnalyticsProperty.EntrySource to "group_activity")))
     }
 
     suspend fun refreshGroupParticipants(): Boolean {

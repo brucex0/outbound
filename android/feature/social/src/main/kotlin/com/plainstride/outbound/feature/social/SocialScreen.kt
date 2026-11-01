@@ -2147,12 +2147,12 @@ private fun SocialEventDetailScreen(
                         ElevatedCard {
                             Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
-                                    stringResource(if (sharing) R.string.group_event_live_map_sharing else R.string.group_event_live_map_title),
+                                    stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_share_location),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
                                 )
                                 Text(
-                                    stringResource(R.string.group_event_live_map_consent),
+                                    stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_share_location_detail),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -2160,14 +2160,9 @@ private fun SocialEventDetailScreen(
                                     Text(stringResource(R.string.group_event_live_map_runners, run.participants.count { it.status in setOf("active", "stale") }))
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    if (sharing) {
-                                        TextButton(onClick = onToggleActivityLiveMap) { Text(stringResource(R.string.group_event_live_map_stop)) }
-                                    } else {
-                                        OutlinedButton(
-                                            onClick = onToggleActivityLiveMap,
-                                            enabled = !groupRunJoining && !sharingAnotherEvent,
-                                        ) { Text(stringResource(R.string.group_event_live_map_opt_in)) }
-                                    }
+                                    Switch(checked = sharing,
+                                        onCheckedChange = { if (it != sharing) onToggleActivityLiveMap() },
+                                        enabled = !groupRunJoining && !sharingAnotherEvent)
                                     Button(onClick = onStartActivity, enabled = canStartActivity && !groupRunJoining) {
                                         Text(stringResource(R.string.group_event_live_map_start))
                                     }
@@ -2268,7 +2263,9 @@ private fun profileActionFeedback(): (Boolean) -> Unit {
 
 
 @Composable
-fun TodayGroupActivityCard(event: SocialEvent, sharing: Boolean, busy: Boolean, onOpen: () -> Unit, onToggleLiveMap: () -> Unit) {
+fun TodayGroupActivityCard(event: SocialEvent, sharing: Boolean, busy: Boolean, onOpen: () -> Unit, onToggleLiveMap: () -> Unit, joined: Boolean, onJoinChanged: (Boolean) -> Unit) {
+    val joinLabel = stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_join_recording)
+    val locationLabel = stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_share_location)
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Column(Modifier.fillMaxWidth().clickable(onClick = onOpen)) {
@@ -2276,9 +2273,15 @@ fun TodayGroupActivityCard(event: SocialEvent, sharing: Boolean, busy: Boolean, 
                 Text(event.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 event.group?.name?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
-            if (event.canParticipate == true) TextButton(onClick = onToggleLiveMap, enabled = !busy) {
-                Text(stringResource(if (sharing) com.plainstride.outbound.core.designsystem.R.string.group_activity_stop_sharing else com.plainstride.outbound.core.designsystem.R.string.group_activity_share))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = joined, onCheckedChange = onJoinChanged, modifier = Modifier.semantics { contentDescription = joinLabel })
+                Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_join_recording))
             }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_share_location), Modifier.weight(1f))
+                Switch(checked = sharing, onCheckedChange = { if (it != sharing) onToggleLiveMap() }, enabled = joined && !busy, modifier = Modifier.semantics { contentDescription = locationLabel })
+            }
+            Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_share_location_detail), style = MaterialTheme.typography.bodySmall)
         }
     }
 }

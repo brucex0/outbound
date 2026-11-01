@@ -81,6 +81,12 @@ data class P0IntegrationState(
     private var pendingObservation: Job? = null
     private var serverStatistics: kotlinx.serialization.json.JsonObject? = null
     private var accountId: String? = null; private var locale = "en"; private var routeObservation: Job? = null
+    fun trackGroupRecordingSelection(joined: Boolean) {
+        analytics.record(AnalyticsEvent("group_activity_recording_selection_changed", mapOf(
+            AnalyticsProperty.SelectionType to if (joined) "joined" else "solo",
+            AnalyticsProperty.EntrySource to "today",
+        )))
+    }
     fun trackCoachingReference(available: Boolean) {
         val source = if (available) "server_statistics" else "unavailable"
         android.util.Log.i("PlainstrideLiveCoach", "resolve athlete_reference source=$source")

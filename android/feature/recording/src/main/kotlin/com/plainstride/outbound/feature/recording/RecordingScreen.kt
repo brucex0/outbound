@@ -638,7 +638,7 @@ fun RecordingRoute(
             snapshot.status == RecordingStatus.ACTIVE || snapshot.status == RecordingStatus.PAUSED -> LiveRecordingScreen(
                 snapshot = snapshot,
                 configuration = ui.launch,
-                groupRun = eventGroupRun?.takeIf { eventGroupSharing },
+                groupRun = eventGroupRun,
                 participants = ui.participants,
                 liveMapBusy = groupRunJoining || otherActiveGroupRun != null,
                 onToggleActivityLiveMap = onToggleActivityLiveMap,
@@ -858,39 +858,19 @@ private fun ActivitySetupScreen(
             configuration.activityEventId?.let { eventId ->
                 item {
                     val sharing = activityLiveMapEnabled
-                    val liveShareAccessibilityLabel = stringResource(R.string.recording_group_share)
+                    val liveShareAccessibilityLabel = stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_share_location)
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
                         Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-                                Text(stringResource(if(sharing) R.string.recording_group_shared else R.string.recording_group_share),style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.SemiBold)
-                                Text(stringResource(R.string.recording_group_share_detail),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(liveShareAccessibilityLabel,style=MaterialTheme.typography.titleSmall,fontWeight=FontWeight.SemiBold)
+                                Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_share_location_detail),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            when {
-                                sharing -> TextButton(onClick=onStopActivityLiveMap){Text(stringResource(R.string.recording_group_stop_sharing))}
-                                activityLiveMapBlocked -> Row(
-                                    Modifier.weight(1f),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                ) {
-                                    Text(
-                                        stringResource(R.string.recording_group_active_elsewhere),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    TextButton(onClick = onStopActivityLiveMap) {
-                                        Text(stringResource(R.string.recording_group_stop_sharing))
-                                    }
-                                }
-                                else -> Switch(
-                                    checked = false,
-                                    onCheckedChange = { onToggleActivityLiveMap() },
-                                    enabled = !activityLiveMapJoining && !activityLiveMapBlocked,
-                                    modifier = Modifier.semantics {
-                                        contentDescription = liveShareAccessibilityLabel
-                                    },
-                                )
-                            }
+                            Switch(
+                                checked = sharing,
+                                onCheckedChange = { if (it != sharing) onToggleActivityLiveMap() },
+                                enabled = !activityLiveMapJoining && !activityLiveMapBlocked,
+                                modifier = Modifier.semantics { contentDescription = liveShareAccessibilityLabel },
+                            )
                         }
                     }
                     if(activityLiveMapJoining)LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -1163,7 +1143,7 @@ private fun LiveRecordingScreen(
             )
         }
         if (!dashboardExpanded && configuration.activityEventId != null) {
-            com.plainstride.outbound.core.designsystem.GroupActivityPresencePanel(configuration.title ?: stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_label), participants, groupRun != null, liveMapBusy, onToggleActivityLiveMap,
+            com.plainstride.outbound.core.designsystem.GroupActivityPresencePanel(configuration.activityEventTitle ?: stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_label), participants, groupRun?.participants?.any { it.userId == groupRun.currentUserId && it.status in setOf("active", "stale") } == true, liveMapBusy, onToggleActivityLiveMap,
                 Modifier.align(Alignment.TopCenter).padding(top = 62.dp, start = 16.dp, end = 16.dp),
                 avatar = { person -> com.plainstride.outbound.feature.social.SocialAvatar(com.plainstride.outbound.feature.social.SocialPerson(person.id, person.displayName, avatarUrl = person.avatarUrl), size = 40.dp) })
         }
@@ -1176,7 +1156,7 @@ private fun LiveRecordingScreen(
             ) {
                 items(attendees.size) { index ->
                     val person = attendees[index].person
-                    val live = groupRun?.participants?.firstOrNull { it.userId == person.id && it.status != "left" }
+                    val live = groupRun?.participants?.firstOrNull { it.userId == person.id && it.status in setOf("active", "stale") }
                     val age = live?.lastLocationAt?.let { runCatching { java.time.Duration.between(java.time.Instant.parse(it), java.time.Instant.now()).seconds.coerceAtLeast(0) }.getOrNull() }
                     val status = when {
                         live == null -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_not_sharing)

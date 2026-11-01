@@ -13,4 +13,7 @@
     <string name="location_permission_enable">Activar ubicación</string>
     <string name="location_permission_message">Las actividades al aire libre necesitan tu ubicación para trazar la ruta y registrar el ritmo. Activa el acceso para empezar o habilítalo en Ajustes si ya lo denegaste.</string>
     <string name="location_permission_title">Activa la ubicación</string>
+    <string name="group_activity_join_recording">Unirme a esta carrera</string>
+    <string name="group_activity_share_location">Compartir ubicación en tiempo real</string>
+    <string name="group_activity_share_location_detail">Los participantes pueden ver tu ubicación mientras grabas la actividad.</string>
 </resources>
