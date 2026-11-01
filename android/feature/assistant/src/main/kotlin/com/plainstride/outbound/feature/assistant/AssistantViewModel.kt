@@ -58,9 +58,20 @@ class AssistantViewModel @Inject constructor(
 
     fun draft(value: String) { draft.value = value.take(8_000) }
     fun consumeActivityCommand() { activityCommand.value = null }
+    fun trackSuggestionSelection(screen: String) { trackEngagement(screen, "suggestion") }
+
     fun selectSuggestion(suggestion: AssistantSuggestion, screen: String) {
-        trackEngagement(screen, "suggestion")
-        submit(suggestion.prompt, suggestion.capability, screen)
+        trackSuggestionSelection(screen)
+        if (suggestion.id == "log-workout") {
+            // A fixed shortcut must not depend on English phrase matching.
+            val account = accountId ?: return
+            viewModelScope.launch {
+                repository.recordLocalTurn(account, suggestion.prompt, context.getString(R.string.assistant_log_workout_reply), AssistantCapability.Plan, "me")
+            }
+            return
+        }
+        submit(suggestion.prompt, suggestion.capability, screen,
+            useTodayWorkoutContext = suggestion.id == "today-easier" || suggestion.id == "today-why")
     }
 
     fun send(screen: String) {
@@ -71,17 +82,23 @@ class AssistantViewModel @Inject constructor(
         submit(prompt, null, screen)
     }
 
-    private fun submit(prompt: String, requestedCapability: AssistantCapability?, screen: String) {
+    private fun submit(
+        prompt: String,
+        requestedCapability: AssistantCapability?,
+        screen: String,
+        useTodayWorkoutContext: Boolean = screen == "today",
+    ) {
         val account = accountId ?: return
         val capability = requestedCapability ?: inferCapability(prompt)
-        val destination = AssistantDestinationRegistry.infer(prompt)
-        if (prompt.containsAny("log a workout", "workout i already completed", "log workout")) {
+        // Fixed shortcuts already declare their intent; only typed text needs inference.
+        val destination = if (requestedCapability == null) AssistantDestinationRegistry.infer(prompt) else null
+        if (requestedCapability == null && prompt.containsAny("log a workout", "workout i already completed", "log workout")) {
             viewModelScope.launch {
                 repository.recordLocalTurn(account, prompt, context.getString(R.string.assistant_log_workout_reply), AssistantCapability.Plan, "me")
             }
             return
         }
-        val command = ActivityVoiceCommandParser.parse(prompt)
+        val command = if (requestedCapability == null) ActivityVoiceCommandParser.parse(prompt) else null
         if (command != null) {
             val prepared = when (command) {
                 is ActivityVoiceCommand.Distance -> PreparedActivityCommand(command.sport, distanceMeters = command.meters)
@@ -103,8 +120,8 @@ class AssistantViewModel @Inject constructor(
 
         val task = when {
             screen == "recording" -> CompanionTask.LiveGuidance
-            screen == "today" -> CompanionTask.AdaptToday
-            prompt.containsAny("today", "tired", "sore", "short on time") -> CompanionTask.AdaptToday
+            screen == "today" && useTodayWorkoutContext -> CompanionTask.AdaptToday
+            requestedCapability == null && prompt.containsAny("today", "tired", "sore", "short on time") -> CompanionTask.AdaptToday
             capability == AssistantCapability.Plan -> CompanionTask.PrepareWeek
             capability == AssistantCapability.Discover || capability == AssistantCapability.Navigate || capability == AssistantCapability.Support -> CompanionTask.ProductHelp
             else -> CompanionTask.AnswerTrainingQuestion
@@ -124,7 +141,7 @@ class AssistantViewModel @Inject constructor(
                 timeZoneIdentifier = TimeZone.getDefault().id,
             ), visibleUserText = prompt)
             if (result is ApiResult.Failure) {
-                repository.appendAssistantMessage(account, fallback(capability, screen), capability)
+                repository.appendAssistantMessage(account, fallback(capability, screen, useTodayWorkoutContext), capability)
             }
         }
     }
@@ -159,10 +176,10 @@ class AssistantViewModel @Inject constructor(
         mapOf(AnalyticsProperty.Destination to screen, AnalyticsProperty.EntrySource to source),
     ))
 
-    private fun fallback(capability: AssistantCapability, screen: String): String {
+    private fun fallback(capability: AssistantCapability, screen: String, useTodayWorkoutContext: Boolean): String {
         if (capability == AssistantCapability.Navigate) return context.getString(R.string.assistant_fallback_navigate)
         if (screen == "recording") return context.getString(R.string.assistant_fallback_live)
-        if (screen == "today") return context.getString(R.string.assistant_fallback_today)
+        if (screen == "today" && useTodayWorkoutContext) return context.getString(R.string.assistant_fallback_today)
         return context.getString(when (capability) {
             AssistantCapability.Discover -> R.string.assistant_fallback_discover
             AssistantCapability.Support -> R.string.assistant_fallback_support

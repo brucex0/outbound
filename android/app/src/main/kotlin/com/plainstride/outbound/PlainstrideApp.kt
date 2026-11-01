@@ -1177,9 +1177,14 @@ private fun SignedInApp(
                     } }, onBack = { navController.popBackStack() })
             }
             composable(ASSISTANT_ROUTE) {
+                // Reuse Today's shell-owned model, including its usable cached suggestion.
+                val shellEntry = remember(navController) { navController.getBackStackEntry(APP_SHELL_ROUTE) }
+                val todayViewModel: TodayViewModel = hiltViewModel(shellEntry)
+                val todayState by todayViewModel.state.collectAsStateWithLifecycle()
                 AssistantRoute(
                     requireNotNull(accountId),
                     screen = assistantEntryDestination,
+                    hasFocusedWorkout = todayState.primarySuggestion != null,
                     onClose = { navController.popBackStack() },
                     onNavigate = navigate@{ route ->
                         // Dismiss and route in one host-owned handoff. Ignore repeated

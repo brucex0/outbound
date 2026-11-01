@@ -29,6 +29,7 @@ import com.plainstride.outbound.core.assistant.VoiceSport
 fun AssistantRoute(
     accountId: String,
     screen: String,
+    hasFocusedWorkout: Boolean,
     onClose: () -> Unit,
     onNavigate: (String) -> Unit,
     onPrepareActivity: (VoiceSport, Double?, Int?) -> Unit,
@@ -37,7 +38,7 @@ fun AssistantRoute(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
-    val suggestions = if (screen == "today") listOf(
+    val suggestions = if (screen == "today" && hasFocusedWorkout) listOf(
         AssistantSuggestion("today-easier", AssistantCapability.Plan, stringResource(R.string.assistant_today_easier), stringResource(R.string.assistant_prompt_today_easier)),
         AssistantSuggestion("today-why", AssistantCapability.Discover, stringResource(R.string.assistant_today_why), stringResource(R.string.assistant_prompt_today_why)),
         AssistantSuggestion("today-history", AssistantCapability.Navigate, stringResource(R.string.assistant_today_history), stringResource(R.string.assistant_prompt_today_history)),
@@ -99,7 +100,14 @@ fun AssistantRoute(
                 item { Text(stringResource(R.string.assistant_try), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 items(suggestions, key = { it.id }) { suggestion ->
                     Button(
-                        onClick = { viewModel.selectSuggestion(suggestion, screen) },
+                        onClick = {
+                            if (suggestion.id == "today-history") {
+                                viewModel.trackSuggestionSelection(screen)
+                                onNavigate(AssistantDestination.ActivityHistory.routeId)
+                            } else {
+                                viewModel.selectSuggestion(suggestion, screen)
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = CircleShape,
                         colors = ButtonDefaults.buttonColors(
