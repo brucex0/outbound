@@ -93,7 +93,7 @@ struct AuthView: View {
                         : "Requires debug-persona launch configuration")
                     #endif
 
-                    if authStore.isBusy {
+                    if authStore.isSigningIn {
                         ProgressView()
                             .tint(OutboundPalette.companion)
                             .padding(.top, 4)

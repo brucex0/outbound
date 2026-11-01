@@ -28,6 +28,7 @@ final class AuthStore: ObservableObject {
 
     @Published var isAuthenticated = false
     @Published var isBusy = false
+    @Published private(set) var isSigningIn = false
     @Published var authError: String?
     @Published var user: AuthenticatedUser?
     @Published var localSessionLabel: String?
@@ -87,7 +88,7 @@ final class AuthStore: ObservableObject {
     }
 
     func signInWithApple() async {
-        await performAuthentication {
+        await performAuthentication(isSignIn: true) {
             let credential = try await self.makeAppleCredential()
             let session = try await APIClient.shared.createAppleSession(credential.sessionRequest)
             try await SessionCoordinator.shared.replace(session)
@@ -99,7 +100,7 @@ final class AuthStore: ObservableObject {
     #if DEBUG
     func signIn(as persona: TestPersona) async {
         guard isUsingDebugPersonas else { authError = String(localized: "Debug personas are unavailable in this build."); return }
-        await performAuthentication {
+        await performAuthentication(isSignIn: true) {
             let session = try await APIClient.shared.createDebugPersonaSession(.init(persona: persona.apiValue, deviceLabel: UIDevice.current.name))
             try await SessionCoordinator.shared.replace(session); self.apply(session, origin: .server)
         }
@@ -186,8 +187,14 @@ final class AuthStore: ObservableObject {
         }
     }
 
-    private func performAuthentication(_ operation: () async throws -> Void) async {
-        isBusy = true; authError = nil; defer { isBusy = false }
+    private func performAuthentication(isSignIn: Bool = false, _ operation: () async throws -> Void) async {
+        isBusy = true
+        isSigningIn = isSignIn
+        authError = nil
+        defer {
+            isSigningIn = false
+            isBusy = false
+        }
         do { try await operation() }
         catch let error as ASAuthorizationError where error.code == .canceled { }
         catch { authError = error.localizedDescription }
