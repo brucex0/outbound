@@ -623,6 +623,12 @@ final class APIClient {
         } ?? [])
     }
 
+    func fetchSocialPosts(userID: String, cursor: String? = nil) async throws -> SocialPostsResponseDTO {
+        var query = [URLQueryItem(name: "userId", value: userID)]
+        if let cursor { query.append(URLQueryItem(name: "cursor", value: cursor)) }
+        return try await get("/social/posts", queryItems: query)
+    }
+
     func fetchSocialConnections(cursor: String? = nil) async throws -> SocialConnectionsResponseDTO {
         try await get("/social/connections", queryItems: cursor.map {
             [URLQueryItem(name: "cursor", value: $0)]

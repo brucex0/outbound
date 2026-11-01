@@ -5,6 +5,9 @@
 - `GET /v1/social/posts?userId=<id>&cursor=<opaque cursor>` returns `posts` and `nextFeedCursor`; omit `userId` for the connection feed.
 - The endpoint and Social home share one query and Social activity payload, ordered by activity start time and post ID descending, 12 posts per page.
 - A target must be the viewer or an accepted, unblocked connection. Each page rechecks access and includes only nondeleted activities/posts visible to connections.
+- iOS profiles fetch their own first page, automatically load older pages, and support pull-to-refresh. The existing feed cache remains an immediate/offline fallback; successful profile loads replace it with the authoritative page. Failures use temporary feedback; pull-to-refresh retries.
+- Profile-loaded posts retain independent interaction state so cheers and comments work outside the main feed; this in-memory state clears on account changes.
+- Profile page loads use `paginated_list_page_loaded` and detail opens use `activity_detail_opened`, with bounded `source_type=friend_profile` and no person identifiers.
 
 ## Current Social implementation
 

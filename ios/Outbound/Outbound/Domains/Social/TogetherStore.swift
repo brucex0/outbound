@@ -41,6 +41,7 @@ final class TogetherStore: ObservableObject {
     @Published private(set) var isConnectionsLoading = false
     @Published private(set) var isLoadingMoreConnections = false
     @Published private(set) var pendingConnectionIDs: Set<String> = []
+    @Published private(set) var profilePostsByID: [String: TogetherPostDTO] = [:]
     @Published private(set) var commentsByPostID: [String: [TogetherCommentDTO]] = [:]
     @Published private(set) var isSocialMutationPending = false
     @Published private(set) var notifications: [SocialNotificationDTO] = []
@@ -514,6 +515,10 @@ final class TogetherStore: ObservableObject {
         connectionLinkFeedback = nil
     }
 
+    func cacheProfilePosts(_ posts: [TogetherPostDTO]) {
+        for post in posts { profilePostsByID[post.id] = post }
+    }
+
     func react(to post: TogetherPostDTO) async {
         await toggleCheer(on: post)
     }
@@ -522,6 +527,7 @@ final class TogetherStore: ObservableObject {
     func toggleCheer(on post: TogetherPostDTO) async -> Bool {
         guard !isSocialMutationPending else { return false }
         let originalState = state
+        let originalProfilePost = profilePostsByID[post.id]
         state = replacing(post: post, cheered: !post.currentUserCheered)
         if isUITestSeedData {
             return true
@@ -538,6 +544,7 @@ final class TogetherStore: ObservableObject {
             return true
         } catch {
             state = originalState
+            profilePostsByID[post.id] = originalProfilePost
             errorMessage = error.localizedDescription
             return false
         }
@@ -562,6 +569,7 @@ final class TogetherStore: ObservableObject {
         guard !cleaned.isEmpty else { return false }
         let originalComments = commentsByPostID[post.id]
         let originalState = state
+        let originalProfilePost = profilePostsByID[post.id]
         let optimisticComment = TogetherCommentDTO(
             id: "pending-\(UUID().uuidString)",
             body: cleaned,
@@ -584,6 +592,7 @@ final class TogetherStore: ObservableObject {
         } catch {
             commentsByPostID[post.id] = originalComments
             state = originalState
+            profilePostsByID[post.id] = originalProfilePost
             errorMessage = error.localizedDescription
             return false
         }
@@ -845,6 +854,7 @@ final class TogetherStore: ObservableObject {
         isLoadingMoreConnections = false
         pendingConnectionIDs = []
         commentsByPostID = [:]
+        profilePostsByID = [:]
         isSocialMutationPending = false
         notifications = []
         discoverableGroups = []
@@ -1242,8 +1252,7 @@ final class TogetherStore: ObservableObject {
     }
 
     private func replacing(post: TogetherPostDTO, cheered: Bool) -> TogetherResponseDTO {
-        let posts = state.posts.map { current in
-            guard current.id == post.id else { return current }
+        let updatedPost: (TogetherPostDTO) -> TogetherPostDTO = { current in
             return TogetherPostDTO(
                 id: current.id,
                 caption: current.caption,
@@ -1260,12 +1269,15 @@ final class TogetherStore: ObservableObject {
                 comments: current.comments
             )
         }
+        let posts = state.posts.map { $0.id == post.id ? updatedPost($0) : $0 }
+        if let profilePost = profilePostsByID[post.id] {
+            profilePostsByID[post.id] = updatedPost(profilePost)
+        }
         return TogetherResponseDTO(upcomingRuns: state.upcomingRuns, pastEvents: state.pastEvents, groups: state.groups, posts: posts, nextFeedCursor: state.nextFeedCursor)
     }
 
     private func replacing(post: TogetherPostDTO, commentCountDelta: Int) -> TogetherResponseDTO {
-        let posts = state.posts.map { current in
-            guard current.id == post.id else { return current }
+        let updatedPost: (TogetherPostDTO) -> TogetherPostDTO = { current in
             return TogetherPostDTO(
                 id: current.id,
                 caption: current.caption,
@@ -1279,6 +1291,10 @@ final class TogetherStore: ObservableObject {
                 commentCount: max(0, current.commentCount + commentCountDelta),
                 comments: current.comments
             )
+        }
+        let posts = state.posts.map { $0.id == post.id ? updatedPost($0) : $0 }
+        if let profilePost = profilePostsByID[post.id] {
+            profilePostsByID[post.id] = updatedPost(profilePost)
         }
         return TogetherResponseDTO(upcomingRuns: state.upcomingRuns, pastEvents: state.pastEvents, groups: state.groups, posts: posts, nextFeedCursor: state.nextFeedCursor)
     }

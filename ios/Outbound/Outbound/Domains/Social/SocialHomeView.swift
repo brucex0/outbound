@@ -1,6 +1,7 @@
 import CryptoKit
 import ImageIO
 import MapKit
+import OSLog
 import SwiftUI
 import UIKit
 
@@ -3824,9 +3825,13 @@ struct SocialPersonProfileView: View {
     var username: String? = nil
     @State private var sharedRecognitions: [RecognitionAwardDTO] = []
 
-    private var posts: [TogetherPostDTO] {
-        socialStore.state.posts.filter { $0.user.id == person.id }
-    }
+    @Environment(\.analyticsManager) private var analyticsManager
+    @State private var posts: [TogetherPostDTO] = []
+    @State private var nextCursor: String?
+    @State private var isLoadingPosts = false
+    @State private var hasLoadedPosts = false
+    @State private var toastMessage: String?
+    private static let logger = Logger(subsystem: "plainstride.outbound", category: "SocialProfile")
 
     var body: some View {
         ScrollView {
@@ -3868,7 +3873,9 @@ struct SocialPersonProfileView: View {
                 }
 
                 Text("RECENT ACTIVITIES").socialSectionLabel()
-                if posts.isEmpty {
+                if isLoadingPosts && posts.isEmpty {
+                    ProgressView().frame(maxWidth: .infinity)
+                } else if hasLoadedPosts && posts.isEmpty {
                     OutboundCard {
                         Text("No shared activities yet.").font(.subheadline).foregroundStyle(.secondary)
                     }
@@ -3876,6 +3883,11 @@ struct SocialPersonProfileView: View {
                     ForEach(posts) { post in
                         Button {
                             appNavigationStore.openSharedDestination(.socialActivity(post))
+                            Task {
+                                await analyticsManager?.track(.init(.activityDetailOpened, properties: [
+                                    .sourceType: .string("friend_profile")
+                                ]))
+                            }
                         } label: {
                             OutboundCard {
                                 HStack {
@@ -3897,16 +3909,88 @@ struct SocialPersonProfileView: View {
                         .buttonStyle(.plain)
                     }
                 }
+                if let cursor = nextCursor {
+                    AutomaticPaginationRow(pageID: cursor) {
+                        await loadPosts(cursor: cursor)
+                    }
+                }
+
             }
             .padding(OutboundSpacing.screen)
         }
         .background(OutboundPalette.background)
         .navigationTitle("Profile")
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: person.id) {
-            if let response = try? await APIClient.shared.fetchSocialProfile(userID: person.id) {
-                sharedRecognitions = response.recognitions
+        .refreshable { await loadPosts() }
+        .overlay(alignment: .top) {
+            if let toastMessage {
+                Text(toastMessage)
+                    .font(.subheadline.weight(.semibold))
+                    .padding(12)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.top, 8)
             }
+        }
+        .task(id: toastMessage) {
+            guard toastMessage != nil else { return }
+            try? await Task.sleep(for: .seconds(2.2))
+            guard !Task.isCancelled else { return }
+            toastMessage = nil
+        }
+        .task(id: person.id) {
+            // Preserve the existing feed cache as an immediate/offline fallback;
+            // a successful profile request replaces it with the authoritative page.
+            if posts.isEmpty && !hasLoadedPosts {
+                posts = socialStore.state.posts.filter { $0.user.id == person.id }
+            }
+            await loadPosts()
+            do {
+                sharedRecognitions = try await APIClient.shared.fetchSocialProfile(userID: person.id).recognitions
+            } catch {
+                logFailure(error, operation: "milestones")
+            }
+        }
+    }
+
+    private func loadPosts(cursor: String? = nil) async {
+        guard !isLoadingPosts else { return }
+        isLoadingPosts = true
+        defer { isLoadingPosts = false }
+        do {
+            let page = try await APIClient.shared.fetchSocialPosts(userID: person.id, cursor: cursor)
+            try Task.checkCancellation()
+            socialStore.cacheProfilePosts(page.posts)
+            if cursor == nil { posts = [] }
+            let existingIDs = Set(posts.map(\.id))
+            let appended = page.posts.filter { !existingIDs.contains($0.id) }
+            posts.append(contentsOf: appended)
+            nextCursor = page.nextFeedCursor
+            hasLoadedPosts = true
+            await analyticsManager?.track(.init(.paginatedListPageLoaded, properties: [
+                .sourceType: .string("friend_profile"),
+                .countBucket: .string(ProductAnalyticsBucket.count(appended.count)),
+                .pageDepthBucket: .string(ProductAnalyticsBucket.pageDepth(max(1, Int(ceil(Double(posts.count) / 12.0)))))
+            ]))
+        } catch {
+            guard !Task.isCancelled, !(error is CancellationError),
+                  (error as? URLError)?.code != .cancelled else { return }
+            logFailure(error, operation: "activities")
+            if case APIError.http(let status, _, _) = error, status == 404 {
+                posts = []
+                nextCursor = nil
+            }
+            toastMessage = String(localized: "social.feed.load_more_failed")
+        }
+    }
+
+    private func logFailure(_ error: Error, operation: String) {
+        guard !Task.isCancelled, !(error is CancellationError),
+              (error as? URLError)?.code != .cancelled else { return }
+        if case APIError.http(let status, _, _) = error {
+            Self.logger.error("Profile \(operation, privacy: .public) failed HTTP=\(status, privacy: .public)")
+        } else {
+            let code = (error as NSError).code
+            Self.logger.error("Profile \(operation, privacy: .public) failed code=\(code, privacy: .public)")
         }
     }
 
@@ -3935,7 +4019,7 @@ struct SocialActivityDetailView: View {
     @State private var isLoadingPhotos = true
 
     private var currentPost: TogetherPostDTO {
-        socialStore.state.posts.first(where: { $0.id == post.id }) ?? post
+        socialStore.state.posts.first(where: { $0.id == post.id }) ?? socialStore.profilePostsByID[post.id] ?? post
     }
 
     @ViewBuilder

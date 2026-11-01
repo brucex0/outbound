@@ -259,7 +259,7 @@ Identity completion during onboarding emits `onboarding_identity_prompt_viewed` 
 
 `activity_feed_returned` records an iOS return from activity detail with only `source_type = activity_detail`, the coarse loaded-post count bucket, and page-depth bucket. It measures return usage at different feed depths; it does not claim that restoration succeeded or include post IDs, titles, offsets, or activity data.
 
-`paginated_list_page_loaded` records additional-page loads for `activity_history`, `activity_feed`, and `connections`. It includes only the list source, a coarse count bucket for newly revealed rows, and a coarse page-depth bucket; activity history also includes success/failure in `result`, so failed retries are observable; activity facts, connection identities, cursors, and exact totals are excluded.
+`paginated_list_page_loaded` records additional-page loads for `activity_history`, `activity_feed`, and `connections`. It includes only the list source, a coarse count bucket for newly revealed rows, and a coarse page-depth bucket; activity history also includes success/failure in `result`, so failed retries are observable; activity facts, connection identities, cursors, and exact totals are excluded. Profile history uses `source_type=friend_profile` for first and subsequent successful page loads; detail opens use `activity_detail_opened` with the same source. Neither event includes a person ID.
 
 `route_detail_opened` records independent Android route-detail loading with only `source_type` (`community` or `imported`) and `result` (`success` or `failure`). Route IDs, names, geometry, and location are excluded.
 

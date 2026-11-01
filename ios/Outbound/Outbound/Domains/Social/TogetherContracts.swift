@@ -14,6 +14,11 @@ struct TogetherResponseDTO: Codable, Sendable {
     var nextFeedCursor: String? = nil
 }
 
+struct SocialPostsResponseDTO: Codable, Sendable {
+    let posts: [TogetherPostDTO]
+    let nextFeedCursor: String?
+}
+
 struct TogetherPersonDTO: Codable, Identifiable, Sendable, Equatable {
     let id: String
     let displayName: String
