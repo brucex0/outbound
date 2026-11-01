@@ -1753,7 +1753,7 @@ private fun SignInScreen(
                 enabled = state.operation == null,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(14.dp),
-            ) { Text(stringResource(if (state.operation == null) R.string.continue_with_google else R.string.signing_in)) }
+            ) { Text(stringResource(if (state.operation == AuthOperation.SignIn) R.string.signing_in else R.string.continue_with_google)) }
             TextButton(onClick = { showsTransfer = !showsTransfer }, enabled = state.operation == null) {
                 Text(stringResource(R.string.transfer_existing_account))
             }
