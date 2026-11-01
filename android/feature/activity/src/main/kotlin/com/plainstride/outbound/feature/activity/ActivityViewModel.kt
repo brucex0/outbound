@@ -63,6 +63,7 @@ data class ActivityUiState(
 @HiltViewModel
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ActivityViewModel @Inject constructor(
+    private val database: com.plainstride.outbound.core.database.PlainstrideDatabase,
     private val groups: com.plainstride.outbound.core.data.GroupActivityRepository,
     private val repository: ActivityRepository,
     private val syncScheduler: ActivitySyncScheduler,
@@ -164,15 +165,79 @@ class ActivityViewModel @Inject constructor(
         ))
     }
 
-    fun editTitle(title: String) = mutate(ActivityMessage.UPDATED) {
-        val current = mutableState.value.selected ?: return@mutate
-        val updated = current.copy(title = title.trim(), localUpdatedAt = Instant.now().toString())
-        repository.edit(updated)
-        val persisted = repository.activity(current.accountId, current.id)
-        if (account.value == current.accountId && mutableState.value.selected?.id == current.id) {
-            mutableState.value = mutableState.value.copy(selected = persisted)
+    internal suspend fun editorShoes(accountId: String): List<EditorShoe> =
+        database.gearDao().forAccount(accountId).filter { it.retiredAtEpochMs == null }.map {
+            EditorShoe(it.gearId, listOf(it.brand.trim(), it.model.trim()).filter(String::isNotEmpty).joinToString(" ").ifEmpty { it.name })
         }
-        analytics.record(AnalyticsEvent("activity_edited", mapOf(AnalyticsProperty.Result to "success")))
+
+    fun trackEditor(feature: String = "activity_editor") {
+        analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to feature)))
+    }
+
+    fun trackEditorPhoto(name: String, locationAttached: Boolean? = null) {
+        val properties = mutableMapOf<AnalyticsProperty, Any>(AnalyticsProperty.SourceType to "activity_edit")
+        locationAttached?.let { properties[AnalyticsProperty.LocationAttached] = it }
+        analytics.record(AnalyticsEvent(name, properties))
+    }
+
+    internal suspend fun saveEditor(draft: ActivityEditorDraft): Boolean {
+        if (mutableState.value.mutating) return false
+        mutableState.value = mutableState.value.copy(mutating = true)
+        val written = mutableListOf<String>()
+        var committed = false
+        try {
+            val current = repository.activity(draft.original.accountId, draft.original.id)
+                ?: error("Activity unavailable")
+            check(account.value == current.accountId)
+            val photos = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                draft.photos.map { photo ->
+                    if (photo.importPath == null) current.photos.firstOrNull { it.id == photo.photo.id } ?: photo.photo else {
+                        val bytes = File(photo.importPath).readBytes()
+                        val path = mediaStore.write(current.accountId, current.id, bytes)
+                        written += path
+                        photo.photo.copy(localRelativePath = path, byteSize = bytes.size.toLong())
+                    }
+                }
+            }
+            val updated = current.copy(
+                title = draft.title.trim().ifEmpty { current.title },
+                startedAt = draft.startedAt,
+                endedAt = Instant.parse(draft.startedAt).plusSeconds(draft.durationSecs.toLong()).toString(),
+                distanceM = draft.distanceM, durationSecs = draft.durationSecs,
+                averagePaceSecsPerKm = editorPace(current.type, draft.durationSecs, draft.distanceM),
+                gearJson = draft.gearJson, photos = photos,
+                localUpdatedAt = Instant.now().toString(),
+            )
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                check(account.value == current.accountId)
+                repository.edit(updated)
+                committed = true
+            }
+            try { syncScheduler.schedule(current.accountId) }
+            catch (error: Exception) { Log.w("PlainstrideActivity", "edit_sync_schedule failed type=${error.javaClass.simpleName}") }
+            if (account.value == current.accountId && mutableState.value.selected?.id == current.id) {
+                mutableState.value = mutableState.value.copy(selected = updated)
+            }
+            analytics.record(AnalyticsEvent("activity_edited", mapOf(AnalyticsProperty.Result to "success")))
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                current.photos.filter { old -> photos.none { it.id == old.id } }.mapNotNull { it.localRelativePath }.forEach { path ->
+                    if (!mediaStore.delete(path)) Log.w("PlainstrideActivity", "edit_removed_photo_cleanup failed")
+                }
+            }
+            trackEditor("activity_editor_saved")
+            return true
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.w("PlainstrideActivity", "edit_save failed committed=$committed type=${error.javaClass.simpleName}")
+            analytics.record(AnalyticsEvent("activity_operation_failed", mapOf(AnalyticsProperty.ErrorCategory to "local_storage")))
+            return committed
+        } finally {
+            if (!committed) written.forEach { path ->
+                if (!mediaStore.delete(path)) Log.w("PlainstrideActivity", "edit_save media_cleanup failed")
+            }
+            mutableState.value = mutableState.value.copy(mutating = false)
+        }
     }
 
     fun deleteSelected() = mutate(ActivityMessage.DELETED) {

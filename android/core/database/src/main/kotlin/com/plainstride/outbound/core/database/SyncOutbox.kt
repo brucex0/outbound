@@ -46,6 +46,9 @@ interface SyncOutboxDao {
     )
     suspend fun pending(accountId: String, nowEpochMs: Long, limit: Int): List<SyncOutboxEntity>
 
+    @Query("SELECT payloadJson FROM sync_outbox WHERE accountId = :accountId AND aggregateId = :activityId AND operationType = 'delete_photo'")
+    suspend fun pendingPhotoDeletions(accountId: String, activityId: String): List<String>
+
     @Query("SELECT COUNT(*) FROM sync_outbox WHERE accountId = :accountId")
     fun observeCount(accountId: String): Flow<Int>
 

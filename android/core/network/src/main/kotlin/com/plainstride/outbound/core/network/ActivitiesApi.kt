@@ -158,6 +158,9 @@ data class RemoteActivityDto(
 @Serializable data class CachedActivityVersions(val records: List<CachedActivityVersion>)
 
 interface ActivitiesApiService {
+    @DELETE("v1/media/activity-photos/{id}")
+    suspend fun deleteActivityPhoto(@Header("Authorization") authorization: String, @Path("id") id: String): Response<Unit>
+
     @retrofit2.http.Streaming
     @GET("v1/media/activity-photos/{id}/thumbnail")
     suspend fun activityPhotoThumbnail(@Header("Authorization") authorization: String, @Path("id") id: String): Response<okhttp3.ResponseBody>

@@ -17,6 +17,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":core:analytics"))
     implementation(project(":core:data"))
+    implementation(project(":core:database"))
     implementation(project(":core:model"))
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="editor_title">Editar actividad</string>
+    <string name="editor_activity">Actividad</string>
+    <string name="editor_date">Fecha</string>
+    <string name="editor_details">Detalles del entrenamiento</string>
+    <string name="editor_duration">Duración</string>
+    <string name="editor_hours">Horas</string>
+    <string name="editor_minutes">Minutos</string>
+    <string name="editor_seconds">Segundos</string>
+    <string name="editor_invalid">Introduce una distancia válida y una duración mayor que cero. Los minutos y segundos deben estar entre 0 y 59.</string>
+    <string name="editor_gear">Equipamiento</string>
+    <string name="editor_shoes">Zapatillas</string>
+    <string name="editor_none">Ninguna</string>
+    <string name="editor_save">Guardar cambios</string>
+    <string name="editor_saving">Guardando…</string>
+    <string name="editor_discard_title">¿Descartar los cambios sin guardar?</string>
+    <string name="editor_discard">Descartar cambios</string>
+    <string name="editor_photos">Fotos</string>
+    <string name="editor_no_photos">No se han añadido fotos</string>
+    <string name="editor_take_photo">Hacer foto</string>
+    <string name="editor_import_photo">Importar foto</string>
+    <string name="editor_delete_photos">Eliminar las fotos seleccionadas</string>
+    <string name="editor_selected">Seleccionada</string>
+    <string name="editor_move_previous">Mover la foto hacia el principio</string>
+    <string name="editor_move_next">Mover la foto hacia el final</string>
+    <string name="editor_photo_failed">No se pudieron actualizar las fotos</string>
+</resources>

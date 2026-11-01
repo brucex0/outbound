@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="editor_title">编辑活动</string>
+    <string name="editor_activity">活动</string>
+    <string name="editor_date">日期</string>
+    <string name="editor_details">训练详情</string>
+    <string name="editor_duration">时长</string>
+    <string name="editor_hours">小时</string>
+    <string name="editor_minutes">分钟</string>
+    <string name="editor_seconds">秒</string>
+    <string name="editor_invalid">请输入有效距离和大于零的时长。分钟和秒须在 0 至 59 之间。</string>
+    <string name="editor_gear">装备</string>
+    <string name="editor_shoes">跑鞋</string>
+    <string name="editor_none">无</string>
+    <string name="editor_save">保存更改</string>
+    <string name="editor_saving">正在保存…</string>
+    <string name="editor_discard_title">放弃未保存的更改？</string>
+    <string name="editor_discard">放弃更改</string>
+    <string name="editor_photos">照片</string>
+    <string name="editor_no_photos">尚未添加照片</string>
+    <string name="editor_take_photo">拍照</string>
+    <string name="editor_import_photo">导入照片</string>
+    <string name="editor_delete_photos">删除所选照片</string>
+    <string name="editor_selected">已选择</string>
+    <string name="editor_move_previous">将照片前移</string>
+    <string name="editor_move_next">将照片后移</string>
+    <string name="editor_photo_failed">无法更新照片</string>
+</resources>

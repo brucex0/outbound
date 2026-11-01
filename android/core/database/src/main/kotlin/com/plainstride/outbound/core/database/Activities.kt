@@ -115,6 +115,7 @@ data class ActivityPhotoEntity(
     val remoteUpdatedAtEpochMs: Long?,
     val byteSize: Long?,
     val sha256: String?,
+    val sortIndex: Int = 0,
 )
 
 data class ActivityWithDetails(

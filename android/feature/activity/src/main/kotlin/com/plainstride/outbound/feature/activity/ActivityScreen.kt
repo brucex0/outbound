@@ -339,7 +339,7 @@ fun ActivityDetailDestination(
         weightKilograms = weightKilograms,
         mutating = state.mutating,
         onBack = onBack,
-        onEdit = viewModel::editTitle,
+        editor = { dismiss -> ActivityEditor(selected, unitSystem, viewModel, dismiss) },
         onDelete = viewModel::deleteSelected,
         onShareCard = { viewModel.shareCard(selected, unitSystem) },
         onShareAction = { viewModel.trackShareAction(it) },
@@ -429,7 +429,7 @@ private fun ActivityDetailScreen(
     weightKilograms: Double?,
     mutating: Boolean,
     onBack: () -> Unit,
-    onEdit: (String) -> Unit,
+    editor: @Composable (() -> Unit) -> Unit,
     onDelete: () -> Unit,
     onShareCard: () -> ActivityExport?,
     onShareAction: (String) -> Unit,
@@ -625,7 +625,7 @@ private fun ActivityDetailScreen(
             }
         }
     }
-    if (edit) EditTitleDialog(activity.title, { edit = false }, { onEdit(it); edit = false })
+    if (edit) editor { edit = false }
     if (publishRoute) ActivityRoutePublishDialog(
         activityId = activity.serverActivityId ?: activity.id,
         routeName = routeName,
@@ -942,7 +942,7 @@ private fun CompanionReflectionCard(activity: SavedActivity) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ActivityPhotoLightbox(
+internal fun ActivityPhotoLightbox(
     photos: List<ActivityPhoto>,
     initialIndex: Int,
     photoBytes: (String) -> ByteArray?,
@@ -1039,14 +1039,6 @@ private fun Context.saveImage(export: ActivityExport): Boolean = runCatching {
 @Composable private fun SummaryMetric(value: String, label: String, alignment: Alignment.Horizontal = Alignment.CenterHorizontally) = Column(horizontalAlignment = alignment) {
     Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
     Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-}
-
-@Composable private fun EditTitleDialog(initial: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
-    var value by rememberSaveable { mutableStateOf(initial) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.activity_edit_title)) },
-        text = { OutlinedTextField(value, { value = it }, label = { Text(stringResource(R.string.activity_title)) }, singleLine = true) },
-        confirmButton = { TextButton(onClick = { onSave(value) }, enabled = value.isNotBlank()) { Text(stringResource(R.string.activity_save)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.activity_cancel)) } })
 }
 
 @Composable private fun ManualActivityDialog(onDismiss: () -> Unit, onSave: (ActivityType, String, Int, Double, Double?) -> Unit) {

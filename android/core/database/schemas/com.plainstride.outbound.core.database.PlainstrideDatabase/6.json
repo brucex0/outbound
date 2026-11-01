@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 5,
-    "identityHash": "8c4a7d44f1466214613b5fcc931c6fb8",
+    "version": 6,
+    "identityHash": "6b58b955b93e5cdff0538cb3bbfead3a",
     "entities": [
       {
         "tableName": "account_cache",
@@ -676,7 +676,7 @@
       },
       {
         "tableName": "activity_photos",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `activityId` TEXT NOT NULL, `photoId` TEXT NOT NULL, `takenAtEpochMs` INTEGER NOT NULL, `paceAtShot` REAL, `heartRateAtShot` INTEGER, `distanceAtShotM` REAL, `latitude` REAL, `longitude` REAL, `captureContext` TEXT, `localRelativePath` TEXT, `remotePhotoId` TEXT, `remoteUpdatedAtEpochMs` INTEGER, `byteSize` INTEGER, `sha256` TEXT, PRIMARY KEY(`activityId`, `photoId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`accountId` TEXT NOT NULL, `activityId` TEXT NOT NULL, `photoId` TEXT NOT NULL, `takenAtEpochMs` INTEGER NOT NULL, `paceAtShot` REAL, `heartRateAtShot` INTEGER, `distanceAtShotM` REAL, `latitude` REAL, `longitude` REAL, `captureContext` TEXT, `localRelativePath` TEXT, `remotePhotoId` TEXT, `remoteUpdatedAtEpochMs` INTEGER, `byteSize` INTEGER, `sha256` TEXT, `sortIndex` INTEGER NOT NULL, PRIMARY KEY(`activityId`, `photoId`))",
         "fields": [
           {
             "fieldPath": "accountId",
@@ -756,6 +756,12 @@
             "fieldPath": "sha256",
             "columnName": "sha256",
             "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sortIndex",
+            "columnName": "sortIndex",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -982,7 +988,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8c4a7d44f1466214613b5fcc931c6fb8')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6b58b955b93e5cdff0538cb3bbfead3a')"
     ]
   }
 }

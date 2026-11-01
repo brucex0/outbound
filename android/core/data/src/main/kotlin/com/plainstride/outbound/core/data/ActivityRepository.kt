@@ -168,7 +168,7 @@ class OfflineFirstActivityRepository(
                         if (currentAccountId() != accountId || latest == null || latest.deletedAt != null || target == null
                             || target.localRelativePath != photo.localRelativePath) false
                         else {
-                            dao.upsertPhotos(listOf(target.copy(localRelativePath = path).toEntity(latest)))
+                            dao.upsertPhotos(listOf(target.copy(localRelativePath = path).toEntity(latest, latest.photos.indexOfFirst { it.id == target.id })))
                             true
                         }
                     }
@@ -226,6 +226,11 @@ class OfflineFirstActivityRepository(
         val updated = if (latest?.elevationMetadata != null && sameGeometry) activity.copy(
             track = latest.track, elevationGainM = latest.elevationGainM, elevationMetadata = latest.elevationMetadata,
         ) else activity
+        latest?.photos.orEmpty().filter { old -> updated.photos.none { it.id == old.id } }.forEach { removed ->
+            removed.remotePhotoId?.let { remoteId ->
+                enqueue(activity.accountId, activity.id, "delete_photo", UUID.randomUUID().toString(), remoteId)
+            }
+        }
         persistAndEnqueue(updated.copy(localUpdatedAt = now().toString()))
     }
 
@@ -343,6 +348,7 @@ class OfflineFirstActivityRepository(
                     api.upload(authorization, request)
                 }
                 DELETE -> apiCall { api.delete(authorization, operation.aggregateId) }
+                "delete_photo" -> apiCall { api.deleteActivityPhoto(authorization, operation.payloadJson) }
                 else -> null
             }
             if (result is ApiResult.Success) {
@@ -508,7 +514,7 @@ class OfflineFirstActivityRepository(
             dao.deletePhotos(activity.accountId, activity.id)
             if (activity.track.isNotEmpty()) dao.upsertTrack(activity.track.mapIndexed { index, point -> point.toEntity(activity, index) })
             if (activity.splits.isNotEmpty()) dao.upsertSplits(activity.splits.map { it.toEntity(activity) })
-            if (activity.photos.isNotEmpty()) dao.upsertPhotos(activity.photos.map { it.toEntity(activity) })
+            if (activity.photos.isNotEmpty()) dao.upsertPhotos(activity.photos.mapIndexed { index, photo -> photo.toEntity(activity, index) })
             if (enqueue) enqueue(activity.accountId, activity.id, UPSERT, activity.localUpdatedAt, PlainstrideJson.encodeToString(activity.toUploadRequest()))
         }
     }
@@ -531,9 +537,12 @@ class OfflineFirstActivityRepository(
         // Keep private local files attached when a server refresh supplies metadata only.
         val localPhotos = local?.photos.orEmpty()
         val remotePhotoIds = decoded.photos.mapTo(mutableSetOf()) { it.id }
-        val mergedPhotos = decoded.photos.map { remotePhoto ->
+        val deletedPhotoIds = database.syncOutboxDao().pendingPhotoDeletions(accountId, clientId).toSet()
+        val mergedById = decoded.photos.filterNot { it.remotePhotoId in deletedPhotoIds }.map { remotePhoto ->
             remotePhoto.copy(localRelativePath = localPhotos.firstOrNull { it.id == remotePhoto.id }?.localRelativePath)
         } + localPhotos.filterNot { it.id in remotePhotoIds }
+        val mergedPhotos = localPhotos.mapNotNull { old -> mergedById.firstOrNull { it.id == old.id } } +
+            mergedById.filter { remote -> localPhotos.none { it.id == remote.id } }
         persist(decoded.copy(photos = mergedPhotos, track = if (preserveRoute) local?.track.orEmpty() else decoded.track, elevationMetadata = if (preserveRoute) local?.elevationMetadata else decoded.elevationMetadata), enqueue = false)
         return@withTransaction true
     }
@@ -602,7 +611,7 @@ private fun SavedActivity.toEntity() = ActivityEntity(
 
 private fun ActivityTrackPoint.toEntity(activity: SavedActivity, index: Int) = ActivityTrackPointEntity(activity.accountId, activity.id, index, parseEpoch(timestamp), latitude, longitude, altitude, verticalAccuracy, startsNewSegment)
 private fun ActivitySplit.toEntity(activity: SavedActivity) = ActivitySplitEntity(activity.accountId, activity.id, index, distanceM, durationSecs, paceSecsPerKm, elevationGainM, averageHeartRateBpm)
-private fun ActivityPhoto.toEntity(activity: SavedActivity) = ActivityPhotoEntity(activity.accountId, activity.id, id, parseEpoch(takenAt), paceAtShot, heartRateAtShot, distanceAtShotM, latitude, longitude, captureContext, localRelativePath, remotePhotoId, remoteUpdatedAt?.let(::parseEpoch), byteSize, sha256)
+private fun ActivityPhoto.toEntity(activity: SavedActivity, index: Int) = ActivityPhotoEntity(activity.accountId, activity.id, id, parseEpoch(takenAt), paceAtShot, heartRateAtShot, distanceAtShotM, latitude, longitude, captureContext, localRelativePath, remotePhotoId, remoteUpdatedAt?.let(::parseEpoch), byteSize, sha256, index)
 
 private fun ActivityWithDetails.toDomain(): SavedActivity = with(activity) {
     SavedActivity(
@@ -613,7 +622,7 @@ private fun ActivityWithDetails.toDomain(): SavedActivity = with(activity) {
         goalJson, indoorJson, cadenceJson, heartRateZonesJson, activityEventId, followedRouteId, followedRouteCompleted,
         PlainstrideJson.decodeFromString(recognitionBadgeIdsJson), track.sortedBy { it.pointIndex }.map { ActivityTrackPoint(instant(it.timestampEpochMs), it.latitude, it.longitude, it.altitude, it.verticalAccuracy, it.startsNewSegment) },
         splits.sortedBy { it.splitIndex }.map { ActivitySplit(it.splitIndex, it.distanceM, it.durationSecs, it.paceSecsPerKm, it.elevationGainM, it.averageHeartRateBpm) },
-        photos.sortedBy { it.takenAtEpochMs }.map { ActivityPhoto(it.photoId, instant(it.takenAtEpochMs), it.paceAtShot, it.heartRateAtShot, it.distanceAtShotM, it.latitude, it.longitude, it.captureContext, it.localRelativePath, it.remotePhotoId, it.remoteUpdatedAtEpochMs?.let(::instant), it.byteSize, it.sha256) },
+        photos.sortedBy { it.sortIndex }.map { ActivityPhoto(it.photoId, instant(it.takenAtEpochMs), it.paceAtShot, it.heartRateAtShot, it.distanceAtShotM, it.latitude, it.longitude, it.captureContext, it.localRelativePath, it.remotePhotoId, it.remoteUpdatedAtEpochMs?.let(::instant), it.byteSize, it.sha256) },
         instant(localUpdatedAtEpochMs), serverUpdatedAtEpochMs?.let(::instant), deletedAtEpochMs?.let(::instant),
         companionType?.let { value -> runCatching { ActivityCompanionType.valueOf(value) }.getOrNull() },
         elevationMetadata = elevationMetadataJson?.let { PlainstrideJson.decodeFromString<ActivityElevationMetadata>(it) },
