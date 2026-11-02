@@ -1119,7 +1119,7 @@ private fun SocialActivityDetail(
 ) {
     val activity = post.activity ?: return
     val route = remember(activity.route) { activity.route.routeCoordinates() }
-    val splits = remember(route, activity.durationSecs, unitSystem) { computeSocialSplits(route, activity.durationSecs, unitSystem) }
+    val splits = remember(activity.route, unitSystem) { activity.route.recordedSocialSplits(unitSystem) }
     var showSplits by rememberSaveable(post.id) { mutableStateOf(false) }
     var selectedPhotoIndex by rememberSaveable(post.id) {
         mutableIntStateOf(photos.indexOfFirst { it.latitude != null && it.longitude != null })
@@ -1435,11 +1435,11 @@ private fun SocialActivityDetail(
                             Icon(if (showSplits) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
                         }
                         if (showSplits) {
-                            val fastestPace = splits.minOfOrNull(SocialSplit::paceSecondsPerKm) ?: 0.0
-                            val slowestPace = splits.maxOfOrNull(SocialSplit::paceSecondsPerKm) ?: fastestPace
-                            splits.forEachIndexed { index, split ->
+                            val fastestPace = splits.minOfOrNull(RecordedSocialSplit::paceSecondsPerKm) ?: 0.0
+                            val slowestPace = splits.maxOfOrNull(RecordedSocialSplit::paceSecondsPerKm) ?: fastestPace
+                            splits.forEach { split ->
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    Text(stringResource(ActivityR.string.activity_split_number, index + 1), Modifier.width(54.dp), style = MaterialTheme.typography.labelMedium)
+                                    Text(stringResource(ActivityR.string.activity_split_number, split.number), Modifier.width(54.dp), style = MaterialTheme.typography.labelMedium)
                                     Text(formatPace(split.paceSecondsPerKm, unitSystem), Modifier.width(68.dp), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                                     Box(Modifier.weight(1f).height(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
                                         val paceRange = (slowestPace - fastestPace).coerceAtLeast(1.0)
@@ -1647,54 +1647,6 @@ private fun photoTileLabel(index: Int, count: Int): String = when (index) {
 }
 
 @Composable private fun ActivityStat(value:String,label:String)=Column(Modifier.widthIn(min=72.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(value,fontWeight=FontWeight.Bold);Text(label,color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.labelSmall)}
-
-private data class SocialSplit(val distanceMeters: Double, val durationSeconds: Double, val paceSecondsPerKm: Double)
-
-private fun computeSocialSplits(
-    route: List<MapCoordinate>,
-    durationSeconds: Int?,
-    unitSystem: MeasurementUnitSystem,
-): List<SocialSplit> {
-    if (route.size < 2 || (durationSeconds ?: 0) <= 0) return emptyList()
-    val splitLength = if (unitSystem == MeasurementUnitSystem.metric) 1_000.0 else 1_609.344
-    val edgeDuration = durationSeconds!!.toDouble() / (route.size - 1)
-    val result = mutableListOf<SocialSplit>()
-    var splitDistance = 0.0
-    var splitDuration = 0.0
-
-    fun finishSplit() {
-        if (splitDistance <= 0.0) return
-        result += SocialSplit(splitDistance, splitDuration, splitDuration / splitDistance * 1_000.0)
-        splitDistance = 0.0
-        splitDuration = 0.0
-    }
-
-    route.zipWithNext().forEach { (start, end) ->
-        val edgeDistance = distanceBetween(start, end)
-        if (edgeDistance <= 0.0) return@forEach
-        var edgeRemaining = edgeDistance
-        while (edgeRemaining > 0.0) {
-            val consumed = minOf(edgeRemaining, splitLength - splitDistance)
-            splitDistance += consumed
-            splitDuration += edgeDuration * consumed / edgeDistance
-            edgeRemaining -= consumed
-            if (splitDistance >= splitLength - .01) finishSplit()
-        }
-    }
-    finishSplit()
-    return result
-}
-
-private fun distanceBetween(start: MapCoordinate, end: MapCoordinate): Double {
-    val earthRadiusMeters = 6_371_000.0
-    val startLatitude = Math.toRadians(start.latitude)
-    val endLatitude = Math.toRadians(end.latitude)
-    val latitudeDelta = endLatitude - startLatitude
-    val longitudeDelta = Math.toRadians(end.longitude - start.longitude)
-    val a = kotlin.math.sin(latitudeDelta / 2).let { it * it } +
-        kotlin.math.cos(startLatitude) * kotlin.math.cos(endLatitude) * kotlin.math.sin(longitudeDelta / 2).let { it * it }
-    return 2 * earthRadiusMeters * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
-}
 
 private fun FeedActivity.toSavedActivity(post: SocialPost): SavedActivity {
     val duration = durationSecs?.coerceAtLeast(0) ?: 0

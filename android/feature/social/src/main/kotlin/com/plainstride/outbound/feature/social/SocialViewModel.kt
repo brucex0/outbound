@@ -302,10 +302,15 @@ sealed interface ConnectionEffect {
         "social_upcoming_selected",
         mapOf(AnalyticsProperty.SelectionType to selection, AnalyticsProperty.EntrySource to "feed"),
     ))
-    fun trackActivitySplitsViewed(count: Int) = analytics.record(AnalyticsEvent("activity_splits_viewed", mapOf(
-        AnalyticsProperty.SourceType to "social_feed",
-        AnalyticsProperty.CountBucket to countBucket(count),
-    )))
+    fun trackActivitySplitsViewed(count: Int) {
+        analytics.record(AnalyticsEvent("feature_exposed", mapOf(
+            AnalyticsProperty.Feature to "social_activity_recorded_splits",
+        )))
+        analytics.record(AnalyticsEvent("activity_splits_viewed", mapOf(
+            AnalyticsProperty.SourceType to "social_feed",
+            AnalyticsProperty.CountBucket to countBucket(count),
+        )))
+    }
     private fun trackActivityFeedLoaded(posts: List<SocialPost>) {
         activityFeedLoadTracked = true
         val source = when {
