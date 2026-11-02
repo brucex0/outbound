@@ -121,6 +121,13 @@ Data is not sold. Social publishing, live sharing, Health Connect, microphone, n
 - Release evidence is retained under ignored `artifacts/play-store/release-1.0.1-4/`: AAB, mapping, merged manifest, version inputs, source SHA, dependency report, endpoint checks, and `submitted-for-review.png`. The discarded API edit responses are upload evidence only, not submission evidence.
 - Production `/health`, privacy, and support endpoints returned HTTP 200. `https://plainstride.ai/.well-known/assetlinks.json` returned HTTP 403, so app-link association remains unverified. Authenticated live-coach catalog, account deletion, device runtime, audible coaching, recording endurance, and accessibility were not exercised for this update. No tests were run.
 
+### November 1 Open Testing Update Prepared
+
+- Bruce requested a new build on the public test track. Signed `1.0.2` (5) was built from committed main `028a9b82` in an isolated worktree, excluding unrelated local edits, and uploaded to Open testing.
+- Open testing was paused. The new release at 100% and track resumption are saved in Publishing overview with the existing two-country configuration. They are **not submitted**: Play requires restarting the production review pending since October 31. Automatic approval review blocked that restart pending explicit owner approval because it cancels/restarts the existing review and adds wait time.
+- Signed bundle build, release configuration checks, vital lint, R8, and signature verification passed. Play showed no blocking errors; the existing native-symbol warning remains, and ReTrace mapping is attached. Device support counts are unchanged. Production `/health` returned HTTP 200. No tests or device runtime checks were run.
+- Evidence is retained under ignored `artifacts/play-store/release-1.0.2-5/`: AAB, mapping, merged manifest, dependency report, source SHA, and `restart-review-required.png`. To finish, approve restarting the existing review, then submit the two saved Open testing changes through Publishing overview; managed publishing is off.
+
 ## Dependencies And Notices
 
 - Generate the release dependency graph with `./gradlew :app:dependencies --configuration releaseRuntimeClasspath` and archive it with the release.
