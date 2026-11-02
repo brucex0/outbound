@@ -1269,7 +1269,13 @@ private fun SignedInApp(
                 )
             }
             composable(RECORDING_ROUTE) {
+                val feedbackCoach: com.plainstride.outbound.feature.livecoach.LiveCoachViewModel = hiltViewModel()
+                val coachFeedback by feedbackCoach.feedback.collectAsStateWithLifecycle()
                 RecordingRoute(
+                    guidanceReport = coachFeedback.report,
+                    selectedGuidanceFeedback = coachFeedback.selection,
+                    onGuidanceFeedbackSelect = feedbackCoach::selectFeedback,
+                    onGuidanceFeedbackSubmit = feedbackCoach::submitFeedback,
                     routeGuidanceContent = { snapshot, route, units, onDirectionsResult ->
                         LaunchedEffect(snapshot.sessionId, route.id) { recordingViewModel.trackRouteGuidanceDisplayed() }
                         com.plainstride.outbound.feature.community.LiveRouteGuidanceCard(snapshot, route, units, onDirectionsResult)
@@ -1311,7 +1317,7 @@ private fun SignedInApp(
                     onToggleActivityLiveMap={recordingLaunch.activityEventId?.let(toggleActivityLiveMap)},
                     onStopActivityLiveMap=stopActivityLiveMap,
                     sessionEffect = { snapshot ->
-                        LiveCoachRecordingEffect(recordingLaunch, measurementUnitSystem)
+                        LiveCoachRecordingEffect(recordingLaunch, measurementUnitSystem, feedbackCoach)
                         RecordingSafetyEffect(snapshot, recordingLaunch.activityEventId)
                     },
                     saveActivityPhotosToAlbum = settingsState.preferences.saveActivityPhotosToAlbum,

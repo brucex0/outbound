@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
+<resources>
+    <string name="recording_feedback_done">完成</string>
+    <string name="recording_guidance_feedback_bad_timing">时机不对</string>
+    <string name="recording_guidance_feedback_helpful">有帮助</string>
+    <string name="recording_guidance_feedback_privacy">反馈会改善提示时机和频率。分析数据不包含指导文本。</string>
+    <string name="recording_guidance_feedback_section_title">实时指导体验如何？</string>
+    <string name="recording_guidance_feedback_summary_format">%1$d 条指导 · %2$d 条有帮助</string>
+    <string name="recording_guidance_feedback_too_generic">太笼统</string>
+    <string name="recording_guidance_feedback_too_much">太多了</string>
+    <string name="recording_effort_feedback_header">感觉怎么样？</string>
+    <string name="recording_effort_feedback_note">此项可选。当你的回答有助于改进计划时，Plainstride 会在锻炼后询问。</string>
+    <string name="recording_feedback_added">已添加反馈</string>
+    <string name="recording_feedback_title">反馈</string>
+</resources>

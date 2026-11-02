@@ -454,6 +454,8 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.LocationAttached to locationAttached,
         )))
     }
+    fun trackWorkoutFeedbackOpened() = analytics.record(AnalyticsEvent("workout_feedback_opened", mapOf(AnalyticsProperty.SourceType to "finish_review")))
+
     fun trackPhotoRemoved() = analytics.record(AnalyticsEvent("photo_removed", mapOf(AnalyticsProperty.SourceType to "finish_review")))
     fun trackPhotoPreviewed() = analytics.record(AnalyticsEvent("photo_previewed", mapOf(AnalyticsProperty.SourceType to "finish_review")))
     fun trackPhotoReordered() = analytics.record(AnalyticsEvent("photo_reordered", mapOf(AnalyticsProperty.SourceType to "finish_review")))

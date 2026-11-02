@@ -1,5 +1,7 @@
 package com.plainstride.outbound.feature.livecoach
 
+import com.plainstride.outbound.feature.recording.WorkoutGuidanceReport
+import com.plainstride.outbound.feature.recording.WorkoutGuidanceFeedback
 import android.util.Log
 import android.content.Context
 import android.content.Intent
@@ -76,6 +78,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+data class LiveCoachFeedbackState(
+    val report: WorkoutGuidanceReport = WorkoutGuidanceReport(),
+    val selection: WorkoutGuidanceFeedback? = null,
+)
+
 data class LiveCoachUiState(
     val preferences: LiveCoachPreferences = LiveCoachPreferences(),
     val catalog: LiveCoachCatalog? = null,
@@ -105,8 +112,40 @@ class LiveCoachViewModel @Inject constructor(
     private val plannedCache: PlannedAudioCache,
     private val playback: LiveCoachPlaybackCoordinator,
     private val analytics: ProductAnalytics,
+    private val feedbackStore: LiveCoachFeedbackStore,
 ) : ViewModel() {
     private data class PendingCue(val moment: DetectedMoment, val scheduled: ScheduledCue? = null)
+
+    private val mutableFeedback = MutableStateFlow(LiveCoachFeedbackState())
+    val feedback: StateFlow<LiveCoachFeedbackState> = mutableFeedback
+
+    fun selectFeedback(value: WorkoutGuidanceFeedback) {
+        mutableFeedback.value = mutableFeedback.value.copy(selection = value)
+    }
+
+    fun submitFeedback() {
+        val state = mutableFeedback.value
+        val selection = state.selection ?: return
+        viewModelScope.launch {
+            try {
+                feedbackStore.record(selection.wireValue)
+                analytics.record(AnalyticsEvent("live_guidance_feedback_submitted", mapOf(
+                    AnalyticsProperty.SelectionType to selection.wireValue,
+                    AnalyticsProperty.CueCountBucket to when (state.report.spokenCueCount) {
+                        0 -> "0"
+                        1 -> "1"
+                        in 2..3 -> "2_3"
+                        in 4..7 -> "4_7"
+                        else -> "8_plus"
+                    },
+                )))
+            } catch (error: kotlinx.coroutines.CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Log.w("PlainstrideLiveCoach", "Persist guidance feedback failed type=${error.javaClass.simpleName}")
+            }
+        }
+    }
 
     private val mutableUi = MutableStateFlow(LiveCoachUiState())
     val ui: StateFlow<LiveCoachUiState> = mutableUi
@@ -209,6 +248,7 @@ class LiveCoachViewModel @Inject constructor(
         lastStatus = snapshot.status
         val prefs = preferences.value
         if (snapshot.status == RecordingStatus.IDLE) {
+            if (previousStatus != RecordingStatus.IDLE) mutableFeedback.value = LiveCoachFeedbackState()
             prepareSelection(launch, unitSystem, prefs)
         }
         if (!prefs.enabled) {
@@ -716,6 +756,12 @@ class LiveCoachViewModel @Inject constructor(
     }
 
     private suspend fun end(outcome: String) {
+        if (outcome == "completed") {
+            mutableFeedback.value = LiveCoachFeedbackState(report = WorkoutGuidanceReport(
+                spokenCueCount = spokenCount,
+                helpfulCueCount = policy.helpfulCueCount.coerceAtMost(spokenCount),
+            ))
+        }
         planRefreshJob?.cancel()
         prewarmJob?.cancel()
         val session = serverSession

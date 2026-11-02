@@ -410,7 +410,7 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 
 Android shared inbox/roster refresh emits `social_state_refresh_result` with only `source_type=foreground|push` and `result=success|failure`. It excludes notification content, relationship/account IDs, names, and exact counts.
 
-- iOS `workout_feedback_opened` records `source_type=finish_review` when the save-review Feedback entry opens the reusable editor. It includes no selections, workout identifiers, coaching text, or sensor values. Existing submission events are unchanged.
+- iOS and Android `workout_feedback_opened` record `source_type=finish_review` when the save-review Feedback entry opens the reusable editor. It includes no selections, workout identifiers, coaching text, or sensor values. Existing submission events are unchanged.
 
 ### Single recording entry
 
@@ -427,3 +427,5 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - `group_activity_recording_selection_changed`: `selection_type=joined|solo`, `entry_source=today|group_activity`. Records explicit next-recording selection or attaching an existing unlinked recording.
 - `group_activity_location_sharing_changed`: `selection_type=on|off`, `result=requested|success|failure`. Records the current user's location consent operation independently from recording linkage. Existing `group_run_join_attempted` / `group_run_joined` events retain their transport semantics.
 - Neither event includes account, event, recording, participant identifiers, titles, or coordinates.
+
+- Android post-run guidance feedback mirrors iOS `live_guidance_feedback_submitted`: bounded `selection_type=helpful|too_much|too_generic|bad_timing` and `cue_count_bucket`. Counts persist locally; analytics excludes coaching text and workout/activity identifiers.

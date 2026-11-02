@@ -185,6 +185,10 @@ fun RecordingRoute(
     unitSystem: MeasurementUnitSystem = MeasurementUnitSystem.metric,
     weightKilograms: Double? = null,
     sessionEffect: @Composable (RecordingSnapshot) -> Unit = {},
+    guidanceReport: WorkoutGuidanceReport = WorkoutGuidanceReport(),
+    selectedGuidanceFeedback: WorkoutGuidanceFeedback? = null,
+    onGuidanceFeedbackSelect: (WorkoutGuidanceFeedback) -> Unit = {},
+    onGuidanceFeedbackSubmit: () -> Unit = {},
     routeGuidanceContent: @Composable (RecordingSnapshot, FollowedRouteConfiguration, MeasurementUnitSystem, (Boolean) -> Unit) -> Unit = { _, _, _, _ -> },
     groupRun: SharedLiveRun? = null,
     groupRunJoining: Boolean = false,
@@ -609,6 +613,10 @@ fun RecordingRoute(
                 unitSystem = unitSystem,
                 weightKilograms = weightKilograms,
                 selected = ui.reflection,
+                guidanceReport = guidanceReport,
+                selectedGuidanceFeedback = selectedGuidanceFeedback,
+                onGuidanceFeedbackSelect = onGuidanceFeedbackSelect,
+                onFeedbackOpened = viewModel::trackWorkoutFeedbackOpened,
                 photoPaths = ui.photoPaths,
                 importedPhotoPaths = ui.importedPhotoPaths,
                 continuationCapacity = ui.continuationCapacity,
@@ -620,6 +628,7 @@ fun RecordingRoute(
                 onRemovePhotos = { paths -> paths.forEach { File(it).delete() }; viewModel.setPhotoPaths(ui.photoPaths - paths.toSet()); viewModel.trackPhotoRemoved() },
                 onReorderPhotos = { paths -> viewModel.setPhotoPaths(paths); viewModel.trackPhotoReordered() },
                 onSave = {
+                    onGuidanceFeedbackSubmit()
                     val reflection = ui.reflection
                     val review = RecordedActivityReview(snapshot, reflection, ui.continuationCapacity, ui.photoPaths, ui.importedPhotoPaths)
                     val needsLegacyStoragePermission = saveActivityPhotosToAlbum &&
@@ -1727,6 +1736,10 @@ private fun ReflectionScreen(
     unitSystem: MeasurementUnitSystem,
     weightKilograms: Double?,
     selected: ReflectionChoice?,
+    guidanceReport: WorkoutGuidanceReport,
+    selectedGuidanceFeedback: WorkoutGuidanceFeedback?,
+    onGuidanceFeedbackSelect: (WorkoutGuidanceFeedback) -> Unit,
+    onFeedbackOpened: () -> Unit,
     photoPaths: List<String>,
     importedPhotoPaths: Set<String>,
     continuationCapacity: ContinuationCapacity?,
@@ -1741,6 +1754,7 @@ private fun ReflectionScreen(
     saving: Boolean,
     onClose: () -> Unit,
 ) {
+    var showFeedback by rememberSaveable { mutableStateOf(false) }
     var selectedPhotos by remember(photoPaths) { mutableStateOf(emptySet<String>()) }
     var previewPhoto by remember { mutableStateOf<String?>(null) }
     val paceSecondsPerKm = snapshot.distanceMeters.takeIf { it > 0 }
@@ -1791,13 +1805,6 @@ private fun ReflectionScreen(
                     }
                 }
             }
-            snapshot.cadenceState?.summary()?.let { cadence ->
-                item {
-                    com.plainstride.outbound.core.designsystem.StepsPerMinuteChart(
-                        cadence, Modifier.fillMaxWidth().padding(20.dp),
-                    )
-                }
-            }
             item {
                 val shortSession = snapshot.elapsedSeconds <= 600
                 Card(
@@ -1812,35 +1819,14 @@ private fun ReflectionScreen(
                     }
                 }
             }
-            item {
-                Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(stringResource(R.string.recording_reflection_prompt), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ReflectionChoice.entries.forEach { choice ->
-                            val label = stringResource(when (choice) {
-                                ReflectionChoice.EASY -> R.string.recording_reflection_easy
-                                ReflectionChoice.ABOUT_RIGHT -> R.string.recording_reflection_about_right
-                                ReflectionChoice.TOO_HARD -> R.string.recording_reflection_too_hard
-                            })
-                            if (selected == choice) Button(onClick = { onSelect(choice) }, modifier = Modifier.weight(1f)) { Text(label) }
-                            else OutlinedButton(onClick = { onSelect(choice) }, modifier = Modifier.weight(1f)) { Text(label) }
-                        }
-                    }
-                    if (selected == ReflectionChoice.EASY) {
-                        Text(stringResource(R.string.recording_capacity_prompt), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ContinuationCapacity.entries.forEach { capacity ->
-                                val label = stringResource(when (capacity) {
-                                    ContinuationCapacity.NONE -> R.string.recording_capacity_none
-                                    ContinuationCapacity.TEN_MINUTES -> R.string.recording_capacity_ten_minutes
-                                    ContinuationCapacity.MUCH_LONGER -> R.string.recording_capacity_much_longer
-                                })
-                                if (continuationCapacity == capacity) Button(onClick = { onCapacitySelect(capacity) }, modifier = Modifier.weight(1f)) { Text(label) }
-                                else OutlinedButton(onClick = { onCapacitySelect(capacity) }, modifier = Modifier.weight(1f)) { Text(label) }
-                            }
-                        }
-                    }
-                    Text(stringResource(R.string.recording_reflection_optional), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (snapshot.saveEligibility == ActivitySaveEligibility.ELIGIBLE) {
+                item {
+                    WorkoutFeedbackEntryPoint(
+                        hasFeedback = selected != null || selectedGuidanceFeedback != null,
+                        enabled = !saving,
+                        onClick = { showFeedback = true; onFeedbackOpened() },
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                    )
                 }
             }
             item {
@@ -1910,12 +1896,31 @@ private fun ReflectionScreen(
                     }
                 } }
             }
+            snapshot.cadenceState?.summary()?.let { cadence ->
+                item {
+                    com.plainstride.outbound.core.designsystem.StepsPerMinuteChart(
+                        cadence, Modifier.fillMaxWidth().padding(20.dp),
+                    )
+                }
+            }
             item {
                 if (snapshot.saveEligibility == ActivitySaveEligibility.TOO_SHORT) {
                     Text(stringResource(R.string.recording_save_ineligible_explanation), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp))
                 }
             }
         }
+    }
+    if (showFeedback) {
+        WorkoutFeedbackSheet(
+            selected = selected,
+            continuationCapacity = continuationCapacity,
+            onSelect = onSelect,
+            onCapacitySelect = onCapacitySelect,
+            guidanceReport = guidanceReport,
+            selectedGuidanceFeedback = selectedGuidanceFeedback,
+            onGuidanceFeedbackSelect = onGuidanceFeedbackSelect,
+            onDismiss = { showFeedback = false },
+        )
     }
     previewPhoto?.let {
         Dialog(onDismissRequest = { previewPhoto = null }) {

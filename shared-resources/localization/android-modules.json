@@ -97,6 +97,30 @@
       "file": "strings.xml"
     },
     { "keyPrefix": "today", "androidPrefix": "today_", "resourceRoot": "android/feature/today/src/main/res", "file": "strings.xml" },
-    { "keyPrefix": "wear", "androidPrefix": "", "resourceRoot": "android/wear/src/main/res", "file": "strings.xml" }
+    { "keyPrefix": "wear", "androidPrefix": "", "resourceRoot": "android/wear/src/main/res", "file": "strings.xml" },
+    {
+      "keyPrefix": "workout_feedback",
+      "androidPrefix": "recording_feedback_",
+      "sources": [
+        {
+          "keyPrefix": "workout.feedback",
+          "androidPrefix": "recording_feedback_"
+        },
+        {
+          "keyPrefix": "common",
+          "androidPrefix": "recording_feedback_"
+        },
+        {
+          "keyPrefix": "summary.feedback",
+          "androidPrefix": "recording_effort_feedback_"
+        },
+        {
+          "keyPrefix": "guide.feedback",
+          "androidPrefix": "recording_guidance_feedback_"
+        }
+      ],
+      "resourceRoot": "android/feature/recording/src/main/res",
+      "file": "workout_feedback.xml"
+    }
   ]
 }

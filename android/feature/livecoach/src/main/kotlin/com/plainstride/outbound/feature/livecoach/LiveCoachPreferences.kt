@@ -32,3 +32,12 @@ interface LiveCoachPreferencesRepository {
     override suspend fun save(value: LiveCoachPreferences) { store.edit { it[Enabled] = value.enabled.toString(); it[Persona] = value.personaId; it[Voice] = value.voiceProfileId; it[Style] = value.scriptStyleId; it[Contract] = value.contract.name } }
     private companion object { val Enabled = stringPreferencesKey("live_coach_enabled_v1"); val Persona = stringPreferencesKey("live_coach_persona_v1"); val Voice = stringPreferencesKey("live_coach_voice_v1"); val Style = stringPreferencesKey("live_coach_style_v1"); val Contract = stringPreferencesKey("live_coach_contract_v1") }
 }
+
+/** Local aggregate feedback learning, matching iOS GuideCatalogStore feedback counts. */
+@Singleton
+class LiveCoachFeedbackStore @Inject constructor(private val store: DataStore<Preferences>) {
+    suspend fun record(selection: String) {
+        val key = androidx.datastore.preferences.core.intPreferencesKey("live_guidance_feedback_$selection")
+        store.edit { values -> values[key] = ((values[key] ?: 0).toLong() + 1).coerceAtMost(Int.MAX_VALUE.toLong()).toInt() }
+    }
+}
