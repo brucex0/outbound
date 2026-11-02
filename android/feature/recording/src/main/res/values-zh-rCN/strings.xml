@@ -101,4 +101,5 @@
     <string name="recording_moving_time">运动时间</string>
     <string name="recording_speed">速度</string>
     <string name="recording_elapsed_time">总用时</string>
+    <string name="recording_recenter">定位到当前位置</string>
 </resources>

@@ -663,9 +663,8 @@ fun RecordingRoute(
                 },
                 onFinish = viewModel::requestFinish,
                 finishEnabled=!ui.pendingMedia,
-                onListen = ::listenForCommand,
                 onOpenAssistant = onOpenAssistant,
-                voiceListening = voiceListening,
+                onRecenter = viewModel::trackMapRecentered,
                 onDashboardChanged = { expanded ->
                     viewModel.trackDashboardChanged(expanded)
                     if (expanded && snapshot.activityKind == ActivityKind.RUNNING) viewModel.trackCadenceExposure("running_cadence_live")
@@ -1074,10 +1073,9 @@ private fun LiveRecordingScreen(
     onResume: () -> Unit,
     onFinish: () -> Unit,
     finishEnabled:Boolean,
-    onListen: () -> Unit,
     onOpenAssistant: () -> Unit,
-    voiceListening: Boolean,
     onDashboardChanged: (Boolean) -> Unit,
+    onRecenter: () -> Unit,
     runSimulation: RunSimulationState?,
     onSimulationRate: (Int) -> Unit,
     onSimulationSpeed: (Double) -> Unit,
@@ -1086,6 +1084,7 @@ private fun LiveRecordingScreen(
     onStopActivityLiveMap: () -> Unit = {},
 ) {
     var focusedParticipant by remember { mutableStateOf<String?>(null) }
+    var recenterRequest by remember { mutableIntStateOf(0) }
     var dashboardExpanded by remember { mutableStateOf(false) }
     val energyKilocalories = WorkoutCalorieEstimator.liveEnergyKilocalories(
         activityType = snapshot.activityKind.toActivityType(),
@@ -1096,7 +1095,7 @@ private fun LiveRecordingScreen(
     )
     Box(Modifier.fillMaxSize().background(if (mode == RecordingSurfaceMode.CAMERA) Color.Black else MaterialTheme.colorScheme.surface)) {
         // Let the map own its gestures, as on iOS. Switch back using the surface button.
-        if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot, configuration, Modifier.fillMaxSize(), groupRun, focusedParticipant) { focusedParticipant = it }
+        if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot, configuration, Modifier.fillMaxSize(), groupRun, focusedParticipant, recenterRequest = recenterRequest) { focusedParticipant = it }
         else CameraSurface(
             photoPath, onPhotoCaptured, onTakePhoto, onPhotoPending,
             Modifier.fillMaxSize().pointerInput(mode) {
@@ -1109,16 +1108,6 @@ private fun LiveRecordingScreen(
         if (!dashboardExpanded) Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val controlColor = if (mode == RecordingSurfaceMode.CAMERA) Color.Black.copy(alpha = 0.52f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
             val controlContentColor = if (mode == RecordingSurfaceMode.CAMERA) Color.White else MaterialTheme.colorScheme.onSurface
-            Surface(
-                shape = CircleShape,
-                color = if (voiceListening) MaterialTheme.colorScheme.primary else controlColor,
-                contentColor = if (voiceListening) MaterialTheme.colorScheme.onPrimary else controlContentColor,
-                tonalElevation = 6.dp,
-            ) {
-                IconButton(onClick = onListen) {
-                    Icon(Icons.Default.Mic, contentDescription = stringResource(R.string.recording_voice_command))
-                }
-            }
             Surface(shape = CircleShape, color = controlColor, contentColor = controlContentColor, tonalElevation = 6.dp) {
                 IconButton(onClick = onOpenAssistant) {
                     Icon(Icons.Default.AutoAwesome, contentDescription = stringResource(R.string.recording_open_assistant))
@@ -1173,9 +1162,9 @@ private fun LiveRecordingScreen(
                 }
             }
         }
-        if (mode == RecordingSurfaceMode.MAP && focusedParticipant != null) {
-            Surface(Modifier.align(Alignment.TopEnd).padding(top = 12.dp, end = 64.dp), shape = CircleShape) {
-                IconButton(onClick = { focusedParticipant = null }) { Icon(Icons.Default.MyLocation, stringResource(R.string.recording_show_map)) }
+        if (mode == RecordingSurfaceMode.MAP && !dashboardExpanded) {
+            Surface(Modifier.align(Alignment.BottomEnd).padding(bottom = 240.dp, end = 16.dp), shape = CircleShape, tonalElevation = 6.dp) {
+                IconButton(onClick = { focusedParticipant = null; recenterRequest++; onRecenter() }) { Icon(Icons.Default.MyLocation, stringResource(R.string.recording_recenter)) }
             }
         }
         if (configuration.activityEventId == null && groupRun != null && !dashboardExpanded) {
@@ -1275,6 +1264,7 @@ private fun TrackMap(
     groupRun: SharedLiveRun? = null,
     focusedParticipant: String? = null,
     startLocation: MapCoordinate? = null,
+    recenterRequest: Int = 0,
     onFocus: (String?) -> Unit = {},
 ) {
     val recorded = snapshot.track.map { MapCoordinate(it.latitude, it.longitude) }
@@ -1294,6 +1284,7 @@ private fun TrackMap(
         },
         onAdditionalMarkerClick = { id -> onFocus(id.takeUnless { it == "live-runner" }) },
         followRunner = focusedParticipant == null,
+        recenterRequest = recenterRequest,
         recordedRoute = recorded,
         plannedRoute = planned,
         recordedRouteSegments = recordedSegments,

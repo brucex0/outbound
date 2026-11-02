@@ -158,3 +158,9 @@ Production analytics reuse the typed activity funnel in `docs/product-analytics.
 The live recording assistant reuses `DesignSystem/AssistantLauncherButton.swift`, including the fox mark, theme color, animation, and accessibility. Its top-trailing placement is specific to recording; its appearance is shared with the main navigation dock.
 
 The fullscreen recording surface owns the live assistant launcher. The outer RecordView launcher is limited to standalone setup, preventing overlapping setup and live launchers.
+
+## Android live map controls
+
+- Live recording exposes assistant and camera/map controls; it has no microphone or voice-input button.
+- The animated runner is the sole current-recording marker. Optional endpoint pins describe the fixed planned route, not the growing recorded track.
+- A location button above the bottom card recenters on the recording location (the simulated location during debug simulation) and resumes runner following after viewing another participant. Taps emit `activity_map_recentered` without coordinates or participant identifiers.

@@ -101,4 +101,5 @@
     <string name="recording_moving_time">Tiempo en movimiento</string>
     <string name="recording_speed">Velocidad</string>
     <string name="recording_elapsed_time">Tiempo total</string>
+    <string name="recording_recenter">Centrar en tu ubicación</string>
 </resources>

@@ -88,6 +88,7 @@ fun PlainstrideRouteMap(
     followBearingDegrees: Float? = null,
     followTiltDegrees: Float = 0f,
     followZoom: Float = 16f,
+    recenterRequest: Int = 0,
     onMapLoadedCallback: (() -> Unit)? = null,
     useSuppliedUserLocation: Boolean = false,
     suppliedUserLocation: android.location.Location? = null,
@@ -155,7 +156,7 @@ fun PlainstrideRouteMap(
             }
         }
     }
-    LaunchedEffect(followCoordinate, followBearingDegrees, followTiltDegrees, followZoom, followAnimationDurationMs, mapLoaded) {
+    LaunchedEffect(followCoordinate, followBearingDegrees, followTiltDegrees, followZoom, followAnimationDurationMs, mapLoaded, recenterRequest) {
         if (!mapLoaded) return@LaunchedEffect
         followCoordinate?.let { coordinate ->
             val current = camera.position
@@ -312,6 +313,7 @@ fun PlainstrideLiveRouteMap(
     bottomContentPadding: Dp = 0.dp,
     additionalMarkers: List<MapRouteMarker> = emptyList(),
     onAdditionalMarkerClick: ((String) -> Unit)? = null,
+    recenterRequest: Int = 0,
 ) {
     var mapReady by remember { mutableStateOf(false) }
     val bearing = remember(recordedRoute, rotateWithRunner) {
@@ -347,10 +349,15 @@ fun PlainstrideLiveRouteMap(
         showUserLocation = showUserLocation && !showRunnerMascot,
         preciseLocationGranted = showUserLocation && !showRunnerMascot,
         interactive = interactive,
-        showEndpointMarkers = showEndpointMarkers,
+        showEndpointMarkers = false,
         routeSegments = segments,
-        markers = runnerMarker + additionalMarkers,
-        onMarkerClick = onAdditionalMarkerClick,
+        markers = runnerMarker + additionalMarkers + if (showEndpointMarkers) buildList {
+            plannedRoute.firstOrNull()?.let { add(MapRouteMarker("planned-start", it, stringResource(R.string.route_start))) }
+            plannedRoute.lastOrNull()?.takeIf { plannedRoute.size > 1 }?.let { add(MapRouteMarker("planned-finish", it, stringResource(R.string.route_finish))) }
+        } else emptyList(),
+        onMarkerClick = { id ->
+            if (id == "live-runner" || additionalMarkers.any { it.id == id }) onAdditionalMarkerClick?.invoke(id)
+        },
         bottomContentPadding = bottomContentPadding,
         fitRouteOnChange = false,
         followCoordinate = runnerLocation.takeIf { followRunner },
@@ -358,6 +365,7 @@ fun PlainstrideLiveRouteMap(
         followBearingDegrees = bearing.takeIf { followRunner },
         followTiltDegrees = if (bearing != null) 45f else 0f,
         followZoom = zoom,
+        recenterRequest = recenterRequest,
         onMapLoadedCallback = { mapReady = true },
     )
 }
