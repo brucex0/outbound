@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="route_guidance_title">Route Guidance</string>
+    <string name="route_guidance_acquiring">Go to the route start to begin</string>
+    <string name="route_guidance_on_route">On route</string>
+    <string name="route_guidance_off_route">Off route</string>
+    <string name="route_guidance_wrong_way">Wrong way</string>
+    <string name="route_guidance_arrived">Route complete</string>
+    <string name="route_guidance_progress">%1$s %2$s remaining · %3$d%% complete</string>
+    <string name="route_guidance_km">km</string>
+    <string name="route_guidance_mi">mi</string>
+    <string name="route_directions_open_failed">Couldn’t open Maps. Try again.</string>
+</resources>

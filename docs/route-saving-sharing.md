@@ -88,6 +88,13 @@ Nearby search initially uses indexed start coordinates and a bounded latitude/lo
 - The shared `VirtualGuide` speech path gives sustained deviation and wrong-way alerts priority, waits for a quiet moment to announce rejoin, speaks arrival once, and reserves a normal coaching gap afterward.
 - Saving attaches local `FollowedRouteMetadata`. Community route IDs are sent only in the authenticated activity contract; imported-route associations stay local. The server records arrival-qualified community completion idempotently.
 
+## Android Live Guidance
+
+- The live map shows a Route Guidance card above the compact recording dashboard. It uses the existing on-device engine for acquiring, on-route, off-route, wrong-way, arrival, remaining distance, and progress. Accepted recorded fixes are replayed when the surface is restored, then consumed once; expanding the dashboard or switching to camera hides the card.
+- While acquiring, tapping the card opens Google Maps driving directions from the current location to the directed start endpoint. Reversed routes use the last canonical point. If Google Maps is absent, the directions URL opens through an available browser/handler. Recording remains active.
+- A failed handoff shows a temporary toast and safe diagnostics. Card presentation emits `feature_exposed` with `feature=route_guidance` and `source_type=live_map`. The shared `route_start_directions_opened` event contains only success/failure. Coordinates stay out of logs and analytics.
+- Manual checks: forward/reverse routes, no GPS yet, on-route/arrival informational states, map/camera and dashboard transitions, recovery, metric/imperial, all three locales, Google Maps installed/absent, and no URL handler. Build-only verification does not establish these device behaviors.
+
 ## Import Validation
 
 - Accept GPX track/route points and GeoJSON `LineString` or `MultiLineString` geometry. Prepared guidance remains one ordered route, so imported multi-line members are consumed in file order.

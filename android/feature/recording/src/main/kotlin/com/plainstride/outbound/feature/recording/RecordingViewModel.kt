@@ -537,6 +537,14 @@ class RecordingViewModel @Inject constructor(
         "feature_exposed", mapOf(AnalyticsProperty.Feature to feature),
     ))
 
+    fun trackRouteGuidanceDisplayed() = analytics.record(AnalyticsEvent(
+        "feature_exposed", mapOf(AnalyticsProperty.Feature to "route_guidance", AnalyticsProperty.SourceType to "live_map")
+    ))
+
+    fun trackRouteStartDirectionsOpened(opened: Boolean) = analytics.record(AnalyticsEvent(
+        "route_start_directions_opened", mapOf(AnalyticsProperty.Result to if (opened) "success" else "failure")
+    ))
+
     fun trackMapRecentered() = analytics.record(AnalyticsEvent(
         "activity_map_recentered", mapOf(AnalyticsProperty.SourceType to "live_recording"),
     ))

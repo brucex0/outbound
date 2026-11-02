@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="route_guidance_title">路线引导</string>
+    <string name="route_guidance_acquiring">前往路线起点以开始</string>
+    <string name="route_guidance_on_route">沿路线前进</string>
+    <string name="route_guidance_off_route">已偏离路线</string>
+    <string name="route_guidance_wrong_way">方向错误</string>
+    <string name="route_guidance_arrived">路线已完成</string>
+    <string name="route_guidance_progress">剩余 %1$s %2$s · 已完成 %3$d%%</string>
+    <string name="route_guidance_km">公里</string>
+    <string name="route_guidance_mi">英里</string>
+    <string name="route_directions_open_failed">无法打开地图，请重试。</string>
+</resources>

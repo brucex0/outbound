@@ -13,6 +13,7 @@ class RouteGuidanceEngine(points:List<GuidancePoint>,reverse:Boolean=false){
  private val cumulative=DoubleArray(route.size).also{out->for(i in 1 until route.size)out[i]=out[i-1]+distance(route[i-1],route[i])}
  private val total=cumulative.last().coerceAtLeast(1.0);private val index=SegmentIndex(route)
  private var acquired=false;private var prior=0.0;private var deviations=0;private var onRoute=0;private var wrongWay=0;private var wasOffRoute=false;private var arrived=false
+ val initialState:GuidanceState get()=state(GuidanceSignal.ACQUIRING,0.0,total,0.0)
  fun update(fix:GuidanceFix):GuidanceState{
   if(arrived)return state(GuidanceSignal.ARRIVED,1.0,0.0,distance(fix.point,route.last()))
   val match=index.nearest(fix.point,fix.accuracyM);val raw=(cumulative[match.segment]+match.fraction*distance(route[match.segment],route[match.segment+1]))/total

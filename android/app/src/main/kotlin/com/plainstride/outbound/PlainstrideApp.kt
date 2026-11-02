@@ -1270,6 +1270,10 @@ private fun SignedInApp(
             }
             composable(RECORDING_ROUTE) {
                 RecordingRoute(
+                    routeGuidanceContent = { snapshot, route, units, onDirectionsResult ->
+                        LaunchedEffect(snapshot.sessionId, route.id) { recordingViewModel.trackRouteGuidanceDisplayed() }
+                        com.plainstride.outbound.feature.community.LiveRouteGuidanceCard(snapshot, route, units, onDirectionsResult)
+                    },
                     viewModel = recordingViewModel,
                     accountId = requireNotNull(accountId) { "Authenticated session is missing its account identifier." },
                     launch = recordingLaunch,

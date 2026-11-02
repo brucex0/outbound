@@ -103,6 +103,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -184,6 +185,7 @@ fun RecordingRoute(
     unitSystem: MeasurementUnitSystem = MeasurementUnitSystem.metric,
     weightKilograms: Double? = null,
     sessionEffect: @Composable (RecordingSnapshot) -> Unit = {},
+    routeGuidanceContent: @Composable (RecordingSnapshot, FollowedRouteConfiguration, MeasurementUnitSystem, (Boolean) -> Unit) -> Unit = { _, _, _, _ -> },
     groupRun: SharedLiveRun? = null,
     groupRunJoining: Boolean = false,
     onToggleActivityLiveMap: () -> Unit = {},
@@ -675,6 +677,11 @@ fun RecordingRoute(
                 onSimulationClock = viewModel::toggleRunSimulationClock,
                 onSimulationAdvance = viewModel::advanceRunSimulation,
                 onStopActivityLiveMap = onStopActivityLiveMap,
+                routeGuidanceContent = {
+                    ui.launch.followedRoute?.let { route ->
+                        routeGuidanceContent(snapshot, route, unitSystem, viewModel::trackRouteStartDirectionsOpened)
+                    }
+                },
             )
             ui.countdown != null -> CountdownScreen(
                 startLocation = viewModel.recentStartLocation()?.let { MapCoordinate(it.latitude, it.longitude) },
@@ -1082,7 +1089,10 @@ private fun LiveRecordingScreen(
     onSimulationClock: () -> Unit,
     onSimulationAdvance: (Int) -> Unit,
     onStopActivityLiveMap: () -> Unit = {},
+    routeGuidanceContent: @Composable () -> Unit,
 ) {
+    val density = LocalDensity.current
+    var bottomControlsHeight by remember { mutableStateOf(128.dp) }
     var focusedParticipant by remember { mutableStateOf<String?>(null) }
     var recenterRequest by remember { mutableIntStateOf(0) }
     var dashboardExpanded by remember { mutableStateOf(false) }
@@ -1141,7 +1151,7 @@ private fun LiveRecordingScreen(
                 com.plainstride.outbound.core.model.activity.GroupActivityParticipant(com.plainstride.outbound.core.model.activity.GroupActivityPerson(it.userId, it.displayName))
             }
             if (attendees.isNotEmpty()) androidx.compose.foundation.lazy.LazyRow(
-                Modifier.align(Alignment.BottomCenter).padding(bottom = 180.dp, start = 16.dp, end = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Modifier.align(Alignment.BottomCenter).padding(bottom = bottomControlsHeight + 52.dp, start = 16.dp, end = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(attendees.size) { index ->
                     val person = attendees[index].person
@@ -1163,19 +1173,24 @@ private fun LiveRecordingScreen(
             }
         }
         if (mode == RecordingSurfaceMode.MAP && !dashboardExpanded) {
-            Surface(Modifier.align(Alignment.BottomEnd).padding(bottom = 240.dp, end = 16.dp), shape = CircleShape, tonalElevation = 6.dp) {
+            Surface(Modifier.align(Alignment.BottomEnd).padding(bottom = bottomControlsHeight + 112.dp, end = 16.dp), shape = CircleShape, tonalElevation = 6.dp) {
                 IconButton(onClick = { focusedParticipant = null; recenterRequest++; onRecenter() }) { Icon(Icons.Default.MyLocation, stringResource(R.string.recording_recenter)) }
             }
         }
         if (configuration.activityEventId == null && groupRun != null && !dashboardExpanded) {
             TextButton(onClick = onStopActivityLiveMap, modifier = Modifier.align(Alignment.TopCenter).padding(top = 62.dp)) { Text(stringResource(R.string.recording_group_stop_sharing)) }
         }
-        SessionDashboard(snapshot, configuration, unitSystem, energyKilocalories, dashboardExpanded, {
-            if (dashboardExpanded != it) {
-                dashboardExpanded = it
-                onDashboardChanged(it)
+        Column(Modifier.align(Alignment.BottomCenter).onSizeChanged { bottomControlsHeight = with(density) { it.height.toDp() } }) {
+            if (mode == RecordingSurfaceMode.MAP && !dashboardExpanded) {
+                Box(Modifier.padding(horizontal = 16.dp)) { routeGuidanceContent() }
             }
-        }, Modifier.align(Alignment.BottomCenter), onPause, onResume, onFinish, finishEnabled)
+            SessionDashboard(snapshot, configuration, unitSystem, energyKilocalories, dashboardExpanded, {
+                if (dashboardExpanded != it) {
+                    dashboardExpanded = it
+                    onDashboardChanged(it)
+                }
+            }, Modifier, onPause, onResume, onFinish, finishEnabled)
+        }
     }
 }
 
