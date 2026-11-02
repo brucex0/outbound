@@ -251,11 +251,15 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
     }
 
     private func play(cadence: Int) {
+        var operation = "configure_session"
         do {
             let session = AVAudioSession.sharedInstance()
             // Mix beneath external music; speech owns ducking and always preempts beats.
-            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            // Preserve the active mode: changing spokenAudio to default here can fail with !int.
+            try session.setCategory(.playback, options: [.mixWithOthers])
+            operation = "activate_session"
             try session.setActive(true)
+            operation = "create_player"
             let player = try AVAudioPlayer(data: Self.drumAudio(cadence: cadence))
             player.delegate = self
             player.volume = 0.7
@@ -269,7 +273,7 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             self.player = player
             let output = session.outputVolume == 0 ? "muted" : "nonzero"
             let route = session.currentRoute.outputs.first?.portType.rawValue ?? "none"
-            logger.notice("Cadence pacer started route=\(route, privacy: .public) output=\(output, privacy: .public) media_volume=\(session.outputVolume, privacy: .public) player_gain=\(player.volume, privacy: .public) sound=drum_v2")
+            logger.notice("Cadence pacer started route=\(route, privacy: .public) output=\(output, privacy: .public) media_volume=\(session.outputVolume, privacy: .public) player_gain=\(player.volume, privacy: .public) mode=\(session.mode.rawValue, privacy: .public) sound=drum_v2")
             reportState("playing")
             eventHandler?("started")
             finishTask = Task { @MainActor [weak self] in
@@ -279,7 +283,7 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             }
         } catch {
             let error = error as NSError
-            logger.error("Cadence pacer prepare failed: domain=\(error.domain, privacy: .public) code=\(error.code)")
+            logger.error("Cadence pacer prepare failed: operation=\(operation, privacy: .public) domain=\(error.domain, privacy: .public) code=\(error.code)")
             deactivateAudioSession()
             reportState("failed")
             eventHandler?("failed")
