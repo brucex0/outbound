@@ -21,6 +21,7 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
     private var player: AVAudioPlayer?
     private var isPlayingIntroduction = false
     private var isHandingOff = false
+    private var reportedGuidanceDeferral = false
     private var finishTask: Task<Void, Never>?
     private var observations: [(date: Date, cadence: Int)] = []
     private var lastPlaybackSeconds: Int?
@@ -32,6 +33,20 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
     private var interruptionObserver: NSObjectProtocol?
     private var routeObserver: NSObjectProtocol?
     private let logger = Logger(subsystem: "com.plainstride", category: "CadencePacer")
+
+    /// The introduction and drum share one short audio window.
+    var isPlaying: Bool { player != nil || isHandingOff }
+
+    /// Routine guidance waits; report at most once across an introduction and its drum.
+    func deferRoutineGuidanceIfPlaying() -> Bool {
+        guard isPlaying else { return false }
+        if !reportedGuidanceDeferral {
+            reportedGuidanceDeferral = true
+            logger.notice("Cadence pacer routine guidance deferred until segment ends")
+            eventHandler?("guidance_deferred")
+        }
+        return true
+    }
 
     override init() {
         super.init()
@@ -154,6 +169,7 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         let cadenceTarget = sorted[sorted.count / 2]
         // Do not retry an audio failure on every snapshot.
         lastPlaybackSeconds = snapshot.elapsedSeconds
+        if !isHandingOff { reportedGuidanceDeferral = false }
         if isHandingOff {
             isHandingOff = false
             play(cadence: cadenceTarget)
@@ -214,6 +230,8 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
     }
 
     private func handOffToBeats() {
+        // Keep routine guidance deferred while the completed intro releases its player.
+        isHandingOff = true
         let now = Date()
         guard let snapshot = lastSnapshot,
               (-1...5).contains(now.timeIntervalSince(snapshot.recordedAt)) else {
@@ -236,7 +254,6 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             reason = lastBlockReason
             allowed = lastAllowed
         }
-        isHandingOff = true
         ingest(snapshot, intent: lastIntent, allowed: allowed, blockReason: reason)
         isHandingOff = false
         if player == nil { finishSkippedHandoff() }
