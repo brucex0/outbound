@@ -902,7 +902,6 @@ struct ActivityDetailView: View {
 
     private var splitsSection: some View {
         let fastestPace = splits.map(\.pace).filter { $0 > 0 }.min() ?? 0
-        let slowestPace = splits.map(\.pace).filter { $0 > 0 }.max() ?? fastestPace
         let showElevation = splits.contains { $0.elevationChangeM != nil }
 
         return VStack(spacing: 0) {
@@ -963,8 +962,7 @@ struct ActivityDetailView: View {
                             unitSystem: unitSystem,
                             paceFraction: splitPaceFraction(
                                 pace: split.pace,
-                                fastestPace: fastestPace,
-                                slowestPace: slowestPace
+                                fastestPace: fastestPace
                             ),
                             showElevation: showElevation
                         )
@@ -2669,12 +2667,13 @@ private func maxElevationMeters(from points: [ActivityElevationProfilePoint]) ->
     points.map(\.altitudeMeters).max()
 }
 
-private func splitPaceFraction(pace: Double, fastestPace: Double, slowestPace: Double) -> Double {
-    guard pace > 0, fastestPace > 0, slowestPace > fastestPace else {
+private func splitPaceFraction(pace: Double, fastestPace: Double) -> Double {
+    guard pace.isFinite, fastestPace.isFinite, pace > 0, fastestPace > 0 else {
         return 0.85
     }
-    let normalized = (slowestPace - pace) / (slowestPace - fastestPace)
-    return 0.28 + (max(0, min(1, normalized)) * 0.72)
+    // Relative speed keeps near-equal paces near-equal instead of stretching
+    // a small difference across the entire chart width.
+    return max(0, min(1, fastestPace / pace))
 }
 
 private func signedElevationString(meters: Double, unitSystem: MeasurementUnitSystem) -> String {

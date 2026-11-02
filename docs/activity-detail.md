@@ -20,6 +20,7 @@ The current view is a Strava-style layered detail page:
 4. **Collapsible elevation profile** — terrain-corrected altitude over distance for newly recorded authenticated outdoor activities, with provider attribution; raw device altitude remains the offline/signed-out fallback, and the section is hidden when no per-point altitude exists
 5. **Collapsible splits** — per-km/mile breakdown
    Elevation and Splits use matching semantic section-header typography: semibold subheadline titles, secondary caption summaries, and caption2 chevrons.
+   Split bars on both platforms represent relative speed: `fastest pace / split pace`, with the fastest split at full width and a minimum visible width of 18 points/dp. Equal paces have equal full-width bars; small differences remain small. For 8:14, 7:46, and 8:28/km, widths are approximately 94%, 100%, and 92%. The previous per-activity min/max stretching is removed. Android stored and Social detail use one compact table with unit/pace headers, blue capsules, and an optional signed elevation column.
 6. **Route actions** — persistent navigation-bar Share action; visible owner-only `Save Route` top-bar action for activities with usable track geometry; GPX and GeoJSON exports remain implemented internally but are hidden from the current UI
 7. **Guide reflection** — full card with reflection title/body and optional nudge
 8. **Photos** — a permanent horizontal strip in the sheet selects GPS-tagged map pins; tapping the selected photo opens a full-screen lightbox with paging, caption, and counter
@@ -146,6 +147,8 @@ Android uses the same `terrain-v2` endpoint and version-refresh policy. Its Room
 ### Splits Computation
 
 Splits are computed on-the-fly by iterating route-point edges and allocating their distance and active time into exact km/mile buckets. Edges that end at a `startsNewSegment` point are pause/resume gaps, so their timestamp and apparent map distance are excluded. This keeps split totals aligned with the saved moving time instead of elapsed wall-clock time. No model changes are needed because `SavedRoutePoint` already has timestamps and segment boundaries.
+
+Split-chart verification (2026-11-01): Android debug APK and iOS simulator builds passed. The actual Swift and Kotlin scaling helpers returned identical values for reported paces, equal paces, a half-speed split, and zero/nonfinite input. Manual synthetic Android previews covered metric/imperial, optional elevation, equal bars, disclosure, and 1.3× text. No test suite was run; physical-device comparison and iOS visual inspection remain pending.
 
 ## Backend Impact
 
