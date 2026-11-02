@@ -17,13 +17,17 @@ enum CadencePacerBlockReason: String {
 final class CadencePacer: NSObject, AVAudioPlayerDelegate {
     var eventHandler: ((String) -> Void)?
     var introductionAudio: (() -> Data?)?
+    var currentBlockReason: (() -> CadencePacerBlockReason?)?
     private var player: AVAudioPlayer?
     private var isPlayingIntroduction = false
-    private var beatReadyAt: Date?
+    private var isHandingOff = false
     private var finishTask: Task<Void, Never>?
     private var observations: [(date: Date, cadence: Int)] = []
     private var lastPlaybackSeconds: Int?
     private var lastSnapshot: ActiveSessionSnapshot?
+    private var lastIntent: SessionIntent?
+    private var lastAllowed = false
+    private var lastBlockReason: CadencePacerBlockReason?
     private var lastReportedState: String?
     private var interruptionObserver: NSObjectProtocol?
     private var routeObserver: NSObjectProtocol?
@@ -61,10 +65,12 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         stop()
         observations = []
         lastSnapshot = nil
+        lastIntent = nil
+        lastAllowed = false
     }
 
     func stop(deactivateSession: Bool = true) {
-        beatReadyAt = nil
+        isHandingOff = false
         guard let player else { return }
         let result = isPlayingIntroduction ? "introduction_interrupted" : "interrupted"
         isPlayingIntroduction = false
@@ -88,6 +94,9 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             suspend()
         }
         lastSnapshot = snapshot
+        lastIntent = intent
+        lastAllowed = allowed
+        lastBlockReason = blockReason
         let evidenceNow = snapshot.isSimulated
             ? snapshot.startedAt?.addingTimeInterval(Double(snapshot.elapsedSeconds)) ?? snapshot.recordedAt
             : snapshot.recordedAt
@@ -124,15 +133,11 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         // One opportunity after settling into easy running, then at most every five minutes.
         // Never play over the next transition or during hard/recovery/race execution.
         guard player == nil else { return }
-        if let beatReadyAt, Date().timeIntervalSince(beatReadyAt) > 5 {
-            self.beatReadyAt = nil
-        }
         guard snapshot.elapsedSeconds >= 90, phase.elapsed >= 30, phase.remaining >= 35 else {
-            beatReadyAt = nil
             reportState("settling_or_transition")
             return
         }
-        guard beatReadyAt != nil
+        guard isHandingOff
                 || (lastPlaybackSeconds.map({ snapshot.elapsedSeconds - $0 >= 300 }) ?? true) else {
             reportState("cooldown")
             return
@@ -149,8 +154,8 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         let cadenceTarget = sorted[sorted.count / 2]
         // Do not retry an audio failure on every snapshot.
         lastPlaybackSeconds = snapshot.elapsedSeconds
-        if beatReadyAt != nil {
-            beatReadyAt = nil
+        if isHandingOff {
+            isHandingOff = false
             play(cadence: cadenceTarget)
         } else if let introduction = introductionAudio?() {
             playIntroduction(introduction)
@@ -190,10 +195,9 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             player.delegate = self
             guard player.play() else {
                 logger.error("Cadence pacer introduction failed: AVAudioPlayer.play returned false")
-                deactivateAudioSession()
-                beatReadyAt = Date()
                 reportState("introduction_failed")
                 eventHandler?("introduction_failed")
+                handOffToBeats()
                 return
             }
             self.player = player
@@ -203,11 +207,47 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         } catch {
             let error = error as NSError
             logger.error("Cadence pacer introduction failed: domain=\(error.domain, privacy: .public) code=\(error.code)")
-            deactivateAudioSession()
-            beatReadyAt = Date()
             reportState("introduction_failed")
             eventHandler?("introduction_failed")
+            handOffToBeats()
         }
+    }
+
+    private func handOffToBeats() {
+        let now = Date()
+        guard let snapshot = lastSnapshot,
+              (-1...5).contains(now.timeIntervalSince(snapshot.recordedAt)) else {
+            reportState("stale_snapshot")
+            finishSkippedHandoff()
+            return
+        }
+        if !snapshot.isSimulated,
+           snapshot.cadenceEvidenceTimestamp.map({ (-1...5).contains(now.timeIntervalSince($0)) }) != true {
+            reportState("cadence_unavailable")
+            finishSkippedHandoff()
+            return
+        }
+        let reason: CadencePacerBlockReason?
+        let allowed: Bool
+        if let currentBlockReason {
+            reason = currentBlockReason()
+            allowed = reason == nil
+        } else {
+            reason = lastBlockReason
+            allowed = lastAllowed
+        }
+        isHandingOff = true
+        ingest(snapshot, intent: lastIntent, allowed: allowed, blockReason: reason)
+        isHandingOff = false
+        if player == nil { finishSkippedHandoff() }
+    }
+
+    private func finishSkippedHandoff() {
+        isHandingOff = false
+        deactivateAudioSession()
+        let reason = lastReportedState ?? "unknown"
+        logger.notice("Cadence pacer handoff skipped reason=\(reason, privacy: .public)")
+        eventHandler?("handoff_skipped")
     }
 
     private func play(cadence: Int) {
@@ -222,6 +262,7 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             guard player.play() else {
                 logger.error("Cadence pacer start failed: AVAudioPlayer.play returned false")
                 deactivateAudioSession()
+                reportState("failed")
                 eventHandler?("failed")
                 return
             }
@@ -240,6 +281,7 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             let error = error as NSError
             logger.error("Cadence pacer prepare failed: domain=\(error.domain, privacy: .public) code=\(error.code)")
             deactivateAudioSession()
+            reportState("failed")
             eventHandler?("failed")
         }
     }
@@ -249,12 +291,11 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         self.player = nil
         if isPlayingIntroduction {
             isPlayingIntroduction = false
-            beatReadyAt = Date()
-            deactivateAudioSession()
             let result = flag ? "introduction_completed" : "introduction_failed"
             reportState(result)
             eventHandler?(result)
             if !flag { logger.error("Cadence pacer introduction ended unsuccessfully") }
+            handOffToBeats()
             return
         }
         finishTask?.cancel()
@@ -273,10 +314,9 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             player.stop()
             self.player = nil
             isPlayingIntroduction = false
-            deactivateAudioSession()
-            beatReadyAt = Date()
             reportState("introduction_failed")
             eventHandler?("introduction_failed")
+            handOffToBeats()
             return
         }
         stop()

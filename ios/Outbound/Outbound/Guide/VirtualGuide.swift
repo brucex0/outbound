@@ -139,6 +139,10 @@ final class VirtualGuide: NSObject, ObservableObject {
         cadencePacer.introductionAudio = { [weak self] in
             self?.provider.pacerIntroduction?.audioData
         }
+        cadencePacer.currentBlockReason = { [weak self] in
+            guard let self else { return .audioDisabled }
+            return self.pacerBlockReason
+        }
         cadencePacer.eventHandler = { [weak self] result in
             guard let self else { return }
             if result == "introduction_started" {
