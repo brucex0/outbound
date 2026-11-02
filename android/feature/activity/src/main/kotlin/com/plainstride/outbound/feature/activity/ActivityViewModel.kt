@@ -285,6 +285,11 @@ class ActivityViewModel @Inject constructor(
         ActivityExport(FileProvider.getUriForFile(context, "${context.packageName}.activityphotos", target), format.mimeType, target.name)
     }.getOrElse { messages.tryEmit(ActivityMessage.EXPORT_UNAVAILABLE); null }
 
+    fun trackSplitsViewed(count: Int) = analytics.record(AnalyticsEvent("activity_splits_viewed", mapOf(
+        AnalyticsProperty.SourceType to "me_activity_detail",
+        AnalyticsProperty.CountBucket to photoAnnotationCountBucket(count),
+    )))
+
     fun trackRoutePhotoPreview() = analytics.record(AnalyticsEvent("photo_previewed", mapOf(
         AnalyticsProperty.SourceType to "route_annotation",
     )))

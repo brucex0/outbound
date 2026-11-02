@@ -72,6 +72,8 @@ import com.plainstride.outbound.core.model.activity.ActivityTrackPoint
 import com.plainstride.outbound.core.model.activity.ActivityType
 import com.plainstride.outbound.core.model.activity.SavedActivity
 import com.plainstride.outbound.feature.activity.ActivityRoutePublishDialog
+import com.plainstride.outbound.feature.activity.ActivitySplitChart
+import com.plainstride.outbound.feature.activity.ActivitySplitDisplay
 import com.plainstride.outbound.feature.activity.ActivityExport
 import com.plainstride.outbound.feature.activity.ActivitySharePreview
 import com.plainstride.outbound.feature.activity.ActivitySharePreparation
@@ -1127,7 +1129,6 @@ private fun SocialActivityDetail(
     val activity = post.activity ?: return
     val route = remember(activity.route) { activity.route.routeCoordinates() }
     val splits = remember(activity.route, unitSystem) { activity.route.recordedSocialSplits(unitSystem) }
-    var showSplits by rememberSaveable(post.id) { mutableStateOf(false) }
     var selectedPhotoIndex by rememberSaveable(post.id) {
         mutableIntStateOf(photos.indexOfFirst { it.latitude != null && it.longitude != null })
     }
@@ -1424,35 +1425,12 @@ private fun SocialActivityDetail(
                     }
                 }
                 if (splits.isNotEmpty()) item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(
-                            onClick = {
-                                showSplits = !showSplits
-                                if (showSplits) trackSplitsViewed(splits.size)
-                            },
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                            contentPadding = PaddingValues(0.dp),
-                        ) {
-                            Text(stringResource(ActivityR.string.activity_splits_title), Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Start, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Icon(if (showSplits) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
-                        }
-                        if (showSplits) {
-                            val fastestPace = splits.minOfOrNull(RecordedSocialSplit::paceSecondsPerKm) ?: 0.0
-                            val slowestPace = splits.maxOfOrNull(RecordedSocialSplit::paceSecondsPerKm) ?: fastestPace
-                            splits.forEach { split ->
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    Text(stringResource(ActivityR.string.activity_split_number, split.number), Modifier.width(54.dp), style = MaterialTheme.typography.labelMedium)
-                                    Text(formatPace(split.paceSecondsPerKm, unitSystem), Modifier.width(68.dp), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                                    Box(Modifier.weight(1f).height(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant)) {
-                                        val paceRange = (slowestPace - fastestPace).coerceAtLeast(1.0)
-                                        val fraction = (1.0 - (split.paceSecondsPerKm - fastestPace) / paceRange).toFloat().coerceIn(.12f, 1f)
-                                        Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(MaterialTheme.colorScheme.primary))
-                                    }
-                                    Text(formatDistance(split.distanceMeters, unitSystem), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                        }
-                    }
+                    ActivitySplitChart(
+                        splits = splits.map { ActivitySplitDisplay(it.number, it.paceSecondsPerKm, it.elevationChangeM) },
+                        unitSystem = unitSystem,
+                        horizontalPadding = 0.dp,
+                        onViewed = trackSplitsViewed,
+                    )
                 }
                 item {
                     Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = .55f)) {

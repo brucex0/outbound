@@ -348,6 +348,7 @@ fun ActivityDetailDestination(
         onShareAction = { viewModel.trackShareAction(it) },
         onCalorieExposure = viewModel::trackCalorieExposure,
         onCadenceExposure = viewModel::trackCadenceExposure,
+        onSplitsViewed = viewModel::trackSplitsViewed,
         onPublishRoute = onPublishRoute,
         photoBytes = viewModel::photoBytes,
         modifier = modifier,
@@ -440,6 +441,7 @@ private fun ActivityDetailScreen(
     onShareAction: (String) -> Unit,
     onCalorieExposure: () -> Unit,
     onCadenceExposure: () -> Unit,
+    onSplitsViewed: (Int) -> Unit,
     onPublishRoute: suspend (String, String) -> Boolean,
     photoBytes: (String) -> ByteArray?,
     modifier: Modifier,
@@ -623,7 +625,10 @@ private fun ActivityDetailScreen(
                             )
                         }
                         if (elevationPoints.size > 1) item { ElevationProfileSection(elevationPoints, unitSystem, activity.elevationMetadata?.attributionText) }
-                        if (splits.isNotEmpty()) item { ActivitySplitsSection(splits, unitSystem) }
+                        if (splits.isNotEmpty()) item {
+                            ActivitySplitChart(splits.map { ActivitySplitDisplay(it.number, it.paceSecondsPerKilometer, it.elevationChangeMeters) },
+                                unitSystem, onViewed = onSplitsViewed)
+                        }
                         item { CompanionReflectionCard(activity) }
                         item {
                             TextButton(
@@ -889,48 +894,6 @@ private fun ElevationProfileChart(points: List<DetailElevationPoint>, modifier: 
         }
         drawPath(fill, fillColor)
         drawPath(line, lineColor, style = Stroke(width = 5f))
-    }
-}
-
-@Composable
-private fun ActivitySplitsSection(splits: List<DetailSplit>, unitSystem: MeasurementUnitSystem) {
-    var expanded by rememberSaveable { mutableStateOf(false) }
-    val fastest = splits.minOf { it.paceSecondsPerKilometer }
-    val slowest = splits.maxOf { it.paceSecondsPerKilometer }
-    val showElevation = splits.any { it.elevationChangeMeters != null }
-    Column(Modifier.fillMaxWidth().animateContentSize()) {
-        DisclosureHeader(
-            title = stringResource(R.string.activity_splits_title),
-            detail = "${splits.size} ${distanceUnit(unitSystem)}",
-            expanded = expanded,
-            toggle = { expanded = !expanded },
-        )
-        AnimatedVisibility(expanded, enter = fadeIn(), exit = fadeOut()) {
-            Column(Modifier.padding(bottom = 10.dp)) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    Text(distanceUnit(unitSystem).uppercase(), Modifier.width(34.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(stringResource(R.string.activity_splits_pace), Modifier.width(68.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.weight(1f))
-                    if (showElevation) Text(stringResource(R.string.activity_splits_elev), Modifier.width(48.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                splits.forEach { split ->
-                    SplitRow(split, fastest, slowest, showElevation, unitSystem)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SplitRow(split: DetailSplit, fastest: Double, slowest: Double, showElevation: Boolean, unitSystem: MeasurementUnitSystem) {
-    val fraction = splitPaceFraction(split.paceSecondsPerKilometer, fastest, slowest)
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(split.number.toString(), Modifier.width(34.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(formatPace(split.paceSecondsPerKilometer, unitSystem), Modifier.width(68.dp), style = MaterialTheme.typography.bodySmall, maxLines = 1)
-        Box(Modifier.weight(1f).height(18.dp), contentAlignment = Alignment.CenterStart) {
-            Box(Modifier.fillMaxWidth(fraction.toFloat()).height(14.dp).clip(CircleShape).background(Color(0xFF2F80ED)))
-        }
-        if (showElevation) Text(formatSignedElevation(split.elevationChangeMeters, unitSystem), Modifier.width(48.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -1288,12 +1251,6 @@ private fun paceColor(pace: Double): Color {
         val green = ((1.0 - (fraction - 0.5) / 0.5) * 255).toInt()
         Color(255, green, 0)
     }
-}
-
-private fun splitPaceFraction(pace: Double, fastest: Double, slowest: Double): Double {
-    if (pace <= 0 || fastest <= 0 || slowest <= fastest) return 0.85
-    val normalized = (slowest - pace) / (slowest - fastest)
-    return 0.28 + normalized.coerceIn(0.0, 1.0) * 0.72
 }
 
 private fun cumulativeDistances(points: List<ActivityTrackPoint>): List<Double> {
