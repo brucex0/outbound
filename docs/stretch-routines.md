@@ -6,7 +6,7 @@ Open when adding a stretch entry point, movement, template, or editor behavior. 
 
 - iOS: `StretchSessionView(launch: StretchLaunchContext(entryPoint: .today), voiceProfileID: selectedVoiceID, onExit: dismiss)` launches without a saved activity. Optional `activityType` selects sport defaults; `isIndoor` allows mat preference restoration. Its optional header closure receives the same exit callback used by the flow, preserving dismissal analytics.
 - Android: `StretchSessionRoute(launch = StretchLaunchContext(StretchEntryPoint.TODAY), sessionKey = stablePresentationKey, onDone = dismiss, onEvent = analyticsAdapter, fetchAudio = audioAdapter)` launches independently of recording. Keep the presentation key stable across recompositions. A host may supply a composable header.
-- `PostWorkoutStretchView` / `PostWorkoutStretchRoute` are post-save adapters that supply the celebration and Share/Done actions. iOS Today exposes a text Stretch action in its leading toolbar while recording is idle. Android has no Today button yet.
+- `PostWorkoutStretchView` / `PostWorkoutStretchRoute` are post-save adapters that supply the celebration and Share/Done actions. iOS Today exposes a text Stretch action in its leading toolbar while recording is idle. Android Today exposes the same text action while recording is idle, opening a separate stretch destination above Today.
 - Catalog, customization storage, editor, illustrations, player and audio do not require a saved activity. The Android implementation remains in the recording library module; Today can be wired at the app composition boundary without a dependency from Today to recording.
 - Never instantiate guide settings inside the stretch view. Pass the selected voice from the host. Android's existing audio adapter uses its configured guide voice; a new surface must use the same adapter contract.
 
@@ -19,6 +19,15 @@ Open when adding a stretch entry point, movement, template, or editor behavior. 
 - Voice/tick mute and transition sound/haptics preferences persist across entry points. Setup, transition/audio gating, skipping, background pause and held-time accounting still belong to the existing timer/narrator.
 - The editor uses compact rows with duration menus, replacement/removal menus and native reorder mode; accessible move up/down actions remain available. A visual grid serves Add/Replace, with the existing filters and validation. Only the toolbar saves.
 - UI copy is in `StretchUI.xcstrings` (EN/ZH/ES), separate from the generated content catalog.
+
+## Android Screen Layout
+
+- Today opens `AppDetailRoutes.Stretch` with bounded `source=today`; the app composition boundary supplies the existing recording audio/analytics adapters. The Today module has no dependency on recording. Toolbar close and system Back return to the actual caller, without starting or saving an activity.
+- Post-save retains celebration/Share/Done with a compact recommendation and fixed Start button. Change routine opens details; close/system Back from those details returns to celebration.
+- Details show one row per posture with explicit per-side durations; routine selection, instructions and options are separate bottom sheets. The player prioritizes large proportional vector artwork, side, phase, timer, progress, essential support requirements, safety cue and pause/skip controls. Dynamic warm-ups retain the Move gently cue.
+- Opening player instructions/options pauses audio and timing, clears keep-screen-on, and requires explicit Resume. Voice/tick mute and transition feedback persist locally in `stretch_player_options_v1` across entry points; they are not account configuration values or synced preferences.
+- Compact editor rows expose duration and action menus. Move up/down actions reorder; Add/Replace uses an adaptive illustration grid and existing area/requirement/mode filters. Save remains a single toolbar action; cancel/undo/reset, validation and account-scoped storage remain intact.
+- UI resource additions live in dedicated `stretch_ui.xml` files in English, Simplified Chinese and Spanish, outside generated content files. No schema reset or migration is needed.
 
 ## Content And Generation
 
@@ -96,3 +105,10 @@ Open when adding a stretch entry point, movement, template, or editor behavior. 
 - Remaining-artwork audit: reused pack IDs 2, 5, 11–15 for bent-knee calves, standing hamstrings, supported lat, upper back, cross-body shoulder, triceps and wall chest. Generated exact-instruction chest opener (77) and wall side stretch (78). All 40 app movements now have vector assets; movement instructions and timed sequences are unchanged.
 
 - Final artwork follow-up (2026-10-25): iOS Simulator/device builds and Android Debug build passed. Upper-body routine was visually checked in the simulator with all four orange illustrations. Final signed app installed successfully on both available physical iPhones (Bruce main and Rina’s iPhone). No tests run; full on-device playback and audio remain unverified.
+
+### Android Layout Verification (2026-11-01)
+
+- Debug APK assembly and release Kotlin compilation passed; no test suite run. `git diff --check` and EN/ZH/ES UI resource coverage were checked.
+- Read-only Pixel 10 API 37.1 emulator, guest configuration, temporary local preview with no account, audio fetch or activity creation: rendered the real standalone routine details with orange vector thumbnails, explicit per-side durations, customization/selection actions, safety text and fixed Start button. Temporary preview files were removed before final assembly and are not shipped.
+- Source comparison preserves the preparation/transition/hold loop, narration gating, final ticks, skip/held-time accounting, completion and lifecycle pause, audio cache and illustration fit/mirroring. Synced customizations and warm-up filtering remain in place.
+- Not manually verified: authenticated Today navigation/Back, post-save Share/Done handoff, editor interactions and persistence, player controls/sheets/completion, audio/haptics/cache/offline behavior, larger text/TalkBack, Chinese/Spanish layouts and account switching. Native emulator control was unavailable through the UI tooling; render/build checks are not end-to-end acceptance.

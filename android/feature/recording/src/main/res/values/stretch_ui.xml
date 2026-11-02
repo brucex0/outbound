@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="stretch_ui_change">Change routine</string>
+  <string name="stretch_ui_routines">Stretch routines</string>
+  <string name="stretch_ui_options">Options</string>
+  <string name="stretch_ui_movements">Movements</string>
+  <string name="stretch_ui_instructions">Instructions</string>
+  <string name="stretch_ui_each_side">each side</string>
+  <string name="stretch_ui_step">%1$d / %2$d</string>
+  <string name="stretch_ui_posture_actions">Actions for %1$s</string>
+</resources>

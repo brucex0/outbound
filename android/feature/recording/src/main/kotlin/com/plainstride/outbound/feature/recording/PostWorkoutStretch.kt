@@ -5,36 +5,20 @@ import com.plainstride.outbound.core.data.AccountConfigurationStore
 import com.plainstride.outbound.core.data.AccountConfigurationValue
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -82,6 +66,7 @@ fun PostWorkoutStretchRoute(
 }
 
 /** Reusable standalone stretch flow; Today supplies only launch context and audio/analytics adapters. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StretchSessionRoute(
     launch: StretchLaunchContext = StretchLaunchContext(),
@@ -118,13 +103,16 @@ fun StretchSessionRoute(
     var complete by remember { mutableStateOf(false) }
     var confirmEnd by remember { mutableStateOf(false) }
     var phase by remember { mutableStateOf(StretchPhase.SETUP) }
-    var speaks by remember { mutableStateOf(true) }
-    var feedback by remember { mutableStateOf(false) }
-    var preview by remember { mutableStateOf(false) }
+    val playerPreferences = remember(context) { context.getSharedPreferences("stretch_player_options_v1", android.content.Context.MODE_PRIVATE) }
+    var speaks by remember { mutableStateOf(playerPreferences.getBoolean("voice", true)) }
+    var feedback by remember { mutableStateOf(playerPreferences.getBoolean("feedback", false)) }
+    var showingDetails by remember { mutableStateOf(false) }
+    var showingLibrary by remember { mutableStateOf(false) }
+    var showingOptions by remember { mutableStateOf(false) }
+    var instruction by remember { mutableStateOf<StretchMovement?>(null) }
     var skipped by remember { mutableIntStateOf(0) }
     var stepHeld by remember { mutableIntStateOf(0) }
     var totalHeld by remember { mutableIntStateOf(0) }
-    var moreRoutines by remember { mutableStateOf(!initialRoutine.isStanding) }
     LaunchedEffect(configurationRevision) {
         if (!chosen && !editing) {
             routines = StretchCatalog.routines(context, kind, launch.entryPoint)
@@ -224,72 +212,66 @@ fun StretchSessionRoute(
         emit("post_workout_stretch_offered", initialRoutine.id, null, null)
     }
 
-    BackHandler {
-        if (complete) {
-            finish(null)
-        } else if (running) {
-            confirmEnd = true
-        } else {
-            finish(if (chosen) "ended_early" else "not_started")
+    fun pauseForSheet() {
+        running = false
+        audio.stop()
+        view.keepScreenOn = false
+    }
+    fun closeScreen() {
+        when {
+            complete -> finish(null)
+            running -> confirmEnd = true
+            chosen -> finish("ended_early")
+            launch.entryPoint == StretchEntryPoint.POST_SAVE && showingDetails -> showingDetails = false
+            else -> finish("not_started")
         }
     }
+    fun showInstructions(step: StretchMovement) {
+        if (chosen) pauseForSheet()
+        instruction = step
+        emit("stretch_interface_used", selectedRoutine.id, "instructions_opened", null)
+    }
+    BackHandler(onBack = ::closeScreen)
 
-    Column(
-        modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp).then(if (chosen && !complete) Modifier.verticalScroll(rememberScrollState()) else Modifier),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        if (!chosen) {
-            Column(
-                modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(vertical = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                header { finish("not_started") }
-                if (launch.entryPoint != StretchEntryPoint.POST_SAVE) TextButton(onClick = { finish("not_started") }) { Text(stringResource(R.string.stretch_done)) }
-                Text(stringResource(if (launch.entryPoint == StretchEntryPoint.POST_SAVE) R.string.stretch_offer_title else R.string.stretch_catalog_ui_choose), style = MaterialTheme.typography.headlineSmall)
-                if (launch.entryPoint == StretchEntryPoint.POST_SAVE) Text(stringResource(R.string.stretch_offer_body))
-                Text(stringResource(R.string.recording_post_save_program_title), style = MaterialTheme.typography.titleMedium)
-
-                if (routines.none { it.id == selectedRoutine.id }) { StretchRoutineOption(selectedRoutine, true) {} }
-                routines.filter { it.isStanding }.forEach { routine ->
-                    StretchRoutineOption(routine, selectedRoutine.id == routine.id) {
-                        didChooseRoutine = true
-                        selectedRoutine = routine
-                        movementIndex = 0
-                        emit("post_workout_stretch_program_selected", routine.id, null, null)
-                    }
-                }
-                TextButton(onClick = { moreRoutines = !moreRoutines }) { Text(stringResource(R.string.stretch_more_routines)) }
-                if (moreRoutines) routines.filterNot { it.isStanding }.forEach { routine ->
-                    StretchRoutineOption(routine, selectedRoutine.id == routine.id) {
-                        didChooseRoutine = true
-                        selectedRoutine = routine
-                        movementIndex = 0
-                        emit("post_workout_stretch_program_selected", routine.id, null, null)
-                    }
-                }
-
-                TextButton(onClick = { didChooseRoutine = true; editing = true; emit("stretch_routine_edited", selectedRoutine.id, "opened", null) }) { Text(stringResource(R.string.stretch_catalog_ui_customize)) }
-                Text("≈ ${selectedRoutine.totalSeconds / 60}:${(selectedRoutine.totalSeconds % 60).toString().padStart(2, '0')} · ${selectedRoutine.requirements(context)}")
-                TextButton(onClick = { preview = !preview }) { Text(stringResource(R.string.stretch_preview)) }
-                if (preview) selectedRoutine.movements.forEach { step ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        StretchIllustration(step.id, Modifier.size(56.dp))
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(stringResource(step.title) + " · " + (step.side?.let { stringResource(it) } ?: ""))
-                            Text(stringResource(step.instruction), style = MaterialTheme.typography.bodySmall)
+    Surface(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().safeDrawingPadding(), horizontalAlignment = Alignment.CenterHorizontally) {
+            if (!complete && (chosen || launch.entryPoint != StretchEntryPoint.POST_SAVE || showingDetails)) {
+                StretchScreenHeader(
+                    title = if (chosen) stringResource(R.string.stretch_ui_step, movementIndex + 1, selectedRoutine.movements.size) else stringResource(selectedRoutine.title),
+                    onClose = ::closeScreen,
+                    onOptions = {
+                        if (chosen) pauseForSheet()
+                        showingOptions = true
+                        emit("stretch_interface_used", selectedRoutine.id, "options_opened", null)
+                    },
+                )
+            }
+            if (!chosen) {
+                Column(
+                    Modifier.weight(1f).widthIn(max = 560.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                ) {
+                    if (launch.entryPoint == StretchEntryPoint.POST_SAVE && !showingDetails) {
+                        header { finish("not_started") }
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.07f)), shape = RoundedCornerShape(24.dp)) {
+                            Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text(stringResource(R.string.stretch_offer_title), style = MaterialTheme.typography.headlineSmall)
+                                Text(stringResource(selectedRoutine.title), style = MaterialTheme.typography.titleMedium)
+                                Text("≈ ${stretchClock(selectedRoutine.totalSeconds)} · ${selectedRoutine.requirements(context)}", style = MaterialTheme.typography.bodyMedium)
+                                TextButton(onClick = { showingDetails = true }) { Text(stringResource(R.string.stretch_ui_change)) }
+                            }
                         }
+                    } else {
+                        StretchRoutineDetails(selectedRoutine,
+                            onChange = { showingLibrary = true; emit("stretch_interface_used", selectedRoutine.id, "routines_opened", null) },
+                            onEdit = { didChooseRoutine = true; editing = true; emit("stretch_routine_edited", selectedRoutine.id, "opened", null) },
+                            onInstructions = ::showInstructions,
+                        )
                     }
+                    Text(stringResource(R.string.stretch_disclaimer), Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                 }
-                StretchSettingToggle(stringResource(R.string.stretch_voice), speaks) { speaks = it }
-                StretchSettingToggle(stringResource(R.string.stretch_feedback), feedback) { feedback = it }
-                Button(
-                    onClick = {
+                Surface(shadowElevation = 3.dp) {
+                    Button(onClick = {
                         secondsLeft = 3
                         phase = StretchPhase.SETUP
                         AccountConfigurationStore.set("stretch/last", AccountConfigurationValue(selection = selectedRoutine.preferenceId))
@@ -298,66 +280,94 @@ fun StretchSessionRoute(
                         running = true
                         view.keepScreenOn = true
                         emit("post_workout_stretch_started", selectedRoutine.id, null, null)
-                    },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                ) {
-                    Text(stringResource(R.string.stretch_catalog_ui_start))
+                    }, modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp).widthIn(max = 512.dp).fillMaxWidth().heightIn(min = 52.dp)) {
+                        Text(stringResource(R.string.stretch_catalog_ui_start))
+                    }
                 }
-
-                Text(stringResource(R.string.stretch_disclaimer), style = MaterialTheme.typography.bodySmall)
-            }
-        } else if (complete) {
-            Spacer(Modifier.weight(1f))
-            Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(72.dp), tint = MaterialTheme.colorScheme.primary)
-            Text(stringResource(R.string.stretch_complete_title), style = MaterialTheme.typography.headlineMedium)
-            Button(onClick = { finish(null) }) { Text(stringResource(R.string.stretch_done)) }
-            Spacer(Modifier.weight(1f))
-        } else {
-            Spacer(Modifier.weight(1f))
-            StretchIllustration(movement.id, Modifier.size(150.dp))
-            if (phase != StretchPhase.HOLD) Text(stringResource(if (phase == StretchPhase.TRANSITION) R.string.stretch_transition else R.string.stretch_get_ready))
-            Text(stringResource(movement.title), style = MaterialTheme.typography.headlineMedium)
-            movement.side?.let { Text(stringResource(it), style = MaterialTheme.typography.titleMedium) }
-            Text(stringResource(if (selectedRoutine.isWarmup) R.string.stretch_catalog_ui_move else R.string.stretch_catalog_ui_hold))
-            Text(stringResource(movement.instruction))
-            Text(
-                text = "${secondsLeft / 60}:${(secondsLeft % 60).toString().padStart(2, '0')}",
-                style = MaterialTheme.typography.displayMedium,
-            )
-            LinearProgressIndicator(
-                progress = { (movementIndex + if (phase == StretchPhase.HOLD) 1f - secondsLeft.toFloat() / movement.seconds else 0f) / selectedRoutine.movements.size },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Text(stringResource(R.string.stretch_safety))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = {
-                    audio.stop()
-                    running = !running
-                    view.keepScreenOn = running
-                }) {
-                    Text(stringResource(if (running) R.string.stretch_pause else R.string.stretch_resume))
+            } else if (complete) {
+                Spacer(Modifier.weight(1f))
+                Icon(Icons.Default.CheckCircle, null, Modifier.size(72.dp), tint = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.stretch_complete_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(20.dp))
+                Button(onClick = { finish(null) }) { Text(stringResource(R.string.stretch_done)) }
+                Spacer(Modifier.weight(1f))
+            } else {
+                BoxWithConstraints(Modifier.weight(1f).widthIn(max = 560.dp).fillMaxWidth()) {
+                    val illustrationHeight = (maxHeight * 0.43f).coerceIn(180.dp, 320.dp)
+                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 28.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        StretchIllustration(movement.id, Modifier.fillMaxWidth().height(illustrationHeight).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f), RoundedCornerShape(32.dp)).padding(12.dp))
+                        if (phase != StretchPhase.HOLD) Text(stringResource(if (phase == StretchPhase.TRANSITION) R.string.stretch_transition else R.string.stretch_get_ready), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(movement.title), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+                        movement.side?.let { Text(stringResource(it), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary) }
+                        if (selectedRoutine.isWarmup) Text(stringResource(R.string.stretch_catalog_ui_move), style = MaterialTheme.typography.labelLarge)
+                        Text(stretchClock(secondsLeft), style = MaterialTheme.typography.displayLarge, fontWeight = FontWeight.SemiBold)
+                        LinearProgressIndicator(progress = { (movementIndex + if (phase == StretchPhase.HOLD) 1f - secondsLeft.toFloat() / movement.seconds else 0f) / selectedRoutine.movements.size }, modifier = Modifier.fillMaxWidth())
+                        val requirement = selectedRoutine.copy(entries = listOf(selectedRoutine.entries.first { movement.id.startsWith(it.movementID + "_") })).requirements(context)
+                        if (requirement != stringResource(R.string.stretch_catalog_ui_none)) Text(requirement, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
+                        Text(stringResource(R.string.stretch_safety), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                    }
                 }
-                OutlinedButton(onClick = {
-                    audio.stop()
-                    if (phase != StretchPhase.HOLD) {
-                        phase = StretchPhase.HOLD
-                        secondsLeft = movement.seconds
-                    } else advance(true)
-                }) {
-                    Text(stringResource(if (phase != StretchPhase.HOLD) R.string.stretch_start_now else R.string.stretch_next))
+                Column(Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (movementIndex < selectedRoutine.movements.lastIndex) {
+                        val next = selectedRoutine.movements[movementIndex + 1]
+                        Text(stringResource(R.string.stretch_up_next) + ": " + stringResource(next.title) + " · " + (next.side?.let { stringResource(it) } ?: ""), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { showInstructions(movement) }) { Icon(Icons.Default.Info, stringResource(R.string.stretch_ui_instructions)) }
+                        FilledIconButton(onClick = { audio.stop(); running = !running; view.keepScreenOn = running }, modifier = Modifier.size(76.dp), shape = CircleShape) {
+                            Icon(if (running) Icons.Default.Pause else Icons.Default.PlayArrow, stringResource(if (running) R.string.stretch_pause else R.string.stretch_resume), Modifier.size(32.dp))
+                        }
+                        IconButton(onClick = {
+                            audio.stop()
+                            if (phase != StretchPhase.HOLD) { phase = StretchPhase.HOLD; secondsLeft = movement.seconds } else advance(true)
+                        }) { Icon(Icons.Default.SkipNext, stringResource(if (phase != StretchPhase.HOLD) R.string.stretch_start_now else R.string.stretch_next)) }
+                    }
                 }
             }
-            if (movementIndex < selectedRoutine.movements.lastIndex) {
-                val next = selectedRoutine.movements[movementIndex + 1]
-                Text(stringResource(R.string.stretch_up_next) + ": " + stringResource(next.title) + " · " + (next.side?.let { stringResource(it) } ?: ""))
-            }
-            StretchSettingToggle(stringResource(R.string.stretch_voice), speaks) { speaks = it }
-            TextButton(onClick = { if (running) confirmEnd = true else finish("ended_early") }) {
-                Text(stringResource(R.string.stretch_end))
-            }
-            Spacer(Modifier.weight(1f))
         }
     }
+
+    if (showingLibrary) {
+        StretchSheet(stringResource(R.string.stretch_ui_routines), { showingLibrary = false }) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                val choices = if (routines.none { it.id == selectedRoutine.id }) listOf(selectedRoutine) + routines else routines
+                choices.forEach { routine ->
+                    StretchRoutineOption(routine, selectedRoutine.id == routine.id) {
+                        if (selectedRoutine.id != routine.id) {
+                            didChooseRoutine = true
+                            selectedRoutine = routine
+                            movementIndex = 0
+                            emit("post_workout_stretch_program_selected", routine.id, null, null)
+                        }
+                        showingLibrary = false
+                    }
+                }
+            }
+        }
+    }
+    if (showingOptions) {
+        StretchSheet(stringResource(R.string.stretch_ui_options), { showingOptions = false }) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                StretchSettingToggle(stringResource(R.string.stretch_voice), speaks) {
+                    speaks = it
+                    playerPreferences.edit().putBoolean("voice", it).apply()
+                    emit("stretch_interface_used", selectedRoutine.id, if (it) "voice_enabled" else "voice_disabled", null)
+                }
+                StretchSettingToggle(stringResource(R.string.stretch_feedback), feedback) {
+                    feedback = it
+                    playerPreferences.edit().putBoolean("feedback", it).apply()
+                    emit("stretch_interface_used", selectedRoutine.id, if (it) "feedback_enabled" else "feedback_disabled", null)
+                }
+            }
+        }
+    }
+    instruction?.let { step -> StretchSheet(stringResource(R.string.stretch_ui_instructions), { instruction = null }) {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            StretchIllustration(step.id, Modifier.fillMaxWidth().height(260.dp))
+            Text(stringResource(step.title), style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(step.instruction))
+            Text(stringResource(R.string.stretch_safety), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    } }
 
     if (editing) {
         StretchRoutineEditor(selectedRoutine, onDismiss = { editing = false }, onAction = { action -> emit("stretch_routine_edited", selectedRoutine.id, action, null) }) { entries ->
@@ -366,7 +376,6 @@ fun StretchSessionRoute(
                 routines = StretchCatalog.routines(context, kind, launch.entryPoint)
                 selectedRoutine = routines.first { it.preferenceId == selectedRoutine.preferenceId }
                 movementIndex = 0
-                moreRoutines = !selectedRoutine.isStanding
             }
             saved
         }
@@ -400,6 +409,65 @@ private fun StretchSettingToggle(label: String, checked: Boolean, onCheckedChang
     ) {
         androidx.compose.material3.Switch(checked = checked, onCheckedChange = null)
         Text(label, modifier = Modifier.weight(1f))
+    }
+}
+
+internal fun stretchClock(seconds: Int): String = String.format(java.util.Locale.getDefault(), "%d:%02d", seconds / 60, seconds % 60)
+
+@Composable
+private fun StretchScreenHeader(title: String, onClose: () -> Unit, onOptions: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onClose) { Icon(Icons.Default.Close, stringResource(R.string.stretch_done)) }
+        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+        IconButton(onClick = onOptions) { Icon(Icons.Default.MoreHoriz, stringResource(R.string.stretch_ui_options)) }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StretchSheet(title: String, onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(title, Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleLarge)
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.stretch_done)) }
+            }
+            content()
+        }
+    }
+}
+
+@Composable
+private fun StretchRoutineDetails(routine: StretchRoutine, onChange: () -> Unit, onEdit: () -> Unit, onInstructions: (StretchMovement) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("≈ ${stretchClock(routine.totalSeconds)}", style = MaterialTheme.typography.headlineSmall)
+            Text(routine.requirements(context), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (routine.customized) Text(stringResource(R.string.stretch_catalog_ui_your_version), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+        }
+        TextButton(onClick = onChange) { Text(stringResource(R.string.stretch_ui_change)) }
+    }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.stretch_ui_movements), Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+        TextButton(onClick = onEdit) { Text(stringResource(R.string.stretch_catalog_ui_customize)) }
+    }
+    Column {
+        routine.entries.forEachIndexed { index, entry ->
+            val definition = StretchCatalog.definition(entry.movementID) ?: return@forEachIndexed
+            val step = routine.movements.first { it.id.startsWith(entry.movementID + "_") }
+            Surface(onClick = { onInstructions(step) }) {
+                Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    StretchIllustration(step.id, Modifier.size(72.dp, 80.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f), RoundedCornerShape(16.dp)).padding(4.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(stringResource(definition.title), style = MaterialTheme.typography.titleSmall)
+                        Text(stretchClock(entry.seconds) + if (definition.bilateral) " · " + stringResource(R.string.stretch_ui_each_side) else "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Icon(Icons.Default.Info, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (index != routine.entries.lastIndex) HorizontalDivider()
+        }
     }
 }
 

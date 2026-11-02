@@ -183,6 +183,7 @@ fun TodayRoute(
     onOpenLiveTrack: () -> Unit,
     cheerRecipientsSelected: Boolean = false,
     onOpenInbox: () -> Unit,
+    onOpenStretch: () -> Unit,
     onFindRoute: () -> Unit,
     selectedRoute: TodayRouteSelection? = null,
     onRemoveRoute: () -> Unit = {},
@@ -259,6 +260,7 @@ fun TodayRoute(
         onOpenLiveTrack = onOpenLiveTrack,
         cheerRecipientsSelected = cheerRecipientsSelected,
         onOpenInbox = onOpenInbox,
+        onOpenStretch = onOpenStretch,
         onFindRoute = onFindRoute,
         selectedRoute = selectedRoute,
         onRemoveRoute = onRemoveRoute,
@@ -326,6 +328,7 @@ fun TodayScreen(
     onOpenLiveTrack: () -> Unit = {},
     cheerRecipientsSelected: Boolean = false,
     onOpenInbox: () -> Unit = {},
+    onOpenStretch: () -> Unit = {},
     onFindRoute: () -> Unit = {},
     selectedRoute: TodayRouteSelection? = null,
     onRemoveRoute: () -> Unit = {},
@@ -457,6 +460,11 @@ fun TodayScreen(
                 focusOnUser = true,
                 bottomContentPadding = mapOverlayBottomPadding,
             )
+            if (!state.activeSession) {
+                Surface(Modifier.align(Alignment.TopStart).padding(16.dp), shape = CircleShape, tonalElevation = 3.dp) {
+                    TextButton(onClick = onOpenStretch) { Text(stringResource(R.string.today_stretch)) }
+                }
+            }
             Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 TodayTopControls(weather, useFahrenheit, inboxCount, {
                     if (locationGranted && weather != null) {

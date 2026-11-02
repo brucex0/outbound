@@ -4,6 +4,8 @@ import android.net.Uri
 
 /** A detail route identifies its content; it never names or creates a hosting tab/list. */
 internal object AppDetailRoutes {
+    const val Stretch = "stretch?source={source}"
+    fun stretch(source: String = "standalone") = "stretch?source=${encode(source)}"
     const val Connections = "connections?source={source}&adding={adding}"
     const val Activity = "activity_detail/{id}?source={source}"
     const val Post = "social_activity_detail/{postId}"

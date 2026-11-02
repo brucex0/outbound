@@ -28,6 +28,11 @@ Open when adding a destination, changing a link/notification entry point, or inv
 - Route library screens only browse/select; they navigate to the shared detail page. Today retains its explicit selection mode. Successful bookmark/removal refreshes the source library; deletion returns to the real caller.
 - Safety/live and informational notification details resolve their route ID independently. Informational inbox snapshots use `inbox.detail/<id>/und`; live follower and Group-run snapshots remain bounded in memory, without adding persistent location storage. Viewing a Group-run does not replace another active participation, and its leave action addresses the viewed session. Group-run links render the session alone, without Safety settings as a host. These details carry their kind/ID in the back stack rather than shell selection variables. Warm/cold `group_run` links use the same live-group destination as inbox taps.
 
+## Stretch Entry
+
+- Today’s Stretch action opens `stretch?source=today` over the shell; standalone callers use the same route with `source=standalone`. No activity ID or saved recording is required. Back/close returns to its caller, and active playback uses the shared end confirmation.
+- Routine choices, instructions and options are contextual sheets owned by the stretch destination. The editor remains a contextual full-screen dialog. Post-save stretching remains inside its recording completion owner so Share/Done retain their original saved-activity handoff.
+
 ## Diagnostics And Analytics
 
 - Unavailable entity pages retain Back and retry; they do not silently redirect to a host page. Handled load failures log operation, exception/API category, and available HTTP status without entity IDs, user data, URLs, or tokens.

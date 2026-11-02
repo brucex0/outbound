@@ -504,12 +504,12 @@ class RecordingViewModel @Inject constructor(
         }
     }
 
-    fun trackStretchEvent(event: StretchSessionEvent, kind: ActivityKind) {
+    fun trackStretchEvent(event: StretchSessionEvent, kind: ActivityKind? = null) {
         val properties = mutableMapOf<AnalyticsProperty, Any>(
-            AnalyticsProperty.ActivityType to kind.name.lowercase(),
             AnalyticsProperty.SourceType to event.source.wireName,
             AnalyticsProperty.StretchCustomized to event.customized,
         )
+        kind?.let { properties[AnalyticsProperty.ActivityType] = it.name.lowercase() }
         event.routineID?.let { properties[AnalyticsProperty.RoutineId] = it }
         if (event.name == "post_workout_stretch_started") properties[AnalyticsProperty.Control] = "clock_tick"
         if (event.name == "post_workout_stretch_started" || event.name == "stretch_routine_edited" && event.result in listOf("saved", "reset")) {
@@ -518,7 +518,7 @@ class RecordingViewModel @Inject constructor(
         }
         event.result?.let { properties[AnalyticsProperty.Result] = it }
         event.seconds?.let { properties[AnalyticsProperty.CountBucket] = when { it == 0 -> "zero"; it < 20 -> "under_20"; it < 60 -> "20_to_59"; else -> "60_plus" } }
-        if (event.name.startsWith("post_workout_stretch_") || event.name == "stretch_routine_edited") analytics.record(AnalyticsEvent(event.name, properties))
+        if (event.name.startsWith("post_workout_stretch_") || event.name in setOf("stretch_routine_edited", "stretch_interface_used")) analytics.record(AnalyticsEvent(event.name, properties))
     }
 
     fun trackStartPreflight() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(

@@ -4,6 +4,8 @@ import com.plainstride.outbound.core.model.activity.resolveTarget
 
 import com.plainstride.outbound.feature.recording.recordingLaunch
 
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
@@ -158,6 +160,9 @@ import com.plainstride.outbound.feature.recording.RecordedActivityReview
 import com.plainstride.outbound.feature.recording.RecordingGoal
 import com.plainstride.outbound.feature.recording.RecordingGoalType
 import com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration
+import com.plainstride.outbound.feature.recording.StretchSessionRoute
+import com.plainstride.outbound.feature.recording.StretchLaunchContext
+import com.plainstride.outbound.feature.recording.StretchEntryPoint
 import com.plainstride.outbound.feature.recording.RecordingRoute
 import com.plainstride.outbound.feature.recording.ActivityStartWarmup
 import com.plainstride.outbound.feature.recording.RecordingViewModel
@@ -833,6 +838,7 @@ private fun SignedInApp(
                         ActivityStartWarmup(recordingViewModel)
                         val startLocation by recordingViewModel.startLocationUpdates.collectAsStateWithLifecycle()
                         TodayRoute(
+                            onOpenStretch = { navController.navigate(AppDetailRoutes.stretch("today")) { launchSingleTop = true } },
                             mapLocation = startLocation,
                             accountId = requireNotNull(accountId),
                             localeTag = resources.configuration.locales[0].toLanguageTag(),
@@ -1266,6 +1272,19 @@ private fun SignedInApp(
                 InvitationCodeRoute(
                     onBack = { navController.popBackStack() },
                     entrySource = "me_profile_card",
+                )
+            }
+            composable(
+                AppDetailRoutes.Stretch,
+                arguments = listOf(navArgument("source") { type = NavType.StringType; defaultValue = "standalone" }),
+            ) { entry ->
+                val source = if (entry.arguments?.getString("source") == "today") StretchEntryPoint.TODAY else StretchEntryPoint.STANDALONE
+                StretchSessionRoute(
+                    launch = StretchLaunchContext(entryPoint = source),
+                    sessionKey = entry.id,
+                    onDone = { navController.popBackStack() },
+                    onEvent = { recordingViewModel.trackStretchEvent(it) },
+                    fetchAudio = recordingViewModel::fetchStretchAudio,
                 )
             }
             composable(RECORDING_ROUTE) {
