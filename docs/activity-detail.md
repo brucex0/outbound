@@ -241,3 +241,8 @@ Safe-area strategy:
 - The repository stores exact downloaded bytes with no decode, resize, recompression, or metadata rewrite. Existing per-surface image decoders, EXIF handling, crop/fit behavior, and lightbox quality remain unchanged.
 - Successful shared cache fills emit `feature_exposed` with only `feature=activity_photo_cached`; cache hits emit no duplicate fill event. Existing detail and photo-view events remain unchanged. Diagnostics contain only operation, representation, status, and exception type.
 - Manual acceptance pending: add a photo on iPhone after saving; compare Android Feed and Recents strip/lightbox; open Feed original then Recents and reverse; reopen offline; check cache eviction, account switch, rotated/mirrored photos, and deleted photos. Compile checks do not establish visual equivalence.
+
+## Android system share preview
+
+- Stored, post-save, and Social share previews use the same send-intent helper. It supplies the original file URI as intent data, `EXTRA_STREAM`, and `ClipData`, with read permission for the system preview and selected recipient. PNG bytes, portrait dimensions, and the image-only payload remain unchanged; existing share-action analytics remain at each entry point.
+- Manual acceptance: on Samsung, open Share from each preview, confirm the card thumbnail appears, send to an image-capable app, and confirm the received card matches Save Image. Cancel and reopen to check repeat sharing. Samsung layout and recipient delivery require device verification.

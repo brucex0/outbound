@@ -75,6 +75,7 @@ import com.plainstride.outbound.feature.activity.ActivityRoutePublishDialog
 import com.plainstride.outbound.feature.activity.ActivitySplitChart
 import com.plainstride.outbound.feature.activity.ActivitySplitDisplay
 import com.plainstride.outbound.feature.activity.ActivityExport
+import com.plainstride.outbound.feature.activity.shareExport
 import com.plainstride.outbound.feature.activity.ActivitySharePreview
 import com.plainstride.outbound.feature.activity.ActivitySharePreparation
 import com.plainstride.outbound.feature.activity.ActivityShareAssets
@@ -1523,12 +1524,7 @@ private fun SocialActivityDetail(
             },
             share = {
                 try {
-                    val send = Intent(Intent.ACTION_SEND).apply {
-                        type = export.mimeType
-                        putExtra(Intent.EXTRA_STREAM, export.uri)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    context.startActivity(Intent.createChooser(send, null))
+                    context.shareExport(export)
                     trackShareAction("shared")
                 } catch (error: Exception) {
                     android.util.Log.e("ActivityShare", "Open social share sheet failed type=${error.javaClass.simpleName}")

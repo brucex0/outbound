@@ -1271,8 +1271,16 @@ private fun haversineMeters(first: ActivityTrackPoint, second: ActivityTrackPoin
     return earthRadius * 2 * atan2(sqrt(value), sqrt(1 - value))
 }
 
-private fun Context.shareExport(export: ActivityExport) {
-    startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType(export.mimeType).putExtra(Intent.EXTRA_STREAM, export.uri).putExtra(Intent.EXTRA_TITLE, export.fileName).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), getString(R.string.activity_export)))
+fun Context.shareExport(export: ActivityExport) {
+    val send = Intent(Intent.ACTION_SEND).apply {
+        setDataAndType(export.uri, export.mimeType)
+        putExtra(Intent.EXTRA_STREAM, export.uri)
+        putExtra(Intent.EXTRA_TITLE, export.fileName)
+        // Give the system preview and chosen recipient access to the same original file.
+        clipData = android.content.ClipData.newUri(contentResolver, export.fileName, export.uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    startActivity(Intent.createChooser(send, getString(R.string.activity_export)))
 }
 
 /** Shared owner-only route publication confirmation for stored and Social activity details. */
