@@ -2,14 +2,7 @@ package com.plainstride.outbound.feature.activity
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.RectF
 import android.util.Log
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.MultiFormatWriter
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -39,7 +32,6 @@ import com.plainstride.outbound.core.model.activity.ActivityPage
 import com.plainstride.outbound.core.model.activity.ActivityType
 import com.plainstride.outbound.core.model.activity.MeasurementUnitSystem
 import com.plainstride.outbound.core.model.activity.SavedActivity
-import com.plainstride.outbound.core.model.activity.SessionFormatting
 
 enum class ActivityMessage { SAVED, UPDATED, DELETED, FAILED, EXPORT_UNAVAILABLE }
 enum class ActivityExportFormat(val extension: String, val mimeType: String) {
@@ -68,6 +60,7 @@ class ActivityViewModel @Inject constructor(
     private val repository: ActivityRepository,
     private val syncScheduler: ActivitySyncScheduler,
     private val mediaStore: ActivityMediaStore,
+    private val shareAssets: ActivityShareAssetLoader,
     private val analytics: ProductAnalytics,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
@@ -292,51 +285,21 @@ class ActivityViewModel @Inject constructor(
         ActivityExport(FileProvider.getUriForFile(context, "${context.packageName}.activityphotos", target), format.mimeType, target.name)
     }.getOrElse { messages.tryEmit(ActivityMessage.EXPORT_UNAVAILABLE); null }
 
-    fun shareCard(activity: SavedActivity, unitSystem: MeasurementUnitSystem, sourceType: String = "activity_detail"): ActivityExport? = runCatching {
+    fun trackRoutePhotoPreview() = analytics.record(AnalyticsEvent("photo_previewed", mapOf(
+        AnalyticsProperty.SourceType to "route_annotation",
+    )))
+
+    suspend fun loadShareAssets(activity: SavedActivity): ActivityShareAssets = shareAssets.load(activity)
+
+    fun shareCard(activity: SavedActivity, bitmap: Bitmap, sourceType: String = "activity_detail"): ActivityExport? = runCatching {
         val directory = File(context.cacheDir, "activity_exports").apply { mkdirs() }
         val target = File(directory, "plainstride-${activity.id.filter(Char::isLetterOrDigit).take(64)}.png")
-        val bitmap = Bitmap.createBitmap(1080, 1920, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        canvas.drawColor(Color.rgb(24, 28, 24))
-        drawRouteBackdrop(canvas, activity)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
-        paint.textSize = 42f
-        val foxMark = BitmapFactory.decodeResource(context.resources, R.drawable.plainstride_fox_assistant_head)
-        canvas.drawBitmap(
-            foxMark,
-            null,
-            RectF(72f, 26f, 138f, 92f),
-            Paint(Paint.ANTI_ALIAS_FLAG).apply { isFilterBitmap = true },
-        )
-        foxMark.recycle()
-        canvas.drawText("PLAINSTRIDE", 154f, 90f, paint)
-        paint.isFakeBoldText = true
-        paint.textSize = 70f
-        canvas.drawText(activity.title.take(24), 72f, 1240f, paint)
-        paint.isFakeBoldText = false
-        paint.color = Color.rgb(232, 126, 62)
-        paint.textSize = 58f
-        val distance = SessionFormatting.distance(activity.distanceM, unitSystem)
-        val distanceUnit = if (unitSystem == MeasurementUnitSystem.metric) "km" else "mi"
-        canvas.drawText("%.2f %s".format(distance.value, distanceUnit), 72f, 1400f, paint)
-        canvas.drawText(formatDurationForCard(activity.durationSecs), 390f, 1400f, paint)
-        activity.averagePaceSecsPerKm?.let { rawPace ->
-            SessionFormatting.pace(rawPace, unitSystem)?.let { pace ->
-                canvas.drawText("%d:%02d /%s".format(pace.minutes, pace.seconds, distanceUnit), 700f, 1400f, paint)
-            }
-        }
-        paint.color = Color.LTGRAY
-        paint.textSize = 30f
-        canvas.drawText(context.getString(R.string.activity_distance).uppercase(), 72f, 1460f, paint)
-        canvas.drawText(context.getString(R.string.activity_time).uppercase(), 390f, 1460f, paint)
-        canvas.drawText(context.getString(R.string.activity_avg_pace).uppercase(), 700f, 1460f, paint)
-        drawQr(canvas, "https://plainstride.ai/invite", 790, 1600, 220)
-        target.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 95, it) }
-        bitmap.recycle()
+        target.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
         analytics.record(AnalyticsEvent("activity_share_previewed", mapOf(
             AnalyticsProperty.SourceType to sourceType,
             AnalyticsProperty.CountBucket to photoAnnotationCountBucket(activity.photos.count { it.latitude != null && it.longitude != null }),
         )))
+        analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "activity_share_map_card")))
         ActivityExport(FileProvider.getUriForFile(context, "${context.packageName}.activityphotos", target), "image/png", target.name)
     }.getOrElse { error ->
         Log.e("ActivityShare", "Share card preparation failed type=${error.javaClass.simpleName}")
@@ -368,81 +331,6 @@ class ActivityViewModel @Inject constructor(
         )))
     }
 
-    private fun drawRouteBackdrop(canvas: Canvas, activity: SavedActivity) {
-        val points = activity.track
-        if (points.size < 2) return
-        val minLat = points.minOf { it.latitude }; val maxLat = points.maxOf { it.latitude }
-        val minLon = points.minOf { it.longitude }; val maxLon = points.maxOf { it.longitude }
-        val latSpan = (maxLat - minLat).coerceAtLeast(0.00001); val lonSpan = (maxLon - minLon).coerceAtLeast(0.00001)
-        val route = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(244, 132, 63); strokeWidth = 14f; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
-        val path = android.graphics.Path()
-        points.forEachIndexed { index, point ->
-            val x = 70f + ((point.longitude - minLon) / lonSpan * 940f).toFloat()
-            val y = 160f + ((maxLat - point.latitude) / latSpan * 900f).toFloat()
-            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-        }
-        canvas.drawPath(path, Paint(route).apply { color = Color.argb(100, 0, 0, 0); strokeWidth = 26f })
-        canvas.drawPath(path, route)
-        activity.photos.forEach { photo ->
-            val latitude = photo.latitude ?: return@forEach
-            val longitude = photo.longitude ?: return@forEach
-            if (!latitude.isFinite() || !longitude.isFinite() || latitude !in -90.0..90.0 || longitude !in -180.0..180.0) return@forEach
-            // Use the route projection above so pins stay attached to their recorded location.
-            val x = 70f + ((longitude - minLon) / lonSpan * 940f).toFloat()
-            val y = 160f + ((maxLat - latitude) / latSpan * 900f).toFloat()
-            if (x !in 60f..1020f || y !in 120f..1120f) return@forEach
-            // Match the detail strip's local source; remote-only media is unavailable there too.
-            val localPath = photo.localRelativePath ?: return@forEach
-            val image = try {
-                decodeActivityPhoto(mediaStore.read(localPath))
-            } catch (error: Exception) {
-                Log.w("ActivityShare", "load route photo: ${error.javaClass.simpleName}")
-                null
-            } ?: return@forEach
-            try {
-                drawRoutePhoto(canvas, image, x, y)
-            } finally {
-                image.recycle()
-            }
-        }
-    }
-
-    private fun drawRoutePhoto(canvas: Canvas, image: Bitmap, x: Float, y: Float) {
-        // Keep the larger border inside the card near route edges.
-        val left = (x - 72f).coerceIn(6f, canvas.width - 150f)
-        val top = (y - 144f).coerceIn(6f, canvas.height - 150f)
-        val frame = RectF(left, top, left + 144f, top + 144f)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            setShadowLayer(10f, 0f, 4f, Color.argb(90, 0, 0, 0))
-        }
-        canvas.drawCircle(frame.centerX(), frame.centerY(), 72f, paint)
-        paint.clearShadowLayer()
-        paint.isFilterBitmap = true
-        val checkpoint = canvas.save()
-        try {
-            val clip = android.graphics.Path().apply { addCircle(frame.centerX(), frame.centerY(), 68f, android.graphics.Path.Direction.CW) }
-            canvas.clipPath(clip)
-            // The shared decoder preserves EXIF rotation/mirroring before this aspect-fill crop.
-            val scale = maxOf(frame.width() / image.width, frame.height() / image.height)
-            val width = image.width * scale
-            val height = image.height * scale
-            canvas.drawBitmap(image, null, RectF(
-                frame.centerX() - width / 2, frame.centerY() - height / 2,
-                frame.centerX() + width / 2, frame.centerY() + height / 2,
-            ), paint)
-        } finally {
-            canvas.restoreToCount(checkpoint)
-        }
-    }
-
-    private fun drawQr(canvas: Canvas, value: String, left: Int, top: Int, size: Int) {
-        val matrix = MultiFormatWriter().encode(value, BarcodeFormat.QR_CODE, size, size)
-        val qr = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        for (y in 0 until size) for (x in 0 until size) qr.setPixel(x, y, if (matrix[x, y]) Color.BLACK else Color.WHITE)
-        canvas.drawBitmap(qr, left.toFloat(), top.toFloat(), null); qr.recycle()
-    }
-
     fun photoBytes(relativePath: String): ByteArray? = runCatching { mediaStore.read(relativePath) }.getOrNull()
 
     private fun mutate(success: ActivityMessage, action: suspend () -> Unit) {
@@ -460,6 +348,5 @@ class ActivityViewModel @Inject constructor(
 
 private fun durationBucket(seconds: Int) = when { seconds < 300 -> "under_5m"; seconds < 1_800 -> "5_30m"; seconds < 3_600 -> "30_60m"; else -> "60m_plus" }
 private fun distanceBucket(meters: Double) = when { meters < 1_000 -> "under_1k"; meters < 5_000 -> "1_5k"; meters < 10_000 -> "5_10k"; else -> "10k_plus" }
-private fun formatDurationForCard(seconds: Int) = if (seconds >= 3_600) "%d:%02d:%02d".format(seconds / 3_600, seconds / 60 % 60, seconds % 60) else "%d:%02d".format(seconds / 60, seconds % 60)
 
 private fun photoAnnotationCountBucket(count: Int) = when (count) { 0 -> "0"; 1 -> "1"; in 2..3 -> "2_3"; in 4..7 -> "4_7"; else -> "8_plus" }

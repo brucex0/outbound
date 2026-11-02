@@ -98,4 +98,10 @@
     <string name="activity_metric_avg_speed">Avg Speed</string>
     <string name="activity_share_prepare_failed">Couldn’t prepare activity to share. Try again.</string>
     <string name="activity_share_save_failed">Couldn’t save image. Try again.</string>
+    <string name="activity_share_preparing">Preparing activity to share</string>
+    <string name="activity_share_run_with_me">Run With Me</string>
+    <string name="activity_share_with_dog">With dog</string>
+    <string name="activity_share_pace">Pace</string>
+    <string name="activity_share_preview_title">Share Preview</string>
+    <string name="activity_share_close">Close</string>
 </resources>

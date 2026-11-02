@@ -98,4 +98,10 @@
     <string name="activity_metric_avg_speed">平均速度</string>
     <string name="activity_share_prepare_failed">无法生成活动分享卡片，请重试。</string>
     <string name="activity_share_save_failed">无法保存图片，请重试。</string>
+    <string name="activity_share_preparing">正在准备分享活动</string>
+    <string name="activity_share_run_with_me">一起跑步</string>
+    <string name="activity_share_with_dog">带狗同行</string>
+    <string name="activity_share_pace">配速</string>
+    <string name="activity_share_preview_title">分享预览</string>
+    <string name="activity_share_close">关闭</string>
 </resources>

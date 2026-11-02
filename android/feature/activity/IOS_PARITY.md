@@ -15,9 +15,9 @@
 - Me shows the latest three activities as lightweight rows inside the shared recent card: title, abbreviated date, rounded duration with calories when available, and trailing distance. The card exposes manual entry, Health Connect, and full-history actions with localized TalkBack labels and 48dp targets.
 - The map stays full screen behind collapsed, split, and expanded information-sheet positions. Dragging the grabber snaps to the nearest position; tapping it toggles split and expanded states.
 - Activities with no usable route show an accessible no-route state. Multi-segment routes preserve pause gaps; continuous routes use pace-colored segments.
-- GPS-located photos produce map pins. Selecting a photo in the horizontal strip selects and centers its pin; selecting it again opens the full-screen pageable lightbox. Photos without coordinates remain visible without a misleading pin.
+- Detail maps omit start/finish pins and point-of-interest icons, matching iOS. GPS-located photos produce circular thumbnail annotations with white borders and camera placeholders while unavailable. Selecting a photo in the horizontal strip selects and centers its pin; selecting it again opens the full-screen pageable lightbox. Photos without coordinates remain visible without a misleading pin.
 - Elevation and splits are hidden when source points are insufficient. Both sections are collapsed initially and fade open in place.
-- Share opens the 9:16 image preview before save or system sharing. The route backdrop includes white-bordered 144-pixel circular photo thumbnails at valid, visible photo coordinates. It reuses the detail photo decoder for EXIF rotation/mirroring and aspect-fill crops, retains original files/metadata, and skips unavailable local media without blocking export. Remote-only photos remain unavailable, matching the current detail photo strip. Edit and confirmed deletion retain the existing local-first repository behavior.
+- Share opens the 9:16 image preview before save or system sharing. The route backdrop includes white-bordered 144-pixel circular photo thumbnails at valid, visible photo coordinates. It reuses the detail photo decoder for EXIF rotation/mirroring and aspect-fill crops, retains original files/metadata, and skips unavailable local media without blocking export. Stored, Social, and post-save sharing use the same renderer and full-screen preview. A dedicated, portrait Google Maps SDK snapshot supplies the map; recorded route segments and photo thumbnails are projected onto that snapshot, preserving pause gaps. The 1080×1920 card follows iOS’s fixed layout: lower gradient, sport/title/date, two-column white stats, and bottom-right Run With Me, avatar-centered high-correction QR, app icon, and branding. The QR uses the signed-in runner’s canonical referral URL, with the stable invite landing URL as the offline fallback. Map imagery and native typefaces remain platform-specific. Snapshot timeout/no route produces the matching gray-gradient stats card rather than a black route sketch. Local and remote photo bytes use the existing EXIF-aware decoder; the shared photo repository supplies remote thumbnails. Edit and confirmed deletion retain the existing local-first repository behavior.
 
 ## Data And Presentation Contract
 
@@ -34,7 +34,8 @@
 
 - English, Spanish, and Simplified Chinese copy is generated from `ios/Outbound/Outbound/Localizable.xcstrings`.
 - The grabber, map, photos, lightbox close action, Edit, Share, Back, and Delete expose semantic labels; section headers remain discoverable to TalkBack.
-- Opening detail emits `activity_detail_opened` with the actual bounded entry source (`history`, `me_recent`, `notification`, or `deep_link`), without emitting a History exposure. Recent-card actions emit the existing `me_destination_opened` event with a bounded destination and `entry_source=me_recent`. A displayed calculated calorie emits privacy-safe `feature_exposed(feature=completed_workout_calories)`.
+- Opening detail emits `activity_detail_opened` with the actual bounded entry source (`history`, `me_recent`, `notification`, or `deep_link`), without emitting a History exposure. Recent-card actions emit the existing `me_destination_opened` event with a bounded destination and `entry_source=me_recent`. A prepared map-style share card emits `feature_exposed(feature=activity_share_map_card)`. A displayed calculated calorie emits privacy-safe `feature_exposed(feature=completed_workout_calories)`.
+- Tapping a stored-detail route thumbnail emits `photo_previewed(source_type=route_annotation)`; Social retains its existing photo-preview event.
 - Share preview and actions emit `activity_share_previewed` and `activity_share_action` with the same bounded `source_type` and `result` values as iOS. Share previews also include the same coarse geotagged-photo `count_bucket` as iOS, excluding photo content, identifiers, and coordinates. Confirmed deletion uses the shared source/count-bucket contract.
 
 ## Reference Scenarios
@@ -48,6 +49,8 @@
 - Collapsed, split, expanded, long-title, large-text, dark/light theme, and TalkBack traversal.
 
 ## Status And Remaining Parity Work
+
+- Verified 2026-11-01: debug APK build plus manual synthetic emulator checks for the real map/photo share image, metric/imperial values, long-title wrapping, no-route fallback, circular detail thumbnails, mirrored/rotated EXIF orientation, an unavailable-photo camera placeholder, hidden detail POIs/endpoints, and decoding the exported avatar QR to its expected referral URL. No test suite was run. Physical-device rendering, authenticated remote-photo/avatar retrieval, and snapshot-timeout recovery remain manual acceptance checks.
 
 - The stored-owner activity-detail UI, measurement logic, route/elevation/split presentation, photos, reflection, share preview, and analytics are aligned with the current iOS hierarchy and behavior.
 - Google Maps and Material controls are the documented platform substitutions for MapKit and SwiftUI controls.

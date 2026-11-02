@@ -80,6 +80,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -341,7 +342,9 @@ fun ActivityDetailDestination(
         onBack = onBack,
         editor = { dismiss -> ActivityEditor(selected, unitSystem, viewModel, dismiss) },
         onDelete = viewModel::deleteSelected,
-        onShareCard = { viewModel.shareCard(selected, unitSystem) },
+        onShareCard = { bitmap -> viewModel.shareCard(selected, bitmap) },
+        onRoutePhotoPreview = viewModel::trackRoutePhotoPreview,
+        loadShareAssets = { viewModel.loadShareAssets(selected) },
         onShareAction = { viewModel.trackShareAction(it) },
         onCalorieExposure = viewModel::trackCalorieExposure,
         onCadenceExposure = viewModel::trackCadenceExposure,
@@ -431,7 +434,9 @@ private fun ActivityDetailScreen(
     onBack: () -> Unit,
     editor: @Composable (() -> Unit) -> Unit,
     onDelete: () -> Unit,
-    onShareCard: () -> ActivityExport?,
+    onShareCard: (android.graphics.Bitmap) -> ActivityExport?,
+    loadShareAssets: suspend () -> ActivityShareAssets,
+    onRoutePhotoPreview: () -> Unit,
     onShareAction: (String) -> Unit,
     onCalorieExposure: () -> Unit,
     onCadenceExposure: () -> Unit,
@@ -468,6 +473,8 @@ private fun ActivityDetailScreen(
     var publishRoute by rememberSaveable(activity.id) { mutableStateOf(false) }
     var routeName by rememberSaveable(activity.id) { mutableStateOf(activity.title) }
     var sharePreview by remember { mutableStateOf<ActivityExport?>(null) }
+    var preparingShare by remember { mutableStateOf(false) }
+    var mapLoaded by remember(activity.id) { mutableStateOf(false) }
     var selectedPhotoIndex by rememberSaveable(activity.id) { mutableStateOf(firstLocatedPhotoIndex(activity.photos)) }
     var lightboxPhotoIndex by rememberSaveable(activity.id) { mutableStateOf<Int?>(null) }
     LaunchedEffect(calorieEstimate) { if (calorieEstimate != null) onCalorieExposure() }
@@ -490,23 +497,33 @@ private fun ActivityDetailScreen(
         }
 
         if (activity.track.size > 1) {
-            val markers = activity.photos.mapIndexedNotNull { index, photo ->
-                val latitude = photo.latitude ?: return@mapIndexedNotNull null
-                val longitude = photo.longitude ?: return@mapIndexedNotNull null
-                MapRouteMarker(
-                    id = photo.id,
-                    coordinate = MapCoordinate(latitude, longitude),
-                    title = photoMapLabel(index, activity.photos.size, photo.distanceAtShotM, unitSystem, context),
-                    selected = index == selectedPhotoIndex,
-                )
+            val mapPhotos by produceState<List<ActivityMapPhoto>>(emptyList(), activity.photos, unitSystem) {
+                value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    activity.photos.mapIndexed { index, photo ->
+                        ActivityMapPhoto(photo.id, photo.latitude, photo.longitude,
+                            photoMapLabel(index, activity.photos.size, photo.distanceAtShotM, unitSystem, context),
+                            photo.localRelativePath?.let(photoBytes))
+                    }
+                }
             }
+            val markers = rememberActivityPhotoMarkers(mapPhotos, activity.photos.getOrNull(selectedPhotoIndex)?.id, mapLoaded)
             PlainstrideRouteMap(
                 points = activity.track.map { MapCoordinate(it.latitude, it.longitude) },
                 modifier = Modifier.fillMaxSize(),
                 interactive = true,
                 showEndpointMarkers = false,
+                showPointsOfInterest = false,
                 routeSegments = routeSegments,
                 markers = markers,
+                onMapLoadedCallback = { mapLoaded = true },
+                onMarkerClick = { id ->
+                    val index = activity.photos.indexOfFirst { it.id == id }
+                    if (index >= 0) {
+                        selectedPhotoIndex = index
+                        lightboxPhotoIndex = index
+                        onRoutePhotoPreview()
+                    }
+                },
                 bottomContentPadding = sheetHeight,
                 fitRoutePadding = 64.dp,
             )
@@ -520,7 +537,7 @@ private fun ActivityDetailScreen(
             title = { Text(activity.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.activity_back)) } },
             actions = {
-                IconButton(onClick = { sharePreview = onShareCard() }) { Icon(Icons.Outlined.Share, stringResource(R.string.activity_share_card)) }
+                IconButton(onClick = { preparingShare = true }, enabled = !preparingShare) { Icon(Icons.Outlined.Share, stringResource(R.string.activity_share_card)) }
                 if(activity.track.size>1) IconButton(onClick={publishRoute=true}) { Icon(Icons.Outlined.Route,stringResource(R.string.activity_route_publish_action)) }
                 IconButton(onClick = { edit = true }) { Icon(Icons.Outlined.Edit, stringResource(R.string.activity_edit)) }
             },
@@ -637,10 +654,26 @@ private fun ActivityDetailScreen(
         text = { Text(stringResource(R.string.activity_delete_body)) },
         confirmButton = { TextButton(onClick = { delete = false; onDelete() }) { Text(stringResource(R.string.activity_delete)) } },
         dismissButton = { TextButton(onClick = { delete = false }) { Text(stringResource(R.string.activity_cancel)) } })
-    sharePreview?.let { export -> SharePreviewDialog(
+    if (preparingShare) ActivitySharePreparation(
+        activity = activity,
+        unitSystem = unitSystem,
+        loadAssets = loadShareAssets,
+        export = { bitmap -> kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { onShareCard(bitmap) } },
+        onComplete = { result ->
+            preparingShare = false
+            sharePreview = result
+            if (result == null) Toast.makeText(context, R.string.activity_share_prepare_failed, Toast.LENGTH_SHORT).show()
+        },
+        onCancel = { preparingShare = false },
+    )
+    sharePreview?.let { export -> ActivitySharePreview(
         export = export,
         close = { sharePreview = null },
-        save = { onShareAction(if (context.saveImage(export)) "saved_to_photos" else "save_failed") },
+        save = {
+            val saved = context.saveImage(export)
+            onShareAction(if (saved) "saved_to_photos" else "save_failed")
+            Toast.makeText(context, if (saved) R.string.activity_share_image_saved else R.string.activity_share_save_failed, Toast.LENGTH_SHORT).show()
+        },
         share = { context.shareExport(export); onShareAction("share_sheet_opened") },
     ) }
     lightboxPhotoIndex?.let { index ->
@@ -978,19 +1011,25 @@ fun ActivitySharingPreview(
 ) {
     val context = LocalContext.current
     var export by remember(activity.id) { mutableStateOf<ActivityExport?>(null) }
-    LaunchedEffect(activity.id) {
-        export = viewModel.shareCard(activity, unitSystem, sourceType)
-        if (export == null) {
-            Toast.makeText(context, R.string.activity_share_prepare_failed, Toast.LENGTH_SHORT).show()
-            viewModel.trackShareAction("prepare_failed", sourceType)
-            onClose()
-        }
-    }
     val prepared = export
     if (prepared == null) {
-        androidx.compose.ui.window.Dialog(onDismissRequest = onClose) { CircularProgressIndicator() }
+        ActivitySharePreparation(
+            activity = activity,
+            unitSystem = unitSystem,
+            loadAssets = { viewModel.loadShareAssets(activity) },
+            export = { bitmap -> kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { viewModel.shareCard(activity, bitmap, sourceType) } },
+            onComplete = { result ->
+                export = result
+                if (result == null) {
+                    Toast.makeText(context, R.string.activity_share_prepare_failed, Toast.LENGTH_SHORT).show()
+                    viewModel.trackShareAction("prepare_failed", sourceType)
+                    onClose()
+                }
+            },
+            onCancel = onClose,
+        )
     } else {
-        SharePreviewDialog(
+        ActivitySharePreview(
             export = prepared,
             close = onClose,
             save = {
@@ -1012,10 +1051,39 @@ fun ActivitySharingPreview(
     }
 }
 
-@Composable private fun SharePreviewDialog(export: ActivityExport, close:()->Unit, save:()->Unit, share:()->Unit) {
-    val context=LocalContext.current
-    val bitmap=remember(export.uri){context.contentResolver.openInputStream(export.uri)?.use(BitmapFactory::decodeStream)}
-    AlertDialog(onDismissRequest=close,title={Text(stringResource(R.string.activity_share_preview))},text={bitmap?.let{Image(it.asImageBitmap(),stringResource(R.string.activity_share_preview_description),Modifier.fillMaxWidth().aspectRatio(9f/16f))}},confirmButton={Button({share();close()}){Text(stringResource(R.string.activity_share))}},dismissButton={Row{TextButton(save){Text(stringResource(R.string.activity_save_image))};TextButton(close){Text(stringResource(R.string.activity_cancel))}}})
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ActivitySharePreview(export: ActivityExport, close: () -> Unit, save: () -> Unit, share: () -> Unit) {
+    val context = LocalContext.current
+    val bitmap = remember(export.uri) {
+        try { context.contentResolver.openInputStream(export.uri)?.use(BitmapFactory::decodeStream) }
+        catch (error: java.io.IOException) {
+            android.util.Log.e("ActivityShare", "Load share preview failed type=${error.javaClass.simpleName}")
+            null
+        }
+    }
+    Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            contentWindowInsets = WindowInsets.safeDrawing,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            topBar = { TopAppBar(
+                title = { Text(stringResource(R.string.activity_share_preview_title)) },
+                navigationIcon = { TextButton(close) { Text(stringResource(R.string.activity_share_close)) } },
+            ) },
+            bottomBar = { Surface {
+                Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(save, Modifier.weight(1f).heightIn(min = 48.dp)) { Text(stringResource(R.string.activity_save_image)) }
+                    Button(share, Modifier.weight(1f).heightIn(min = 48.dp)) { Text(stringResource(R.string.activity_share)) }
+                }
+            } },
+        ) { padding ->
+            Box(Modifier.fillMaxSize().padding(padding).padding(20.dp), contentAlignment = Alignment.TopCenter) {
+                bitmap?.let { Image(it.asImageBitmap(), stringResource(R.string.activity_share_preview_description),
+                    Modifier.fillMaxWidth().aspectRatio(9f / 16f).clip(RoundedCornerShape(18.dp)), contentScale = ContentScale.Fit) }
+            }
+        }
+    }
 }
 
 private fun Context.saveImage(export: ActivityExport): Boolean = runCatching {

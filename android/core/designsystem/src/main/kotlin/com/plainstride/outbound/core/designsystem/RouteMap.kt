@@ -50,6 +50,7 @@ data class MapRouteMarker(
     val animatedRunner: Boolean = false,
     val runnerMoving: Boolean = true,
     val rotationDegrees: Float = 0f,
+    val anchor: Offset = Offset(0.5f, 1f),
 )
 
 private class SuppliedMapLocationSource : LocationSource {
@@ -77,6 +78,7 @@ fun PlainstrideRouteMap(
     focusOnUser: Boolean = false,
     interactive: Boolean = true,
     showEndpointMarkers: Boolean = true,
+    showPointsOfInterest: Boolean = true,
     routeSegments: List<MapRouteSegment> = emptyList(),
     markers: List<MapRouteMarker> = emptyList(),
     onMarkerClick: ((String) -> Unit)? = null,
@@ -104,6 +106,11 @@ fun PlainstrideRouteMap(
     if (!configured) {
         Box(modifier, contentAlignment = Alignment.Center) { Text(stringResource(R.string.route_map_unavailable), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         return
+    }
+    val mapStyle = remember(showPointsOfInterest) {
+        if (showPointsOfInterest) null else com.google.android.gms.maps.model.MapStyleOptions(
+            """[{"featureType":"poi","stylers":[{"visibility":"off"}]}]"""
+        )
     }
     val suppliedSource = remember { SuppliedMapLocationSource() }
     LaunchedEffect(suppliedUserLocation) { suppliedSource.update(suppliedUserLocation) }
@@ -186,7 +193,10 @@ fun PlainstrideRouteMap(
         modifier = modifier.semantics { contentDescription = description },
         cameraPositionState = camera,
         locationSource = suppliedSource.takeIf { useSuppliedUserLocation },
-        properties = MapProperties(isMyLocationEnabled = showUserLocation && preciseLocationGranted),
+        properties = MapProperties(
+            isMyLocationEnabled = showUserLocation && preciseLocationGranted,
+            mapStyleOptions = mapStyle,
+        ),
         onMapLoaded = { mapLoaded = true; onMapLoadedCallback?.invoke() },
         contentPadding = PaddingValues(bottom = bottomContentPadding),
         uiSettings = MapUiSettings(
@@ -285,6 +295,7 @@ fun PlainstrideRouteMap(
                         icon = marker.icon ?: BitmapDescriptorFactory.defaultMarker(
                             if (marker.selected) BitmapDescriptorFactory.HUE_ORANGE else BitmapDescriptorFactory.HUE_AZURE,
                         ),
+                        anchor = marker.anchor,
                         zIndex = if (marker.selected) 4f else 3f,
                         onClick = { onMarkerClick?.invoke(marker.id); true },
                     )

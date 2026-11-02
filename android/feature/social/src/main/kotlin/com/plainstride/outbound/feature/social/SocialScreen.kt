@@ -73,6 +73,11 @@ import com.plainstride.outbound.core.model.activity.ActivityType
 import com.plainstride.outbound.core.model.activity.SavedActivity
 import com.plainstride.outbound.feature.activity.ActivityRoutePublishDialog
 import com.plainstride.outbound.feature.activity.ActivityExport
+import com.plainstride.outbound.feature.activity.ActivitySharePreview
+import com.plainstride.outbound.feature.activity.ActivitySharePreparation
+import com.plainstride.outbound.feature.activity.ActivityShareAssets
+import com.plainstride.outbound.feature.activity.ActivityMapPhoto
+import com.plainstride.outbound.feature.activity.rememberActivityPhotoMarkers
 import com.plainstride.outbound.feature.activity.ActivityViewModel
 import com.plainstride.outbound.feature.activity.decodeActivityPhoto
 import com.plainstride.outbound.feature.activity.R as ActivityR
@@ -344,7 +349,8 @@ fun SocialActivityDetailDestination(
         cheer = { viewModel.toggleCheer(post) },
         comments = { viewModel.openComments(post) },
         trackSplitsViewed = viewModel::trackActivitySplitsViewed,
-        createShareCard = { selected -> selected.activity?.toSavedActivity(selected)?.let { activityViewModel.shareCard(it, unitSystem, "social_feed") } },
+        loadShareAssets = { selected -> activityViewModel.loadShareAssets(requireNotNull(selected.activity).toSavedActivity(selected, state.activityDetailPhotos)) },
+        createShareCard = { selected, bitmap -> selected.activity?.toSavedActivity(selected, state.activityDetailPhotos)?.let { activityViewModel.shareCard(it, bitmap, "social_feed") } },
         trackShareAction = activityViewModel::trackSocialShareAction,
         loadPhotoContent = viewModel::loadActivityPhotoContent,
         trackPhotoPreview = viewModel::trackActivityPhotoPreviewed,
@@ -1108,7 +1114,8 @@ private fun SocialActivityDetail(
     cheer: () -> Unit,
     comments: () -> Unit,
     trackSplitsViewed: (Int) -> Unit,
-    createShareCard: (SocialPost) -> ActivityExport?,
+    loadShareAssets: suspend (SocialPost) -> ActivityShareAssets,
+    createShareCard: (SocialPost, android.graphics.Bitmap) -> ActivityExport?,
     trackShareAction: (String) -> Unit,
     loadPhotoContent: (String) -> Unit,
     trackPhotoPreview: () -> Unit,
@@ -1127,6 +1134,8 @@ private fun SocialActivityDetail(
     var lightboxPhotoIndex by rememberSaveable(post.id) { mutableIntStateOf(-1) }
     var cheerersOpen by rememberSaveable(post.id) { mutableStateOf(false) }
     var shareExport by remember { mutableStateOf<ActivityExport?>(null) }
+    var preparingShare by remember { mutableStateOf(false) }
+    var mapLoaded by remember(post.id) { mutableStateOf(false) }
     var publishRoute by rememberSaveable(post.id) { mutableStateOf(false) }
     var routeName by rememberSaveable(post.id) { mutableStateOf(activity.title) }
     val canPublishRoute = post.isCurrentUser && route.size > 1
@@ -1139,18 +1148,10 @@ private fun SocialActivityDetail(
         onDismiss = { publishRoute = false },
     )
     val context = LocalContext.current
-    val markers = remember(photos, selectedPhotoIndex) {
-        photos.mapIndexedNotNull { index, photo ->
-            val latitude = photo.latitude ?: return@mapIndexedNotNull null
-            val longitude = photo.longitude ?: return@mapIndexedNotNull null
-            MapRouteMarker(
-                id = photo.id,
-                coordinate = MapCoordinate(latitude, longitude),
-                title = activity.title,
-                selected = index == selectedPhotoIndex,
-            )
-        }
+    val mapPhotos = remember(photos, photoBytes) {
+        photos.map { photo -> ActivityMapPhoto(photo.id, photo.latitude, photo.longitude, activity.title, photoBytes[photo.id]) }
     }
+    val markers = rememberActivityPhotoMarkers(mapPhotos, photos.getOrNull(selectedPhotoIndex)?.id, mapLoaded)
     LaunchedEffect(photos) {
         if (selectedPhotoIndex < 0) selectedPhotoIndex = photos.indexOfFirst { it.latitude != null && it.longitude != null }
     }
@@ -1196,7 +1197,9 @@ private fun SocialActivityDetail(
             PlainstrideRouteMap(
                 points = route,
                 modifier = Modifier.fillMaxSize(),
-                showEndpointMarkers = true,
+                showEndpointMarkers = false,
+                showPointsOfInterest = false,
+                onMapLoadedCallback = { mapLoaded = true },
                 markers = markers,
                 onMarkerClick = { markerId ->
                     val index = photos.indexOfFirst { it.id == markerId }
@@ -1223,8 +1226,7 @@ private fun SocialActivityDetail(
             navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.social_back)) } },
             actions = {
                 if (post.isCurrentUser) IconButton(onClick = {
-                    shareExport = createShareCard(post)
-                    if (shareExport == null) Toast.makeText(context, context.getString(ActivityR.string.activity_failed), Toast.LENGTH_SHORT).show()
+                    preparingShare = true
                 }) {
                     Icon(Icons.Outlined.Share, stringResource(ActivityR.string.activity_share))
                 }
@@ -1520,38 +1522,43 @@ private fun SocialActivityDetail(
             }
         }
     }
+    if (preparingShare) ActivitySharePreparation(
+        activity = activity.toSavedActivity(post, photos),
+        unitSystem = unitSystem,
+        loadAssets = { loadShareAssets(post) },
+        export = { bitmap -> kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { createShareCard(post, bitmap) } },
+        onComplete = { result ->
+            preparingShare = false
+            shareExport = result
+            if (result == null) Toast.makeText(context, context.getString(ActivityR.string.activity_share_prepare_failed), Toast.LENGTH_SHORT).show()
+        },
+        onCancel = { preparingShare = false },
+    )
     shareExport?.let { export ->
-        val bitmap = remember(export.uri) {
-            runCatching { context.contentResolver.openInputStream(export.uri)?.use(BitmapFactory::decodeStream) }.getOrNull()
-        }
-        Dialog(onDismissRequest = { shareExport = null; trackShareAction("cancelled") }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-            Surface(Modifier.fillMaxWidth().padding(20.dp), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
-                Column(Modifier.padding(16.dp).heightIn(max = 720.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(stringResource(ActivityR.string.activity_share_preview), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    if (bitmap != null) Image(bitmap.asImageBitmap(), stringResource(ActivityR.string.activity_share_preview_description), Modifier.fillMaxWidth().weight(1f), contentScale = ContentScale.Fit)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedButton(onClick = {
-                            val saved = saveShareCardToGallery(context, export)
-                            trackShareAction(if (saved) "saved" else "failure")
-                            if (saved) Toast.makeText(context, context.getString(ActivityR.string.activity_share_image_saved), Toast.LENGTH_SHORT).show()
-                            shareExport = null
-                        }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text(stringResource(ActivityR.string.activity_save_image)) }
-                        Button(onClick = {
-                            val shared = runCatching {
-                                val send = Intent(Intent.ACTION_SEND).apply {
-                                    type = export.mimeType
-                                    putExtra(Intent.EXTRA_STREAM, export.uri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                context.startActivity(Intent.createChooser(send, null))
-                            }.isSuccess
-                            trackShareAction(if (shared) "shared" else "failure")
-                            if (shared) shareExport = null
-                        }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text(stringResource(ActivityR.string.activity_share)) }
+        ActivitySharePreview(
+            export = export,
+            close = { shareExport = null; trackShareAction("cancelled") },
+            save = {
+                val saved = saveShareCardToGallery(context, export)
+                trackShareAction(if (saved) "saved" else "failure")
+                Toast.makeText(context, context.getString(if (saved) ActivityR.string.activity_share_image_saved else ActivityR.string.activity_share_save_failed), Toast.LENGTH_SHORT).show()
+            },
+            share = {
+                try {
+                    val send = Intent(Intent.ACTION_SEND).apply {
+                        type = export.mimeType
+                        putExtra(Intent.EXTRA_STREAM, export.uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
+                    context.startActivity(Intent.createChooser(send, null))
+                    trackShareAction("shared")
+                } catch (error: Exception) {
+                    android.util.Log.e("ActivityShare", "Open social share sheet failed type=${error.javaClass.simpleName}")
+                    trackShareAction("failure")
+                    Toast.makeText(context, ActivityR.string.activity_share_prepare_failed, Toast.LENGTH_SHORT).show()
                 }
-            }
-        }
+            },
+        )
     }
 }
 
@@ -1648,7 +1655,7 @@ private fun photoTileLabel(index: Int, count: Int): String = when (index) {
 
 @Composable private fun ActivityStat(value:String,label:String)=Column(Modifier.widthIn(min=72.dp),horizontalAlignment=Alignment.CenterHorizontally){Text(value,fontWeight=FontWeight.Bold);Text(label,color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.labelSmall)}
 
-private fun FeedActivity.toSavedActivity(post: SocialPost): SavedActivity {
+private fun FeedActivity.toSavedActivity(post: SocialPost, photoMetadata: List<ActivityPhoto> = photos): SavedActivity {
     val duration = durationSecs?.coerceAtLeast(0) ?: 0
     val started = runCatching { java.time.OffsetDateTime.parse(startedAt).toInstant() }.getOrDefault(java.time.Instant.EPOCH)
     val ended = endedAt?.let { runCatching { java.time.OffsetDateTime.parse(it).toInstant() }.getOrNull() }
@@ -1684,6 +1691,11 @@ private fun FeedActivity.toSavedActivity(post: SocialPost): SavedActivity {
         elevationGainM = elevationM,
         energyKilocalories = energyKilocalories,
         track = track,
+        photos = photoMetadata.map { photo -> com.plainstride.outbound.core.model.activity.ActivityPhoto(
+            id = photo.id, takenAt = photo.takenAt, latitude = photo.latitude, longitude = photo.longitude,
+            paceAtShot = photo.paceAtShot, heartRateAtShot = photo.hrAtShot, distanceAtShotM = photo.distAtShot,
+            captureContext = photo.captureContext, remotePhotoId = photo.id,
+        ) },
         localUpdatedAt = post.createdAt ?: ended.toString(),
     )
 }
