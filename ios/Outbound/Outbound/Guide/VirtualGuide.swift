@@ -133,7 +133,14 @@ final class VirtualGuide: NSObject, ObservableObject {
         providerName = selectedProvider.displayName
         super.init()
         self.audioPlayer.eventHandler = { [weak self] event in
-            if case .didStart = event { self?.cadencePacer.stop(deactivateSession: false) }
+            switch event {
+            case .didStart:
+                self?.cadencePacer.pauseForAnnouncement()
+            case .didFinish:
+                // A sequence can finish one voice and start another synchronously.
+                // Recheck on the next actor turn so beats cannot slip between them.
+                Task { @MainActor [weak self] in self?.cadencePacer.resumeAfterAnnouncement() }
+            }
             self?.speechEventHandler?(event)
         }
         cadencePacer.introductionAudio = { [weak self] in
@@ -330,8 +337,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         if persona?.coachingContract == .quiet { return .quiet }
         if audioPlayer.isSpeaking { return .speech }
         if isAnalyzing { return .analysis }
-        if pendingMoment.map({ !shouldDeferForPacer($0) }) == true
-            || queuedMoments.contains(where: { !shouldDeferForPacer($0) }) { return .queuedCue }
+        if pendingMoment != nil || !queuedMoments.isEmpty { return .queuedCue }
         if routeSpeechQuietUntil.map({ $0 > Date() }) ?? false { return .routePriority }
         return nil
     }
@@ -649,7 +655,6 @@ final class VirtualGuide: NSObject, ObservableObject {
         _ moment: DetectedLiveGuidanceMoment,
         at elapsedSeconds: Int
     ) -> Bool {
-        guard !shouldDeferForPacer(moment) else { return false }
         if moment.speedChangeDirection != nil { return !audioPlayer.isSpeaking }
         if isWorkoutBoundaryMoment(moment.type) {
             // Countdown beats are fixed local clips, while the instruction for the
@@ -662,25 +667,6 @@ final class VirtualGuide: NSObject, ObservableObject {
             return canSpeakProgressUpdate(at: elapsedSeconds)
         }
         return canSpeakGuideMoment(at: elapsedSeconds, urgency: .opportunity)
-    }
-
-    private func shouldDeferForPacer(_ moment: DetectedLiveGuidanceMoment) -> Bool {
-        guard cadencePacer.isPlaying else { return false }
-        // Measured corrections and actual workout boundaries retain priority.
-        // Server execution tips also use workoutInstruction, but are optional.
-        if moment.speedChangeDirection != nil { return false }
-        if moment.remainingDistanceMeters != nil { return false }
-        if isWorkoutBoundaryMoment(moment.type),
-           moment.instructionID?.hasPrefix("execution_coaching.") != true { return false }
-        switch moment.type {
-        case .earlyOverpace, .paceAboveTarget, .paceBelowTarget, .paceInstability,
-             .paceDrift, .recoveryTooHard, .unexpectedStop, .resumeAfterBreak,
-             .climbStart, .raceLateFade, .raceFinalKilometer:
-            return false
-        default:
-            break
-        }
-        return cadencePacer.deferRoutineGuidanceIfPlaying()
     }
 
     private func advancePendingMoment() {
@@ -829,10 +815,9 @@ final class VirtualGuide: NSObject, ObservableObject {
                 continue
             }
             let scheduledTip = cue.id.hasPrefix("execution_coaching.")
-            // Optional tips defer within their window, including the pacer's short segment.
+            // Optional tips defer within their window; route, speech and measured corrections win.
             if scheduledTip {
-                guard !cadencePacer.deferRoutineGuidanceIfPlaying(),
-                      !audioPlayer.isSpeaking, !isAnalyzing, pendingMoment == nil,
+                guard !audioPlayer.isSpeaking, !isAnalyzing, pendingMoment == nil,
                       lastGuideSpeechElapsedSeconds.map({ snapshot.elapsedSeconds - $0 >= 45 }) ?? true,
                       routeSpeechQuietUntil.map({ Date() >= $0 }) ?? true else { continue }
             }
@@ -1464,7 +1449,6 @@ final class VirtualGuide: NSObject, ObservableObject {
     }
 
     private func canSpeakProgressUpdate(at elapsedSeconds: Int) -> Bool {
-        guard !cadencePacer.deferRoutineGuidanceIfPlaying() else { return false }
         guard let lastGuideSpeechElapsedSeconds else { return true }
         return elapsedSeconds - lastGuideSpeechElapsedSeconds >= minimumStatSpeechGapSeconds
     }

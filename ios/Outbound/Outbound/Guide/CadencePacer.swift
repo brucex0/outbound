@@ -21,7 +21,8 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
     private var player: AVAudioPlayer?
     private var isPlayingIntroduction = false
     private var isHandingOff = false
-    private var reportedGuidanceDeferral = false
+    private var pausedForAnnouncement = false
+    private var playbackCadence: Int?
     private var finishTask: Task<Void, Never>?
     private var observations: [(date: Date, cadence: Int)] = []
     private var lastPlaybackSeconds: Int?
@@ -33,20 +34,6 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
     private var interruptionObserver: NSObjectProtocol?
     private var routeObserver: NSObjectProtocol?
     private let logger = Logger(subsystem: "com.plainstride", category: "CadencePacer")
-
-    /// The introduction and drum share one short audio window.
-    var isPlaying: Bool { player != nil || isHandingOff }
-
-    /// Routine guidance waits; report at most once across an introduction and its drum.
-    func deferRoutineGuidanceIfPlaying() -> Bool {
-        guard isPlaying else { return false }
-        if !reportedGuidanceDeferral {
-            reportedGuidanceDeferral = true
-            logger.notice("Cadence pacer routine guidance deferred until segment ends")
-            eventHandler?("guidance_deferred")
-        }
-        return true
-    }
 
     override init() {
         super.init()
@@ -86,6 +73,8 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
 
     func stop(deactivateSession: Bool = true) {
         isHandingOff = false
+        pausedForAnnouncement = false
+        playbackCadence = nil
         guard let player else { return }
         let result = isPlayingIntroduction ? "introduction_interrupted" : "interrupted"
         isPlayingIntroduction = false
@@ -96,6 +85,91 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         if deactivateSession { deactivateAudioSession() }
         reportState(result)
         eventHandler?(result)
+    }
+
+    func pauseForAnnouncement() {
+        guard let player else { return }
+        // An interrupted explanation is cancelled; only an introduced drum resumes.
+        guard !isPlayingIntroduction else {
+            stop(deactivateSession: false)
+            return
+        }
+        guard !pausedForAnnouncement else { return }
+        player.pause()
+        finishTask?.cancel()
+        finishTask = nil
+        pausedForAnnouncement = true
+        reportState("paused_for_speech")
+        eventHandler?("paused_for_speech")
+        // Speech already owns the shared audio session; do not deactivate it here.
+    }
+
+    func resumeAfterAnnouncement() {
+        guard pausedForAnnouncement, let player else { return }
+        let reason: CadencePacerBlockReason?
+        if let currentBlockReason { reason = currentBlockReason() }
+        else { reason = lastBlockReason }
+        if reason == .speech { return }
+        if reason == .audioDisabled || reason == .quiet
+            || (currentBlockReason == nil && !lastAllowed && reason == nil) {
+            cancelResume(reason: reason?.rawValue ?? "audio_priority")
+            return
+        }
+        guard let snapshot = lastSnapshot,
+              (-1...5).contains(Date().timeIntervalSince(snapshot.recordedAt)),
+              snapshot.isActive, snapshot.activityType == .running else {
+            cancelResume(reason: "stale_or_inactive_snapshot")
+            return
+        }
+        if !snapshot.isSimulated,
+           snapshot.cadenceEvidenceTimestamp.map({ (-1...5).contains(Date().timeIntervalSince($0)) }) != true {
+            cancelResume(reason: "cadence_unavailable")
+            return
+        }
+        guard let cadence = establishedCadence(), let playbackCadence,
+              abs(cadence - playbackCadence) <= 12 else {
+            cancelResume(reason: "cadence_changed_or_unstable")
+            return
+        }
+        let remaining = player.duration - player.currentTime
+        let phase = phaseWindow(intent: lastIntent, elapsed: snapshot.elapsedSeconds)
+        guard remaining > 0.1, phase.eligible, phase.elapsed >= 30,
+              phase.remaining >= Int(ceil(remaining)) + 5,
+              lastIntent?.resolvedTargetDistanceMeters.map({ $0 - snapshot.distanceMeters > 200 }) ?? true else {
+            cancelResume(reason: "phase_or_finish")
+            return
+        }
+        var operation = "configure_session"
+        do {
+            // Analysis/queued cues and the post-route speech gap only block new segments.
+            // Actual speech remains authoritative and will pause this player again.
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playback, options: [.mixWithOthers])
+            operation = "activate_session"
+            try session.setActive(true)
+            operation = "resume_player"
+            scheduleFade(for: player)
+            guard player.play() else {
+                logger.error("Cadence pacer resume failed: AVAudioPlayer.play returned false")
+                stop()
+                eventHandler?("failed")
+                return
+            }
+            pausedForAnnouncement = false
+            reportState("resumed")
+            eventHandler?("resumed")
+        } catch {
+            let error = error as NSError
+            logger.error("Cadence pacer resume failed: operation=\(operation, privacy: .public) domain=\(error.domain, privacy: .public) code=\(error.code)")
+            stop()
+            eventHandler?("failed")
+        }
+    }
+
+    private func cancelResume(reason: String) {
+        logger.notice("Cadence pacer resume skipped reason=\(reason, privacy: .public)")
+        eventHandler?("resume_skipped")
+        stop()
     }
 
     func ingest(
@@ -140,6 +214,18 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             return
         }
         let phase = phaseWindow(intent: intent, elapsed: snapshot.elapsedSeconds)
+        if player != nil, phase.eligible, !allowed, blockReason == .speech {
+            pauseForAnnouncement()
+            return
+        }
+        if player != nil, !isPlayingIntroduction, phase.eligible {
+            // Pending analysis and queued cues need not silence the drum before speech.
+            // Paused players retain their position until the voice releases the session.
+            if allowed || blockReason == .analysis || blockReason == .queuedCue || blockReason == .routePriority {
+                if pausedForAnnouncement { resumeAfterAnnouncement() }
+                return
+            }
+        }
         guard allowed, phase.eligible else {
             stop()
             reportState(allowed ? "phase_ineligible" : blockReason?.rawValue ?? "audio_priority")
@@ -157,19 +243,12 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             reportState("cooldown")
             return
         }
-        guard observations.count >= 8,
-              let first = observations.first, let last = observations.last,
-              last.date.timeIntervalSince(first.date) >= 15,
-              let low = observations.map(\.cadence).min(),
-              let high = observations.map(\.cadence).max(), high - low <= 12 else {
+        guard let cadenceTarget = establishedCadence() else {
             reportState("cadence_not_established")
             return
         }
-        let sorted = observations.map(\.cadence).sorted()
-        let cadenceTarget = sorted[sorted.count / 2]
         // Do not retry an audio failure on every snapshot.
         lastPlaybackSeconds = snapshot.elapsedSeconds
-        if !isHandingOff { reportedGuidanceDeferral = false }
         if isHandingOff {
             isHandingOff = false
             play(cadence: cadenceTarget)
@@ -181,6 +260,18 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             logger.notice("Cadence pacer introduction unavailable; continuing with beat")
             play(cadence: cadenceTarget)
         }
+    }
+
+    private func establishedCadence() -> Int? {
+        guard observations.count >= 8,
+              let first = observations.first, let last = observations.last,
+              last.date.timeIntervalSince(first.date) >= 15,
+              let low = observations.map(\.cadence).min(),
+              let high = observations.map(\.cadence).max(), high - low <= 12 else {
+            return nil
+        }
+        let sorted = observations.map(\.cadence).sorted()
+        return sorted[sorted.count / 2]
     }
 
     private func phaseWindow(intent: SessionIntent?, elapsed: Int) -> (eligible: Bool, elapsed: Int, remaining: Int) {
@@ -230,7 +321,6 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
     }
 
     private func handOffToBeats() {
-        // Keep routine guidance deferred while the completed intro releases its player.
         isHandingOff = true
         let now = Date()
         guard let snapshot = lastSnapshot,
@@ -288,22 +378,31 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
                 return
             }
             self.player = player
+            playbackCadence = cadence
             let output = session.outputVolume == 0 ? "muted" : "nonzero"
             let route = session.currentRoute.outputs.first?.portType.rawValue ?? "none"
             logger.notice("Cadence pacer started route=\(route, privacy: .public) output=\(output, privacy: .public) media_volume=\(session.outputVolume, privacy: .public) player_gain=\(player.volume, privacy: .public) mode=\(session.mode.rawValue, privacy: .public) sound=drum_v2")
             reportState("playing")
             eventHandler?("started")
-            finishTask = Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .seconds(15))
-                guard !Task.isCancelled else { return }
-                self?.player?.setVolume(0, fadeDuration: 5)
-            }
+            scheduleFade(for: player)
         } catch {
             let error = error as NSError
             logger.error("Cadence pacer prepare failed: operation=\(operation, privacy: .public) domain=\(error.domain, privacy: .public) code=\(error.code)")
             deactivateAudioSession()
             reportState("failed")
             eventHandler?("failed")
+        }
+    }
+
+    private func scheduleFade(for player: AVAudioPlayer) {
+        finishTask?.cancel()
+        let remaining = max(0, player.duration - player.currentTime)
+        player.setVolume(0.7 * Float(min(1, remaining / 5)), fadeDuration: 0)
+        finishTask = Task { @MainActor [weak self, weak player] in
+            try? await Task.sleep(for: .seconds(max(0, remaining - 5)))
+            guard !Task.isCancelled, let self, let player,
+                  self.player === player, !self.pausedForAnnouncement else { return }
+            player.setVolume(0, fadeDuration: min(5, remaining))
         }
     }
 
@@ -321,6 +420,8 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         }
         finishTask?.cancel()
         finishTask = nil
+        pausedForAnnouncement = false
+        playbackCadence = nil
         deactivateAudioSession()
         reportState(flag ? "completed" : "failed")
         eventHandler?(flag ? "completed" : "failed")
