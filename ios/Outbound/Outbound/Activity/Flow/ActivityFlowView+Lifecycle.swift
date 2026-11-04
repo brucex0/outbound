@@ -221,7 +221,9 @@ extension ActivityFlowView {
                 .environmentObject(model.dependencies.measurementPreferences)
         }
         .sheet(isPresented: binding(\.setup.showsTrustedContacts)) {
-            CheerInvitationPickerView()
+            CheerInvitationPickerView(onApplyLiveSelection: model.showCamera ? { connections in
+                await model.dependencies.liveShareStore.configureLiveRecipients(connections, intent: model.activeIntent)
+            } : nil)
                 .environmentObject(model.dependencies.socialStore)
                 .environmentObject(model.dependencies.liveShareStore)
                 .environmentObject(model.dependencies.safetyContactStore)

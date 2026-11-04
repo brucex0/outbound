@@ -127,6 +127,7 @@ Track:
 
 Auto Pause setup changes use `activity_configuration_changed` with `change_type=auto_pause`, the enabled/disabled selection, and canonical activity type. The preference value is also captured on `activity_started`.
 Goal pause changes use `activity_configuration_changed` with `change_type=auto_stop_at_goal`, the enabled/disabled selection, and canonical activity type. The effective session value is also captured on `activity_started`. Do not include exact goal values in these events.
+Live dashboard changes reuse these events with `source_type=live_workout`, `change_type=voice_guide|auto_pause|auto_stop_at_goal`, enabled/disabled selection, and activity type. These changes apply only to the current session; recipient changes reuse `live_cheer_invitation_configured` with coarse participant counts.
 
 `activity_saved` may add coarse duration, distance, goal-completion, and photo-count buckets. Keep exact activity facts in the activity record, not general product analytics.
 

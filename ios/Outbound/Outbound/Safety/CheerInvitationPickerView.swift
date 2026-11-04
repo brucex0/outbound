@@ -6,6 +6,8 @@ struct CheerInvitationPickerView: View {
     @EnvironmentObject private var liveShareStore: LiveShareStore
     @EnvironmentObject private var safetyContactStore: SafetyContactStore
     @Environment(\.analyticsManager) private var analyticsManager
+    var onApplyLiveSelection: (([SocialConnectionDTO]) async -> Bool)? = nil
+    @State private var isApplying = false
     @State private var selectedIDs: Set<String> = []
 
     private var connections: [SocialConnectionDTO] {
@@ -52,19 +54,28 @@ struct CheerInvitationPickerView: View {
             }
             .navigationTitle("Cheer me on")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(isApplying) }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        liveShareStore.setSelectedConnections(connections.filter { selectedIDs.contains($0.person.id) })
-                        Task { await analyticsManager?.track(.init(.liveCheerInvitationConfigured, properties: [.participantCountBucket: .string(ProductAnalyticsBucket.count(selectedIDs.count))])) }
-                        dismiss()
+                        isApplying = true
+                        Task {
+                            let selected = connections.filter { selectedIDs.contains($0.person.id) }
+                            if let onApplyLiveSelection {
+                                guard await onApplyLiveSelection(selected) else { isApplying = false; dismiss(); return }
+                            } else { liveShareStore.setSelectedConnections(selected) }
+                            await analyticsManager?.track(.init(.liveCheerInvitationConfigured, properties: [.participantCountBucket: .string(ProductAnalyticsBucket.count(selectedIDs.count))]))
+                            isApplying = false
+                            dismiss()
+                        }
                     }
+                    .disabled(isApplying)
                 }
             }
+            .interactiveDismissDisabled(isApplying)
             .task {
                 selectedIDs = Set(liveShareStore.selectedConnections.map(\.person.id))
                 if !socialStore.hasLoadedConnections { await socialStore.refreshConnections() }
-                if selectedIDs.isEmpty {
+                if selectedIDs.isEmpty && onApplyLiveSelection == nil {
                     selectedIDs = Set(trustedConnections.map(\.person.id))
                 }
             }

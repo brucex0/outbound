@@ -2,6 +2,14 @@ import CoreLocation
 import Foundation
 import UIKit
 
+struct LiveWorkoutSessionOptions: Codable {
+    var voiceGuideEnabled: Bool?
+    var pauseAtGoalEnabled: Bool?
+    var goal: ActivityGoal?
+    var goalModeRawValue: String?
+    var goalPauseHandled = false
+}
+
 struct ActiveSessionJournal {
     let startedAt: Date
     let elapsedSeconds: Int
@@ -9,6 +17,7 @@ struct ActiveSessionJournal {
     let completedAt: Date?
     let wasPaused: Bool
     let activityType: ActivityType?
+    let liveWorkoutOptions: LiveWorkoutSessionOptions?
     let autoPauseEnabled: Bool?
     let walkingStepCount: Int?
     let cadenceTracker: RunningCadenceTracker?
@@ -32,6 +41,7 @@ struct ActiveSessionJournal {
         completedAt: Date? = nil,
         wasPaused: Bool,
         activityType: ActivityType?,
+        liveWorkoutOptions: LiveWorkoutSessionOptions? = nil,
         autoPauseEnabled: Bool? = nil,
         walkingStepCount: Int? = nil,
         cadenceTracker: RunningCadenceTracker? = nil,
@@ -54,6 +64,7 @@ struct ActiveSessionJournal {
         self.completedAt = completedAt
         self.wasPaused = wasPaused
         self.activityType = activityType
+        self.liveWorkoutOptions = liveWorkoutOptions
         self.autoPauseEnabled = autoPauseEnabled
         self.walkingStepCount = walkingStepCount
         self.cadenceTracker = cadenceTracker
@@ -83,6 +94,7 @@ struct ActiveSessionJournal {
                 completedAt: metadata.completedAt,
                 wasPaused: metadata.wasPaused,
                 activityType: metadata.activityType,
+                liveWorkoutOptions: metadata.liveWorkoutOptions,
                 autoPauseEnabled: metadata.autoPauseEnabled,
                 walkingStepCount: metadata.walkingStepCount,
                 cadenceTracker: metadata.cadenceTracker,
@@ -116,6 +128,7 @@ struct ActiveSessionJournal {
             completedAt: completedAt,
             wasPaused: wasPaused,
             activityType: activityType,
+            liveWorkoutOptions: liveWorkoutOptions,
             autoPauseEnabled: autoPauseEnabled,
             walkingStepCount: walkingStepCount,
             cadenceTracker: cadenceTracker,
@@ -177,6 +190,7 @@ struct ActiveSessionJournal {
         let completedAt: Date?
         let wasPaused: Bool
         let activityType: ActivityType?
+        let liveWorkoutOptions: LiveWorkoutSessionOptions?
         let autoPauseEnabled: Bool?
         let walkingStepCount: Int?
         let cadenceTracker: RunningCadenceTracker?

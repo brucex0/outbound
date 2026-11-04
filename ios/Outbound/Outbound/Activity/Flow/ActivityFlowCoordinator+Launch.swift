@@ -290,6 +290,14 @@ extension ActivityFlowCoordinator {
             )
         }
         self.activeIntent = self.setup.plannedIntent
+        if let options = self.recorder.liveWorkoutOptions {
+            if let mode = options.goalModeRawValue.flatMap(SessionGoalMode.init(rawValue:)) {
+                self.setup.selectedGoalMode = mode
+            }
+            if let goal = options.goal {
+                self.activeIntent = (self.activeIntent ?? .freestyleRun).replacingGoal(goal, unitSystem: self.dependencies.measurementPreferences.unitSystem)
+            }
+        }
         if let eventID = self.recorder.recordingActivityEvent?.id {
             self.dependencies.socialStore.prepareToRecord(activityEventID: eventID)
             self.trackFeatureExposure("group_activity_recovery")
@@ -374,6 +382,8 @@ extension ActivityFlowCoordinator {
         self.review.pendingActivity = nil
         self.presentLiveSurface()
         self.recorder.seedLiveRunForUITest()
+        self.setup.selectedGoalMode = .distance
+        self.recorder.configureLiveWorkoutOptions(goal: intent.activityGoal, mode: SessionGoalMode.distance.rawValue, voice: self.isVoiceGuideEnabled, pauseAtGoal: self.autoStopAtGoalEnabled)
 #if targetEnvironment(simulator)
         self.dependencies.phoneWorkoutCoordinator.configureWatchFlowUITest(recorder: self.recorder)
 #endif
@@ -570,6 +580,12 @@ extension ActivityFlowCoordinator {
             ActiveRouteGuidanceJournal(route: $0, recoverySeed: nil)
         }
         self.startRecorder(routeGuidance: routeGuidance)
+        self.recorder.configureLiveWorkoutOptions(
+            goal: (self.activeIntent ?? .freestyleRun).activityGoal,
+            mode: self.setup.selectedGoalMode.rawValue,
+            voice: self.isVoiceGuideEnabled,
+            pauseAtGoal: self.autoStopAtGoalEnabled
+        )
         self.sessionController.beginRecording()
         if let eventID = self.activeIntent?.activityEvent?.id {
             ActivityEventParticipationSync.shared.enqueueStart(eventID: eventID)

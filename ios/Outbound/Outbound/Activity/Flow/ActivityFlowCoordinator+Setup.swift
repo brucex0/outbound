@@ -300,11 +300,16 @@ extension ActivityFlowCoordinator {
 
     var photoAccessibilityValue: String { self.preActivityPhoto == nil ? String(localized: "record.photo.not_added", defaultValue: "No photo added") : String(localized: "record.photo.added", defaultValue: "Photo added") }
 
+    var liveGoalMode: SessionGoalMode {
+        recorder.liveWorkoutOptions?.goalModeRawValue.flatMap(SessionGoalMode.init(rawValue:)) ?? setup.selectedGoalMode
+    }
+
     func finishAtGoalIfNeeded(_ snapshot: ActiveSessionSnapshot) {
-        guard self.autoStopAtGoalEnabled,
+        guard (self.recorder.liveWorkoutOptions?.pauseAtGoalEnabled ?? self.autoStopAtGoalEnabled),
+              self.recorder.liveWorkoutOptions?.goalPauseHandled != true,
               !self.didAutoStopAtGoal,
               self.recorder.state == .active,
-              [.distance, .time, .calories].contains(self.setup.selectedGoalMode),
+              [.distance, .time, .calories].contains(self.liveGoalMode),
               let ratio = self.goalCompletionRatio(
                 distanceMeters: snapshot.distanceMeters,
                 durationSeconds: snapshot.elapsedSeconds
@@ -313,8 +318,9 @@ extension ActivityFlowCoordinator {
         else { return }
 
         self.didAutoStopAtGoal = true
+        self.recorder.updateLiveWorkoutOptions(goalHandled: true)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        let distanceGoal = self.setup.selectedGoalMode == .distance ? self.setup.currentActivityGoal.targetDistanceMeters : nil
+        let distanceGoal = self.liveGoalMode == .distance ? self.activeIntent?.activityGoal.targetDistanceMeters : nil
         self.pauseRecording(distanceGoalMeters: distanceGoal)
     }
 

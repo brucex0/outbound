@@ -4,6 +4,14 @@ import CoreLocation
 import MapKit
 
 extension ActivityFlowCoordinator {
+    func trackLiveOption(_ option: String, enabled: Bool) {
+        track(.init(.activityConfigurationChanged, properties: [
+            .changeType: .string(option), .selectionType: .string(enabled ? "enabled" : "disabled"),
+            .sourceType: .string("live_workout"),
+            .activityType: .string(recorder.activityType.rawValue)
+        ]))
+    }
+
     func finishRecording() {
         self.finishRecording(recoveredAfterFinish: false, initiatedByWatch: false)
     }

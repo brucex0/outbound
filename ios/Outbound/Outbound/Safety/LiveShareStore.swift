@@ -66,6 +66,29 @@ final class LiveShareStore: ObservableObject {
         }
     }
 
+    func configureLiveRecipients(_ connections: [SocialConnectionDTO], intent: SessionIntent?) async -> Bool {
+        guard !isStarting else { return false }
+        if Set(connections.map(\.person.id)) == Set(selectedConnections.map(\.person.id)), isSharing { return true }
+        if let session = activeSession {
+            updateTask?.cancel()
+            await updateTask?.value
+            do {
+                _ = try await api.endLiveShare(shareID: session.id)
+                end(remoteAlreadyEnded: true)
+            } catch is CancellationError {
+                return false
+            } catch {
+                ActivityDiagnosticLog.error(.recovery, "Live share recipient change end failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+                lastErrorMessage = String(localized: "session.options.sharing_failed", defaultValue: "Couldn’t update live sharing. Please try again.")
+                return false
+            }
+        }
+        setSelectedConnections(connections)
+        guard !connections.isEmpty else { return true }
+        await beginIfArmed(intent: intent)
+        return isSharing
+    }
+
     func beginIfArmed(intent: SessionIntent?) async {
         guard isArmedForNextActivity, activeSession == nil else { return }
 
@@ -107,7 +130,10 @@ final class LiveShareStore: ObservableObject {
             lastSentAt = nil
             lastSentMeasurementAt = nil
             lastCheckpointAt = nil
+        } catch is CancellationError {
+            return
         } catch {
+            ActivityDiagnosticLog.error(.recovery, "Live share start failed error=\(ActivityDiagnosticLog.errorCategory(error))")
             lastErrorMessage = "Live sharing unavailable: \(error.localizedDescription)"
             isArmedForNextActivity = false
             activeSession = nil
@@ -154,7 +180,7 @@ final class LiveShareStore: ObservableObject {
         }
     }
 
-    func end(finalSnapshot: ActiveSessionSnapshot? = nil, now: Date = Date()) {
+    func end(finalSnapshot: ActiveSessionSnapshot? = nil, now: Date = Date(), remoteAlreadyEnded: Bool = false) {
         let pendingUpdateTask = updateTask
         updateTask?.cancel()
         updateTask = nil
@@ -174,6 +200,7 @@ final class LiveShareStore: ObservableObject {
         lastCheerFetchAt = nil
         mostRecentlyHeardCheer = nil
 
+        guard !remoteAlreadyEnded else { return }
         Task { [api] in
             // A cancelled URL request may still be finishing on the server. Wait for it
             // before writing the authoritative final metrics, then close the share.

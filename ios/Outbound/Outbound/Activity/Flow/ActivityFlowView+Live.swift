@@ -87,6 +87,7 @@ extension ActivityFlowView {
 #if DEBUG
         .onPreferenceChange(LiveGroupTopControlsHeightPreferenceKey.self) { model.live.liveGroupTopControlsHeight = $0 }
 #endif
+        .environment(\.liveWorkoutOptionsContent, AnyView(liveWorkoutOptionsSection))
         .background(Color(.systemBackground))
         .toolbar(.hidden, for: .tabBar)
         .overlay(alignment: .topLeading) {
@@ -136,6 +137,59 @@ extension ActivityFlowView {
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+    }
+
+    var liveWorkoutOptionsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(String(localized: "session.options.title", defaultValue: "Workout options"))
+                .font(.headline)
+            Toggle(String(localized: "record.setup.voice_guide", defaultValue: "Voice Guide"), isOn: Binding(
+                get: { model.voiceGuideSpeechEnabled },
+                set: { enabled in
+                    guard !enabled || !model.isVoiceGuideExplicitlyUnavailable else { return }
+                    model.recorder.updateLiveWorkoutOptions(voice: enabled)
+                    model.guide.setSpeechEnabled(model.voiceGuideSpeechEnabled)
+                    model.trackLiveOption("voice_guide", enabled: enabled)
+                }
+            ))
+            .frame(minHeight: 44)
+            .accessibilityIdentifier("LiveVoiceGuide")
+            .disabled(model.isVoiceGuideExplicitlyUnavailable)
+            Toggle(String(localized: "session.options.auto_pause", defaultValue: "Auto-pause when stopped"), isOn: Binding(
+                get: { model.recorder.autoPauseEnabled },
+                set: { enabled in
+                    model.recorder.setLiveAutoPauseEnabled(enabled)
+                    model.trackLiveOption("auto_pause", enabled: enabled)
+                }
+            ))
+            .frame(minHeight: 44)
+            .accessibilityIdentifier("LiveAutoPause")
+            if [.distance, .time, .calories].contains(model.liveGoalMode) {
+                Toggle(String(localized: "today.stop.at.goal", defaultValue: "Pause at goal"), isOn: Binding(
+                    get: { model.recorder.liveWorkoutOptions?.pauseAtGoalEnabled ?? model.autoStopAtGoalEnabled },
+                    set: { enabled in
+                        let reached = (model.goalCompletionRatio(distanceMeters: model.recorder.distanceMeters, durationSeconds: model.recorder.elapsedSeconds) ?? 0) >= 1
+                        model.recorder.updateLiveWorkoutOptions(pauseAtGoal: enabled, goalHandled: enabled && reached ? true : nil)
+                        model.trackLiveOption("auto_stop_at_goal", enabled: enabled)
+                    }
+                ))
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("LivePauseAtGoal")
+            }
+            Button { model.setup.showsTrustedContacts = true } label: {
+                HStack {
+                    Text(String(localized: "record.setup.cheer_me_on", defaultValue: "Cheer me on"))
+                    Spacer()
+                    Text(model.dependencies.liveShareStore.isSharing ? String(localized: "common.on", defaultValue: "On") : String(localized: "common.off", defaultValue: "Off"))
+                        .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right")
+                }
+                .frame(minHeight: 44)
+            }
+            .accessibilityIdentifier("LiveCheerMeOn")
+        }
+        .padding(14)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
     }
 
     var embeddedCountdownCancelButton: some View {

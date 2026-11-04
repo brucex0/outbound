@@ -703,7 +703,19 @@ private struct HoldToPauseControl: View {
     }
 }
 
+private struct LiveWorkoutOptionsContentKey: EnvironmentKey {
+    static let defaultValue = AnyView(EmptyView())
+}
+
+extension EnvironmentValues {
+    var liveWorkoutOptionsContent: AnyView {
+        get { self[LiveWorkoutOptionsContentKey.self] }
+        set { self[LiveWorkoutOptionsContentKey.self] = newValue }
+    }
+}
+
 struct SessionStatusCard: View {
+    @Environment(\.liveWorkoutOptionsContent) private var liveWorkoutOptionsContent
 
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
     @EnvironmentObject private var connectivityStore: ConnectivityStore
@@ -985,6 +997,7 @@ struct SessionStatusCard: View {
                         .padding(14)
                         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
+                    liveWorkoutOptionsContent
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 16)

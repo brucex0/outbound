@@ -45,7 +45,30 @@ final class ActivityRecorder: ObservableObject {
     @Published private(set) var heartRateEffort: PlainstrideHeartRateEffort = .unavailable
     @Published var liveSnapshot: ActiveSessionSnapshot = .empty
     @Published var autoPaused = false
-    private(set) var autoPauseEnabled = true
+    @Published private(set) var autoPauseEnabled = true
+    @Published private(set) var liveWorkoutOptions: LiveWorkoutSessionOptions?
+
+    func configureLiveWorkoutOptions(goal: ActivityGoal, mode: String, voice: Bool, pauseAtGoal: Bool) {
+        liveWorkoutOptions = LiveWorkoutSessionOptions(voiceGuideEnabled: voice, pauseAtGoalEnabled: pauseAtGoal, goal: goal, goalModeRawValue: mode)
+        persistJournal(force: true)
+    }
+
+    func updateLiveWorkoutOptions(voice: Bool? = nil, pauseAtGoal: Bool? = nil, goalHandled: Bool? = nil) {
+        var options = liveWorkoutOptions ?? LiveWorkoutSessionOptions()
+        if let voice { options.voiceGuideEnabled = voice }
+        if let pauseAtGoal { options.pauseAtGoalEnabled = pauseAtGoal }
+        if let goalHandled { options.goalPauseHandled = goalHandled }
+        liveWorkoutOptions = options
+        persistJournal(force: true)
+    }
+
+    func setLiveAutoPauseEnabled(_ enabled: Bool) {
+        guard state == .active || state == .paused else { return }
+        autoPauseEnabled = enabled
+        autoPauseCandidateStart = nil
+        autoResumeCandidateStart = nil
+        persistJournal(force: true)
+    }
     @Published private(set) var lastAutoPauseRecoveredDurationSeconds = 0
     @Published private(set) var recoveredSession = false
     @Published private(set) var recoveredAwaitingSave = false
@@ -168,6 +191,7 @@ final class ActivityRecorder: ObservableObject {
         currentSegmentStartDate = now
         accumulatedActiveDuration = max(0, now.timeIntervalSince(resolvedStartDate))
         self.activityType = activityType
+        liveWorkoutOptions = nil
         self.autoPauseEnabled = autoPauseEnabled ?? AutoPauseDefaults.isEnabled(for: activityType)
         self.sessionMetadata = sessionMetadata
         self.companionType = companionType
@@ -807,6 +831,7 @@ final class ActivityRecorder: ObservableObject {
         cadenceTracker = journal.cadenceTracker ?? RunningCadenceTracker()
         cadenceTracker.suspend()
         currentCadenceStepsPerMinute = nil
+        liveWorkoutOptions = journal.liveWorkoutOptions
         autoPauseEnabled = journal.autoPauseEnabled ?? AutoPauseDefaults.isEnabled(for: activityType)
         goalDistanceAdjustmentMeters = journal.goalDistanceAdjustmentMeters ?? 0
         companionType = journal.companionType
@@ -920,6 +945,7 @@ final class ActivityRecorder: ObservableObject {
             completedAt: completedAt,
             wasPaused: state == .paused,
             activityType: activityType,
+            liveWorkoutOptions: liveWorkoutOptions,
             autoPauseEnabled: autoPauseEnabled,
             walkingStepCount: walkingStepCount,
             cadenceTracker: activityType == .running ? cadenceTracker : nil,

@@ -49,7 +49,7 @@ extension ActivityFlowCoordinator {
     }
 
     var voiceGuideSpeechEnabled: Bool {
-        self.isVoiceGuideEnabled && !self.isVoiceGuideExplicitlyUnavailable
+        ((self.recorder.state == .active || self.recorder.state == .paused) ? self.recorder.liveWorkoutOptions?.voiceGuideEnabled ?? self.isVoiceGuideEnabled : self.isVoiceGuideEnabled) && !self.isVoiceGuideExplicitlyUnavailable
     }
 
     func trackGuidanceEvent(_ event: LiveGuidanceTelemetryEvent) {

@@ -236,6 +236,60 @@ final class OutboundUITests: XCTestCase {
     }
 
     @MainActor
+    func testLiveWorkoutOptionsToggleAndCheerPicker() throws {
+        let app = launchApp(extraArguments: ["-OutboundUITestLive10K", "-measurement_unit_system_v1", "metric"])
+        XCTAssertTrue(app.buttons["Expand workout dashboard"].waitForExistence(timeout: 8), app.debugDescription)
+        app.buttons["Expand workout dashboard"].tap()
+
+        let voice = app.switches["LiveVoiceGuide"]
+        let autoPause = app.switches["LiveAutoPause"]
+        let goal = app.switches["LivePauseAtGoal"]
+        revealInWorkoutPanel(voice, in: app)
+        XCTAssertTrue(app.staticTexts["Workout options"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(voice.exists, app.debugDescription)
+        // The seeded live 10K is an explicit distance goal, so every live option applies.
+        revealInWorkoutPanel(goal, in: app)
+        XCTAssertTrue(goal.exists, app.debugDescription)
+
+        func toggle(_ control: XCUIElement, _ name: String) -> String {
+            revealInWorkoutPanel(control, in: app)
+            let before = control.value as? String ?? ""
+            control.tap()
+            let changed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value != %@", before), object: control)
+            XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: 5), .completed,
+                           "\(name) kept the value \(before)")
+            return control.value as? String ?? ""
+        }
+        let voiceValue = toggle(voice, "Voice Guide")
+        let pauseValue = toggle(autoPause, "Auto-pause when stopped")
+        let goalValue = toggle(goal, "Pause at goal")
+
+        let cheer = app.buttons["LiveCheerMeOn"]
+        revealInWorkoutPanel(cheer, in: app)
+        cheer.tap()
+        XCTAssertTrue(app.navigationBars["Cheer me on"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["They’ll see your precise location, pace, distance, and heart rate for this activity, and can send short voice cheers in the app."].exists)
+        app.navigationBars["Cheer me on"].buttons["Cancel"].tap()
+        XCTAssertTrue(app.navigationBars["Cheer me on"].waitForNonExistence(timeout: 5))
+
+        app.buttons["Collapse workout dashboard"].tap()
+        XCTAssertTrue(app.buttons["Pause activity"].waitForExistence(timeout: 5))
+        app.buttons["Expand workout dashboard"].tap()
+        revealInWorkoutPanel(voice, in: app)
+        XCTAssertEqual(voice.value as? String, voiceValue)
+        XCTAssertEqual(autoPause.value as? String, pauseValue)
+        XCTAssertEqual(goal.value as? String, goalValue)
+        // Leave no synthetic active-session journal for another UI scenario.
+        app.buttons["Collapse workout dashboard"].tap()
+        app.buttons["Pause activity"].press(forDuration: 1.1)
+        XCTAssertTrue(app.buttons["Finish activity"].waitForExistence(timeout: 5))
+        app.buttons["Finish activity"].tap()
+        XCTAssertTrue(app.buttons["Save activity"].waitForExistence(timeout: 5))
+        discardReview(app)
+        XCTAssertTrue(app.buttons["tab.start"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testSeededLive10KRunMetricsAndLifecycle() throws {
         let app = launchApp(extraArguments: [
             "-OutboundUITestLive10K",
@@ -350,6 +404,20 @@ final class OutboundUITests: XCTestCase {
         // This measures how long it takes to launch your application.
         measure(metrics: [XCTApplicationLaunchMetric()]) {
             _ = launchApp()
+        }
+    }
+
+    /// The expanded live dashboard scrolls its own content; a plain app swipe can land on the map.
+    @MainActor
+    private func revealInWorkoutPanel(_ element: XCUIElement, in app: XCUIApplication, maxSwipes: Int = 8) {
+        for _ in 0..<maxSwipes {
+            if element.exists && element.isHittable { return }
+            let panel = app.scrollViews.firstMatch
+            if panel.exists && panel.isHittable {
+                panel.swipeUp(velocity: .slow)
+            } else {
+                app.swipeUp()
+            }
         }
     }
 

@@ -480,3 +480,20 @@ Verified 2026-11-01 singleton extension on iPhone 17 Pro / iOS 27.0: one focused
 The live disclosure's header owns its accessibility identifier; assigning it to the whole disclosure overrides native child switch identifiers on iOS 27. Tests tap the native switch thumb, not the label center.
 
 Verified 2026-11-01 on iPhone 17 Pro / iOS 27.0: both focused UI regressions passed, zero failures/skips. The new Today scenario caught and fixed a countdown reset caused by mutating setup intent during start; event attribution now joins the immutable recording start intent. UI results: `/tmp/outbound-group-controls-ui-results-3/GroupRecovery.xcresult`. Android build and backend compile/deploy are separate checks; no cross-device location delivery or physical-phone installation was verified in this run.
+
+### Live workout options UI regression
+
+Run only when UI tests are requested:
+
+```sh
+xcodebuild -quiet -jobs 2 \
+  -project ios/Outbound/Outbound.xcodeproj -scheme OutboundAppTests \
+  -destination 'id=SIMULATOR_UUID' -derivedDataPath /tmp/outbound-live-options-derived \
+  -parallel-testing-enabled NO \
+  -only-testing:OutboundUITests/OutboundUITests/testLiveWorkoutOptionsToggleAndCheerPicker \
+  OUTBOUND_APP_TEST_MODE=YES CODE_SIGNING_ALLOWED=NO test
+```
+
+- Verified on iPhone 17 Pro / iOS 26.5: one focused UI test passed, zero failures/skips. Freebuff assisted test authoring and execution; the regression exposed a live goal-eligibility dependency on mutable setup state, now replaced with the recorder's checkpointed goal mode.
+- The test toggles Voice Guide, automatic pause, and Pause at goal in the expanded dashboard, checks the sharing disclosure and Cancel flow, confirms recording stays active, and verifies toggle values after collapse/expand. It finishes/discards its synthetic recording afterward.
+- Debug simulator compilation also passed. Actual speech, GPS-triggered pause/resume, process-death recovery, Watch behavior, and cross-device invitation/removal delivery were not verified by this UI fixture.
