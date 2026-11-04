@@ -38,8 +38,18 @@ extension XCTestCase {
                 if springboard.alerts.buttons[label].exists { springboard.alerts.buttons[label].tap(); break }
             }
         }
+        // The app's own prompt can appear and disappear on its own once the system
+        // permission resolves, so dismissal is best effort: never assert on an
+        // alert that is no longer on screen.
         let locationAlert = app.alerts["Enable location"]
-        if locationAlert.exists { locationAlert.buttons["Close"].tap() }
+        for _ in 0..<10 where locationAlert.exists {
+            let close = locationAlert.buttons["Close"].firstMatch
+            if close.exists && close.isHittable {
+                close.tap()
+                return
+            }
+            Thread.sleep(forTimeInterval: 0.2)
+        }
     }
 
     @MainActor

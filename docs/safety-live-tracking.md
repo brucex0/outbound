@@ -193,3 +193,8 @@ Emergency escalation remains outside this feature.
 - Device acceptance: join one session from iOS and Android, move together with a roughly 15-meter gap, and compare displayed age/accuracy. Verify fresh fixes arrive about once per second while GPS and connectivity permit; this is a publish throttle, not an end-to-end latency guarantee.
 - Stop location/network delivery: update age must continue advancing, and pins must fade after 15 seconds. Restore delivery: a newer fix restores the fresh state. Confirm an older checkpoint cannot move the pin backwards and leaving/finishing still ends sharing.
 - Confirm only a new GPS measurement publishes; stationary sessions must not refresh an old measurement's timestamp. Check weak GPS and reconnect paths on devices; builds alone do not establish physical positioning accuracy or latency.
+
+### Focused UI Tests
+
+- iOS: `xcodebuild -project ios/Outbound/Outbound.xcodeproj -scheme GroupRecoveryUI -destination 'id=<simulator>' -parallel-testing-enabled NO -only-testing:OutboundUITests/LiveLocationFreshnessUITests CODE_SIGNING_ALLOWED=NO test`. `LiveLocationFixture` serves a loopback `/live/group-runs` API, so the run covers displayed update age, reported GPS accuracy, the 15-second fade with no incoming fixes, an older recovery checkpoint not replacing a fresh fix, and finish still ending the share. Grant location to the simulator (`xcrun simctl privacy <sim> grant location-always plainstride.outbound`) so the app's own location prompt does not block start.
+- These harnesses do not exercise the publish throttle, original-timestamp writes, Ably delivery, or physical GPS accuracy; those still need the device acceptance pass above.

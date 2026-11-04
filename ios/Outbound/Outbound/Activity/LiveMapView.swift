@@ -930,6 +930,33 @@ private struct LiveGroupRunnerPill: Identifiable {
     }
 }
 
+/// Single source for the freshness and accuracy copy in the runner strip and the
+/// participant pins, so both surfaces age from the same displayed clock.
+enum LiveGroupLocationText {
+    static func status(_ participant: LiveGroupParticipant?, displayedAt: Date) -> String {
+        guard let participant, participant.status == "active" || participant.status == "stale" else {
+            return String(localized: "group.activity.location_not_sharing", table: "GroupActivity")
+        }
+        guard let measuredAt = participant.lastLocationAt else {
+            return String(localized: "group.activity.location_waiting", table: "GroupActivity")
+        }
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = [.minute, .second]
+        formatter.unitsStyle = .abbreviated
+        formatter.maximumUnitCount = 1
+        let age = formatter.string(from: max(0, displayedAt.timeIntervalSince(measuredAt))) ?? "0"
+        let format = participant.isFresh
+            ? String(localized: "group.activity.location_recent", table: "GroupActivity")
+            : String(localized: "group.activity.location_stale", table: "GroupActivity")
+        return String(format: format, age)
+    }
+
+    static func accuracy(_ participant: LiveGroupParticipant?) -> String? {
+        guard let accuracy = participant?.accuracyMeters, accuracy.isFinite, accuracy >= 0 else { return nil }
+        return String(format: String(localized: "group.activity.location_accuracy", table: "GroupActivity"), Int(min(accuracy, 100_000)))
+    }
+}
+
 private struct LiveGroupRunnerStrip: View {
     let participants: [LiveGroupRunnerPill]
     let displayedAt: Date
@@ -950,11 +977,10 @@ private struct LiveGroupRunnerStrip: View {
                                 Text(shortName(for: participant))
                                     .font(.caption.weight(.bold))
                                     .lineLimit(1)
-                                Text(locationStatus(participant.liveParticipant))
+                                Text(LiveGroupLocationText.status(participant.liveParticipant, displayedAt: displayedAt))
                                     .font(.caption2)
-                                if let accuracy = participant.liveParticipant?.accuracyMeters,
-                                   accuracy.isFinite, accuracy >= 0 {
-                                    Text(String(format: String(localized: "group.activity.location_accuracy", table: "GroupActivity"), Int(min(accuracy, 100_000))))
+                                if let accuracy = LiveGroupLocationText.accuracy(participant.liveParticipant) {
+                                    Text(accuracy)
                                         .font(.caption2)
                                 }
                             }
@@ -972,30 +998,21 @@ private struct LiveGroupRunnerStrip: View {
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("live.group.participant.\(participant.id)")
                     .accessibilityLabel(participant.displayName)
-                    .accessibilityValue(String(localized: participant.isSharingLocation
-                        ? "group.activity.location_sharing" : "group.activity.location_not_sharing", table: "GroupActivity"))
+                    .accessibilityValue(accessibilitySummary(participant))
                 }
             }
             .padding(.horizontal, 2)
         }
     }
 
-    private func locationStatus(_ participant: LiveGroupParticipant?) -> String {
-        guard let participant, participant.status == "active" || participant.status == "stale" else {
-            return String(localized: "group.activity.location_not_sharing", table: "GroupActivity")
-        }
-        guard let measuredAt = participant.lastLocationAt else {
-            return String(localized: "group.activity.location_waiting", table: "GroupActivity")
-        }
-        let formatter = DateComponentsFormatter()
-        formatter.allowedUnits = [.minute, .second]
-        formatter.unitsStyle = .abbreviated
-        formatter.maximumUnitCount = 1
-        let age = formatter.string(from: max(0, displayedAt.timeIntervalSince(measuredAt))) ?? "0"
-        let format = participant.isFresh
-            ? String(localized: "group.activity.location_recent", table: "GroupActivity")
-            : String(localized: "group.activity.location_stale", table: "GroupActivity")
-        return String(format: format, age)
+    /// Screen readers hear the same freshness and GPS uncertainty the pill shows.
+    private func accessibilitySummary(_ participant: LiveGroupRunnerPill) -> String {
+        let sharing = String(localized: participant.isSharingLocation
+            ? "group.activity.location_sharing" : "group.activity.location_not_sharing", table: "GroupActivity")
+        guard participant.isSharingLocation, participant.liveParticipant?.lastLocationAt != nil else { return sharing }
+        let status = LiveGroupLocationText.status(participant.liveParticipant, displayedAt: displayedAt)
+        guard let accuracy = LiveGroupLocationText.accuracy(participant.liveParticipant) else { return "\(sharing), \(status)" }
+        return "\(sharing), \(status), \(accuracy)"
     }
 
     private func isFocused(_ participant: LiveGroupRunnerPill) -> Bool {

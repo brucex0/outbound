@@ -116,8 +116,8 @@ final class GroupRecoveryUITests: XCTestCase {
         let disabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "0"), object: liveSwitch)
         XCTAssertEqual(XCTWaiter.wait(for: [disabled], timeout: 5), .completed)
         XCTAssertEqual(app.buttons["live.group.participant.person-1"].value as? String, "Not sharing location")
-        XCTAssertEqual(app.buttons["live.group.participant.person-2"].value as? String, "Sharing location",
-                       "Stopping my sharing must preserve the other attendee's status")
+        XCTAssertTrue((app.buttons["live.group.participant.person-2"].value as? String)?.hasPrefix("Sharing location") == true,
+                      "Stopping my sharing must preserve the other attendee's status")
         panel.tap()
         app.buttons["Finish activity"].tap()
         XCTAssertTrue(app.buttons["ClosePostRunSummaryButton"].waitForExistence(timeout: 10))
@@ -144,7 +144,7 @@ final class GroupRecoveryUITests: XCTestCase {
         XCTAssertEqual(pills.count, 5)
         XCTAssertEqual(app.buttons.matching(identifier: "assistant.launcher").count, 1)
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", "Open assistant")).count, 1)
-        XCTAssertEqual(firstPill.value as? String, "Sharing location")
+        XCTAssertTrue((firstPill.value as? String)?.hasPrefix("Sharing location") == true, firstPill.value as? String ?? "")
         XCTAssertTrue(app.buttons["live.group.participant.person-2"].label.contains("Alice"))
         panel.tap()
         let locationSwitch = app.switches["live.group.shareLocation"]
