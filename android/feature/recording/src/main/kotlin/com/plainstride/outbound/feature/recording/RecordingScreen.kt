@@ -1157,7 +1157,11 @@ private fun LiveRecordingScreen(
     )
     BoxWithConstraints(Modifier.fillMaxSize().background(if (mode == RecordingSurfaceMode.CAMERA) Color.Black else MaterialTheme.colorScheme.surface)) {
         // Let the map own its gestures, as on iOS. Switch back using the surface button.
-        if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot, configuration, Modifier.fillMaxSize(), groupRun, focusedParticipant, recenterRequest = recenterRequest) { focusedParticipant = it }
+        if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot, configuration, Modifier.fillMaxSize(), groupRun, focusedParticipant, recenterRequest = recenterRequest) {
+            focusedParticipant = it
+            recenterRequest++
+            onParticipantFocused("map_pin")
+        }
         else CameraSurface(
             photoPath, onPhotoCaptured, onTakePhoto, onPhotoPending,
             Modifier.fillMaxSize().pointerInput(mode) {
@@ -1428,6 +1432,7 @@ private fun TrackMap(
             val age = groupLocationAgeSeconds(participant.lastLocationAt, locationClock)
             com.plainstride.outbound.core.designsystem.MapRouteMarker(participant.id, MapCoordinate(latitude, longitude), participant.displayName,
                 selected = participant.id == focusedParticipant,
+                animatePosition = participant.id != focusedParticipant,
                 alpha = groupMarkerAlpha(participant.status, age))
         },
         onAdditionalMarkerClick = { id -> onFocus(id.takeUnless { it == "live-runner" }) },

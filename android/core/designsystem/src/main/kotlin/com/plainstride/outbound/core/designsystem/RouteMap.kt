@@ -173,14 +173,15 @@ fun PlainstrideRouteMap(
     val followTarget by rememberUpdatedState(followCoordinate?.let {
         MapFollowTarget(it, followBearingDegrees, followTiltDegrees, followZoom)
     })
+    val selectedMarker = markers.firstOrNull(MapRouteMarker::selected)
     var followPausedByGesture by remember { mutableStateOf(false) }
-    LaunchedEffect(recenterRequest, followCoordinate != null) { followPausedByGesture = false }
+    LaunchedEffect(recenterRequest, followCoordinate != null, selectedMarker?.id) { followPausedByGesture = false }
     LaunchedEffect(camera, followAnimationDurationMs, resumeFollowAfterGesture) {
         if (followAnimationDurationMs != 0) return@LaunchedEffect
         snapshotFlow { camera.isMoving && camera.cameraMoveStartedReason == CameraMoveStartedReason.GESTURE }
             .collect { gesturing -> if (gesturing || resumeFollowAfterGesture) followPausedByGesture = gesturing }
     }
-    LaunchedEffect(followCoordinate != null, followAnimationDurationMs, mapLoaded, recenterRequest, followPausedByGesture) {
+    LaunchedEffect(followCoordinate != null, followAnimationDurationMs, mapLoaded, recenterRequest, followPausedByGesture, selectedMarker?.id) {
         if (!mapLoaded || followTarget == null || followPausedByGesture) return@LaunchedEffect
         if (followAnimationDurationMs == 0) {
             // Live coordinates are already interpolated alongside the runner marker.
@@ -204,7 +205,6 @@ fun PlainstrideRouteMap(
             }
         }
     }
-    val selectedMarker = markers.firstOrNull(MapRouteMarker::selected)
     LaunchedEffect(selectedMarker?.id, mapLoaded, followCoordinate != null, focusInitialSelection, recenterRequest) {
         if (!mapLoaded || followCoordinate != null) return@LaunchedEffect
         selectedMarker?.let { marker ->
@@ -315,13 +315,18 @@ fun PlainstrideRouteMap(
                         onClick = { onMarkerClick?.invoke(marker.id); true },
                     )
                 } else {
+                    // Keep descriptor identity stable across live-pose recompositions:
+                    // repeated setIcon calls reload the SDK texture and flash the pin.
+                    val icon = remember(marker.icon, marker.selected) {
+                        marker.icon ?: BitmapDescriptorFactory.defaultMarker(
+                            if (marker.selected) BitmapDescriptorFactory.HUE_ORANGE else BitmapDescriptorFactory.HUE_AZURE,
+                        )
+                    }
                     Marker(
                         state = markerPosition,
                         title = marker.title,
                         alpha = marker.alpha,
-                        icon = marker.icon ?: BitmapDescriptorFactory.defaultMarker(
-                            if (marker.selected) BitmapDescriptorFactory.HUE_ORANGE else BitmapDescriptorFactory.HUE_AZURE,
-                        ),
+                        icon = icon,
                         anchor = marker.anchor,
                         zIndex = if (marker.selected) 4f else 3f,
                         onClick = { onMarkerClick?.invoke(marker.id); true },
@@ -359,6 +364,11 @@ fun PlainstrideLiveRouteMap(
         if (rotateWithRunner) routeBearing(recordedRoute) else null
     }
     val pose = rememberLiveMapPose(runnerLocation, bearing)
+    val selectedParticipant = additionalMarkers.firstOrNull { it.selected }
+    val participantPose = key(selectedParticipant?.id) {
+        rememberLiveMapPose(selectedParticipant?.coordinate, null)
+    }
+    val cameraPose = if (followRunner) pose else participantPose
     val routeColor = MaterialTheme.colorScheme.primary
     val segments = remember(plannedRoute, recordedRoute, recordedRouteSegments, routeColor) {
         buildList {
@@ -393,7 +403,11 @@ fun PlainstrideLiveRouteMap(
         interactive = interactive,
         showEndpointMarkers = false,
         routeSegments = segments,
-        markers = runnerMarker + additionalMarkers + if (showEndpointMarkers) buildList {
+        markers = runnerMarker + additionalMarkers.map { marker ->
+            if (marker.id == selectedParticipant?.id && participantPose != null) {
+                marker.copy(coordinate = participantPose.coordinate, animatePosition = false)
+            } else marker
+        } + if (showEndpointMarkers) buildList {
             plannedRoute.firstOrNull()?.let { add(MapRouteMarker("planned-start", it, stringResource(R.string.route_start))) }
             plannedRoute.lastOrNull()?.takeIf { plannedRoute.size > 1 }?.let { add(MapRouteMarker("planned-finish", it, stringResource(R.string.route_finish))) }
         } else emptyList(),
@@ -403,10 +417,10 @@ fun PlainstrideLiveRouteMap(
         focusInitialSelection = true,
         bottomContentPadding = bottomContentPadding,
         fitRouteOnChange = false,
-        followCoordinate = pose?.coordinate.takeIf { followRunner },
+        followCoordinate = cameraPose?.coordinate,
         followAnimationDurationMs = 0,
-        followBearingDegrees = pose?.bearing.takeIf { followRunner },
-        followTiltDegrees = pose?.tilt ?: 0f,
+        followBearingDegrees = cameraPose?.bearing,
+        followTiltDegrees = cameraPose?.tilt ?: 0f,
         followZoom = zoom,
         resumeFollowAfterGesture = resumeFollowAfterGesture,
         recenterRequest = recenterRequest,

@@ -178,3 +178,5 @@ The fullscreen recording surface owns the live assistant launcher. The outer Rec
 - Live recording exposes assistant and camera/map controls; it has no microphone or voice-input button.
 - The animated runner is the sole current-recording marker. Optional endpoint pins describe the fixed planned route, not the growing recorded track.
 - A location button above the bottom card recenters on the recording location (the simulated location during debug simulation) and resumes runner following after viewing another participant. Taps emit `activity_map_recentered` without coordinates or participant identifiers.
+
+- Android participant pins retain their icon descriptors across live animation frames and interpolate location updates. Selecting a participant follows their incoming positions; selecting another pin or pressing recenter resumes following after a map gesture. Pin selections use the existing participant-focus analytics event with source `map_pin`, without participant identifiers or coordinates.
