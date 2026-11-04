@@ -2,6 +2,12 @@
 
 Open this for Play Console preparation, signed bundles, release policy, privacy review, performance profiles, or production rollback. This document does not authorize publishing.
 
+## Production Rollout Policy
+
+- Always publish Android production releases at **100%** across the configured countries. Do not use a staged rollout unless Bruce explicitly changes this instruction.
+- Bruce confirmed on November 3, 2026 that Android has no users and manually changed version `1.0.3` (6) from 10% to 100%. This is the standing preference for future releases.
+- In Play Console, set the rollout percentage to `100`. The publishing script's `completed` release status already represents a full rollout.
+
 ## Version And Signing Policy
 
 - `PLAINSTRIDE_VERSION_CODE` is a monotonically increasing positive integer assigned by CI for every Play upload.
@@ -132,7 +138,7 @@ Data is not sold. Social publishing, live sharing, Health Connect, microphone, n
 
 - Bruce requested public releases of Android and iOS. Android `1.0.3` (6) was built from committed source `81e3cefd` in an isolated repository worktree, excluding unrelated local edits.
 - The signed bundle passed release configuration checks, vital lint, R8, and signature verification. Play accepted the bundle with ReTrace mapping attached, unchanged supported-device counts, and only the existing optional native-debug-symbol warning.
-- Production `1.0.3` was submitted at a 10% staged rollout across the existing two-country availability. Publishing overview confirms **Changes in review**; quick checks were still running. Managed publishing is off, so approval can start the rollout automatically. This update is not yet confirmed publicly available.
+- Production `1.0.3` was submitted at a 10% staged rollout across the existing two-country availability. Publishing overview confirms **Changes in review**; quick checks were still running. Managed publishing is off, so approval can start the rollout automatically. Bruce subsequently confirmed he manually changed the rollout to 100%; future releases follow the Production Rollout Policy above. This update is not yet confirmed publicly available.
 - Production health and both platforms’ privacy/support endpoints returned HTTP 200. The Android association endpoint at `https://plainstride.ai/.well-known/assetlinks.json` returned HTTP 404; app-link handling remains unverified. No tests or device runtime acceptance checks were performed.
 - Evidence is retained under ignored `artifacts/play-store/release-1.0.3-6/`: signed AAB, mapping, SHA-256, source SHA, product changes, and submission state. Existing Android unreleased-policy instructions remain in force until Bruce explicitly confirms release.
 
@@ -153,10 +159,10 @@ Release evidence should include cold startup, Today/recording navigation frame t
 
 Monitor authentication success, API error/latency, local-save and sync outcomes, foreground recording survival, ANR/crash-free users, Health Connect failures, live-share failures, and privacy-safe live-coach provider results. Alerts must not contain coordinates, health facts, prompts, transcripts, tokens, or user-entered text.
 
-Before widening production rollout:
+For production releases:
 
 1. Verify backend compatibility and health, signed live-coach catalog, account deletion, and link association.
-2. Start with the smallest Play staged rollout cohort and observe a full daily usage cycle.
+2. Use the 100% production rollout policy above and monitor release health after publishing.
 3. Keep server-side live coach mode at `fixed_only` or `disabled` until device audio metrics are healthy; dynamic generation has its own rollout percentage and emergency switch.
 4. Disable failing optional services server-side first. The app must retain recording, local save, offline history, and fixed/local coaching fallback.
 5. Halt rollout on authentication, data-loss, recording, privacy, crash, or ANR regression.
