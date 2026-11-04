@@ -1,15 +1,21 @@
 import MapKit
 import SwiftUI
 
-struct LiveSessionMapLocation {
+struct LiveSessionMapLocation: Equatable {
     let coordinate: CLLocationCoordinate2D
     let course: CLLocationDirection?
     let updatedAt: Date?
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.coordinate.latitude == rhs.coordinate.latitude && lhs.coordinate.longitude == rhs.coordinate.longitude
+            && lhs.course == rhs.course && lhs.updatedAt == rhs.updatedAt
+    }
 }
 
 /// Shared map canvas for the runner and invited followers. Both sides use the
 /// same route drawing, runner marker, camera distance, and course orientation.
 struct LiveSessionMapCanvas<AdditionalContent: MapContent>: View {
+    @Environment(\.analyticsManager) private var analyticsManager
     @Binding var position: MapCameraPosition
     @Binding var isFollowingLocation: Bool
     let location: LiveSessionMapLocation?
@@ -19,7 +25,18 @@ struct LiveSessionMapCanvas<AdditionalContent: MapContent>: View {
     let isMoving: Bool
     let reduceMotion: Bool
     let followsLocation: Bool
+    let participants: [LiveGroupParticipant]
+    let focusedParticipantID: String?
+    let onSelectParticipant: (LiveGroupParticipant) -> Void
+    let onParticipantFocusInterrupted: () -> Void
     @MapContentBuilder let additionalContent: () -> AdditionalContent
+    @State private var displayedLocation: LiveSessionMapLocation?
+    @State private var displayedParticipants: [String: CLLocationCoordinate2D] = [:]
+    @State private var runnerMotion: LiveMapLocationMotion?
+    @State private var participantMotions: [String: LiveMapLocationMotion] = [:]
+    @State private var activeParticipantFocus: String?
+    @State private var participantCameraOrigin: CLLocationCoordinate2D?
+    @State private var participantCameraStarted: ContinuousClock.Instant?
 
     init(
         position: Binding<MapCameraPosition>,
@@ -31,6 +48,10 @@ struct LiveSessionMapCanvas<AdditionalContent: MapContent>: View {
         isMoving: Bool,
         reduceMotion: Bool,
         followsLocation: Bool,
+        participants: [LiveGroupParticipant] = [],
+        focusedParticipantID: String? = nil,
+        onSelectParticipant: @escaping (LiveGroupParticipant) -> Void = { _ in },
+        onParticipantFocusInterrupted: @escaping () -> Void = {},
         @MapContentBuilder additionalContent: @escaping () -> AdditionalContent
     ) {
         _position = position
@@ -42,6 +63,10 @@ struct LiveSessionMapCanvas<AdditionalContent: MapContent>: View {
         self.isMoving = isMoving
         self.reduceMotion = reduceMotion
         self.followsLocation = followsLocation
+        self.participants = participants
+        self.focusedParticipantID = focusedParticipantID
+        self.onSelectParticipant = onSelectParticipant
+        self.onParticipantFocusInterrupted = onParticipantFocusInterrupted
         self.additionalContent = additionalContent
     }
 
@@ -58,7 +83,16 @@ struct LiveSessionMapCanvas<AdditionalContent: MapContent>: View {
 
             additionalContent()
 
-            if let location {
+            ForEach(participants) { participant in
+                if let coordinate = displayedParticipants[participant.id] ?? participant.coordinate {
+                    Annotation(participant.displayName, coordinate: coordinate) {
+                        LiveGroupParticipantPin(participant: participant, displayedAt: Date())
+                            .onTapGesture { onSelectParticipant(participant) }
+                    }
+                }
+            }
+
+            if let location = displayedLocation ?? location {
                 Annotation(
                     "",
                     coordinate: location.coordinate
@@ -77,17 +111,137 @@ struct LiveSessionMapCanvas<AdditionalContent: MapContent>: View {
                 }
             }
         }
-        .onChange(of: location?.updatedAt, initial: true) { _, _ in
-            guard followsLocation, let location else { return }
-            withAnimation(.easeInOut(duration: 0.9)) {
-                position = .camera(LiveSessionMapCamera.camera(for: location))
+        .task(id: RunnerMotionRequest(location: location, followsLocation: followsLocation, reduceMotion: reduceMotion, isMoving: isMoving)) {
+            guard let target = location else { displayedLocation = nil; runnerMotion = nil; return }
+            // Sample the previous motion at retarget time, even when rapid
+            // simulation fixes arrive before the next scheduled display frame.
+            let start = runnerMotion?.current ?? displayedLocation ?? target
+            let immediate = reduceMotion || !isMoving || displayedLocation == nil
+            runnerMotion = LiveMapLocationMotion(start: immediate ? target : start, target: target)
+            await animateMotion(immediate: immediate) { progress in
+                let displayed = LiveMapMotion.location(from: start, to: target, progress: progress)
+                displayedLocation = displayed
+                if followsLocation { position = .camera(LiveSessionMapCamera.camera(for: displayed)) }
             }
         }
-        .onMapCameraChange(frequency: .onEnd) { _ in
+        .task(id: ParticipantMotionRequest(participants: participants, reduceMotion: reduceMotion, focusedParticipantID: focusedParticipantID)) {
+            if activeParticipantFocus != focusedParticipantID {
+                activeParticipantFocus = focusedParticipantID
+                participantCameraOrigin = position.camera?.centerCoordinate
+                participantCameraStarted = ContinuousClock().now
+            }
+            let starts = displayedParticipants
+            let motions = Dictionary(uniqueKeysWithValues: participants.compactMap { participant -> (String, LiveMapLocationMotion)? in
+                guard let coordinate = participant.coordinate else { return nil }
+                let target = LiveSessionMapLocation(coordinate: coordinate, course: nil, updatedAt: participant.lastLocationAt)
+                let start = participantMotions[participant.id]?.current
+                    ?? LiveSessionMapLocation(coordinate: starts[participant.id] ?? coordinate, course: nil, updatedAt: nil)
+                return (participant.id, LiveMapLocationMotion(start: reduceMotion ? target : start, target: target))
+            })
+            participantMotions = motions
+            await animateMotion(immediate: reduceMotion || (starts.isEmpty && focusedParticipantID == nil)) { progress in
+                displayedParticipants = motions.mapValues { LiveMapMotion.location(from: $0.start, to: $0.target, progress: progress).coordinate }
+                if let focusedParticipantID, let coordinate = displayedParticipants[focusedParticipantID] {
+                    let elapsed = participantCameraStarted?.duration(to: ContinuousClock().now).components
+                    let seconds = Double(elapsed?.seconds ?? 1) + Double(elapsed?.attoseconds ?? 0) / 1e18
+                    let cameraProgress = reduceMotion ? 1 : min(seconds / 0.9, 1)
+                    let center = LiveMapMotion.coordinate(from: participantCameraOrigin ?? coordinate, to: coordinate, progress: cameraProgress)
+                    position = .camera(LiveSessionMapCamera.camera(center: center, course: nil))
+                }
+            }
+        }
+        .task {
+            await analyticsManager?.track(.init(.featureExposed, properties: [.feature: .string("live_map_motion_smoothing")]))
+        }
+        .onMapCameraChange(frequency: .continuous) { _ in
             if position.positionedByUser {
                 isFollowingLocation = false
+                if focusedParticipantID != nil { onParticipantFocusInterrupted() }
             }
         }
+    }
+
+    /// Both annotation and camera receive the same display frame. A new fix
+    /// cancels the old task and resumes from its last displayed position.
+    @MainActor
+    private func animateMotion(immediate: Bool, update: (Double) -> Void) async {
+        if immediate {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) { update(1) }
+            return
+        }
+        let clock = ContinuousClock()
+        let started = clock.now
+        while !Task.isCancelled {
+            let elapsed = started.duration(to: clock.now).components
+            let seconds = Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1e18
+            let progress = min(seconds / 0.9, 1)
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) { update(progress) }
+            if progress >= 1 { return }
+            do { try await Task.sleep(for: .milliseconds(33)) } catch { return }
+        }
+    }
+}
+
+private struct RunnerMotionRequest: Equatable {
+    let location: LiveSessionMapLocation?
+    let followsLocation: Bool
+    let reduceMotion: Bool
+    let isMoving: Bool
+}
+
+private struct ParticipantMotionRequest: Equatable {
+    let participants: [LiveGroupParticipant]
+    let reduceMotion: Bool
+    let focusedParticipantID: String?
+}
+
+private struct LiveMapLocationMotion {
+    let start: LiveSessionMapLocation
+    let target: LiveSessionMapLocation
+    private let started: ContinuousClock.Instant
+
+    init(start: LiveSessionMapLocation, target: LiveSessionMapLocation) {
+        self.start = start
+        self.target = target
+        self.started = ContinuousClock().now
+    }
+
+    var current: LiveSessionMapLocation {
+        let elapsed = started.duration(to: ContinuousClock().now).components
+        let seconds = Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1e18
+        return LiveMapMotion.location(from: start, to: target, progress: min(seconds / 0.9, 1))
+    }
+}
+
+private enum LiveMapMotion {
+    static func location(from start: LiveSessionMapLocation, to target: LiveSessionMapLocation, progress: Double) -> LiveSessionMapLocation {
+        LiveSessionMapLocation(
+            coordinate: coordinate(from: start.coordinate, to: target.coordinate, progress: progress),
+            course: course(from: start.course, to: target.course, progress: progress),
+            updatedAt: target.updatedAt
+        )
+    }
+
+    static func coordinate(from start: CLLocationCoordinate2D, to target: CLLocationCoordinate2D, progress: Double) -> CLLocationCoordinate2D {
+        let longitude = start.longitude + shortestDelta(from: start.longitude, to: target.longitude) * progress
+        return CLLocationCoordinate2D(
+            latitude: start.latitude + (target.latitude - start.latitude) * progress,
+            longitude: (longitude + 540).truncatingRemainder(dividingBy: 360) - 180
+        )
+    }
+
+    static func course(from start: CLLocationDirection?, to target: CLLocationDirection?, progress: Double) -> CLLocationDirection {
+        let start = start.flatMap { $0.isFinite && $0 >= 0 ? $0 : nil } ?? 0
+        let target = target.flatMap { $0.isFinite && $0 >= 0 ? $0 : nil } ?? 0
+        return (start + shortestDelta(from: start, to: target) * progress + 360).truncatingRemainder(dividingBy: 360)
+    }
+
+    private static func shortestDelta(from start: Double, to target: Double) -> Double {
+        ((target - start + 540).truncatingRemainder(dividingBy: 360)) - 180
     }
 }
 

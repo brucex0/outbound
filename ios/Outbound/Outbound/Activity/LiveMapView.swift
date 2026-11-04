@@ -127,7 +127,14 @@ struct LiveMapView: View {
                 tint: theme.accentColor,
                 isMoving: recorder.state == .active,
                 reduceMotion: reduceMotion,
-                followsLocation: isFollowingUser && !(recorder.state == .idle && !plannedRouteCoordinates.isEmpty)
+                followsLocation: isFollowingUser && !(recorder.state == .idle && !plannedRouteCoordinates.isEmpty),
+                participants: liveGroupStore.visibleParticipants,
+                focusedParticipantID: focusedParticipantID,
+                onSelectParticipant: { participant in
+                    focusedParticipantID = participant.id
+                    isFollowingUser = false
+                },
+                onParticipantFocusInterrupted: { focusedParticipantID = nil }
             ) {
                 if plannedRouteCoordinates.count > 1 {
                     MapPolyline(coordinates: plannedRouteCoordinates)
@@ -163,18 +170,6 @@ struct LiveMapView: View {
                             .frame(width: 14, height: 14)
                             .overlay { Circle().stroke(.white, lineWidth: 3) }
                             .shadow(radius: 4)
-                    }
-                }
-                ForEach(liveGroupStore.visibleParticipants) { participant in
-                    if let coordinate = participant.coordinate {
-                        Annotation(participant.displayName, coordinate: coordinate) {
-                            LiveGroupParticipantPin(participant: participant, displayedAt: locationClock)
-                                .onTapGesture {
-                                    focusedParticipantID = participant.id
-                                    isFollowingUser = false
-                                    updateMapCamera(for: coordinate, animated: true)
-                                }
-                        }
                     }
                 }
             }
@@ -300,9 +295,10 @@ struct LiveMapView: View {
             return
         }
         track(.init(.groupParticipantFocused, properties: [.sourceType: .string(source)]))
-        focusedParticipantID = participant?.id
-        isFollowingUser = false
-        updateMapCamera(for: coordinate, animated: true)
+        let isCurrentUser = participant?.isCurrentUser == true
+        focusedParticipantID = isCurrentUser ? nil : participant?.id
+        isFollowingUser = isCurrentUser
+        if isCurrentUser { updateMapCamera(for: coordinate, animated: !reduceMotion) }
     }
 
 
@@ -907,7 +903,7 @@ private struct LiveGroupManagementPanel: View {
     }
 }
 
-private struct LiveGroupParticipantPin: View {
+struct LiveGroupParticipantPin: View {
     let participant: LiveGroupParticipant
     let displayedAt: Date
 
