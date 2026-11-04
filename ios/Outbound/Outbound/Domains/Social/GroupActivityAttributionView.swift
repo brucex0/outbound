@@ -105,6 +105,7 @@ struct GroupActivityPresenceView: View {
     var isLiveMapBusy = false
     var onToggleLiveMap: (() -> Void)? = nil
     var onParticipantsLoaded: (([ActivityEventParticipantDTO]) -> Void)? = nil
+    var onSelectParticipant: ((ActivityEventParticipantDTO) -> Void)? = nil
     @State private var participants: [ActivityEventParticipantDTO] = []
     @State private var isExpanded = false
     @State private var hasTrackedPresence = false
@@ -134,12 +135,15 @@ struct GroupActivityPresenceView: View {
                 ScrollView {
                     VStack(spacing: 8) {
                         ForEach(participants) { participant in
-                            HStack {
-                                SocialAvatar(name: participant.person.displayName, avatarURL: participant.person.avatarUrl)
-                                Text(participant.person.displayName)
-                                Spacer()
-                                Text(status(participant)).foregroundStyle(.secondary)
-                            }.font(.caption)
+                            if let onSelectParticipant {
+                                Button { onSelectParticipant(participant) } label: {
+                                    participantRow(participant)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("live.group.activity.participant.\(participant.id)")
+                            } else {
+                                participantRow(participant)
+                            }
                         }
                     }
                 }
@@ -172,6 +176,17 @@ struct GroupActivityPresenceView: View {
                 do { try await Task.sleep(for: .seconds(15)) } catch { return }
             }
         }
+    }
+
+    private func participantRow(_ participant: ActivityEventParticipantDTO) -> some View {
+        HStack {
+            SocialAvatar(name: participant.person.displayName, avatarURL: participant.person.avatarUrl)
+            Text(participant.person.displayName)
+            Spacer()
+            Text(status(participant)).foregroundStyle(.secondary)
+        }
+        .font(.caption)
+        .contentShape(Rectangle())
     }
 
     private func status(_ participant: ActivityEventParticipantDTO) -> String {

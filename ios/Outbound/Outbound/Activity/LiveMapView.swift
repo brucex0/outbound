@@ -182,16 +182,28 @@ struct LiveMapView: View {
         .ignoresSafeArea()
     }
 
-    private var participantPills: [LiveGroupRunnerPill] {
+    private var matchingLiveParticipants: [LiveGroupParticipant] {
         let matchesEvent = intent?.activityEvent == nil || liveGroupStore.activeSession?.activityEventId == intent?.activityEvent?.id
-        let liveParticipants = matchesEvent ? liveGroupStore.participants.filter { $0.status != "left" } : []
+        return matchesEvent ? liveGroupStore.participants.filter { $0.status != "left" } : []
+    }
+
+    private var participantPills: [LiveGroupRunnerPill] {
+        let liveParticipants = matchingLiveParticipants
         if intent?.activityEvent != nil {
-            return eventParticipants.filter { $0.status == "going" }.map { attendee in
+            let attendees = eventParticipants.filter {
+                $0.status == "going" || $0.status == "participating" || $0.startedAt != nil || $0.isRecording == true
+            }
+            let attendeeIDs = Set(attendees.map { $0.person.id })
+            let attendeePills = attendees.map { attendee in
                 LiveGroupRunnerPill(
                     id: attendee.person.id, displayName: attendee.person.displayName,
                     avatarURL: attendee.person.avatarUrl,
                     liveParticipant: liveParticipants.first { $0.userId == attendee.person.id }
                 )
+            }
+            // Live membership can arrive before the next event-roster refresh.
+            return attendeePills + liveParticipants.filter { !attendeeIDs.contains($0.userId) }.map {
+                LiveGroupRunnerPill(id: $0.userId, displayName: $0.displayName, avatarURL: nil, liveParticipant: $0)
             }
         }
         return liveParticipants.filter { !$0.isCurrentUser }.map {
@@ -228,7 +240,10 @@ struct LiveMapView: View {
                     isSharingLiveMap: isSharingEventLiveMap,
                     isLiveMapBusy: liveGroupStore.isJoining || (liveGroupStore.isSharing && !isSharingEventLiveMap),
                     onToggleLiveMap: toggleEventLiveMap,
-                    onParticipantsLoaded: { eventParticipants = $0 }
+                    onParticipantsLoaded: { eventParticipants = $0 },
+                    onSelectParticipant: { attendee in
+                        focusParticipant(matchingLiveParticipants.first { $0.userId == attendee.person.id }, source: "group_card")
+                    }
                 )
                 .padding(12)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
@@ -261,17 +276,7 @@ struct LiveMapView: View {
                     displayedAt: locationClock,
                     focusedParticipantID: focusedParticipantID,
                     onSelect: { participant in
-                        let live = participant.liveParticipant
-                        let coordinate = live?.isCurrentUser == true ? currentCoordinate : (live?.isVisibleOnMap == true ? live?.coordinate : nil)
-                        guard let coordinate else {
-                            track(.init(.groupParticipantLocationUnavailable, properties: [.sourceType: .string("participant_pill")]))
-                            participantToast = String(localized: "group.activity.location_unavailable", table: "GroupActivity")
-                            return
-                        }
-                        track(.init(.groupParticipantFocused, properties: [.sourceType: .string("participant_pill")]))
-                        focusedParticipantID = participant.liveParticipant?.id
-                        isFollowingUser = false
-                        updateMapCamera(for: coordinate, animated: true)
+                        focusParticipant(participant.liveParticipant, source: "participant_pill")
                     }
                 )
                 .padding(.horizontal, 16)
@@ -283,6 +288,21 @@ struct LiveMapView: View {
                 Color.clear.preference(key: LiveGroupTopControlsHeightPreferenceKey.self, value: proxy.size.height)
             }
         }
+    }
+
+    private func focusParticipant(_ participant: LiveGroupParticipant?, source: String) {
+        let coordinate = participant?.isCurrentUser == true
+            ? currentCoordinate
+            : (participant?.isVisibleOnMap == true ? participant?.coordinate : nil)
+        guard let coordinate else {
+            track(.init(.groupParticipantLocationUnavailable, properties: [.sourceType: .string(source)]))
+            participantToast = String(localized: "group.activity.location_unavailable", table: "GroupActivity")
+            return
+        }
+        track(.init(.groupParticipantFocused, properties: [.sourceType: .string(source)]))
+        focusedParticipantID = participant?.id
+        isFollowingUser = false
+        updateMapCamera(for: coordinate, animated: true)
     }
 
 
