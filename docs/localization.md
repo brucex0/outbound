@@ -150,6 +150,7 @@ Unsupported recognition or synthesis must degrade visibly and safely; it must no
 - Chinese resources currently use `values-zh-rCN`; the system picker advertises Simplified Chinese using the canonical `zh-Hans` language tag.
 - Language selection is system-owned and does not emit a custom picker analytics event. Existing feature analytics remain unchanged.
 - After installing a rebuilt APK, verify list visibility, all three language choices, System default, persistence after relaunch, and backend/generated-content and coaching language. Build verification alone does not establish runtime localization correctness.
+- `./scripts/run-android-per-app-language-ui-tests.sh` is the focused device check: it builds and installs the debug APK, then runs `PerAppLanguageUiTest`, which drives the real Settings App language screen for English, Spanish, Simplified Chinese, explicit English, and System default, then asserts the localized sign-in copy after each change and relaunch. Screenshots and a scenario log land in `android/app/build/outputs/per-app-language-ui`; set `ANDROID_SERIAL` to pick the device. Assertions read the signed-out sign-in surface, so the app must be signed out; the script never clears app data and restores System default when it exits.
 
 ### Shared Android generation
 
