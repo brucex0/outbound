@@ -4,7 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.net.NetworkRequest
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,23 +20,42 @@ class NetworkConnectivityMonitor @Inject constructor(
     private val mutableOffline = MutableStateFlow(false)
     val isOffline: StateFlow<Boolean> = mutableOffline.asStateFlow()
 
+    // Default-network callbacks are ordered on ConnectivityManager's callback thread.
+    // Synchronous activeNetwork reads can still describe the previous default
+    // during handover, leaving the UI stuck with that transient result.
+    private var defaultNetwork: Network? = null
     private val callback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) = refresh()
-        override fun onLost(network: Network) = refresh()
-        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) = refresh()
+        override fun onAvailable(network: Network) {
+            defaultNetwork = network
+            updateOffline(false)
+        }
+
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+            if (network == defaultNetwork) {
+                updateOffline(!capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET))
+            }
+        }
+
+        override fun onLost(network: Network) {
+            if (network == defaultNetwork) {
+                defaultNetwork = null
+                updateOffline(true)
+            }
+        }
     }
 
     init {
-        refresh()
-        manager.registerNetworkCallback(
-            NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build(),
-            callback,
-        )
-    }
-
-    private fun refresh() {
+        // Seed before registering; subsequent state comes only from callbacks.
         val network = manager.activeNetwork
         val capabilities = network?.let(manager::getNetworkCapabilities)
-        mutableOffline.value = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) != true
+        updateOffline(capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) != true)
+        manager.registerDefaultNetworkCallback(callback)
+    }
+
+    private fun updateOffline(offline: Boolean) {
+        if (mutableOffline.value != offline) {
+            Log.d("PlainstrideConnectivity", "Default network connectivity changed: offline=$offline")
+            mutableOffline.value = offline
+        }
     }
 }

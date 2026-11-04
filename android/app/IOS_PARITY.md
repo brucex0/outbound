@@ -50,6 +50,7 @@
 - Android counterpart: `connectivity/NetworkConnectivityMonitor.kt`, `ConnectivityViewModel.kt`, the signed-in shell in `PlainstrideApp.kt`, and `feature/recording/RecordingScreen.kt`.
 - The app observes Android network availability and displays the localized offline capsule inline above signed-in screen content. After reconnection, pending activity writes stay in the account's local outbox and receive transient Snackbar feedback, without shifting screen content.
 - Reconnection schedules the existing unique WorkManager activity-sync job. The active recording route hides the shell capsule and shows an activity-specific offline status instead.
+- Default-network callbacks own connectivity after the initial snapshot. Availability/capability events update state directly; loss applies only to the tracked default network, avoiding stale synchronous reads during handover. `PlainstrideConnectivity` logs state changes without network identifiers.
 - Network status is environmental and has no corresponding iOS analytics event. Offline and recording statuses expose localized accessibility labels; the pending-sync Snackbar uses localized text.
 
 ### Reference Scenarios
@@ -62,4 +63,5 @@
 
 ### Status
 
-- Connectivity monitoring, offline and recording banners, transient pending-sync feedback, account-scoped pending outbox visibility, and reconnect scheduling are implemented. Manual airplane-mode and TalkBack validation remain device checks.
+- Connectivity monitoring, offline and recording banners, transient pending-sync feedback, account-scoped pending outbox visibility, and reconnect scheduling are implemented.
+- Verified on the connected S22 (2026-11-03): updated debug build has no offline banner on validated Wi-Fi with successful API responses; disabling Wi-Fi/mobile data shows the banner and restoring both clears it, with matching connectivity diagnostics. Build-only `:app:assembleDebug` passed; no test suite ran. Pending-outbox draining, active recording, airplane-mode, and TalkBack scenarios remain unverified.
