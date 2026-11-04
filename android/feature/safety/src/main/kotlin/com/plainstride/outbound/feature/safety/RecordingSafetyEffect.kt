@@ -83,7 +83,12 @@ fun RecordingSafetyEffect(
  }
  LaunchedEffect(snapshot.latestLocation?.capturedAtEpochMilliseconds,activityEventId){
   val p=snapshot.latestLocation?:return@LaunchedEffect
-  if(snapshot.status==RecordingStatus.ACTIVE)coordinator.updateRecording(LiveLocation(Instant.ofEpochMilli(p.capturedAtEpochMilliseconds).toString(),p.latitude,p.longitude,p.altitudeMeters,p.horizontalAccuracyMeters,snapshot.elapsedSeconds.toInt(),snapshot.distanceMeters,snapshot.currentPaceSecondsPerKilometer),snapshot.currentPaceSecondsPerKilometer,activityEventId)
+  // The Debug route clock can accelerate/jump; a newly emitted synthetic fix
+  // was delivered now. Real GPS retains its original measurement timestamp.
+  val measuredAt = if(BuildConfig.DEBUG && snapshot.runSimulation != null)
+   Instant.ofEpochMilli(p.liveDeliveryEpochMilliseconds ?: return@LaunchedEffect)
+   else Instant.ofEpochMilli(p.capturedAtEpochMilliseconds)
+  if(snapshot.status==RecordingStatus.ACTIVE)coordinator.updateRecording(LiveLocation(measuredAt.toString(),p.latitude,p.longitude,p.altitudeMeters,p.horizontalAccuracyMeters,snapshot.elapsedSeconds.toInt(),snapshot.distanceMeters,snapshot.currentPaceSecondsPerKilometer),snapshot.currentPaceSecondsPerKilometer,activityEventId,isSimulated=BuildConfig.DEBUG && snapshot.runSimulation != null)
  }
  if(snapshot.status==RecordingStatus.ACTIVE&&heard!=null)Box(Modifier.fillMaxSize().padding(horizontal=16.dp, vertical=54.dp),contentAlignment=Alignment.TopCenter){Surface(color=MaterialTheme.colorScheme.surface,shape=RoundedCornerShape(18.dp),shadowElevation=8.dp,modifier=Modifier.fillMaxWidth()){Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){Text(stringResource(R.string.cheer_runner_heard_from,heard.senderName),Modifier.weight(1f),style=MaterialTheme.typography.bodyMedium);TextButton(onClick=viewModel::acknowledge){Text(stringResource(R.string.cheer_runner_acknowledge))};TextButton(onClick=viewModel::dismiss){Text(stringResource(R.string.cheer_runner_dismiss))}}}}
 }

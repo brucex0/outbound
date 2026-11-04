@@ -110,6 +110,7 @@ internal class RunSimulationRouteSampler(points: List<RecordingRoutePoint>) {
             verticalAccuracyMeters = 3.0,
             speedMetersPerSecond = if (clampedDistance >= totalDistanceMeters) 0.0 else speedMetersPerSecond,
             speedAccuracyMetersPerSecond = 0.1,
+            liveDeliveryEpochMilliseconds = System.currentTimeMillis(),
             capturedAtEpochMilliseconds = startEpochMilliseconds + elapsedSeconds * 1_000L,
             capturedAtElapsedRealtimeNanos = startElapsedRealtimeNanos + elapsedSeconds * 1_000_000_000L,
         )

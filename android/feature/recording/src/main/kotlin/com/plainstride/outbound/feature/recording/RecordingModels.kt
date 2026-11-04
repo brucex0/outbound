@@ -31,6 +31,8 @@ data class RecordedLocationSample(
     val capturedAtEpochMilliseconds: Long,
     /** Monotonic elapsed-realtime nanos, used only for same-boot ordering and deltas. */
     val capturedAtElapsedRealtimeNanos: Long,
+    /** Ephemeral delivery time for a newly generated Debug simulation fix. Never restored as fresh. */
+    @kotlinx.serialization.Transient val liveDeliveryEpochMilliseconds: Long? = null,
 )
 
 @Serializable

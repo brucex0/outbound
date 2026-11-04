@@ -11,6 +11,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import android.os.SystemClock
@@ -72,6 +74,8 @@ class LiveShareCoordinator @Inject constructor(
     private var lastGroupPoint: LiveLocation? = null
     private var groupRealtime: AblySessionTransport? = null
     private var groupRealtimeId: String? = null
+    private var groupRosterTask: Job? = null
+    private val groupRosterLock = Mutex()
     private var lastGroupCheckpointAt = 0L
     private val groupConsentRevision = java.util.concurrent.atomic.AtomicLong()
     private val mutableGroupJoining = MutableStateFlow(false)
@@ -226,7 +230,7 @@ class LiveShareCoordinator @Inject constructor(
   return result
   } finally { mutableGroupJoining.value=false }
  }
- suspend fun updateRecording(point:LiveLocation,paceSecondsPerKilometer:Double?,activityEventId:String?=null){
+ suspend fun updateRecording(point:LiveLocation,paceSecondsPerKilometer:Double?,activityEventId:String?=null,isSimulated:Boolean=false){
   update(point.copy(currentPaceSecsPerKm=paceSecondsPerKilometer))
   val run=mutableGroup.value?:return
   if(run.activityEventId!=activityEventId)return
@@ -237,7 +241,7 @@ class LiveShareCoordinator @Inject constructor(
   val prior=lastGroupPoint
   val measuredAt=Instant.parse(point.recordedAt)
   if(prior!=null && (!measuredAt.isAfter(Instant.parse(prior.recordedAt)) || now-lastGroupSentAt<1_000))return
-  if(prior==null)analytics.record(AnalyticsEvent("live_location_stream_started",mapOf(AnalyticsProperty.SourceType to "group_run",AnalyticsProperty.SelectionType to "one_second_gps")))
+  if(prior==null)analytics.record(AnalyticsEvent("live_location_stream_started",mapOf(AnalyticsProperty.SourceType to "group_run",AnalyticsProperty.SelectionType to if(isSimulated)"one_second_simulated" else "one_second_gps")))
   groupRealtime?.publishLocation(mapOf("recordedAt" to point.recordedAt,"latitude" to point.latitude,"longitude" to point.longitude,"altitudeM" to point.altitudeM,"accuracyM" to point.accuracyM,"elapsedSeconds" to point.elapsedSeconds,"distanceM" to point.distanceM,"paceSecondsPerKM" to paceSecondsPerKilometer))
   lastGroupSentAt=now;lastGroupPoint=point
   if(lastGroupCheckpointAt==0L||now-lastGroupCheckpointAt>=60_000){
@@ -255,14 +259,15 @@ class LiveShareCoordinator @Inject constructor(
   val currentRun=mutableGroup.value?.takeIf{it.id==response.id}
   val merged=response.copy(participants=response.participants.map { incoming ->
    val old=currentRun?.participants?.firstOrNull{it.userId==incoming.userId}
-   if(incoming.status in setOf("active","stale") && old?.lastLocationAt!=null &&
+   if(incoming.status in setOf("active","stale") && old?.status in setOf("active","stale") && old?.lastLocationAt!=null &&
       (incoming.lastLocationAt==null || isOlderMeasurement(incoming.lastLocationAt,old.lastLocationAt))) incoming.copy(status=old.status,lastLocationAt=old.lastLocationAt,lastLocation=old.lastLocation,lastActivitySnapshot=old.lastActivitySnapshot) else incoming
   })
   val value=if(!allowConsent&&previous!=null&&previous.status !in setOf("active","stale"))merged.copy(participants=merged.participants.map{if(it.userId==response.currentUserId)previous else it})else merged
   mutableGroup.value=value
   preferences.edit().putString(GROUP,PlainstrideJson.encodeToString(value)).apply()
   if(value.status=="active"&&value.participants.any{it.userId==value.currentUserId&&it.status in setOf("active","stale")})connectGroupRealtime(value.id)
-  if(value.participants.none{it.userId==value.currentUserId&&it.status in setOf("active","stale")}){
+  if(value.status!="active" || value.participants.none{it.userId==value.currentUserId&&it.status in setOf("active","stale")}){
+   groupRosterTask?.cancel();groupRosterTask=null
    groupRealtime?.close();groupRealtime=null;groupRealtimeId=null
    lastGroupPoint=null
    lastGroupSentAt=0
@@ -284,16 +289,36 @@ class LiveShareCoordinator @Inject constructor(
   if(BuildConfig.DEBUG) Log.d(REALTIME_TAG,"follower_socket_transport_created=${followerRealtime!=null}")
  }
  fun stopWatchingFollower(){followerRealtime?.close();followerRealtime=null}
- private fun clearGroup(){groupRealtime?.close();groupRealtime=null;groupRealtimeId=null;mutableGroup.value=null;lastGroupPoint=null;lastGroupSentAt=0;preferences.edit().remove(GROUP).apply()}
+ private fun clearGroup(){groupRosterTask?.cancel();groupRosterTask=null;groupRealtime?.close();groupRealtime=null;groupRealtimeId=null;mutableGroup.value=null;lastGroupPoint=null;lastGroupSentAt=0;preferences.edit().remove(GROUP).apply()}
  private fun connectGroupRealtime(id:String){
   if(groupRealtimeId==id)return
+  groupRosterTask?.cancel()
   groupRealtime?.close();groupRealtimeId=id
   lastGroupCheckpointAt=0;lastGroupSentAt=0;lastGroupPoint=null
   groupRealtime=AblySessionTransport.connect(channelName="plainstride:group_run:$id",tokenProvider={issueRealtimeToken("group_run",id)},onMessage={name,clientId,data->
    if(mutableGroup.value?.let{it.id==id&&it.participants.any{p->p.userId==it.currentUserId&&p.status in setOf("active","stale")}}!=true)return@connect
-   if(name=="location"&&clientId!=null)applyGroupLocation(clientId,data)
-   else if(name=="participant.changed")realtimeScope.launch{groupRun(id)}
-  })
+   if(name=="location"&&clientId!=null) {
+    if(mutableGroup.value?.participants?.any{it.userId==clientId&&it.status in setOf("active","stale")}==true)applyGroupLocation(clientId,data)
+    else realtimeScope.launch { refreshGroupRoster(id); if(groupRealtimeId==id)applyGroupLocation(clientId,data) }
+   } else if(name=="participant.changed")realtimeScope.launch{refreshGroupRoster(id)}
+  },onChannelAttached={realtimeScope.launch{refreshGroupRoster(id)}})
+  // Recovery must continue while paused; no outgoing location/checkpoint is required.
+  groupRosterTask=realtimeScope.launch {
+   while(groupRealtimeId==id) { refreshGroupRoster(id); delay(15_000) }
+  }
+ }
+ private suspend fun refreshGroupRoster(id:String) {
+  if(!groupRosterLock.tryLock())return
+  try {
+   if(groupRealtimeId!=id)return
+   val revision=groupConsentRevision.get()
+   groupRun(id).onFailure { error ->
+    if(groupRealtimeId!=id || groupConsentRevision.get()!=revision)return@onFailure
+    val status=(error as? SafetyRequestException)?.status
+    Log.w(REALTIME_TAG,"group_roster_refresh failed type=${error.javaClass.simpleName} status=$status")
+    if(status in setOf(403,404,410))clearGroup()
+   }
+  } finally { groupRosterLock.unlock() }
  }
  private suspend fun issueRealtimeToken(kind:String,id:String):RealtimeToken = authenticated{auth->apiCall{api.realtimeToken(auth,RealtimeTokenRequest(kind,id))}}.getOrThrow()
  private fun applyGroupLocation(senderId:String,value:Any?){

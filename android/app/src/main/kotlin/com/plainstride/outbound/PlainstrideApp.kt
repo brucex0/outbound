@@ -477,7 +477,7 @@ private fun SignedInApp(
             }
         }
     }
-    LaunchedEffect(accountId, currentRoute, todayGroupEvent?.id, todayGroupEvent?.joined, selectedRecordingEventId, hasActiveSession, groupRunJoining) {
+    LaunchedEffect(accountId, currentRoute, todayGroupEvent?.id, todayGroupEvent?.joined, selectedRecordingEventId, hasActiveSession, groupRunJoining, sharedLiveGroupRun?.id, sharedLiveGroupRun?.status) {
         val event = todayGroupEvent ?: return@LaunchedEffect
         if (accountId == null || hasActiveSession || currentRoute != TopLevelDestination.Today.route) return@LaunchedEffect
         val joinChoiceKey = "join_choice_${event.id}"

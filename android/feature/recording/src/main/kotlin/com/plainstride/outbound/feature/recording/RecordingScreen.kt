@@ -28,6 +28,7 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -1113,7 +1114,7 @@ private fun LiveRecordingScreen(
         elevationGainMeters = snapshot.elevationGainMeters,
         weightKilograms = weightKilograms,
     )
-    Box(Modifier.fillMaxSize().background(if (mode == RecordingSurfaceMode.CAMERA) Color.Black else MaterialTheme.colorScheme.surface)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(if (mode == RecordingSurfaceMode.CAMERA) Color.Black else MaterialTheme.colorScheme.surface)) {
         // Let the map own its gestures, as on iOS. Switch back using the surface button.
         if (mode == RecordingSurfaceMode.MAP) TrackMap(snapshot, configuration, Modifier.fillMaxSize(), groupRun, focusedParticipant, recenterRequest = recenterRequest) { focusedParticipant = it }
         else CameraSurface(
@@ -1140,21 +1141,28 @@ private fun LiveRecordingScreen(
                 }
             }
         }
-        if (BuildConfig.DEBUG && runSimulation != null) {
-            RunSimulationControls(
-                state = runSimulation,
-                isActive = snapshot.status == RecordingStatus.ACTIVE,
-                onRate = onSimulationRate,
-                onSpeed = onSimulationSpeed,
-                onClock = onSimulationClock,
-                onAdvance = onSimulationAdvance,
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 58.dp, start = 12.dp, end = 12.dp),
-            )
-        }
-        if (!dashboardExpanded && configuration.activityEventId != null) {
-            com.plainstride.outbound.core.designsystem.GroupActivityPresencePanel(configuration.activityEventTitle ?: stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_label), participants, groupRun?.participants?.any { it.userId == groupRun.currentUserId && it.status in setOf("active", "stale") } == true, liveMapBusy, onToggleActivityLiveMap,
-                Modifier.align(Alignment.TopCenter).padding(top = 62.dp, start = 16.dp, end = 16.dp),
-                avatar = { person -> com.plainstride.outbound.feature.social.SocialAvatar(com.plainstride.outbound.feature.social.SocialPerson(person.id, person.displayName, avatarUrl = person.avatarUrl), size = 40.dp) })
+        // Keep the two cards in one stack; independent top overlays hide the
+        // simulation clock button behind the expanded Group roster.
+        Column(Modifier.align(Alignment.TopCenter).padding(top = 62.dp, start = 12.dp, end = 12.dp)
+            .heightIn(max = (maxHeight - bottomControlsHeight - 180.dp).coerceAtLeast(120.dp))
+            .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (BuildConfig.DEBUG && runSimulation != null) {
+                RunSimulationControls(
+                    state = runSimulation,
+                    isActive = snapshot.status == RecordingStatus.ACTIVE,
+                    onRate = onSimulationRate,
+                    onSpeed = onSimulationSpeed,
+                    onClock = onSimulationClock,
+                    onAdvance = onSimulationAdvance,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            if (!dashboardExpanded && configuration.activityEventId != null) {
+                com.plainstride.outbound.core.designsystem.GroupActivityPresencePanel(configuration.activityEventTitle ?: stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_label), participants, groupRun?.participants?.any { it.userId == groupRun.currentUserId && it.status in setOf("active", "stale") } == true, liveMapBusy, onToggleActivityLiveMap,
+                    Modifier.fillMaxWidth(),
+                    avatar = { person -> com.plainstride.outbound.feature.social.SocialAvatar(com.plainstride.outbound.feature.social.SocialPerson(person.id, person.displayName, avatarUrl = person.avatarUrl), size = 40.dp) })
+            }
         }
         if (mode == RecordingSurfaceMode.MAP && !dashboardExpanded) {
             val attendees = if (configuration.activityEventId != null) participants.filter { it.status == "going" } else groupRun?.participants.orEmpty().filter { it.userId != groupRun?.currentUserId && it.status != "left" }.map {
@@ -1217,12 +1225,12 @@ private fun RunSimulationControls(
                 Text(stringResource(R.string.recording_simulation_title), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
                 Text(formatDuration(state.elapsedSeconds.toLong()), style = MaterialTheme.typography.labelMedium, fontFamily = FontFamily.Monospace)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Button(onClick = onClock, enabled = isActive && !state.isComplete) {
                     Icon(if (state.isClockRunning) Icons.Default.Pause else Icons.Default.PlayArrow, contentDescription = null)
                     Text(stringResource(if (state.isClockRunning) R.string.recording_simulation_pause_button else R.string.recording_simulation_start_button))
                 }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(timeRateLabel, style = MaterialTheme.typography.labelMedium)
                 Box {
                     OutlinedButton(onClick = { showRateMenu = true }, enabled = !state.isComplete,
