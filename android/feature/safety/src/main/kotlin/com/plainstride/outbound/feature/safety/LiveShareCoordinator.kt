@@ -87,6 +87,19 @@ class LiveShareCoordinator @Inject constructor(
 
  private fun saveArmed(request:CreateLiveShareRequest){armed=request;mutableArmed.value=request;preferences.edit().putString(ARMED,PlainstrideJson.encodeToString(request)).apply()}
  fun arm(request:CreateLiveShareRequest){mutableSelectedRecipients.value=request.recipientUserIds.distinct();saveArmed(request);analytics.record(AnalyticsEvent("live_share_armed"))}
+ private var recordingSessionId: String? = null
+ private val recipientChangeLock = kotlinx.coroutines.sync.Mutex()
+ suspend fun configureLiveRecipients(ids: List<String>): Result<Unit> = recipientChangeLock.withLock {
+  if (ids.toSet() == mutableSelectedRecipients.value.toSet() && mutableActive.value != null) return@withLock Result.success(Unit)
+  val sessionId = recordingSessionId
+  if (sessionId != null && mutableActive.value != null) {
+   val ended = end(preserveGroup = true)
+   if (ended.isFailure) return@withLock ended
+  }
+  if (sessionId != recordingSessionId) return@withLock Result.failure(IllegalStateException("recording_ended"))
+  configureRecipients(ids)
+  if (sessionId != null && ids.isNotEmpty()) recordingStarted(sessionId).map { Unit } else Result.success(Unit)
+ }
  fun configureRecipients(ids:List<String>){
   val recipients=ids.distinct()
   mutableSelectedRecipients.value=recipients
@@ -103,7 +116,7 @@ class LiveShareCoordinator @Inject constructor(
    armed=null;mutableArmed.value=null;preferences.edit().remove(ARMED).apply()
   }else saveArmed(CreateLiveShareRequest(recipientUserIds=recipients))
  }
- suspend fun recordingStarted(activityId:String?=null):Result<LiveShare?>{if(mutableActive.value!=null)return Result.success(mutableActive.value);val request=armed?:return Result.success(null);return start(request.copy(activityId=activityId)).onSuccess {
+ suspend fun recordingStarted(activityId:String?=null):Result<LiveShare?>{recordingSessionId=activityId;if(mutableActive.value!=null)return Result.success(mutableActive.value);val request=armed?:return Result.success(null);return start(request.copy(activityId=activityId)).onSuccess {
   armed=null;mutableArmed.value=null;preferences.edit().remove(ARMED).apply()
  }.onFailure {
   Log.w(REALTIME_TAG,"live_share_start failed type=${it.javaClass.simpleName} status=${(it as? SafetyRequestException)?.status} category=${(it as? SafetyRequestException)?.category}")
@@ -136,9 +149,15 @@ class LiveShareCoordinator @Inject constructor(
   }
   Result.success(share)
  }
- suspend fun recordingEnded()=end()
- suspend fun end():Result<Unit>{val share=mutableActive.value?:return Result.success(Unit);return authenticated{apiCall{api.end(it,share.id)}}.map{clear();Unit}.also{result->analytics.record(AnalyticsEvent("live_share_ended",mapOf(AnalyticsProperty.Result to if(result.isSuccess)"success" else "failure")))}}
- fun clear(){groupSnapshots.clear();followerSnapshots.clear();shareRealtime?.close();shareRealtime=null;shareRealtimeId=null;followerRealtime?.close();followerRealtime=null;armed=null;mutableArmed.value=null;mutableActive.value=null;lastPoint=null;lastShareCheckpointAt=0;lastSentAt=0;lastSentRecordedAt=null;preferences.edit().clear().apply()}
+ suspend fun recordingEnded():Result<Unit>{recordingSessionId=null;return end()}
+ suspend fun end(preserveGroup: Boolean = false):Result<Unit>{val share=mutableActive.value?:return Result.success(Unit);return authenticated{apiCall{api.end(it,share.id)}}.map{val currentRecording=recordingSessionId;if (preserveGroup) clearCurrentShare() else clear();recordingSessionId=currentRecording;Unit}.also{result->analytics.record(AnalyticsEvent("live_share_ended",mapOf(AnalyticsProperty.Result to if(result.isSuccess)"success" else "failure")))}}
+ private fun clearCurrentShare() {
+  shareRealtime?.close(); shareRealtime=null; shareRealtimeId=null
+  armed=null; mutableArmed.value=null; mutableActive.value=null
+  lastPoint=null; lastShareCheckpointAt=0; lastSentAt=0; lastSentRecordedAt=null
+  preferences.edit().remove(ACTIVE).remove(ARMED).apply()
+ }
+ fun clear(){recordingSessionId=null;groupSnapshots.clear();followerSnapshots.clear();shareRealtime?.close();shareRealtime=null;shareRealtimeId=null;followerRealtime?.close();followerRealtime=null;armed=null;mutableArmed.value=null;mutableActive.value=null;lastPoint=null;lastShareCheckpointAt=0;lastSentAt=0;lastSentRecordedAt=null;preferences.edit().clear().apply()}
  suspend fun registerToken(token:String,bundle:String,locale:String)=authenticated{apiCall{api.register(it,PushDeviceRequest(token,appBundle=bundle,locale=locale))}}.map{Unit}
  suspend fun unregisterToken(token:String)=authenticated{apiCall{api.unregister(it,token)}}.map{Unit}
  suspend fun inbox()=authenticated{apiCall{api.inbox(it)}}

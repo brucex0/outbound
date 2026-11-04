@@ -351,11 +351,25 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.ActivityType to current.activityKind.name.lowercase(),
         )))
     }
+    fun setLiveOption(option: String, enabled: Boolean, goalAlreadyReached: Boolean = false) {
+        client.updateLiveOptions(newCommandId(),
+            autoPause = enabled.takeIf { option == "auto_pause" },
+            voice = enabled.takeIf { option == "voice_guide" },
+            goal = enabled.takeIf { option == "auto_stop_at_goal" },
+            handled = true.takeIf { option == "auto_stop_at_goal" && enabled && goalAlreadyReached },
+        )
+        analytics.record(AnalyticsEvent("activity_configuration_changed", mapOf(
+            AnalyticsProperty.ChangeType to option,
+            AnalyticsProperty.SelectionType to if (enabled) "enabled" else "disabled",
+            AnalyticsProperty.SourceType to "live_workout",
+            AnalyticsProperty.ActivityType to snapshot.value.activityKind.name.lowercase(),
+        )))
+    }
     fun pause() = client.pause(newCommandId())
     fun resume() = client.resume(newCommandId())
     fun requestFinish() { mutableState.value = mutableState.value.copy(showFinishConfirmation = true) }
     fun pauseAtGoal(distanceGoalMeters: Double?) {
-        if (didAutoPauseAtGoal || mutableState.value.launch.autoStopAtGoal != true || snapshot.value.status != RecordingStatus.ACTIVE) return
+        if (didAutoPauseAtGoal || (snapshot.value.livePauseAtGoalEnabled ?: mutableState.value.launch.autoStopAtGoal) != true || snapshot.value.goalPauseHandled || snapshot.value.status != RecordingStatus.ACTIVE) return
         didAutoPauseAtGoal = true
         client.pauseAtGoal(distanceGoalMeters, newCommandId())
     }

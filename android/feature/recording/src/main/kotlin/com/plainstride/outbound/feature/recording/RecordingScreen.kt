@@ -179,13 +179,14 @@ fun RecordingRoute(
     onCheerMeOn: () -> Unit = {},
     cheerSelectedName: String? = null,
     cheerSelectedCount: Int = 0,
+    liveSharingEnabled: Boolean = false,
     saveActivityPhotosToAlbum: Boolean = true,
     onPhotoAlbumPermissionDenied: () -> Unit = {},
     onPrepareActivityStart: () -> Unit = {},
     modifier: Modifier = Modifier,
     unitSystem: MeasurementUnitSystem = MeasurementUnitSystem.metric,
     weightKilograms: Double? = null,
-    sessionEffect: @Composable (RecordingSnapshot) -> Unit = {},
+    sessionEffect: @Composable (RecordingSnapshot, RecordingLaunchConfiguration) -> Unit = { _, _ -> },
     guidanceReport: WorkoutGuidanceReport = WorkoutGuidanceReport(),
     selectedGuidanceFeedback: WorkoutGuidanceFeedback? = null,
     onGuidanceFeedbackSelect: (WorkoutGuidanceFeedback) -> Unit = {},
@@ -562,11 +563,12 @@ fun RecordingRoute(
         snapshot.elapsedSeconds,
         snapshot.distanceMeters,
         snapshot.elevationGainMeters,
+        snapshot.livePauseAtGoalEnabled,
         ui.launch.autoStopAtGoal,
         ui.launch.goal,
         weightKilograms,
     ) {
-        if (ui.launch.autoStopAtGoal != true || snapshot.status != RecordingStatus.ACTIVE) return@LaunchedEffect
+        if ((snapshot.livePauseAtGoalEnabled ?: ui.launch.autoStopAtGoal) != true || snapshot.goalPauseHandled || snapshot.status != RecordingStatus.ACTIVE) return@LaunchedEffect
         val goal = ui.launch.goal
         val reached = when (goal.type) {
             RecordingGoalType.DISTANCE -> goal.targetDistanceMeters?.let { snapshot.distanceMeters >= it } == true
@@ -678,6 +680,11 @@ fun RecordingRoute(
                 onOpenAssistant = onOpenAssistant,
                 onRecenter = viewModel::trackMapRecentered,
                 onParticipantFocused = viewModel::trackGroupParticipantFocused,
+                workoutOptions = {
+                    LiveWorkoutOptions(snapshot, ui.launch, weightKilograms, onCheerMeOn, if (liveSharingEnabled) 1 else 0) { option, enabled, reached ->
+                        viewModel.setLiveOption(option, enabled, reached)
+                    }
+                },
                 onDashboardChanged = { expanded ->
                     viewModel.trackDashboardChanged(expanded)
                     if (expanded && snapshot.activityKind == ActivityKind.RUNNING) viewModel.trackCadenceExposure("running_cadence_live")
@@ -790,7 +797,7 @@ fun RecordingRoute(
                 }
             }
         }
-        sessionEffect(snapshot)
+        sessionEffect(snapshot, ui.launch.copy(voiceGuideEnabled = snapshot.liveVoiceGuideEnabled ?: ui.launch.voiceGuideEnabled))
     }
 
     if (showLocationEducation) LocationPermissionEducationDialog(
@@ -1093,6 +1100,7 @@ private fun LiveRecordingScreen(
     finishEnabled:Boolean,
     onOpenAssistant: () -> Unit,
     onDashboardChanged: (Boolean) -> Unit,
+    workoutOptions: @Composable () -> Unit,
     onRecenter: () -> Unit,
     onParticipantFocused: () -> Unit,
     runSimulation: RunSimulationState?,
@@ -1208,7 +1216,7 @@ private fun LiveRecordingScreen(
                     dashboardExpanded = it
                     onDashboardChanged(it)
                 }
-            }, Modifier, onPause, onResume, onFinish, finishEnabled)
+            }, Modifier, onPause, onResume, onFinish, finishEnabled, workoutOptions)
         }
     }
 }
@@ -1444,6 +1452,7 @@ private fun SessionDashboard(
     onResume: () -> Unit,
     onFinish: () -> Unit,
     finishEnabled:Boolean,
+    workoutOptions: @Composable () -> Unit,
 ) {
     val theme = LocalPlainstrideThemeColors.current
     Card(
@@ -1468,6 +1477,7 @@ private fun SessionDashboard(
             finishEnabled = finishEnabled,
             actionColor = theme.action,
             finishColor = theme.secondary,
+            workoutOptions = workoutOptions,
         ) else CompactSessionDashboard(
             snapshot = snapshot,
             configuration = configuration,
@@ -1573,6 +1583,7 @@ private fun ExpandedSessionDashboard(
     finishEnabled: Boolean,
     actionColor: Color,
     finishColor: Color,
+    workoutOptions: @Composable () -> Unit,
 ) {
     val paused = snapshot.status == RecordingStatus.PAUSED
     Column(Modifier.fillMaxSize()) {
@@ -1621,6 +1632,7 @@ private fun ExpandedSessionDashboard(
                     }
                 }
             }
+            workoutOptions()
         }
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 24.dp),
@@ -2203,4 +2215,38 @@ private fun recordingLocationPermission(context: Context, askedBefore: Boolean):
     LocationPermissionAccess.hasApproximatePermission(context) -> LocationPermissionState.APPROXIMATE
     askedBefore || LocationPermissionAccess.wasRequestedBefore(context) -> LocationPermissionState.DENIED
     else -> LocationPermissionState.NOT_REQUESTED
+}
+
+
+@Composable
+internal fun LiveWorkoutOptions(
+    snapshot: RecordingSnapshot,
+    launch: RecordingLaunchConfiguration,
+    weightKilograms: Double?,
+    onCheerMeOn: () -> Unit,
+    recipientCount: Int,
+    onChange: (String, Boolean, Boolean) -> Unit,
+) {
+    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+            Text(stringResource(R.string.live_workout_options), style = MaterialTheme.typography.titleMedium)
+            @Composable fun option(label: String, checked: Boolean, name: String, reached: Boolean = false) {
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(label, Modifier.weight(1f))
+                    Switch(checked = checked, onCheckedChange = { onChange(name, it, reached) }, modifier = Modifier.semantics { contentDescription = label })
+                }
+            }
+            option(stringResource(R.string.live_voice_guide), snapshot.liveVoiceGuideEnabled ?: launch.voiceGuideEnabled, "voice_guide")
+            option(stringResource(R.string.live_auto_pause), snapshot.autoPauseEnabled ?: AutoPauseDefaults.enabled(snapshot.activityKind), "auto_pause")
+            if (launch.goal.type in setOf(RecordingGoalType.DISTANCE, RecordingGoalType.TIME, RecordingGoalType.CALORIES)) {
+                val energy = WorkoutCalorieEstimator.liveEnergyKilocalories(snapshot.activityKind.toActivityType(), snapshot.distanceMeters, snapshot.elapsedSeconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), snapshot.elevationGainMeters, weightKilograms)
+                val reached = (goalProgress(snapshot, launch.goal, energy) ?: 0f) >= 1f
+                option(stringResource(R.string.live_pause_at_goal), snapshot.livePauseAtGoalEnabled ?: (launch.autoStopAtGoal == true), "auto_stop_at_goal", reached)
+            }
+            TextButton(onClick = onCheerMeOn, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.recording_cheer_on), Modifier.weight(1f), textAlign = TextAlign.Start)
+                Text(stringResource(if (recipientCount > 0) R.string.live_sharing_on else R.string.live_sharing_off))
+            }
+        }
+    }
 }

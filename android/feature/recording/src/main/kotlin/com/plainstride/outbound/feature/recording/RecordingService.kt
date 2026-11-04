@@ -93,6 +93,13 @@ class RecordingService : Service() {
                     } else null,
                 )
                 ACTION_RECOVER -> coordinator.recover(intent.requireStringExtra(EXTRA_ACCOUNT_ID), commandId)
+                ACTION_LIVE_OPTIONS -> coordinator.updateLiveOptions(
+                    commandId,
+                    if (intent.hasExtra("live_auto_pause")) intent.getBooleanExtra("live_auto_pause", false) else null,
+                    if (intent.hasExtra("live_voice")) intent.getBooleanExtra("live_voice", false) else null,
+                    if (intent.hasExtra("live_goal")) intent.getBooleanExtra("live_goal", false) else null,
+                    if (intent.hasExtra("live_goal_handled")) intent.getBooleanExtra("live_goal_handled", false) else null,
+                )
                 ACTION_PAUSE -> coordinator.pause(commandId)
                 ACTION_PAUSE_AT_GOAL -> coordinator.pauseAtGoal(
                     commandId,
@@ -257,6 +264,15 @@ class RecordingService : Service() {
             putExtra(EXTRA_ACCOUNT_ID, accountId)
             putExtra(EXTRA_PERMISSION, permission.name)
         }
+
+        private const val ACTION_LIVE_OPTIONS = "recording.live_options"
+        fun updateLiveOptions(context: Context, commandId: String, autoPause: Boolean?, voice: Boolean?, goal: Boolean?, handled: Boolean?) =
+            dispatch(context, ACTION_LIVE_OPTIONS, commandId) {
+                autoPause?.let { putExtra("live_auto_pause", it) }
+                voice?.let { putExtra("live_voice", it) }
+                goal?.let { putExtra("live_goal", it) }
+                handled?.let { putExtra("live_goal_handled", it) }
+            }
 
         fun pause(context: Context, commandId: String = UUID.randomUUID().toString()) =
             dispatch(context, ACTION_PAUSE, commandId)

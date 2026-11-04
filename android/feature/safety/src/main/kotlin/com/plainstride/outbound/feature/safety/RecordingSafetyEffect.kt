@@ -68,7 +68,7 @@ fun RecordingSafetyEffect(
  LaunchedEffect(snapshot.status,snapshot.sessionId,activityEventId){
   val previous=prior.value;prior.value=snapshot.status
   when(snapshot.status){
-   RecordingStatus.ACTIVE->coordinator.recordingStarted(snapshot.sessionId).onFailure {
+   RecordingStatus.ACTIVE, RecordingStatus.PAUSED->coordinator.recordingStarted(snapshot.sessionId).onFailure {
     android.widget.Toast.makeText(context,R.string.live_cheer_invitation_failed,android.widget.Toast.LENGTH_LONG).show()
    }
    RecordingStatus.AWAITING_SAVE->{coordinator.recordingEnded();coordinator.finishRecordingGroupRun(snapshot.accountId)}

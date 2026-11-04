@@ -83,7 +83,11 @@ import java.time.Instant
   if(!mutableDefaultSharing.value)return
   liveShare.applyDefaultRecipients(mutableContacts.value.map{it.id})
  }
- fun configureCheerRecipients(ids:Set<String>){liveShare.configureRecipients(ids.toList())}
+ suspend fun configureCheerRecipients(ids:Set<String>):Boolean {
+  val result = liveShare.configureLiveRecipients(ids.toList())
+  result.onFailure { Log.w(REALTIME_TAG,"live_share_reconfigure failed type=${it.javaClass.simpleName} status=${(it as? SafetyRequestException)?.status}") }
+  return result.isSuccess
+ }
  fun createGroup()=viewModelScope.launch{liveShare.createGroupRun(CreateGroupRunRequest())}
  fun joinGroup(invite:String)=viewModelScope.launch{liveShare.joinGroupRun(invite)}
  fun openGroup(id:String)=viewModelScope.launch{

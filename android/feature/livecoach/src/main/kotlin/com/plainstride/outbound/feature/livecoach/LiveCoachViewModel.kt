@@ -251,6 +251,14 @@ class LiveCoachViewModel @Inject constructor(
             if (previousStatus != RecordingStatus.IDLE) mutableFeedback.value = LiveCoachFeedbackState()
             prepareSelection(launch, unitSystem, prefs)
         }
+        if (!launch.voiceGuideEnabled) {
+            // Mute immediately while retaining this workout's coaching session and cue history.
+            stopService()
+            if (activeClientSessionId != null && snapshot.status in setOf(RecordingStatus.IDLE, RecordingStatus.AWAITING_SAVE)) {
+                end(if (snapshot.status == RecordingStatus.AWAITING_SAVE) "completed" else "discarded")
+            }
+            return
+        }
         if (!prefs.enabled) {
             if (activeClientSessionId != null) end("interrupted")
             return

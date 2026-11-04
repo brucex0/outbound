@@ -102,4 +102,10 @@
     <string name="recording_speed">Velocidad</string>
     <string name="recording_elapsed_time">Tiempo total</string>
     <string name="recording_recenter">Centrar en tu ubicación</string>
+    <string name="live_workout_options">Opciones del entrenamiento</string>
+    <string name="live_voice_guide">Guía por voz</string>
+    <string name="live_auto_pause">Pausar al detenerse</string>
+    <string name="live_pause_at_goal">Pausar al alcanzar el objetivo</string>
+    <string name="live_sharing_on">Activado</string>
+    <string name="live_sharing_off">Desactivado</string>
 </resources>

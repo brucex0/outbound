@@ -459,6 +459,7 @@ private fun SignedInApp(
     val sharesWithTrustedContactsByDefault by cheerPickerViewModel.sharesWithTrustedContactsByDefault.collectAsStateWithLifecycle()
     val selectedCheerIds by cheerPickerViewModel.selectedRecipientIds.collectAsStateWithLifecycle()
     val selectedCheerIdSet = selectedCheerIds.toSet()
+    val activeCheerShare by cheerPickerViewModel.activeShare.collectAsStateWithLifecycle()
     val recordingSafetyViewModel: RecordingSafetyViewModel = hiltViewModel()
     val sharedLiveGroupRun by recordingSafetyViewModel.coordinator.group.collectAsStateWithLifecycle()
     val groupRunJoining by recordingSafetyViewModel.coordinator.groupJoining.collectAsStateWithLifecycle()
@@ -1315,6 +1316,7 @@ private fun SignedInApp(
                     onCheerMeOn = { cheerPickerVisible = true },
                     cheerSelectedName = integration.connections.firstOrNull { it.id in selectedCheerIdSet }?.displayName,
                     cheerSelectedCount = selectedCheerIdSet.size,
+                    liveSharingEnabled = activeCheerShare?.status == "active",
                     onSaved = { review: RecordedActivityReview, photoAlbumExport: ActivityPhotoAlbumExportResult? ->
                         val photoMessage = when (photoAlbumExport) {
                             ActivityPhotoAlbumExportResult.SAVED -> R.string.photo_album_saved
@@ -1335,8 +1337,8 @@ private fun SignedInApp(
                     groupRunJoining=groupRunJoining,
                     onToggleActivityLiveMap={recordingLaunch.activityEventId?.let(toggleActivityLiveMap)},
                     onStopActivityLiveMap=stopActivityLiveMap,
-                    sessionEffect = { snapshot ->
-                        LiveCoachRecordingEffect(recordingLaunch, measurementUnitSystem, feedbackCoach)
+                    sessionEffect = { snapshot, liveLaunch ->
+                        LiveCoachRecordingEffect(liveLaunch, measurementUnitSystem, feedbackCoach)
                         RecordingSafetyEffect(snapshot, recordingLaunch.activityEventId)
                     },
                     saveActivityPhotosToAlbum = settingsState.preferences.saveActivityPhotosToAlbum,
@@ -1467,8 +1469,13 @@ private fun SignedInApp(
                     navController.navigate(TRUSTED_CONTACTS_ROUTE)
                 },
                 onDone = { ids ->
-                    cheerPickerViewModel.configureCheerRecipients(ids)
-                    cheerPickerVisible = false
+                    scope.launch {
+                        if (cheerPickerViewModel.configureCheerRecipients(ids)) cheerPickerVisible = false
+                        else {
+                            cheerPickerVisible = false
+                            snackbar.showSnackbar(resources.getString(com.plainstride.outbound.feature.safety.R.string.live_cheer_invitation_failed))
+                        }
+                    }
                 },
             )
         }

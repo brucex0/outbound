@@ -215,6 +215,23 @@ class RecordingCoordinator internal constructor(
         _events.emit(RecordingEvent.CommandApplied(commandId, RecordingStatus.ACTIVE))
     }
 
+    suspend fun updateLiveOptions(commandId: String, autoPause: Boolean?, voice: Boolean?, pauseAtGoal: Boolean?, goalHandled: Boolean?) = serialized(commandId) {
+        val current = _snapshot.value
+        if (current.status !in setOf(RecordingStatus.ACTIVE, RecordingStatus.PAUSED)) return@serialized
+        if (autoPause != null) {
+            autoPauseCandidateStartedAtNanos = null
+            autoResumeCandidateStartedAtNanos = null
+        }
+        _snapshot.value = current.copy(
+            revision = current.revision + 1,
+            autoPauseEnabled = autoPause ?: current.autoPauseEnabled,
+            liveVoiceGuideEnabled = voice ?: current.liveVoiceGuideEnabled,
+            livePauseAtGoalEnabled = pauseAtGoal ?: current.livePauseAtGoalEnabled,
+            goalPauseHandled = goalHandled ?: current.goalPauseHandled,
+        )
+        persist(force = true)
+    }
+
     suspend fun pause(commandId: String) = serialized(commandId) {
         if (_snapshot.value.status != RecordingStatus.ACTIVE) {
             ignored(commandId, "session_not_active")
@@ -224,6 +241,8 @@ class RecordingCoordinator internal constructor(
     }
 
     suspend fun pauseAtGoal(commandId: String, distanceGoalMeters: Double?) = serialized(commandId) {
+        if (_snapshot.value.goalPauseHandled) return@serialized
+        _snapshot.value = _snapshot.value.copy(goalPauseHandled = true)
         if (_snapshot.value.status != RecordingStatus.ACTIVE) {
             ignored(commandId, "session_not_active")
             return@serialized

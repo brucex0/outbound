@@ -34,7 +34,7 @@ import com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration
     unitSystem: MeasurementUnitSystem,
     viewModel: LiveCoachViewModel = hiltViewModel(),
 ) {
-    if (launch.voiceGuideEnabled) LaunchedEffect(viewModel, launch, unitSystem) {
+    LaunchedEffect(viewModel, launch, unitSystem) {
         viewModel.attachRecording(launch, unitSystem)
     }
 }

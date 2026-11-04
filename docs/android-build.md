@@ -116,3 +116,17 @@ was completed for this routing correction.
 - Inspect checkbox and location-switch behavior, individual attendee status after toggling, and removal of Today controls after finish on an Android/iPhone pair. Device delivery and process-death recovery need separate runtime verification; do not infer them from compilation.
 
 Verified 2026-11-01: `:app:assembleDebug` passed for the group checkbox, separate location switch, completion cleanup, retained attendee roster, and consent revision guards. No Android UI suite or physical-device verification was performed for this change.
+
+## Live workout options UI checks
+
+When explicitly requested, run the focused dashboard-option instrumentation on an emulator (select it explicitly if a physical phone is attached):
+
+```sh
+cd android
+ANDROID_SERIAL=emulator-5554 ./gradlew :feature:recording:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.plainstride.outbound.feature.recording.LiveWorkoutOptionsTest \
+  --max-workers=2 --no-parallel
+```
+
+- Verified on Pixel 10 / Android 17 emulator: two focused UI tests passed. They cover current-session toggle presentation/callbacks, unchanged launch defaults, paused/external state updates, explicit-goal eligibility, already-reached goal signaling, and the sharing action.
+- The full phone Debug build also passed. The UI fixture does not establish service-command delivery, actual speech/GPS auto-pause, process-death recovery, or server invitation/removal delivery; verify those separately on connected devices.
