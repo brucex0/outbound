@@ -97,6 +97,7 @@ final class ActivityRecorder: ObservableObject {
     private var routeGuidanceEngine: RouteGuidanceEngine?
 #if DEBUG
     private var runSimulationSampler: RunSimulationRouteSampler?
+    private var simulationLocationDeliveredAt: Date?
     private var runSimulationClock: AnyCancellable?
 #endif
 
@@ -444,6 +445,7 @@ final class ActivityRecorder: ObservableObject {
             speedMetersPerSecond: runSimulationState?.speedMetersPerSecond ?? 0,
             timestamp: now
         ) {
+            simulationLocationDeliveredAt = Date()
             locationManager.ingestSimulatedLocation(initialLocation)
         } else {
             liveSnapshot = makeSnapshot()
@@ -514,6 +516,7 @@ final class ActivityRecorder: ObservableObject {
                 speedMetersPerSecond: simulation.speedMetersPerSecond,
                 timestamp: startDate.addingTimeInterval(TimeInterval(simulation.elapsedSeconds))
             ) {
+                simulationLocationDeliveredAt = Date()
                 locationManager.ingestSimulatedLocation(location)
             }
             remainingSeconds -= stepSeconds
@@ -550,6 +553,7 @@ final class ActivityRecorder: ObservableObject {
         runSimulationClock?.cancel()
         runSimulationClock = nil
         runSimulationSampler = nil
+        simulationLocationDeliveredAt = nil
         runSimulationState = nil
     }
 
@@ -959,7 +963,15 @@ final class ActivityRecorder: ObservableObject {
             currentPaceSecsPerKm: currentPace,
             activityType: activityType,
             heartRate: heartRate,
-            location: (location ?? locationManager.location).map(SessionLocation.init),
+            location: (location ?? locationManager.location).map { point in
+#if DEBUG
+                // Synthetic route time may run at 60x or jump forward. The live
+                // wire clock records delivery, while stored route time stays synthetic.
+                return SessionLocation(point, measuredAt: runSimulationState != nil ? simulationLocationDeliveredAt : nil)
+#else
+                return SessionLocation(point)
+#endif
+            },
             isActive: isActive ?? (state == .active),
             paceEvidenceTimestamp: locationManager.coachingPaceEvidenceTimestamp,
             movingSeconds: movingSeconds,

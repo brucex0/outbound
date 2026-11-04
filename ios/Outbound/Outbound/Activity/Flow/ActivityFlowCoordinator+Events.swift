@@ -24,7 +24,7 @@ extension ActivityFlowCoordinator {
         }
         if self.dependencies.liveGroupStore.ingest(snapshot) {
             self.track(.init(.liveLocationStreamStarted, properties: [
-                .sourceType: .string("group_run"), .selectionType: .string("one_second_gps")
+                .sourceType: .string("group_run"), .selectionType: .string(snapshot.isSimulated ? "one_second_simulated" : "one_second_gps")
             ]))
         }
         self.updateLiveActivity(

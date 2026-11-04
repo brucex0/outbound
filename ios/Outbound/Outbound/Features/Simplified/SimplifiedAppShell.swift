@@ -1270,7 +1270,7 @@ private struct SimplifiedTodayView: View {
                 }
             }
         }
-        .task(id: "\(event.id):\(event.currentUserGoing == true):\(activityFlowStore.selectedEvent?.id ?? ""):\(isSelected):\(liveGroupStore.isJoining)") {
+        .task(id: "\(event.id):\(event.currentUserGoing == true):\(activityFlowStore.selectedEvent?.id ?? ""):\(isSelected):\(liveGroupStore.isJoining):\(liveGroupStore.activeSession?.id ?? ""):\(liveGroupStore.isSharing)") {
             guard isSelected else { return }
             activityFlowStore.applyParticipationDefault(event)
             guard !hasDifferentActiveLiveMap(for: event), !liveGroupStore.isJoining,

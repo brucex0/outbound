@@ -508,8 +508,8 @@ struct SessionLocation: Equatable {
     let speedMetersPerSecond: Double?
     let courseDegrees: Double?
 
-    init(_ location: CLLocation) {
-        measuredAt = location.timestamp
+    init(_ location: CLLocation, measuredAt: Date? = nil) {
+        self.measuredAt = measuredAt ?? location.timestamp
         latitude = location.coordinate.latitude
         longitude = location.coordinate.longitude
         altitudeMeters = location.altitude

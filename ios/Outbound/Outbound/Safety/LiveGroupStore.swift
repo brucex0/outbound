@@ -148,6 +148,7 @@ final class LiveGroupStore: ObservableObject {
     private var realtimeSessionID: String?
     private var sharingRevision = 0
     private var lastCheckpointAt: Date?
+    private var isRefreshingRoster = false
 #if DEBUG
     private var isDebugTestGroupRun = false
 #endif
@@ -485,10 +486,41 @@ final class LiveGroupStore: ObservableObject {
                 guard let self, self.activeSession?.id == sessionID, self.isSharing else { return }
                 if message.name == "location", let senderID = message.clientId, let payload = message.data as? [String: Any] {
                     self.applyRealtimeLocation(senderID: senderID, payload: payload)
-                } else if let response = try? await self.api.fetchLiveGroupRun(sessionID: sessionID),
-                          self.activeSession?.id == sessionID, self.isSharing {
-                    self.apply(response)
+                    if !self.participants.contains(where: { $0.userId == senderID && ($0.status == "active" || $0.status == "stale") }) {
+                        await self.refreshRoster(sessionID: sessionID)
+                        guard self.activeSession?.id == sessionID, self.isSharing else { return }
+                        self.applyRealtimeLocation(senderID: senderID, payload: payload)
+                    }
+                } else {
+                    await self.refreshRoster(sessionID: sessionID)
                 }
+            }
+        }
+        pollingTask?.cancel()
+        pollingTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self, self.activeSession?.id == sessionID, self.isSharing else { return }
+                await self.refreshRoster(sessionID: sessionID)
+                do { try await Task.sleep(for: .seconds(15)) } catch { return }
+            }
+        }
+    }
+
+    private func refreshRoster(sessionID: String) async {
+        guard !isRefreshingRoster else { return }
+        isRefreshingRoster = true
+        defer { isRefreshingRoster = false }
+        let revision = sharingRevision
+        do {
+            let response = try await api.fetchLiveGroupRun(sessionID: sessionID)
+            guard activeSession?.id == sessionID, isSharing, revision == sharingRevision else { return }
+            apply(response)
+        } catch {
+            if Task.isCancelled { return }
+            ActivityDiagnosticLog.error(.sync, "Live group roster refresh failed error=\(ActivityDiagnosticLog.errorCategory(error))")
+            guard activeSession?.id == sessionID, revision == sharingRevision else { return }
+            if case let APIError.http(status, _, _) = error, [403, 404, 410].contains(status) {
+                stopLocalState(markEnded: true)
             }
         }
     }
@@ -651,14 +683,18 @@ final class LiveGroupStore: ObservableObject {
                 // A recovery checkpoint must not move a live pin backwards. Lifecycle status stays server-owned.
                 guard next.status == "active" || next.status == "stale",
                       let old = participants.first(where: { $0.id == next.id }),
+                      old.status == "active" || old.status == "stale",
                       let oldTime = old.lastLocationAt,
                       next.lastLocationAt.map({ $0 < oldTime }) ?? true
                 else { return next }
                 return old
             }
             .filter { $0.isCurrentUser || $0.isVisibleOnMap || $0.status == "active" || $0.status == "stale" }
-        if activeSession?.isActive == false {
+        if !isSharing {
             pollingTask?.cancel()
+            realtime?.close()
+            realtime = nil
+            realtimeSessionID = nil
         }
     }
 
