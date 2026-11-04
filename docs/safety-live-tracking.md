@@ -197,4 +197,5 @@ Emergency escalation remains outside this feature.
 ### Focused UI Tests
 
 - iOS: `xcodebuild -project ios/Outbound/Outbound.xcodeproj -scheme GroupRecoveryUI -destination 'id=<simulator>' -parallel-testing-enabled NO -only-testing:OutboundUITests/LiveLocationFreshnessUITests CODE_SIGNING_ALLOWED=NO test`. `LiveLocationFixture` serves a loopback `/live/group-runs` API, so the run covers displayed update age, reported GPS accuracy, the 15-second fade with no incoming fixes, an older recovery checkpoint not replacing a fresh fix, and finish still ending the share. Grant location to the simulator (`xcrun simctl privacy <sim> grant location-always plainstride.outbound`) so the app's own location prompt does not block start.
+- Android: `cd android && ./gradlew :feature:recording:connectedDebugAndroidTest` runs `GroupParticipantStripTest` against `GroupParticipantStrip` with a hoisted display clock; pills use a stub avatar so the Hilt-backed `SocialAvatar` path is not covered.
 - These harnesses do not exercise the publish throttle, original-timestamp writes, Ably delivery, or physical GPS accuracy; those still need the device acceptance pass above.

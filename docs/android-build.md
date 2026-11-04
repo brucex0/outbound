@@ -90,6 +90,11 @@ version code `1` and version name `1.0`.
 
 Do not run the test suite unless explicitly requested. Each Android phase still needs its documented build, lint, static, and manual verification gate.
 
+`:feature:recording:connectedDebugAndroidTest` pins Espresso `3.8.0-alpha03`
+because `3.7.0` fails on API 37 emulators with `NoSuchMethodException:
+android.hardware.input.InputManager.getInstance`. Keep that pin until a stable
+Espresso release supports API 37.
+
 ## Recording Voice Audio
 
 Countdown and tap-to-talk stats use navigation speech attributes on the media

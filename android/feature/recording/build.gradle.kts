@@ -10,7 +10,10 @@ android {
     namespace = "com.plainstride.outbound.feature.recording"
     compileSdk = 36
     compileSdkMinor = 1
-    defaultConfig { minSdk = 26 }
+    defaultConfig {
+        minSdk = 26
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
     buildFeatures { compose = true; buildConfig = true }
 }
 
@@ -37,6 +40,15 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.tooling.preview)
     debugImplementation(libs.compose.ui.tooling)
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    // Espresso 3.7.0 fails on API 37 with NoSuchMethodException:
+    // android.hardware.input.InputManager.getInstance. 3.8.0-alpha03 is the first
+    // release that supports it and is the newest available version.
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.8.0-alpha03")
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.play.services.location)

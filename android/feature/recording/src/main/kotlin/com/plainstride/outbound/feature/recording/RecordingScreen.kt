@@ -1105,13 +1105,7 @@ private fun LiveRecordingScreen(
     var focusedParticipant by remember { mutableStateOf<String?>(null) }
     var recenterRequest by remember { mutableIntStateOf(0) }
     var dashboardExpanded by remember { mutableStateOf(false) }
-    var locationClock by remember { mutableStateOf(java.time.Instant.now()) }
-    LaunchedEffect(groupRun?.id) {
-        while (groupRun != null) {
-            locationClock = java.time.Instant.now()
-            delay(1_000)
-        }
-    }
+    val locationClock = rememberGroupLocationClock(groupRun?.id)
     val energyKilocalories = WorkoutCalorieEstimator.liveEnergyKilocalories(
         activityType = snapshot.activityKind.toActivityType(),
         distanceMeters = snapshot.distanceMeters,
@@ -1166,33 +1160,13 @@ private fun LiveRecordingScreen(
             val attendees = if (configuration.activityEventId != null) participants.filter { it.status == "going" } else groupRun?.participants.orEmpty().filter { it.userId != groupRun?.currentUserId && it.status != "left" }.map {
                 com.plainstride.outbound.core.model.activity.GroupActivityParticipant(com.plainstride.outbound.core.model.activity.GroupActivityPerson(it.userId, it.displayName))
             }
-            if (attendees.isNotEmpty()) androidx.compose.foundation.lazy.LazyRow(
-                Modifier.align(Alignment.BottomCenter).padding(bottom = bottomControlsHeight + 52.dp, start = 16.dp, end = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(attendees.size) { index ->
-                    val person = attendees[index].person
-                    val live = groupRun?.participants?.firstOrNull { it.userId == person.id && it.status in setOf("active", "stale") }
-                    val age = live?.lastLocationAt?.let { runCatching { java.time.Duration.between(java.time.Instant.parse(it), locationClock).seconds.coerceAtLeast(0) }.getOrNull() }
-                    val status = when {
-                        live == null -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_not_sharing)
-                        live.latitude == null || live.longitude == null -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_waiting)
-                        live.status == "stale" || (age ?: 0) > 15 -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_stale, formatDuration(age ?: 0))
-                        else -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_recent, formatDuration(age ?: 0))
-                    }
-                    Surface(onClick = { if (live?.latitude != null && live.longitude != null) focusedParticipant = live.id.takeUnless { live.userId == groupRun?.currentUserId } }, shape = RoundedCornerShape(24.dp), tonalElevation = 6.dp) {
-                        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            com.plainstride.outbound.feature.social.SocialAvatar(com.plainstride.outbound.feature.social.SocialPerson(person.id, person.displayName, avatarUrl = person.avatarUrl), size = 36.dp)
-                            Column {
-                                Text(person.displayName, style = MaterialTheme.typography.labelMedium)
-                                Text(status, style = MaterialTheme.typography.labelSmall)
-                                live?.accuracyMeters?.takeIf { it.isFinite() && it >= 0 }?.let { accuracy ->
-                                    Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_accuracy, accuracy.toInt()), style = MaterialTheme.typography.labelSmall)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            if (attendees.isNotEmpty()) GroupParticipantStrip(
+                attendees = attendees,
+                groupRun = groupRun,
+                displayedAt = locationClock,
+                onSelect = { live -> focusedParticipant = live.id.takeUnless { live.userId == groupRun?.currentUserId } },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomControlsHeight + 52.dp, start = 16.dp, end = 16.dp),
+            )
         }
         if (mode == RecordingSurfaceMode.MAP && !dashboardExpanded) {
             Surface(Modifier.align(Alignment.BottomEnd).padding(bottom = bottomControlsHeight + 112.dp, end = 16.dp), shape = CircleShape, tonalElevation = 6.dp) {
@@ -1293,6 +1267,75 @@ private fun RunSimulationControls(
     }
 }
 
+/** One-second display clock so pins and pill copy expire without incoming updates. */
+@Composable
+internal fun rememberGroupLocationClock(groupRunId: String?): java.time.Instant {
+    var displayedAt by remember { mutableStateOf(java.time.Instant.now()) }
+    LaunchedEffect(groupRunId) {
+        while (groupRunId != null) {
+            displayedAt = java.time.Instant.now()
+            delay(1_000)
+        }
+    }
+    return displayedAt
+}
+
+/** Age of a participant's last GPS measurement relative to the displayed clock. */
+internal fun groupLocationAgeSeconds(lastLocationAt: String?, displayedAt: java.time.Instant): Long? =
+    lastLocationAt?.let {
+        runCatching { java.time.Duration.between(java.time.Instant.parse(it), displayedAt).seconds.coerceAtLeast(0) }.getOrNull()
+    }
+
+/** A fix is stale once it is older than 15 seconds or the server marks it stale. */
+internal fun groupLocationIsStale(status: String, ageSeconds: Long?): Boolean =
+    status == "stale" || (ageSeconds ?: 0) > 15
+
+/** Stale participant pins fade; fresh ones stay fully opaque. */
+internal fun groupMarkerAlpha(status: String, ageSeconds: Long?): Float =
+    if (status == "active" && ageSeconds != null && ageSeconds <= 15) 1f else 0.52f
+
+/** Runner pills for the live group map: name, update age, and reported GPS accuracy. */
+@Composable
+internal fun GroupParticipantStrip(
+    attendees: List<com.plainstride.outbound.core.model.activity.GroupActivityParticipant>,
+    groupRun: SharedLiveRun?,
+    displayedAt: java.time.Instant,
+    onSelect: (com.plainstride.outbound.core.model.activity.SharedLiveParticipant) -> Unit,
+    modifier: Modifier = Modifier,
+    avatar: @Composable (com.plainstride.outbound.core.model.activity.GroupActivityPerson) -> Unit = { person ->
+        com.plainstride.outbound.feature.social.SocialAvatar(
+            com.plainstride.outbound.feature.social.SocialPerson(person.id, person.displayName, avatarUrl = person.avatarUrl),
+            size = 36.dp,
+        )
+    },
+) {
+    androidx.compose.foundation.lazy.LazyRow(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(attendees.size) { index ->
+            val person = attendees[index].person
+            val live = groupRun?.participants?.firstOrNull { it.userId == person.id && it.status in setOf("active", "stale") }
+            val age = groupLocationAgeSeconds(live?.lastLocationAt, displayedAt)
+            val status = when {
+                live == null -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_not_sharing)
+                live.latitude == null || live.longitude == null -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_waiting)
+                groupLocationIsStale(live.status, age) -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_stale, formatDuration(age ?: 0))
+                else -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_recent, formatDuration(age ?: 0))
+            }
+            Surface(onClick = { if (live?.latitude != null && live.longitude != null) onSelect(live) }, shape = RoundedCornerShape(24.dp), tonalElevation = 6.dp) {
+                Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    avatar(person)
+                    Column {
+                        Text(person.displayName, style = MaterialTheme.typography.labelMedium)
+                        Text(status, style = MaterialTheme.typography.labelSmall)
+                        live?.accuracyMeters?.takeIf { it.isFinite() && it >= 0 }?.let { accuracy ->
+                            Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_accuracy, accuracy.toInt()), style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun TrackMap(
     snapshot: RecordingSnapshot,
@@ -1304,13 +1347,7 @@ private fun TrackMap(
     recenterRequest: Int = 0,
     onFocus: (String?) -> Unit = {},
 ) {
-    var locationClock by remember { mutableStateOf(java.time.Instant.now()) }
-    LaunchedEffect(groupRun?.id) {
-        while (groupRun != null) {
-            locationClock = java.time.Instant.now()
-            delay(1_000)
-        }
-    }
+    val locationClock = rememberGroupLocationClock(groupRun?.id)
     val recorded = snapshot.track.map { MapCoordinate(it.latitude, it.longitude) }
     val planned = configuration.followedRoute?.points.orEmpty().map { MapCoordinate(it.latitude, it.longitude) }
     val recordedSegments = buildList {
@@ -1324,10 +1361,10 @@ private fun TrackMap(
         additionalMarkers = groupRun?.participants.orEmpty().filter { it.userId != groupRun?.currentUserId && it.status != "left" && (it.status in setOf("active", "stale") || it.lastLocationAt?.let { timestamp -> runCatching { java.time.Duration.between(java.time.Instant.parse(timestamp), java.time.Instant.now()).seconds < 300 }.getOrDefault(false) } == true) }.mapNotNull { participant ->
             val latitude = participant.latitude ?: return@mapNotNull null
             val longitude = participant.longitude ?: return@mapNotNull null
-            val age = participant.lastLocationAt?.let { runCatching { java.time.Duration.between(java.time.Instant.parse(it), locationClock).seconds }.getOrNull() }
+            val age = groupLocationAgeSeconds(participant.lastLocationAt, locationClock)
             com.plainstride.outbound.core.designsystem.MapRouteMarker(participant.id, MapCoordinate(latitude, longitude), participant.displayName,
                 selected = participant.id == focusedParticipant,
-                alpha = if (participant.status == "active" && age != null && age <= 15) 1f else 0.52f)
+                alpha = groupMarkerAlpha(participant.status, age))
         },
         onAdditionalMarkerClick = { id -> onFocus(id.takeUnless { it == "live-runner" }) },
         followRunner = focusedParticipant == null,
