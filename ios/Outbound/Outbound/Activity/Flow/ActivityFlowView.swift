@@ -23,6 +23,7 @@ struct ActivityFlowView: View {
         var values: [String] = []
         values.append(String(describing: preferences.preferredSessionPageRawValue.wrappedValue))
         values.append(String(describing: preferences.isVoiceGuideEnabled.wrappedValue))
+        values.append(String(describing: preferences.isAICoachEnabled.wrappedValue))
         values.append(String(describing: preferences.autoPauseRunningEnabled.wrappedValue))
         values.append(String(describing: preferences.autoPauseCyclingEnabled.wrappedValue))
         values.append(String(describing: preferences.autoPauseWalkingEnabled.wrappedValue))

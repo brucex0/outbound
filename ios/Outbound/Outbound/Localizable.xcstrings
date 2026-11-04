@@ -1,6 +1,75 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "record.ai_coach.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get adaptive coaching. With Voice off, advice appears onscreen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recibe orientación adaptada a tu actividad. Con Voz desactivada, los consejos aparecen en pantalla."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "获取适时的运动指导。关闭语音后，建议仍会显示在屏幕上。"
+          }
+        }
+      }
+    },
+    "record.ai_coach.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI Coach"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrenador IA"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 教练"
+          }
+        }
+      }
+    },
+    "record.setup.voice_guide": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voice"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "语音"
+          }
+        }
+      }
+    },
     "session.options.title": {
       "localizations": {
         "en": {
@@ -5843,23 +5912,24 @@
       }
     },
     "tooltip.voice_guide": {
+      "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Get coaching cues while you move"
+            "value": "Hear announcements and coaching while you move"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Recibe indicaciones de entrenamiento mientras te mueves"
+            "value": "Escucha avisos e indicaciones mientras te mueves"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "运动时获取语音指导"
+            "value": "运动时收听播报和教练指导"
           }
         }
       }
@@ -43660,19 +43730,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Voice Guide audio is temporarily unavailable."
+            "value": "Voice audio is temporarily unavailable."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El audio de la guía por voz no está disponible temporalmente."
+            "value": "El audio de voz no está disponible temporalmente."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "语音指导暂时不可用。"
+            "value": "语音暂时不可用。"
           }
         }
       }
@@ -43701,24 +43771,24 @@
       }
     },
     "record.voice_guide.title": {
-      "extractionState": "extracted_with_value",
+      "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
-            "state": "new",
-            "value": "Voice Guide"
+            "state": "translated",
+            "value": "Voice"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guía por voz"
+            "value": "Voz"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "语音指导"
+            "value": "语音"
           }
         }
       }

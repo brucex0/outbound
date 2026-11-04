@@ -216,6 +216,20 @@ extension ActivityFlowCoordinator {
         self.setup.showsCuratedWorkouts = true
     }
 
+    func setAICoachEnabled(_ enabled: Bool) {
+        isAICoachEnabled = enabled
+        if recorder.state == .active || recorder.state == .paused {
+            recorder.updateLiveWorkoutOptions(aiCoach: enabled)
+            trackLiveOption("ai_coach", enabled: enabled)
+        } else {
+            track(.init(.activityConfigurationChanged, properties: [
+                .changeType: .string("ai_coach"),
+                .selectionType: .string(enabled ? "enabled" : "disabled")
+            ]))
+        }
+        guide.setCoachingEnabled(enabled)
+    }
+
     func setVoiceGuideEnabled(_ isEnabled: Bool) {
         if isEnabled, self.isVoiceGuideExplicitlyUnavailable {
             self.track(.init(.activityConfigurationChanged, properties: [
@@ -224,7 +238,7 @@ extension ActivityFlowCoordinator {
             ]))
             self.showSetupToast(String(
                 localized: "record.voice_guide.unavailable.message",
-                defaultValue: "Voice Guide audio is temporarily unavailable."
+                defaultValue: "Voice audio is temporarily unavailable."
             ))
             return
         }

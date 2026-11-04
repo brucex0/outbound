@@ -48,14 +48,15 @@ final class ActivityRecorder: ObservableObject {
     @Published private(set) var autoPauseEnabled = true
     @Published private(set) var liveWorkoutOptions: LiveWorkoutSessionOptions?
 
-    func configureLiveWorkoutOptions(goal: ActivityGoal, mode: String, voice: Bool, pauseAtGoal: Bool) {
-        liveWorkoutOptions = LiveWorkoutSessionOptions(voiceGuideEnabled: voice, pauseAtGoalEnabled: pauseAtGoal, goal: goal, goalModeRawValue: mode)
+    func configureLiveWorkoutOptions(goal: ActivityGoal, mode: String, voice: Bool, pauseAtGoal: Bool, aiCoach: Bool = true) {
+        liveWorkoutOptions = LiveWorkoutSessionOptions(voiceGuideEnabled: voice, aiCoachEnabled: aiCoach, pauseAtGoalEnabled: pauseAtGoal, goal: goal, goalModeRawValue: mode)
         persistJournal(force: true)
     }
 
-    func updateLiveWorkoutOptions(voice: Bool? = nil, pauseAtGoal: Bool? = nil, goalHandled: Bool? = nil) {
+    func updateLiveWorkoutOptions(voice: Bool? = nil, aiCoach: Bool? = nil, pauseAtGoal: Bool? = nil, goalHandled: Bool? = nil) {
         var options = liveWorkoutOptions ?? LiveWorkoutSessionOptions()
         if let voice { options.voiceGuideEnabled = voice }
+        if let aiCoach { options.aiCoachEnabled = aiCoach }
         if let pauseAtGoal { options.pauseAtGoalEnabled = pauseAtGoal }
         if let goalHandled { options.goalPauseHandled = goalHandled }
         liveWorkoutOptions = options

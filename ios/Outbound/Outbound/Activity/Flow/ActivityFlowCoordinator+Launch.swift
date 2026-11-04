@@ -330,6 +330,7 @@ extension ActivityFlowCoordinator {
         self.presentLiveSurface()
         ActivityDiagnosticLog.notice(.recovery, "Recovery presentation rendered stage=recording")
         self.guide.setSpeechEnabled(self.voiceGuideSpeechEnabled)
+        self.guide.setCoachingEnabled(self.aiCoachEnabled)
         self.guide.activate(
             with: self.effectiveCoachingProfile,
             persona: self.dependencies.guideCatalog.selectedPersona,
@@ -383,7 +384,7 @@ extension ActivityFlowCoordinator {
         self.presentLiveSurface()
         self.recorder.seedLiveRunForUITest()
         self.setup.selectedGoalMode = .distance
-        self.recorder.configureLiveWorkoutOptions(goal: intent.activityGoal, mode: SessionGoalMode.distance.rawValue, voice: self.isVoiceGuideEnabled, pauseAtGoal: self.autoStopAtGoalEnabled)
+        self.recorder.configureLiveWorkoutOptions(goal: intent.activityGoal, mode: SessionGoalMode.distance.rawValue, voice: self.isVoiceGuideEnabled, pauseAtGoal: self.autoStopAtGoalEnabled, aiCoach: self.isAICoachEnabled)
 #if targetEnvironment(simulator)
         self.dependencies.phoneWorkoutCoordinator.configureWatchFlowUITest(recorder: self.recorder)
 #endif
@@ -481,6 +482,7 @@ extension ActivityFlowCoordinator {
         )
 #endif
         self.guide.setSpeechEnabled(self.voiceGuideSpeechEnabled)
+        self.guide.setCoachingEnabled(self.aiCoachEnabled)
         self.guide.activate(
             with: self.effectiveCoachingProfile,
             persona: self.dependencies.guideCatalog.selectedPersona,
@@ -584,7 +586,8 @@ extension ActivityFlowCoordinator {
             goal: (self.activeIntent ?? .freestyleRun).activityGoal,
             mode: self.setup.selectedGoalMode.rawValue,
             voice: self.isVoiceGuideEnabled,
-            pauseAtGoal: self.autoStopAtGoalEnabled
+            pauseAtGoal: self.autoStopAtGoalEnabled,
+            aiCoach: self.isAICoachEnabled
         )
         self.sessionController.beginRecording()
         if let eventID = self.activeIntent?.activityEvent?.id {

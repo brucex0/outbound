@@ -143,7 +143,7 @@ extension ActivityFlowView {
         VStack(alignment: .leading, spacing: 8) {
             Text(String(localized: "session.options.title", defaultValue: "Workout options"))
                 .font(.headline)
-            Toggle(String(localized: "record.setup.voice_guide", defaultValue: "Voice Guide"), isOn: Binding(
+            Toggle(String(localized: "record.setup.voice_guide", defaultValue: "Voice"), isOn: Binding(
                 get: { model.voiceGuideSpeechEnabled },
                 set: { enabled in
                     guard !enabled || !model.isVoiceGuideExplicitlyUnavailable else { return }
@@ -155,6 +155,17 @@ extension ActivityFlowView {
             .frame(minHeight: 44)
             .accessibilityIdentifier("LiveVoiceGuide")
             .disabled(model.isVoiceGuideExplicitlyUnavailable)
+            if (model.activeIntent?.resolvedActivityType ?? model.recorder.recoveredActivityType ?? .running) == .running {
+                Toggle(String(localized: "record.ai_coach.title", defaultValue: "AI Coach"), isOn: Binding(
+                    get: { model.aiCoachEnabled },
+                    set: { model.setAICoachEnabled($0) }
+                ))
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("LiveAICoach")
+                Text(String(localized: "record.ai_coach.detail", defaultValue: "Get adaptive coaching. With Voice off, advice appears onscreen."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Toggle(String(localized: "session.options.auto_pause", defaultValue: "Auto-pause when stopped"), isOn: Binding(
                 get: { model.recorder.autoPauseEnabled },
                 set: { enabled in

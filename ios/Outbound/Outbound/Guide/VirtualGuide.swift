@@ -73,6 +73,7 @@ final class VirtualGuide: NSObject, ObservableObject {
     private let cadencePacer = CadencePacer()
     private var pacerIntroductionSpeechActive = false
     private let momentDirector = LiveGuidanceDirector()
+    private var coachingEnabled = true
     private var speechEnabled: Bool
     private var profile: GuideProfile?
     private var persona: GuidePersona?
@@ -172,6 +173,18 @@ final class VirtualGuide: NSObject, ObservableObject {
         self.audioPlayer.playbackRouteHandler = { [weak self] route in
             self?.guidanceEventHandler?(.audioPlaybackRoute(route: route))
         }
+    }
+
+    func setCoachingEnabled(_ enabled: Bool) {
+        guard coachingEnabled != enabled else { return }
+        coachingEnabled = enabled
+        // Discard in-flight advice so disabling coaching takes effect immediately.
+        analysisTask?.cancel()
+        pendingMoment = nil
+        queuedMoments.removeAll()
+        lastNudge = ""
+        latestAnalysis = nil
+        audioPlayer.stopSpeaking(at: .immediate)
     }
 
     func setSpeechEnabled(_ isEnabled: Bool) {
@@ -303,6 +316,11 @@ final class VirtualGuide: NSObject, ObservableObject {
         }
         announceProgressIfNeeded(for: snapshot)
         guard runningSession else { return }
+        if !coachingEnabled {
+            processPendingMoment(using: snapshot)
+            cadencePacer.ingest(snapshot, intent: sessionIntent, allowed: pacerBlockReason == nil, blockReason: pacerBlockReason)
+            return
+        }
         momentDirector.suppressionHandler = { [weak self] reason in
             self?.guidanceEventHandler?(.momentSuppressed(reason: reason))
         }
@@ -524,7 +542,7 @@ final class VirtualGuide: NSObject, ObservableObject {
                 ))
                 self.apply(analysis, for: snapshot, moment: moment)
             } catch {
-                guard !(error is CancellationError) else { return }
+                guard !Task.isCancelled, !(error is CancellationError) else { return }
                 ActivityDiagnosticLog.error(.lifecycle, "Coach analysis failed error=\(ActivityDiagnosticLog.errorCategory(error))")
                 self.guidanceEventHandler?(.providerResult(
                     source: .cachedFallback,
@@ -801,7 +819,7 @@ final class VirtualGuide: NSObject, ObservableObject {
         let catalogInstructions = (sessionIntent?.workoutCues ?? []).map {
             ScheduledGuideInstruction(id: $0.id, trigger: $0.trigger, message: $0.cue)
         }
-        let scheduled = persona?.coachingContract == .quiet ? [] : provider.scheduledInstructions
+        let scheduled = !coachingEnabled || persona?.coachingContract == .quiet ? [] : provider.scheduledInstructions
         let instructions = scheduledOnly ? scheduled : catalogInstructions
         for cue in instructions where !processedWorkoutCueIDs.contains(cue.id) {
             let state = workoutCueTriggerState(
@@ -815,6 +833,7 @@ final class VirtualGuide: NSObject, ObservableObject {
                 continue
             }
             let scheduledTip = cue.id.hasPrefix("execution_coaching.")
+            guard coachingEnabled || !scheduledTip else { continue }
             // Optional tips defer within their window; route, speech and measured corrections win.
             if scheduledTip {
                 guard !audioPlayer.isSpeaking, !isAnalyzing, pendingMoment == nil,

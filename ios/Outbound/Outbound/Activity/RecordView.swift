@@ -31,6 +31,7 @@ struct RecordView: View {
     @EnvironmentObject var phoneWorkoutCoordinator: PhoneWorkoutSessionCoordinator
     @AppStorage("preferred_session_page_v1") private var preferredSessionPageRawValue = SessionPage.map.rawValue
     @AppStorage("voice_guide_enabled_v1") private var isVoiceGuideEnabled = true
+    @AppStorage("ai_coach_enabled_v1") private var isAICoachEnabled = true
     @AppStorage("auto_pause_running_enabled_v1") private var autoPauseRunningEnabled = true
     @AppStorage("auto_pause_cycling_enabled_v1") private var autoPauseCyclingEnabled = true
     @AppStorage("auto_pause_walking_enabled_v1") private var autoPauseWalkingEnabled = false
@@ -109,7 +110,7 @@ struct RecordView: View {
 
     var body: some View {
         // Register the view's AppStorage dependencies for edits from settings/sync.
-        let _ = (preferredSessionPageRawValue, isVoiceGuideEnabled,
+        let _ = (preferredSessionPageRawValue, isVoiceGuideEnabled, isAICoachEnabled,
                  autoPauseRunningEnabled, autoPauseCyclingEnabled,
                  autoPauseWalkingEnabled, autoPauseHikingEnabled,
                  autoStopAtGoalEnabled, startWatchApp)
@@ -175,6 +176,7 @@ struct RecordView: View {
         var preferences = ActivityFlowPreferences(
             preferredSessionPageRawValue: ActivityFlowPreferences.persisted(key: "preferred_session_page_v1", defaultValue: SessionPage.map.rawValue),
             isVoiceGuideEnabled: ActivityFlowPreferences.persisted(key: "voice_guide_enabled_v1", defaultValue: true),
+            isAICoachEnabled: ActivityFlowPreferences.persisted(key: "ai_coach_enabled_v1", defaultValue: true),
             autoPauseRunningEnabled: ActivityFlowPreferences.persisted(key: "auto_pause_running_enabled_v1", defaultValue: true),
             autoPauseCyclingEnabled: ActivityFlowPreferences.persisted(key: "auto_pause_cycling_enabled_v1", defaultValue: true),
             autoPauseWalkingEnabled: ActivityFlowPreferences.persisted(key: "auto_pause_walking_enabled_v1", defaultValue: false),

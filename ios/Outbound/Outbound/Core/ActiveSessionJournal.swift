@@ -4,6 +4,7 @@ import UIKit
 
 struct LiveWorkoutSessionOptions: Codable {
     var voiceGuideEnabled: Bool?
+    var aiCoachEnabled: Bool?
     var pauseAtGoalEnabled: Bool?
     var goal: ActivityGoal?
     var goalModeRawValue: String?

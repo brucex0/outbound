@@ -22,6 +22,9 @@ extension ActivityFlowView {
                     LazyHStack(spacing: 10) {
                         launchMusicControl
                         launchVoiceGuideControl
+                        if (model.setup.plannedIntent?.resolvedActivityType ?? .running) == .running {
+                            launchAICoachControl
+                        }
                         launchCheerMeOnControl
                         launchShoeControl
                         launchCompanionControl
@@ -70,9 +73,19 @@ extension ActivityFlowView {
         ))
     }
 
+    var launchAICoachControl: some View {
+        setupUtilityButton(
+            title: String(localized: "record.ai_coach.title", defaultValue: "AI Coach"),
+            value: model.isAICoachEnabled ? String(localized: "common.on", defaultValue: "On") : String(localized: "common.off", defaultValue: "Off"),
+            isConfigured: model.isAICoachEnabled
+        ) { model.setAICoachEnabled(!model.isAICoachEnabled) }
+        .accessibilityIdentifier("LaunchAICoach")
+        .accessibilityHint(String(localized: "record.ai_coach.detail", defaultValue: "Get adaptive coaching. With Voice off, advice appears onscreen."))
+    }
+
     var launchVoiceGuideControl: AnyView {
         AnyView(setupUtilityButton(
-            title: String(localized: "record.voice_guide.title", defaultValue: "Voice Guide"),
+            title: String(localized: "record.voice_guide.title", defaultValue: "Voice"),
             value: model.isVoiceGuideExplicitlyUnavailable
                 ? String(localized: "record.voice_guide.unavailable.short", defaultValue: "Unavailable")
                 : (model.isVoiceGuideEnabled
@@ -88,7 +101,7 @@ extension ActivityFlowView {
         .coordinatedTooltip(
             .voiceGuide,
             isEligible: host.isVisible && !model.showCamera && model.dependencies.activityStore.activities.count == 1,
-            text: String(localized: "tooltip.voice_guide", defaultValue: "Get coaching cues while you move"),
+            text: String(localized: "tooltip.voice_guide", defaultValue: "Hear announcements and coaching while you move"),
             arrowEdge: .bottom
         ))
     }

@@ -7,6 +7,7 @@ struct ActivityFlowPreferences {
 
     let preferredSessionPageRawValue: ActivityFlowPreference<String>
     let isVoiceGuideEnabled: ActivityFlowPreference<Bool>
+    let isAICoachEnabled: ActivityFlowPreference<Bool>
     let autoPauseRunningEnabled: ActivityFlowPreference<Bool>
     let autoPauseCyclingEnabled: ActivityFlowPreference<Bool>
     let autoPauseWalkingEnabled: ActivityFlowPreference<Bool>

@@ -62,12 +62,12 @@ extension ActivityFlowView {
             set: { model.isVoiceGuideEnabled = $0 }
         )) {
             VStack(alignment: .leading, spacing: 3) {
-                Label(String(localized: "record.voice_guide.title", defaultValue: "Voice Guide"), systemImage: "waveform.circle")
+                Label(String(localized: "record.voice_guide.title", defaultValue: "Voice"), systemImage: "waveform.circle")
                     .font(.subheadline.weight(.semibold))
                 Text(model.isVoiceGuideExplicitlyUnavailable
                     ? String(
                         localized: "record.voice_guide.unavailable.message",
-                        defaultValue: "Voice Guide audio is temporarily unavailable."
+                        defaultValue: "Voice audio is temporarily unavailable."
                     )
                     : String(localized: "record.voice_guide.detail", defaultValue: "Hear countdowns, progress updates, and live coaching."))
                     .font(.caption)

@@ -217,6 +217,7 @@ extension ActivityFlowCoordinator {
         self.live.isLiveWorkoutPanelExpanded = false
         self.presentLiveSurface()
         self.guide.setSpeechEnabled(self.voiceGuideSpeechEnabled)
+        self.guide.setCoachingEnabled(self.aiCoachEnabled)
         self.guide.activate(
             with: self.effectiveCoachingProfile,
             persona: self.dependencies.guideCatalog.selectedPersona,

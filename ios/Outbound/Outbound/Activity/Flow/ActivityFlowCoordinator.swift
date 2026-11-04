@@ -325,6 +325,18 @@ final class ActivityFlowCoordinator: ObservableObject {
         set { setPreference(preferences.isVoiceGuideEnabled, to: newValue) }
     }
 
+    var isAICoachEnabled: Bool {
+        get { preferences.isAICoachEnabled.wrappedValue }
+        set { setPreference(preferences.isAICoachEnabled, to: newValue) }
+    }
+
+    var aiCoachEnabled: Bool {
+        if recorder.state == .active || recorder.state == .paused {
+            return recorder.liveWorkoutOptions?.aiCoachEnabled ?? isAICoachEnabled
+        }
+        return isAICoachEnabled
+    }
+
     var autoPauseRunningEnabled: Bool {
         get { preferences.autoPauseRunningEnabled.wrappedValue }
         set { setPreference(preferences.autoPauseRunningEnabled, to: newValue) }

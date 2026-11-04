@@ -224,6 +224,7 @@ extension ActivityFlowCoordinator {
             .liveShareEnabled: .boolean(self.dependencies.liveShareStore.isArmedForNextActivity),
             .indoor: .boolean(self.setup.isIndoorSession),
             .voiceGuideEnabled: .boolean(self.voiceGuideSpeechEnabled),
+            .aiCoachEnabled: .boolean(self.aiCoachEnabled),
             .autoPauseEnabled: .boolean(self.recorder.autoPauseEnabled),
             .autoStopAtGoal: .boolean(
                 self.autoStopAtGoalEnabled && [.distance, .time, .calories].contains(self.setup.selectedGoalMode)
