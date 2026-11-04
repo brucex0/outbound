@@ -142,6 +142,15 @@ Unsupported recognition or synthesis must degrade visibly and safely; it must no
 
 ## Translation Workflow
 
+### Android system language selection
+
+- The phone app declares `en`, `es`, and `zh-Hans` in `android/app/src/main/res/xml/locales_config.xml`, referenced by the application manifest.
+- On Android 13+, select Plainstride under system Settings → App languages (the exact path varies by device). System default follows the device language; an explicit selection applies only to this app.
+- Android 8–12 continues to follow the device language. There is no custom in-app language picker.
+- Chinese resources currently use `values-zh-rCN`; the system picker advertises Simplified Chinese using the canonical `zh-Hans` language tag.
+- Language selection is system-owned and does not emit a custom picker analytics event. Existing feature analytics remain unchanged.
+- After installing a rebuilt APK, verify list visibility, all three language choices, System default, persistence after relaunch, and backend/generated-content and coaching language. Build verification alone does not establish runtime localization correctness.
+
 ### Shared Android generation
 
 - `ios/Outbound/Outbound/Localizable.xcstrings` remains the canonical translation catalog.
