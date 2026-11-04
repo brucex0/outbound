@@ -551,6 +551,10 @@ class RecordingViewModel @Inject constructor(
         "activity_map_recentered", mapOf(AnalyticsProperty.SourceType to "live_recording"),
     ))
 
+    fun trackGroupParticipantFocused() = analytics.record(AnalyticsEvent(
+        "group_participant_focused", mapOf(AnalyticsProperty.SourceType to "participant_pill"),
+    ))
+
     fun trackDashboardChanged(expanded: Boolean) = analytics.record(AnalyticsEvent(
         "activity_dashboard_changed",
         mapOf(AnalyticsProperty.Result to if (expanded) "expanded" else "compact"),

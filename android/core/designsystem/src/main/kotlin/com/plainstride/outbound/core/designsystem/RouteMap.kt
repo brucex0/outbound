@@ -8,6 +8,9 @@ import android.graphics.Canvas as AndroidCanvas
 import android.graphics.Paint
 import android.os.SystemClock
 import android.provider.Settings
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,6 +40,7 @@ import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.maps.android.compose.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 
 data class MapCoordinate(val latitude: Double, val longitude: Double)
 data class MapRouteSegment(val points: List<MapCoordinate>, val color: Color)
@@ -83,6 +87,7 @@ fun PlainstrideRouteMap(
     routeSegments: List<MapRouteSegment> = emptyList(),
     markers: List<MapRouteMarker> = emptyList(),
     onMarkerClick: ((String) -> Unit)? = null,
+    focusInitialSelection: Boolean = false,
     bottomContentPadding: Dp = 0.dp,
     fitRoutePadding: Dp = 48.dp,
     fitRouteOnChange: Boolean = true,
@@ -91,6 +96,7 @@ fun PlainstrideRouteMap(
     followBearingDegrees: Float? = null,
     followTiltDegrees: Float = 0f,
     followZoom: Float = 16f,
+    resumeFollowAfterGesture: Boolean = true,
     recenterRequest: Int = 0,
     onMapLoadedCallback: (() -> Unit)? = null,
     useSuppliedUserLocation: Boolean = false,
@@ -164,27 +170,45 @@ fun PlainstrideRouteMap(
             }
         }
     }
-    LaunchedEffect(followCoordinate, followBearingDegrees, followTiltDegrees, followZoom, followAnimationDurationMs, mapLoaded, recenterRequest) {
-        if (!mapLoaded) return@LaunchedEffect
-        followCoordinate?.let { coordinate ->
-            val current = camera.position
-            val target = CameraPosition.Builder()
-                .target(LatLng(coordinate.latitude, coordinate.longitude))
-                .zoom(followZoom)
-                .bearing(followBearingDegrees ?: current.bearing)
-                .tilt(if (followBearingDegrees == null) current.tilt else followTiltDegrees)
-                .build()
-            camera.animate(
-                CameraUpdateFactory.newCameraPosition(target),
-                durationMs = followAnimationDurationMs,
-            )
+    val followTarget by rememberUpdatedState(followCoordinate?.let {
+        MapFollowTarget(it, followBearingDegrees, followTiltDegrees, followZoom)
+    })
+    var followPausedByGesture by remember { mutableStateOf(false) }
+    LaunchedEffect(recenterRequest, followCoordinate != null) { followPausedByGesture = false }
+    LaunchedEffect(camera, followAnimationDurationMs, resumeFollowAfterGesture) {
+        if (followAnimationDurationMs != 0) return@LaunchedEffect
+        snapshotFlow { camera.isMoving && camera.cameraMoveStartedReason == CameraMoveStartedReason.GESTURE }
+            .collect { gesturing -> if (gesturing || resumeFollowAfterGesture) followPausedByGesture = gesturing }
+    }
+    LaunchedEffect(followCoordinate != null, followAnimationDurationMs, mapLoaded, recenterRequest, followPausedByGesture) {
+        if (!mapLoaded || followTarget == null || followPausedByGesture) return@LaunchedEffect
+        if (followAnimationDurationMs == 0) {
+            // Live coordinates are already interpolated alongside the runner marker.
+            // Only a focus/recenter transition needs its own camera interpolation.
+            val start = camera.position
+            if (start != followTarget?.cameraPosition(start)) {
+                animate(0f, 1f, animationSpec = tween(LIVE_MAP_MOTION_MS, easing = LinearEasing)) { fraction, _ ->
+                    followTarget?.cameraPosition(camera.position)?.let { target ->
+                        camera.move(CameraUpdateFactory.newCameraPosition(interpolateCameraPosition(start, target, fraction)))
+                    }
+                }
+            }
+            snapshotFlow { followTarget }.collect { target ->
+                target?.let { camera.move(CameraUpdateFactory.newCameraPosition(it.cameraPosition(camera.position))) }
+            }
+        } else {
+            snapshotFlow { followTarget }.collectLatest { target ->
+                target?.let {
+                    camera.animate(CameraUpdateFactory.newCameraPosition(it.cameraPosition(camera.position)), followAnimationDurationMs)
+                }
+            }
         }
     }
     val selectedMarker = markers.firstOrNull(MapRouteMarker::selected)
-    LaunchedEffect(selectedMarker?.id, mapLoaded) {
-        if (!mapLoaded) return@LaunchedEffect
+    LaunchedEffect(selectedMarker?.id, mapLoaded, followCoordinate != null, focusInitialSelection) {
+        if (!mapLoaded || followCoordinate != null) return@LaunchedEffect
         selectedMarker?.let { marker ->
-            if (didFocusSelectedMarker) {
+            if (didFocusSelectedMarker || focusInitialSelection) {
                 camera.animate(CameraUpdateFactory.newLatLng(LatLng(marker.coordinate.latitude, marker.coordinate.longitude)))
             }
             didFocusSelectedMarker = true
@@ -328,32 +352,36 @@ fun PlainstrideLiveRouteMap(
     additionalMarkers: List<MapRouteMarker> = emptyList(),
     onAdditionalMarkerClick: ((String) -> Unit)? = null,
     recenterRequest: Int = 0,
+    resumeFollowAfterGesture: Boolean = true,
 ) {
     var mapReady by remember { mutableStateOf(false) }
     val bearing = remember(recordedRoute, rotateWithRunner) {
         if (rotateWithRunner) routeBearing(recordedRoute) else null
     }
-    val segments = buildList {
-        if (plannedRoute.size > 1) add(MapRouteSegment(plannedRoute, Color(0xFFFF5200)))
-        if (recordedRouteSegments.isNotEmpty()) addAll(recordedRouteSegments)
-        else if (recordedRoute.size > 1) add(MapRouteSegment(recordedRoute, MaterialTheme.colorScheme.primary))
+    val pose = rememberLiveMapPose(runnerLocation, bearing)
+    val routeColor = MaterialTheme.colorScheme.primary
+    val segments = remember(plannedRoute, recordedRoute, recordedRouteSegments, routeColor) {
+        buildList {
+            if (plannedRoute.size > 1) add(MapRouteSegment(plannedRoute, Color(0xFFFF5200)))
+            if (recordedRouteSegments.isNotEmpty()) addAll(recordedRouteSegments)
+            else if (recordedRoute.size > 1) add(MapRouteSegment(recordedRoute, routeColor))
+        }
     }
     val mapPoints = when {
         recordedRoute.isNotEmpty() -> recordedRoute
         plannedRoute.isNotEmpty() -> plannedRoute
         else -> listOfNotNull(runnerLocation)
     }
-    val runnerMarker = if (runnerLocation != null && (!showRunnerMascot || mapReady)) {
+    val runnerMarker = if (pose != null && (!showRunnerMascot || mapReady)) {
         listOf(
             MapRouteMarker(
                 id = "live-runner",
-                coordinate = runnerLocation,
+                coordinate = pose.coordinate,
                 title = stringResource(R.string.route_map_runner),
                 selected = additionalMarkers.none { it.selected },
-                animatePosition = true,
                 animatedRunner = showRunnerMascot,
                 runnerMoving = runnerMoving,
-                rotationDegrees = bearing ?: 0f,
+                rotationDegrees = pose.bearing ?: 0f,
             ),
         )
     } else emptyList()
@@ -372,16 +400,81 @@ fun PlainstrideLiveRouteMap(
         onMarkerClick = { id ->
             if (id == "live-runner" || additionalMarkers.any { it.id == id }) onAdditionalMarkerClick?.invoke(id)
         },
+        focusInitialSelection = true,
         bottomContentPadding = bottomContentPadding,
         fitRouteOnChange = false,
-        followCoordinate = runnerLocation.takeIf { followRunner },
-        followAnimationDurationMs = if (followRunner) 900 else Int.MAX_VALUE,
-        followBearingDegrees = bearing.takeIf { followRunner },
-        followTiltDegrees = if (bearing != null) 45f else 0f,
+        followCoordinate = pose?.coordinate.takeIf { followRunner },
+        followAnimationDurationMs = 0,
+        followBearingDegrees = pose?.bearing.takeIf { followRunner },
+        followTiltDegrees = pose?.tilt ?: 0f,
         followZoom = zoom,
+        resumeFollowAfterGesture = resumeFollowAfterGesture,
         recenterRequest = recenterRequest,
         onMapLoadedCallback = { mapReady = true },
     )
+}
+
+private const val LIVE_MAP_MOTION_MS = 900
+
+private data class LiveMapPose(val coordinate: MapCoordinate, val bearing: Float?, val tilt: Float = if (bearing == null) 0f else 45f)
+
+/** One frame clock for the runner and camera; new fixes resume from the displayed pose. */
+@Composable
+private fun rememberLiveMapPose(coordinate: MapCoordinate?, bearing: Float?): LiveMapPose? {
+    var pose by remember { mutableStateOf(coordinate?.let { LiveMapPose(it, bearing) }) }
+    LaunchedEffect(coordinate, bearing) {
+        val target = coordinate?.let { LiveMapPose(it, bearing) }
+        val start = pose
+        if (start == null || target == null) {
+            pose = target
+        } else {
+            animate(0f, 1f, animationSpec = tween(LIVE_MAP_MOTION_MS, easing = LinearEasing)) { fraction, _ ->
+                pose = LiveMapPose(
+                    interpolateCoordinate(start.coordinate, target.coordinate, fraction),
+                    target.bearing?.let { interpolateBearing(start.bearing ?: 0f, it, fraction) },
+                    start.tilt + (target.tilt - start.tilt) * fraction,
+                )
+            }
+        }
+    }
+    return pose
+}
+
+private data class MapFollowTarget(val coordinate: MapCoordinate, val bearing: Float?, val tilt: Float, val zoom: Float) {
+    fun cameraPosition(current: CameraPosition): CameraPosition = CameraPosition.Builder()
+        .target(LatLng(coordinate.latitude, coordinate.longitude))
+        .zoom(zoom)
+        .bearing(bearing ?: current.bearing)
+        .tilt(if (bearing == null) current.tilt else tilt)
+        .build()
+}
+
+private fun interpolateBearing(start: Float, end: Float, fraction: Float): Float {
+    val delta = (end - start + 540f) % 360f - 180f
+    return (start + delta * fraction + 360f) % 360f
+}
+
+private fun interpolateCoordinate(start: MapCoordinate, end: MapCoordinate, fraction: Float): MapCoordinate {
+    if (fraction >= 1f) return end
+    val longitudeDelta = (end.longitude - start.longitude + 540.0) % 360.0 - 180.0
+    return MapCoordinate(
+        start.latitude + (end.latitude - start.latitude) * fraction,
+        (start.longitude + longitudeDelta * fraction + 540.0) % 360.0 - 180.0,
+    )
+}
+
+private fun interpolateCameraPosition(start: CameraPosition, end: CameraPosition, fraction: Float): CameraPosition {
+    val coordinate = interpolateCoordinate(
+        MapCoordinate(start.target.latitude, start.target.longitude),
+        MapCoordinate(end.target.latitude, end.target.longitude),
+        fraction,
+    )
+    return CameraPosition.Builder()
+        .target(LatLng(coordinate.latitude, coordinate.longitude))
+        .bearing(interpolateBearing(start.bearing, end.bearing, fraction))
+        .tilt(start.tilt + (end.tilt - start.tilt) * fraction)
+        .zoom(start.zoom + (end.zoom - start.zoom) * fraction)
+        .build()
 }
 
 private fun createRunnerFrameIcons(context: Context, tint: Color, figureColor: Color): List<BitmapDescriptor> {

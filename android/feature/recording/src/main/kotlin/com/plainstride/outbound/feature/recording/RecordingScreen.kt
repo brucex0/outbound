@@ -677,6 +677,7 @@ fun RecordingRoute(
                 finishEnabled=!ui.pendingMedia,
                 onOpenAssistant = onOpenAssistant,
                 onRecenter = viewModel::trackMapRecentered,
+                onParticipantFocused = viewModel::trackGroupParticipantFocused,
                 onDashboardChanged = { expanded ->
                     viewModel.trackDashboardChanged(expanded)
                     if (expanded && snapshot.activityKind == ActivityKind.RUNNING) viewModel.trackCadenceExposure("running_cadence_live")
@@ -1093,6 +1094,7 @@ private fun LiveRecordingScreen(
     onOpenAssistant: () -> Unit,
     onDashboardChanged: (Boolean) -> Unit,
     onRecenter: () -> Unit,
+    onParticipantFocused: () -> Unit,
     runSimulation: RunSimulationState?,
     onSimulationRate: (Int) -> Unit,
     onSimulationSpeed: (Double) -> Unit,
@@ -1181,7 +1183,11 @@ private fun LiveRecordingScreen(
                 attendees = attendees,
                 groupRun = groupRun,
                 displayedAt = locationClock,
-                onSelect = { live -> focusedParticipant = live.id.takeUnless { live.userId == groupRun?.currentUserId } },
+                onSelect = { live ->
+                    focusedParticipant = live.id.takeUnless { live.userId == groupRun?.currentUserId }
+                    if (live.userId == groupRun?.currentUserId) recenterRequest++
+                    onParticipantFocused()
+                },
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomControlsHeight + 52.dp, start = 16.dp, end = 16.dp),
             )
         }
@@ -1386,6 +1392,7 @@ private fun TrackMap(
         onAdditionalMarkerClick = { id -> onFocus(id.takeUnless { it == "live-runner" }) },
         followRunner = focusedParticipant == null,
         recenterRequest = recenterRequest,
+        resumeFollowAfterGesture = false,
         recordedRoute = recorded,
         plannedRoute = planned,
         recordedRouteSegments = recordedSegments,
