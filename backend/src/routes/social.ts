@@ -151,6 +151,14 @@ async function socialHome(c: Context<AppEnv>) {
     { invitations: { some: { recipientId: user.id, status: { in: ["pending", "accepted", "cancelled"] } } } },
     { group: { members: { some: { userId: user.id, status: "active" } } } },
   ];
+  // Personal activity lists require current Group membership even when a
+  // connection, previous RSVP, or invitation independently grants visibility.
+  const groupMembership = {
+    OR: [
+      { groupId: null },
+      { group: { members: { some: { userId: user.id, status: "active" } } } },
+    ],
+  };
   const feedCursorValue = c.req.query("feedCursor");
   const feedCursor = feedCursorValue ? decodeFeedCursor(feedCursorValue) : null;
   if (feedCursorValue && !feedCursor) return c.json({ error: "Invalid activity feed cursor." }, 400);
@@ -159,6 +167,7 @@ async function socialHome(c: Context<AppEnv>) {
       where: {
         status: { in: ["scheduled", "active"] },
         OR: visibility,
+        AND: [groupMembership],
       },
       include: activityEventInclude(user.id),
       orderBy: { startsAt: "asc" },
@@ -168,6 +177,7 @@ async function socialHome(c: Context<AppEnv>) {
       where: {
         status: { in: ["reconciling", "completed", "cancelled"] },
         OR: visibility,
+        AND: [groupMembership],
       },
       include: activityEventInclude(user.id),
       orderBy: { startsAt: "desc" },
