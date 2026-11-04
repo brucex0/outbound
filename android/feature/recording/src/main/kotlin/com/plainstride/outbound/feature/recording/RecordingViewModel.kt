@@ -565,8 +565,12 @@ class RecordingViewModel @Inject constructor(
         "activity_map_recentered", mapOf(AnalyticsProperty.SourceType to "live_recording"),
     ))
 
-    fun trackGroupParticipantFocused() = analytics.record(AnalyticsEvent(
-        "group_participant_focused", mapOf(AnalyticsProperty.SourceType to "participant_pill"),
+    fun trackGroupParticipantFocused(source: String) = analytics.record(AnalyticsEvent(
+        "group_participant_focused", mapOf(AnalyticsProperty.SourceType to source),
+    ))
+
+    fun trackGroupParticipantLocationUnavailable(source: String) = analytics.record(AnalyticsEvent(
+        "group_participant_location_unavailable", mapOf(AnalyticsProperty.SourceType to source),
     ))
 
     fun trackDashboardChanged(expanded: Boolean) = analytics.record(AnalyticsEvent(

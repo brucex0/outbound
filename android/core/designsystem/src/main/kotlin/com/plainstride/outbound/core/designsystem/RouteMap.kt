@@ -205,7 +205,7 @@ fun PlainstrideRouteMap(
         }
     }
     val selectedMarker = markers.firstOrNull(MapRouteMarker::selected)
-    LaunchedEffect(selectedMarker?.id, mapLoaded, followCoordinate != null, focusInitialSelection) {
+    LaunchedEffect(selectedMarker?.id, mapLoaded, followCoordinate != null, focusInitialSelection, recenterRequest) {
         if (!mapLoaded || followCoordinate != null) return@LaunchedEffect
         selectedMarker?.let { marker ->
             if (didFocusSelectedMarker || focusInitialSelection) {

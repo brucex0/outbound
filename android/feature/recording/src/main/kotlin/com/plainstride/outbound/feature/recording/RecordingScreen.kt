@@ -11,6 +11,7 @@ import android.media.ExifInterface
 import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
+import android.widget.Toast
 import android.util.Log
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
@@ -155,6 +156,8 @@ import com.plainstride.outbound.feature.activity.rememberActivityPhotoImportLaun
 import com.plainstride.outbound.feature.activity.copyActivityPhotoSource
 import com.plainstride.outbound.core.model.activity.MeasurementUnitSystem
 import com.plainstride.outbound.core.model.activity.SharedLiveRun
+import com.plainstride.outbound.core.model.activity.GroupActivityParticipant
+import com.plainstride.outbound.core.model.activity.GroupActivityPerson
 import com.plainstride.outbound.core.model.activity.SessionFormatting
 import com.plainstride.outbound.core.model.activity.WorkoutCalorieEstimator
 
@@ -236,7 +239,7 @@ fun RecordingRoute(
     val saveSnackbar = remember { SnackbarHostState() }
     val saveFailedMessage = stringResource(R.string.recording_save_failed)
     val eventGroupRun = groupRun?.takeIf { run ->
-        run.activityEventId == launch.activityEventId
+        run.activityEventId == ui.launch.activityEventId
     }
     val eventGroupSharing = eventGroupRun?.participants?.any { participant ->
         participant.userId == eventGroupRun.currentUserId && participant.status in setOf("active", "stale")
@@ -246,7 +249,7 @@ fun RecordingRoute(
     }
     LaunchedEffect(eventGroupSharing) { viewModel.setLiveGroupSharing(eventGroupSharing) }
     val otherActiveGroupRun = groupRun?.takeIf { run ->
-        run.status == "active" && run.activityEventId != launch.activityEventId && run.participants.any { participant ->
+        run.status == "active" && run.activityEventId != ui.launch.activityEventId && run.participants.any { participant ->
             participant.userId == run.currentUserId && participant.status in setOf("active", "stale")
         }
     }
@@ -680,6 +683,7 @@ fun RecordingRoute(
                 onOpenAssistant = onOpenAssistant,
                 onRecenter = viewModel::trackMapRecentered,
                 onParticipantFocused = viewModel::trackGroupParticipantFocused,
+                onParticipantLocationUnavailable = viewModel::trackGroupParticipantLocationUnavailable,
                 workoutOptions = {
                     LiveWorkoutOptions(snapshot, ui.launch, weightKilograms, onCheerMeOn, if (liveSharingEnabled) 1 else 0) { option, enabled, reached ->
                         viewModel.setLiveOption(option, enabled, reached)
@@ -1102,7 +1106,8 @@ private fun LiveRecordingScreen(
     onDashboardChanged: (Boolean) -> Unit,
     workoutOptions: @Composable () -> Unit,
     onRecenter: () -> Unit,
-    onParticipantFocused: () -> Unit,
+    onParticipantFocused: (String) -> Unit,
+    onParticipantLocationUnavailable: (String) -> Unit,
     runSimulation: RunSimulationState?,
     onSimulationRate: (Int) -> Unit,
     onSimulationSpeed: (Double) -> Unit,
@@ -1112,6 +1117,7 @@ private fun LiveRecordingScreen(
     routeGuidanceContent: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
+    val context = LocalContext.current
     var bottomControlsHeight by remember { mutableStateOf(128.dp) }
     var focusedParticipant by remember { mutableStateOf<String?>(null) }
     var recenterRequest by remember { mutableIntStateOf(0) }
@@ -1121,6 +1127,27 @@ private fun LiveRecordingScreen(
     val recenterSize = 48.dp
     val overlayGap = 12.dp
     val locationClock = rememberGroupLocationClock(groupRun?.id)
+    val liveParticipants = groupRun?.participants.orEmpty().filter { it.status != "left" }
+
+    fun locationUnavailable(source: String) {
+        onParticipantLocationUnavailable(source)
+        Toast.makeText(context, com.plainstride.outbound.core.designsystem.R.string.group_activity_location_unavailable, Toast.LENGTH_SHORT).show()
+    }
+
+    fun focusParticipant(userId: String, source: String) {
+        val live = liveParticipants.firstOrNull { it.userId == userId }
+        val isCurrentUser = userId == groupRun?.currentUserId
+        val hasVisibleLocation = live?.latitude != null && live.longitude != null &&
+            (live.status in setOf("active", "stale") || (groupLocationAgeSeconds(live.lastLocationAt, locationClock)?.let { it < 300 } == true))
+        if (live == null || (if (isCurrentUser) snapshot.latestLocation == null else !hasVisibleLocation)) {
+            locationUnavailable(source)
+            return
+        }
+        focusedParticipant = live.id.takeUnless { isCurrentUser }
+        recenterRequest++
+        onParticipantFocused(source)
+    }
+
     val energyKilocalories = WorkoutCalorieEstimator.liveEnergyKilocalories(
         activityType = snapshot.activityKind.toActivityType(),
         distanceMeters = snapshot.distanceMeters,
@@ -1180,22 +1207,27 @@ private fun LiveRecordingScreen(
             if (!dashboardExpanded && configuration.activityEventId != null) {
                 com.plainstride.outbound.core.designsystem.GroupActivityPresencePanel(configuration.activityEventTitle ?: stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_label), participants, groupRun?.participants?.any { it.userId == groupRun.currentUserId && it.status in setOf("active", "stale") } == true, liveMapBusy, onToggleActivityLiveMap,
                     Modifier.fillMaxWidth(),
-                    avatar = { person -> com.plainstride.outbound.feature.social.SocialAvatar(com.plainstride.outbound.feature.social.SocialPerson(person.id, person.displayName, avatarUrl = person.avatarUrl), size = 40.dp) })
+                    avatar = { person -> com.plainstride.outbound.feature.social.SocialAvatar(com.plainstride.outbound.feature.social.SocialPerson(person.id, person.displayName, avatarUrl = person.avatarUrl), size = 40.dp) },
+                    onSelectParticipant = if (mode == RecordingSurfaceMode.MAP) { attendee -> focusParticipant(attendee.person.id, "group_card") } else null)
             }
         }
         if (mode == RecordingSurfaceMode.MAP && !dashboardExpanded) {
-            val attendees = if (configuration.activityEventId != null) participants.filter { it.status == "going" } else groupRun?.participants.orEmpty().filter { it.userId != groupRun?.currentUserId && it.status != "left" }.map {
-                com.plainstride.outbound.core.model.activity.GroupActivityParticipant(com.plainstride.outbound.core.model.activity.GroupActivityPerson(it.userId, it.displayName))
+            val attendees = if (configuration.activityEventId != null) {
+                val eventAttendees = participants.filter { it.status in setOf("going", "participating") || it.startedAt != null || it.isRecording }
+                val attendeeIds = eventAttendees.map { it.person.id }.toSet()
+                // Live membership can arrive before the next event-roster refresh.
+                eventAttendees + liveParticipants.filter { it.userId !in attendeeIds }.map {
+                    GroupActivityParticipant(GroupActivityPerson(it.userId, it.displayName))
+                }
+            } else liveParticipants.filter { it.userId != groupRun?.currentUserId }.map {
+                GroupActivityParticipant(GroupActivityPerson(it.userId, it.displayName))
             }
             if (attendees.isNotEmpty()) GroupParticipantStrip(
                 attendees = attendees,
                 groupRun = groupRun,
                 displayedAt = locationClock,
-                onSelect = { live ->
-                    focusedParticipant = live.id.takeUnless { live.userId == groupRun?.currentUserId }
-                    if (live.userId == groupRun?.currentUserId) recenterRequest++
-                    onParticipantFocused()
-                },
+                onSelect = { live -> focusParticipant(live.userId, "participant_pill") },
+                onLocationUnavailable = { locationUnavailable("participant_pill") },
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomControlsHeight + 52.dp, start = 16.dp, end = 16.dp),
             )
         }
@@ -1339,19 +1371,20 @@ internal fun GroupParticipantStrip(
             size = 36.dp,
         )
     },
+    onLocationUnavailable: () -> Unit = {},
 ) {
     androidx.compose.foundation.lazy.LazyRow(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(attendees.size) { index ->
             val person = attendees[index].person
-            val live = groupRun?.participants?.firstOrNull { it.userId == person.id && it.status in setOf("active", "stale") }
+            val live = groupRun?.participants?.firstOrNull { it.userId == person.id && it.status != "left" }
             val age = groupLocationAgeSeconds(live?.lastLocationAt, displayedAt)
             val status = when {
-                live == null -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_not_sharing)
+                live == null || live.status !in setOf("active", "stale") -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_not_sharing)
                 live.latitude == null || live.longitude == null -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_waiting)
                 groupLocationIsStale(live.status, age) -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_stale, formatDuration(age ?: 0))
                 else -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_recent, formatDuration(age ?: 0))
             }
-            Surface(onClick = { if (live?.latitude != null && live.longitude != null) onSelect(live) }, shape = RoundedCornerShape(24.dp), tonalElevation = 6.dp) {
+            Surface(onClick = { if (live != null) onSelect(live) else onLocationUnavailable() }, shape = RoundedCornerShape(24.dp), tonalElevation = 6.dp) {
                 Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     avatar(person)
                     Column {

@@ -50,7 +50,7 @@ import com.plainstride.outbound.core.model.activity.*
     else -> R.string.group_activity_not_started
 })
 
-@Composable fun GroupActivityPresencePanel(title: String, participants: List<GroupActivityParticipant>, sharing: Boolean, busy: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier, avatar: (@Composable (GroupActivityPerson) -> Unit)? = null) {
+@Composable fun GroupActivityPresencePanel(title: String, participants: List<GroupActivityParticipant>, sharing: Boolean, busy: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier, avatar: (@Composable (GroupActivityPerson) -> Unit)? = null, onSelectParticipant: ((GroupActivityParticipant) -> Unit)? = null) {
     var expanded by rememberSaveable(title) { mutableStateOf(false) }
     Surface(modifier, shape = MaterialTheme.shapes.large, tonalElevation = 4.dp) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -60,7 +60,9 @@ import com.plainstride.outbound.core.model.activity.*
             }
             if (expanded) {
                 Column(Modifier.heightIn(max = 180.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    participants.forEach { participant -> Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    participants.forEach { participant -> Row(Modifier.fillMaxWidth().then(
+                        if (onSelectParticipant != null) Modifier.heightIn(min = 48.dp).clickable(role = androidx.compose.ui.semantics.Role.Button) { onSelectParticipant(participant) } else Modifier
+                    ), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         if (avatar != null) avatar(participant.person) else Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.primaryContainer) { Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) { Text(participant.person.displayName.split(" ").take(2).mapNotNull { it.firstOrNull() }.joinToString("")) } }
                         Text(participant.person.displayName, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
                         Text(groupParticipantStatus(participant), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
