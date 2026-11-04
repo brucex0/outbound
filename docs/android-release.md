@@ -128,6 +128,14 @@ Data is not sold. Social publishing, live sharing, Health Connect, microphone, n
 - Signed bundle build, release configuration checks, vital lint, R8, and signature verification passed. Play showed no blocking errors; the existing native-symbol warning remains, and ReTrace mapping is attached. Device support counts are unchanged. Production `/health` returned HTTP 200. No tests or device runtime checks were run.
 - Evidence is retained under ignored `artifacts/play-store/release-1.0.2-5/`: AAB, mapping, merged manifest, dependency report, source SHA, and `restart-review-required.png`. To finish, approve restarting the existing review, then submit the two saved Open testing changes through Publishing overview; managed publishing is off.
 
+### November 3 Production Update Submission
+
+- Bruce requested public releases of Android and iOS. Android `1.0.3` (6) was built from committed source `81e3cefd` in an isolated repository worktree, excluding unrelated local edits.
+- The signed bundle passed release configuration checks, vital lint, R8, and signature verification. Play accepted the bundle with ReTrace mapping attached, unchanged supported-device counts, and only the existing optional native-debug-symbol warning.
+- Production `1.0.3` was submitted at a 10% staged rollout across the existing two-country availability. Publishing overview confirms **Changes in review**; quick checks were still running. Managed publishing is off, so approval can start the rollout automatically. This update is not yet confirmed publicly available.
+- Production health and both platforms’ privacy/support endpoints returned HTTP 200. The Android association endpoint at `https://plainstride.ai/.well-known/assetlinks.json` returned HTTP 404; app-link handling remains unverified. No tests or device runtime acceptance checks were performed.
+- Evidence is retained under ignored `artifacts/play-store/release-1.0.3-6/`: signed AAB, mapping, SHA-256, source SHA, product changes, and submission state. Existing Android unreleased-policy instructions remain in force until Bruce explicitly confirms release.
+
 ## Dependencies And Notices
 
 - Generate the release dependency graph with `./gradlew :app:dependencies --configuration releaseRuntimeClasspath` and archive it with the release.
