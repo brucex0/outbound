@@ -36,6 +36,7 @@ final class LiveShareStore: ObservableObject {
 
     private let api: APIClient
     private var lastSentAt: Date?
+    private var lastSentMeasurementAt: Date?
     private var updateTask: Task<Void, Never>?
     private var lastCheerFetchAt: Date?
     private var realtime: AblySessionTransport?
@@ -104,6 +105,7 @@ final class LiveShareStore: ObservableObject {
                 ? String(localized: "record.cheer.invited_toast", defaultValue: "Contacts invited to cheer you on")
                 : String(localized: "rewards.live_share_basic_toast", table: "Rewards")
             lastSentAt = nil
+            lastSentMeasurementAt = nil
             lastCheckpointAt = nil
         } catch {
             lastErrorMessage = "Live sharing unavailable: \(error.localizedDescription)"
@@ -118,8 +120,9 @@ final class LiveShareStore: ObservableObject {
         guard shouldSend(snapshot: snapshot) else { return }
 
         lastSentAt = snapshot.recordedAt
+        lastSentMeasurementAt = snapshot.location?.measuredAt
         realtime?.publishLocation([
-            "recordedAt": ISO8601DateFormatter().string(from: snapshot.recordedAt),
+            "recordedAt": LiveLocationTimestamp.string(from: request.recordedAt),
             "latitude": request.latitude,
             "longitude": request.longitude,
             "courseDegrees": snapshot.location?.courseDegrees as Any? ?? NSNull(),
@@ -167,6 +170,7 @@ final class LiveShareStore: ObservableObject {
         activeSession = nil
         isArmedForNextActivity = false
         lastSentAt = nil
+        lastSentMeasurementAt = nil
         lastCheerFetchAt = nil
         mostRecentlyHeardCheer = nil
 
@@ -234,6 +238,11 @@ final class LiveShareStore: ObservableObject {
     }
 
     private func shouldSend(snapshot: ActiveSessionSnapshot) -> Bool {
+        guard let location = snapshot.location,
+              snapshot.recordedAt.timeIntervalSince(location.measuredAt) <= 15,
+              location.measuredAt.timeIntervalSince(snapshot.recordedAt) <= 5,
+              lastSentMeasurementAt.map({ location.measuredAt > $0 }) ?? true
+        else { return false }
         guard let lastSentAt else { return true }
         return snapshot.recordedAt.timeIntervalSince(lastSentAt) >= 1
     }
@@ -251,7 +260,7 @@ final class LiveShareStore: ObservableObject {
     ) -> LiveShareLocationUpdateRequest? {
         guard let location = snapshot.location else { return nil }
         return LiveShareLocationUpdateRequest(
-            recordedAt: snapshot.recordedAt,
+            recordedAt: location.measuredAt,
             latitude: location.latitude,
             longitude: location.longitude,
             altitudeM: location.altitudeMeters.isFinite ? location.altitudeMeters : nil,

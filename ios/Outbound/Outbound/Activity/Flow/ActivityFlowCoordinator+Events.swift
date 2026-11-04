@@ -22,7 +22,11 @@ extension ActivityFlowCoordinator {
                 }
             }
         }
-        self.dependencies.liveGroupStore.ingest(snapshot)
+        if self.dependencies.liveGroupStore.ingest(snapshot) {
+            self.track(.init(.liveLocationStreamStarted, properties: [
+                .sourceType: .string("group_run"), .selectionType: .string("one_second_gps")
+            ]))
+        }
         self.updateLiveActivity(
             snapshot: snapshot,
             state: self.recorder.state,

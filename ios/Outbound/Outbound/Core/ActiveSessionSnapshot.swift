@@ -499,6 +499,7 @@ enum SessionIntentGoalParser {
 }
 
 struct SessionLocation: Equatable {
+    let measuredAt: Date
     let latitude: Double
     let longitude: Double
     let altitudeMeters: Double
@@ -508,6 +509,7 @@ struct SessionLocation: Equatable {
     let courseDegrees: Double?
 
     init(_ location: CLLocation) {
+        measuredAt = location.timestamp
         latitude = location.coordinate.latitude
         longitude = location.coordinate.longitude
         altitudeMeters = location.altitude

@@ -205,6 +205,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case groupRunCreateAttempted = "group_run_create_attempted"
     case groupRunCreated = "group_run_created"
     case groupRunJoinAttempted = "group_run_join_attempted"
+    case liveLocationStreamStarted = "live_location_stream_started"
     case groupRunJoined = "group_run_joined"
     case groupRunInviteShared = "group_run_invite_shared"
     case liveCheerInvitationConfigured = "live_cheer_invitation_configured"
@@ -570,6 +571,7 @@ enum ProductAnalyticsSchema {
         .groupRunCreateAttempted: [],
         .groupRunCreated: [.participantCountBucket],
         .groupRunJoinAttempted: [],
+        .liveLocationStreamStarted: [.sourceType, .selectionType],
         .groupRunJoined: [.participantCountBucket],
         .groupRunInviteShared: [.participantCountBucket],
         .liveGuidanceMomentSuppressed: [.result],

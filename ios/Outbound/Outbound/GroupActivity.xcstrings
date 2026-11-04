@@ -463,6 +463,28 @@
         }
       }
     },
+    "group.activity.location_accuracy": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPS accuracy ±%lld m"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Precisión GPS ±%lld m"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPS 精度 ±%lld 米"
+          }
+        }
+      }
+    },
     "group.activity.location_recent": {
       "localizations": {
         "en": {

@@ -163,7 +163,9 @@ Do not put networking directly in `ActivityRecorder`; keep recording stable even
 - After playback, the runner sees a compact, dismissible banner and can send one explicit `❤️ Heard you` acknowledgment. The follower's persistent cheer-status indicator updates when that acknowledgment arrives.
 - Cheer receipts store `deliveredAt`, `playedAt`, and `acknowledgedAt`; the follower APIs expose only the current follower's latest cheer receipt.
 - Analytics records voice-cheer playback and acknowledgment outcomes without audio content, sender identity, or location.
-- `LiveShareStore` publishes each distinct `ActiveSessionSnapshot` location to Ably with a one-second minimum interval. It sends REST recovery checkpoints once per minute. Followers extend the checkpoint route with each newer Ably location. Follower and runner maps share route styling, marker, 400-meter camera framing, and heading; the realtime payload carries course for follower rotation. The runner map follows filtered track points to reduce raw GPS jitter.
+- iOS and Android group sharing publish each new GPS measurement over Ably with a one-second minimum interval, replacing the former 10-second/25-meter throttle. Both keep one-minute REST recovery checkpoints. Repeated/older fixes and measurements older than 15 seconds (or more than 5 seconds in the future) are not republished. `recordedAt` is the GPS measurement time, not the UI snapshot time; Android fractional-second ISO timestamps are accepted by iOS.
+- Group maps retain newer realtime positions when older REST checkpoints or out-of-order messages arrive. Server leave/finish/end state remains authoritative. Runner pills show localized update age and reported GPS accuracy in meters; pins fade after 15 seconds without a fresh measurement. Accuracy is uncertainty, not a guarantee that runners 15 meters apart can be ordered correctly.
+- The separate invited-cheerer stream also uses a one-second minimum interval and GPS measurement timestamps. Followers extend the checkpoint route with each newer Ably location. Follower and runner maps share route styling, marker, 400-meter camera framing, and heading; the realtime payload carries course for follower rotation. The runner map follows filtered track points to reduce raw GPS jitter.
 - Finishing sends the reconciled final snapshot before ending the share. Followers see elapsed time and current pace while the share is active, then average pace calculated from final elapsed time and distance after it ends.
 - Finish, discard, and the live HUD stop-sharing control call the backend end endpoint.
 - If create or update fails, recording continues and the runner sees local stale/unavailable copy.
@@ -184,3 +186,10 @@ Emergency escalation remains outside this feature.
 - public spectator mode
 - social feed live maps
 - rich media in live tracking
+
+## Live Location Verification
+
+- Build only: use the iOS simulator build in `docs/build-test-device.md` and `cd android && ./gradlew :feature:safety:compileDebugKotlin :feature:recording:compileDebugKotlin`.
+- Device acceptance: join one session from iOS and Android, move together with a roughly 15-meter gap, and compare displayed age/accuracy. Verify fresh fixes arrive about once per second while GPS and connectivity permit; this is a publish throttle, not an end-to-end latency guarantee.
+- Stop location/network delivery: update age must continue advancing, and pins must fade after 15 seconds. Restore delivery: a newer fix restores the fresh state. Confirm an older checkpoint cannot move the pin backwards and leaving/finishing still ends sharing.
+- Confirm only a new GPS measurement publishes; stationary sessions must not refresh an old measurement's timestamp. Check weak GPS and reconnect paths on devices; builds alone do not establish physical positioning accuracy or latency.

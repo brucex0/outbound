@@ -70,7 +70,8 @@ final class LiveCheerStore: NSObject, ObservableObject, @preconcurrency AVAudioR
                    let payload = message.data as? [String: Any],
                    let latitude = (payload["latitude"] as? NSNumber)?.doubleValue,
                    let longitude = (payload["longitude"] as? NSNumber)?.doubleValue {
-                    let recordedAt = (payload["recordedAt"] as? String).flatMap { ISO8601DateFormatter().date(from: $0) } ?? Date()
+                    guard let timestamp = payload["recordedAt"] as? String,
+                          let recordedAt = LiveLocationTimestamp.date(from: timestamp) else { return }
                     guard value.lastLocation.map({ recordedAt >= $0.recordedAt }) ?? true else { return }
                     value.routePreview = Self.routePreview(adding: value.lastLocation, to: value.routePreview)
                     let courseDegrees = (payload["courseDegrees"] as? NSNumber)?.doubleValue

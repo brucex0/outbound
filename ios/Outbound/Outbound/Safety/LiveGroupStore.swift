@@ -47,6 +47,7 @@ struct LiveGroupParticipant: Identifiable, Hashable {
     let distanceM: Double?
     let paceSecondsPerKM: Double?
     let isCurrentUser: Bool
+    var accuracyMeters: Double? = nil
 
     var initials: String {
         let parts = displayName
@@ -67,7 +68,7 @@ struct LiveGroupParticipant: Identifiable, Hashable {
     }
 
     var isFresh: Bool {
-        status == "active"
+        status == "active" && lastLocationAt.map { Date().timeIntervalSince($0) <= 15 } == true
     }
 
     var statusLabel: String {
@@ -98,6 +99,7 @@ struct LiveGroupParticipant: Identifiable, Hashable {
             && lhs.coordinate?.longitude == rhs.coordinate?.longitude
             && lhs.distanceM == rhs.distanceM
             && lhs.paceSecondsPerKM == rhs.paceSecondsPerKM
+            && lhs.accuracyMeters == rhs.accuracyMeters
             && lhs.isCurrentUser == rhs.isCurrentUser
     }
 
@@ -114,6 +116,7 @@ struct LiveGroupParticipant: Identifiable, Hashable {
         hasher.combine(distanceM)
         hasher.combine(paceSecondsPerKM)
         hasher.combine(isCurrentUser)
+        hasher.combine(accuracyMeters)
     }
 }
 
@@ -138,7 +141,7 @@ final class LiveGroupStore: ObservableObject {
 
     private let api: APIClient
     private var lastSentAt: Date?
-    private var lastSentDistanceM: Double?
+    private var lastSentMeasurementAt: Date?
     private var updateTask: Task<Void, Never>?
     private var pollingTask: Task<Void, Never>?
     private var realtime: AblySessionTransport?
@@ -314,9 +317,10 @@ final class LiveGroupStore: ObservableObject {
         }
     }
 
-    func ingest(_ snapshot: ActiveSessionSnapshot) {
-        guard let session = activeSession, isSharing, snapshot.isActive else { return }
-        guard let location = snapshot.location else { return }
+    @discardableResult
+    func ingest(_ snapshot: ActiveSessionSnapshot) -> Bool {
+        guard let session = activeSession, isSharing, snapshot.isActive else { return false }
+        guard let location = snapshot.location else { return false }
 #if DEBUG
         if isDebugTestGroupRun {
             participants = Self.debugParticipants(
@@ -325,15 +329,16 @@ final class LiveGroupStore: ObservableObject {
                 distanceMeters: snapshot.distanceMeters,
                 includesRemoteAttendee: session.isLinkedToActivityEvent
             )
-            return
+            return false
         }
 #endif
-        guard shouldSend(snapshot: snapshot) else { return }
+        guard shouldSend(snapshot: snapshot) else { return false }
 
+        let startsStream = lastSentAt == nil
+        lastSentMeasurementAt = location.measuredAt
         lastSentAt = snapshot.recordedAt
-        lastSentDistanceM = snapshot.distanceMeters
         realtime?.publishLocation([
-            "recordedAt": ISO8601DateFormatter().string(from: snapshot.recordedAt),
+            "recordedAt": LiveLocationTimestamp.string(from: location.measuredAt),
             "latitude": location.latitude,
             "longitude": location.longitude,
             "altitudeM": location.altitudeMeters.isFinite ? location.altitudeMeters : NSNull(),
@@ -342,7 +347,7 @@ final class LiveGroupStore: ObservableObject {
             "distanceM": snapshot.distanceMeters,
             "paceSecondsPerKM": snapshot.currentPaceSecsPerKm as Any? ?? NSNull(),
         ])
-        guard lastCheckpointAt.map({ snapshot.recordedAt.timeIntervalSince($0) >= 60 }) ?? true else { return }
+        guard lastCheckpointAt.map({ snapshot.recordedAt.timeIntervalSince($0) >= 60 }) ?? true else { return startsStream }
         lastCheckpointAt = snapshot.recordedAt
         isUpdating = true
         updateTask?.cancel()
@@ -351,7 +356,7 @@ final class LiveGroupStore: ObservableObject {
                 let response = try await api.updateLiveGroupLocation(
                     sessionID: session.id,
                     request: LiveGroupLocationUpdateRequest(
-                        recordedAt: snapshot.recordedAt,
+                        recordedAt: location.measuredAt,
                         latitude: location.latitude,
                         longitude: location.longitude,
                         altitudeM: location.altitudeMeters.isFinite ? location.altitudeMeters : nil,
@@ -367,13 +372,18 @@ final class LiveGroupStore: ObservableObject {
                     isUpdating = false
                     lastErrorMessage = nil
                 }
+            } catch is CancellationError {
+                // Finishing/leaving cancels an in-flight recovery checkpoint.
+                return
             } catch {
+                ActivityDiagnosticLog.error(.sync, "Group location checkpoint failed error=\(ActivityDiagnosticLog.errorCategory(error))")
                 await MainActor.run {
                     isUpdating = false
                     lastErrorMessage = "Group signal is stale."
                 }
             }
         }
+        return startsStream
     }
 
     func finishActivity() {
@@ -405,7 +415,6 @@ final class LiveGroupStore: ObservableObject {
         realtime = nil
         realtimeSessionID = nil
         lastSentAt = nil
-        lastSentDistanceM = nil
         isUpdating = false
         participants = participants.map { old in
             guard old.isCurrentUser else { return old }
@@ -470,7 +479,6 @@ final class LiveGroupStore: ObservableObject {
         realtimeSessionID = sessionID
         lastCheckpointAt = nil
         lastSentAt = nil
-        lastSentDistanceM = nil
         realtime = AblySessionTransport(kind: "group_run", sessionID: sessionID, api: api) { [weak self] message in
             guard message.name == "location" || message.name == "participant.changed" else { return }
             Task { @MainActor [weak self] in
@@ -491,7 +499,11 @@ final class LiveGroupStore: ObservableObject {
               let longitude = (payload["longitude"] as? NSNumber)?.doubleValue else { return }
         let old = participants[index]
         guard old.status == "active" || old.status == "stale" else { return }
-        let recordedAt = (payload["recordedAt"] as? String).flatMap(ISO8601DateFormatter().date(from:)) ?? Date()
+        guard let timestamp = payload["recordedAt"] as? String,
+              let recordedAt = LiveLocationTimestamp.date(from: timestamp),
+              old.lastLocationAt.map({ recordedAt > $0 }) ?? true,
+              latitude.isFinite, longitude.isFinite, abs(latitude) <= 90, abs(longitude) <= 180
+        else { return }
         participants[index] = LiveGroupParticipant(
             id: old.id, userId: old.userId, displayName: old.displayName, status: "active",
             joinedAt: old.joinedAt, leftAt: nil,
@@ -499,7 +511,8 @@ final class LiveGroupStore: ObservableObject {
             coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
             distanceM: (payload["distanceM"] as? NSNumber)?.doubleValue,
             paceSecondsPerKM: (payload["paceSecondsPerKM"] as? NSNumber)?.doubleValue,
-            isCurrentUser: old.isCurrentUser
+            isCurrentUser: old.isCurrentUser,
+            accuracyMeters: (payload["accuracyM"] as? NSNumber)?.doubleValue
         )
         lastErrorMessage = nil
     }
@@ -522,7 +535,6 @@ final class LiveGroupStore: ObservableObject {
         activeSession = nil
         participants = []
         lastSentAt = nil
-        lastSentDistanceM = nil
         isUpdating = false
 
         if sessionID == nil {
@@ -542,7 +554,6 @@ final class LiveGroupStore: ObservableObject {
         updateTask = nil
         pollingTask = nil
         lastSentAt = nil
-        lastSentDistanceM = nil
         isUpdating = false
         lastErrorMessage = nil
 
@@ -610,10 +621,13 @@ final class LiveGroupStore: ObservableObject {
 #endif
 
     private func shouldSend(snapshot: ActiveSessionSnapshot) -> Bool {
-        guard let lastSentAt, let lastSentDistanceM else { return true }
-        let timeDelta = snapshot.recordedAt.timeIntervalSince(lastSentAt)
-        let distanceDelta = abs(snapshot.distanceMeters - lastSentDistanceM)
-        return timeDelta >= 10 || distanceDelta >= 25
+        guard let location = snapshot.location,
+              snapshot.recordedAt.timeIntervalSince(location.measuredAt) <= 15,
+              location.measuredAt.timeIntervalSince(snapshot.recordedAt) <= 5,
+              lastSentAt == nil || lastSentMeasurementAt.map({ location.measuredAt > $0 }) == true
+        else { return false }
+        guard let lastSentAt else { return true }
+        return snapshot.recordedAt.timeIntervalSince(lastSentAt) >= 1
     }
 
     private func apply(_ response: LiveGroupSessionResponse) {
@@ -632,7 +646,16 @@ final class LiveGroupStore: ObservableObject {
             inviteURL: response.inviteURL ?? activeSession?.inviteURL
         )
         participants = response.participants
-            .map { Self.participant($0, currentUserID: response.currentUserId) }
+            .map { incoming in
+                let next = Self.participant(incoming, currentUserID: response.currentUserId)
+                // A recovery checkpoint must not move a live pin backwards. Lifecycle status stays server-owned.
+                guard next.status == "active" || next.status == "stale",
+                      let old = participants.first(where: { $0.id == next.id }),
+                      let oldTime = old.lastLocationAt,
+                      next.lastLocationAt.map({ $0 < oldTime }) ?? true
+                else { return next }
+                return old
+            }
             .filter { $0.isCurrentUser || $0.isVisibleOnMap || $0.status == "active" || $0.status == "stale" }
         if activeSession?.isActive == false {
             pollingTask?.cancel()
@@ -657,7 +680,8 @@ final class LiveGroupStore: ObservableObject {
             coordinate: coordinate,
             distanceM: response.lastActivitySnapshot?.distanceM,
             paceSecondsPerKM: response.lastActivitySnapshot?.paceSecondsPerKM,
-            isCurrentUser: response.userId == currentUserID
+            isCurrentUser: response.userId == currentUserID,
+            accuracyMeters: response.lastLocation?.accuracyM
         )
     }
 

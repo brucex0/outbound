@@ -59,8 +59,8 @@ V1 should collapse `left`, `finished`, and lost signal into the same user-facing
 
 Suggested freshness behavior:
 
-- Send updates on a throttle similar to safety live sharing, such as every 10 seconds or 25 meters.
-- Treat a participant as stale after roughly 45-60 seconds without an update.
+- Current shared iOS/Android contract: send distinct GPS measurements at most once per second, with the original GPS timestamp; retain one-minute REST recovery checkpoints. See `docs/safety-live-tracking.md` for freshness and acceptance checks.
+- Fade the client pin and show last-seen age after 15 seconds without a fresh measurement; server checkpoint presence remains separate.
 - Remove stale or ended participants from the runner strip after roughly 5 minutes, unless the current runner has focused them.
 
 ## Privacy Rules

@@ -37,9 +37,11 @@ struct LiveMapView: View {
     @State private var isGroupManagementExpanded = false
     @State private var hasTrackedRouteDisplay = false
     @State private var hasTrackedActivityAvatarDisplay = false
+    @State private var locationClock = Date()
     @State private var cachedPlannedRouteCoordinates: [CLLocationCoordinate2D] = []
 
     var body: some View {
+        let _ = locationClock // Re-evaluate stale pins even when GPS/network delivery stops.
         GeometryReader { geometry in
             ZStack {
                 // Keep the native map and its camera alive across page changes. The pager
@@ -66,6 +68,12 @@ struct LiveMapView: View {
                         .padding(.horizontal, 14).padding(.vertical, 10)
                         .background(.regularMaterial, in: Capsule())
                         .allowsHitTesting(false)
+                }
+            }
+            .task(id: liveGroupStore.activeSession?.id) {
+                while !Task.isCancelled, liveGroupStore.activeSession != nil {
+                    locationClock = Date()
+                    do { try await Task.sleep(for: .seconds(1)) } catch { return }
                 }
             }
             .task(id: participantToast) {
@@ -160,7 +168,7 @@ struct LiveMapView: View {
                 ForEach(liveGroupStore.visibleParticipants) { participant in
                     if let coordinate = participant.coordinate {
                         Annotation(participant.displayName, coordinate: coordinate) {
-                            LiveGroupParticipantPin(participant: participant)
+                            LiveGroupParticipantPin(participant: participant, displayedAt: locationClock)
                                 .onTapGesture {
                                     focusedParticipantID = participant.id
                                     isFollowingUser = false
@@ -250,6 +258,7 @@ struct LiveMapView: View {
             if !participantPills.isEmpty {
                 LiveGroupRunnerStrip(
                     participants: participantPills,
+                    displayedAt: locationClock,
                     focusedParticipantID: focusedParticipantID,
                     onSelect: { participant in
                         let live = participant.liveParticipant
@@ -880,6 +889,7 @@ private struct LiveGroupManagementPanel: View {
 
 private struct LiveGroupParticipantPin: View {
     let participant: LiveGroupParticipant
+    let displayedAt: Date
 
     private var participantAccessibilityLabel: String {
         if participant.isFresh {
@@ -922,6 +932,7 @@ private struct LiveGroupRunnerPill: Identifiable {
 
 private struct LiveGroupRunnerStrip: View {
     let participants: [LiveGroupRunnerPill]
+    let displayedAt: Date
     let focusedParticipantID: String?
     let onSelect: (LiveGroupRunnerPill) -> Void
 
@@ -935,15 +946,24 @@ private struct LiveGroupRunnerStrip: View {
                         HStack(spacing: 6) {
                             SocialAvatar(name: participant.displayName, avatarURL: participant.avatarURL, size: 28)
                                 .accessibilityHidden(true)
-                            Text(shortName(for: participant))
-                                .font(.caption.weight(.bold))
-                                .lineLimit(1)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(shortName(for: participant))
+                                    .font(.caption.weight(.bold))
+                                    .lineLimit(1)
+                                Text(locationStatus(participant.liveParticipant))
+                                    .font(.caption2)
+                                if let accuracy = participant.liveParticipant?.accuracyMeters,
+                                   accuracy.isFinite, accuracy >= 0 {
+                                    Text(String(format: String(localized: "group.activity.location_accuracy", table: "GroupActivity"), Int(min(accuracy, 100_000))))
+                                        .font(.caption2)
+                                }
+                            }
                             Image(systemName: participant.isSharingLocation ? "location.fill" : "location.slash")
                                 .font(.caption2)
                                 .foregroundStyle(participant.isSharingLocation ? Color.green : Color.secondary)
                         }
                         .padding(.horizontal, 10)
-                        .frame(height: 44)
+                        .frame(minHeight: 52)
                         .background(.regularMaterial, in: Capsule())
                         .overlay {
                             Capsule().stroke(isFocused(participant) ? Color.orange : Color.primary.opacity(0.08), lineWidth: 1)
@@ -958,6 +978,24 @@ private struct LiveGroupRunnerStrip: View {
             }
             .padding(.horizontal, 2)
         }
+    }
+
+    private func locationStatus(_ participant: LiveGroupParticipant?) -> String {
+        guard let participant, participant.status == "active" || participant.status == "stale" else {
+            return String(localized: "group.activity.location_not_sharing", table: "GroupActivity")
+        }
+        guard let measuredAt = participant.lastLocationAt else {
+            return String(localized: "group.activity.location_waiting", table: "GroupActivity")
+        }
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = [.minute, .second]
+        formatter.unitsStyle = .abbreviated
+        formatter.maximumUnitCount = 1
+        let age = formatter.string(from: max(0, displayedAt.timeIntervalSince(measuredAt))) ?? "0"
+        let format = participant.isFresh
+            ? String(localized: "group.activity.location_recent", table: "GroupActivity")
+            : String(localized: "group.activity.location_stale", table: "GroupActivity")
+        return String(format: format, age)
     }
 
     private func isFocused(_ participant: LiveGroupRunnerPill) -> Bool {
