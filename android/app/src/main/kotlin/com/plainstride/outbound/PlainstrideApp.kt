@@ -1335,11 +1335,11 @@ private fun SignedInApp(
                     },
                     groupRun=sharedLiveGroupRun?.toSharedLiveRun(),
                     groupRunJoining=groupRunJoining,
-                    onToggleActivityLiveMap={recordingLaunch.activityEventId?.let(toggleActivityLiveMap)},
+                    onToggleActivityLiveMap={recordingViewModel.state.value.launch.activityEventId?.let(toggleActivityLiveMap)},
                     onStopActivityLiveMap=stopActivityLiveMap,
                     sessionEffect = { snapshot, liveLaunch ->
                         LiveCoachRecordingEffect(liveLaunch, measurementUnitSystem, feedbackCoach)
-                        RecordingSafetyEffect(snapshot, recordingLaunch.activityEventId)
+                        RecordingSafetyEffect(snapshot, liveLaunch.activityEventId)
                     },
                     saveActivityPhotosToAlbum = settingsState.preferences.saveActivityPhotosToAlbum,
                     onPhotoAlbumPermissionDenied = {

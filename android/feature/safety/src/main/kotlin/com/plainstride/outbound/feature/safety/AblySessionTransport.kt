@@ -11,27 +11,40 @@ import io.ably.lib.types.ErrorInfo
 import io.ably.lib.types.PublishResult
 import android.util.Log
 import kotlinx.coroutines.runBlocking
+import com.google.gson.Gson
+import com.google.gson.JsonObject
 
 /** Authenticated Ably channel connection for one active session. The API key never reaches this class. */
 internal class AblySessionTransport private constructor(
     private val realtime: AblyRealtime,
     private val channel: ChannelBase,
     private val channelKind: String,
+    private val onPublishResult: (Boolean) -> Unit,
 ) : AutoCloseable {
+    private val lastPublishResult = java.util.concurrent.atomic.AtomicReference<Boolean?>(null)
+
+    private fun reportPublishResult(succeeded: Boolean) {
+        if (lastPublishResult.getAndSet(succeeded) != succeeded) onPublishResult(succeeded)
+    }
+
     fun publishLocation(location: Map<String, Any?>) {
         logDebug("publish_location_requested channel=$channelKind")
         runCatching {
-            channel.publish("location", location, object : Callback<PublishResult> {
+            // Ably Java accepts JSON elements, not Kotlin/Java Map instances.
+            channel.publish("location", gson.toJsonTree(location), object : Callback<PublishResult> {
                 override fun onSuccess(result: PublishResult) {
                     logDebug("publish_location_acknowledged channel=$channelKind")
+                    reportPublishResult(true)
                 }
 
                 override fun onError(reason: ErrorInfo) {
                     logError("publish_location_failed channel=$channelKind status=${reason.statusCode} code=${reason.code}")
+                    reportPublishResult(false)
                 }
             })
         }.onFailure { failure ->
             logError("publish_location_enqueue_failed channel=$channelKind error=${failure.javaClass.simpleName}")
+            reportPublishResult(false)
         }
     }
 
@@ -49,6 +62,7 @@ internal class AblySessionTransport private constructor(
             tokenProvider: suspend () -> RealtimeToken,
             onMessage: (String, String?, Any?) -> Unit,
             onChannelAttached: () -> Unit = {},
+            onPublishResult: (Boolean) -> Unit = {},
         ): AblySessionTransport {
             val channelKind = channelKind(channelName)
             logDebug("connect_requested channel=$channelKind")
@@ -101,15 +115,22 @@ internal class AblySessionTransport private constructor(
             channel.subscribe { message ->
                 val name = message.name ?: ""
                 logDebug("message_received channel=$channelKind event=$name")
-                runCatching { onMessage(name, message.clientId, message.data) }
+                runCatching {
+                    // The SDK decodes object payloads as Gson JsonObject. Consumers
+                    // use Map values for shared group/follower field access.
+                    val data = message.data
+                    val decoded = if (data is JsonObject) gson.fromJson(data, Map::class.java) else data
+                    onMessage(name, message.clientId, decoded)
+                }
                     .onFailure { logError("message_handler_failed channel=$channelKind event=$name error=${it.javaClass.simpleName}") }
             }
             realtime.connect()
             logDebug("connect_call_completed channel=$channelKind")
-            return AblySessionTransport(realtime, channel, channelKind)
+            return AblySessionTransport(realtime, channel, channelKind, onPublishResult)
         }
 
         private const val TAG = "PlainstrideRealtime"
+        private val gson = Gson()
 
         private fun channelKind(channelName: String): String = when {
             channelName.startsWith("plainstride:live_share:") -> "live_share"

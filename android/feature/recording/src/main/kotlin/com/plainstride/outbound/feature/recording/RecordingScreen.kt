@@ -1434,6 +1434,7 @@ private fun TrackMap(
         followRunner = focusedParticipant == null,
         recenterRequest = recenterRequest,
         resumeFollowAfterGesture = false,
+        zoom = 17f,
         recordedRoute = recorded,
         plannedRoute = planned,
         recordedRouteSegments = recordedSegments,

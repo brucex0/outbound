@@ -293,7 +293,10 @@ class LiveShareCoordinator @Inject constructor(
   }
  }
  private fun saveActive(value:LiveShare){mutableActive.value=value;preferences.edit().putString(ACTIVE,PlainstrideJson.encodeToString(value)).apply();connectShareRealtime(value.id)}
- private fun connectShareRealtime(id:String){if(shareRealtimeId==id)return;shareRealtime?.close();shareRealtimeId=id;shareRealtime=AblySessionTransport.connect(channelName="plainstride:live_share:$id",tokenProvider={issueRealtimeToken("live_share",id)},onMessage={name,_,_->if(name=="cheer.available")mutableCheerSignals.tryEmit(Unit)})}
+ private fun connectShareRealtime(id:String){if(shareRealtimeId==id)return;shareRealtime?.close();shareRealtimeId=id;shareRealtime=AblySessionTransport.connect(channelName="plainstride:live_share:$id",tokenProvider={issueRealtimeToken("live_share",id)},onMessage={name,_,_->if(name=="cheer.available")mutableCheerSignals.tryEmit(Unit)},onPublishResult={trackLocationPublishResult("live_share",it)})}
+ private fun trackLocationPublishResult(source:String,succeeded:Boolean){
+  analytics.record(AnalyticsEvent("live_location_publish_result",mapOf(AnalyticsProperty.SourceType to source,AnalyticsProperty.Result to if(succeeded)"success" else "failure")))
+ }
  fun watchFollower(id:String,onEvent:(String,Any?)->Unit,onChannelAttached:()->Unit={}) {
   if(BuildConfig.DEBUG) Log.d(REALTIME_TAG,"follower_socket_start_requested")
   followerRealtime?.close()
@@ -320,7 +323,7 @@ class LiveShareCoordinator @Inject constructor(
     if(mutableGroup.value?.participants?.any{it.userId==clientId&&it.status in setOf("active","stale")}==true)applyGroupLocation(clientId,data)
     else realtimeScope.launch { refreshGroupRoster(id); if(groupRealtimeId==id)applyGroupLocation(clientId,data) }
    } else if(name=="participant.changed")realtimeScope.launch{refreshGroupRoster(id)}
-  },onChannelAttached={realtimeScope.launch{refreshGroupRoster(id)}})
+  },onChannelAttached={realtimeScope.launch{refreshGroupRoster(id)}},onPublishResult={trackLocationPublishResult("group_run",it)})
   // Recovery must continue while paused; no outgoing location/checkpoint is required.
   groupRosterTask=realtimeScope.launch {
    while(groupRealtimeId==id) { refreshGroupRoster(id); delay(15_000) }

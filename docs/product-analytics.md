@@ -348,6 +348,8 @@ Historical dashboards do not migrate automatically just because the client adapt
 
 `group_activity_presence_viewed` records the first successful participant-panel load per mounted panel (setup or live recording), with only a coarse `participant_count_bucket`. It excludes event/person IDs, names, attendance modes, outcomes, and location.
 
+Android `live_location_publish_result` records the first realtime publish acknowledgment/failure and subsequent success/failure transitions per channel connection. Only `source_type=live_share|group_run` and `result=success|failure` are sent; payloads, location, and identifiers are excluded. Enqueueing a message or starting a stream alone does not establish delivery.
+
 `activity_event_rsvp_result` records join/leave success or failure with only bounded `entry_source`, `selection_type`, and `result`. On iOS and Android, `group_participant_location_unavailable` records a participant selection without an available location, and `group_participant_focused` records a successful map focus with only `source_type=participant_pill|group_card`; participant IDs, names, and coordinates are excluded.
 
 `feature_exposed` with `feature=group_activity_recovery` records restoration of durable event context. It contains no event ID, participant names, or location. Live-map reconnection emits safe recovery diagnostics and existing participant presence analytics.
