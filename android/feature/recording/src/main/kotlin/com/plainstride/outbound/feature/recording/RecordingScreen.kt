@@ -1106,6 +1106,10 @@ private fun LiveRecordingScreen(
     var focusedParticipant by remember { mutableStateOf<String?>(null) }
     var recenterRequest by remember { mutableIntStateOf(0) }
     var dashboardExpanded by remember { mutableStateOf(false) }
+    val topCardsInset = 62.dp
+    val recenterBottomInset = 112.dp
+    val recenterSize = 48.dp
+    val overlayGap = 12.dp
     val locationClock = rememberGroupLocationClock(groupRun?.id)
     val energyKilocalories = WorkoutCalorieEstimator.liveEnergyKilocalories(
         activityType = snapshot.activityKind.toActivityType(),
@@ -1141,10 +1145,15 @@ private fun LiveRecordingScreen(
                 }
             }
         }
-        // Keep the two cards in one stack; independent top overlays hide the
-        // simulation clock button behind the expanded Group roster.
-        Column(Modifier.align(Alignment.TopCenter).padding(top = 62.dp, start = 12.dp, end = 12.dp)
-            .heightIn(max = (maxHeight - bottomControlsHeight - 180.dp).coerceAtLeast(120.dp))
+        // Reserve the recenter button's entire touch target below the scrollable
+        // cards, including on short screens and with an expanded Group roster.
+        val maxCardsHeight = if (mode == RecordingSurfaceMode.MAP) {
+            (maxHeight - bottomControlsHeight - topCardsInset - recenterBottomInset - recenterSize - overlayGap).coerceAtLeast(0.dp)
+        } else {
+            (maxHeight - bottomControlsHeight - 180.dp).coerceAtLeast(120.dp)
+        }
+        Column(Modifier.align(Alignment.TopCenter).padding(top = topCardsInset, start = 12.dp, end = 12.dp)
+            .heightIn(max = maxCardsHeight)
             .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (BuildConfig.DEBUG && runSimulation != null) {
@@ -1177,7 +1186,7 @@ private fun LiveRecordingScreen(
             )
         }
         if (mode == RecordingSurfaceMode.MAP && !dashboardExpanded) {
-            Surface(Modifier.align(Alignment.BottomEnd).padding(bottom = bottomControlsHeight + 112.dp, end = 16.dp), shape = CircleShape, tonalElevation = 6.dp) {
+            Surface(Modifier.align(Alignment.BottomEnd).padding(bottom = bottomControlsHeight + recenterBottomInset, end = 16.dp).size(recenterSize), shape = CircleShape, tonalElevation = 6.dp) {
                 IconButton(onClick = { focusedParticipant = null; recenterRequest++; onRecenter() }) { Icon(Icons.Default.MyLocation, stringResource(R.string.recording_recenter)) }
             }
         }
