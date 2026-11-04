@@ -22,6 +22,7 @@ struct CommunityRouteLibraryView: View {
     @State private var importedRoute: PreparedRoute?
     @State private var selectedRoute: PreparedRoute?
     @State private var preparingRouteID: String?
+    @State private var preparationRequestID: UUID?
     private let initialSelection: PreparedRoute?
     let mode: CommunityRouteLibraryMode
     private let onSelect: ((PreparedRoute?) -> Void)?
@@ -410,6 +411,8 @@ struct CommunityRouteLibraryView: View {
     private func importedRouteDestination<Row: View>(route: PreparedRoute, @ViewBuilder row: () -> Row) -> some View {
         if onSelect != nil {
             Button {
+                preparationRequestID = nil
+                preparingRouteID = nil
                 selectedRoute = selectedRoute?.id == route.id ? nil : route
             } label: {
                 HStack {
@@ -424,7 +427,6 @@ struct CommunityRouteLibraryView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .disabled(preparingRouteID != nil)
         } else if route.source == .imported {
             NavigationLink { PreparedRoutePreview(route: route, onUse: nil) } label: { row() }
         }
@@ -434,15 +436,24 @@ struct CommunityRouteLibraryView: View {
     private func communityRouteDestination<Row: View>(route: CommunityRoute, @ViewBuilder row: () -> Row) -> some View {
         if onSelect != nil {
             Button {
+                // Invalidate older completions, including repeated requests for the same route.
+                let wasPreparing = preparingRouteID == route.id
+                preparationRequestID = nil
+                preparingRouteID = nil
+                if wasPreparing { return }
                 if selectedRoute?.id == route.id {
                     selectedRoute = nil
                     return
                 }
+                let requestID = UUID()
+                preparationRequestID = requestID
                 preparingRouteID = route.id
                 Task {
                     let prepared = await store.prepare(route)
-                    guard preparingRouteID == route.id else { return }
-                    selectedRoute = prepared
+                    guard preparationRequestID == requestID else { return }
+                    // A failed request must not discard the runner's previous choice.
+                    if let prepared { selectedRoute = prepared }
+                    preparationRequestID = nil
                     preparingRouteID = nil
                 }
             } label: {
@@ -461,7 +472,6 @@ struct CommunityRouteLibraryView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .disabled(preparingRouteID != nil)
         } else {
             NavigationLink { CommunityRouteDetailView(route: route) } label: { row() }
         }
