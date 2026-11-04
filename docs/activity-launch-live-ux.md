@@ -180,3 +180,5 @@ The fullscreen recording surface owns the live assistant launcher. The outer Rec
 - A location button above the bottom card recenters on the recording location (the simulated location during debug simulation) and resumes runner following after viewing another participant. Taps emit `activity_map_recentered` without coordinates or participant identifiers.
 
 - Android participant pins retain their icon descriptors across live animation frames and interpolate location updates. Selecting a participant follows their incoming positions; selecting another pin or pressing recenter resumes following after a map gesture. Pin selections use the existing participant-focus analytics event with source `map_pin`, without participant identifiers or coordinates.
+
+- Other-runner pins match iOS: 34dp colored initials circles, bold white lettering, 3dp white rings, and soft shadows. Blue/green/purple/pink/teal colors are stable per participant on Android. Stale fill fades to 52% while initials and the ring remain opaque; selected pins keep their participant color. Existing participant-focus analytics applies.

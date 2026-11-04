@@ -1433,7 +1433,9 @@ private fun TrackMap(
             com.plainstride.outbound.core.designsystem.MapRouteMarker(participant.id, MapCoordinate(latitude, longitude), participant.displayName,
                 selected = participant.id == focusedParticipant,
                 animatePosition = participant.id != focusedParticipant,
-                alpha = groupMarkerAlpha(participant.status, age))
+                alpha = groupMarkerAlpha(participant.status, age),
+                participantInitials = participant.displayName.split(" ").filter { it.isNotEmpty() }.take(2)
+                    .joinToString("") { part -> part.substring(0, part.offsetByCodePoints(0, 1)) }.uppercase().ifEmpty { "?" })
         },
         onAdditionalMarkerClick = { id -> onFocus(id.takeUnless { it == "live-runner" }) },
         followRunner = focusedParticipant == null,

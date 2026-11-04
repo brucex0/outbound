@@ -56,6 +56,7 @@ data class MapRouteMarker(
     val rotationDegrees: Float = 0f,
     val anchor: Offset = Offset(0.5f, 1f),
     val alpha: Float = 1f,
+    val participantInitials: String? = null,
 )
 
 private class SuppliedMapLocationSource : LocationSource {
@@ -317,17 +318,19 @@ fun PlainstrideRouteMap(
                 } else {
                     // Keep descriptor identity stable across live-pose recompositions:
                     // repeated setIcon calls reload the SDK texture and flash the pin.
-                    val icon = remember(marker.icon, marker.selected) {
-                        marker.icon ?: BitmapDescriptorFactory.defaultMarker(
+                    val icon = remember(context, marker.icon, marker.selected, marker.id, marker.participantInitials, marker.alpha) {
+                        marker.icon ?: marker.participantInitials?.let {
+                            createParticipantPinIcon(context, marker.id, it, marker.alpha)
+                        } ?: BitmapDescriptorFactory.defaultMarker(
                             if (marker.selected) BitmapDescriptorFactory.HUE_ORANGE else BitmapDescriptorFactory.HUE_AZURE,
                         )
                     }
                     Marker(
                         state = markerPosition,
                         title = marker.title,
-                        alpha = marker.alpha,
+                        alpha = if (marker.participantInitials != null) 1f else marker.alpha,
                         icon = icon,
-                        anchor = marker.anchor,
+                        anchor = if (marker.participantInitials != null) Offset(0.5f, 0.5f) else marker.anchor,
                         zIndex = if (marker.selected) 4f else 3f,
                         onClick = { onMarkerClick?.invoke(marker.id); true },
                     )
@@ -489,6 +492,39 @@ private fun interpolateCameraPosition(start: CameraPosition, end: CameraPosition
         .tilt(start.tilt + (end.tilt - start.tilt) * fraction)
         .zoom(start.zoom + (end.zoom - start.zoom) * fraction)
         .build()
+}
+
+/** iOS LiveGroupParticipantPin: 34dp initials circle, white ring, and a soft shadow. */
+private fun createParticipantPinIcon(context: Context, id: String, initials: String, fillAlpha: Float): BitmapDescriptor {
+    val density = context.resources.displayMetrics.density
+    val size = (46f * density).toInt().coerceAtLeast(1)
+    val center = size / 2f
+    val radius = 17f * density
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = AndroidCanvas(bitmap)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    val palette = intArrayOf(0xFF007AFF.toInt(), 0xFF34C759.toInt(), 0xFFAF52DE.toInt(), 0xFFFF2D55.toInt(), 0xFF30B0C7.toInt())
+    // Swift's hash is randomized per process; use a stable Android assignment from the same palette.
+    paint.color = palette[Math.floorMod(id.hashCode(), palette.size)]
+    paint.alpha = (fillAlpha.coerceIn(0f, 1f) * 255).toInt()
+    paint.setShadowLayer(4f * density, 0f, 0f, 0x55000000)
+    canvas.drawCircle(center, center, radius, paint)
+    paint.clearShadowLayer()
+    paint.color = android.graphics.Color.WHITE
+    paint.alpha = 255
+    paint.style = Paint.Style.STROKE
+    paint.strokeWidth = 3f * density
+    canvas.drawCircle(center, center, radius - 1.5f * density, paint)
+    paint.style = Paint.Style.FILL
+    paint.typeface = android.graphics.Typeface.create("sans-serif-black", android.graphics.Typeface.BOLD)
+    paint.textSize = 12f * density
+    paint.textAlign = Paint.Align.CENTER
+    val maxWidth = 27f * density
+    val width = paint.measureText(initials)
+    if (width > maxWidth) paint.textSize *= maxWidth / width
+    val baseline = center - (paint.ascent() + paint.descent()) / 2f
+    canvas.drawText(initials, center, baseline, paint)
+    return BitmapDescriptorFactory.fromBitmap(bitmap)
 }
 
 private fun createRunnerFrameIcons(context: Context, tint: Color, figureColor: Color): List<BitmapDescriptor> {
