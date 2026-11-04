@@ -24,6 +24,7 @@ data class SharedLiveParticipant(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val lastLocationAt: String? = null,
+    val accuracyMeters: Double? = null,
     val elapsedSeconds: Int = 0,
     val distanceMeters: Double = 0.0,
     val paceSecondsPerKilometer: Double? = null,

@@ -31,4 +31,5 @@
     <string name="group_activity_expand">Show participants</string>
     <string name="group_activity_collapse">Hide participants</string>
     <string name="group_activity_today">TODAY WITH YOUR GROUP</string>
+    <string name="group_activity_location_accuracy">GPS accuracy ±%1$d m</string>
 </resources>

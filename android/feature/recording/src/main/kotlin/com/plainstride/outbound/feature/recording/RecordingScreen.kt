@@ -1105,6 +1105,13 @@ private fun LiveRecordingScreen(
     var focusedParticipant by remember { mutableStateOf<String?>(null) }
     var recenterRequest by remember { mutableIntStateOf(0) }
     var dashboardExpanded by remember { mutableStateOf(false) }
+    var locationClock by remember { mutableStateOf(java.time.Instant.now()) }
+    LaunchedEffect(groupRun?.id) {
+        while (groupRun != null) {
+            locationClock = java.time.Instant.now()
+            delay(1_000)
+        }
+    }
     val energyKilocalories = WorkoutCalorieEstimator.liveEnergyKilocalories(
         activityType = snapshot.activityKind.toActivityType(),
         distanceMeters = snapshot.distanceMeters,
@@ -1165,17 +1172,23 @@ private fun LiveRecordingScreen(
                 items(attendees.size) { index ->
                     val person = attendees[index].person
                     val live = groupRun?.participants?.firstOrNull { it.userId == person.id && it.status in setOf("active", "stale") }
-                    val age = live?.lastLocationAt?.let { runCatching { java.time.Duration.between(java.time.Instant.parse(it), java.time.Instant.now()).seconds.coerceAtLeast(0) }.getOrNull() }
+                    val age = live?.lastLocationAt?.let { runCatching { java.time.Duration.between(java.time.Instant.parse(it), locationClock).seconds.coerceAtLeast(0) }.getOrNull() }
                     val status = when {
                         live == null -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_not_sharing)
                         live.latitude == null || live.longitude == null -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_waiting)
-                        live.status == "stale" || (age ?: 0) > 60 -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_stale, formatDuration(age ?: 0))
+                        live.status == "stale" || (age ?: 0) > 15 -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_stale, formatDuration(age ?: 0))
                         else -> stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_recent, formatDuration(age ?: 0))
                     }
                     Surface(onClick = { if (live?.latitude != null && live.longitude != null) focusedParticipant = live.id.takeUnless { live.userId == groupRun?.currentUserId } }, shape = RoundedCornerShape(24.dp), tonalElevation = 6.dp) {
                         Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             com.plainstride.outbound.feature.social.SocialAvatar(com.plainstride.outbound.feature.social.SocialPerson(person.id, person.displayName, avatarUrl = person.avatarUrl), size = 36.dp)
-                            Column { Text(person.displayName, style = MaterialTheme.typography.labelMedium); Text(status, style = MaterialTheme.typography.labelSmall) }
+                            Column {
+                                Text(person.displayName, style = MaterialTheme.typography.labelMedium)
+                                Text(status, style = MaterialTheme.typography.labelSmall)
+                                live?.accuracyMeters?.takeIf { it.isFinite() && it >= 0 }?.let { accuracy ->
+                                    Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_location_accuracy, accuracy.toInt()), style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
                         }
                     }
                 }
@@ -1291,6 +1304,13 @@ private fun TrackMap(
     recenterRequest: Int = 0,
     onFocus: (String?) -> Unit = {},
 ) {
+    var locationClock by remember { mutableStateOf(java.time.Instant.now()) }
+    LaunchedEffect(groupRun?.id) {
+        while (groupRun != null) {
+            locationClock = java.time.Instant.now()
+            delay(1_000)
+        }
+    }
     val recorded = snapshot.track.map { MapCoordinate(it.latitude, it.longitude) }
     val planned = configuration.followedRoute?.points.orEmpty().map { MapCoordinate(it.latitude, it.longitude) }
     val recordedSegments = buildList {
@@ -1304,7 +1324,10 @@ private fun TrackMap(
         additionalMarkers = groupRun?.participants.orEmpty().filter { it.userId != groupRun?.currentUserId && it.status != "left" && (it.status in setOf("active", "stale") || it.lastLocationAt?.let { timestamp -> runCatching { java.time.Duration.between(java.time.Instant.parse(timestamp), java.time.Instant.now()).seconds < 300 }.getOrDefault(false) } == true) }.mapNotNull { participant ->
             val latitude = participant.latitude ?: return@mapNotNull null
             val longitude = participant.longitude ?: return@mapNotNull null
-            com.plainstride.outbound.core.designsystem.MapRouteMarker(participant.id, MapCoordinate(latitude, longitude), participant.displayName, selected = participant.id == focusedParticipant)
+            val age = participant.lastLocationAt?.let { runCatching { java.time.Duration.between(java.time.Instant.parse(it), locationClock).seconds }.getOrNull() }
+            com.plainstride.outbound.core.designsystem.MapRouteMarker(participant.id, MapCoordinate(latitude, longitude), participant.displayName,
+                selected = participant.id == focusedParticipant,
+                alpha = if (participant.status == "active" && age != null && age <= 15) 1f else 0.52f)
         },
         onAdditionalMarkerClick = { id -> onFocus(id.takeUnless { it == "live-runner" }) },
         followRunner = focusedParticipant == null,

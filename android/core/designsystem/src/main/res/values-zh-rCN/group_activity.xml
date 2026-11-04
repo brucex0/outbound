@@ -31,4 +31,5 @@
     <string name="group_activity_expand">显示参与者</string>
     <string name="group_activity_collapse">收起参与者</string>
     <string name="group_activity_today">今天和群组一起</string>
+    <string name="group_activity_location_accuracy">GPS 精度 ±%1$d 米</string>
 </resources>

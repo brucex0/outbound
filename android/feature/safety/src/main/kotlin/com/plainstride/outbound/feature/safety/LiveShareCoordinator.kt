@@ -107,6 +107,7 @@ class LiveShareCoordinator @Inject constructor(
  suspend fun start(request:CreateLiveShareRequest):Result<LiveShare> = authenticated{apiCall{api.create(it,request)}}.onSuccess{lastShareCheckpointAt=0;lastPoint=null;lastSentAt=0;lastSentRecordedAt=null;saveActive(it)}.also{result->analytics.record(AnalyticsEvent("live_share_started",mapOf(AnalyticsProperty.Result to if(result.isSuccess)"success" else "failure")))}
  suspend fun update(point:LiveLocation):Result<LiveShare?> = lock.withLock {
   val share=mutableActive.value?:return Result.success(null)
+  if(!isFreshMeasurement(point))return Result.success(share)
   val now=SystemClock.elapsedRealtime()
   val recordedAt=runCatching{Instant.parse(point.recordedAt)}.getOrNull()
   val priorRecordedAt=lastSentRecordedAt
@@ -117,7 +118,18 @@ class LiveShareCoordinator @Inject constructor(
   lastPoint=point
   lastSentAt=now
   if(recordedAt!=null)lastSentRecordedAt=recordedAt
-  if(lastShareCheckpointAt==0L||now-lastShareCheckpointAt>=60_000){authenticated{apiCall{api.update(it,share.id,point)}}.onSuccess{mutableActive.value=it;lastShareCheckpointAt=now}}
+  if(lastShareCheckpointAt==0L||now-lastShareCheckpointAt>=60_000){
+   lastShareCheckpointAt=now
+   // Recovery writes must not delay group publication or be cancelled by the next GPS effect.
+   realtimeScope.launch {
+    authenticated{apiCall{api.update(it,share.id,point)}}.onSuccess{response->
+     if(mutableActive.value?.id==share.id)mutableActive.value=response
+    }.onFailure{
+     if(mutableActive.value?.id==share.id)lastShareCheckpointAt=0L
+     Log.w(REALTIME_TAG,"live_share_checkpoint failed type=${it.javaClass.simpleName} status=${(it as? SafetyRequestException)?.status}")
+    }
+   }
+  }
   Result.success(share)
  }
  suspend fun recordingEnded()=end()
@@ -221,17 +233,32 @@ class LiveShareCoordinator @Inject constructor(
   val now=SystemClock.elapsedRealtime()
   val current=mutableGroup.value?:run
   if(current.participants.none{it.userId==current.currentUserId&&it.status in setOf("active","stale")})return
+  if(!isFreshMeasurement(point))return
   val prior=lastGroupPoint
-  if(now-lastGroupSentAt<10_000&&prior!=null&&haversine(prior,point)<25)return
+  val measuredAt=Instant.parse(point.recordedAt)
+  if(prior!=null && (!measuredAt.isAfter(Instant.parse(prior.recordedAt)) || now-lastGroupSentAt<1_000))return
+  if(prior==null)analytics.record(AnalyticsEvent("live_location_stream_started",mapOf(AnalyticsProperty.SourceType to "group_run",AnalyticsProperty.SelectionType to "one_second_gps")))
   groupRealtime?.publishLocation(mapOf("recordedAt" to point.recordedAt,"latitude" to point.latitude,"longitude" to point.longitude,"altitudeM" to point.altitudeM,"accuracyM" to point.accuracyM,"elapsedSeconds" to point.elapsedSeconds,"distanceM" to point.distanceM,"paceSecondsPerKM" to paceSecondsPerKilometer))
-  if(lastGroupCheckpointAt==0L||now-lastGroupCheckpointAt>=60_000){
-   updateGroupRun(current.id,GroupLocationUpdate(point.recordedAt,point.latitude,point.longitude,point.altitudeM,point.accuracyM,point.elapsedSeconds,point.distanceM,paceSecondsPerKilometer)).onSuccess{lastGroupCheckpointAt=now}
-  }
   lastGroupSentAt=now;lastGroupPoint=point
+  if(lastGroupCheckpointAt==0L||now-lastGroupCheckpointAt>=60_000){
+   lastGroupCheckpointAt=now
+   realtimeScope.launch {
+    updateGroupRun(current.id,GroupLocationUpdate(point.recordedAt,point.latitude,point.longitude,point.altitudeM,point.accuracyM,point.elapsedSeconds,point.distanceM,paceSecondsPerKilometer)).onFailure{
+     if(mutableGroup.value?.id==current.id)lastGroupCheckpointAt=0L
+     Log.w(REALTIME_TAG,"group_location_checkpoint failed type=${it.javaClass.simpleName} status=${(it as? SafetyRequestException)?.status}")
+    }
+   }
+  }
  }
  private fun saveGroup(response:GroupRun,allowConsent:Boolean=false){
   val previous=mutableGroup.value?.takeIf{it.id==response.id}?.participants?.firstOrNull{it.userId==response.currentUserId}
-  val value=if(!allowConsent&&previous!=null&&previous.status !in setOf("active","stale"))response.copy(participants=response.participants.map{if(it.userId==response.currentUserId)previous else it})else response
+  val currentRun=mutableGroup.value?.takeIf{it.id==response.id}
+  val merged=response.copy(participants=response.participants.map { incoming ->
+   val old=currentRun?.participants?.firstOrNull{it.userId==incoming.userId}
+   if(incoming.status in setOf("active","stale") && old?.lastLocationAt!=null &&
+      (incoming.lastLocationAt==null || isOlderMeasurement(incoming.lastLocationAt,old.lastLocationAt))) incoming.copy(status=old.status,lastLocationAt=old.lastLocationAt,lastLocation=old.lastLocation,lastActivitySnapshot=old.lastActivitySnapshot) else incoming
+  })
+  val value=if(!allowConsent&&previous!=null&&previous.status !in setOf("active","stale"))merged.copy(participants=merged.participants.map{if(it.userId==response.currentUserId)previous else it})else merged
   mutableGroup.value=value
   preferences.edit().putString(GROUP,PlainstrideJson.encodeToString(value)).apply()
   if(value.status=="active"&&value.participants.any{it.userId==value.currentUserId&&it.status in setOf("active","stale")})connectGroupRealtime(value.id)
@@ -275,10 +302,24 @@ class LiveShareCoordinator @Inject constructor(
   if(old.participants.none{it.userId==senderId&&it.status in setOf("active","stale")})return
   val lat=(map["latitude"] as? Number)?.toDouble()?:return;val lon=(map["longitude"] as? Number)?.toDouble()?:return
   val timestamp=map["recordedAt"] as? String?:return
+  val measuredAt=runCatching{Instant.parse(timestamp)}.getOrNull()?:return
+  if(!lat.isFinite()||!lon.isFinite()||lat !in -90.0..90.0||lon !in -180.0..180.0)return
+  val previous=old.participants.firstOrNull{it.userId==senderId}?.lastLocationAt?.let{runCatching{Instant.parse(it)}.getOrNull()}
+  if(previous!=null && !measuredAt.isAfter(previous))return
   mutableGroup.value=old.copy(participants=old.participants.map{p->if(p.userId!=senderId)p else p.copy(status="active",lastLocationAt=timestamp,lastLocation=GroupRunPoint(lat,lon,(map["altitudeM"] as? Number)?.toDouble(),(map["accuracyM"] as? Number)?.toDouble()),lastActivitySnapshot=GroupRunProgress((map["elapsedSeconds"] as? Number)?.toInt()?:0,(map["distanceM"] as? Number)?.toDouble()?:0.0,(map["paceSecondsPerKM"] as? Number)?.toDouble()))})
  }
  private suspend fun<T:Any>authenticated(call:suspend(String)->ApiResult<T>):Result<T>{val token=tokens.validAccessToken()?:return Result.failure(IllegalStateException("signed_out"));return when(val value=call("Bearer $token")){is ApiResult.Success->Result.success(value.value);is ApiResult.Failure->Result.failure(SafetyRequestException(value.error.code.name, value.error.httpStatus))}}
- private fun haversine(a:LiveLocation,b:LiveLocation):Double{val p1=Math.toRadians(a.latitude);val p2=Math.toRadians(b.latitude);val dp=p2-p1;val dl=Math.toRadians(b.longitude-a.longitude);val h=kotlin.math.sin(dp/2)*kotlin.math.sin(dp/2)+kotlin.math.cos(p1)*kotlin.math.cos(p2)*kotlin.math.sin(dl/2)*kotlin.math.sin(dl/2);return 6371000*2*kotlin.math.atan2(kotlin.math.sqrt(h),kotlin.math.sqrt(1-h))}
+ private fun isFreshMeasurement(point:LiveLocation):Boolean {
+  val measuredAt=runCatching{Instant.parse(point.recordedAt)}.getOrNull()?:return false
+  val age=Duration.between(measuredAt,Instant.now()).toMillis()
+  return age in -5_000L..15_000L
+ }
+ private fun isOlderMeasurement(incoming:String,previous:String):Boolean {
+  val next=runCatching{Instant.parse(incoming)}.getOrNull()?:return true
+  val old=runCatching{Instant.parse(previous)}.getOrNull()?:return false
+  return next.isBefore(old)
+ }
+
  private companion object{const val ACTIVE="active";const val ARMED="armed";const val GROUP="group";const val REALTIME_TAG="PlainstrideRealtime"}
 }
 

@@ -51,6 +51,7 @@ data class MapRouteMarker(
     val runnerMoving: Boolean = true,
     val rotationDegrees: Float = 0f,
     val anchor: Offset = Offset(0.5f, 1f),
+    val alpha: Float = 1f,
 )
 
 private class SuppliedMapLocationSource : LocationSource {
@@ -282,6 +283,7 @@ fun PlainstrideRouteMap(
                     Marker(
                         state = markerPosition,
                         title = marker.title,
+                        alpha = marker.alpha,
                         icon = runnerFrames.getOrNull(frame) ?: BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),
                         rotation = marker.rotationDegrees,
                         anchor = Offset(0.5f, 0.5f),
@@ -292,6 +294,7 @@ fun PlainstrideRouteMap(
                     Marker(
                         state = markerPosition,
                         title = marker.title,
+                        alpha = marker.alpha,
                         icon = marker.icon ?: BitmapDescriptorFactory.defaultMarker(
                             if (marker.selected) BitmapDescriptorFactory.HUE_ORANGE else BitmapDescriptorFactory.HUE_AZURE,
                         ),
