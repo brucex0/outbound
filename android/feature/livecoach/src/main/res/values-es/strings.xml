@@ -74,5 +74,5 @@
     <string name="voice_audio_preparing">Preparando el audio de voz: %1$d de %2$d</string>
     <string name="voice_audio_incomplete">Parte del audio del compañero no está disponible. Comprueba tu conexión y vuelve a intentarlo. Puedes empezar una actividad igualmente.</string>
     <string name="voice_audio_retry">Reintentar</string>
-    <string name="voice_audio_unavailable">Parte del audio del compañero aún no está listo. Tu actividad empezará con normalidad.</string>
+    <string name="voice_audio_unavailable">Algunas indicaciones aún se están descargando o no están disponibles. La cuenta atrás incluida funciona por separado; tu actividad empezará con normalidad.</string>
 </resources>

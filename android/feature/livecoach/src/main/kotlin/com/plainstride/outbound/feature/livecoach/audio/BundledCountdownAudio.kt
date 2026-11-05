@@ -37,8 +37,14 @@ class BundledCountdownAudio @Inject constructor(
     @Volatile private var clips: Map<Int, ByteArray> = emptyMap()
     @Volatile private var selection: String? = null
     @Volatile private var latestPreferences: LiveCoachPreferences? = null
+    @Volatile private var locale = when (context.resources.configuration.locales[0].language) {
+        "zh" -> "zh-Hans"
+        "es" -> "es"
+        else -> "en"
+    }
     private var playback: Job? = null
     private var playbackGeneration = 0
+    private var failureShown = false
 
     init {
         scope.launch {
@@ -49,26 +55,23 @@ class BundledCountdownAudio @Inject constructor(
         }
     }
 
-    private fun identity(prefs: LiveCoachPreferences): String {
-        val locale = when (context.resources.configuration.locales[0].language) {
-            "zh" -> "zh-Hans"
-            "es" -> "es"
-            else -> "en"
-        }
-        return "$locale:${prefs.voiceProfileId}:${prefs.personaId}:${prefs.scriptStyleId}"
+    override fun setLocale(locale: String) {
+        if (this.locale == locale) return
+        stop()
+        this.locale = locale
+        scope.launch { prepare() }
     }
+
+    private fun identity(prefs: LiveCoachPreferences): String =
+        "$locale:${prefs.voiceProfileId}:${prefs.personaId}:${prefs.scriptStyleId}"
 
     override fun isReady(): Boolean = latestPreferences?.let { selection == identity(it) && clips.size == KEYS.size } == true
 
     override suspend fun prepare(): Boolean = preparationLock.withLock {
         val prefs = preferences.preferences.first()
-        val locale = when (context.resources.configuration.locales[0].language) {
-            "zh" -> "zh-Hans"
-            "es" -> "es"
-            else -> "en"
-        }
+        val locale = this.locale
         latestPreferences = prefs
-        val identity = identity(prefs)
+        val identity = "$locale:${prefs.voiceProfileId}:${prefs.personaId}:${prefs.scriptStyleId}"
         if (identity == selection && clips.size == KEYS.size) return@withLock true
         val loaded = withContext(Dispatchers.IO) {
             try {
@@ -90,6 +93,7 @@ class BundledCountdownAudio @Inject constructor(
                 emptyMap()
             }
         }
+        if (this.locale != locale) return@withLock false
         clips = loaded
         selection = identity
         loaded.size == KEYS.size
@@ -112,7 +116,13 @@ class BundledCountdownAudio @Inject constructor(
                 AnalyticsProperty.SourceType to "bundled_audio",
                 AnalyticsProperty.Result to if (played) "success" else "failed",
             )))
-            if (!played) Log.w(TAG, "operation=countdown_play result=failed")
+            if (!played && generation == playbackGeneration) {
+                Log.w(TAG, "operation=countdown_play result=failed")
+                if (!failureShown) {
+                    failureShown = true
+                    android.widget.Toast.makeText(context, com.plainstride.outbound.feature.recording.R.string.recording_countdown_voice_unavailable, android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
@@ -121,6 +131,7 @@ class BundledCountdownAudio @Inject constructor(
 
     override fun stop() {
         playbackGeneration += 1
+        failureShown = false
         if (playback?.isActive == true) { output.stop(); playback?.cancel() }
         playback = null
     }

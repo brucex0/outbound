@@ -46,6 +46,7 @@ class VoiceAudioPreparation @Inject constructor(
     private val tokens: AccessTokenProvider,
     private val packs: FixedAudioPackStore,
     private val analytics: ProductAnalytics,
+    private val countdown: com.plainstride.outbound.feature.recording.RecordingCountdownAudio,
 ) {
     private val mutableState = MutableStateFlow(VoicePreparationState())
     val state: StateFlow<VoicePreparationState> = mutableState
@@ -55,6 +56,7 @@ class VoiceAudioPreparation @Inject constructor(
 
     fun activate(scope: CoroutineScope, locale: String) {
         stop()
+        countdown.setLocale(locale)
         val activeGeneration = generation
         job = scope.launch {
             combine(
@@ -71,8 +73,10 @@ class VoiceAudioPreparation @Inject constructor(
                         val token = tokens.validAccessToken()
                         if (token != null) {
                             when (val result = repository.catalog(token, selection.locale)) {
-                                is ApiResult.Success -> result.value.audioPack?.let {
-                                    packs.refresh(it.manifestUrl, it.manifestVersion, VoicePackTrust.publicKeys)
+                                is ApiResult.Success -> {
+                                    val pack = result.value.audioPack
+                                    if (pack != null) packs.refresh(pack.manifestUrl, pack.manifestVersion, VoicePackTrust.publicKeys)
+                                    else Log.w(TAG, "operation=prepare_catalog result=no_audio_pack")
                                 }
                                 is ApiResult.Failure -> Log.w(TAG, "operation=prepare_catalog status=${result.error.httpStatus} code=${result.error.code}")
                             }

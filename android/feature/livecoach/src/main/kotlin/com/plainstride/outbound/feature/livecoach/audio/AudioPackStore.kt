@@ -104,12 +104,18 @@ class VerifiedAudioPackStore @Inject constructor(
     }
 
     override suspend fun prepare(selection: AudioPackSelection, progress: (Int, Int) -> Unit): Boolean = withContext(Dispatchers.IO) {
-        val catalog = manifest ?: return@withContext false
+        val catalog = manifest ?: run {
+            android.util.Log.w(TAG, "operation=prepare_pack result=no_verified_manifest")
+            return@withContext false
+        }
         val entries = catalog.entries.filter { matchesSelection(it, selection) }
             .groupBy(AudioPackEntry::cueKey).values.map { candidates ->
                 candidates.firstOrNull { it.scriptStyleId == selection.scriptStyleId } ?: candidates.first()
             }.sortedBy { PRIORITY_KEYS.indexOf(it.cueKey).takeIf { index -> index >= 0 } ?: Int.MAX_VALUE }
-        if (entries.isEmpty()) return@withContext false
+        if (entries.isEmpty()) {
+            android.util.Log.w(TAG, "operation=prepare_pack result=no_matching_entries")
+            return@withContext false
+        }
         var ready = 0
         progress(ready, entries.size)
         for (entry in entries) {

@@ -99,12 +99,19 @@ class AndroidCoachAudioOutput @Inject constructor(
     init { audioManager.registerAudioDeviceCallback(deviceCallback, null) }
 
     override suspend fun playPcm(chunks: suspend ((ByteArray) -> Unit) -> Unit): Boolean =
+        playAudio(null, chunks)
+
+    private suspend fun playAudio(pcm: ByteArray?, chunks: suspend ((ByteArray) -> Unit) -> Unit): Boolean =
         playbackMutex.withLock {
             withContext(Dispatchers.IO) {
-                if (!focus()) return@withContext false
+                if (!focus()) {
+                    android.util.Log.w("PlainstrideAudio", "operation=request_focus result=denied")
+                    return@withContext false
+                }
                 val generation = stopGeneration
                 val minimum = AudioTrack.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
                 if (minimum <= 0) {
+                    android.util.Log.w("PlainstrideAudio", "operation=audio_buffer result=invalid code=$minimum")
                     abandon()
                     return@withContext false
                 }
@@ -117,14 +124,16 @@ class AndroidCoachAudioOutput @Inject constructor(
                             .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
                             .build(),
                     )
-                    .setBufferSizeInBytes(minimum.coerceAtLeast(SAMPLE_RATE))
-                    .setTransferMode(AudioTrack.MODE_STREAM)
+                    .setBufferSizeInBytes(pcm?.size?.coerceAtLeast(minimum) ?: minimum.coerceAtLeast(SAMPLE_RATE))
+                    .setTransferMode(if (pcm == null) AudioTrack.MODE_STREAM else AudioTrack.MODE_STATIC)
                     .build()
                 track = current
                 var writtenBytes = 0
-                val played = runCatching {
-                    current.play()
-                    chunks { bytes ->
+                val playbackResult = runCatching {
+                    // Static WAVs are loaded before play: short countdown words must not wait
+                    // for a streaming buffer to fill before the device starts rendering.
+                    if (pcm == null) current.play()
+                    val write: (ByteArray) -> Unit = { bytes ->
                         check(generation == stopGeneration)
                         var offset = 0
                         while (offset < bytes.size) {
@@ -134,23 +143,29 @@ class AndroidCoachAudioOutput @Inject constructor(
                             writtenBytes += count
                         }
                     }
+                    if (pcm == null) chunks(write) else { write(pcm); current.play() }
                     val expectedFrames = writtenBytes / BYTES_PER_FRAME
                     val drainMilliseconds = (writtenBytes.toLong() * 1_000 / BYTES_PER_SECOND + 750).coerceAtLeast(750)
                     withTimeoutOrNull(drainMilliseconds) {
                         while (generation == stopGeneration && current.playbackHeadPosition < expectedFrames) delay(10)
                     } != null && generation == stopGeneration
-                }.getOrDefault(false)
+                }.onFailure { error ->
+                    if (error !is CancellationException && generation == stopGeneration) android.util.Log.w("PlainstrideAudio", "operation=play_audio type=${error.javaClass.simpleName} state=${current.state} playState=${current.playState}")
+                }
+                val played = playbackResult.getOrDefault(false)
+                if (!played && playbackResult.exceptionOrNull() !is CancellationException && generation == stopGeneration) android.util.Log.w("PlainstrideAudio", "operation=drain_audio result=incomplete frames=${current.playbackHeadPosition} expected=${writtenBytes / BYTES_PER_FRAME}")
                 runCatching { current.stop() }
                 current.release()
                 if (track === current) track = null
                 abandon()
+                (playbackResult.exceptionOrNull() as? CancellationException)?.let { throw it }
                 played
             }
         }
 
     override suspend fun playWav(bytes: ByteArray): Boolean {
         val pcm = WavPcm.decode(bytes) ?: return false
-        return playPcm { write -> write(pcm) }
+        return playAudio(pcm) { }
     }
 
     override fun stop() {

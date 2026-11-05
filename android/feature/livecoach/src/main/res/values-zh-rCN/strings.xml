@@ -74,5 +74,5 @@
     <string name="voice_audio_preparing">正在准备语音：%1$d/%2$d</string>
     <string name="voice_audio_incomplete">部分跑步伙伴语音不可用。请检查网络后重试，活动仍可正常开始。</string>
     <string name="voice_audio_retry">重试</string>
-    <string name="voice_audio_unavailable">部分跑步伙伴语音尚未准备好，活动将正常开始。</string>
+    <string name="voice_audio_unavailable">部分教练提示仍在下载或暂不可用。内置倒计时不受影响，活动将正常开始。</string>
 </resources>

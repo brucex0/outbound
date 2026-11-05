@@ -74,5 +74,5 @@
     <string name="voice_audio_preparing">Preparing voice audio: %1$d of %2$d</string>
     <string name="voice_audio_incomplete">Some coaching audio is unavailable. Check your connection and retry. Activities can still start.</string>
     <string name="voice_audio_retry">Retry</string>
-    <string name="voice_audio_unavailable">Some coaching audio is not ready yet. Your activity will start normally.</string>
+    <string name="voice_audio_unavailable">Some coaching cues are still downloading or unavailable. Bundled countdowns work independently; your activity will start normally.</string>
 </resources>

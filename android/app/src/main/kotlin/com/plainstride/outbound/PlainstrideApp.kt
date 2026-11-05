@@ -293,7 +293,7 @@ private fun SignedInApp(
     val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     val voicePreparation: com.plainstride.outbound.feature.livecoach.VoicePreparationViewModel = hiltViewModel()
-    val voiceLocale = when (resources.configuration.locales[0].language) {
+    val voiceLocale = when (androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language) {
         "zh" -> "zh-Hans"
         "es" -> "es"
         else -> "en"
