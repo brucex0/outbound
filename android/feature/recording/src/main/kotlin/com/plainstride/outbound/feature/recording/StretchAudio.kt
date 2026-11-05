@@ -12,18 +12,20 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /** Cache-only playback keeps network latency out of hold and transition timing. */
-internal class StretchAudio(private val context: Context) {
+internal class StretchAudio(private val context: Context, private val voiceProfileId: String?) {
     private val directory = File(context.cacheDir, "stretch-audio-v1")
     private val locale = when (Locale.getDefault().language) { "zh" -> "zh-Hans"; "es" -> "es"; else -> "en" }
     private val files = mutableMapOf<String, File>()
     private var player: MediaPlayer? = null
 
-    suspend fun preload(cues: List<String>, fetch: suspend (String, String) -> ByteArray?) {
-        for (cue in cues + listOf("release")) {
-            val file = File(directory, "$locale-plainstride_warm_1-$cue.wav")
+    suspend fun preload(cues: List<String>, fetch: suspend (String, String, String) -> ByteArray?): Boolean {
+        val voice = voiceProfileId ?: return false
+        val requested = (cues + "release").distinct()
+        for (cue in requested) {
+            val file = File(directory, "$locale-$voice-$cue.wav")
             val cached = withContext(Dispatchers.IO) { file.isFile && file.length() in 44..512 * 1024 }
             if (cached) { files[cue] = file; continue }
-            val bytes = fetch(cue, locale) ?: continue
+            val bytes = fetch(cue, locale, voice) ?: continue
             try {
                 withContext(Dispatchers.IO) {
                     directory.mkdirs()
@@ -35,6 +37,7 @@ internal class StretchAudio(private val context: Context) {
             } catch (error: CancellationException) { throw error }
             catch (error: Exception) { Log.w("StretchAudio", "Cache write failed type=${error.javaClass.simpleName}") }
         }
+        return requested.all { it in files }
     }
 
     fun play(cue: String) {

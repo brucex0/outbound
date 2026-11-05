@@ -51,12 +51,14 @@ fun PostWorkoutStretchRoute(
     onDone: () -> Unit,
     onShare: () -> Unit,
     onEvent: (StretchSessionEvent) -> Unit,
-    fetchAudio: suspend (String, String) -> ByteArray?,
+    voiceProfileId: String?,
+    fetchAudio: suspend (String, String, String) -> ByteArray?,
     isIndoor: Boolean = false,
 ) {
     StretchSessionRoute(
         launch = StretchLaunchContext(StretchEntryPoint.POST_SAVE, kind, isIndoor),
         sessionKey = sessionKey, onDone = onDone, onEvent = onEvent, fetchAudio = fetchAudio,
+        voiceProfileId = voiceProfileId,
         header = { finish ->
             PostSaveCelebrationCard(track = track, sessionKey = sessionKey, modifier = Modifier.fillMaxWidth().height(205.dp))
             Text(stringResource(R.string.recording_post_save_message), style = MaterialTheme.typography.titleMedium)
@@ -73,7 +75,8 @@ fun StretchSessionRoute(
     sessionKey: String,
     onDone: () -> Unit,
     onEvent: (StretchSessionEvent) -> Unit,
-    fetchAudio: suspend (String, String) -> ByteArray?,
+    voiceProfileId: String?,
+    fetchAudio: suspend (String, String, String) -> ByteArray?,
     header: @Composable (() -> Unit) -> Unit = { _ -> },
 ) {
     val kind = launch.kind
@@ -129,7 +132,7 @@ fun StretchSessionRoute(
     fun emit(name: String, routineID: String?, result: String?, seconds: Int?) {
         onEvent(StretchSessionEvent(name, routineID, result, seconds, launch.entryPoint, selectedRoutine.customized, selectedRoutine.entries.size, selectedRoutine.totalSeconds))
     }
-    val audio = remember { StretchAudio(context) }
+    val audio = remember(context, voiceProfileId) { StretchAudio(context, voiceProfileId) }
     val view = LocalView.current
     val owner = LocalLifecycleOwner.current
     val movement = selectedRoutine.movements[movementIndex]
@@ -159,7 +162,7 @@ fun StretchSessionRoute(
         onDone()
     }
 
-    DisposableEffect(owner) {
+    DisposableEffect(owner, audio) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_STOP || event == Lifecycle.Event.ON_PAUSE) {
                 running = false
@@ -175,11 +178,14 @@ fun StretchSessionRoute(
         }
     }
 
-    LaunchedEffect(selectedRoutine.movements.map { it.cue }) {
-        audio.preload(selectedRoutine.movements.map { it.cue }.distinct(), fetchAudio)
+    LaunchedEffect(selectedRoutine.movements.map { it.cue }, audio) {
+        if (voiceProfileId != null) {
+            val ready = audio.preload(selectedRoutine.movements.map { it.cue }.distinct(), fetchAudio)
+            emit("stretch_interface_used", selectedRoutine.id, if (ready) "audio_ready" else "audio_unavailable", null)
+        }
     }
-    LaunchedEffect(speaks) { if (!speaks) audio.stop() }
-    LaunchedEffect(running, movementIndex, selectedRoutine.id, phase, speaks) {
+    LaunchedEffect(speaks, audio) { if (!speaks) audio.stop() }
+    LaunchedEffect(running, movementIndex, selectedRoutine.id, phase, speaks, audio) {
         coroutineScope {
             val intervalPhase = phase
             // Narration and visible preparation time advance together. Never

@@ -190,6 +190,7 @@ fun RecordingRoute(
     unitSystem: MeasurementUnitSystem = MeasurementUnitSystem.metric,
     weightKilograms: Double? = null,
     sessionEffect: @Composable (RecordingSnapshot, RecordingLaunchConfiguration) -> Unit = { _, _ -> },
+    stretchVoiceProfileId: String? = null,
     guidanceReport: WorkoutGuidanceReport = WorkoutGuidanceReport(),
     selectedGuidanceFeedback: WorkoutGuidanceFeedback? = null,
     onGuidanceFeedbackSelect: (WorkoutGuidanceFeedback) -> Unit = {},
@@ -750,6 +751,7 @@ fun RecordingRoute(
             PostWorkoutStretchRoute(
                 onShare = { showPostSaveShare = true },
                 fetchAudio = viewModel::fetchStretchAudio,
+                voiceProfileId = stretchVoiceProfileId,
                 isIndoor = postSaveIndoor,
                 kind = requireNotNull(postSaveStretchKind),
                 track = review.snapshot.track,

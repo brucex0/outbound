@@ -5,10 +5,10 @@ Open when adding a stretch entry point, movement, template, or editor behavior. 
 ## Entry Points And Ownership
 
 - iOS: `StretchSessionView(launch: StretchLaunchContext(entryPoint: .today), voiceProfileID: selectedVoiceID, onExit: dismiss)` launches without a saved activity. Optional `activityType` selects sport defaults; `isIndoor` allows mat preference restoration. Its optional header closure receives the same exit callback used by the flow, preserving dismissal analytics.
-- Android: `StretchSessionRoute(launch = StretchLaunchContext(StretchEntryPoint.TODAY), sessionKey = stablePresentationKey, onDone = dismiss, onEvent = analyticsAdapter, fetchAudio = audioAdapter)` launches independently of recording. Keep the presentation key stable across recompositions. A host may supply a composable header.
+- Android: `StretchSessionRoute(launch = StretchLaunchContext(StretchEntryPoint.TODAY), sessionKey = stablePresentationKey, voiceProfileId = selectedVoiceID, onDone = dismiss, onEvent = analyticsAdapter, fetchAudio = audioAdapter)` launches independently of recording. Keep the presentation key stable across recompositions. A host may supply a composable header.
 - `PostWorkoutStretchView` / `PostWorkoutStretchRoute` are post-save adapters that supply the celebration and Share/Done actions. iOS Today exposes a text Stretch action in its leading toolbar while recording is idle. Android Today exposes the same text action while recording is idle, opening a separate stretch destination above Today.
 - Catalog, customization storage, editor, illustrations, player and audio do not require a saved activity. The Android implementation remains in the recording library module; Today can be wired at the app composition boundary without a dependency from Today to recording.
-- Never instantiate guide settings inside the stretch view. Pass the selected voice from the host. Android's existing audio adapter uses its configured guide voice; a new surface must use the same adapter contract.
+- Never instantiate guide settings inside the stretch view. Pass the selected voice from the host. Android hosts observe the persisted coach voice and pass it through standalone and post-save routes. Audio preparation waits for that selection; fetch adapters receive `(cue, locale, voiceProfileId)`. Cached WAV filenames include locale, voice, and cue, so switching voices never reuses the other voice's clips. A voice change cancels preparation/playback for the old voice and prepares the new selection. Tick audio remains bundled.
 
 ## iOS Screen Layout
 
@@ -28,6 +28,12 @@ Open when adding a stretch entry point, movement, template, or editor behavior. 
 - Opening player instructions/options pauses audio and timing, clears keep-screen-on, and requires explicit Resume. Voice/tick mute and transition feedback persist locally in `stretch_player_options_v1` across entry points; they are not account configuration values or synced preferences.
 - Compact editor rows expose duration and action menus. Move up/down actions reorder; Add/Replace uses an adaptive illustration grid and existing area/requirement/mode filters. Save remains a single toolbar action; cancel/undo/reset, validation and account-scoped storage remain intact.
 - UI resource additions live in dedicated `stretch_ui.xml` files in English, Simplified Chinese and Spanish, outside generated content files. No schema reset or migration is needed.
+
+### Selected Voice Verification (November 4, 2026)
+
+- Android `:app:assembleDebug --max-workers=2 --no-parallel` passed. No tests were run.
+- Source review covered standalone/Today and post-save wiring, saved selection loading, warm/clear cache keys, cached and uncached fetch paths, and cancellation when the voice changes.
+- Device audibility, offline cache reuse, and changing the voice while a stretch is open were not exercised; build success does not verify those runtime behaviors.
 
 ## Content And Generation
 

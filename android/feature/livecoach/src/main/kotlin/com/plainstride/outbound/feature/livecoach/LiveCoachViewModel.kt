@@ -70,6 +70,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.merge
@@ -149,6 +150,9 @@ class LiveCoachViewModel @Inject constructor(
 
     private val mutableUi = MutableStateFlow(LiveCoachUiState())
     val ui: StateFlow<LiveCoachUiState> = mutableUi
+    // No default emission: stretch audio waits for the persisted voice selection.
+    val selectedVoiceProfileId: kotlinx.coroutines.flow.Flow<String?> =
+        preferencesRepository.preferences.map { it.voiceProfileId }
     val preferences = preferencesRepository.preferences.stateIn(
         viewModelScope,
         SharingStarted.Eagerly,

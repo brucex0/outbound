@@ -1279,9 +1279,12 @@ private fun SignedInApp(
                 AppDetailRoutes.Stretch,
                 arguments = listOf(navArgument("source") { type = NavType.StringType; defaultValue = "standalone" }),
             ) { entry ->
+                val stretchCoach: com.plainstride.outbound.feature.livecoach.LiveCoachViewModel = hiltViewModel()
+                val stretchVoice by stretchCoach.selectedVoiceProfileId.collectAsStateWithLifecycle(initialValue = null)
                 val source = if (entry.arguments?.getString("source") == "today") StretchEntryPoint.TODAY else StretchEntryPoint.STANDALONE
                 StretchSessionRoute(
                     launch = StretchLaunchContext(entryPoint = source),
+                    voiceProfileId = stretchVoice,
                     sessionKey = entry.id,
                     onDone = { navController.popBackStack() },
                     onEvent = { recordingViewModel.trackStretchEvent(it) },
@@ -1291,7 +1294,9 @@ private fun SignedInApp(
             composable(RECORDING_ROUTE) {
                 val feedbackCoach: com.plainstride.outbound.feature.livecoach.LiveCoachViewModel = hiltViewModel()
                 val coachFeedback by feedbackCoach.feedback.collectAsStateWithLifecycle()
+                val stretchVoice by feedbackCoach.selectedVoiceProfileId.collectAsStateWithLifecycle(initialValue = null)
                 RecordingRoute(
+                    stretchVoiceProfileId = stretchVoice,
                     guidanceReport = coachFeedback.report,
                     selectedGuidanceFeedback = coachFeedback.selection,
                     onGuidanceFeedbackSelect = feedbackCoach::selectFeedback,

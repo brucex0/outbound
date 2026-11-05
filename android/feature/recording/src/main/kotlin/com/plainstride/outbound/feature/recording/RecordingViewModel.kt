@@ -493,10 +493,10 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.DistanceBucket to distanceBucket(current.distanceMeters),
         )))
     }
-    suspend fun fetchStretchAudio(cue: String, locale: String): ByteArray? {
+    suspend fun fetchStretchAudio(cue: String, locale: String, voiceProfileId: String): ByteArray? {
         val token = accessTokens.validAccessToken() ?: return null
         return try {
-            val response = planningApi.stretchAudio("Bearer $token", com.plainstride.outbound.core.network.StretchAudioRequest(cue, locale))
+            val response = planningApi.stretchAudio("Bearer $token", com.plainstride.outbound.core.network.StretchAudioRequest(cue, locale, voiceProfileId))
             if (!response.isSuccessful) {
                 Log.w("StretchAudio", "Fetch failed status=${response.code()} cue=$cue")
                 null
