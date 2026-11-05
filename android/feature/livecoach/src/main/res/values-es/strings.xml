@@ -69,4 +69,10 @@
     <string name="live_coach_sudden_speed_decrease">Tu velocidad ha bajado de golpe. Si querías seguir corriendo, recupera tu ritmo poco a poco.</string>
     <string name="live_coach_cue_race_start_restraint">Empieza la carrera a un ritmo controlado. Deja los aumentos de velocidad para más adelante.</string>
     <string name="live_coach_cue_race_halfway">Has llegado a la mitad de tu objetivo.</string>
+    <string name="voice_audio_title">Audio del compañero sin conexión</string>
+    <string name="voice_audio_ready">Listo para usar sin conexión</string>
+    <string name="voice_audio_preparing">Preparando el audio de voz: %1$d de %2$d</string>
+    <string name="voice_audio_incomplete">Parte del audio del compañero no está disponible. Comprueba tu conexión y vuelve a intentarlo. Puedes empezar una actividad igualmente.</string>
+    <string name="voice_audio_retry">Reintentar</string>
+    <string name="voice_audio_unavailable">Parte del audio del compañero aún no está listo. Tu actividad empezará con normalidad.</string>
 </resources>

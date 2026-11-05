@@ -97,8 +97,8 @@ Espresso release supports API 37.
 
 ## Recording Voice Audio
 
-Countdown and tap-to-talk stats use navigation speech attributes on the media
-stream, matching AI guidance routing. Do not use hidden stream 9: Samsung device
+Bundled countdown recordings and tap-to-talk stats use navigation audio attributes on the media
+stream, matching AI guidance routing. Countdown audio no longer depends on device TTS; requested stats still do. See `docs/android-voice-audio.md` for preparation and offline behavior. Do not use hidden stream 9: Samsung device
 logs showed successful synthesis at TTS volume 0/15 while media was 14/15.
 `activity_voice_enqueue` reports cue category, enqueue result, and media route
 without speech text. Enqueue success does not establish audibility.

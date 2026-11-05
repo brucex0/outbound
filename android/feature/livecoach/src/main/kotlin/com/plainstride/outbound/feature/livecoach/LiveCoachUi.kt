@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,6 +45,7 @@ import com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration
     viewModel: LiveCoachViewModel = hiltViewModel(),
 ) {
     val state by viewModel.ui.collectAsStateWithLifecycle()
+    val voiceAudio by viewModel.voicePreparation.state.collectAsStateWithLifecycle()
     LaunchedEffect(viewModel) { viewModel.loadCatalog() }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         HorizontalDivider()
@@ -60,6 +62,22 @@ import com.plainstride.outbound.feature.recording.RecordingLaunchConfiguration
             supportingContent = { Text(stringResource(R.string.live_coach_enable_detail)) },
             trailingContent = { Switch(state.preferences.enabled, { viewModel.savePreferences(state.preferences.copy(enabled = it)) }) },
             modifier = Modifier.clickable(role = Role.Switch) { viewModel.savePreferences(state.preferences.copy(enabled = !state.preferences.enabled)) }.heightIn(min = 64.dp),
+        )
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.voice_audio_title)) },
+            supportingContent = {
+                when {
+                    voiceAudio.ready -> Text(stringResource(R.string.voice_audio_ready))
+                    voiceAudio.preparing -> Text(stringResource(R.string.voice_audio_preparing, voiceAudio.completed, voiceAudio.total))
+                    else -> Text(stringResource(R.string.voice_audio_incomplete))
+                }
+            },
+            trailingContent = {
+                if (voiceAudio.preparing) CircularProgressIndicator()
+                else if (!voiceAudio.ready) TextButton(onClick = viewModel.voicePreparation::retry) {
+                    Text(stringResource(R.string.voice_audio_retry))
+                }
+            },
         )
         if (state.loading) CircularProgressIndicator(Modifier.padding(20.dp))
         if (state.error) Text(stringResource(R.string.live_coach_catalog_error), Modifier.padding(20.dp), color = MaterialTheme.colorScheme.error)

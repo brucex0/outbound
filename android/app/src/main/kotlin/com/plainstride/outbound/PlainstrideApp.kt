@@ -292,6 +292,20 @@ private fun SignedInApp(
     val context = LocalContext.current
     val resources = LocalResources.current
     val scope = rememberCoroutineScope()
+    val voicePreparation: com.plainstride.outbound.feature.livecoach.VoicePreparationViewModel = hiltViewModel()
+    val voiceLocale = when (resources.configuration.locales[0].language) {
+        "zh" -> "zh-Hans"
+        "es" -> "es"
+        else -> "en"
+    }
+    DisposableEffect(when (val session = authState.session) {
+        is SessionState.SignedIn -> session.accountId
+        is SessionState.Refreshing -> session.accountId
+        else -> null
+    }, voiceLocale) {
+        voicePreparation.activate(voiceLocale)
+        onDispose { voicePreparation.preparation.stop() }
+    }
     if (!onboardingResolved) {
         OnboardingRoute(
             onComplete = { onboardingResolved = true },
@@ -526,6 +540,7 @@ private fun SignedInApp(
                     context.getSystemService(android.hardware.SensorManager::class.java)?.getDefaultSensor(android.hardware.Sensor.TYPE_STEP_DETECTOR) != null
                 if (!needsMotion && hasPermission && (configuration.indoor || recordingViewModel.hasRecentStartLocation())) {
                     cheerPickerViewModel.applyTrustedContactDefault()
+                    voicePreparation.preparation.activityWillStart(configuration.voiceGuideEnabled)
                     // Resolve recovery before a direct Walk/Hike start so entering
                     // the recording route cannot recover the new session as paused.
                     recordingViewModel.recover(requireNotNull(accountId), permission)
@@ -569,6 +584,9 @@ private fun SignedInApp(
     LaunchedEffect(accountId) { cheerPickerViewModel.onAccountActivated(accountId) }
     LaunchedEffect(integration.connections) { cheerPickerViewModel.onConnectionsUpdated(integration.connections) }
     LaunchedEffect(accountId) { accountId?.let(connectivityViewModel::start) }
+    LaunchedEffect(connectivityState.isOffline) {
+        if (!connectivityState.isOffline && !voicePreparation.preparation.state.value.ready) voicePreparation.preparation.retry()
+    }
     LaunchedEffect(connectivityState.isOffline, connectivityState.pendingSyncCount > 0) {
         if (!connectivityState.isOffline && connectivityState.pendingSyncCount > 0) {
             snackbar.showSnackbar(resources.getString(R.string.connectivity_pending))
@@ -1308,7 +1326,10 @@ private fun SignedInApp(
                     viewModel = recordingViewModel,
                     accountId = requireNotNull(accountId) { "Authenticated session is missing its account identifier." },
                     launch = recordingLaunch,
-                    onPrepareActivityStart = cheerPickerViewModel::applyTrustedContactDefault,
+                    onPrepareActivityStart = {
+                        cheerPickerViewModel.applyTrustedContactDefault()
+                        voicePreparation.preparation.activityWillStart(recordingViewModel.state.value.launch.voiceGuideEnabled)
+                    },
                     isOffline = connectivityState.isOffline,
                     unitSystem = measurementUnitSystem,
                     weightKilograms = integration.weightKilograms,

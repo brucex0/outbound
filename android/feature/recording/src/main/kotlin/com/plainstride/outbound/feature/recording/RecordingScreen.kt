@@ -533,7 +533,9 @@ fun RecordingRoute(
         if (ui.countdownVoiceReady) {
             if (current == 0) viewModel.speakGo() else viewModel.speakCountdown(current)
         }
-        delay(if (current == 0) 420L else 1_000L)
+        // Keep the displayed beat until its complete local recording has played.
+        val minimumBeat = if (current == 0) 420L else 1_000L
+        delay(maxOf(minimumBeat, if (ui.countdownVoiceReady) viewModel.countdownDurationMilliseconds(current) else 0L))
         if (current > 0) viewModel.updateCountdown(current - 1)
         else {
             val permission = permissionState()

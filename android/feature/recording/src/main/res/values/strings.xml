@@ -108,4 +108,5 @@
     <string name="live_pause_at_goal">Pause at goal</string>
     <string name="live_sharing_on">On</string>
     <string name="live_sharing_off">Off</string>
+    <string name="recording_countdown_voice_unavailable">Countdown voice is unavailable. Your activity will start normally.</string>
 </resources>

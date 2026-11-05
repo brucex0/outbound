@@ -271,15 +271,13 @@ class RecordingViewModel @Inject constructor(
         val voiceGuideEnabled = mutableState.value.launch.voiceGuideEnabled
         debugLog("countdown_begin voiceEnabled=$voiceGuideEnabled indoor=${mutableState.value.launch.indoor} source=${mutableState.value.launch.entrySource}")
         try {
-            val voiceReady = if (voiceGuideEnabled) {
-                try { voice.prepare() } catch (error: kotlinx.coroutines.CancellationException) {
-                    throw error
-                } catch (error: Exception) {
-                    logError("countdown_voice_prepare_exception type=${error.javaClass.simpleName}")
-                    false
-                }
-            } else false
+            // Start immediately; local preparation is background work, never a recording gate.
+            val voiceReady = voiceGuideEnabled && voice.isCountdownReady()
+            if (voiceGuideEnabled && !voiceReady) warmStartVoice()
             debugLog("countdown_voice_ready enabled=$voiceGuideEnabled ready=$voiceReady")
+            if (voiceGuideEnabled && !voiceReady) {
+                android.widget.Toast.makeText(context, R.string.recording_countdown_voice_unavailable, android.widget.Toast.LENGTH_LONG).show()
+            }
             if (mutableState.value.startRequested || snapshot.value.status != RecordingStatus.IDLE) return
             mutableState.value = mutableState.value.copy(countdown = 3, countdownVoiceReady = voiceReady)
             if (voiceGuideEnabled) analytics.record(AnalyticsEvent(
@@ -422,6 +420,7 @@ class RecordingViewModel @Inject constructor(
 
     fun speakCountdown(value: Int) = voice.speakCountdown(value)
     fun speakGo() = voice.speakGo()
+    fun countdownDurationMilliseconds(value: Int) = voice.countdownDurationMilliseconds(value)
     fun setMode(mode: RecordingSurfaceMode) {
         mutableState.value = mutableState.value.copy(mode = mode)
         analytics.record(AnalyticsEvent("activity_surface_changed", mapOf(AnalyticsProperty.Result to mode.name.lowercase())))

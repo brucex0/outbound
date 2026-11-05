@@ -69,4 +69,10 @@
     <string name="live_coach_sudden_speed_decrease">Your speed dropped sharply. If you meant to keep running, return to your pace gradually.</string>
     <string name="live_coach_cue_race_start_restraint">Start the race at a controlled pace. Save a speed increase for later.</string>
     <string name="live_coach_cue_race_halfway">You are halfway to your goal.</string>
+    <string name="voice_audio_title">Offline coaching audio</string>
+    <string name="voice_audio_ready">Ready for offline use</string>
+    <string name="voice_audio_preparing">Preparing voice audio: %1$d of %2$d</string>
+    <string name="voice_audio_incomplete">Some coaching audio is unavailable. Check your connection and retry. Activities can still start.</string>
+    <string name="voice_audio_retry">Retry</string>
+    <string name="voice_audio_unavailable">Some coaching audio is not ready yet. Your activity will start normally.</string>
 </resources>

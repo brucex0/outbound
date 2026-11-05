@@ -108,4 +108,5 @@
     <string name="live_pause_at_goal">达到目标时暂停</string>
     <string name="live_sharing_on">已开启</string>
     <string name="live_sharing_off">已关闭</string>
+    <string name="recording_countdown_voice_unavailable">倒计时语音不可用，活动将正常开始。</string>
 </resources>

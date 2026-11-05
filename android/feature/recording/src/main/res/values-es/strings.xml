@@ -108,4 +108,5 @@
     <string name="live_pause_at_goal">Pausar al alcanzar el objetivo</string>
     <string name="live_sharing_on">Activado</string>
     <string name="live_sharing_off">Desactivado</string>
+    <string name="recording_countdown_voice_unavailable">La voz de la cuenta atrás no está disponible. Tu actividad empezará con normalidad.</string>
 </resources>

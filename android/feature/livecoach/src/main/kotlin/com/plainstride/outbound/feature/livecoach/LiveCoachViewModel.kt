@@ -18,6 +18,7 @@ import com.plainstride.outbound.core.network.AccessTokenProvider
 import com.plainstride.outbound.core.network.ApiResult
 import com.plainstride.outbound.feature.livecoach.audio.AudioPackSelection
 import com.plainstride.outbound.feature.livecoach.audio.FixedAudioPackStore
+import com.plainstride.outbound.feature.livecoach.audio.VoicePackTrust
 import com.plainstride.outbound.feature.livecoach.audio.FixedCueKeys
 import com.plainstride.outbound.feature.livecoach.audio.LiveCoachPlaybackCoordinator
 import com.plainstride.outbound.feature.livecoach.audio.LiveCoachPlaybackService
@@ -114,6 +115,7 @@ class LiveCoachViewModel @Inject constructor(
     private val playback: LiveCoachPlaybackCoordinator,
     private val analytics: ProductAnalytics,
     private val feedbackStore: LiveCoachFeedbackStore,
+    val voicePreparation: VoiceAudioPreparation,
 ) : ViewModel() {
     private data class PendingCue(val moment: DetectedMoment, val scheduled: ScheduledCue? = null)
 
@@ -718,7 +720,7 @@ class LiveCoachViewModel @Inject constructor(
     private fun preload(session: CreateSessionResponse, prefs: LiveCoachPreferences, token: String) {
         val fixedKeys = (listOf("coach.settle", "coach.restore_rhythm") + session.guidancePlan.cues.map { FixedCueKeys.forMoment(it.moment) }).distinct()
         viewModelScope.launch {
-            packs.refresh(session.audioPack.manifestUrl, session.audioPack.manifestVersion, MANIFEST_KEYS)
+            packs.refresh(session.audioPack.manifestUrl, session.audioPack.manifestVersion, VoicePackTrust.publicKeys)
             packs.preload(fixedKeys, prefs.selection())
         }
         if (session.effectiveMode != LiveCoachMode.Dynamic || session.planner.status != "generated") return
@@ -863,12 +865,6 @@ class LiveCoachViewModel @Inject constructor(
         const val SELECTION_SESSION_ID = "00000000-0000-4000-8000-000000000000"
         const val MAX_PENDING_CUES = 8
         const val MAX_PREWARM_PHRASES = 8
-        val MANIFEST_KEYS = mapOf(
-            "live-coach-audio-2026-v1" to """-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEzOQ+dtpteVzDRG6ZgAWsbl2a9nDV
-IUWXep0GWK1xUNtuIIF8P3nGVvnucyHGP/UclpLUmFDXgR1DNAiFJkHXuQ==
------END PUBLIC KEY-----""",
-        )
     }
 }
 

@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import com.plainstride.outbound.core.analytics.AnalyticsEvent
 import com.plainstride.outbound.core.analytics.AnalyticsProperty
 import com.plainstride.outbound.core.analytics.ProductAnalytics
@@ -35,6 +34,7 @@ class RecordingVoiceCoordinator @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val music: MusicProvider,
     private val analytics: ProductAnalytics,
+    private val countdownAudio: RecordingCountdownAudio,
 ) : AutoCloseable {
     private val recognizer = AndroidSpeechRecognizer(context)
     private val mutableListening = MutableStateFlow(false)
@@ -92,22 +92,17 @@ class RecordingVoiceCoordinator @Inject constructor(
     fun listen(permissionGranted: Boolean) = recognizer.start(permissionGranted)
 
     suspend fun prepare(): Boolean {
-        if (textToSpeechReady) {
-            logDebug("tts_prepare_result=already_ready")
-            return true
-        }
-        val initialization = ensureTextToSpeech()
-        val initialized = withTimeoutOrNull(TEXT_TO_SPEECH_PREPARE_TIMEOUT_MS) { initialization.await() }
-        val result = initialized == true
-        logDebug("tts_prepare_result=${when { result -> "ready"; initialized == null -> "timeout"; else -> "unavailable" }}")
-        return result
+        ensureTextToSpeech() // Warm requested-stat speech without waiting on it for countdowns.
+        return countdownAudio.prepare()
     }
+    fun isCountdownReady(): Boolean = countdownAudio.isReady()
 
-    fun speakCountdown(value: Int) = speak(value.toString(), TextToSpeech.QUEUE_ADD, "countdown_$value")
-
-    fun speakGo() = speak(context.getString(R.string.recording_go), TextToSpeech.QUEUE_ADD, "countdown_go")
+    fun speakCountdown(value: Int) = countdownAudio.play(value)
+    fun speakGo() = countdownAudio.play(0)
+    fun countdownDurationMilliseconds(value: Int) = countdownAudio.durationMilliseconds(value)
 
     fun stopSpeech() {
+        countdownAudio.stop()
         pendingSpeech.clear()
         textToSpeech?.stop()
     }
@@ -211,6 +206,7 @@ class RecordingVoiceCoordinator @Inject constructor(
 
     override fun close() {
         recognizer.close()
+        countdownAudio.stop()
         textToSpeech?.stop()
         textToSpeech?.shutdown()
         textToSpeech = null
@@ -222,7 +218,6 @@ class RecordingVoiceCoordinator @Inject constructor(
 
     private companion object {
         const val TAG = "RecordingVoice"
-        const val TEXT_TO_SPEECH_PREPARE_TIMEOUT_MS = 5_000L
         // Keep countdown and requested stats on the same volume/routing category as AI guidance.
         const val TEXT_TO_SPEECH_STREAM = AudioManager.STREAM_MUSIC
     }

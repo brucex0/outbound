@@ -69,4 +69,10 @@
     <string name="live_coach_sudden_speed_decrease">刚才速度明显下降了。如果不是打算休息，就慢慢恢复到之前的配速。</string>
     <string name="live_coach_cue_race_start_restraint">比赛刚开始，先控制好配速，留到后面再考虑提速。</string>
     <string name="live_coach_cue_race_halfway">目标已完成一半。</string>
+    <string name="voice_audio_title">离线跑步伙伴语音</string>
+    <string name="voice_audio_ready">可离线使用</string>
+    <string name="voice_audio_preparing">正在准备语音：%1$d/%2$d</string>
+    <string name="voice_audio_incomplete">部分跑步伙伴语音不可用。请检查网络后重试，活动仍可正常开始。</string>
+    <string name="voice_audio_retry">重试</string>
+    <string name="voice_audio_unavailable">部分跑步伙伴语音尚未准备好，活动将正常开始。</string>
 </resources>

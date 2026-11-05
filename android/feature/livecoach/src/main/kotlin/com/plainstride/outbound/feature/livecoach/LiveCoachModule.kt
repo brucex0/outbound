@@ -15,6 +15,7 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class LiveCoachModule {
+    @Binds @Singleton abstract fun countdownAudio(implementation: com.plainstride.outbound.feature.livecoach.audio.BundledCountdownAudio): com.plainstride.outbound.feature.recording.RecordingCountdownAudio
     @Binds @Singleton abstract fun repository(implementation: DefaultLiveCoachRepository): LiveCoachRepository
     @Binds @Singleton abstract fun audioPack(implementation: VerifiedAudioPackStore): FixedAudioPackStore
     @Binds @Singleton abstract fun audioOutput(implementation: AndroidCoachAudioOutput): CoachAudioOutput

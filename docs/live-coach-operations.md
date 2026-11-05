@@ -2,6 +2,10 @@
 
 Open this when generating or publishing live-coach audio, changing the Google TTS route or voice map, or changing rollout exposure. Open `docs/live-coach-data-boundaries.md` for the exact privacy boundary.
 
+## Android Fixed Audio Preparation
+
+Android prepares the selected language/voice on authenticated app startup, retains verified downloads persistently, and bundles the short countdown recordings and tick. Missing voice audio never blocks recording; activity start shows temporary feedback while preparation continues. Open `android-voice-audio.md` for lifecycle, storage, asset refresh, and verification details. iOS continues to bundle its existing full pack.
+
 ## Current Architecture
 
 Ad-hoc Race mode supplies typed race distance, goal mode, optional target time/pace, pacing strategy, and a bounded recommendation source to the start planner. Runtime detection remains on device. Race moments use the same planned-cache and streaming route as other semantic cues. Fixed fallback uses the purpose-built `race.start_restraint` for the opening; halfway, late fade, target lock, and finish share a recording only when its sentence expresses the event exactly. Semantics and analytics remain race-specific.

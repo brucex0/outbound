@@ -1,0 +1,655 @@
+{
+  "contractVersion": 1,
+  "catalogVersion": "2026-10-22.1",
+  "generatedAt": "2026-10-23T04:52:11.822927Z",
+  "entries": [
+    {
+      "cueKey": "countdown.five",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Five.",
+      "sha256": "43a04fd6c64ddbda29454b4fe8fcd428b27c988f83074804b4e50bf50f7e0edd",
+      "byteCount": 59564,
+      "durationMilliseconds": 1240,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "43a04fd6c64ddbda29454b4fe8fcd428b27c988f83074804b4e50bf50f7e0edd"
+    },
+    {
+      "cueKey": "countdown.four",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Four.",
+      "sha256": "06b9764d51ccc7a2b790447ff0fe225d5d9ef9ade89e731232eb6069fac6b2a1",
+      "byteCount": 49964,
+      "durationMilliseconds": 1040,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "06b9764d51ccc7a2b790447ff0fe225d5d9ef9ade89e731232eb6069fac6b2a1"
+    },
+    {
+      "cueKey": "countdown.three",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Three.",
+      "sha256": "14a8474179846d076a53d06a6d1a02531dbb1b4c0d2eedf16439164bc21e98e9",
+      "byteCount": 49964,
+      "durationMilliseconds": 1040,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "14a8474179846d076a53d06a6d1a02531dbb1b4c0d2eedf16439164bc21e98e9"
+    },
+    {
+      "cueKey": "countdown.two",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Two.",
+      "sha256": "bcb0195468dba07cd04523947406db8671e3a5ae193a34646f7df3e5e41ed9d5",
+      "byteCount": 46124,
+      "durationMilliseconds": 960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "bcb0195468dba07cd04523947406db8671e3a5ae193a34646f7df3e5e41ed9d5"
+    },
+    {
+      "cueKey": "countdown.one",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "One.",
+      "sha256": "24b1afe86d593cd9f437e9b74fa9a2b2dbbf89af771fdff4d1b839e7d15937ce",
+      "byteCount": 40364,
+      "durationMilliseconds": 840,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "24b1afe86d593cd9f437e9b74fa9a2b2dbbf89af771fdff4d1b839e7d15937ce"
+    },
+    {
+      "cueKey": "countdown.go",
+      "locale": "en",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Go.",
+      "sha256": "eff5b6e0a4cfac1771557f711aaf20ff133b2966022227a7332f4aff2d8c1be0",
+      "byteCount": 49964,
+      "durationMilliseconds": 1040,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "eff5b6e0a4cfac1771557f711aaf20ff133b2966022227a7332f4aff2d8c1be0"
+    },
+    {
+      "cueKey": "countdown.five",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Cinco.",
+      "sha256": "cef97593dadbd6374705f60248ba4db90127868b44ac30eb9f49a603330e9b95",
+      "byteCount": 59564,
+      "durationMilliseconds": 1240,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "cef97593dadbd6374705f60248ba4db90127868b44ac30eb9f49a603330e9b95"
+    },
+    {
+      "cueKey": "countdown.four",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Cuatro.",
+      "sha256": "74971b65b5548d9f073e77ca8db04a30e3c08ceb34fc41165ed3edc4c4543066",
+      "byteCount": 48044,
+      "durationMilliseconds": 1000,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "74971b65b5548d9f073e77ca8db04a30e3c08ceb34fc41165ed3edc4c4543066"
+    },
+    {
+      "cueKey": "countdown.three",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Tres.",
+      "sha256": "40e5a016f63bfb798c2942f1693dca47e6d6090327acf8102af8f65fde9b4383",
+      "byteCount": 48044,
+      "durationMilliseconds": 1000,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "40e5a016f63bfb798c2942f1693dca47e6d6090327acf8102af8f65fde9b4383"
+    },
+    {
+      "cueKey": "countdown.two",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Dos.",
+      "sha256": "d2455d6f84310e49408a664fdb013edfb8fbd38600b0ee3fdc8e68f59e1a429c",
+      "byteCount": 49964,
+      "durationMilliseconds": 1040,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "d2455d6f84310e49408a664fdb013edfb8fbd38600b0ee3fdc8e68f59e1a429c"
+    },
+    {
+      "cueKey": "countdown.one",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Uno.",
+      "sha256": "0b42a20d3c5156573463699093bbcb663619fb9df93d9d9e6528d4af45c656f8",
+      "byteCount": 59564,
+      "durationMilliseconds": 1240,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "0b42a20d3c5156573463699093bbcb663619fb9df93d9d9e6528d4af45c656f8"
+    },
+    {
+      "cueKey": "countdown.go",
+      "locale": "es",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Adelante.",
+      "sha256": "120f3d51e5182f675c43593fed4350d51a503f8ef6d65505801f0da2f3f08a10",
+      "byteCount": 46124,
+      "durationMilliseconds": 960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "120f3d51e5182f675c43593fed4350d51a503f8ef6d65505801f0da2f3f08a10"
+    },
+    {
+      "cueKey": "countdown.five",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "五。",
+      "sha256": "c955331b6ed8c6afbb661f5f36851406912e6b627bd6fcb400d9f3e0ea5d1cc4",
+      "byteCount": 61484,
+      "durationMilliseconds": 1280,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "c955331b6ed8c6afbb661f5f36851406912e6b627bd6fcb400d9f3e0ea5d1cc4"
+    },
+    {
+      "cueKey": "countdown.four",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "四。",
+      "sha256": "570e5c20be968109119959d2d18c84f0de68a0d20335af5e6c699d68ac59cb59",
+      "byteCount": 59564,
+      "durationMilliseconds": 1240,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "570e5c20be968109119959d2d18c84f0de68a0d20335af5e6c699d68ac59cb59"
+    },
+    {
+      "cueKey": "countdown.three",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "三。",
+      "sha256": "ae69aa4baa930ff35737ca3bccae876d9d2027d7651a8ad24cafd403839b1708",
+      "byteCount": 32738,
+      "durationMilliseconds": 681,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "ae69aa4baa930ff35737ca3bccae876d9d2027d7651a8ad24cafd403839b1708"
+    },
+    {
+      "cueKey": "countdown.two",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "二。",
+      "sha256": "9c1fb1b1ce733890b46e11f6e7f2043be0c3a2ae2929b90dafc498b5728e3f99",
+      "byteCount": 52316,
+      "durationMilliseconds": 1089,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "9c1fb1b1ce733890b46e11f6e7f2043be0c3a2ae2929b90dafc498b5728e3f99"
+    },
+    {
+      "cueKey": "countdown.one",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "一。",
+      "sha256": "4f3870a73638dbe3a728f0333c40a6367c69ea31f010e55cf12c3177460c2687",
+      "byteCount": 33288,
+      "durationMilliseconds": 693,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "4f3870a73638dbe3a728f0333c40a6367c69ea31f010e55cf12c3177460c2687"
+    },
+    {
+      "cueKey": "countdown.go",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_clear_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "出发。",
+      "sha256": "a7da987dda8311f975e613f140182ae69526b34849b5b6d0b52c2ca27eeea9fa",
+      "byteCount": 46210,
+      "durationMilliseconds": 962,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "a7da987dda8311f975e613f140182ae69526b34849b5b6d0b52c2ca27eeea9fa"
+    },
+    {
+      "cueKey": "countdown.five",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Five.",
+      "sha256": "2ee0b053c883b7745b24bbc543f8557811ebeb206cd866bba716956990571df1",
+      "byteCount": 67244,
+      "durationMilliseconds": 1400,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "2ee0b053c883b7745b24bbc543f8557811ebeb206cd866bba716956990571df1"
+    },
+    {
+      "cueKey": "countdown.four",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Four.",
+      "sha256": "4dfa8211a7c5cdda3461ba5c9f61b502a4879b29848576f3e0ee3323a9eb967c",
+      "byteCount": 67244,
+      "durationMilliseconds": 1400,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "4dfa8211a7c5cdda3461ba5c9f61b502a4879b29848576f3e0ee3323a9eb967c"
+    },
+    {
+      "cueKey": "countdown.three",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Three.",
+      "sha256": "c021828c805ae361020172f29a16df2de2db55d83651a7b39af4e116f0061a13",
+      "byteCount": 20868,
+      "durationMilliseconds": 434,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "c021828c805ae361020172f29a16df2de2db55d83651a7b39af4e116f0061a13"
+    },
+    {
+      "cueKey": "countdown.two",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Two.",
+      "sha256": "421788c182a096fda192b6338ea5731bf55d64baabe2783ce3938a7f5eecfba6",
+      "byteCount": 18486,
+      "durationMilliseconds": 384,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "421788c182a096fda192b6338ea5731bf55d64baabe2783ce3938a7f5eecfba6"
+    },
+    {
+      "cueKey": "countdown.one",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "One.",
+      "sha256": "af27cf8fe0c86ce559f6266eb0768db992687ccd1187eb5067f27a5d7a8f721c",
+      "byteCount": 21636,
+      "durationMilliseconds": 450,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "af27cf8fe0c86ce559f6266eb0768db992687ccd1187eb5067f27a5d7a8f721c"
+    },
+    {
+      "cueKey": "countdown.go",
+      "locale": "en",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Go.",
+      "sha256": "5b5f475c00131b23d5a7afbcf0cb2528e97b8a59a84d20db6dd006cc415339d1",
+      "byteCount": 18104,
+      "durationMilliseconds": 376,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "5b5f475c00131b23d5a7afbcf0cb2528e97b8a59a84d20db6dd006cc415339d1"
+    },
+    {
+      "cueKey": "countdown.five",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Cinco.",
+      "sha256": "eab5b584d3e2ec24a3d4fbb4904173db1ae6c133f0aa1808de08f40e3d2d338f",
+      "byteCount": 67244,
+      "durationMilliseconds": 1400,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "eab5b584d3e2ec24a3d4fbb4904173db1ae6c133f0aa1808de08f40e3d2d338f"
+    },
+    {
+      "cueKey": "countdown.four",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Cuatro.",
+      "sha256": "279b527cd4b827197bae26c62544e69a6e5e16e6399a0325a275b1f2a4c3d99c",
+      "byteCount": 46124,
+      "durationMilliseconds": 960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "279b527cd4b827197bae26c62544e69a6e5e16e6399a0325a275b1f2a4c3d99c"
+    },
+    {
+      "cueKey": "countdown.three",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Tres.",
+      "sha256": "6e73fa4b66f3d11050cc4fab07606b7bc2e2c00b7aa75abab7f08a440e64a3a0",
+      "byteCount": 65324,
+      "durationMilliseconds": 1360,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "6e73fa4b66f3d11050cc4fab07606b7bc2e2c00b7aa75abab7f08a440e64a3a0"
+    },
+    {
+      "cueKey": "countdown.two",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Dos.",
+      "sha256": "bce61f59b68a45c667028194a56863d1db3f170a316ec96044b8deda2f6a8318",
+      "byteCount": 49964,
+      "durationMilliseconds": 1040,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "bce61f59b68a45c667028194a56863d1db3f170a316ec96044b8deda2f6a8318"
+    },
+    {
+      "cueKey": "countdown.one",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Uno.",
+      "sha256": "f1a835cc107787540670a8adb041322870e63aab9589739311876d5b11e79c76",
+      "byteCount": 17324,
+      "durationMilliseconds": 360,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "f1a835cc107787540670a8adb041322870e63aab9589739311876d5b11e79c76"
+    },
+    {
+      "cueKey": "countdown.go",
+      "locale": "es",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "Adelante.",
+      "sha256": "7032fb841c1e03ab28094c3be5ca823e14e910cfe94d241a4474bde9e146f324",
+      "byteCount": 59564,
+      "durationMilliseconds": 1240,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "7032fb841c1e03ab28094c3be5ca823e14e910cfe94d241a4474bde9e146f324"
+    },
+    {
+      "cueKey": "countdown.five",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "五。",
+      "sha256": "640e704d8701504f3e422c615d7cc66b18d4dcc40f4189030e1b38aba1fcd417",
+      "byteCount": 40364,
+      "durationMilliseconds": 840,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "640e704d8701504f3e422c615d7cc66b18d4dcc40f4189030e1b38aba1fcd417"
+    },
+    {
+      "cueKey": "countdown.four",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "四。",
+      "sha256": "6c6f0f4ceb651d5fda6731c35fddd877b17e3d6350939763b33f07963f8e8238",
+      "byteCount": 38444,
+      "durationMilliseconds": 800,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "6c6f0f4ceb651d5fda6731c35fddd877b17e3d6350939763b33f07963f8e8238"
+    },
+    {
+      "cueKey": "countdown.three",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "三。",
+      "sha256": "e69065a472ba9c8cc82269248ea685a625a08f4be74412da5252a3d083cbbeb3",
+      "byteCount": 49964,
+      "durationMilliseconds": 1040,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "e69065a472ba9c8cc82269248ea685a625a08f4be74412da5252a3d083cbbeb3"
+    },
+    {
+      "cueKey": "countdown.two",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "二。",
+      "sha256": "38e04e0d96e5d2e8ddbd92c7ce26625ac666a697ed1e21194122956faf51533b",
+      "byteCount": 46124,
+      "durationMilliseconds": 960,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "38e04e0d96e5d2e8ddbd92c7ce26625ac666a697ed1e21194122956faf51533b"
+    },
+    {
+      "cueKey": "countdown.one",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "一。",
+      "sha256": "ac93fb880e00e9a75ac17f2ee6b93d6252f0309f4d79da1199d88bc8aa7e6e42",
+      "byteCount": 42284,
+      "durationMilliseconds": 880,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "ac93fb880e00e9a75ac17f2ee6b93d6252f0309f4d79da1199d88bc8aa7e6e42"
+    },
+    {
+      "cueKey": "countdown.go",
+      "locale": "zh-Hans",
+      "voiceProfileId": "plainstride_warm_1",
+      "scriptStyleId": "standard",
+      "compatibleCoachPersonaIds": [
+        "plainstride_supportive_v1",
+        "plainstride_focused_v1",
+        "plainstride_calm_v1"
+      ],
+      "transcript": "出发。",
+      "sha256": "b63586503223f2440f132a024e83e4bcf21b1cb51b2a56618526c5ad4bfde2c3",
+      "byteCount": 67244,
+      "durationMilliseconds": 1400,
+      "contentType": "audio/wav",
+      "approved": true,
+      "bundledResourceName": "b63586503223f2440f132a024e83e4bcf21b1cb51b2a56618526c5ad4bfde2c3"
+    }
+  ]
+}
