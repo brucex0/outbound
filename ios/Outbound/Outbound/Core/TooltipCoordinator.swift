@@ -37,16 +37,6 @@ struct AppTooltip: Hashable, Sendable {
         legacyDismissedKey: "music_discovery_tip_dismissed_v1"
     )
 
-    static let themeDiscovery = AppTooltip(
-        id: "theme_discovery",
-        analyticsFeature: "theme_discovery_tip",
-        priority: 100,
-        maximumPresentations: 3,
-        delay: .milliseconds(650),
-        budget: .discovery,
-        legacyDismissedKey: "theme_discovery_tip_dismissed_v1"
-    )
-
     static let photoManagement = AppTooltip(
         id: "photo_management",
         analyticsFeature: "photo_management_tip",

@@ -259,6 +259,15 @@ struct SimplifiedAppShell: View {
             }
             .toolbar(.hidden, for: .tabBar)
         }
+        .overlay {
+            if !isActivityFullscreenVisible {
+                // Only the dock ignores the keyboard; tab content keeps native avoidance.
+                bottomNavigationDock
+                    .frame(height: FixedTabBarLayout.dockHeight)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .ignoresSafeArea(.keyboard, edges: .bottom)
+            }
+        }
         .tint(guideCatalog.selectedTheme.accentColor)
         .fullScreenCover(isPresented: Binding(
             get: { !appNavigationStore.sharedDestinations.isEmpty },
@@ -334,10 +343,6 @@ struct SimplifiedAppShell: View {
                 }
             }
         }
-        .ignoresSafeArea(
-            .keyboard,
-            edges: selection == .today && activitySessionState == .idle ? .bottom : []
-        )
         .sheet(isPresented: $showsAssistant) {
             AssistantView(
                 screenName: assistantScreenName,
@@ -659,8 +664,10 @@ struct SimplifiedAppShell: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             if !isActivityFullscreenVisible {
-                bottomNavigationDock
+                // Preserve the page viewport without tying the dock to keyboard resizing.
+                Color.clear
                     .frame(height: FixedTabBarLayout.dockHeight)
+                    .accessibilityHidden(true)
             }
         }
     }
@@ -837,7 +844,6 @@ private struct SimplifiedTodayView: View {
     @State private var isCompanionInsightLoading = false
     @State private var companionRequestID: UUID?
     @State private var currentDay = Calendar.current.startOfDay(for: Date())
-    @State private var showsThemeChooser = false
     @State private var mapAttributionBottomInset: CGFloat = 0
     @State private var activityLaunchFloatingContentHeight: CGFloat = 0
     @State private var activityLaunchMapControlsHeight: CGFloat = 0
@@ -914,17 +920,6 @@ private struct SimplifiedTodayView: View {
                             .accessibilityIdentifier("today.stretch")
                     }
                 }
-                if tooltipCoordinator.canEventuallyPresent(.themeDiscovery) {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            openThemeChooserFromTip()
-                        } label: {
-                            Image(systemName: "paintpalette.fill")
-                        }
-                        .accessibilityLabel("Change appearance")
-                        .accessibilityIdentifier("today.appearance")
-                    }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     GlobalConditionsButton()
                         .accessibilityIdentifier("today.conditions")
@@ -940,28 +935,6 @@ private struct SimplifiedTodayView: View {
                     }
                 }
             }
-            .safeAreaInset(edge: .top, spacing: 0) {
-                if tooltipCoordinator.isPresented(.themeDiscovery) {
-                    HStack {
-                        Button(action: openThemeChooserFromTip) {
-                            Text(String(localized: "theme.discovery.tip", defaultValue: "Tap to change appearance"))
-                                .font(.subheadline.weight(.semibold))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
-                                .background(.regularMaterial, in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("today.appearanceTip")
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.horizontal, OutboundSpacing.screen)
-                    .padding(.bottom, 8)
-                }
-            }
-            .tooltipCandidate(
-                .themeDiscovery,
-                isEligible: isSelected && activitySessionState == .idle && !isActivityFullscreenVisible
-            )
             .onAppear {
                 presentPendingAdjustmentIfNeeded(personalizationStore.snapshot.pendingAdjustment?.id)
             }
@@ -1033,10 +1006,6 @@ private struct SimplifiedTodayView: View {
                 }
             )
             .presentationDetents([.medium, .large])
-        }
-        .sheet(isPresented: $showsThemeChooser) {
-            ThemeChooserView()
-                .environmentObject(guideCatalog)
         }
     }
 
@@ -1185,11 +1154,6 @@ private struct SimplifiedTodayView: View {
         case .removeRoute:
             onRouteRemovalAction()
         }
-    }
-
-    private func openThemeChooserFromTip() {
-        tooltipCoordinator.dismiss(.themeDiscovery, outcome: "opened")
-        showsThemeChooser = true
     }
 
     private var activityEventToday: ActivityEventDTO? {

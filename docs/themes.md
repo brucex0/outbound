@@ -6,15 +6,15 @@
 - The selection is persisted in `UserDefaults` by `AppearancePreferences` and applied at the app root with SwiftUI's `preferredColorScheme`.
 - System is the default for people who have not chosen a mode on iOS or Android. Saved System, Light, and Dark selections remain respected. Theme colors remain a separate preference and adapt within the selected appearance.
 
-Open this when adding, changing, or applying an app theme or editing theme discovery in Today and Settings.
+Open this when adding, changing, or applying an app theme or editing appearance settings.
 
 ## Product Rules
 
 - Theme is an app appearance preference, not a companion identity or avatar.
-- The permanent entry point is `Settings > Appearance > Theme`. It opens the same appearance chooser used by the Today discovery tip, with mode controls and rich theme previews; do not maintain a second picker presentation.
+- The permanent entry point is `Settings > Appearance > Theme`. It opens the shared appearance chooser with mode controls and rich theme previews; do not maintain a second picker presentation.
 - In Settings, keep the System/Light/Dark control visible in the Appearance section and open the chooser from a Theme row showing the current theme. The chooser presents the mode control and a single-column list of gradient theme previews with a selected marker; Android uses its standard back navigation to close the screen.
 - Assistant requests such as “change app theme” open that shared appearance chooser directly.
-- Today may show the single-line discovery tip “Tap to change appearance” up to three times. The pill appears below the navigation bar; tapping either the pill or the palette control opens the appearance chooser directly.
+- Today has no appearance shortcut or discovery tip; keep its toolbar focused on activity preparation.
 - Keep the list intentionally finite. The current eight themes cover restrained, natural, warm, celebratory, and high-energy personalities without categories or pagination.
 - Theme changes apply immediately and persist in `UserDefaults` through `GuideCatalogStore`.
 
@@ -69,13 +69,5 @@ The selected theme is also injected through `EnvironmentValues.outboundTheme`. A
 5. Check the current-theme preview in Settings and the shared chooser's gradient preview.
 6. Confirm Today, shared hero cards, buttons, tab tint, and companion explanations update without leaving the screen.
 7. Keep the total list small enough to scan. Adding a theme should fill a distinct personality or color-space gap, not duplicate an existing option.
-
-## Discovery Tip
-
-- The Today palette tip is shown at most three times after a short delay and appears as an inline pill below the toolbar, alongside a temporary palette button. It does not use a native popover or cover toolbar controls. Each actual presentation counts toward the limit.
-- Tapping the pill or palette control permanently dismisses the tip and opens the appearance chooser, where both mode and theme can be changed.
-- Dismissal is stored under `theme_discovery_tip_dismissed_v1`.
-- The presentation count is stored under `theme_discovery_tip_presentation_count_v1`.
-- The permanent Settings entry remains available after the temporary tip disappears.
 
 - Victory Gold hero gradients use the secondary gold as the middle stop on both platforms, in light and dark appearance; using the darker accent here makes Android hero cards and floating controls visibly brown compared with iOS.
