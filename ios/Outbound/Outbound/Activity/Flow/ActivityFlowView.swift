@@ -7,6 +7,7 @@ struct ActivityFlowView: View {
     @Environment(\.scenePhase) var scenePhase
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     @Environment(\.outboundTheme) var theme
+    @FocusState var isMusicSearchFocused: Bool
     @FocusState var focusedCustomGoalKind: CustomGoalKind?
     @ObservedObject var model: ActivityFlowCoordinator
     let host: ActivityFlowHost

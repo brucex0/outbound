@@ -99,6 +99,7 @@ extension ActivityFlowView {
                     goalValueEditor.padding(20)
                 case .music:
                     ScrollView { musicSetupChoices.padding() }
+                        .scrollDismissesKeyboard(.interactively)
                 case .more:
                     moreSetupSheet
                 case .groupRun:
@@ -115,6 +116,19 @@ extension ActivityFlowView {
                 }
             }
         }
+    }
+
+    private func dismissMusicKeyboard(action: String) {
+        isMusicSearchFocused = false
+        model.track(.init(.activityConfigurationChanged, properties: [
+            .changeType: .string("music_keyboard"),
+            .selectionType: .string(action)
+        ]))
+    }
+
+    private func submitMusicSearch(action: String) {
+        dismissMusicKeyboard(action: action)
+        model.setup.searchMusic()
     }
 
     var musicSetupChoices: some View {
@@ -175,8 +189,9 @@ extension ActivityFlowView {
                     TextField(String(localized: "record.music.search", defaultValue: "Search Apple Music"), text: binding(\.setup.musicSearchText))
                         .textFieldStyle(.roundedBorder)
                         .submitLabel(.search)
-                        .onSubmit { model.setup.searchMusic() }
-                    Button { model.setup.searchMusic() } label: {
+                        .focused($isMusicSearchFocused)
+                        .onSubmit { submitMusicSearch(action: "keyboard_search") }
+                    Button { submitMusicSearch(action: "search_icon") } label: {
                         if model.dependencies.musicStore.isSearching { ProgressView() } else { Image(systemName: "magnifyingglass") }
                     }
                     .buttonStyle(.bordered)
