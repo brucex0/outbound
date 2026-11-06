@@ -3,6 +3,7 @@ import MapKit
 import SwiftUI
 
 struct CreateActivityEventView: View {
+    @FocusState private var focusedInput: String?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var socialStore: TogetherStore
@@ -90,6 +91,10 @@ struct CreateActivityEventView: View {
         Form {
             Section {
                 TextField(eventTitlePlaceholder, text: $title)
+                    .focused($focusedInput, equals: "title")
+                    .submitLabel(.next)
+                    .inputSubmissionAnalytics(.activityEvent)
+                    .onSubmit { focusedInput = nil; isLocationFieldFocused = true }
                     .textInputAutocapitalization(.sentences)
             } header: {
                 Text(eventNameLabel)
@@ -132,6 +137,7 @@ struct CreateActivityEventView: View {
                     .focused($isLocationFieldFocused)
                     .textInputAutocapitalization(.words)
                     .submitLabel(.done)
+                    .inputSubmissionAnalytics(.activityEvent)
                     .onSubmit { isLocationFieldFocused = false }
 
                     if isResolvingLocation {
@@ -311,6 +317,8 @@ struct CreateActivityEventView: View {
     }
 
     private func submit() async {
+        focusedInput = nil
+        isLocationFieldFocused = false
         if let editingActivity {
             await update(editingActivity)
         } else {

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct CalorieWeightInputView: View {
+    @FocusState private var isWeightFocused: Bool
     @Environment(\.analyticsManager) private var analyticsManager
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
@@ -14,6 +15,9 @@ struct CalorieWeightInputView: View {
             Form {
                 Section {
                     TextField(weightLabel, text: $weightText)
+                        .submitLabel(.done)
+                        .onSubmit { isWeightFocused = false }
+                        .focused($isWeightFocused)
                         .keyboardType(.decimalPad)
                 } header: {
                     Text(String(localized: "activity.calories.weight.title", defaultValue: "Weight"))
@@ -67,6 +71,7 @@ struct CalorieWeightInputView: View {
     }
 
     private func saveWeight() {
+        isWeightFocused = false
         guard let weightKilograms = parsedWeightKilograms else { return }
         isSaving = true
         errorMessage = nil

@@ -25,6 +25,7 @@ Primary flow:
 | Task | Open | Contains |
 | --- | --- | --- |
 | Git push corruption, SSH upload pacing, and local transport configuration | `docs/git-transport.md` | Verified upload workaround, setup, throughput tradeoff, and removal |
+| iOS text input, keyboard submission, focus, and dismissal | `docs/ios-inputs.md` | Native keyboard policy, audited surfaces, and manual verification checklist |
 | App flow, Swift files, recording, camera, persistence, guide analysis | `docs/ios-architecture.md` | Source layout, module responsibilities, current recording and AI guide shape |
 | Android public-release port, parity contract, platform substitutions, phases, and release gates | `docs/android-port.md` | Full-scope Kotlin/Compose architecture, cross-platform contract strategy, phase deliverables, verification gates, and release definition of done |
 | Android destination ownership, direct links, Back behavior, and navigation verification | `docs/android-navigation.md` | Canonical ID-based routes, explicit modal exceptions, destination-scoped state, and manual verification matrix |

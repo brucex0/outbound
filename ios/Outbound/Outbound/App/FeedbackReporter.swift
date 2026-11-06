@@ -104,6 +104,7 @@ extension View {
 }
 
 private struct FeedbackForm: View {
+    @FocusState private var isMessageFocused: Bool
     @Environment(\.dismiss) private var dismiss
     @Environment(\.analyticsManager) private var analyticsManager
     @State private var kind: FeedbackKind = .bug
@@ -154,6 +155,7 @@ private struct FeedbackForm: View {
 
                 Section(kind == .bug ? "What went wrong?" : "What would make Plainstride better?") {
                     TextField("Share as much detail as you can", text: $message, axis: .vertical)
+                        .focused($isMessageFocused)
                         .lineLimit(5...10)
                 }
 
@@ -222,6 +224,7 @@ private struct FeedbackForm: View {
 
     private func submitReport() {
         guard !isSubmitting, !trimmedMessage.isEmpty else { return }
+        isMessageFocused = false
         isSubmitting = true
         toast = nil
         let logSnapshot = includesRecentLogs ? FeedbackLogCollector.snapshot() : .excluded

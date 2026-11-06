@@ -552,6 +552,7 @@ private struct IntakeTextEditor: View {
 }
 
 private struct NumberField: View {
+    @FocusState private var isNumberFocused: Bool
     let title: String
     let detail: String
     @Binding var text: String
@@ -569,6 +570,9 @@ private struct NumberField: View {
             Spacer(minLength: 12)
 
             TextField("Required", text: $text)
+                .focused($isNumberFocused)
+                .submitLabel(.done)
+                .onSubmit { isNumberFocused = false }
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
                 .font(.headline)

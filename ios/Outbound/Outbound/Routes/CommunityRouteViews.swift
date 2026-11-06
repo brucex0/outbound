@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 enum CommunityRouteLibraryMode { case discover, mine }
 
 struct CommunityRouteLibraryView: View {
+    @FocusState private var isSearchFocused: Bool
     @Environment(\.dismiss) private var dismiss
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var store: CommunityRouteStore
@@ -93,7 +94,9 @@ struct CommunityRouteLibraryView: View {
                                 }
                             )
                         )
+                        .focused($isSearchFocused)
                         .submitLabel(.search)
+                        .inputSubmissionAnalytics(.routes)
                         .onSubmit { submitSearch() }
                         if !query.isEmpty {
                             Button {
@@ -346,6 +349,7 @@ struct CommunityRouteLibraryView: View {
     }
 
     private func submitSearch() {
+        isSearchFocused = false
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !myRoutesOnly else { return }
         guard !trimmed.isEmpty else { resetDiscovery(); return }

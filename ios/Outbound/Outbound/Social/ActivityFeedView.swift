@@ -873,11 +873,19 @@ private struct RouteLineShape: Shape {
 }
 
 private struct CommentThreadSheet: View {
+    @FocusState private var focusedInput: String?
     @Environment(\.dismiss) private var dismiss
     let post: SocialFeedPost
     let comments: [SocialComment]
     let onSend: (String) -> Void
     @State private var draft = ""
+
+    private func sendComment() {
+        guard !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        focusedInput = nil
+        onSend(draft)
+        draft = ""
+    }
 
     var body: some View {
         NavigationStack {
@@ -911,11 +919,14 @@ private struct CommentThreadSheet: View {
 
                 HStack(spacing: 10) {
                     TextField(String(localized: "social.add_comment", defaultValue: "Add a comment"), text: $draft)
+                        .focused($focusedInput, equals: "draft")
+                        .submitLabel(.send)
+                        .inputSubmissionAnalytics(.comments)
+                        .onSubmit { sendComment() }
                         .textFieldStyle(.roundedBorder)
 
                     Button {
-                        onSend(draft)
-                        draft = ""
+                        sendComment()
                     } label: {
                         Image(systemName: "paperplane.fill")
                             .font(.headline)

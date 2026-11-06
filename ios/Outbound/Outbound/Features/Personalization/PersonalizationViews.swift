@@ -89,6 +89,7 @@ struct ReadinessCheckInView: View {
 }
 
 struct CompanionMemoryView: View {
+    @FocusState private var isSummaryFocused: Bool
     @State private var memories: [CompanionMemoryDTO] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -154,6 +155,7 @@ struct CompanionMemoryView: View {
                 Form {
                     Section(memory.label) {
                         TextField(String(localized: "personalization.memory.correct.placeholder", defaultValue: "What should Plainstride remember?"), text: $editedSummary, axis: .vertical)
+                            .focused($isSummaryFocused)
                             .lineLimit(2...6)
                     }
                     Section {
@@ -188,6 +190,7 @@ struct CompanionMemoryView: View {
     private func correct(_ memory: CompanionMemoryDTO) async {
         let summary = editedSummary.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !summary.isEmpty else { return }
+        isSummaryFocused = false
         do {
             let corrected = try await APIClient.shared.correctCompanionMemory(stableKey: memory.stableKey, summary: summary, label: memory.label).memory
             memories = memories.map { $0.stableKey == corrected.stableKey ? corrected : $0 }

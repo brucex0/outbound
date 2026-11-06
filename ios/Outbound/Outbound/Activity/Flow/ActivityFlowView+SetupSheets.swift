@@ -99,7 +99,6 @@ extension ActivityFlowView {
                     goalValueEditor.padding(20)
                 case .music:
                     ScrollView { musicSetupChoices.padding() }
-                        .scrollDismissesKeyboard(.interactively)
                 case .more:
                     moreSetupSheet
                 case .groupRun:

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SimplifiedOnboardingFlow: View {
+    @FocusState private var focusedInput: String?
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var onboardingStore: OnboardingStore
@@ -263,6 +264,7 @@ struct SimplifiedOnboardingFlow: View {
                             text: $draft.constraints,
                             axis: .vertical
                         )
+                        .focused($focusedInput, equals: "draft_constraints")
                         .textFieldStyle(.roundedBorder)
                         VStack(spacing: 8) {
                             Button {
@@ -365,6 +367,7 @@ struct SimplifiedOnboardingFlow: View {
                 }
             }
             TextField(String(localized: "plan_builder.week.constraints", defaultValue: "Injury, illness, travel, or schedule constraints (optional)"), text: $draft.constraints, axis: .vertical)
+                .focused($focusedInput, equals: "draft_constraints")
                 .textFieldStyle(.roundedBorder)
         }
     }
@@ -688,14 +691,36 @@ struct SimplifiedOnboardingFlow: View {
     private var identityContent: some View {
         VStack(alignment: .leading, spacing: 14) {
             heading(String(localized: "onboarding.identity.heading", defaultValue: "Finish your profile"), String(localized: "onboarding.identity.subtitle", defaultValue: "Your identity stays separate from plan setup."))
-            TextField(String(localized: "onboarding.identity.display_name", defaultValue: "Display name"), text: $displayName).textFieldStyle(.roundedBorder)
-            TextField(String(localized: "onboarding.identity.username", defaultValue: "Username"), text: $username).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder)
-            if !validEmail { TextField(String(localized: "onboarding.identity.email", defaultValue: "Email"), text: $email).textInputAutocapitalization(.never).keyboardType(.emailAddress).textFieldStyle(.roundedBorder) }
+            TextField(String(localized: "onboarding.identity.display_name", defaultValue: "Display name"), text: $displayName)
+                .focused($focusedInput, equals: "displayName")
+                .submitLabel(.next)
+                .inputSubmissionAnalytics(.onboarding)
+                .onSubmit { focusedInput = "username" }
+                .textFieldStyle(.roundedBorder)
+            TextField(String(localized: "onboarding.identity.username", defaultValue: "Username"), text: $username)
+                .focused($focusedInput, equals: "username")
+                .submitLabel(validEmail ? .done : .next)
+                .inputSubmissionAnalytics(.onboarding)
+                .onSubmit { focusedInput = validEmail ? nil : "email" }
+                .textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder)
+            if !validEmail {
+                TextField(String(localized: "onboarding.identity.email", defaultValue: "Email"), text: $email)
+                    .focused($focusedInput, equals: "email")
+                    .submitLabel(.done)
+                    .inputSubmissionAnalytics(.onboarding)
+                    .onSubmit { focusedInput = nil }
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.emailAddress)
+                    .textContentType(.emailAddress)
+                    .textFieldStyle(.roundedBorder)
+            }
             if let identityError { Text(identityError).font(.footnote).foregroundStyle(.red) }
         }
     }
 
     private func saveIdentity() async {
+        focusedInput = nil
         guard identityFormIsValid else { return }
         isSavingIdentity = true; identityError = nil
         defer { isSavingIdentity = false }
@@ -770,6 +795,7 @@ struct SimplifiedOnboardingFlow: View {
     }
 
     private func saveTrainingProfileAndContinue() async {
+        focusedInput = nil
         guard trainingMeasurementsAreValid, requiredBodyProfileComplete, !isSavingTrainingProfile else { return }
 
         isSavingTrainingProfile = true
@@ -1183,6 +1209,7 @@ struct SimplifiedOnboardingFlow: View {
                 text: Binding(get: { draft.successSignal ?? "" }, set: { draft.successSignal = $0 }),
                 axis: .vertical
             )
+            .focused($focusedInput, equals: "successSignal")
             .lineLimit(2...4)
             .textFieldStyle(.roundedBorder)
             .padding(.leading, 48)
@@ -1543,6 +1570,8 @@ struct SimplifiedOnboardingFlow: View {
     }
 
     private func advance() {
+        focusedInput = nil
+        isGoalInputFocused = false
         if step == .objective { ensureObjectiveDefaults() }
         switch step {
         case .activities where draft.observedBaselineConfirmed == true && intakeContext?.suggestedSetup?.confidence == "high":
@@ -1555,6 +1584,8 @@ struct SimplifiedOnboardingFlow: View {
     }
 
     private func goBack() {
+        focusedInput = nil
+        isGoalInputFocused = false
         switch step {
         case .profile where draft.observedBaselineConfirmed == true && intakeContext?.suggestedSetup?.confidence == "high":
             step = .activities
@@ -1734,7 +1765,12 @@ struct SimplifiedOnboardingFlow: View {
     private func trainingMeasurementField(_ title: String, text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            TextField(title, text: text).keyboardType(.decimalPad).textFieldStyle(.roundedBorder)
+            TextField(title, text: text)
+                .focused($focusedInput, equals: title)
+                .keyboardType(.decimalPad)
+                .submitLabel(.done)
+                .onSubmit { focusedInput = nil }
+                .textFieldStyle(.roundedBorder)
         }
         .frame(maxWidth: .infinity)
     }

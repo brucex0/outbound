@@ -1106,6 +1106,7 @@ struct ActivityDetailView: View {
 }
 
 private struct PublishRouteSheet: View {
+    @FocusState private var focusedInput: String?
     @Environment(\.dismiss) private var dismiss
     let activity: SavedActivity
     let onPublish: (String) async -> Bool
@@ -1135,6 +1136,10 @@ private struct PublishRouteSheet: View {
                         ),
                         text: $name
                     )
+                    .focused($focusedInput, equals: "name")
+                    .submitLabel(.done)
+                    .inputSubmissionAnalytics(.routePublish)
+                    .onSubmit { focusedInput = nil }
                 }
                 Section {
                     Label(
@@ -1183,6 +1188,7 @@ private struct PublishRouteSheet: View {
                                 defaultValue: "Publish"
                             )
                     ) {
+                        focusedInput = nil
                         isPublishing = true
                         Task {
                             if await onPublish(name.trimmingCharacters(in: .whitespacesAndNewlines)) {
@@ -2165,6 +2171,7 @@ private enum EditableActivityPhoto: Identifiable {
 }
 
 private struct EditActivityView: View {
+    @FocusState private var focusedInput: String?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject var activityStore: ActivityStore
@@ -2211,6 +2218,10 @@ private struct EditActivityView: View {
                     editorCard("Activity") {
                         LabeledContent("Title") {
                             TextField("Title", text: $title)
+                                .focused($focusedInput, equals: "title")
+                                .submitLabel(.done)
+                                .inputSubmissionAnalytics(.activityEdit)
+                                .onSubmit { focusedInput = nil }
                                 .multilineTextAlignment(.trailing)
                                 .accessibilityIdentifier("EditActivityTitle")
                         }
@@ -2237,6 +2248,9 @@ private struct EditActivityView: View {
                             Text("Distance")
                             Spacer()
                             TextField("Distance", text: $distanceText)
+                                .submitLabel(.done)
+                                .onSubmit { focusedInput = nil }
+                                .focused($focusedInput, equals: "distanceText")
                                 .keyboardType(.decimalPad)
                                 .multilineTextAlignment(.trailing)
                             Text(units.distanceUnit).foregroundStyle(.secondary)
@@ -2244,9 +2258,9 @@ private struct EditActivityView: View {
                         VStack(alignment: .leading) {
                             Text("Duration")
                             HStack {
-                                durationInput("activity.edit.hours", value: $hours)
-                                durationInput("activity.edit.minutes", value: $minutes)
-                                durationInput("activity.edit.seconds", value: $seconds)
+                                durationInput("activity.edit.hours", value: $hours, focusID: "hours")
+                                durationInput("activity.edit.minutes", value: $minutes, focusID: "minutes")
+                                durationInput("activity.edit.seconds", value: $seconds, focusID: "seconds")
                             }
                         }
                         LabeledContent("session.metric.average_pace", value: pacePreview)
@@ -2453,10 +2467,13 @@ private struct EditActivityView: View {
         }
     }
 
-    private func durationInput(_ label: LocalizedStringKey, value: Binding<Int>) -> some View {
+    private func durationInput(_ label: LocalizedStringKey, value: Binding<Int>, focusID: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label).font(.caption).foregroundStyle(.secondary)
             TextField(label, value: value, format: .number.grouping(.never))
+                .submitLabel(.done)
+                .onSubmit { focusedInput = nil }
+                .focused($focusedInput, equals: focusID)
                 .keyboardType(.numberPad)
                 .textFieldStyle(.roundedBorder)
         }
@@ -2503,6 +2520,7 @@ private struct EditActivityView: View {
     }
 
     private func save() async {
+        focusedInput = nil
         guard !isSaving, !isImporting, hasChanges, validMetrics else { return }
         isSaving = true
         defer { isSaving = false }

@@ -2190,6 +2190,7 @@ private struct CompactIntervalPreview: View {
 }
 
 private struct TodayChangeSheet: View {
+    @FocusState private var focusedInput: String?
     @Environment(\.dismiss) private var dismiss
     let originalTitle: String
     let pendingAdjustment: AdjustmentProposalDTO?
@@ -2239,12 +2240,14 @@ private struct TodayChangeSheet: View {
                     }
 
                     TextField("Anything else? (optional)", text: $note, axis: .vertical)
+                        .focused($focusedInput, equals: "note")
                         .textFieldStyle(.roundedBorder)
                         .lineLimit(2...3)
 
                     Spacer()
 
                     OutboundPrimaryButton(title: primaryTitle(reason), systemImage: primaryIcon(reason)) {
+                        focusedInput = nil
                         onApply(reason, cleanedNote, recommendedMinutes(reason), reason != .sore)
                     }
                     Button("Keep original") { dismiss() }
@@ -2259,6 +2262,9 @@ private struct TodayChangeSheet: View {
                 }
             }
             .padding(OutboundSpacing.screen)
+            .background {
+                Color.clear.contentShape(Rectangle()).onTapGesture { focusedInput = nil }
+            }
             .navigationTitle("Change today’s run")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
@@ -3387,6 +3393,7 @@ private struct SimplifiedProfileView: View {
 }
 
 private struct SimplifiedProfileEditorView: View {
+    @FocusState private var focusedInput: String?
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var measurementPreferences: MeasurementPreferences
@@ -3467,11 +3474,19 @@ private struct SimplifiedProfileEditorView: View {
             }
             Section {
                 TextField("Display name", text: $displayName)
+                    .focused($focusedInput, equals: "displayName")
+                    .submitLabel(.next)
+                    .inputSubmissionAnalytics(.profile)
+                    .onSubmit { focusedInput = "username" }
                     .textInputAutocapitalization(.words)
                 TextField(
                     String(localized: "profile.username.label", defaultValue: "Username"),
                     text: $username
                 )
+                .focused($focusedInput, equals: "username")
+                .submitLabel(.next)
+                .inputSubmissionAnalytics(.profile)
+                .onSubmit { focusedInput = "bio" }
                 .textInputAutocapitalization(.never)
                 .textContentType(.username)
                 .autocorrectionDisabled()
@@ -3480,6 +3495,7 @@ private struct SimplifiedProfileEditorView: View {
                     if normalized != value { username = normalized }
                 }
                 TextField("Running bio", text: $bio, axis: .vertical)
+                    .focused($focusedInput, equals: "bio")
                     .lineLimit(2...4)
                 Picker("Sex assigned at birth", selection: $sexAtBirth) {
                     Text("Not provided").tag(nil as TrainingProfileSex?)
@@ -3500,17 +3516,30 @@ private struct SimplifiedProfileEditorView: View {
                     .disabled(preservedTrainingProfile == nil)
                 }
                 TextField(heightLabel, text: $heightText)
+                    .submitLabel(.done)
+                    .onSubmit { focusedInput = nil }
+                    .focused($focusedInput, equals: "heightText")
                     .keyboardType(.decimalPad)
                     .disabled(preservedTrainingProfile == nil)
                 TextField(weightLabel, text: $weightText)
+                    .submitLabel(.done)
+                    .onSubmit { focusedInput = nil }
+                    .focused($focusedInput, equals: "weightText")
                     .keyboardType(.decimalPad)
                     .disabled(preservedTrainingProfile == nil)
                 TextField("Email", text: $contactEmail)
+                    .focused($focusedInput, equals: "contactEmail")
+                    .submitLabel(.next)
+                    .inputSubmissionAnalytics(.profile)
+                    .onSubmit { focusedInput = "contactPhone" }
                     .textInputAutocapitalization(.never)
                     .keyboardType(.emailAddress)
                     .textContentType(.emailAddress)
                     .autocorrectionDisabled()
                 TextField("Phone number", text: $contactPhone)
+                    .submitLabel(.done)
+                    .onSubmit { focusedInput = nil }
+                    .focused($focusedInput, equals: "contactPhone")
                     .keyboardType(.phonePad)
                     .textContentType(.telephoneNumber)
             } header: {
@@ -3630,6 +3659,7 @@ private struct SimplifiedProfileEditorView: View {
     }
 
     private func save() async {
+        focusedInput = nil
         isSaving = true
         defer { isSaving = false }
         do {

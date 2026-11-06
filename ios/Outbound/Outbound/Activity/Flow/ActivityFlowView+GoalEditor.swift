@@ -102,6 +102,8 @@ extension ActivityFlowView {
                         text: goalEditorTextBinding(for: kind),
                         prompt: Text("0")
                     )
+                    .submitLabel(.done)
+                    .onSubmit { focusedCustomGoalKind = nil }
                     .accessibilityIdentifier("activity.goal.custom")
                     .keyboardType(kind == .distance ? .decimalPad : .numberPad)
                     .font(.body.monospacedDigit().weight(.semibold))

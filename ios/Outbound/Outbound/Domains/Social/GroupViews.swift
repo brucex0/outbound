@@ -360,6 +360,7 @@ struct GroupCompactContent: View {
 }
 
 struct GroupCreateView: View {
+    @FocusState private var focusedInput: String?
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var groupStore: GroupStore
     @EnvironmentObject private var socialStore: TogetherStore
@@ -437,6 +438,10 @@ struct GroupCreateView: View {
                             Text(String(localized: "group.create.name", defaultValue: "Name your Group · Optional"))
                                 .font(.headline)
                             TextField(String(localized: "group.create.name_placeholder", defaultValue: "Weekend energy, Family movers…"), text: $name)
+                                .focused($focusedInput, equals: "name")
+                                .submitLabel(.done)
+                                .inputSubmissionAnalytics(.groups)
+                                .onSubmit { focusedInput = nil }
                                 .textInputAutocapitalization(.words)
                                 .padding(12)
                                 .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -531,14 +536,23 @@ struct GroupCreateView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text(String(localized: "group.create.community.required", defaultValue: "Name your community" )).font(.headline)
             TextField(String(localized: "group.create.community.name_placeholder", defaultValue: "Saturday hikers"), text: $name)
+                .focused($focusedInput, equals: "name")
+                .submitLabel(.next)
+                .inputSubmissionAnalytics(.groups)
+                .onSubmit { focusedInput = "description" }
                 .textInputAutocapitalization(.words)
                 .padding(12)
                 .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             TextField(String(localized: "group.create.community.description_placeholder", defaultValue: "What should people know?"), text: $description, axis: .vertical)
+                .focused($focusedInput, equals: "description")
                 .lineLimit(3...6)
                 .padding(12)
                 .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             TextField(String(localized: "group.create.community.city_placeholder", defaultValue: "City (optional)"), text: $city)
+                .focused($focusedInput, equals: "city")
+                .submitLabel(.done)
+                .inputSubmissionAnalytics(.groups)
+                .onSubmit { focusedInput = nil }
                 .padding(12)
                 .background(OutboundPalette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             Text(String(localized: "group.create.community.interests", defaultValue: "Activity interests" )).font(.headline)
@@ -603,6 +617,7 @@ struct GroupCreateView: View {
     private func toggle(_ id: String) { if selectedIDs.contains(id) { selectedIDs.remove(id) } else { selectedIDs.insert(id) } }
 
     private func create() async {
+        focusedInput = nil
         isSubmitting = true
         defer { isSubmitting = false }
         if let created = await groupStore.create(template: selectedTemplate ?? "motivation", name: name, description: description, city: city, activityInterests: Array(activityInterests), memberUserIDs: Array(selectedIDs), idempotencyKey: createIdempotencyKey) {
@@ -1414,6 +1429,7 @@ struct GroupDetailView: View {
 }
 
 struct GroupFocusEditor: View {
+    @FocusState private var focusedInput: String?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var groupStore: GroupStore
@@ -1473,8 +1489,13 @@ struct GroupFocusEditor: View {
                 if selectedThemeKey == "custom" {
                     Section(String(localized: "group.theme.custom.section", defaultValue: "Custom theme")) {
                         TextField(String(localized: "group.theme.custom.title", defaultValue: "Theme title"), text: $customTitle)
+                            .focused($focusedInput, equals: "customTitle")
+                            .submitLabel(.next)
+                            .inputSubmissionAnalytics(.groups)
+                            .onSubmit { focusedInput = "customNote" }
                             .onChange(of: customTitle) { _, value in customTitle = String(value.prefix(50)) }
                         TextField(String(localized: "group.theme.custom.note", defaultValue: "Supporting note · Optional"), text: $customNote, axis: .vertical)
+                            .focused($focusedInput, equals: "customNote")
                             .lineLimit(2...4)
                             .onChange(of: customNote) { _, value in customNote = String(value.prefix(120)) }
                         if customTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -1588,6 +1609,7 @@ struct GroupFocusEditor: View {
 
     @MainActor
     private func saveDraftIfNeeded() async -> Bool {
+        focusedInput = nil
         let draftThemeKey = selectedThemeKey
         let draftCustomTitle = customTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         let draftCustomNote = customNote.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1631,6 +1653,7 @@ struct GroupFocusEditor: View {
 }
 
 private struct CommunityNoticeComposer: View {
+    @FocusState private var focusedInput: String?
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var groupStore: GroupStore
     let group: GroupDTO
@@ -1641,7 +1664,12 @@ private struct CommunityNoticeComposer: View {
     var form: some View {
         Form {
             TextField(String(localized: "group.notice.title", defaultValue: "Title (optional)"), text: $title)
+                .focused($focusedInput, equals: "title")
+                .submitLabel(.next)
+                .inputSubmissionAnalytics(.groups)
+                .onSubmit { focusedInput = "noticeBody" }
             TextField(String(localized: "group.notice.body", defaultValue: "Write an update"), text: $noticeBody, axis: .vertical)
+                .focused($focusedInput, equals: "noticeBody")
                 .lineLimit(5...10)
             Toggle(String(localized: "group.notice.pin", defaultValue: "Pin this notice"), isOn: $pinned)
         }
@@ -1657,6 +1685,7 @@ private struct CommunityNoticeComposer: View {
                         Button(String(localized: "common.publish", defaultValue: "Publish")) {
                             Task {
                                 guard !noticeBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                                focusedInput = nil
                                 if await groupStore.publishNotice(group: group, title: title, body: noticeBody, pinned: pinned) != nil { dismiss() }
                             }
                         }
@@ -1670,6 +1699,7 @@ private struct CommunityNoticeComposer: View {
 }
 
 struct GroupManagementView: View {
+    @FocusState private var focusedInput: String?
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var groupStore: GroupStore
     @EnvironmentObject private var socialStore: TogetherStore
@@ -1719,7 +1749,15 @@ struct GroupManagementView: View {
             if current.role == "owner" || current.role == "admin" {
                 Section(String(localized: "group.management.owner", defaultValue: "Owner controls")) {
                     TextField(String(localized: "group.create.name", defaultValue: "Name"), text: $name)
+                        .focused($focusedInput, equals: "name")
+                        .submitLabel(.next)
+                        .inputSubmissionAnalytics(.groups)
+                        .onSubmit { focusedInput = "city" }
                     TextField(String(localized: "group.base_location", defaultValue: "Base location"), text: $city)
+                        .focused($focusedInput, equals: "city")
+                        .submitLabel(.done)
+                        .inputSubmissionAnalytics(.groups)
+                        .onSubmit { focusedInput = nil }
                     if current.lifecycle != "archived" { Button(String(localized: "group.invite.more", defaultValue: "Invite connections")) { showsInvite = true } }
                 }
                 if !current.invitations.isEmpty {
@@ -1739,7 +1777,20 @@ struct GroupManagementView: View {
                         }
                     }
                 }
-                Section(String(localized: "group.week.settings", defaultValue: "Group week")) { Picker(String(localized: "group.reset_day", defaultValue: "Reset day"), selection: $resetWeekday) { ForEach(1...7, id: \.self) { Text(isoWeekdayName($0)).tag($0) } }; TextField(String(localized: "group.timezone", defaultValue: "Time zone"), text: $timeZone); Picker(String(localized: "group.focus.apply", defaultValue: "Apply"), selection: $calendarApply) { Text(String(localized: "group.apply.now", defaultValue: "Now")).tag("now"); Text(String(localized: "group.apply.next", defaultValue: "Next week")).tag("next_week") } }
+                Section(String(localized: "group.week.settings", defaultValue: "Group week")) {
+                    Picker(String(localized: "group.reset_day", defaultValue: "Reset day"), selection: $resetWeekday) {
+                        ForEach(1...7, id: \.self) { Text(isoWeekdayName($0)).tag($0) }
+                    }
+                    TextField(String(localized: "group.timezone", defaultValue: "Time zone"), text: $timeZone)
+                        .focused($focusedInput, equals: "timeZone")
+                        .submitLabel(.done)
+                        .inputSubmissionAnalytics(.groups)
+                        .onSubmit { focusedInput = nil }
+                    Picker(String(localized: "group.focus.apply", defaultValue: "Apply"), selection: $calendarApply) {
+                        Text(String(localized: "group.apply.now", defaultValue: "Now")).tag("now")
+                        Text(String(localized: "group.apply.next", defaultValue: "Next week")).tag("next_week")
+                    }
+                }
                 Section(String(localized: "group.members.manage", defaultValue: "Members")) { ForEach(current.members.filter { !$0.isCurrentUser }) { member in Menu { if current.role == "owner" { Button(member.role == "admin" ? String(localized: "group.role.demote", defaultValue: "Make member") : String(localized: "group.role.promote", defaultValue: "Make admin")) { Task { _ = await groupStore.setRole(member.role == "admin" ? "member" : "admin", for: member, in: current) } }; Button(String(localized: "group.transfer", defaultValue: "Transfer ownership")) { Task { if await groupStore.transferOwnership(of: current, to: member) != nil { track(.groupOwnershipTransferred, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } } }; Button(String(localized: "group.remove_member", defaultValue: "Remove member"), role: .destructive) { Task { if await groupStore.removeMember(member, from: current) != nil { track(.groupMemberRemoved, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } } } label: { HStack { Text(member.user.displayName); Spacer(); Image(systemName: "ellipsis").frame(width: 44, height: 44) } } } }
                 Section { if current.lifecycle == "archived" { Button(String(localized: "group.reactivate", defaultValue: "Reactivate Group")) { Task { if await groupStore.reactivate(current) != nil { track(.groupReactivated, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } } } else { Button(String(localized: "group.archive", defaultValue: "Archive Group"), role: .destructive) { Task { if await groupStore.archive(current) { track(.groupArchived, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } } } }
             } else if current.role == "member" {
@@ -1770,6 +1821,7 @@ struct GroupManagementView: View {
 
     @MainActor
     private func saveDraftIfNeeded() async {
+        focusedInput = nil
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedCity = city.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedTimeZone = timeZone.trimmingCharacters(in: .whitespacesAndNewlines)

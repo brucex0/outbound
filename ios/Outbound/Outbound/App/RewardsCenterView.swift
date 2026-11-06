@@ -281,6 +281,7 @@ struct InvitationCodeView: View {
 }
 
 private struct RewardRedemptionView: View {
+    @FocusState private var focusedInput: String?
     @Environment(\.analyticsManager) private var analyticsManager
     @State private var status: RewardsStatusDTO?
     @State private var invitationCode = ""
@@ -293,12 +294,20 @@ private struct RewardRedemptionView: View {
             Section {
                 if status?.referral.claimStatus == nil {
                     TextField(text("rewards.invitation_placeholder"), text: $invitationCode)
+                        .focused($focusedInput, equals: "invitationCode")
+                        .submitLabel(.go)
+                        .inputSubmissionAnalytics(.rewards)
+                        .onSubmit { Task { await redeem(invitation: true) } }
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
                     Button(text("rewards.claim_invitation")) { Task { await redeem(invitation: true) } }
                         .disabled(isWorking || invitationCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
                 TextField(text("rewards.entitlement_placeholder"), text: $entitlementCode)
+                    .focused($focusedInput, equals: "entitlementCode")
+                    .submitLabel(.go)
+                    .inputSubmissionAnalytics(.rewards)
+                    .onSubmit { Task { await redeem(invitation: false) } }
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
                 Button(text("rewards.redeem_reward")) { Task { await redeem(invitation: false) } }
@@ -322,6 +331,8 @@ private struct RewardRedemptionView: View {
     }
 
     private func redeem(invitation: Bool) async {
+        guard !isWorking, !(invitation ? invitationCode : entitlementCode).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        focusedInput = nil
         isWorking = true
         defer { isWorking = false }
         do {

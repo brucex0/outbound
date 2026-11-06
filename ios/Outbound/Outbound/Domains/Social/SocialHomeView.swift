@@ -1511,6 +1511,7 @@ private struct SocialActivityDiscoveryView: View {
 }
 
 private struct SocialGroupsView: View {
+    @FocusState private var focusedInput: String?
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var groupStore: GroupStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
@@ -1570,8 +1571,12 @@ private struct SocialGroupsView: View {
                     .socialSectionLabel()
 
                 TextField(String(localized: "social.groups.search", defaultValue: "Search Groups by name or city"), text: $groupSearch)
+                    .focused($focusedInput, equals: "groupSearch")
+                    .submitLabel(.search)
+                    .inputSubmissionAnalytics(.groups)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit {
+                        focusedInput = nil
                         Task {
                             await refresh()
                             if !groupSearch.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -2951,6 +2956,7 @@ private struct SocialNotificationDetailView: View {
 }
 
 struct SocialCommentsView: View {
+    @FocusState private var focusedInput: String?
     @EnvironmentObject private var socialStore: TogetherStore
     @EnvironmentObject private var socialRecognitionStore: SocialRecognitionStore
     @Environment(\.dismiss) private var dismiss
@@ -2961,6 +2967,21 @@ struct SocialCommentsView: View {
 
     private var comments: [TogetherCommentDTO] {
         socialStore.commentsByPostID[post.id] ?? post.comments
+    }
+
+    private func sendComment() {
+        guard !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        focusedInput = nil
+        let body = draft
+        draft = ""
+        Task {
+            if await socialStore.addComment(body, to: post) {
+                _ = socialRecognitionStore.registerSupport(for: post.id)
+            } else {
+                failedDraft = body
+                toastMessage = String(localized: "Comment failed to post. Tap to try again.")
+            }
+        }
     }
 
     var body: some View {
@@ -3002,18 +3023,13 @@ struct SocialCommentsView: View {
             .safeAreaInset(edge: .bottom) {
                 HStack {
                     TextField(String(localized: "Add a comment…"), text: $draft)
+                        .focused($focusedInput, equals: "draft")
+                        .submitLabel(.send)
+                        .inputSubmissionAnalytics(.comments)
+                        .onSubmit { sendComment() }
                         .textFieldStyle(.roundedBorder)
                     Button {
-                        let body = draft
-                        draft = ""
-                        Task {
-                            if await socialStore.addComment(body, to: post) {
-                                _ = socialRecognitionStore.registerSupport(for: post.id)
-                            } else {
-                                failedDraft = body
-                                toastMessage = String(localized: "Comment failed to post. Tap to try again.")
-                            }
-                        }
+                        sendComment()
                     } label: {
                         Image(systemName: "paperplane.fill")
                     }
@@ -3199,6 +3215,7 @@ struct SocialConnectionsView: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .submitLabel(.search)
+                .inputSubmissionAnalytics(.people)
                 .onSubmit { openSubmittedSearch() }
             if !searchQuery.isEmpty {
                 Button {
@@ -3457,10 +3474,10 @@ struct SocialConnectionsView: View {
     }
 
     private func openSubmittedSearch() {
+        isSearchFocused = false
         let normalizedQuery = TogetherStore.normalizedPeopleSearchQuery(searchQuery)
         guard !normalizedQuery.isEmpty else { return }
         submittedSearchQuery = normalizedQuery
-        isSearchFocused = false
         showsSearchResults = true
     }
 
@@ -3583,7 +3600,11 @@ private struct SocialPeopleSearchResultsView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .submitLabel(.search)
-                    .onSubmit { Task { await search(trigger: "submitted", force: true) } }
+                    .inputSubmissionAnalytics(.people)
+                    .onSubmit {
+                        isSearchFocused = false
+                        Task { await search(trigger: "submitted", force: true) }
+                    }
                 if !query.isEmpty {
                     Button {
                         query = ""

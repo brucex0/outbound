@@ -32,6 +32,7 @@ struct ManualWorkoutDraft: Equatable {
 }
 
 struct ManualWorkoutEntryView: View {
+    @FocusState private var focusedInput: String?
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var gearStore: GearStore
@@ -71,6 +72,10 @@ struct ManualWorkoutEntryView: View {
                         }
                     }
                     TextField("Title (optional)", text: $draft.title)
+                        .focused($focusedInput, equals: "draft_title")
+                        .submitLabel(.next)
+                        .inputSubmissionAnalytics(.activityEntry)
+                        .onSubmit { focusedInput = "durationText" }
                     DatePicker("Date and time", selection: $draft.startedAt)
                     Toggle("Indoor workout", isOn: $draft.isIndoor)
                 }
@@ -79,6 +84,9 @@ struct ManualWorkoutEntryView: View {
                     LabeledContent("Duration") {
                         HStack(spacing: 6) {
                             TextField("30", text: $durationText)
+                                .submitLabel(.done)
+                                .onSubmit { focusedInput = nil }
+                                .focused($focusedInput, equals: "durationText")
                                 .keyboardType(.numberPad)
                                 .multilineTextAlignment(.trailing)
                                 .frame(width: 72)
@@ -88,6 +96,9 @@ struct ManualWorkoutEntryView: View {
                     LabeledContent("Distance") {
                         HStack(spacing: 6) {
                             TextField("Optional", text: $distanceText)
+                                .submitLabel(.done)
+                                .onSubmit { focusedInput = nil }
+                                .focused($focusedInput, equals: "distanceText")
                                 .keyboardType(.decimalPad)
                                 .multilineTextAlignment(.trailing)
                                 .frame(width: 92)
@@ -146,6 +157,7 @@ struct ManualWorkoutEntryView: View {
 
     @MainActor
     private func save() async {
+        focusedInput = nil
         guard let durationMinutes = Int(durationText), durationMinutes > 0 else { return }
         isSaving = true
         defer { isSaving = false }

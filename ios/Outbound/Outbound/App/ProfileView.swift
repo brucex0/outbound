@@ -251,6 +251,7 @@ struct GearSettingsCard: View {
 }
 
 struct AddShoeView: View {
+    @FocusState private var focusedInput: String?
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var gearStore: GearStore
     @EnvironmentObject var measurementPreferences: MeasurementPreferences
@@ -270,6 +271,10 @@ struct AddShoeView: View {
                 .pickerStyle(.menu)
 
                 TextField("Search brand or model", text: $shoeQuery)
+                    .focused($focusedInput, equals: "shoeQuery")
+                    .submitLabel(.next)
+                    .inputSubmissionAnalytics(.shoes)
+                    .onSubmit { focusedInput = "limitText" }
                     .textInputAutocapitalization(.words)
                     .autocorrectionDisabled()
 
@@ -299,6 +304,9 @@ struct AddShoeView: View {
                     Text("Retire around")
                     Spacer()
                     TextField("", text: $limitText)
+                        .submitLabel(.done)
+                        .onSubmit { focusedInput = nil }
+                        .focused($focusedInput, equals: "limitText")
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(maxWidth: 72)
@@ -381,6 +389,7 @@ struct AddShoeView: View {
     }
 
     private func applyCatalogEntry(_ entry: GearShoeCatalogEntry) {
+        focusedInput = nil
         selectedCatalogEntry = entry
         shoeQuery = entry.displayName
         if let distanceLimitM = entry.distanceLimitM {
@@ -406,6 +415,7 @@ struct AddShoeView: View {
 }
 
 struct AssistantView: View {
+    @FocusState private var focusedInput: String?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var appNavigationStore: AppNavigationStore
@@ -668,6 +678,7 @@ struct AssistantView: View {
 
             HStack(alignment: .bottom, spacing: 12) {
                 TextField("Ask for help", text: $assistantStore.draft, axis: .vertical)
+                    .focused($focusedInput, equals: "assistantStore_draft")
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...4)
 
@@ -762,6 +773,7 @@ struct AssistantView: View {
     private func sendDraft(trackEngagement: Bool = true, capability: AssistantCapability? = nil) async {
         let prompt = assistantStore.draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty, !isInterpreting, !assistantStore.isResponding else { return }
+        focusedInput = nil
         if trackEngagement { trackMeaningfulEngagement(entrySource: "message") }
         isInterpreting = true
         assistantStore.draft = ""
