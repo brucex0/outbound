@@ -10,7 +10,7 @@ final class LaunchControlUITests: XCTestCase {
         let app = launchControls()
         tapSport("run", app)
         var saved: [String: String] = [:]
-        for label in ["Voice Guide", "Watch app", "Auto Pause"] {
+        for label in ["Voice", "Watch app", "Auto Pause"] {
             let button = option(label, app)
             let initial = button.value as? String
             XCTAssertTrue(["On", "Off"].contains(initial ?? ""), label)
