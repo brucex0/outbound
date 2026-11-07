@@ -148,6 +148,15 @@ An unknown type is never filtered out. It receives the default **Updates** class
 
 The provider-neutral contract records `notification_center_opened`, one `notification_section_exposed` event per visible tier, and `notification_action_selected`. Properties are bounded to section (`needs_you`, `updates`, or `cheers_milestones`), category (`actionable`, `update`, `support`, or the local `health_import` category), single/aggregated/batched selection, and coarse count bucket. Notification copy, actor names, object IDs, titles, and health details are never analytics properties. There is no aggregation-expansion event because aggregated rows do not expose a separate expansion control.
 
+### Fox companion delivery
+
+- The shell fox reuses this inbox and presentation policy. Its separate envelope opens Notification Center; tapping the fox itself always opens the assistant.
+- Unread actionable invitations or Cheers created within 24 hours can receive one brief delivery gesture; live invitations also require the existing eight-hour lifetime. The preview has a seven-second base duration (20 seconds with iOS VoiceOver; Android honors the system action-timeout preference). Ordinary updates remain available through the envelope. The preview opens the existing notification destination rather than generating a chat reply.
+- Proactive delivery is limited to once per local calendar day per account. A local presentation ledger suppresses repeat delivery across tab changes, foreground activation, and relaunch; it is removed on account deletion and does not create inbox records or resolve invitations.
+- Delivery and dismissal alone do not mark notifications read. Explicit notification navigation keeps the platform's existing read and resolution behavior.
+- Decorative motion and previews pause while the app is inactive, recording, or covered by a presented surface. Reduce Motion suppresses decorative gestures while retaining preview and envelope access.
+- Notification text, actors, and IDs never enter fox analytics. See `docs/product-analytics.md` for the bounded presence and action events.
+
 ## Configuration and Rollout
 
 1. Apply the schema: `cd backend && npm run db:push`.

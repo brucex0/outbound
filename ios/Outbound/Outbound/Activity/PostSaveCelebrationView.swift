@@ -32,9 +32,14 @@ struct PostSaveActivitySummary: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Text(String(localized: "activity.post_save.saved", defaultValue: "Activity saved"))
-                .font(.title2.bold())
-                .accessibilityAddTraits(.isHeader)
+            HStack(spacing: 8) {
+                FoxCompanionCelebrationMark()
+                Text(String(localized: "activity.post_save.saved", defaultValue: "Activity saved"))
+                    .font(.title2.bold())
+                    .accessibilityAddTraits(.isHeader)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("fox.companion.celebration")
             HStack(spacing: 8) {
                 Label(SportType(activityType: activity.activityType).displayName,
                       systemImage: SportType(activityType: activity.activityType).systemImage)

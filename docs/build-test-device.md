@@ -181,12 +181,14 @@ UI automation failure triage:
 ./scripts/run-ui-flow.sh appearance-palette
 OUTBOUND_UI_SIMULATOR_RUNTIME=com.apple.CoreSimulator.SimRuntime.iOS-26-5 ./scripts/run-ui-flow.sh activity-photos
 ./scripts/run-ui-flow.sh launch-controls
+./scripts/run-ui-flow.sh companion
 # Explicit simulator or connected test iPhone (use its Xcode UDID):
 ./scripts/run-ui-flow.sh appearance 'platform=iOS Simulator,id=SIMULATOR_UUID'
 ./scripts/run-ui-flow.sh appearance 'platform=iOS,id=DEVICE_UDID'
 ```
 
 - Each command runs only the named XCTest UI flow. The default creates and removes a dedicated iPhone simulator, preserving existing simulator apps and data.
+- `companion` checks the single fox launcher, separate envelope, notification routing and Back, dismissal persistence, recording/sheet suppression, and save-only celebration. It requires a simulator and uses only synthetic fixtures. Policy coverage lives in `OutboundTests/CompanionPresenceStoreTests`; Android uses the isolated navigation-test app's `FoxCompanionAttentionTest` and companion cases in `NavigationInteractionTest`.
 - `appearance` verifies that the tip and all four toolbar controls are visible, tappable, and do not overlap, then taps the pill, verifies the chooser, and returns to the toolbar. `appearance-palette` checks the palette path while the tip is visible.
 - `activity-photos` runs `SavedActivityPhotoUITests` plus the save-page photo management regression on Simulator. It covers inline camera/import with Save Changes, real Photos album export, metadata/photo persistence after relaunch, saved/new preview, selection, mixed saved/new drag ordering, deletion, and Cancel restoring the original photo draft. The DEBUG simulator-only `-OutboundUITestSeedPhotoDraft` flag seeds two distinct photos through real disk persistence for ordering assertions; only camera hardware is substituted. The runner retains XCTest screenshots/results and disables verbose failure sysdiagnoses, which previously stalled on this host. Select the runtime explicitly with `OUTBOUND_UI_SIMULATOR_RUNTIME`. For iOS 27 permission, keyboard-focus, and drag handling, follow the failure-triage notes above. Physical camera capture still requires device verification.
 - Verified 2026-10-30: all five focused photo UI tests passed with zero failures/skips on an isolated iPhone 17 Pro / iOS 26.5. Screenshot review confirmed intact captions, the edit card layout, and mixed photo order after relaunch. The run caught and fixed Form-row drag interception, inherited accessibility identifiers, and thumbnail caption clipping; the title-entry helper now uses native Select All.

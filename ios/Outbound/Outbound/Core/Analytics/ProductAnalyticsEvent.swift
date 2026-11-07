@@ -157,6 +157,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case goalProgressReached = "goal_progress_reached"
     case goalEditorOpened = "goal_editor_opened"
     case featureExposed = "feature_exposed"
+    case foxCompanionActionSelected = "fox_companion_action_selected"
     case assistantLauncherEligibleExposure = "assistant_launcher_eligible_exposure"
     case assistantLauncherAnimationShown = "assistant_launcher_animation_shown"
     case assistantLauncherOpened = "assistant_launcher_opened"
@@ -530,7 +531,8 @@ enum ProductAnalyticsSchema {
         .activityEventLocationSelected: [.sourceType],
         .goalProgressReached: [.activityType, .goalType, .progressPercent],
         .goalEditorOpened: [.activityType, .goalType],
-        .featureExposed: [.feature],
+        .featureExposed: [.feature, .result],
+        .foxCompanionActionSelected: [.selectionType],
         .assistantLauncherEligibleExposure: [.destination, .entrySource],
         .assistantLauncherAnimationShown: [.destination, .entrySource],
         .assistantLauncherOpened: [.destination, .entrySource],

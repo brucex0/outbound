@@ -2558,6 +2558,7 @@ private struct PastActivityEventRow: View {
 
 struct SocialNotificationsView: View {
     var showsDismissButton = false
+    var initialNotificationID: String?
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.analyticsManager) private var analyticsManager
@@ -2567,6 +2568,10 @@ struct SocialNotificationsView: View {
     @EnvironmentObject private var groupStore: GroupStore
     @EnvironmentObject private var healthImportStore: HealthImportStore
     @State private var selectedNotification: SocialNotificationDTO?
+    /// A companion preview promises one destination per presentation. Pushed
+    /// destinations can re-run this view's task on the way back, so never
+    /// deliver the same initial route twice.
+    @State private var didRouteInitialNotification = false
 
     private var presentationItems: [NotificationCenterPresentationItem] {
         NotificationPresentationPolicy.items(from: socialStore.notifications)
@@ -2624,17 +2629,23 @@ struct SocialNotificationsView: View {
                     .feature: .string("health_import_notification_center_item"),
                 ]))
             }
+            // Companion previews already refer to a loaded durable inbox item.
+            // Deliver the promised destination immediately, even on a slow refresh.
+            let cachedInitial = initialNotificationID.flatMap { id in socialStore.notifications.first { $0.id == id } }
+            if let cachedInitial, !didRouteInitialNotification {
+                didRouteInitialNotification = true
+                openNotification(cachedInitial)
+            }
             await socialStore.refreshNotifications()
-            if let notificationID = pushNotifications.pendingNotificationID,
+            if !didRouteInitialNotification,
+               let notificationID = initialNotificationID ?? pushNotifications.pendingNotificationID,
                let notification = socialStore.notifications.first(where: { $0.id == notificationID }) {
-                if NotificationPresentationPolicy.presentation(for: notification.type, objectID: notification.objectId).destination == .liveCheer,
-                   let sessionID = notification.objectId {
-                    appNavigationStore.presentLiveCheer(sessionID: sessionID, entrySource: "notification_inbox")
-                } else {
-                    selectedNotification = notification
+                if initialNotificationID != nil { didRouteInitialNotification = true }
+                openNotification(notification)
+                if initialNotificationID == nil {
+                    pushNotifications.consumePendingNotification()
                 }
-                pushNotifications.consumePendingNotification()
-            } else if pushNotifications.pendingNotificationID != nil {
+            } else if initialNotificationID == nil, pushNotifications.pendingNotificationID != nil {
                 pushNotifications.consumePendingNotification()
             }
             await trackCenterExposure()
@@ -2708,12 +2719,7 @@ struct SocialNotificationsView: View {
                     .countBucket: .string(ProductAnalyticsBucket.count(item.notifications.count)),
                 ]))
             }
-            if item.presentation.destination == .liveCheer,
-               let sessionID = item.primary.objectId {
-                appNavigationStore.presentLiveCheer(sessionID: sessionID, entrySource: "notification_inbox")
-            } else {
-                selectedNotification = item.primary
-            }
+            openNotification(item.primary)
         } label: {
             HStack(alignment: .top, spacing: OutboundSpacing.compact) {
                 SocialAvatar(name: item.primary.actor?.displayName ?? "Plainstride", avatarURL: item.primary.actor?.avatarUrl)
@@ -2742,6 +2748,15 @@ struct SocialNotificationsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint(notificationAccessibilityHint(item.primary))
+    }
+
+    private func openNotification(_ notification: SocialNotificationDTO) {
+        if NotificationPresentationPolicy.presentation(for: notification.type, objectID: notification.objectId).destination == .liveCheer,
+           let sessionID = notification.objectId {
+            appNavigationStore.presentLiveCheer(sessionID: sessionID, entrySource: "notification_inbox")
+        } else {
+            selectedNotification = notification
+        }
     }
 
     private func trackCenterExposure() async {
@@ -4833,7 +4848,7 @@ extension Text {
     }
 }
 
-private func localizedGroupNotificationMessage(_ notification: SocialNotificationDTO) -> String {
+func localizedGroupNotificationMessage(_ notification: SocialNotificationDTO) -> String {
     let actorName = notification.actor?.displayName ?? String(localized: "group.notification.someone", defaultValue: "Someone")
     switch notification.type {
     case "connectionRequest":

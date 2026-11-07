@@ -32,11 +32,13 @@ private enum ConnectionProfilePresentation: Identifiable {
 
 private enum SimplifiedAppShellPresentation: Identifiable {
     case notifications
+    case companionNotification(String)
     case liveCheer(LiveCheerPresentationRequest)
 
     var id: String {
         switch self {
         case .notifications: "notification_center"
+        case .companionNotification(let id): "companion_notification_\(id)"
         case .liveCheer(let request): request.id
         }
     }
@@ -140,9 +142,11 @@ private struct CompactNavigationBar: View {
 
 struct SimplifiedAppShell: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
     @Environment(\.outboundTheme) private var theme
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var guideCatalog: GuideCatalogStore
+    @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var activityStore: ActivityStore
     @EnvironmentObject private var dailyCheckInStore: DailyCheckInStore
     @EnvironmentObject private var trainingPlanStore: TrainingPlanStore
@@ -171,6 +175,8 @@ struct SimplifiedAppShell: View {
     let onGroupRunAction: () -> Void
     let onStartRun: (SessionIntent?) -> Void
     @State private var showsAssistant = false
+    @StateObject private var companionPresence = CompanionPresenceStore()
+    @State private var hasPresentedSurface = false
     @State private var selectedRouteName: String?
     @State private var showsPlanDetails = false
     @State private var showsPlanPicker = false
@@ -268,6 +274,36 @@ struct SimplifiedAppShell: View {
                     .ignoresSafeArea(.keyboard, edges: .bottom)
             }
         }
+        .background {
+            CompanionPresentationObserver { hasPresentedSurface = $0 }
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+        }
+        .task(id: companionPresenceTaskID) {
+            companionPresence.activate(accountID: companionAccountID)
+            companionPresence.reconcile(notifications: socialStore.notifications)
+            guard companionPresenceIsActive else {
+                companionPresence.dismissPreview()
+                return
+            }
+            if companionPresence.recordVisibleIdleExposure() {
+                await analyticsManager?.track(.init(.featureExposed, properties: [
+                    .feature: .string("fox_companion_presence"), .result: .string("idle")
+                ]))
+                await analyticsManager?.track(.init(.assistantLauncherEligibleExposure, properties: [
+                    .destination: .string(assistantAnalyticsDestination), .entrySource: .string("app_shell")
+                ]))
+            }
+            do { try await Task.sleep(for: .milliseconds(companionDeliveryDelayMilliseconds)) } catch { return }
+            guard !Task.isCancelled, companionPresenceIsActive else { return }
+            companionPresence.offerDelivery(notifications: socialStore.notifications)
+        }
+        .task(id: "\(companionPresence.preview?.id ?? "none")-\(voiceOverEnabled)") {
+            guard let previewID = companionPresence.preview?.id else { return }
+            do { try await Task.sleep(for: .seconds(voiceOverEnabled ? 20 : 7)) } catch { return }
+            guard !Task.isCancelled, companionPresence.preview?.id == previewID else { return }
+            companionPresence.dismissPreview()
+        }
         .tint(guideCatalog.selectedTheme.accentColor)
         .fullScreenCover(isPresented: Binding(
             get: { !appNavigationStore.sharedDestinations.isEmpty },
@@ -293,6 +329,8 @@ struct SimplifiedAppShell: View {
                 switch presentation {
                 case .notifications:
                     SocialNotificationsView(showsDismissButton: true)
+                case .companionNotification(let notificationID):
+                    SocialNotificationsView(showsDismissButton: true, initialNotificationID: notificationID)
                 case .liveCheer(let request):
                     LiveCheerView(sessionID: request.sessionID, entrySource: request.entrySource)
                 }
@@ -558,6 +596,8 @@ struct SimplifiedAppShell: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 weatherStore.refreshForToday()
+            } else {
+                companionPresence.resetIdleExposure()
             }
         }
         .onChange(of: isActivityFullscreenVisible) { _, isVisible in
@@ -627,10 +667,91 @@ struct SimplifiedAppShell: View {
     private var assistantLaunchButton: some View {
         AssistantLauncherButton(
             accentColor: guideCatalog.selectedTheme.accentColor,
-            analyticsDestination: assistantAnalyticsDestination
+            analyticsDestination: assistantAnalyticsDestination,
+            isPresenceActive: companionPresenceIsActive,
+            deliveryToken: companionPresence.deliveryToken,
+            deliveryIsSubdued: companionPresence.preview?.presentation.tier == .cheersAndMilestones
         ) {
             showsAssistant = true
         }
+        .overlay(alignment: .topTrailing) {
+            if companionPresenceIsActive && socialStore.unreadNotificationCount > 0 {
+                Button {
+                    companionPresence.dismissPreview()
+                    trackCompanionAction("envelope_opened")
+                    appShellPresentation = .notifications
+                } label: {
+                    Image(systemName: "envelope.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(theme.accentColor)
+                        .frame(width: 26, height: 26)
+                        .background(.regularMaterial, in: Circle())
+                        .overlay(Circle().strokeBorder(theme.accentColor.opacity(0.25)))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                // Keep the 44 pt target inside the dock gap so it never covers the tab bar.
+                .offset(x: 10, y: -16)
+                .accessibilityLabel(String(localized: "fox.companion.notifications", defaultValue: "Open unread notifications"))
+                .accessibilityIdentifier("fox.companion.envelope")
+            }
+        }
+    }
+
+    private var companionAccountID: String? {
+        if let id = authStore.user?.id { return id }
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData") { return "ui_test" }
+        #endif
+        return nil
+    }
+
+    private var companionPresenceIsActive: Bool {
+        scenePhase == .active && activitySessionState == .idle && !isActivityFullscreenVisible
+            && !hasPresentedSurface && !showsAssistant && !showsHomeWidgetOnboarding
+            && !showsPlanDetails && !showsPlanPicker && selectedPlanRecommendation == nil
+            && replacementPlanRecommendation == nil && connectionProfilePresentation == nil
+            && appShellPresentation == nil && appNavigationStore.sharedDestinations.isEmpty
+    }
+
+    private var companionPresenceTaskID: String {
+        let notifications = socialStore.notifications.map { "\($0.id):\($0.readAt == nil)" }.joined(separator: ",")
+        return "\(companionAccountID ?? "none")-\(companionPresenceIsActive)-\(notifications)"
+    }
+
+    /// Fixture-only override so UI tests can place delivery after a recording or a
+    /// presented surface owns the screen. Production keeps the short 900 ms beat.
+    private var companionDeliveryDelayMilliseconds: Int {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData") {
+            let seconds = UserDefaults.standard.double(forKey: "OutboundCompanionDeliveryDelaySeconds")
+            if seconds > 0 { return Int(seconds * 1_000) }
+        }
+        #endif
+        return 900
+    }
+
+    private func trackCompanionAction(_ selection: String) {
+        Task {
+            await analyticsManager?.track(.init(.foxCompanionActionSelected, properties: [
+                .selectionType: .string(selection)
+            ]))
+        }
+    }
+
+    private func openCompanionPreview(_ item: NotificationCenterPresentationItem) {
+        companionPresence.dismissPreview()
+        trackCompanionAction("notification_preview")
+        Task {
+            await analyticsManager?.track(.init(.notificationActionSelected, properties: [
+                .section: .string(item.presentation.tier.analyticsValue),
+                .category: .string(item.presentation.category.rawValue),
+                .selectionType: .string(item.notifications.count > 1 ? "aggregated" : "single"),
+                .countBucket: .string(ProductAnalyticsBucket.count(item.notifications.count))
+            ]))
+        }
+        appShellPresentation = .companionNotification(item.primary.id)
     }
 
     private var bottomNavigationDock: some View {
@@ -648,6 +769,27 @@ struct SimplifiedAppShell: View {
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 12)
         .padding(.top, FixedTabBarLayout.dockTopPadding)
+        .overlay(alignment: .bottomLeading) {
+            if companionPresenceIsActive, companionPresence.isActiveAccount(companionAccountID),
+               let item = companionPresence.preview {
+                CompanionNotificationPreview(item: item, onOpen: { openCompanionPreview(item) }, onDismiss: {
+                    companionPresence.dismissPreview()
+                    trackCompanionAction("notification_dismissed")
+                })
+                .frame(maxWidth: 340)
+                .padding(.horizontal, 16)
+                .offset(y: -76)
+                .onAppear {
+                    guard companionPresenceIsActive,
+                          companionPresence.recordVisibleDelivery(id: item.id) else { return }
+                    Task {
+                        await analyticsManager?.track(.init(.featureExposed, properties: [
+                            .feature: .string("fox_companion_presence"), .result: .string("delivery")
+                        ]))
+                    }
+                }
+            }
+        }
         .offset(y: FixedTabBarLayout.dockBottomOffset)
         .background {
             if selection == .today {
@@ -4258,6 +4400,7 @@ private extension RunnerConfidence {
         onStartRun: { _ in }
     )
         .environmentObject(ActivityStore())
+        .environmentObject(AuthStore())
         .environmentObject(AssistantStore())
         .environmentObject(AppNavigationStore())
         .environmentObject(GuideCatalogStore())

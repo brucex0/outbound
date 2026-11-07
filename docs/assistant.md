@@ -5,7 +5,7 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 ## Product Intent
 
 - Position the assistant as Plainstride's persistent running companion, not as a separate named guide or generic chatbot.
-- Keep the first version local-first so the feature still works without backend dependencies.
+- Keep presence and notification presentation local-first so the launcher still works without backend dependencies.
 - Reuse existing app context such as companion communication style, saved activities, and current goal progress to make responses feel grounded.
 - Make the assistant always reachable across the app, but quiet by default.
 
@@ -13,20 +13,20 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 
 - Always reachable: the assistant should be visible everywhere in some form.
 - Context-aware: the expanded assistant should use the current screen or flow when suggesting next steps.
-- Low-noise: default to a passive icon, not constant interruption.
+- Low-noise: occasional subtle personality at rest; attention-seeking motion requires a useful update or a direct response to the runner.
 - Guide-adjacent: useful and motivating, but distinct from the live `VirtualGuide`.
 - Typed outcomes over generic chat: prefer navigation, explanation, planning, and suggestions over long free-form responses.
 
 ## Shell Model
 
-- Primary shell is a standalone sparkles icon floating above the leading side of the main tab bar.
+- Primary shell is a standalone fox floating above the leading side of the main tab bar.
 - The launcher remains visually separate from `Social · Today · Me`, so it reads as a persistent app capability rather than a fourth destination.
 - The icon is the minimized state and expands into a richer assistant surface on demand.
 - During live recording, the assistant switches to a compact entry mode so it does not compete with the camera/map workout UI.
 
 ### Presence Levels
 
-- Minimized: visible as the standalone sparkles icon.
+- Minimized: visible as the standalone fox, with a separate notification affordance when unread updates exist.
 - Expanded: conversation or guided workflow with screen-aware quick starts.
 
 ## Screen Map
@@ -78,9 +78,10 @@ Open this when changing the in-app AI assistant, its chat UX, or the app-context
 
 ## Current Implementation Shape
 
-- `SimplifiedAppShell` owns the persistent assistant launcher for the main app tabs and presents the shared assistant at medium or large sheet heights. The launcher and compact navigation capsule share one dock with a fixed 16-point gap across phone sizes and rotations. The launcher's recurring animation state is isolated inside `AssistantLauncherButton`, so each pulse does not invalidate the surrounding tab, toolbar, or presented native menus.
-- While the app scene is active, the launcher plays a noticeable bounce, sparkle shimmer, and expanding glow ring about every four seconds after a short initial settle delay.
-- The loop stops when the app leaves the foreground and resumes when it becomes active again. Assistant presentation, tab changes, and activity presentation do not consume or permanently suppress the loop.
+- `SimplifiedAppShell` owns the persistent assistant launcher for the main app tabs and presents the shared assistant at medium or large sheet heights. The launcher and compact navigation capsule share one dock with a fixed 16-point gap across phone sizes and rotations. Gesture state is isolated inside `AssistantLauncherButton`, so decorative motion does not invalidate the surrounding tab, toolbar, or presented native menus.
+- The fox has three roles: subtle idle personality, a brief delivery gesture for a real unread notification, and a short celebration after a successful activity save. Idle personality does not use the delivery bounce or expanding glow ring.
+- Fox taps always open the assistant. Notification previews and the separate envelope control open the existing notification flow; the fox does not create a second inbox or change invitation resolution rules.
+- Motion and proactive previews pause outside the foreground, during recording, and under presented surfaces. Reduce Motion retains notification access while suppressing decorative motion.
 - `RecordView` owns the compact live-session assistant entry.
 - `AssistantView` remains the expanded assistant surface with:
   - a short hero summary

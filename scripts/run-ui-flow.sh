@@ -7,7 +7,7 @@ additional_tests=()
 case "$flow" in
   --list|--help)
     print 'Usage: scripts/run-ui-flow.sh FLOW [XCODE_DESTINATION]'
-    print 'Flows: appearance, appearance-palette, activity-photos, launch-controls'
+    print 'Flows: appearance, appearance-palette, activity-photos, launch-controls, companion'
     print 'Default: temporary iPhone simulator. Physical device: platform=iOS,id=DEVICE_UDID'
     print 'Results: fresh /tmp/plainstride-ui-flow.XXXXXX directory (log + xcresult screenshots).'
     print 'Optional OUTBOUND_UI_SIMULATOR_RUNTIME selects the runtime for a temporary simulator.'
@@ -22,6 +22,7 @@ case "$flow" in
     ;;
   appearance) test_name='UIFlowTests/testAppearanceTipOpensChooserAndKeepsToolbarVisible' ;;
   appearance-palette) test_name='UIFlowTests/testAppearancePaletteOpensChooserWhileTipVisible' ;;
+  companion) test_name='CompanionPresenceUITests' ;;
   *) print -u2 "Unknown UI flow: $flow. Use --list."; exit 2 ;;
 esac
 (( $# <= 2 )) || { print -u2 'Too many arguments. Use --help.'; exit 2; }
@@ -29,6 +30,10 @@ esac
 destination=${2:-}
 if [[ "$flow" == activity-photos && -n "$destination" && "$destination" != platform=iOS\ Simulator,* ]]; then
   print -u2 'activity-photos requires an iOS Simulator (synthetic camera fixture).'
+  exit 2
+fi
+if [[ "$flow" == companion && -n "$destination" && "$destination" != platform=iOS\ Simulator,* ]]; then
+  print -u2 'companion requires an iOS Simulator (synthetic activity fixtures).'
   exit 2
 fi
 results_dir=$(mktemp -d /tmp/plainstride-ui-flow.XXXXXX)

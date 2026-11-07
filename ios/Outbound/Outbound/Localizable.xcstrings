@@ -1,6 +1,78 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "fox.companion.notifications": {
+      "comment": "[platform:ios] Accessibility label for the envelope beside the companion.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open unread notifications"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir notificaciones sin leer"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开未读通知"
+          }
+        }
+      }
+    },
+    "fox.companion.dismiss_preview": {
+      "comment": "[android:fox.companion] Accessibility label for closing only the fox notification preview; the inbox item remains unread.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dismiss notification preview"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar vista previa de la notificación"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭通知预览"
+          }
+        }
+      }
+    },
+    "fox.companion.open_notification": {
+      "comment": "[platform:ios] Accessibility hint for the companion notification preview.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens this notification in Notification Center"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre esta notificación en el centro de notificaciones"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在通知中心打开这条通知"
+          }
+        }
+      }
+    },
     "record.ai_coach.detail": {
       "extractionState": "manual",
       "localizations": {

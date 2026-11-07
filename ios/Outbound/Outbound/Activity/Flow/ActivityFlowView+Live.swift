@@ -222,7 +222,8 @@ extension ActivityFlowView {
         AssistantLauncherButton(
             accentColor: model.dependencies.guideCatalog.selectedTheme.accentColor,
             analyticsDestination: "live_activity",
-            analyticsEntrySource: "live_activity"
+            analyticsEntrySource: "live_activity",
+            isPresenceActive: false
         ) {
             model.isAssistantPresented = true
         }
