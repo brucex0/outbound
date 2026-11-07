@@ -20,8 +20,7 @@ case "$flow" in
     test_name='LaunchControlUITests'
     additional_tests+=('-only-testing:OutboundUITests/OutboundUITests/testTodayFreestyleStartOpensRecordingFlowAndCanFinish')
     ;;
-  appearance) test_name='UIFlowTests/testAppearanceTipOpensChooserAndKeepsToolbarVisible' ;;
-  appearance-palette) test_name='UIFlowTests/testAppearancePaletteOpensChooserWhileTipVisible' ;;
+  appearance|appearance-palette) test_name='UIFlowTests/testAppearanceChooserOpensFromSettings' ;;
   companion) test_name='CompanionPresenceUITests' ;;
   *) print -u2 "Unknown UI flow: $flow. Use --list."; exit 2 ;;
 esac
