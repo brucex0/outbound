@@ -1,11 +1,12 @@
 <resources>
     <string name="group_membership_settings">Miembros e invitaciones</string>
-    <string name="group_membership_join_policy">Quién puede unirse</string>
-    <string name="group_membership_open">Cualquiera puede unirse</string>
-    <string name="group_membership_request">Requiere aprobación</string>
-    <string name="group_membership_invite_only">Solo por invitación</string>
-    <string name="group_membership_invite_approval">Aprobar invitaciones de miembros</string>
-    <string name="group_membership_policy_help">Los miembros pueden invitar a sus contactos. Si se requiere aprobación, la persona invitada debe aceptar antes de que el propietario o un administrador revise su ingreso. Las invitaciones del propietario y los administradores ya están aprobadas.</string>
+    <string name="group_member_actions">Acciones del miembro</string>
+    <string name="group_membership_allow_member_invites">Permitir que los miembros inviten a sus amistades</string>
+    <string name="group_membership_require_approval">Requerir aprobación para unirse</string>
+    <string name="group_membership_policy_help">Siempre se puede solicitar unirse a un grupo comunitario. La aprobación se aplica a las solicitudes desde Descubrir y a las invitaciones de miembros; las de propietarios y administradores no requieren revisión.</string>
+    <string name="group_membership_private_policy_help">Para unirse a un grupo privado hace falta una invitación. Las invitaciones de miembros pueden requerir aprobación; las de propietarios y administradores no requieren revisión.</string>
+    <string name="group_archive_confirm_title">¿Archivar este grupo?</string>
+    <string name="group_archive_confirm_detail">Al archivarlo, no se podrán enviar nuevas invitaciones ni publicar novedades o actividades. Podrás reactivar el grupo más adelante.</string>
     <string name="group_membership_empty">No hay solicitudes de ingreso pendientes</string>
     <string name="group_membership_inviter">Invitación de %1$s</string>
     <string name="group_membership_approve">Aprobar</string>

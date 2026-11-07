@@ -289,7 +289,7 @@ fun SocialGroupDestination(
             openActivity = { eventId -> onOpenEvent(eventId, "group_up_next") },
             publishNotice = { title, body, pinned -> viewModel.createGroupNotice(group, title, body, pinned) },
             markNoticesRead = { viewModel.markGroupNoticesRead(group) },
-            saveMembershipPolicy = { policy, required, completed -> viewModel.saveMembershipPolicy(group, policy, required, completed) },
+            saveMembershipPolicy = { policy, required, allowed, completed -> viewModel.saveMembershipPolicy(group, policy, required, allowed, completed) },
             reviewMembership = { requestId, approve, completed -> viewModel.reviewMembership(group, requestId, approve, completed) },
         )
 

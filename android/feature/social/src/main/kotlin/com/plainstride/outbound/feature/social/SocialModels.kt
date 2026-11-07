@@ -187,6 +187,7 @@ import kotlinx.serialization.json.JsonElement
     val unreadNoticeCount: Int = 0,
     val pendingRequest: GroupPendingRequest? = null,
     val memberInviteApprovalRequired: Boolean = true,
+    val memberInvitesAllowed: Boolean = true,
     val canInvite: Boolean = false,
     val pendingRequestCount: Int = 0,
     val joinRequests: List<GroupJoinRequest> = emptyList(),

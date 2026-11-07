@@ -1,11 +1,12 @@
 <resources>
     <string name="group_membership_settings">成员与邀请</string>
-    <string name="group_membership_join_policy">谁可以加入</string>
-    <string name="group_membership_open">任何人均可加入</string>
-    <string name="group_membership_request">需要审批</string>
-    <string name="group_membership_invite_only">仅限邀请加入</string>
-    <string name="group_membership_invite_approval">审批成员邀请</string>
-    <string name="group_membership_policy_help">成员可以邀请自己的好友。开启审批后，受邀者接受邀请，再由群主或管理员审批入群。群主和管理员发出的邀请无需再次审批。</string>
+    <string name="group_member_actions">成员操作</string>
+    <string name="group_membership_allow_member_invites">允许成员邀请好友</string>
+    <string name="group_membership_require_approval">加入需审核</string>
+    <string name="group_membership_policy_help">社区群组始终可以申请加入。通过发现加入或接受成员邀请时可能需要审核；群主和管理员发出的邀请无需审核。</string>
+    <string name="group_membership_private_policy_help">加入私人群组需要邀请。成员发出的邀请可能需要审核；群主和管理员发出的邀请无需审核。</string>
+    <string name="group_archive_confirm_title">要归档此群组吗？</string>
+    <string name="group_archive_confirm_detail">归档后无法发送新邀请、发布动态或安排活动。稍后可以重新启用此群组。</string>
     <string name="group_membership_empty">暂无待审批的入群申请</string>
     <string name="group_membership_inviter">邀请人：%1$s</string>
     <string name="group_membership_approve">批准</string>

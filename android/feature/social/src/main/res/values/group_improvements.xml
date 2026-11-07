@@ -1,11 +1,12 @@
 <resources>
     <string name="group_membership_settings">Membership and invitations</string>
-    <string name="group_membership_join_policy">Who can join</string>
-    <string name="group_membership_open">Anyone can join</string>
-    <string name="group_membership_request">Approval required</string>
-    <string name="group_membership_invite_only">Invitation only</string>
-    <string name="group_membership_invite_approval">Approve member invitations</string>
-    <string name="group_membership_policy_help">Members can invite their connections. When approval is required, invitees must accept before an owner or admin reviews their membership. Invitations from owners and admins are pre-approved.</string>
+    <string name="group_member_actions">Member actions</string>
+    <string name="group_membership_allow_member_invites">Allow members to invite friends</string>
+    <string name="group_membership_require_approval">Require approval to join</string>
+    <string name="group_membership_policy_help">Community Groups remain open to joining. Approval applies to discovery and member invitations; invitations from owners and admins are pre-approved.</string>
+    <string name="group_membership_private_policy_help">Private Groups require an invitation. Approval applies to member invitations; owner and admin invitations are pre-approved.</string>
+    <string name="group_archive_confirm_title">Archive this Group?</string>
+    <string name="group_archive_confirm_detail">Archiving stops new invitations, updates, and activities. You can reactivate this Group later.</string>
     <string name="group_membership_empty">No membership requests to review</string>
     <string name="group_membership_inviter">Invited by %1$s</string>
     <string name="group_membership_approve">Approve</string>

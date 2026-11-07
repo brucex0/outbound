@@ -17,30 +17,31 @@ import androidx.compose.ui.window.DialogProperties
 fun GroupMembershipDialog(
     group: GroupSummary,
     close: () -> Unit,
-    save: (String, Boolean, (Boolean) -> Unit) -> Unit,
+    save: (String, Boolean, Boolean, (Boolean) -> Unit) -> Unit,
     review: (String, Boolean, (Boolean) -> Unit) -> Unit,
 ) {
-    var policy by rememberSaveable(group.id) { mutableStateOf(group.joinPolicy ?: "invite_only") }
-    var required by rememberSaveable(group.id) { mutableStateOf(group.memberInviteApprovalRequired) }
-    var savedPolicy by rememberSaveable(group.id) { mutableStateOf(policy) }
+    var allowed by rememberSaveable(group.id) { mutableStateOf(group.memberInvitesAllowed) }
+    var required by rememberSaveable(group.id) { mutableStateOf(if (group.trustPolicy == "community") group.joinPolicy != "open" else group.memberInviteApprovalRequired) }
+    var savedAllowed by rememberSaveable(group.id) { mutableStateOf(allowed) }
     var savedRequired by rememberSaveable(group.id) { mutableStateOf(required) }
     var saving by remember { mutableStateOf(false) }
     var reviewing by remember { mutableStateOf(emptySet<String>()) }
-    val dirty = policy != savedPolicy || required != savedRequired
+    val dirty = allowed != savedAllowed || required != savedRequired
     val active = group.lifecycle != "archived"
     Dialog(onDismissRequest = { if (!dirty && !saving) close() }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize()) {
             Column {
                 Row(Modifier.fillMaxWidth().padding(12.dp)) {
-                    TextButton(close, enabled = !saving) { Text(stringResource(R.string.social_done)) }
+                    TextButton(close, enabled = !dirty && !saving) { Text(stringResource(R.string.social_done)) }
                     Text(stringResource(R.string.group_membership_settings), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
                     if (group.currentUserRole == "owner") TextButton({
-                        val draftPolicy = policy
                         val draftRequired = required
+                        val draftAllowed = allowed
+                        val draftPolicy = if (group.trustPolicy == "community") if (draftRequired) "request" else "open" else "invite_only"
                         saving = true
-                        save(draftPolicy, draftRequired) { success ->
+                        save(draftPolicy, draftRequired, draftAllowed) { success ->
                             saving = false
-                            if (success) { savedPolicy = draftPolicy; savedRequired = draftRequired }
+                            if (success) { savedAllowed = draftAllowed; savedRequired = draftRequired }
                         }
                     }, enabled = dirty && !saving && active, modifier = Modifier.testTag("group.membership.save")) {
                         Text(stringResource(R.string.group_membership_save))
@@ -48,21 +49,16 @@ fun GroupMembershipDialog(
                 }
                 LazyColumn(Modifier.weight(1f).testTag("group.membership.list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (group.currentUserRole == "owner") {
-                        if (group.trustPolicy == "community") item {
-                            Text(stringResource(R.string.group_membership_join_policy), style = MaterialTheme.typography.titleMedium)
-                            listOf("open" to R.string.group_membership_open, "request" to R.string.group_membership_request, "invite_only" to R.string.group_membership_invite_only).forEach { (value, label) ->
-                                Row {
-                                    RadioButton(selected = policy == value, onClick = { policy = value }, enabled = !saving && active, modifier = Modifier.testTag("group.membership.policy.$value"))
-                                    Text(stringResource(label), Modifier.padding(top = 14.dp))
-                                }
-                            }
-                        }
                         item {
                             Row {
-                                Text(stringResource(R.string.group_membership_invite_approval), Modifier.weight(1f))
+                                Text(stringResource(R.string.group_membership_allow_member_invites), Modifier.weight(1f))
+                                Switch(allowed, { allowed = it }, enabled = !saving && active, modifier = Modifier.testTag("group.membership.member_invites_allowed"))
+                            }
+                            Row {
+                                Text(stringResource(R.string.group_membership_require_approval), Modifier.weight(1f))
                                 Switch(required, { required = it }, enabled = !saving && active, modifier = Modifier.testTag("group.membership.approval_required"))
                             }
-                            Text(stringResource(R.string.group_membership_policy_help), style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(if (group.trustPolicy == "community") R.string.group_membership_policy_help else R.string.group_membership_private_policy_help), style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     item { Text(stringResource(R.string.group_membership_requests), style = MaterialTheme.typography.titleMedium) }

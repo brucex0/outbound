@@ -57,7 +57,7 @@ interface SocialRepository {
     suspend fun cheerGroup(id: String, recipientId: String, preset: String): Result<Unit>
     suspend fun renameGroup(id:String,name:String):Result<GroupSummary>
     suspend fun updateGroupDetails(id:String,name:String,city:String):Result<GroupSummary>
-    suspend fun updateGroupMembershipPolicy(id:String,joinPolicy:String,approvalRequired:Boolean):Result<GroupSummary>
+    suspend fun updateGroupMembershipPolicy(id:String,joinPolicy:String,approvalRequired:Boolean,memberInvitesAllowed:Boolean):Result<GroupSummary>
     suspend fun reviewGroupMembership(id:String,requestId:String,approve:Boolean):Result<GroupSummary>
     suspend fun updateEvent(id:String,body:CreateEventBody):Result<SocialEvent>
     suspend fun cancelEvent(id:String,scope:String):Result<SocialEvent>
@@ -229,7 +229,7 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun connect(personId: String) = authenticated { apiCall { api.connect(it, IdBody(personId)) } }
     override suspend fun accept(connectionId: String) = authenticated { apiCall { api.accept(it, connectionId) } }
     override suspend fun removeConnection(connectionId: String) = authenticated { apiCall { api.removeConnection(it, connectionId) } }
-    override suspend fun updateGroupMembershipPolicy(id:String,joinPolicy:String,approvalRequired:Boolean)=authenticated{apiCall{api.groupMembershipPolicy(it,id,GroupMembershipPolicyBody(joinPolicy,approvalRequired))}}
+    override suspend fun updateGroupMembershipPolicy(id:String,joinPolicy:String,approvalRequired:Boolean,memberInvitesAllowed:Boolean)=authenticated{apiCall{api.groupMembershipPolicy(it,id,GroupMembershipPolicyBody(joinPolicy,approvalRequired,memberInvitesAllowed))}}
     override suspend fun reviewGroupMembership(id:String,requestId:String,approve:Boolean)=authenticated{apiCall{api.reviewGroupMembership(it,id,requestId,if(approve) "approve" else "deny")}}.map{it.group}
     override suspend fun updateEvent(id:String,body:CreateEventBody)=authenticated{apiCall{api.updateEvent(it,id,body)}}
     override suspend fun cancelEvent(id:String,scope:String)=authenticated{apiCall{api.cancelEvent(it,id,scope)}}

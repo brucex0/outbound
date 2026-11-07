@@ -851,8 +851,8 @@ sealed interface ConnectionEffect {
         if (body.recurrence != null) analytics.record(AnalyticsEvent("activity_event_recurrence_configured", mapOf(AnalyticsProperty.SelectionType to "weekly", AnalyticsProperty.SourceType to "group_activity")))
         openGroup(group)
     }
-    fun saveMembershipPolicy(group:GroupSummary,joinPolicy:String,approvalRequired:Boolean,completed:(Boolean)->Unit)=mutate("group_membership_policy_changed", feedback=completed, properties=mapOf(AnalyticsProperty.SourceType to joinPolicy, AnalyticsProperty.SelectionType to if(approvalRequired) "approval_required" else "direct")) {
-        val updated=repository.updateGroupMembershipPolicy(group.id,joinPolicy,approvalRequired).getOrThrow()
+    fun saveMembershipPolicy(group:GroupSummary,joinPolicy:String,approvalRequired:Boolean,memberInvitesAllowed:Boolean,completed:(Boolean)->Unit)=mutate("group_membership_policy_changed", feedback=completed, properties=mapOf(AnalyticsProperty.SourceType to joinPolicy, AnalyticsProperty.SelectionType to if(approvalRequired) "approval_required" else "direct", AnalyticsProperty.ChangeType to if(memberInvitesAllowed) "member_invites_on" else "member_invites_off")) {
+        val updated=repository.updateGroupMembershipPolicy(group.id,joinPolicy,approvalRequired,memberInvitesAllowed).getOrThrow()
         mutableState.update { if(it.selectedGroupId==group.id) it.copy(selectedGroupDetail=updated) else it }
         refresh()
     }

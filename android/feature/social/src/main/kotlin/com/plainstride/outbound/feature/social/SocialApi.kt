@@ -34,7 +34,7 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 @Serializable data class GroupInviteBody(val recipientUserIds:List<String>,val idempotencyKey:String?=null)
 @Serializable data class GroupFocusBody(val mode:String,val sharedTarget:Int?=null,val apply:String="now")
 @Serializable data class RenameGroupBody(val name:String? = null, val city:String? = null)
-@Serializable data class GroupMembershipPolicyBody(val joinPolicy:String,val memberInviteApprovalRequired:Boolean)
+@Serializable data class GroupMembershipPolicyBody(val joinPolicy:String,val memberInviteApprovalRequired:Boolean,val memberInvitesAllowed:Boolean)
 @Serializable data class GroupCalendarBody(val resetWeekday:Int,val timeZone:String,val apply:String)
 @Serializable data class GroupRoleBody(val role:String)
 @Serializable data class GroupTransferBody(val recipientUserId:String)
