@@ -145,7 +145,7 @@ Every detail screen shares:
 4. Members and management/reporting entry points.
 
 Group settings and weekly themes use an explicit Save action. Group managers can edit the Group's base location alongside its name and group-week settings. Keep editors open when saving fails or when unsaved changes remain; show a distinct next-week theme when it differs from the current week. Location analytics record only that the location changed, never the location text.
-All active members can invite connections from the icon in the Members section header or expanded Members page when the Group is active and has room. Owners/admins also have member management and a membership-review queue in settings.
+Owners/admins can invite connections from the icon in the Members section header or expanded Members page when the Group has room. Members see the icon only while `memberInvitesAllowed` is enabled. Role changes, ownership transfer, removal, and pending invitation cancellation live in expanded Members; Group settings contains the policy switches and the membership-review queue. Archive requires confirmation. Past-week records remain stored but the non-interactive History list is hidden until it has useful details.
 
 Trusted-private detail leads with:
 
@@ -195,9 +195,9 @@ Community detail has no general member activity feed. Completed Group activities
 
 ### Joining And Member Invitations
 
-- Owners control community self-joining with `joinPolicy = open | request | invite_only`. Private Groups remain private and invitation-only. Owners/admins review membership requests; only owners can change these policies.
-- Every active member may send direct invitations to accepted connections. Community invitations from managers retain their block-free account eligibility; private invitations additionally require an accepted connection with the owner and inviter at sending, acceptance, and approval.
-- `memberInviteApprovalRequired` defaults to `true`. Manager invitations are pre-approved. A member invitation records `approvalRequired` when sent; changing the setting affects subsequent invitations and never silently approves an existing request.
+- Community Groups always allow self-joining. `joinPolicy = open` joins immediately; `request` requires owner/admin approval. Existing community `invite_only` rows are treated as `request` until the owner saves the new policy. Private Groups remain invitation-only. Unlisted Groups remain outside public discovery but can be reached through an invitation or valid link.
+- Owners control two switches: `memberInvitesAllowed` (default on) governs whether members can send new invitations, and `Require approval to join` governs discovery joins and member invitations. Approval defaults off for new community Groups and on for private Groups. Owners/admins can always invite accepted connections; their direct invitations and invite links are pre-approved, although invitees must still accept. Existing invitations are not cancelled when member invitations are turned off.
+- Community invitations from managers retain their block-free account eligibility; private invitations additionally require an accepted connection with the owner and inviter at sending, acceptance, and approval. A member invitation records `approvalRequired` when sent; changing the setting affects subsequent invitations and never silently approves an existing request.
 - Invitations are delivered immediately. An invitee must first accept. If review is required, `GroupInvitation.status` becomes `awaiting_approval`, and a `GroupJoinRequest` references that invitation. No active membership, member directory, notices, private workouts, event participation, or live-map access is granted while waiting.
 - The invitation preview and Groups invitation card show the waiting state and a withdrawal action. Unaccepted invitations expire after seven days; timely acceptance keeps a review request available until a decision, withdrawal, or revocation.
 - Owners/admins see the oldest 50 requests, their requester and optional inviter, and the total pending count. Resolving requests reveals the next page. A member sees only their own sent invitations; managers see all pending invitations. A sender can cancel their own invitation before admission, including while approval is pending; managers can cancel any.
@@ -362,6 +362,8 @@ Verification is build-only for this release: backend TypeScript, iOS phone and W
 ### Recurrence And Membership Rollout
 
 Deploy the backend schema and server before distributing either updated client. The schema adds the series table/relations, invitation approval flag/status, source-invitation relation on requests, and owner-controlled invitation policy. Existing Groups default to requiring review for newly sent member invitations; existing manager invitations remain pre-approved. No user-data reset is needed for this additive change:
+
+The membership simplification adds `memberInvitesAllowed` with a default of `true`. Deploy the schema and server before the clients. Community Groups with a stored `invite_only` policy become request-to-join groups through the API; saving the new approval switch stores `request` or `open`. No database reset is required for this additive column.
 
 ```sh
 cd backend
