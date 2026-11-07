@@ -4,6 +4,7 @@ import { getPrismaClient } from "../services/prisma.js";
 import { requireDatabase } from "../services/database.js";
 import { getAuthenticatedAppUser } from "../services/currentUser.js";
 import { assertAcceptedConnection, assertNoBlockedGroupMember, groupPayload } from "../services/groups.js";
+import { notifyMembershipReview } from "../services/groupMembership.js";
 import type { AppEnv } from "../types/hono.js";
 
 const router = new Hono<AppEnv>();
@@ -178,7 +179,8 @@ async function groupInviteConsume(c: Context<AppEnv>) {
       const count = await prisma.groupMember.count({ where: { groupId: link.groupId, status: "active" } });
       if (count >= link.group.memberLimit) return c.json({ error: "This Group is full." }, 409);
       if (link.group.joinPolicy === "request") {
-        await prisma.groupJoinRequest.upsert({ where: { groupId_requesterId: { groupId: link.groupId, requesterId: user.id } }, create: { groupId: link.groupId, requesterId: user.id }, update: { status: "pending", reviewerId: null, decisionAt: null } });
+        const request = await prisma.groupJoinRequest.upsert({ where: { groupId_requesterId: { groupId: link.groupId, requesterId: user.id } }, create: { groupId: link.groupId, requesterId: user.id }, update: { status: "pending", reviewerId: null, decisionAt: null } });
+        await notifyMembershipReview(link.groupId, user.id, request.id);
       } else {
         await prisma.groupMember.upsert({ where: { groupId_userId: { groupId: link.groupId, userId: user.id } }, create: { groupId: link.groupId, userId: user.id, role: "member", status: "active", displayNameSnapshot: user.displayName, avatarUrlSnapshot: user.avatarUrl }, update: { status: "active", joinedAt: new Date(), displayNameSnapshot: user.displayName, avatarUrlSnapshot: user.avatarUrl } });
       }

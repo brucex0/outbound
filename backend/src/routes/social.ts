@@ -31,6 +31,8 @@ import {
 
 import { eligibleActivityEvent, startEventParticipation } from "../services/activityEventParticipation.js";
 
+import { recurrenceSchema, occurrenceScopeSchema, createActivitySeries, ensureGroupActivityOccurrences, updateActivitySeries, cancelActivitySeries, SeriesError } from "../services/groupActivitySeries.js";
+
 const router = new Hono<AppEnv>();
 const activityEventReconciliationWindowMs = 4 * 60 * 60 * 1000;
 const socialFeedPageSize = 12;
@@ -57,6 +59,8 @@ const createActivityEventSchema = z.object({
   note: z.string().trim().max(240).nullable().optional(),
   groupId: z.string().min(1).nullable().optional(),
   participationMode: z.enum(["hybrid", "in_person"]).default("hybrid"),
+  recurrence: recurrenceSchema.nullable().optional(),
+  idempotencyKey: z.string().min(8).max(128).optional(),
 }).superRefine((value, context) => {
   if ((value.latitude == null) !== (value.longitude == null)) {
     context.addIssue({
@@ -77,6 +81,9 @@ const updateActivityEventSchema = z.object({
   longitude: z.number().finite().min(-180).max(180).nullable().optional(),
   note: z.string().trim().max(240).nullable().optional(),
   participationMode: z.enum(["hybrid", "in_person"]).optional(),
+  recurrence: recurrenceSchema.nullable().optional(),
+  scope: occurrenceScopeSchema.default("this"),
+  stopRepeating: z.boolean().default(false),
 }).superRefine((value, context) => {
   if ((value.latitude == null) !== (value.longitude == null) && (value.latitude !== undefined || value.longitude !== undefined)) {
     context.addIssue({
@@ -128,6 +135,7 @@ async function socialHome(c: Context<AppEnv>) {
   if (user instanceof Response) return user;
   const prisma = getPrismaClient();
   const connections = await acceptedConnectionIDs(user.id);
+  await ensureGroupActivityOccurrences(user.id);
   await refreshActivityEventStatuses();
   const unsharedActivities = await prisma.activity.findMany({
     where: { userId: user.id, deletedAt: null, posts: { none: {} } },
@@ -742,12 +750,20 @@ router.post("/activity-events", zValidator("json", createActivityEventSchema), a
   let groupTrustPolicy: string | null = null;
   if (input.groupId) {
     const group = await getPrismaClient().socialGroup.findUnique({ where: { id: input.groupId } });
-    if (!group || group.lifecycle === "archived") return c.json({ error: "The Group is not active." }, 422);
+    if (!group || group.lifecycle === "archived" || !group.scheduledActivitiesEnabled) return c.json({ error: "Group activities are not available." }, 422);
     const membership = await assertGroupMember(input.groupId, user.id);
     const canCreate = membership?.role === "owner" || membership?.role === "admin" || (group.trustPolicy === "trusted_private" && group.memberActivityCreation);
     if (!canCreate) return c.json({ error: "Group activity creation is not available to this member." }, 403);
     groupId = input.groupId;
     groupTrustPolicy = group.trustPolicy;
+  }
+  if (input.recurrence) {
+    if (!groupId) return seriesError(c, new SeriesError(422, "Repeating activities require a Group."), "create activity series");
+    try {
+      const id = await createActivitySeries(user.id, groupId, groupTrustPolicy === "community" ? "public" : "connections", input, input.recurrence, input.idempotencyKey ?? crypto.randomUUID());
+      const created = await getPrismaClient().activityEvent.findUniqueOrThrow({ where: { id }, include: activityEventInclude(user.id) });
+      return c.json(activityEventPayload(created, user.id, [], true), 201);
+    } catch (error) { return seriesError(c, error, "create activity series"); }
   }
   const activity = await getPrismaClient().$transaction(async (prisma) => {
     const created = await prisma.activityEvent.create({
@@ -786,9 +802,27 @@ router.patch("/activity-events/:id", zValidator("json", updateActivityEventSchem
   if (startsAt <= new Date()) return c.json({ error: "Choose a future date and time." }, 422);
   const existingDurationMinutes = Math.max(15, Math.round((activity.endsAt.getTime() - activity.startsAt.getTime()) / 60000));
   const durationMinutes = input.durationMinutes ?? existingDurationMinutes;
+  if (activity.groupId) await assertGroupMember(activity.groupId, user.id);
+  if (activity.seriesId && input.scope === "this" && activity.startsAt <= new Date()) return seriesError(c, new SeriesError(409, "Only future activities can be edited."), "edit recurring occurrence");
+  if (activity.seriesId && await prisma.activityEventParticipant.findFirst({ where: { activityEventId: activity.id, startedAt: { not: null } }, select: { id: true } })) return seriesError(c, new SeriesError(409, "Activities with recorded participation cannot be edited."), "edit recurring occurrence");
+  if (activity.seriesId && input.scope !== "this") {
+    try {
+      const old = await prisma.groupActivitySeries.findUniqueOrThrow({ where: { id: activity.seriesId } });
+      await updateActivitySeries(activity.id, user.id, input.scope, {
+        title: input.title ?? activity.title, activityType: input.activityType ?? activity.activityType ?? "running",
+        startsAt: startsAt.toISOString(), durationMinutes, locationName: input.locationName === undefined ? activity.locationName : input.locationName,
+        latitude: input.latitude === undefined ? activity.latitude : input.latitude, longitude: input.longitude === undefined ? activity.longitude : input.longitude,
+        note: input.note === undefined ? activity.note : input.note, participationMode: input.participationMode ?? activity.participationMode,
+      }, input.stopRepeating ? null : input.recurrence === undefined ? { timeZone: old.timeZone, intervalWeeks: old.intervalWeeks, weekdays: old.weekdays, untilDate: old.untilDate } : input.recurrence);
+      const updated = await prisma.activityEvent.findUniqueOrThrow({ where: { id: activity.id }, include: activityEventInclude(user.id) });
+      return c.json(activityEventPayload(updated, user.id, await acceptedConnectionIDs(user.id), true));
+    } catch (error) { return seriesError(c, error, "update activity series"); }
+  }
+  if (input.recurrence && !activity.seriesId) return seriesError(c, new SeriesError(422, "Create a new activity to start a repeating series."), "edit activity recurrence");
   const updated = await prisma.activityEvent.update({
     where: { id: activity.id },
     data: {
+      ...(activity.seriesId ? { seriesException: true } : {}),
       ...(input.title !== undefined ? { title: input.title } : {}),
       ...(input.activityType !== undefined ? { activityType: input.activityType } : {}),
       ...(input.startsAt !== undefined || input.durationMinutes !== undefined
@@ -811,6 +845,16 @@ router.post("/activity-events/:id/cancel", async (c) => {
   if (user instanceof Response) return user;
   const prisma = getPrismaClient();
   const id = c.req.param("id");
+  const parsedScope = occurrenceScopeSchema.safeParse(c.req.query("scope") ?? "this");
+  if (!parsedScope.success) return c.json({ error: "Unsupported occurrence scope." }, 400);
+  const recurring = await prisma.activityEvent.findUnique({ where: { id }, select: { seriesId: true } });
+  if (recurring?.seriesId) {
+    try {
+      await cancelActivitySeries(id, user.id, parsedScope.data);
+      const activity = await prisma.activityEvent.findUniqueOrThrow({ where: { id }, include: activityEventInclude(user.id) });
+      return c.json(activityEventPayload(activity, user.id, await acceptedConnectionIDs(user.id), true));
+    } catch (error) { return seriesError(c, error, "cancel activity series"); }
+  }
   const outcome = await prisma.$transaction(async (tx) => {
     const event = await tx.activityEvent.findFirst({ where: { id, creatorId: user.id } });
     if (!event) return "not_found";
@@ -1689,6 +1733,7 @@ async function visiblePost(postId: string, userId: string) {
 
 function activityEventInclude(_currentUserId: string) {
   return {
+    series: { select: { timeZone: true, intervalWeeks: true, weekdays: true, untilDate: true } },
     group: { select: { id: true, name: true, trustPolicy: true, members: { where: { userId: _currentUserId, status: "active" }, select: { userId: true } } } },
     creator: { select: socialPersonSelect },
     options: { orderBy: { sortOrder: "asc" as const } },
@@ -1752,6 +1797,8 @@ function activityEventPayload(activity: any, currentUserId: string, connectionId
   const payload: Record<string, unknown> = {
     id: activity.id,
     title: activity.title,
+    seriesId: activity.seriesId ?? null,
+    recurrence: activity.series ?? null,
     startsAt: activity.startsAt,
     endsAt: activity.endsAt,
     locationName: activity.locationName,
@@ -1891,6 +1938,15 @@ function isAcceptableText(text: string) {
 
 function publicWebBaseURL() {
   return (process.env.PUBLIC_WEB_BASE_URL?.trim() || "https://plainstride.ai").replace(/\/$/, "");
+}
+
+function seriesError(c: Context<AppEnv>, error: unknown, operation: string) {
+  if (error instanceof SeriesError) {
+    console.warn("[activitySeries] request rejected", { operation, status: error.status });
+    return c.json({ error: error.message }, error.status);
+  }
+  console.error("[activitySeries] operation failed", { operation, errorType: error instanceof Error ? error.name : "unknown", code: error instanceof Prisma.PrismaClientKnownRequestError ? error.code : undefined });
+  return c.json({ error: "The activity series could not be updated. Try again." }, 500);
 }
 
 export default router;

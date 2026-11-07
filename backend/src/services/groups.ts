@@ -1,5 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { getPrismaClient } from "./prisma.js";
+import { assertInvitationEligibility, membershipControls } from "./groupMembership.js";
+import { ensureGroupActivityOccurrences } from "./groupActivitySeries.js";
 import type { SupportedLocale } from "../middleware/locale.js";
 import { compactPerson } from "./apiAssetURLs.js";
 
@@ -266,9 +268,9 @@ export async function refreshWeekState(tx: Prisma.TransactionClient, weekId: str
 export async function groupInvitationPreview(groupId: string, viewerId: string, invitationId?: string) {
   const prisma = getPrismaClient();
   const invitation = await prisma.groupInvitation.findFirst({
-    where: { id: invitationId, groupId, recipientId: viewerId, status: "pending", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+    where: { id: invitationId, groupId, recipientId: viewerId, OR: [{ status: "pending", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, { status: "awaiting_approval" }] },
     select: {
-      id: true, groupId: true, status: true, createdAt: true, expiresAt: true,
+      id: true, groupId: true, status: true, createdAt: true, expiresAt: true, approvalRequired: true,
       senderId: true, sender: { select: shareSafeMemberSelect },
       group: { select: {
         id: true, name: true, description: true, trustPolicy: true, visibility: true,
@@ -278,9 +280,7 @@ export async function groupInvitationPreview(groupId: string, viewerId: string, 
     },
   });
   if (!invitation || invitation.group.lifecycle === "archived") return null;
-  if (invitation.group.trustPolicy === "trusted_private") await assertAcceptedConnection(invitation.senderId, viewerId);
-  else await assertNoBlockedPair(invitation.senderId, viewerId);
-  await assertNoBlockedGroupMember(groupId, viewerId);
+  await assertInvitationEligibility(groupId, invitation.senderId, viewerId);
   const group = invitation.group;
   return {
     id: group.id, name: group.name, description: group.description,
@@ -290,7 +290,7 @@ export async function groupInvitationPreview(groupId: string, viewerId: string, 
     pendingInvitation: {
       id: invitation.id, groupId, group: { id: group.id, name: group.name },
       sender: compactPerson(invitation.sender), status: invitation.status,
-      createdAt: invitation.createdAt, expiresAt: invitation.expiresAt,
+      createdAt: invitation.createdAt, expiresAt: invitation.expiresAt, approvalRequired: invitation.approvalRequired,
     },
   };
 }
@@ -299,7 +299,10 @@ export async function groupPayload(groupId: string, viewerId: string, includeHis
   const prisma = getPrismaClient();
   const socialGroup = await prisma.socialGroup.findUnique({ where: { id: groupId }, include: { owner: { select: shareSafeMemberSelect }, members: { where: { status: "active" }, include: { user: { select: shareSafeMemberSelect } }, orderBy: { joinedAt: "asc" } } } });
   if (!socialGroup) return null;
-  if (socialGroup.trustPolicy === "community") return communityGroupPayload(socialGroup, viewerId);
+  await ensureGroupActivityOccurrences(viewerId, groupId);
+  const membership = await membershipControls(groupId, viewerId);
+  if (socialGroup.trustPolicy === "community") return { ...await communityGroupPayload(socialGroup, viewerId), ...membership };
+  if (!socialGroup.members.some((member) => member.userId === viewerId)) throw new GroupDomainError("not_a_member", "Group membership is required.");
   const week = await ensureCurrentWeek(prisma, socialGroup.id, new Date());
   const [commitments, history, cheers, viewerMembership, completionPresentation, invitations, activityEvents] = await Promise.all([
     prisma.groupCommitment.findMany({ where: { weekId: week.id } }),
@@ -307,17 +310,9 @@ export async function groupPayload(groupId: string, viewerId: string, includeHis
     prisma.groupCheer.findMany({ where: { groupId, weekId: week.id }, orderBy: { createdAt: "desc" }, take: 30 }),
     prisma.groupMember.findUnique({ where: { groupId_userId: { groupId, userId: viewerId } }, select: { notificationMuted: true } }),
     prisma.groupWeekPresentation.findUnique({ where: { weekId_userId: { weekId: week.id, userId: viewerId } }, select: { presentedAt: true } }),
-    socialGroup.ownerId === viewerId ? prisma.groupInvitation.findMany({ where: { groupId, status: "pending", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, include: { sender: { select: shareSafeMemberSelect }, recipient: { select: shareSafeMemberSelect }, group: { select: { id: true, name: true } } }, orderBy: { createdAt: "desc" } }) : Promise.resolve([]),
-    prisma.activityEvent.findMany({
-      where: {
-        groupId,
-        status: { in: ["scheduled", "active", "reconciling", "completed"] },
-        OR: [
-          { participants: { some: { userId: viewerId, status: "going" } } },
-          { invitations: { some: { recipientId: viewerId, status: { in: ["pending", "accepted"] } } } },
-          { group: { members: { some: { userId: viewerId, status: "active" } } } },
-        ],
-      },
+    prisma.groupInvitation.findMany({ where: { groupId, ...(["owner", "admin"].includes(socialGroup.members.find((m) => m.userId === viewerId)?.role ?? "") ? {} : { senderId: viewerId }), OR: [{ status: "pending", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, { status: "awaiting_approval" }] }, include: { sender: { select: shareSafeMemberSelect }, recipient: { select: shareSafeMemberSelect }, group: { select: { id: true, name: true } } }, orderBy: { createdAt: "desc" } }),
+    Promise.all([
+      prisma.activityEvent.findMany({ where: { groupId, status: { in: ["scheduled", "active"] } },
       select: {
         id: true,
         creatorId: true,
@@ -330,9 +325,22 @@ export async function groupPayload(groupId: string, viewerId: string, includeHis
         creator: { select: shareSafeMemberSelect },
         participants: { where: { status: "going" }, select: { userId: true } },
       },
-      orderBy: { startsAt: "desc" },
-      take: 10,
-    }),
+        orderBy: { startsAt: "asc" }, take: 20 }),
+      prisma.activityEvent.findMany({ where: { groupId, status: { in: ["reconciling", "completed"] } },
+      select: {
+        id: true,
+        creatorId: true,
+        title: true,
+        startsAt: true,
+        endsAt: true,
+        locationName: true,
+        note: true,
+        status: true,
+        creator: { select: shareSafeMemberSelect },
+        participants: { where: { status: "going" }, select: { userId: true } },
+      },
+        orderBy: { startsAt: "desc" }, take: 10 }),
+    ]).then((pages) => pages.flat()),
   ]);
   const contributions = await prisma.groupContribution.findMany({
     where: { weekId: week.id },
@@ -371,6 +379,9 @@ export async function groupPayload(groupId: string, viewerId: string, includeHis
     trustPolicy: socialGroup.trustPolicy,
     visibility: socialGroup.visibility,
     joinPolicy: socialGroup.joinPolicy,
+    memberInviteApprovalRequired: socialGroup.memberInviteApprovalRequired,
+    canInvite: socialGroup.lifecycle !== "archived" && socialGroup.members.some((m) => m.userId === viewerId),
+    ...membership,
     featured: socialGroup.featured,
     organizationVerificationState: socialGroup.organizationVerificationState,
     capabilities: {
@@ -452,16 +463,16 @@ async function communityGroupPayload(group: any, viewerId: string) {
   const prisma = getPrismaClient();
   const viewerMember = group.members.find((member: any) => member.userId === viewerId) ?? null;
   const [notices, noticeRead, activities, pendingRequest, invitations] = await Promise.all([
-    group.noticesEnabled
+    viewerMember && group.noticesEnabled
       ? prisma.groupNotice.findMany({ where: { groupId: group.id, deletedAt: null }, select: { id: true, title: true, body: true, activityEventId: true, pinned: true, publishedAt: true, editedAt: true }, orderBy: [{ pinned: "desc" }, { publishedAt: "desc" }], take: 30 })
       : Promise.resolve([]),
     viewerMember ? prisma.groupNoticeRead.findUnique({ where: { groupId_userId: { groupId: group.id, userId: viewerId } }, select: { lastSeenNoticeId: true } }) : Promise.resolve(null),
     group.scheduledActivitiesEnabled
-      ? prisma.activityEvent.findMany({ where: { groupId: group.id, status: { in: ["scheduled", "active", "reconciling", "completed"] }, OR: [{ participants: { some: { userId: viewerId, status: "going" } } }, { invitations: { some: { recipientId: viewerId, status: { in: ["pending", "accepted"] } } } }, { group: { members: { some: { userId: viewerId, status: "active" } } } }, { visibility: "public" }] }, select: { id: true, title: true, startsAt: true, endsAt: true, locationName: true, status: true, activityType: true, creatorId: true, participants: { where: { status: "going" }, select: { userId: true, attendanceMode: true } } }, orderBy: { startsAt: "asc" }, take: 20 })
+      ? prisma.activityEvent.findMany({ where: { groupId: group.id, status: { in: ["scheduled", "active"] }, OR: [{ participants: { some: { userId: viewerId, status: "going" } } }, { invitations: { some: { recipientId: viewerId, status: { in: ["pending", "accepted"] } } } }, { group: { members: { some: { userId: viewerId, status: "active" } } } }, { visibility: "public" }] }, select: { id: true, title: true, startsAt: true, endsAt: true, locationName: true, status: true, activityType: true, creatorId: true, participants: { where: { status: "going" }, select: { userId: true, attendanceMode: true } } }, orderBy: { startsAt: "asc" }, take: 20 })
       : Promise.resolve([]),
     !viewerMember && group.joinPolicy === "request" ? prisma.groupJoinRequest.findUnique({ where: { groupId_requesterId: { groupId: group.id, requesterId: viewerId } }, select: { id: true, status: true } }) : Promise.resolve(null),
-    viewerMember && ["owner", "admin"].includes(viewerMember.role)
-      ? prisma.groupInvitation.findMany({ where: { groupId: group.id, status: "pending", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, include: { sender: { select: shareSafeMemberSelect }, recipient: { select: shareSafeMemberSelect }, group: { select: { id: true, name: true } } }, orderBy: { createdAt: "desc" } })
+    viewerMember
+      ? prisma.groupInvitation.findMany({ where: { groupId: group.id, ...(["owner", "admin"].includes(viewerMember.role) ? {} : { senderId: viewerId }), OR: [{ status: "pending", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, { status: "awaiting_approval" }] }, include: { sender: { select: shareSafeMemberSelect }, recipient: { select: shareSafeMemberSelect }, group: { select: { id: true, name: true } } }, orderBy: { createdAt: "desc" } })
       : Promise.resolve([]),
   ]);
   const latestNotice = notices[0] as any;
@@ -476,6 +487,8 @@ async function communityGroupPayload(group: any, viewerId: string) {
     trustPolicy: group.trustPolicy,
     visibility: group.visibility,
     joinPolicy: group.joinPolicy,
+    memberInviteApprovalRequired: group.memberInviteApprovalRequired,
+    canInvite: Boolean(viewerMember) && group.lifecycle !== "archived",
     lifecycle: group.lifecycle,
     featured: group.featured,
     organizationVerificationState: group.organizationVerificationState,

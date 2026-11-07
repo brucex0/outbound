@@ -25,7 +25,7 @@ Read this after `AGENTS.md`. Open only the route needed for the current task.
 | Guidance plans and adaptation | `docs/guidance-plans.md`, `docs/adaptive-planning-engine.md` |
 | Live coaching operations and audio | `docs/live-coach-operations.md` |
 | Stretch catalog, editor, generation | `docs/stretch-routines.md` |
-| Groups and Social | `docs/run-groups.md`, `docs/social.md` |
+| Groups, membership approval, member invitations, weekly recurrence, and Social | `docs/run-groups.md`, `docs/social.md` |
 | Account preferences and statistics | `docs/account-preferences.md`, `docs/account-statistics.md` |
 | Git transport problems | `docs/git-transport.md` |
 | Any other feature, historical plan, prototype, or handoff | Search `docs/reference-map.md` |

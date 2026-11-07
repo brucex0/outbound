@@ -1398,6 +1398,7 @@ model SocialGroup {
   trustPolicy            String             @default("community")
   visibility             String             @default("unlisted")
   joinPolicy             String             @default("request")
+  memberInviteApprovalRequired Boolean      @default(true)
   lifecycle              String             @default("active")
   featured               Boolean            @default(false)
   organizationVerificationState String      @default("unverified")
@@ -1427,6 +1428,7 @@ model SocialGroup {
   notices                GroupNotice[]
   noticeReads            GroupNoticeRead[]
   activityEvents         ActivityEvent[]
+  activitySeries         GroupActivitySeries[]
 
   @@index([normalizedName])
   @@index([visibility, trustPolicy, lifecycle])
@@ -1464,7 +1466,9 @@ model GroupInvitation {
   sender         User      @relation("GroupInvitationSender", fields: [senderId], references: [id], onDelete: Cascade)
   recipientId    String
   recipient      User      @relation("GroupInvitationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
-  status         String    @default("pending") // pending | accepted | declined | cancelled | expired
+  status         String    @default("pending") // pending | awaiting_approval | accepted | declined | cancelled | expired
+  approvalRequired Boolean @default(false)
+  joinRequest    GroupJoinRequest?
   idempotencyKey String?   @unique
   expiresAt      DateTime?
   acceptedAt     DateTime?
@@ -1593,6 +1597,8 @@ model GroupJoinRequest {
   status         String      @default("pending")
   idempotencyKey String?     @unique
   decisionAt     DateTime?
+  sourceInvitationId String? @unique
+  sourceInvitation GroupInvitation? @relation(fields: [sourceInvitationId], references: [id], onDelete: SetNull)
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
@@ -1632,10 +1638,47 @@ model GroupNoticeRead {
   @@unique([groupId, userId])
 }
 
+model GroupActivitySeries {
+  id                String @id @default(cuid())
+  creationKey       String? @unique
+  familyId          String @default(cuid())
+  groupId           String
+  group             SocialGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  creatorId         String
+  title             String
+  activityType      String
+  locationName      String?
+  latitude          Float?
+  longitude         Float?
+  note              String?
+  participationMode String @default("hybrid")
+  visibility        String @default("connections")
+  timeZone          String
+  startDate         String // YYYY-MM-DD in the series time zone; anchors week intervals
+  localTime         String // HH:mm
+  intervalWeeks     Int @default(1)
+  weekdays          Int[] // ISO weekdays, 1 = Monday
+  untilDate         String? // inclusive local date
+  durationMinutes   Int @default(60)
+  stopped           Boolean @default(false)
+  revision          Int @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  events            ActivityEvent[]
+
+  @@index([groupId, stopped])
+  @@index([familyId])
+}
+
 model ActivityEvent {
   id                String                     @id @default(cuid())
   groupId           String?
   group             SocialGroup?               @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  seriesId          String?
+  series            GroupActivitySeries?        @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  seriesFamilyId    String?
+  occurrenceDate    String?
+  seriesException   Boolean                    @default(false)
   creatorId         String
   creator           User                       @relation("ActivityEventCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   title             String
@@ -1659,6 +1702,7 @@ model ActivityEvent {
 
   @@index([startsAt, status])
   @@index([groupId, startsAt])
+  @@unique([seriesFamilyId, occurrenceDate])
 }
 
 model ActivityEventParticipant {

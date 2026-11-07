@@ -1,6 +1,6 @@
 # Social Groups
 
-Open this when designing or building Group creation, private motivation Groups, community activity Groups, membership, weekly themes, notices, scheduled activities, discovery, or moderation.
+Open this when designing or building Group creation, private motivation Groups, community activity Groups, membership, weekly themes, notices, scheduled and recurring activities, discovery, or moderation.
 
 Status: implemented unified Group contract. The destructive pre-release cutover uses `SocialGroup` and the `Group*` relations below; rebuild local or deployed databases from the final Prisma schema before seeding.
 
@@ -92,7 +92,7 @@ Capabilities describe what members can do and remain independent of the trust po
 | Workout contributions | Count qualifying saved activities and show trusted detail | On | Off and unavailable for community trust |
 | Preset Cheers | Encourage a trusted member's contribution | On | Off |
 | Notices | Owner/admin broadcast with no replies | Off | On |
-| Scheduled activities | Group-owned activity events and recurring schedule later | On | On |
+| Scheduled activities | Group-owned single activities and weekly recurring series | On | On |
 
 Capabilities can be enabled later only when the trust-policy invariants allow them. UI labels explain the job, not the implementation flag.
 
@@ -145,7 +145,7 @@ Every detail screen shares:
 4. Members and management/reporting entry points.
 
 Group settings and weekly themes use an explicit Save action. Group managers can edit the Group's base location alongside its name and group-week settings. Keep editors open when saving fails or when unsaved changes remain; show a distinct next-week theme when it differs from the current week. Location analytics record only that the location changed, never the location text.
-Owners and admins can invite connections directly from Group detail; keep member management available in settings as well.
+All active members can invite connections directly from Group detail. Owners/admins also have member management and a membership-review queue in settings.
 
 Trusted-private detail leads with:
 
@@ -186,12 +186,24 @@ Community detail has no general member activity feed. Completed Group activities
 - User-created Groups always have exactly one active owner. System-curated Groups use an explicit `managementMode = system` instead of a fake owner.
 - Owners may edit settings, manage capabilities, approve requests, invite/remove members, promote/demote admins, transfer ownership, archive, and reactivate.
 - Admins may manage members, notices, and activities but cannot transfer ownership or change trust policy. Only owners and admins can create, edit, or delete notices; original authors have no separate authorization from their current Group role.
-- Members may leave, mute optional notifications, report the Group or content, and block another member.
+- Members may invite accepted connections, leave, mute optional notifications, report the Group or content, and block another member.
 - Owners cannot leave until they transfer ownership or archive the Group.
 - New Groups use the server-configured member capacity, which defaults to `500` and can be adjusted with `GROUP_MEMBER_LIMIT` (valid range `2`–`5000`). The configured value is returned to clients and stored on each Group at creation.
 - Removal, leaving, and blocking revoke future access immediately.
 - Archiving preserves history but prevents new invitations, notices, and activities.
 - Ownership recovery without the current owner is an operator action and is deferred until a secure recovery policy exists.
+
+### Joining And Member Invitations
+
+- Owners control community self-joining with `joinPolicy = open | request | invite_only`. Private Groups remain private and invitation-only. Owners/admins review membership requests; only owners can change these policies.
+- Every active member may send direct invitations to accepted connections. Community invitations from managers retain their block-free account eligibility; private invitations additionally require an accepted connection with the owner and inviter at sending, acceptance, and approval.
+- `memberInviteApprovalRequired` defaults to `true`. Manager invitations are pre-approved. A member invitation records `approvalRequired` when sent; changing the setting affects subsequent invitations and never silently approves an existing request.
+- Invitations are delivered immediately. An invitee must first accept. If review is required, `GroupInvitation.status` becomes `awaiting_approval`, and a `GroupJoinRequest` references that invitation. No active membership, member directory, notices, private workouts, event participation, or live-map access is granted while waiting.
+- The invitation preview and Groups invitation card show the waiting state and a withdrawal action. Unaccepted invitations expire after seven days; timely acceptance keeps a review request available until a decision, withdrawal, or revocation.
+- Owners/admins see the oldest 50 requests, their requester and optional inviter, and the total pending count. Resolving requests reveals the next page. A member sees only their own sent invitations; managers see all pending invitations. A sender can cancel their own invitation before admission, including while approval is pending; managers can cancel any.
+- Approval rechecks Group lifecycle, the inviter's active membership, block/connection eligibility, and capacity. Admission and review are idempotent; invitation acceptance, request approval, and open self-joins serialize capacity decisions and retry database serialization conflicts.
+- Requests and decisions use the existing targeted inbox notifications. The Groups attention badge includes manager review requests; waiting invitees are not counted as requiring another acceptance.
+- A known pending-membership response removes any cached joined-Group detail. Preview data remains separate from iOS membership caches. iOS uses Group cache v2; Android replaces its Social home, Group/event/invitation destination cache namespaces with current v2 data. Room schema and local recordings are unchanged; no cache migration or copying occurs.
 
 ## Notices And Attention
 
@@ -218,7 +230,11 @@ A notice is an owner/admin broadcast for schedule changes, meetup information, c
 - Non-members may see a public activity summary as a reason to join but never participant identities or coordinates.
 - RSVP, attendance intent, recording, and reconciliation remain governed by the existing activity-event contract.
 - Never infer physical attendance from GPS.
-- Recurring series follows single-event support and must distinguish `this instance`, `this and following`, and `entire series` edits.
+- Weekly repetition supports selected ISO weekdays, every 1–4 weeks, and an optional inclusive local end date. No end date means ongoing repetition. Each occurrence is an ordinary `ActivityEvent` with its own RSVP, targeted invitations, live-map consent, recording links, cancellation, and results; only its creator is automatically going.
+- A series stores an IANA time zone, local start date/time, weekdays, interval, duration, and end date. Weekly calculation follows the local calendar across DST. Repeated local times use the earlier instant; nonexistent local times advance by the gap. The explicitly selected first instant is retained, including a later repeated-hour choice.
+- Creating a series materializes a 90-day window from today or its future start, whichever is later. Authorized Group/home reads extend it; no background scheduler is required. Dormant periods do not synthesize completed historical activities. Archived Groups, disabled scheduling, and departed organizers stop extension.
+- Editing/cancelling offers `This activity`, `This and following activities`, and `Entire series`. Only unstarted occurrences change; completed/active history and recorded results remain. A one-occurrence edit keeps its slot and ID. Broader edits apply the editor's settings to affected future occurrences, preserve matching event IDs and RSVP/invitation state, and cancel removed dates through the normal cancellation cleanup/notification path. Previously cancelled dates stay cancelled.
+- Future-rule edits create segments sharing a stable series family. Whole-series changes and future cancellation cover that family across prior edits. Unique family/date keys prevent duplicate or resurrected occurrences, including under retries. Turning repetition off keeps the selected event and cancels the other affected future occurrences.
 
 ## Technical Model
 
@@ -243,7 +259,7 @@ Use `SocialGroup` as the Prisma model name to avoid SQL and language ambiguity w
 ### Coordination capabilities
 
 - `ActivityEvent.groupId`: Group attribution and authorization source.
-- `GroupActivitySeries`: deferred until single Group events are stable.
+- `GroupActivitySeries`: weekly rule segments with a common family, local calendar/time zone, and bounded occurrence materialization. `ActivityEvent.seriesFamilyId + occurrenceDate` is the unique slot identity.
 
 Do not add a generic JSON permissions field. Stable capabilities and policies must be typed, validated, and queryable.
 
@@ -341,7 +357,20 @@ The project policy permits a destructive data reset. Prefer a clean cutover over
 
 The destructive cutover is implemented. `backend/prisma/schema.prisma` is the replacement schema; `cd backend && npm run db:rebuild` resets and reseeds a disposable database, while `docs/backend-deploy.md` documents the equivalent Cloud Run schema job. The deployed clients use the unified Group contracts, clear account-scoped legacy caches by using the new Group cache namespaces, and expose no compatibility routers or adapters.
 
-Verification is build-only for this release: backend TypeScript, iOS phone and Watch targets, Android phone variants, and Wear OS variants. Recurring activity series, organization verification operations, and owner recovery remain deferred below.
+Verification is build-only for this release: backend TypeScript, iOS phone and Watch targets, Android phone variants, and Wear OS variants. Organization verification operations and owner recovery remain deferred below. Weekly recurrence and membership review are implemented; focused UI and API verification is recorded in `docs/social-qa.md`.
+
+### Recurrence And Membership Rollout
+
+Deploy the backend schema and server before distributing either updated client. The schema adds the series table/relations, invitation approval flag/status, source-invitation relation on requests, and owner-controlled invitation policy. Existing Groups default to requiring review for newly sent member invitations; existing manager invitations remain pre-approved. No user-data reset is needed for this additive change:
+
+```sh
+cd backend
+npm run db:generate
+npm run build
+npm run db:push
+```
+
+Use `npm run db:rebuild` only for an explicitly disposable local database. Mobile cache resets above are automatic; no Android Room migration is added.
 
 ## Acceptance Criteria
 
@@ -365,7 +394,6 @@ Verification is build-only for this release: backend TypeScript, iOS phone and W
 - Group chat, direct messages, and notice comments.
 - General member activity feeds for community Groups.
 - Leaderboards, rankings, points, levels, and streak punishment.
-- Recurring activity series until single Group activities are stable.
 - Capacity limits and waitlists for Group activities.
 - Public web pages and SEO.
 - Dues, sponsorships, treasury, or other money movement.

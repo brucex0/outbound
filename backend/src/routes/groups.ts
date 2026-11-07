@@ -3,7 +3,6 @@ import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import type { Context } from "hono";
-import { Prisma } from "@prisma/client";
 import type { AppEnv } from "../types/hono.js";
 import { requireDatabase } from "../services/database.js";
 import { getAuthenticatedAppUser } from "../services/currentUser.js";
@@ -27,6 +26,9 @@ import {
   transferGroupOwnership,
   validTimeZone,
 } from "../services/groups.js";
+
+import { lockedGroup } from "../services/groupLock.js";
+import { assertInvitationEligibility, notifyMembershipReview, membershipTransaction } from "../services/groupMembership.js";
 
 const router = new Hono<AppEnv>();
 const focusMode = z.enum(["theme", "personal_targets", "shared_target", "none"]);
@@ -81,6 +83,7 @@ const renameSchema = z.object({
   activityInterests: z.array(z.string().trim().min(1).max(30)).max(12).optional(),
   visibility: z.enum(["private", "unlisted", "public"]).optional(),
   joinPolicy: z.enum(["invite_only", "request", "open"]).optional(),
+  memberInviteApprovalRequired: z.boolean().optional(),
   weeklyThemeEnabled: z.boolean().optional(),
   workoutContributionsEnabled: z.boolean().optional(),
   presetCheersEnabled: z.boolean().optional(),
@@ -110,6 +113,9 @@ router.get("/", async (c) => {
   const rows = await prisma.socialGroup.findMany({ where, include: { owner: { select: { id: true, displayName: true, avatarUrl: true } }, members: { where: { status: "active" }, select: { userId: true, role: true } } }, orderBy: [{ featured: "desc" }, { updatedAt: "desc" }, { id: "asc" }], ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}), take: take + 1 });
   const page = rows.slice(0, take);
   const groupIds = page.map((socialGroup) => socialGroup.id);
+  const managedIds = page.filter((group) => group.members.some((member) => member.userId === user.id && ["owner", "admin"].includes(member.role))).map((group) => group.id);
+  const requestCounts = managedIds.length ? await prisma.groupJoinRequest.groupBy({ by: ["groupId"], where: { groupId: { in: managedIds }, status: "pending" }, _count: { _all: true } }) : [];
+  const pendingRequestsByGroup = new Map(requestCounts.map((row) => [row.groupId, row._count._all]));
   let latestNotices: { id: string; groupId: string }[] = [];
   let noticeReads: { groupId: string; lastSeenNoticeId: string | null }[] = [];
   if (scope !== "discover" && groupIds.length > 0) {
@@ -139,6 +145,8 @@ router.get("/", async (c) => {
     groupType: socialGroup.trustPolicy === "community" ? "community" : "private",
     visibility: socialGroup.visibility,
     joinPolicy: socialGroup.joinPolicy,
+    memberInviteApprovalRequired: socialGroup.memberInviteApprovalRequired,
+    pendingRequestCount: pendingRequestsByGroup.get(socialGroup.id) ?? 0,
     lifecycle: socialGroup.lifecycle,
     featured: socialGroup.featured,
     organizationVerificationState: socialGroup.organizationVerificationState,
@@ -208,7 +216,7 @@ router.patch("/:id", zValidator("json", renameSchema), async (c) => {
   const input = c.req.valid("json");
   const member = await getPrismaClient().groupMember.findUnique({ where: { groupId_userId: { groupId: socialGroup.id, userId: user.id } }, select: { role: true } });
   if (!member || !["owner", "admin"].includes(member.role)) return c.json({ error: "Group management access is required." }, 403);
-  if (input.visibility || input.joinPolicy || input.weeklyThemeEnabled !== undefined || input.workoutContributionsEnabled !== undefined || input.presetCheersEnabled !== undefined || input.memberActivityCreation !== undefined) {
+  if (input.visibility || input.joinPolicy || input.memberInviteApprovalRequired !== undefined || input.weeklyThemeEnabled !== undefined || input.workoutContributionsEnabled !== undefined || input.presetCheersEnabled !== undefined || input.memberActivityCreation !== undefined) {
     if (member.role !== "owner") return c.json({ error: "Only the owner can change Group policy." }, 403);
     const visibility = input.visibility ?? socialGroup.visibility;
     const joinPolicy = input.joinPolicy ?? socialGroup.joinPolicy;
@@ -217,7 +225,7 @@ router.patch("/:id", zValidator("json", renameSchema), async (c) => {
     if (socialGroup.trustPolicy === "community" && (input.weeklyThemeEnabled || input.workoutContributionsEnabled || input.memberActivityCreation)) return c.json({ error: "Community Groups cannot enable private motivation capabilities." }, 422);
   }
   const name = input.name;
-  await getPrismaClient().socialGroup.update({ where: { id: socialGroup.id }, data: { ...(name ? { name, normalizedName: normalizeSearchName(name) } : {}), ...(input.description !== undefined ? { description: input.description } : {}), ...(input.city !== undefined ? { city: input.city } : {}), ...(input.activityInterests ? { activityInterests: input.activityInterests } : {}), ...(input.visibility ? { visibility: input.visibility } : {}), ...(input.joinPolicy ? { joinPolicy: input.joinPolicy } : {}), ...(input.weeklyThemeEnabled !== undefined ? { weeklyThemeEnabled: input.weeklyThemeEnabled } : {}), ...(input.workoutContributionsEnabled !== undefined ? { workoutContributionsEnabled: input.workoutContributionsEnabled } : {}), ...(input.presetCheersEnabled !== undefined ? { presetCheersEnabled: input.presetCheersEnabled } : {}), ...(input.noticesEnabled !== undefined ? { noticesEnabled: input.noticesEnabled } : {}), ...(input.scheduledActivitiesEnabled !== undefined ? { scheduledActivitiesEnabled: input.scheduledActivitiesEnabled } : {}), ...(input.memberActivityCreation !== undefined ? { memberActivityCreation: input.memberActivityCreation } : {}) } });
+  await getPrismaClient().socialGroup.update({ where: { id: socialGroup.id }, data: { ...(name ? { name, normalizedName: normalizeSearchName(name) } : {}), ...(input.description !== undefined ? { description: input.description } : {}), ...(input.city !== undefined ? { city: input.city } : {}), ...(input.activityInterests ? { activityInterests: input.activityInterests } : {}), ...(input.visibility ? { visibility: input.visibility } : {}), ...(input.joinPolicy ? { joinPolicy: input.joinPolicy } : {}), ...(input.memberInviteApprovalRequired !== undefined ? { memberInviteApprovalRequired: input.memberInviteApprovalRequired } : {}), ...(input.weeklyThemeEnabled !== undefined ? { weeklyThemeEnabled: input.weeklyThemeEnabled } : {}), ...(input.workoutContributionsEnabled !== undefined ? { workoutContributionsEnabled: input.workoutContributionsEnabled } : {}), ...(input.presetCheersEnabled !== undefined ? { presetCheersEnabled: input.presetCheersEnabled } : {}), ...(input.noticesEnabled !== undefined ? { noticesEnabled: input.noticesEnabled } : {}), ...(input.scheduledActivitiesEnabled !== undefined ? { scheduledActivitiesEnabled: input.scheduledActivitiesEnabled } : {}), ...(input.memberActivityCreation !== undefined ? { memberActivityCreation: input.memberActivityCreation } : {}) } });
   return c.json(await groupPayload(socialGroup.id, user.id, true));
 });
 
@@ -225,29 +233,52 @@ router.post("/:id/join-requests", async (c) => {
   const user = await requireGroupUser(c);
   if (user instanceof Response) return user;
   const prisma = getPrismaClient();
-  const group = await prisma.socialGroup.findUnique({ where: { id: c.req.param("id") } });
-  if (!group || group.trustPolicy !== "community" || group.lifecycle === "archived") return c.json({ error: "Group not available." }, 404);
-  if (group.joinPolicy === "invite_only") return c.json({ error: "This Group is invitation-only." }, 403);
-  await assertNoBlockedGroupMember(group.id, user.id);
-  const existing = await prisma.groupMember.findUnique({ where: { groupId_userId: { groupId: group.id, userId: user.id } } });
-  if (existing?.status === "active") return c.json(await groupPayload(group.id, user.id, true));
-  const activeCount = await prisma.groupMember.count({ where: { groupId: group.id, status: "active" } });
-  if (activeCount >= group.memberLimit) return c.json({ error: "This Group is full." }, 409);
-  if (group.joinPolicy === "open") {
-    await prisma.groupMember.upsert({ where: { groupId_userId: { groupId: group.id, userId: user.id } }, create: { groupId: group.id, userId: user.id, status: "active", role: "member", displayNameSnapshot: user.displayName, avatarUrlSnapshot: user.avatarUrl }, update: { status: "active", joinedAt: new Date(), displayNameSnapshot: user.displayName, avatarUrlSnapshot: user.avatarUrl } });
-    return c.json(await groupPayload(group.id, user.id, true), 201);
+  const result = await membershipTransaction(async (tx) => {
+    const group = await tx.socialGroup.findUnique({ where: { id: c.req.param("id") } });
+    if (!group || group.trustPolicy !== "community" || group.lifecycle === "archived") throw new GroupDomainError("group_unavailable", "This Group is unavailable.");
+    await lockedGroup(tx, group.id);
+    const existing = await tx.groupMember.findUnique({ where: { groupId_userId: { groupId: group.id, userId: user.id } } });
+    if (existing?.status === "active") return { groupId: group.id, request: null };
+    if (group.joinPolicy === "invite_only") throw new GroupDomainError("invite_only", "This Group is invitation-only.");
+    const members = await tx.groupMember.findMany({ where: { groupId: group.id, status: "active" }, select: { userId: true } });
+    const block = await tx.socialBlock.findFirst({ where: { OR: members.flatMap((member) => [{ blockerId: user.id, blockedId: member.userId }, { blockerId: member.userId, blockedId: user.id }]) }, select: { id: true } });
+    if (block) throw new GroupDomainError("blocked", "This Group is unavailable.");
+    if (members.length >= group.memberLimit) throw new GroupDomainError("capacity", "This Group is full.");
+    if (group.joinPolicy === "open") {
+      await tx.groupMember.upsert({ where: { groupId_userId: { groupId: group.id, userId: user.id } }, create: { groupId: group.id, userId: user.id, role: "member", displayNameSnapshot: user.displayName, avatarUrlSnapshot: user.avatarUrl }, update: { status: "active", role: "member", joinedAt: new Date(), removedAt: null, displayNameSnapshot: user.displayName, avatarUrlSnapshot: user.avatarUrl } });
+      await tx.groupJoinRequest.updateMany({ where: { groupId: group.id, requesterId: user.id, status: "pending" }, data: { status: "approved", decisionAt: new Date() } });
+      await tx.groupInvitation.updateMany({ where: { groupId: group.id, recipientId: user.id, status: "awaiting_approval" }, data: { status: "accepted" } });
+      await tx.socialGroup.update({ where: { id: group.id }, data: { lifecycle: "active" } });
+      return { groupId: group.id, request: null };
+    }
+    const prior = await tx.groupJoinRequest.findUnique({ where: { groupId_requesterId: { groupId: group.id, requesterId: user.id } } });
+    const request = prior?.status === "pending" ? prior : await tx.groupJoinRequest.upsert({ where: { groupId_requesterId: { groupId: group.id, requesterId: user.id } }, create: { groupId: group.id, requesterId: user.id, idempotencyKey: c.req.header("Idempotency-Key") ?? crypto.randomUUID() }, update: { sourceInvitationId: null, status: "pending", reviewerId: null, decisionAt: null, createdAt: new Date() } });
+    return { groupId: group.id, request };
+  });
+  if (result.request) {
+    await notifyMembershipReview(result.groupId, user.id, result.request.id);
+    return c.json({ request: result.request, group: await groupPayload(result.groupId, user.id, true) }, 201);
   }
-  const request = await prisma.groupJoinRequest.upsert({ where: { groupId_requesterId: { groupId: group.id, requesterId: user.id } }, create: { groupId: group.id, requesterId: user.id, idempotencyKey: c.req.header("Idempotency-Key") ?? crypto.randomUUID() }, update: { status: "pending", reviewerId: null, decisionAt: null } });
-  const managers = await prisma.groupMember.findMany({ where: { groupId: group.id, role: { in: ["owner", "admin"] }, status: "active" }, select: { userId: true } });
-  for (const manager of managers) await notify(manager.userId, user.id, "groupJoinRequest", group.id, `${user.displayName} requested to join ${group.name}.`, group.id, true, request.id);
-  return c.json({ request, group: await groupPayload(group.id, user.id, true) }, 201);
+  await prisma.socialNotification.deleteMany({ where: { type: "groupJoinRequest", objectId: result.groupId, actorId: user.id } });
+  return c.json(await groupPayload(result.groupId, user.id, true), 201);
 });
 
 router.delete("/:id/join-requests", async (c) => {
   const user = await requireGroupUser(c);
   if (user instanceof Response) return user;
-  await getPrismaClient().groupJoinRequest.updateMany({ where: { groupId: c.req.param("id"), requesterId: user.id, status: "pending" }, data: { status: "cancelled", decisionAt: new Date() } });
-  return c.json({ status: "cancelled", group: await groupPayload(c.req.param("id"), user.id, true) });
+  const prisma = getPrismaClient();
+  const group = await membershipTransaction(async (tx) => {
+    const group = await lockedGroup(tx, c.req.param("id"));
+    const request = await tx.groupJoinRequest.findUnique({ where: { groupId_requesterId: { groupId: group.id, requesterId: user.id } } });
+    if (!request) throw new GroupDomainError("request_unavailable", "This request is unavailable.");
+    if (request.status === "pending") {
+      await tx.groupJoinRequest.update({ where: { id: request.id }, data: { status: "cancelled", decisionAt: new Date() } });
+      if (request.sourceInvitationId) await tx.groupInvitation.updateMany({ where: { id: request.sourceInvitationId, status: "awaiting_approval" }, data: { status: "declined", declinedAt: new Date() } });
+      await tx.socialNotification.deleteMany({ where: { type: "groupJoinRequest", objectId: group.id, actorId: user.id } });
+    }
+    return group;
+  });
+  return c.json({ status: "cancelled", group: group.trustPolicy === "community" ? await groupPayload(group.id, user.id, true) : null });
 });
 
 router.get("/:id/join-requests", async (c) => {
@@ -262,17 +293,45 @@ router.get("/:id/join-requests", async (c) => {
 router.post("/:id/join-requests/:requestId/:decision", async (c) => {
   const user = await requireGroupUser(c);
   if (user instanceof Response) return user;
-  const member = await assertGroupMember(c.req.param("id"), user.id);
-  if (!member || !["owner", "admin"].includes(member.role)) return c.json({ error: "Group management access is required." }, 403);
+  await assertGroupMember(c.req.param("id"), user.id);
   const decision = c.req.param("decision");
-  if (decision !== "approve" && decision !== "deny") return c.json({ error: "Unsupported decision." }, 400);
+  if (!["approve", "deny"].includes(decision)) return c.json({ error: "Unsupported decision." }, 400);
   const prisma = getPrismaClient();
-  const request = await prisma.groupJoinRequest.findFirst({ where: { id: c.req.param("requestId"), groupId: c.req.param("id"), status: "pending" }, include: { group: true, requester: true } });
-  if (!request) return c.json({ error: "Join request not found." }, 404);
-  if (decision === "deny") await prisma.groupJoinRequest.update({ where: { id: request.id }, data: { status: "denied", reviewerId: user.id, decisionAt: new Date() } });
-  else await prisma.$transaction(async (tx) => { const count = await tx.groupMember.count({ where: { groupId: request.groupId, status: "active" } }); if (count >= request.group.memberLimit) throw new GroupDomainError("capacity", "This Group is full."); await tx.groupJoinRequest.update({ where: { id: request.id }, data: { status: "approved", reviewerId: user.id, decisionAt: new Date() } }); await tx.groupMember.upsert({ where: { groupId_userId: { groupId: request.groupId, userId: request.requesterId } }, create: { groupId: request.groupId, userId: request.requesterId, role: "member", status: "active", displayNameSnapshot: request.requester.displayName, avatarUrlSnapshot: request.requester.avatarUrl }, update: { role: "member", status: "active", joinedAt: new Date() } }); });
-  await prisma.socialNotification.deleteMany({ where: { recipientId: request.requesterId, type: "groupJoinRequest", objectId: request.id } });
-  await notify(request.requesterId, user.id, decision === "approve" ? "groupJoinRequestApproved" : "groupJoinRequestDenied", request.id, decision === "approve" ? `Your Group request was approved for ${request.group.name}.` : `Your request to join ${request.group.name} was declined.`, request.groupId, false);
+  const request = await membershipTransaction(async (tx) => {
+    const member = await tx.groupMember.findUnique({ where: { groupId_userId: { groupId: c.req.param("id"), userId: user.id } } });
+    if (member?.status !== "active" || !["owner", "admin"].includes(member.role)) throw new GroupDomainError("not_a_member", "Group management access is required.");
+    const group = await tx.socialGroup.findUniqueOrThrow({ where: { id: c.req.param("id") } });
+    if (group.lifecycle === "archived") throw new GroupDomainError("archived", "Archived Groups cannot admit members.");
+    await lockedGroup(tx, group.id);
+    const request = await tx.groupJoinRequest.findFirst({ where: { id: c.req.param("requestId"), groupId: group.id }, include: { requester: true, sourceInvitation: true } });
+    if (!request) throw new GroupDomainError("request_unavailable", "Join request not found.");
+    if (request.status === (decision === "approve" ? "approved" : "denied")) return request;
+    if (request.status !== "pending") throw new GroupDomainError("request_unavailable", "This request has already been resolved.");
+    if (decision === "approve") {
+      if (request.sourceInvitation) {
+        if (request.sourceInvitation.status !== "awaiting_approval") throw new GroupDomainError("invitation_unavailable", "This invitation is unavailable.");
+        await assertInvitationEligibility(group.id, request.sourceInvitation.senderId, request.requesterId, tx);
+      } else {
+        // Direct requests are community-only and remain block-aware at decision time.
+        if (group.trustPolicy !== "community") throw new GroupDomainError("request_unavailable", "This request is unavailable.");
+        const members = await tx.groupMember.findMany({ where: { groupId: group.id, status: "active" }, select: { userId: true } });
+        const block = await tx.socialBlock.findFirst({ where: { OR: members.flatMap((m) => [{ blockerId: request.requesterId, blockedId: m.userId }, { blockerId: m.userId, blockedId: request.requesterId }]) }, select: { id: true } });
+        if (block) throw new GroupDomainError("blocked", "This request is unavailable.");
+      }
+      const existing = await tx.groupMember.findUnique({ where: { groupId_userId: { groupId: group.id, userId: request.requesterId } } });
+      if (existing?.status !== "active") {
+        const count = await tx.groupMember.count({ where: { groupId: group.id, status: "active" } });
+        if (count >= group.memberLimit) throw new GroupDomainError("capacity", "This Group is full.");
+        await tx.groupMember.upsert({ where: { groupId_userId: { groupId: group.id, userId: request.requesterId } }, create: { groupId: group.id, userId: request.requesterId, role: "member", status: "active", displayNameSnapshot: request.requester.displayName, avatarUrlSnapshot: request.requester.avatarUrl }, update: { role: "member", status: "active", joinedAt: new Date(), removedAt: null, displayNameSnapshot: request.requester.displayName, avatarUrlSnapshot: request.requester.avatarUrl } });
+      }
+      await tx.socialGroup.update({ where: { id: group.id }, data: { lifecycle: "active" } });
+    }
+    await tx.groupJoinRequest.update({ where: { id: request.id }, data: { status: decision === "approve" ? "approved" : "denied", reviewerId: user.id, decisionAt: new Date() } });
+    if (request.sourceInvitationId) await tx.groupInvitation.update({ where: { id: request.sourceInvitationId }, data: { status: decision === "approve" ? "accepted" : "declined", ...(decision === "deny" ? { declinedAt: new Date() } : {}) } });
+    return request;
+  });
+  await prisma.socialNotification.deleteMany({ where: { type: "groupJoinRequest", objectId: request.groupId, actorId: request.requesterId } });
+  await notify(request.requesterId, user.id, decision === "approve" ? "groupJoinRequestApproved" : "groupJoinRequestDenied", request.groupId, decision === "approve" ? "Your Group membership request was approved." : "Your Group membership request was declined.", request.groupId, false, request.id);
   return c.json({ status: decision === "approve" ? "approved" : "denied", group: await groupPayload(request.groupId, user.id, true) });
 });
 
@@ -284,8 +343,8 @@ router.post("/:id/invitations", zValidator("json", inviteSchema), async (c) => {
   const now = new Date();
   await prisma.groupInvitation.updateMany({ where: { groupId: c.req.param("id"), status: "pending", expiresAt: { lte: now } }, data: { status: "expired" } });
   const currentMember = await prisma.groupMember.findUnique({ where: { groupId_userId: { groupId: c.req.param("id"), userId: user.id } }, select: { role: true, status: true } });
-  if (!currentMember || currentMember.status !== "active" || !["owner", "admin"].includes(currentMember.role)) return c.json({ error: "Group management access is required." }, 403);
-  const socialGroup = await prisma.socialGroup.findFirst({ where: { id: c.req.param("id"), lifecycle: { not: "archived" } }, include: { members: { where: { status: "active" } }, invitations: { where: { status: "pending" } } } });
+  if (!currentMember || currentMember.status !== "active") return c.json({ error: "Group management access is required." }, 403);
+  const socialGroup = await prisma.socialGroup.findFirst({ where: { id: c.req.param("id"), lifecycle: { not: "archived" } }, include: { members: { where: { status: "active" } }, invitations: { where: { status: { in: ["pending", "awaiting_approval"] } } } } });
   if (!socialGroup) return c.json({ error: "Group not found." }, 404);
   const ids = [...new Set(c.req.valid("json").recipientUserIds.filter((id) => id !== user.id))];
   const newRecipientIDs = ids.filter((id) => !socialGroup.members.some((member) => member.userId === id) && !socialGroup.invitations.some((invitation) => invitation.recipientId === id));
@@ -293,21 +352,21 @@ router.post("/:id/invitations", zValidator("json", inviteSchema), async (c) => {
   const results = [];
   for (const recipientId of ids) {
     try {
-      if (socialGroup.trustPolicy === "trusted_private") {
-        await assertAcceptedConnection(socialGroup.ownerId ?? user.id, recipientId);
-        await assertAcceptedConnection(user.id, recipientId);
-      } else {
-        await assertNoBlockedGroupMember(socialGroup.id, recipientId);
-      }
-    } catch (error) { results.push({ recipientUserId: recipientId, status: error instanceof GroupDomainError ? error.code : "rejected" }); continue; }
+      await assertInvitationEligibility(socialGroup.id, user.id, recipientId, prisma, currentMember.role === "member");
+    } catch (error) {
+      if (!(error instanceof GroupDomainError)) throw error;
+      console.warn("[socialGroup] invitation recipient rejected", { operation: "invite group member", code: error.code });
+      results.push({ recipientUserId: recipientId, status: error.code }); continue;
+    }
     const existingMember = socialGroup.members.some((member) => member.userId === recipientId);
     const existing = socialGroup.invitations.find((invitation) => invitation.recipientId === recipientId);
     if (existingMember) { results.push({ recipientUserId: recipientId, status: "already_member" }); continue; }
     if (existing) { results.push({ recipientUserId: recipientId, status: "already_pending", id: existing.id }); continue; }
     const prior = await prisma.groupInvitation.findUnique({ where: { groupId_recipientId: { groupId: socialGroup.id, recipientId } } });
     const invitation = prior
-      ? await prisma.groupInvitation.update({ where: { id: prior.id }, data: { senderId: user.id, status: "pending", idempotencyKey: c.req.valid("json").idempotencyKey ? `${c.req.valid("json").idempotencyKey}:${recipientId}` : crypto.randomUUID(), expiresAt: new Date(Date.now() + 7 * 86400000), acceptedAt: null, declinedAt: null, cancelledAt: null } })
-      : await prisma.groupInvitation.create({ data: { groupId: socialGroup.id, senderId: user.id, recipientId, idempotencyKey: c.req.valid("json").idempotencyKey ? `${c.req.valid("json").idempotencyKey}:${recipientId}` : crypto.randomUUID(), expiresAt: new Date(Date.now() + 7 * 86400000) } });
+      ? await prisma.groupInvitation.update({ where: { id: prior.id }, data: { senderId: user.id, status: "pending", approvalRequired: currentMember.role === "member" && socialGroup.memberInviteApprovalRequired, idempotencyKey: c.req.valid("json").idempotencyKey ? `${c.req.valid("json").idempotencyKey}:${recipientId}` : crypto.randomUUID(), expiresAt: new Date(Date.now() + 7 * 86400000), acceptedAt: null, declinedAt: null, cancelledAt: null } })
+      : await prisma.groupInvitation.create({ data: { groupId: socialGroup.id, senderId: user.id, recipientId, approvalRequired: currentMember.role === "member" && socialGroup.memberInviteApprovalRequired, idempotencyKey: c.req.valid("json").idempotencyKey ? `${c.req.valid("json").idempotencyKey}:${recipientId}` : crypto.randomUUID(), expiresAt: new Date(Date.now() + 7 * 86400000) } });
+    await prisma.groupJoinRequest.updateMany({ where: { groupId: socialGroup.id, requesterId: recipientId, status: "pending" }, data: { status: "cancelled", decisionAt: now } });
     await notify(recipientId, user.id, "groupInvitation", invitation.id, `${user.displayName} invited you to ${socialGroup.name}.`, socialGroup.id, false);
     results.push({ recipientUserId: recipientId, status: "sent", id: invitation.id });
   }
@@ -320,15 +379,17 @@ router.get("/invitations/inbox", async (c) => {
   const prisma = getPrismaClient();
   const now = new Date();
   await prisma.groupInvitation.updateMany({ where: { recipientId: user.id, status: "pending", expiresAt: { lte: now } }, data: { status: "expired" } });
-  const candidates = await prisma.groupInvitation.findMany({ where: { recipientId: user.id, status: "pending", OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] }, include: { group: { select: { id: true, name: true, trustPolicy: true } }, sender: { select: { id: true, displayName: true, avatarUrl: true } } }, orderBy: { createdAt: "desc" } });
+  const candidates = await prisma.groupInvitation.findMany({ where: { recipientId: user.id, OR: [{ status: "pending", OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] }, { status: "awaiting_approval" }] }, include: { group: { select: { id: true, name: true, trustPolicy: true } }, sender: { select: { id: true, displayName: true, avatarUrl: true } } }, orderBy: { createdAt: "desc" } });
   const invitations = [];
   for (const invitation of candidates) {
     try {
-      if (invitation.group.trustPolicy === "trusted_private") await assertAcceptedConnection(invitation.senderId, user.id);
-      else await assertNoBlockedPair(invitation.senderId, user.id);
-      await assertNoBlockedGroupMember(invitation.groupId, user.id);
+      await assertInvitationEligibility(invitation.groupId, invitation.senderId, user.id);
       invitations.push({ ...invitation, sender: compactPerson(invitation.sender) });
-    } catch { /* Blocked and disconnected invitations are intentionally hidden. */ }
+    } catch (error) {
+      if (!(error instanceof GroupDomainError)) throw error;
+      // Ineligible invitations are deliberately hidden; unexpected database errors propagate.
+      console.info("[socialGroup] invitation hidden", { operation: "load invitation inbox", code: error.code });
+    }
   }
   return c.json({ invitations });
 });
@@ -337,52 +398,59 @@ router.post("/invitations/:invitationId/accept", async (c) => {
   const user = await requireGroupUser(c);
   if (user instanceof Response) return user;
   const prisma = getPrismaClient();
-  try {
-    const invitation = await prisma.groupInvitation.findFirst({ where: { id: c.req.param("invitationId"), recipientId: user.id }, include: { group: { include: { members: { where: { status: "active" } } } } } });
-    if (!invitation) return c.json({ error: "Group invitation not found." }, 404);
-    if (invitation.status === "accepted") {
-      await assertGroupMember(invitation.groupId, user.id);
-      await prisma.socialNotification.deleteMany({ where: { recipientId: user.id, type: "groupInvitation", objectId: invitation.id } });
-      return c.json(await groupPayload(invitation.groupId, user.id, true));
+  const result = await membershipTransaction(async (tx) => {
+    const invitation = await tx.groupInvitation.findFirst({ where: { id: c.req.param("invitationId"), recipientId: user.id } });
+    if (!invitation) throw new GroupDomainError("invitation_unavailable", "Group invitation not found.");
+    const group = await lockedGroup(tx, invitation.groupId);
+    const existing = await tx.groupMember.findUnique({ where: { groupId_userId: { groupId: group.id, userId: user.id } } });
+    if (existing?.status === "active") {
+      const members = await tx.groupMember.findMany({ where: { groupId: group.id, status: "active" }, select: { userId: true } });
+      const block = await tx.socialBlock.findFirst({ where: { OR: members.flatMap((m) => [{ blockerId: user.id, blockedId: m.userId }, { blockerId: m.userId, blockedId: user.id }]) }, select: { id: true } });
+      if (block) throw new GroupDomainError("blocked", "This Group is unavailable.");
+      return { group, pending: false, requestId: null };
     }
-    if (invitation.status !== "pending" || invitation.group.lifecycle === "archived") {
-      console.warn("[socialGroup] invitation unavailable", { operation: "accept group invitation", status: 409 });
-      return c.json({ error: "This Group invitation is no longer active." }, 409);
+    await assertInvitationEligibility(invitation.groupId, invitation.senderId, user.id, tx);
+    if (invitation.status === "awaiting_approval") {
+      const request = await tx.groupJoinRequest.findFirst({ where: { sourceInvitationId: invitation.id, status: "pending" } });
+      if (!request) throw new GroupDomainError("invitation_unavailable", "This membership request is unavailable.");
+      return { group, pending: true, requestId: request.id };
     }
-    if (invitation.group.trustPolicy === "trusted_private") await assertAcceptedConnection(invitation.senderId, user.id);
-    else await assertNoBlockedPair(invitation.senderId, user.id);
-    if (invitation.expiresAt && invitation.expiresAt <= new Date()) {
-      await prisma.groupInvitation.update({ where: { id: invitation.id }, data: { status: "expired" } });
-      return c.json({ error: "This Group invitation has expired." }, 410);
+    if (invitation.status !== "pending" || (invitation.expiresAt && invitation.expiresAt <= new Date())) throw new GroupDomainError("invitation_unavailable", "This Group invitation is no longer active.");
+    const count = await tx.groupMember.count({ where: { groupId: group.id, status: "active" } });
+    if (count >= group.memberLimit) throw new GroupDomainError("capacity", "This Group is full.");
+    await tx.groupInvitation.update({ where: { id: invitation.id }, data: { status: invitation.approvalRequired ? "awaiting_approval" : "accepted", acceptedAt: new Date() } });
+    if (invitation.approvalRequired) {
+      const request = await tx.groupJoinRequest.upsert({ where: { groupId_requesterId: { groupId: group.id, requesterId: user.id } }, create: { groupId: group.id, requesterId: user.id, sourceInvitationId: invitation.id }, update: { sourceInvitationId: invitation.id, status: "pending", reviewerId: null, decisionAt: null, createdAt: new Date() } });
+      return { group, pending: true, requestId: request.id };
     }
-    await assertNoBlockedGroupMember(invitation.groupId, user.id);
-    const result = await prisma.$transaction(async (tx) => {
-      const activeCount = await tx.groupMember.count({ where: { groupId: invitation.groupId, status: "active" } });
-      if (activeCount >= invitation.group.memberLimit) throw new GroupDomainError("capacity", "This Group is full.");
-      await tx.groupInvitation.updateMany({ where: { id: invitation.id, status: "pending" }, data: { status: "accepted", acceptedAt: new Date() } });
-      await tx.groupMember.upsert({ where: { groupId_userId: { groupId: invitation.groupId, userId: user.id } }, create: { groupId: invitation.groupId, userId: user.id, role: "member", status: "active", displayNameSnapshot: user.displayName, avatarUrlSnapshot: user.avatarUrl }, update: { status: "active", role: "member", joinedAt: new Date(), displayNameSnapshot: user.displayName, avatarUrlSnapshot: user.avatarUrl } });
-      const count = await tx.groupMember.count({ where: { groupId: invitation.groupId, status: "active" } });
-      await tx.socialGroup.update({ where: { id: invitation.groupId }, data: { lifecycle: count >= 2 ? "active" : "awaiting_members" } });
-      return tx.socialGroup.findUniqueOrThrow({ where: { id: invitation.groupId }, select: { name: true, ownerId: true } });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-    await prisma.socialNotification.deleteMany({ where: { recipientId: user.id, type: "groupInvitation", objectId: invitation.id } });
-    if (result.ownerId) await notify(result.ownerId, user.id, "groupInvitationAccepted", invitation.groupId, `${user.displayName} joined ${invitation.group.name}.`, invitation.groupId, false);
-    return c.json(await groupPayload(invitation.groupId, user.id, true));
-  } catch (error) { return groupError(c, error); }
+    await tx.groupJoinRequest.updateMany({ where: { groupId: group.id, requesterId: user.id, status: "pending" }, data: { status: "approved", decisionAt: new Date() } });
+    await tx.groupMember.upsert({ where: { groupId_userId: { groupId: group.id, userId: user.id } }, create: { groupId: group.id, userId: user.id, role: "member", status: "active", displayNameSnapshot: user.displayName, avatarUrlSnapshot: user.avatarUrl }, update: { role: "member", status: "active", joinedAt: new Date(), removedAt: null, displayNameSnapshot: user.displayName, avatarUrlSnapshot: user.avatarUrl } });
+    await tx.socialGroup.update({ where: { id: group.id }, data: { lifecycle: "active" } });
+    return { group, pending: false, requestId: null };
+  });
+  await prisma.socialNotification.deleteMany({ where: { recipientId: user.id, type: "groupInvitation", objectId: c.req.param("invitationId") } });
+  if (result.pending) {
+    await notifyMembershipReview(result.group.id, user.id, result.requestId!);
+    return c.json(await groupInvitationPreview(result.group.id, user.id, c.req.param("invitationId")));
+  }
+  if (result.group.ownerId) await notify(result.group.ownerId, user.id, "groupInvitationAccepted", result.group.id, `${user.displayName} joined ${result.group.name}.`, result.group.id, false);
+  return c.json(await groupPayload(result.group.id, user.id, true));
 });
 
 router.post("/invitations/:invitationId/decline", async (c) => {
   const user = await requireGroupUser(c);
   if (user instanceof Response) return user;
   const prisma = getPrismaClient();
-  const invitation = await prisma.groupInvitation.findFirst({ where: { id: c.req.param("invitationId"), recipientId: user.id, status: "pending" }, select: { id: true, groupId: true, senderId: true, group: { select: { trustPolicy: true } } } });
-  if (invitation) {
-    if (invitation.group.trustPolicy === "trusted_private") await assertAcceptedConnection(invitation.senderId, user.id);
-    else await assertNoBlockedPair(invitation.senderId, user.id);
-    await assertNoBlockedGroupMember(invitation.groupId, user.id);
-    await prisma.groupInvitation.updateMany({ where: { id: invitation.id, status: "pending" }, data: { status: "declined", declinedAt: new Date() } });
-  }
-  await prisma.socialNotification.deleteMany({ where: { recipientId: user.id, type: "groupInvitation", objectId: c.req.param("invitationId") } });
+  await membershipTransaction(async (tx) => {
+    const invitation = await tx.groupInvitation.findFirst({ where: { id: c.req.param("invitationId"), recipientId: user.id } });
+    if (!invitation) throw new GroupDomainError("invitation_unavailable", "This invitation is unavailable.");
+    await lockedGroup(tx, invitation.groupId);
+    if (["declined", "cancelled", "expired"].includes(invitation.status)) return;
+    if (!["pending", "awaiting_approval"].includes(invitation.status)) throw new GroupDomainError("invitation_unavailable", "This invitation has already been resolved.");
+    await tx.groupInvitation.update({ where: { id: invitation.id }, data: { status: "declined", declinedAt: new Date() } });
+    await tx.groupJoinRequest.updateMany({ where: { sourceInvitationId: invitation.id, status: "pending" }, data: { status: "cancelled", decisionAt: new Date() } });
+    await tx.socialNotification.deleteMany({ where: { OR: [{ recipientId: user.id, type: "groupInvitation", objectId: invitation.id }, { type: "groupJoinRequest", objectId: invitation.groupId, actorId: user.id }] } });
+  });
   return c.json({ status: "declined" });
 });
 
@@ -390,16 +458,21 @@ router.post("/:id/invitations/:invitationId/cancel", async (c) => {
   const user = await requireGroupUser(c);
   if (user instanceof Response) return user;
   await assertGroupMember(c.req.param("id"), user.id);
-  const member = await getPrismaClient().groupMember.findUnique({ where: { groupId_userId: { groupId: c.req.param("id"), userId: user.id } }, select: { role: true, status: true } });
-  if (!member || member.status !== "active" || !["owner", "admin"].includes(member.role)) return c.json({ error: "Group management access is required." }, 403);
-  const invitation = await getPrismaClient().groupInvitation.findFirst({ where: { id: c.req.param("invitationId"), groupId: c.req.param("id"), status: "pending" }, select: { id: true, recipientId: true, status: true } });
-  if (!invitation) return c.json({ error: "Group invitation not found." }, 404);
-  const result = await getPrismaClient().groupInvitation.updateMany({ where: { id: invitation.id, status: "pending" }, data: { status: "cancelled", cancelledAt: new Date() } });
-  if (result.count) await getPrismaClient().socialNotification.deleteMany({ where: { recipientId: invitation.recipientId, type: "groupInvitation", objectId: invitation.id } });
-  return c.json({
-    status: result.count ? "cancelled" : "already_handled",
-    group: await groupPayload(c.req.param("id"), user.id, true),
+  const prisma = getPrismaClient();
+  await membershipTransaction(async (tx) => {
+    const group = await lockedGroup(tx, c.req.param("id"));
+    if (group.lifecycle === "archived") throw new GroupDomainError("archived", "This Group is archived.");
+    const member = await tx.groupMember.findUnique({ where: { groupId_userId: { groupId: group.id, userId: user.id } } });
+    if (member?.status !== "active") throw new GroupDomainError("not_a_member", "Group membership is required.");
+    const invitation = await tx.groupInvitation.findFirst({ where: { id: c.req.param("invitationId"), groupId: group.id } });
+    if (!invitation || (member.role === "member" && invitation.senderId !== user.id)) throw new GroupDomainError("invitation_unavailable", "This invitation is unavailable.");
+    if (invitation.status === "cancelled") return;
+    if (!["pending", "awaiting_approval"].includes(invitation.status)) throw new GroupDomainError("invitation_unavailable", "This invitation has already been resolved.");
+    await tx.groupInvitation.update({ where: { id: invitation.id }, data: { status: "cancelled", cancelledAt: new Date() } });
+    await tx.groupJoinRequest.updateMany({ where: { sourceInvitationId: invitation.id, status: "pending" }, data: { status: "cancelled", decisionAt: new Date() } });
+    await tx.socialNotification.deleteMany({ where: { OR: [{ type: "groupInvitation", objectId: invitation.id }, { type: "groupJoinRequest", objectId: group.id, actorId: invitation.recipientId }] } });
   });
+  return c.json({ status: "cancelled", group: await groupPayload(c.req.param("id"), user.id, true) });
 });
 
 router.post("/:id/focus", zValidator("json", focusSchema), async (c) => {

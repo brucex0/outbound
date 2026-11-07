@@ -1,5 +1,14 @@
 # Social QA
 
+## 2026-11-06 Group membership and weekly recurrence
+
+- Backend TypeScript, Prisma generation, the iOS Simulator app, and Android Debug builds passed. The focused UI runs passed four iOS tests on iPhone 17 Pro / iOS 27.0 and six Android tests on Pixel 10 / Android 17, without running the full suites.
+- iOS uses a stateful loopback HTTP fixture through the production networking paths. It verifies owner policy saving and approve/deny, ordinary-member invitations, accepted invitations waiting for review and withdrawal, and recurring creation retaining its draft and creation key after a rejected save. The retained settings, waiting-preview, and created-activity screenshots were visually inspected.
+- Android renders production Compose controls with deterministic callbacks. It verifies owner policy and approval, admin review without policy editing, pending acceptance/withdrawal, multi-weekday creation retry, and following-occurrence stop/retry state. Freebuff CLI authored and ran the two following-occurrence checks; its final focused run reports six passed, zero failed/skipped.
+- Disposable local PostgreSQL/API checks cover review after acceptance, direct manager invitations, member invitation policy snapshots, denial/approval/withdrawal, self-join requests, private access, block revalidation, and concurrent capacity admission. Pending acceptance never granted active membership or private Group detail.
+- Recurrence API checks cover selected weekdays, 1–4-week intervals, inclusive end dates, duration, normal and half-hour DST gaps/overlaps, the explicitly selected repeated-hour first instant, concurrent creation/idempotency, per-occurrence RSVP, single/following/family edits, retained cancellations, shifted occurrence IDs, stopping repetition, and completed/recorded history. A final stale scheduled-occurrence check verifies HTTP 409 with original data retained after its start has passed.
+- Limits: fixtures do not establish push delivery, two-device synchronization, physical-device behavior, or visual layout in every locale/text size. Edit/cancel scope authorization is verified at the local API; iOS scope-picker interaction was not exercised. No production schema or app deployment was performed. Commands and rollout requirements remain in `docs/build-test-device.md`, `docs/android-build.md`, and `docs/run-groups.md`.
+
 ## Profile lookup after disconnect and from People search
 
 ### Root cause and prevention
