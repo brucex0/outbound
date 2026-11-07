@@ -166,6 +166,7 @@ Verified 2026-11-01 on a fresh iPhone 17 Pro / iOS 27.0 Simulator: all 31 mainta
 
 UI automation failure triage:
 
+- For each failing UI test, open a separate Codex session in the `outbound` project to investigate it. Include the test name, assertion location and expected/actual result, and the `.xcresult` path. Leave the original full-suite run and simulator alone; inspect the result bundle first, then reproduce only the failing case on a separate simulator.
 - Use `launchFixtureApp` for seeded app launches so location/permission prompts are handled consistently. Group recovery first settles first-install permissions in a separate launch, then arms its recording fixture. Recovery relaunches remove only the setup/reset flags and preserve the journal.
 - On iOS 27, XCTest can return an invalid AX hit point for the custom Start dock. The group-recovery test taps the control's visible center and still requires the real countdown, recording controls, two disk-backed recoveries, and original-session API counts.
 - Photo-management tests dismiss the contextual photo tip through launch preferences; the native popover otherwise blocks thumbnail interaction. Keep discovery-tip behavior in its own UI flows.
