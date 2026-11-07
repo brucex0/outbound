@@ -11,12 +11,26 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 MODELS = {"simple": ("gpt-6-luna", "low"), "complex": ("gpt-6.1-sol", "high")}
+APP_CLI_CANDIDATES = (
+    Path("/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path/codex"),
+    Path("/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"),
+)
 SCHEMA = {
     "type": "object",
     "properties": {"route": {"type": "string", "enum": list(MODELS)}},
     "required": ["route"],
     "additionalProperties": False,
 }
+
+
+def find_codex():
+    executable = shutil.which("codex")
+    if executable:
+        return executable
+    for candidate in APP_CLI_CANDIDATES:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
 
 
 def classify(codex, task):
@@ -83,7 +97,7 @@ def main():
         task = input("Task: ").strip()
     if not task.strip():
         parser.error("task must not be empty")
-    codex = shutil.which("codex")
+    codex = find_codex()
     if not codex:
         parser.error("Codex CLI is not on PATH; install it or add the app's CLI to PATH")
     route = classify(codex, task) if args.route == "auto" else args.route

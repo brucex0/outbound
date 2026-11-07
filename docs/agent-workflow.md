@@ -61,7 +61,7 @@ From the repository root:
 ./scripts/codex-auto.py --task-file /path/to/task.txt
 ```
 
-- Requires Python 3 and the signed-in Codex CLI on `PATH`. Existing account model access and usage limits apply; no separate API key is added.
+- Requires Python 3 and the signed-in Codex CLI. The launcher checks `PATH`, then the standard ChatGPT app CLI paths on macOS. Existing account model access and usage limits apply; no separate API key is added.
 - A tool-disabled, read-only, ephemeral Luna call classifies the task text outside the repository. It adds a small model call before execution. It does not inspect source or carry this chat's history, so include necessary context in the task.
 - The launcher prints the route and opens interactive Codex with an explicit model, reasoning effort, and Standard service. Existing authentication and permission settings remain in force. Repository worktree/commit rules still apply.
 - Classification failures, invalid output, or a 60-second timeout fall back to Sol with a diagnostic. An unavailable execution model is reported by Codex; the launcher does not silently substitute another model.
