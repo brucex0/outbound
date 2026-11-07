@@ -38,10 +38,22 @@ final class GroupImprovementsUITests: XCTestCase {
         settings.tap()
         let approval = app.switches["group.membership.approval_required"]
         XCTAssertTrue(approval.waitForExistence(timeout: 5), app.debugDescription)
-        if approval.switches.firstMatch.exists { approval.switches.firstMatch.tap() } else { approval.tap() }
-        app.buttons["group.membership.save"].tap()
-        waitFor { !fixture.bodies("PATCH /social/groups/ui-test-group").isEmpty }
-        XCTAssertEqual(fixture.bodies("PATCH /social/groups/ui-test-group").last?["memberInviteApprovalRequired"] as? Bool, false)
+        // Community approval follows joinPolicy (open), even when the fixture's
+        // older member-invitation flag is true. Verify both policy transitions.
+        XCTAssertEqual(approval.value as? String, "0")
+        let save = app.buttons["group.membership.save"]
+        for (index, required) in [true, false].enumerated() {
+            approval.coordinate(withNormalizedOffset: CGVector(dx: 0.94, dy: 0.5)).tap()
+            XCTAssertEqual(approval.value as? String, required ? "1" : "0")
+            XCTAssertTrue(save.isEnabled)
+            save.tap()
+            waitFor { fixture.bodies("PATCH /social/groups/ui-test-group").count == index + 1 }
+            let body = fixture.bodies("PATCH /social/groups/ui-test-group").last
+            XCTAssertEqual(body?["memberInviteApprovalRequired"] as? Bool, required)
+            XCTAssertEqual(body?["joinPolicy"] as? String, required ? "request" : "open")
+            XCTAssertEqual(body?["memberInvitesAllowed"] as? Bool, true)
+            waitFor { approval.isEnabled }
+        }
         let approve = app.buttons["group.request.approve.approve-request"]
         reveal(approve, in: app)
         approve.tap()

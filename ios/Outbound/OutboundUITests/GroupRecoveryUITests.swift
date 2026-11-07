@@ -87,18 +87,37 @@ final class GroupRecoveryUITests: XCTestCase {
 
         let join = app.buttons["today.group.join"]
         XCTAssertTrue(join.waitForExistence(timeout: 15), app.debugDescription)
-        XCTAssertEqual(join.value as? String, "0")
-        join.tap()
+        // Going attendees default to joined and sharing once per account/event.
         XCTAssertEqual(join.value as? String, "1")
-        XCTAssertEqual(fixture.requestCount("POST /live/group-runs/activity-events/ui-recovery-event"), 0,
-                       "Joining a recording must not consent to location sharing")
         let share = app.switches["today.group.shareLocation"]
         XCTAssertTrue(share.waitForExistence(timeout: 5))
+        waitForSharing(true, switch: share)
+        XCTAssertEqual(fixture.requestCount("POST /live/group-runs/activity-events/ui-recovery-event"), 1)
+
+        // Explicit opt-out must survive reselecting Join and relaunching.
         share.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
-        let enabled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            fixture.requestCount("POST /live/group-runs/activity-events/ui-recovery-event") == 1
-        }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 10), .completed)
+        waitForSharing(false, switch: share)
+        XCTAssertEqual(join.value as? String, "1")
+        join.tap()
+        XCTAssertEqual(join.value as? String, "0")
+        XCTAssertFalse(share.isEnabled)
+        join.tap()
+        XCTAssertEqual(join.value as? String, "1")
+        waitForSharing(false, switch: share)
+        app.terminate()
+        // The initial fixture reset also clears saved Join/sharing choices.
+        app.launchArguments.removeAll { $0 == "-OutboundUITestResetRecording" }
+        app.launch()
+        dismissFixturePermissionAlerts(app)
+        XCTAssertTrue(join.waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertEqual(join.value as? String, "1")
+        waitForSharing(false, switch: share)
+        XCTAssertEqual(fixture.requestCount("POST /live/group-runs/activity-events/ui-recovery-event"), 1,
+                       "Reselecting or relaunching must not reapply sharing after an explicit opt-out")
+
+        share.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        waitForSharing(true, switch: share)
+        XCTAssertEqual(fixture.requestCount("POST /live/group-runs/activity-events/ui-recovery-event"), 2)
         let start = app.buttons["tab.start"]
         XCTAssertTrue(start.waitForExistence(timeout: 10))
         start.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
@@ -129,6 +148,15 @@ final class GroupRecoveryUITests: XCTestCase {
         XCTAssertTrue(app.buttons["tab.start"].waitForExistence(timeout: 20), app.debugDescription)
         XCTAssertFalse(app.buttons["today.group.join"].exists)
         XCTAssertFalse(app.switches["today.group.shareLocation"].exists)
+    }
+
+    @MainActor
+    private func waitForSharing(_ enabled: Bool, switch control: XCUIElement,
+                                file: StaticString = #filePath, line: UInt = #line) {
+        let settled = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND enabled == true AND value == %@", enabled ? "1" : "0"),
+            object: control)
+        XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 10), .completed, file: file, line: line)
     }
 
     @MainActor
