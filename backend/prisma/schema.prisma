@@ -1398,6 +1398,7 @@ model SocialGroup {
   trustPolicy            String             @default("community")
   visibility             String             @default("unlisted")
   joinPolicy             String             @default("request")
+  memberInvitesAllowed   Boolean            @default(true)
   memberInviteApprovalRequired Boolean      @default(true)
   lifecycle              String             @default("active")
   featured               Boolean            @default(false)

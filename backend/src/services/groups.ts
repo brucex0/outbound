@@ -284,7 +284,7 @@ export async function groupInvitationPreview(groupId: string, viewerId: string, 
   const group = invitation.group;
   return {
     id: group.id, name: group.name, description: group.description,
-    trustPolicy: group.trustPolicy, visibility: group.visibility, joinPolicy: group.joinPolicy,
+    trustPolicy: group.trustPolicy, visibility: group.visibility, joinPolicy: group.trustPolicy === "community" && group.joinPolicy === "invite_only" ? "request" : group.joinPolicy,
     lifecycle: group.lifecycle, owner: group.owner ? compactPerson(group.owner) : null,
     memberCount: group._count.members, invitationPreview: true, loadedDetailPayload: true,
     pendingInvitation: {
@@ -379,8 +379,9 @@ export async function groupPayload(groupId: string, viewerId: string, includeHis
     trustPolicy: socialGroup.trustPolicy,
     visibility: socialGroup.visibility,
     joinPolicy: socialGroup.joinPolicy,
-    memberInviteApprovalRequired: socialGroup.memberInviteApprovalRequired,
-    canInvite: socialGroup.lifecycle !== "archived" && socialGroup.members.some((m) => m.userId === viewerId),
+    memberInviteApprovalRequired: socialGroup.trustPolicy === "community" ? socialGroup.joinPolicy !== "open" : socialGroup.memberInviteApprovalRequired,
+    memberInvitesAllowed: socialGroup.memberInvitesAllowed,
+    canInvite: socialGroup.lifecycle !== "archived" && socialGroup.members.some((m) => m.userId === viewerId && (m.role !== "member" || socialGroup.memberInvitesAllowed)),
     ...membership,
     featured: socialGroup.featured,
     organizationVerificationState: socialGroup.organizationVerificationState,
@@ -470,7 +471,7 @@ async function communityGroupPayload(group: any, viewerId: string) {
     group.scheduledActivitiesEnabled
       ? prisma.activityEvent.findMany({ where: { groupId: group.id, status: { in: ["scheduled", "active"] }, OR: [{ participants: { some: { userId: viewerId, status: "going" } } }, { invitations: { some: { recipientId: viewerId, status: { in: ["pending", "accepted"] } } } }, { group: { members: { some: { userId: viewerId, status: "active" } } } }, { visibility: "public" }] }, select: { id: true, title: true, startsAt: true, endsAt: true, locationName: true, status: true, activityType: true, creatorId: true, participants: { where: { status: "going" }, select: { userId: true, attendanceMode: true } } }, orderBy: { startsAt: "asc" }, take: 20 })
       : Promise.resolve([]),
-    !viewerMember && group.joinPolicy === "request" ? prisma.groupJoinRequest.findUnique({ where: { groupId_requesterId: { groupId: group.id, requesterId: viewerId } }, select: { id: true, status: true } }) : Promise.resolve(null),
+    !viewerMember && group.joinPolicy !== "open" ? prisma.groupJoinRequest.findUnique({ where: { groupId_requesterId: { groupId: group.id, requesterId: viewerId } }, select: { id: true, status: true } }) : Promise.resolve(null),
     viewerMember
       ? prisma.groupInvitation.findMany({ where: { groupId: group.id, ...(["owner", "admin"].includes(viewerMember.role) ? {} : { senderId: viewerId }), OR: [{ status: "pending", OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, { status: "awaiting_approval" }] }, include: { sender: { select: shareSafeMemberSelect }, recipient: { select: shareSafeMemberSelect }, group: { select: { id: true, name: true } } }, orderBy: { createdAt: "desc" } })
       : Promise.resolve([]),
@@ -486,9 +487,10 @@ async function communityGroupPayload(group: any, viewerId: string) {
     activityInterests: group.activityInterests ?? [],
     trustPolicy: group.trustPolicy,
     visibility: group.visibility,
-    joinPolicy: group.joinPolicy,
-    memberInviteApprovalRequired: group.memberInviteApprovalRequired,
-    canInvite: Boolean(viewerMember) && group.lifecycle !== "archived",
+    joinPolicy: group.joinPolicy === "invite_only" ? "request" : group.joinPolicy,
+    memberInviteApprovalRequired: group.joinPolicy !== "open",
+    memberInvitesAllowed: group.memberInvitesAllowed,
+    canInvite: Boolean(viewerMember && (viewerMember.role !== "member" || group.memberInvitesAllowed)) && group.lifecycle !== "archived",
     lifecycle: group.lifecycle,
     featured: group.featured,
     organizationVerificationState: group.organizationVerificationState,

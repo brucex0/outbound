@@ -84,6 +84,7 @@ const renameSchema = z.object({
   visibility: z.enum(["private", "unlisted", "public"]).optional(),
   joinPolicy: z.enum(["invite_only", "request", "open"]).optional(),
   memberInviteApprovalRequired: z.boolean().optional(),
+  memberInvitesAllowed: z.boolean().optional(),
   weeklyThemeEnabled: z.boolean().optional(),
   workoutContributionsEnabled: z.boolean().optional(),
   presetCheersEnabled: z.boolean().optional(),
@@ -144,8 +145,9 @@ router.get("/", async (c) => {
     trustPolicy: socialGroup.trustPolicy,
     groupType: socialGroup.trustPolicy === "community" ? "community" : "private",
     visibility: socialGroup.visibility,
-    joinPolicy: socialGroup.joinPolicy,
-    memberInviteApprovalRequired: socialGroup.memberInviteApprovalRequired,
+    joinPolicy: socialGroup.trustPolicy === "community" && socialGroup.joinPolicy === "invite_only" ? "request" : socialGroup.joinPolicy,
+    memberInviteApprovalRequired: socialGroup.trustPolicy === "community" ? socialGroup.joinPolicy !== "open" : socialGroup.memberInviteApprovalRequired,
+    memberInvitesAllowed: socialGroup.memberInvitesAllowed,
     pendingRequestCount: pendingRequestsByGroup.get(socialGroup.id) ?? 0,
     lifecycle: socialGroup.lifecycle,
     featured: socialGroup.featured,
@@ -156,6 +158,7 @@ router.get("/", async (c) => {
       ? 1
       : 0,
     membershipRole: socialGroup.members.find((member) => member.userId === user.id)?.role ?? null,
+    canInvite: socialGroup.lifecycle !== "archived" && socialGroup.members.some((member) => member.userId === user.id && (member.role !== "member" || socialGroup.memberInvitesAllowed)),
     owner: socialGroup.owner ? compactPerson(socialGroup.owner) : null,
     contextLabel: socialGroup.city ?? socialGroup.owner?.displayName ?? null,
     canJoin: socialGroup.trustPolicy === "community" && !socialGroup.members.some((member) => member.userId === user.id),
@@ -216,16 +219,17 @@ router.patch("/:id", zValidator("json", renameSchema), async (c) => {
   const input = c.req.valid("json");
   const member = await getPrismaClient().groupMember.findUnique({ where: { groupId_userId: { groupId: socialGroup.id, userId: user.id } }, select: { role: true } });
   if (!member || !["owner", "admin"].includes(member.role)) return c.json({ error: "Group management access is required." }, 403);
-  if (input.visibility || input.joinPolicy || input.memberInviteApprovalRequired !== undefined || input.weeklyThemeEnabled !== undefined || input.workoutContributionsEnabled !== undefined || input.presetCheersEnabled !== undefined || input.memberActivityCreation !== undefined) {
+  if (input.visibility || input.joinPolicy || input.memberInviteApprovalRequired !== undefined || input.memberInvitesAllowed !== undefined || input.weeklyThemeEnabled !== undefined || input.workoutContributionsEnabled !== undefined || input.presetCheersEnabled !== undefined || input.memberActivityCreation !== undefined) {
     if (member.role !== "owner") return c.json({ error: "Only the owner can change Group policy." }, 403);
     const visibility = input.visibility ?? socialGroup.visibility;
     const joinPolicy = input.joinPolicy ?? socialGroup.joinPolicy;
     if (socialGroup.trustPolicy === "trusted_private" && (visibility !== "private" || joinPolicy !== "invite_only")) return c.json({ error: "Private Groups must remain private and invitation-only." }, 422);
     if (socialGroup.trustPolicy === "community" && visibility === "private") return c.json({ error: "Community Groups cannot be private." }, 422);
+    if (socialGroup.trustPolicy === "community" && joinPolicy === "invite_only" && input.joinPolicy === "invite_only") return c.json({ error: "Community Groups must allow joining." }, 422);
     if (socialGroup.trustPolicy === "community" && (input.weeklyThemeEnabled || input.workoutContributionsEnabled || input.memberActivityCreation)) return c.json({ error: "Community Groups cannot enable private motivation capabilities." }, 422);
   }
   const name = input.name;
-  await getPrismaClient().socialGroup.update({ where: { id: socialGroup.id }, data: { ...(name ? { name, normalizedName: normalizeSearchName(name) } : {}), ...(input.description !== undefined ? { description: input.description } : {}), ...(input.city !== undefined ? { city: input.city } : {}), ...(input.activityInterests ? { activityInterests: input.activityInterests } : {}), ...(input.visibility ? { visibility: input.visibility } : {}), ...(input.joinPolicy ? { joinPolicy: input.joinPolicy } : {}), ...(input.memberInviteApprovalRequired !== undefined ? { memberInviteApprovalRequired: input.memberInviteApprovalRequired } : {}), ...(input.weeklyThemeEnabled !== undefined ? { weeklyThemeEnabled: input.weeklyThemeEnabled } : {}), ...(input.workoutContributionsEnabled !== undefined ? { workoutContributionsEnabled: input.workoutContributionsEnabled } : {}), ...(input.presetCheersEnabled !== undefined ? { presetCheersEnabled: input.presetCheersEnabled } : {}), ...(input.noticesEnabled !== undefined ? { noticesEnabled: input.noticesEnabled } : {}), ...(input.scheduledActivitiesEnabled !== undefined ? { scheduledActivitiesEnabled: input.scheduledActivitiesEnabled } : {}), ...(input.memberActivityCreation !== undefined ? { memberActivityCreation: input.memberActivityCreation } : {}) } });
+  await getPrismaClient().socialGroup.update({ where: { id: socialGroup.id }, data: { ...(name ? { name, normalizedName: normalizeSearchName(name) } : {}), ...(input.description !== undefined ? { description: input.description } : {}), ...(input.city !== undefined ? { city: input.city } : {}), ...(input.activityInterests ? { activityInterests: input.activityInterests } : {}), ...(input.visibility ? { visibility: input.visibility } : {}), ...(input.joinPolicy ? { joinPolicy: input.joinPolicy } : {}), ...(input.memberInviteApprovalRequired !== undefined ? { memberInviteApprovalRequired: input.memberInviteApprovalRequired } : {}), ...(input.memberInvitesAllowed !== undefined ? { memberInvitesAllowed: input.memberInvitesAllowed } : {}), ...(input.weeklyThemeEnabled !== undefined ? { weeklyThemeEnabled: input.weeklyThemeEnabled } : {}), ...(input.workoutContributionsEnabled !== undefined ? { workoutContributionsEnabled: input.workoutContributionsEnabled } : {}), ...(input.presetCheersEnabled !== undefined ? { presetCheersEnabled: input.presetCheersEnabled } : {}), ...(input.noticesEnabled !== undefined ? { noticesEnabled: input.noticesEnabled } : {}), ...(input.scheduledActivitiesEnabled !== undefined ? { scheduledActivitiesEnabled: input.scheduledActivitiesEnabled } : {}), ...(input.memberActivityCreation !== undefined ? { memberActivityCreation: input.memberActivityCreation } : {}) } });
   return c.json(await groupPayload(socialGroup.id, user.id, true));
 });
 
@@ -239,7 +243,6 @@ router.post("/:id/join-requests", async (c) => {
     await lockedGroup(tx, group.id);
     const existing = await tx.groupMember.findUnique({ where: { groupId_userId: { groupId: group.id, userId: user.id } } });
     if (existing?.status === "active") return { groupId: group.id, request: null };
-    if (group.joinPolicy === "invite_only") throw new GroupDomainError("invite_only", "This Group is invitation-only.");
     const members = await tx.groupMember.findMany({ where: { groupId: group.id, status: "active" }, select: { userId: true } });
     const block = await tx.socialBlock.findFirst({ where: { OR: members.flatMap((member) => [{ blockerId: user.id, blockedId: member.userId }, { blockerId: member.userId, blockedId: user.id }]) }, select: { id: true } });
     if (block) throw new GroupDomainError("blocked", "This Group is unavailable.");
@@ -346,6 +349,7 @@ router.post("/:id/invitations", zValidator("json", inviteSchema), async (c) => {
   if (!currentMember || currentMember.status !== "active") return c.json({ error: "Group management access is required." }, 403);
   const socialGroup = await prisma.socialGroup.findFirst({ where: { id: c.req.param("id"), lifecycle: { not: "archived" } }, include: { members: { where: { status: "active" } }, invitations: { where: { status: { in: ["pending", "awaiting_approval"] } } } } });
   if (!socialGroup) return c.json({ error: "Group not found." }, 404);
+  if (currentMember.role === "member" && !socialGroup.memberInvitesAllowed) return c.json({ error: "Member invitations are disabled." }, 403);
   const ids = [...new Set(c.req.valid("json").recipientUserIds.filter((id) => id !== user.id))];
   const newRecipientIDs = ids.filter((id) => !socialGroup.members.some((member) => member.userId === id) && !socialGroup.invitations.some((invitation) => invitation.recipientId === id));
   if (socialGroup.members.length + socialGroup.invitations.length + newRecipientIDs.length > socialGroup.memberLimit) return c.json({ error: "Those invitations would exceed this Group’s current capacity." }, 409);
@@ -364,8 +368,8 @@ router.post("/:id/invitations", zValidator("json", inviteSchema), async (c) => {
     if (existing) { results.push({ recipientUserId: recipientId, status: "already_pending", id: existing.id }); continue; }
     const prior = await prisma.groupInvitation.findUnique({ where: { groupId_recipientId: { groupId: socialGroup.id, recipientId } } });
     const invitation = prior
-      ? await prisma.groupInvitation.update({ where: { id: prior.id }, data: { senderId: user.id, status: "pending", approvalRequired: currentMember.role === "member" && socialGroup.memberInviteApprovalRequired, idempotencyKey: c.req.valid("json").idempotencyKey ? `${c.req.valid("json").idempotencyKey}:${recipientId}` : crypto.randomUUID(), expiresAt: new Date(Date.now() + 7 * 86400000), acceptedAt: null, declinedAt: null, cancelledAt: null } })
-      : await prisma.groupInvitation.create({ data: { groupId: socialGroup.id, senderId: user.id, recipientId, approvalRequired: currentMember.role === "member" && socialGroup.memberInviteApprovalRequired, idempotencyKey: c.req.valid("json").idempotencyKey ? `${c.req.valid("json").idempotencyKey}:${recipientId}` : crypto.randomUUID(), expiresAt: new Date(Date.now() + 7 * 86400000) } });
+      ? await prisma.groupInvitation.update({ where: { id: prior.id }, data: { senderId: user.id, status: "pending", approvalRequired: currentMember.role === "member" && (socialGroup.trustPolicy === "community" ? socialGroup.joinPolicy !== "open" : socialGroup.memberInviteApprovalRequired), idempotencyKey: c.req.valid("json").idempotencyKey ? `${c.req.valid("json").idempotencyKey}:${recipientId}` : crypto.randomUUID(), expiresAt: new Date(Date.now() + 7 * 86400000), acceptedAt: null, declinedAt: null, cancelledAt: null } })
+      : await prisma.groupInvitation.create({ data: { groupId: socialGroup.id, senderId: user.id, recipientId, approvalRequired: currentMember.role === "member" && (socialGroup.trustPolicy === "community" ? socialGroup.joinPolicy !== "open" : socialGroup.memberInviteApprovalRequired), idempotencyKey: c.req.valid("json").idempotencyKey ? `${c.req.valid("json").idempotencyKey}:${recipientId}` : crypto.randomUUID(), expiresAt: new Date(Date.now() + 7 * 86400000) } });
     await prisma.groupJoinRequest.updateMany({ where: { groupId: socialGroup.id, requesterId: recipientId, status: "pending" }, data: { status: "cancelled", decisionAt: now } });
     await notify(recipientId, user.id, "groupInvitation", invitation.id, `${user.displayName} invited you to ${socialGroup.name}.`, socialGroup.id, false);
     results.push({ recipientUserId: recipientId, status: "sent", id: invitation.id });
