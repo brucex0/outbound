@@ -34,6 +34,7 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 @Serializable data class GroupInviteBody(val recipientUserIds:List<String>,val idempotencyKey:String?=null)
 @Serializable data class GroupFocusBody(val mode:String,val sharedTarget:Int?=null,val apply:String="now")
 @Serializable data class RenameGroupBody(val name:String? = null, val city:String? = null)
+@Serializable data class GroupMembershipPolicyBody(val joinPolicy:String,val memberInviteApprovalRequired:Boolean)
 @Serializable data class GroupCalendarBody(val resetWeekday:Int,val timeZone:String,val apply:String)
 @Serializable data class GroupRoleBody(val role:String)
 @Serializable data class GroupTransferBody(val recipientUserId:String)
@@ -42,12 +43,12 @@ import com.plainstride.outbound.core.network.PlainstrideJson
 @Serializable data class GroupNoticeBody(val title:String?=null,val body:String,val activityEventId:String?=null,val pinned:Boolean=false)
 @Serializable data class GroupMutationResponse(val group:GroupSummary)
 @Serializable data class GroupInvitationGroup(val id:String,val name:String)
-@Serializable data class GroupInvitationDto(val id:String,val sender:SocialPerson,val group:GroupInvitationGroup)
+@Serializable data class GroupInvitationDto(val id:String,val sender:SocialPerson,val group:GroupInvitationGroup,val status:String="pending",val approvalRequired:Boolean=false)
 @Serializable data class GroupInvitationsResponse(val invitations:List<GroupInvitationDto> = emptyList())
 @Serializable data class BlocksResponse(val blocks: List<BlockedAccount> = emptyList())
 @Serializable data class NotificationsResponse(val notifications: List<SocialNotification> = emptyList())
 @Serializable data class PresenceBody(val clientSessionId: String)
-@Serializable data class CreateEventBody(val title:String,val startsAt:String,val durationMinutes:Int=60,val locationName:String?=null,val latitude:Double?=null,val longitude:Double?=null,val note:String?=null,val groupId:String?=null,val activityType:String="running",val participationMode:String="hybrid")
+@Serializable data class CreateEventBody(val title:String,val startsAt:String,val durationMinutes:Int=60,val locationName:String?=null,val latitude:Double?=null,val longitude:Double?=null,val note:String?=null,val groupId:String?=null,val activityType:String="running",val participationMode:String="hybrid",val recurrence:EventRecurrence?=null,val idempotencyKey:String?=null,val scope:String="this",val stopRepeating:Boolean=false)
 @Serializable data class EventInviteBatchBody(val recipientUserIds:List<String>)
 @Serializable data class LinkActivityBody(val activityId:String)
 
@@ -61,6 +62,10 @@ interface SocialApiService {
     @POST("v1/social/connections") suspend fun connect(@Header("Authorization") auth: String, @Body body: IdBody): Response<Unit>
     @POST("v1/social/connections/{id}/accept") suspend fun accept(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
     @DELETE("v1/social/connections/{id}") suspend fun removeConnection(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
+    @PATCH("v1/social/groups/{id}") suspend fun groupMembershipPolicy(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:GroupMembershipPolicyBody):Response<GroupSummary>
+    @POST("v1/social/groups/{id}/join-requests/{requestId}/{decision}") suspend fun reviewGroupMembership(@Header("Authorization") auth:String,@Path("id") id:String,@Path("requestId") requestId:String,@Path("decision") decision:String):Response<GroupMutationResponse>
+    @PATCH("v1/social/activity-events/{id}") suspend fun updateEvent(@Header("Authorization") auth:String,@Path("id") id:String,@Body body:CreateEventBody):Response<SocialEvent>
+    @POST("v1/social/activity-events/{id}/cancel") suspend fun cancelEvent(@Header("Authorization") auth:String,@Path("id") id:String,@Query("scope") scope:String):Response<SocialEvent>
     @POST("v1/social/groups/{id}/join-requests") suspend fun joinGroup(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
     @POST("v1/social/groups/{id}/leave") suspend fun leaveGroup(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>
     @PUT("v1/social/posts/{id}/cheer") suspend fun cheer(@Header("Authorization") auth: String, @Path("id") id: String): Response<Unit>

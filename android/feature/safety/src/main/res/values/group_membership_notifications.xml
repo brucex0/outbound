@@ -1,0 +1,5 @@
+<resources>
+    <string name="group_membership_notification_request">A Group membership request is ready for review.</string>
+    <string name="group_membership_notification_approved">Your Group membership request was approved.</string>
+    <string name="group_membership_notification_denied">Your Group membership request was declined.</string>
+</resources>

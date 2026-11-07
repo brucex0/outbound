@@ -19,17 +19,29 @@ class SocialDestinationCache @Inject constructor(private val cache: AccountCache
     suspend fun saveInvitation(account: String, value: SocialInvitation) = write(account, "invitation", value.id, PlainstrideJson.encodeToString(value))
     suspend fun connection(account: String, code: String) = read<ConnectionLinkPreview>(account, "connection", code)
     suspend fun saveConnection(account: String, code: String, value: ConnectionLinkPreview) = write(account, "connection", code, PlainstrideJson.encodeToString(value))
-    suspend fun remove(account: String, kind: String, id: String) = cache.delete(account, "social.detail.$kind", id, "und")
+    suspend fun remove(account: String, kind: String, id: String) = cache.delete(account, namespace(kind), id, "und")
+    suspend fun removeGroup(account: String, id: String, invitation: String?) {
+        try {
+            cache.delete(account, namespace("group"), groupKey(id, invitation), "und")
+            cache.delete(account, namespace("group"), groupKey(id, null), "und")
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            // The server decision is canonical. A cache failure must not turn
+            // successful withdrawal into a failed network action or a crash.
+            Log.w("PlainstrideSocial", "group_cache_remove failed type=${error.javaClass.simpleName}")
+        }
+    }
+    private fun namespace(kind: String) = if (kind in setOf("group", "event", "invitation")) "social.detail.$kind.v2" else "social.detail.$kind"
     private fun groupKey(id: String, invitation: String?) = "$id:${invitation.orEmpty()}"
     private suspend inline fun <reified T> read(account: String, kind: String, id: String): T? = try {
-        cache.get(account, "social.detail.$kind", id, "und")?.let { PlainstrideJson.decodeFromString<T>(it.payloadJson) }
+        cache.get(account, namespace(kind), id, "und")?.let { PlainstrideJson.decodeFromString<T>(it.payloadJson) }
     } catch (error: Exception) {
         if (error is CancellationException) throw error
         Log.w("PlainstrideSocial", "${kind}_cache_read failed type=${error.javaClass.simpleName}")
         null
     }
     private suspend fun write(account: String, kind: String, id: String, payload: String) {
-        try { cache.upsert(AccountCacheEntity(account, "social.detail.$kind", id, "und", payload, null, System.currentTimeMillis(), null)) }
+        try { cache.upsert(AccountCacheEntity(account, namespace(kind), id, "und", payload, null, System.currentTimeMillis(), null)) }
         catch (error: Exception) {
             if (error is CancellationException) throw error
             Log.w("PlainstrideSocial", "${kind}_cache_write failed type=${error.javaClass.simpleName}")

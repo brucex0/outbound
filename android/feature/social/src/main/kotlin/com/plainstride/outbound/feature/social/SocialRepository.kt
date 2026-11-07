@@ -57,6 +57,10 @@ interface SocialRepository {
     suspend fun cheerGroup(id: String, recipientId: String, preset: String): Result<Unit>
     suspend fun renameGroup(id:String,name:String):Result<GroupSummary>
     suspend fun updateGroupDetails(id:String,name:String,city:String):Result<GroupSummary>
+    suspend fun updateGroupMembershipPolicy(id:String,joinPolicy:String,approvalRequired:Boolean):Result<GroupSummary>
+    suspend fun reviewGroupMembership(id:String,requestId:String,approve:Boolean):Result<GroupSummary>
+    suspend fun updateEvent(id:String,body:CreateEventBody):Result<SocialEvent>
+    suspend fun cancelEvent(id:String,scope:String):Result<SocialEvent>
     suspend fun updateGroupCalendar(id:String,resetWeekday:Int,timeZone:String,apply:String):Result<GroupSummary>
     suspend fun updateGroupMemberRole(id:String,userId:String,role:String):Result<GroupSummary>
     suspend fun transferGroupOwnership(id:String,userId:String):Result<GroupSummary>
@@ -127,7 +131,7 @@ class OfflineFirstSocialRepository @Inject constructor(
                             ApiResult.Success(core.value.copy(
                                 connections = connectionPage.items,
                                 connectionNextCursor = connectionPage.nextCursor,
-                                invitations = (core.value.invitations + (groupInvitations.await() as? ApiResult.Success)?.value?.invitations.orEmpty().map { SocialInvitation(it.id,"group",it.group.name,it.sender,it.group.id) }).distinctBy(SocialInvitation::id),
+                                invitations = (core.value.invitations + (groupInvitations.await() as? ApiResult.Success)?.value?.invitations.orEmpty().map { SocialInvitation(it.id,"group",it.group.name,it.sender,it.group.id,it.status) }).distinctBy(SocialInvitation::id),
                                 recognitions = (awards.await() as? ApiResult.Success)?.value?.awards.orEmpty(),
                                 groups = groupResult.value.groups,
                             ))
@@ -225,6 +229,10 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun connect(personId: String) = authenticated { apiCall { api.connect(it, IdBody(personId)) } }
     override suspend fun accept(connectionId: String) = authenticated { apiCall { api.accept(it, connectionId) } }
     override suspend fun removeConnection(connectionId: String) = authenticated { apiCall { api.removeConnection(it, connectionId) } }
+    override suspend fun updateGroupMembershipPolicy(id:String,joinPolicy:String,approvalRequired:Boolean)=authenticated{apiCall{api.groupMembershipPolicy(it,id,GroupMembershipPolicyBody(joinPolicy,approvalRequired))}}
+    override suspend fun reviewGroupMembership(id:String,requestId:String,approve:Boolean)=authenticated{apiCall{api.reviewGroupMembership(it,id,requestId,if(approve) "approve" else "deny")}}.map{it.group}
+    override suspend fun updateEvent(id:String,body:CreateEventBody)=authenticated{apiCall{api.updateEvent(it,id,body)}}
+    override suspend fun cancelEvent(id:String,scope:String)=authenticated{apiCall{api.cancelEvent(it,id,scope)}}
     override suspend fun setGroupMembership(groupId: String, joined: Boolean) = authenticated { auth -> apiCall { if (joined) api.joinGroup(auth, groupId) else api.leaveGroup(auth, groupId) } }
     override suspend fun reportPerson(personId: String, reason: ReportReason) = authenticated { apiCall { api.reportPost(it, ReportBody("user", personId, reason.wireValue)) } }
     override suspend fun reportComment(commentId: String) = authenticated { apiCall { api.reportPost(it, ReportBody("comment", commentId, "other")) } }
@@ -294,7 +302,7 @@ class OfflineFirstSocialRepository @Inject constructor(
         connectionDirection = value?.direction,
     )
 
-    private companion object { const val NAMESPACE = "social.home"; const val HOME = "current"; const val CACHE_TTL = 5 * 60_000L }
+    private companion object { const val NAMESPACE = "social.home.groups_v2"; const val HOME = "current"; const val CACHE_TTL = 5 * 60_000L }
 }
 
 private fun ApiFailure.toSocialError() = when (code) {

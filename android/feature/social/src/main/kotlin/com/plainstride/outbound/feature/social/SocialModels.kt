@@ -96,6 +96,8 @@ import kotlinx.serialization.json.JsonElement
 )
 @Serializable data class SocialEvent(
     val id: String,
+    val seriesId: String? = null,
+    val recurrence: EventRecurrence? = null,
     @SerialName("title") val name: String,
     val startsAt: String,
     val endsAt: String? = null,
@@ -126,7 +128,7 @@ import kotlinx.serialization.json.JsonElement
 @Serializable data class SocialEventParticipant(val person: SocialPerson, val attendanceMode: String? = null, val status: String = "going", val outcome: String? = null, val startedAt: String? = null, val isRecording: Boolean = false)
 @Serializable data class SocialEventOption(val id: String, val label: String, val distanceMeters: Double? = null)
 @Serializable data class SocialEventCompatibility(val groupId: String, val explanation: String)
-@Serializable data class SocialInvitation(val id: String, val kind: String, val title: String, val sender: SocialPerson, val objectId: String? = null)
+@Serializable data class SocialInvitation(val id: String, val kind: String, val title: String, val sender: SocialPerson, val objectId: String? = null, val status: String = "pending")
 @Serializable data class GroupCommitment(val targetCount: Int? = null, val skipped: Boolean = false)
 @Serializable data class GroupMember(
     val id: String = "",
@@ -145,6 +147,8 @@ import kotlinx.serialization.json.JsonElement
 @Serializable data class GroupWeek(val id: String = "none", val focusMode: String = "none", val focusConfigured: Boolean = false, val contributedCount: Int = 0, val targetCount: Int? = null, val themeKey: String? = null, val themeTitle: String? = null, val themeNote: String? = null, val state: String = "open")
 @Serializable data class GroupNotice(val id:String,val title:String?=null,val body:String,val pinned:Boolean=false,val publishedAt:String?=null,val editedAt:String?=null)
 @Serializable data class GroupInvitationSnapshot(val id:String,val recipient:SocialPerson?=null,val status:String="pending")
+@Serializable data class GroupJoinRequest(val id:String,val requester:SocialPerson,val inviter:SocialPerson?=null,val createdAt:String)
+@Serializable data class EventRecurrence(val timeZone:String,val intervalWeeks:Int=1,val weekdays:List<Int>,val untilDate:String?=null)
 @Serializable data class GroupCapability(val weeklyTheme:Boolean=false,val workoutContributions:Boolean=false,val presetCheers:Boolean=false,val notices:Boolean=false,val scheduledActivities:Boolean=true)
 @Serializable data class GroupActivitySummary(val id:String,val title:String,val startsAt:String,val endsAt:String?=null,val locationName:String?=null,val paceNote:String?=null,val status:String="scheduled",val attendeeCount:Int=0,val currentUserGoing:Boolean=false)
 @Serializable data class GroupCheer(val id:String,val senderUserId:String,val recipientUserId:String,val presetType:String,val createdAt:String)
@@ -182,6 +186,10 @@ import kotlinx.serialization.json.JsonElement
     val notices: List<GroupNotice> = emptyList(),
     val unreadNoticeCount: Int = 0,
     val pendingRequest: GroupPendingRequest? = null,
+    val memberInviteApprovalRequired: Boolean = true,
+    val canInvite: Boolean = false,
+    val pendingRequestCount: Int = 0,
+    val joinRequests: List<GroupJoinRequest> = emptyList(),
     val invitationPreview: Boolean = false,
     val pendingInvitation: GroupInvitationDto? = null,
     val featured: Boolean = false,

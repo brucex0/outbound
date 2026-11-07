@@ -46,7 +46,7 @@ data class SocialUiState(
     val connectionProfileLoading: Boolean = false, val connectionProfileCode: String? = null,
     val connectionProfileIsSelf: Boolean = false,
 )
-enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED, GROUP_CREATED, GROUP_CREATION_FAILED, GROUP_SETTINGS_SAVED, GROUP_SETTINGS_FAILED, GROUP_JOINED, GROUP_DECLINED, GROUP_INVITATION_FAILED, EVENT_JOINED, EVENT_LEFT, EVENT_RSVP_FAILED }
+enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED, GROUP_CREATED, GROUP_CREATION_FAILED, GROUP_SETTINGS_SAVED, GROUP_SETTINGS_FAILED, GROUP_JOINED, GROUP_MEMBERSHIP_PENDING, GROUP_DECLINED, GROUP_INVITATION_FAILED, EVENT_JOINED, EVENT_LEFT, EVENT_RSVP_FAILED }
 enum class ConnectionFeedback { REQUESTED, ALREADY_PENDING, INCOMING_PENDING, ALREADY_CONNECTED, SELF, UPDATED, REQUEST_FAILED, PROFILE_LOAD_FAILED, INVITE_LINK_FAILED }
 sealed interface ConnectionEffect {
     data class Feedback(val value: ConnectionFeedback, val closeScanner: Boolean) : ConnectionEffect
@@ -623,7 +623,18 @@ sealed interface ConnectionEffect {
             if (accountId != account) return@launch
             mutableState.update { it.copy(groupInvitationResponding = false) }
             result.onSuccess { joined ->
-                mutableState.update { state -> state.copy(home = state.home.copy(invitations = state.home.invitations.filterNot { it.id == invitation.id })) }
+                if (account != null) {
+                    if (accept && joined != null) {
+                        destinations.saveGroup(account, joined, invitation.id)
+                        destinations.saveGroup(account, joined, null)
+                    } else destinations.removeGroup(account, group.id, invitation.id)
+                }
+                mutableState.update { state ->
+                    val pendingInvitation = joined?.takeIf { it.invitationPreview }?.pendingInvitation
+                    val invitations = state.home.invitations.filterNot { it.id == invitation.id } +
+                        (pendingInvitation?.let { listOf(SocialInvitation(it.id, "group", group.name, it.sender, group.id, it.status)) } ?: emptyList())
+                    state.copy(home = state.home.copy(invitations = invitations, groups = if(joined?.invitationPreview == true) state.home.groups.filterNot { it.id == group.id } else state.home.groups))
+                }
                 if (mutableState.value.selectedGroupId == group.id) {
                     if (accept && joined != null) mutableState.update { it.copy(selectedGroupDetail = joined) }
                     else closeGroup()
@@ -631,7 +642,8 @@ sealed interface ConnectionEffect {
                 val properties = mutableMapOf<AnalyticsProperty, Any>(AnalyticsProperty.EntrySource to "group_invitation_preview")
                 if (accept) properties[AnalyticsProperty.ParticipantCountBucket] = countBucket(joined?.memberCount ?: group.memberCount)
                 analytics.record(AnalyticsEvent(if (accept) "group_invitation_accepted" else "group_invitation_declined", properties))
-                messages.emit(if (accept) SocialMessage.GROUP_JOINED else SocialMessage.GROUP_DECLINED)
+                if (joined?.invitationPreview == true) analytics.record(AnalyticsEvent("group_membership_request_submitted", mapOf(AnalyticsProperty.SourceType to "member_invitation")))
+                messages.emit(if (accept && joined?.invitationPreview == true) SocialMessage.GROUP_MEMBERSHIP_PENDING else if (accept) SocialMessage.GROUP_JOINED else SocialMessage.GROUP_DECLINED)
                 refresh()
             }.onFailure { error ->
                 if (error is CancellationException) throw error
@@ -655,7 +667,7 @@ sealed interface ConnectionEffect {
         groupLoadJob?.cancel()
         mutableState.update { it.copy(selectedGroupId = null, selectedGroupInvitationId = null, selectedGroupDetail = null, groupLoading = false, groupLoadFailed = false, groupUnavailable = false) }
     }
-    fun joinGroup(group: GroupSummary) = mutate("social_group_membership_changed") { repository.setGroupMembership(group.id, group.role == null).getOrThrow(); refresh(); refreshGroupDirectory() }
+    fun joinGroup(group: GroupSummary) = mutate("social_group_membership_changed") { repository.setGroupMembership(group.id, group.role == null).getOrThrow(); if(group.role == null && group.joinPolicy == "request") analytics.record(AnalyticsEvent("group_membership_request_submitted",mapOf(AnalyticsProperty.SourceType to "self_join"))); refresh(); refreshGroupDirectory() }
     fun reportPerson(person: SocialPerson, reason: ReportReason, feedback: (Boolean) -> Unit) = mutate("social_content_reported", SocialMessage.REPORTED, feedback) { repository.reportPerson(person.id, reason).getOrThrow() }
     fun report(post: SocialPost, reason: String) = mutate("social_content_reported", SocialMessage.REPORTED) { repository.reportPost(post.id, ReportReason.entries.firstOrNull { it.wireValue == reason } ?: ReportReason.OTHER).getOrThrow() }
     fun deletePost(post: SocialPost) = mutate("social_post_deleted") { repository.deletePost(post.id).getOrThrow(); refresh() }
@@ -836,7 +848,28 @@ sealed interface ConnectionEffect {
     fun trackGroupActivityLocation(source: String) = analytics.record(AnalyticsEvent("activity_event_location_selected", mapOf(AnalyticsProperty.SourceType to source)))
     fun createGroupActivity(group: GroupSummary, body: CreateEventBody, completed: (Boolean) -> Unit) = mutate("group_activity_created", feedback = completed) {
         repository.createEvent(body.copy(groupId = group.id)).getOrThrow()
+        if (body.recurrence != null) analytics.record(AnalyticsEvent("activity_event_recurrence_configured", mapOf(AnalyticsProperty.SelectionType to "weekly", AnalyticsProperty.SourceType to "group_activity")))
         openGroup(group)
+    }
+    fun saveMembershipPolicy(group:GroupSummary,joinPolicy:String,approvalRequired:Boolean,completed:(Boolean)->Unit)=mutate("group_membership_policy_changed", feedback=completed, properties=mapOf(AnalyticsProperty.SourceType to joinPolicy, AnalyticsProperty.SelectionType to if(approvalRequired) "approval_required" else "direct")) {
+        val updated=repository.updateGroupMembershipPolicy(group.id,joinPolicy,approvalRequired).getOrThrow()
+        mutableState.update { if(it.selectedGroupId==group.id) it.copy(selectedGroupDetail=updated) else it }
+        refresh()
+    }
+    fun reviewMembership(group:GroupSummary,requestId:String,approve:Boolean,completed:(Boolean)->Unit)=mutate("group_membership_request_reviewed", feedback=completed, properties=mapOf(AnalyticsProperty.SourceType to if(approve) "approve" else "deny")) {
+        val updated=repository.reviewGroupMembership(group.id,requestId,approve).getOrThrow()
+        mutableState.update { if(it.selectedGroupId==group.id) it.copy(selectedGroupDetail=updated) else it }
+        refresh()
+    }
+    fun updatePlannedEvent(event:SocialEvent,body:CreateEventBody,completed:(Boolean)->Unit)=mutate("activity_event_series_changed", feedback=completed, properties=mapOf(AnalyticsProperty.SelectionType to body.scope)) {
+        val updated=repository.updateEvent(event.id,body).getOrThrow()
+        mutableState.update { if(it.selectedEvent?.id==event.id) it.copy(selectedEvent=updated) else it }
+        refresh()
+    }
+    fun cancelPlannedEvent(event:SocialEvent,scope:String)=mutate("activity_event_series_changed", properties=mapOf(AnalyticsProperty.SelectionType to scope)) {
+        val updated=repository.cancelEvent(event.id,scope).getOrThrow()
+        mutableState.update { if(it.selectedEvent?.id==event.id) it.copy(selectedEvent=updated) else it }
+        refresh()
     }
     fun setGroupArchived(group:GroupSummary,archived:Boolean)=mutate("group_lifecycle_changed"){repository.setGroupArchived(group.id,archived).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
     fun renameGroup(group:GroupSummary,name:String)=mutate("group_renamed"){repository.renameGroup(group.id,name).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
@@ -891,19 +924,20 @@ sealed interface ConnectionEffect {
         feedback: ((Boolean) -> Unit)? = null,
         failure: SocialMessage = SocialMessage.ACTION_FAILED,
         emitFailureMessage: Boolean = true,
+        properties: Map<AnalyticsProperty, Any> = emptyMap(),
         block: suspend () -> Unit,
     ) = viewModelScope.launch {
         runCatching { block() }.onSuccess {
             feedback?.invoke(true)
             messages.emit(success)
-            analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "success")))
+            analytics.record(AnalyticsEvent(event, properties + (AnalyticsProperty.Result to "success")))
         }.onFailure { error ->
             if (error is CancellationException) throw error
             val socialError = error as? SocialException
             Log.w("SocialViewModel", "$event failed (type=${error.javaClass.simpleName}, status=${socialError?.httpStatus}, reason=${socialError?.reason})")
             feedback?.invoke(false)
             if (emitFailureMessage) messages.emit(failure)
-            analytics.record(AnalyticsEvent(event, mapOf(AnalyticsProperty.Result to "failure")))
+            analytics.record(AnalyticsEvent(event, properties + (AnalyticsProperty.Result to "failure")))
         }
     }
 

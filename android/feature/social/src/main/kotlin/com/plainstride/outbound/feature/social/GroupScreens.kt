@@ -116,10 +116,13 @@ fun GroupDetailScreen(
     openActivity: (String) -> Unit,
     publishNotice: (String?, String, Boolean) -> Unit,
     markNoticesRead: () -> Unit,
+    saveMembershipPolicy: (String, Boolean, (Boolean) -> Unit) -> Unit,
+    reviewMembership: (String, Boolean, (Boolean) -> Unit) -> Unit,
 ) {
     val groupListState = rememberLazyListState()
     var selectedMomentID by rememberSaveable(group.id) { mutableStateOf<String?>(null) }
     var settings by rememberSaveable { mutableStateOf(false) }
+    var membershipSettings by rememberSaveable { mutableStateOf(false) }
     var focusOpen by rememberSaveable { mutableStateOf(false) }
     var showMembers by rememberSaveable { mutableStateOf(false) }
     var showNoticeComposer by rememberSaveable { mutableStateOf(false) }
@@ -135,7 +138,7 @@ fun GroupDetailScreen(
             .map { it.value }
     }
     val canManage = group.currentUserRole in setOf("owner", "admin") && group.lifecycle != "archived"
-    val canInviteMore = canManage && group.memberCount + group.invitations.count { it.status == "pending" } < group.memberLimit
+    val canInviteMore = group.canInvite && group.lifecycle != "archived" && group.memberCount + group.invitations.count { it.status in setOf("pending", "awaiting_approval") } < group.memberLimit
     fun memberCanBeRemoved(member: GroupMember) = canManage && !member.isCurrentUser && member.role != "owner" &&
         (group.currentUserRole == "owner" || member.role == "member")
 
@@ -213,11 +216,11 @@ fun GroupDetailScreen(
                     upcomingActivityItems(group, dateFormatter, openActivity)
                     item { privateFocusCard(group, focusOpen = { focusOpen = true }) }
                     memberSection(group, orderedMembers, canInviteMore, invite, showMembers = { showMembers = true; trackMembersOpened(group.memberCount.takeIf { it > 0 } ?: group.members.size) })
-                    if (group.invitations.isNotEmpty()) items(group.invitations.filter { it.status == "pending" }, key = GroupInvitationSnapshot::id) { invitation ->
+                    if (group.invitations.isNotEmpty()) items(group.invitations.filter { it.status in setOf("pending", "awaiting_approval") }, key = GroupInvitationSnapshot::id) { invitation ->
                         ElevatedCard { Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             SocialAvatar(invitation.recipient ?: SocialPerson(id = invitation.id, displayName = stringResource(R.string.group_invited_person)))
                             Text(invitation.recipient?.displayName ?: stringResource(R.string.group_invited_person), Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-                            Text(stringResource(R.string.group_invited_status), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(if (invitation.status == "awaiting_approval") R.string.group_membership_pending else R.string.group_invited_status), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } }
                     }
                     item { Button(planActivity, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_plan_activity)) } }
@@ -234,6 +237,7 @@ fun GroupDetailScreen(
         save = saveSettings,
         invite = invite,
         openFocus = { focusOpen = true },
+        openMembership = { settings = false; membershipSettings = true },
         archive = archive,
         leave = leave,
         remove = remove,
@@ -241,6 +245,7 @@ fun GroupDetailScreen(
         changeRole = changeRole,
         transferOwnership = transferOwnership,
     )
+    if (membershipSettings) GroupMembershipDialog(group, { membershipSettings = false }, saveMembershipPolicy, reviewMembership)
     if (showNoticeComposer) AlertDialog(
         onDismissRequest = { showNoticeComposer = false },
         title = { Text(stringResource(R.string.group_post_update)) },
@@ -439,6 +444,7 @@ private fun LazyListScope.memberSection(group: GroupSummary, members: List<Group
     save: (String, String, Int, String, String, Boolean, Boolean) -> Unit,
     invite: () -> Unit,
     openFocus: () -> Unit,
+    openMembership: () -> Unit,
     archive: () -> Unit,
     leave: () -> Unit,
     remove: (String) -> Unit,
@@ -489,6 +495,8 @@ private fun LazyListScope.memberSection(group: GroupSummary, members: List<Group
                     if (canManage) {
                         item {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(openMembership, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_membership_settings)) }
+                                if (group.pendingRequestCount > 0) Text(stringResource(R.string.group_membership_requests) + " · " + group.pendingRequestCount)
                                 Text(stringResource(R.string.group_owner_controls), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                                 OutlinedTextField(name, { name = it.take(80) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.group_create_name)) }, singleLine = true)
                                 OutlinedTextField(city, { city = it.take(120) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.group_base_location)) }, singleLine = true)
@@ -605,10 +613,11 @@ fun GroupInvitationPreviewScreen(group: GroupSummary, responding: Boolean, close
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text(stringResource(R.string.group_invitation_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Text(stringResource(R.string.group_invitation_from, invitation.sender.displayName, group.name))
-                        Text(stringResource(R.string.group_invitation_preview_detail), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(if (invitation.status == "awaiting_approval") R.string.group_membership_pending_help else if (invitation.approvalRequired) R.string.group_membership_accept_help else R.string.group_invitation_preview_detail), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (invitation.status == "awaiting_approval") Text(stringResource(R.string.group_membership_pending))
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Button({ respond(true) }, enabled = !responding) { Text(stringResource(R.string.social_accept)) }
-                            OutlinedButton({ respond(false) }, enabled = !responding) { Text(stringResource(R.string.social_decline)) }
+                            if (invitation.status != "awaiting_approval") Button({ respond(true) }, enabled = !responding) { Text(stringResource(R.string.social_accept)) }
+                            OutlinedButton({ respond(false) }, enabled = !responding) { Text(stringResource(if (invitation.status == "awaiting_approval") R.string.group_membership_withdraw else R.string.social_decline)) }
                             if (responding) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                         }
                     }

@@ -130,3 +130,14 @@ ANDROID_SERIAL=emulator-5554 ./gradlew :feature:recording:connectedDebugAndroidT
 
 - Verified on Pixel 10 / Android 17 emulator: two focused UI tests passed. They cover current-session toggle presentation/callbacks, unchanged launch defaults, paused/external state updates, explicit-goal eligibility, already-reached goal signaling, and the sharing action.
 - The full phone Debug build also passed. The UI fixture does not establish service-command delivery, actual speech/GPS auto-pause, process-death recovery, or server invitation/removal delivery; verify those separately on connected devices.
+
+## Focused Group UI Regression
+
+When UI tests are requested, run on an available Android device/emulator:
+
+```sh
+./gradlew :feature:social:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.plainstride.outbound.feature.social.GroupImprovementsScreenTest
+```
+
+The six Compose checks exercise production policy/review controls, the admin boundary, accepted-invitation waiting/withdrawal, multi-weekday composer retry state, and stopping repetition for following occurrences with retry preservation. Freebuff CLI authored and ran the latter two checks. They use deterministic callback fixtures rather than backend authorization. New Group contracts reset the Social home and Group/event/invitation destination cache namespaces; there is no Room schema change, old-cache migration, or effect on local recordings.

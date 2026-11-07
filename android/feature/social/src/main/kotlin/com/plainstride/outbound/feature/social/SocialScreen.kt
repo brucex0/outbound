@@ -185,6 +185,7 @@ private fun SocialFeedback(viewModel: SocialViewModel) {
                 SocialMessage.EVENT_LEFT -> com.plainstride.outbound.core.designsystem.R.string.group_activity_left
                 SocialMessage.EVENT_RSVP_FAILED -> com.plainstride.outbound.core.designsystem.R.string.group_activity_rsvp_error
                 SocialMessage.GROUP_JOINED -> R.string.group_toast_joined
+                SocialMessage.GROUP_MEMBERSHIP_PENDING -> R.string.group_membership_pending
                 SocialMessage.GROUP_DECLINED -> R.string.group_toast_declined
                 SocialMessage.GROUP_INVITATION_FAILED -> R.string.group_invitation_action_failed
                 SocialMessage.GROUP_CREATED -> R.string.group_toast_created
@@ -288,13 +289,15 @@ fun SocialGroupDestination(
             openActivity = { eventId -> onOpenEvent(eventId, "group_up_next") },
             publishNotice = { title, body, pinned -> viewModel.createGroupNotice(group, title, body, pinned) },
             markNoticesRead = { viewModel.markGroupNoticesRead(group) },
+            saveMembershipPolicy = { policy, required, completed -> viewModel.saveMembershipPolicy(group, policy, required, completed) },
+            reviewMembership = { requestId, approve, completed -> viewModel.reviewMembership(group, requestId, approve, completed) },
         )
 
     }
     inviteGroup?.let { group ->
         val currentGroup = state.selectedGroupDetail?.takeIf { it.id == group.id } ?: group
         val excludedIds = currentGroup.members.map { it.person.id }.toSet() +
-            currentGroup.invitations.filter { it.status == "pending" }.mapNotNull { it.recipient?.id }
+            currentGroup.invitations.filter { it.status in setOf("pending", "awaiting_approval") }.mapNotNull { it.recipient?.id }
         val eligibleConnections = state.home.connections.filterNot { it.id in excludedIds }
         PersonPickerDialog(stringResource(R.string.social_invite), eligibleConnections, { inviteGroup = null }) { person ->
             viewModel.inviteToGroup(currentGroup, listOf(person), java.util.UUID.randomUUID().toString())
@@ -389,9 +392,11 @@ fun SocialActivityEventDestination(
         return
     }
     var inviting by remember(event.id) { mutableStateOf(false) }
+    var editing by rememberSaveable(event.id) { mutableStateOf(false) }
     SocialEventDetailScreen(event, unitSystem, { viewModel.closeEvent(); onBack() },
         { going, mode -> viewModel.setEventRsvp(event, going, mode) }, { inviting = true },
-        { viewModel.refreshEvent(event.id) }, groupRun, groupRunJoining, onToggleActivityLiveMap, { onStartActivity(event) })
+        { viewModel.refreshEvent(event.id) }, groupRun, groupRunJoining, onToggleActivityLiveMap, { onStartActivity(event) }, { editing = true }, { scope -> viewModel.cancelPlannedEvent(event, scope) })
+    if (editing) GroupActivityComposer(close = { editing = false }, locationSelected = viewModel::trackGroupActivityLocation, mapOpened = viewModel::trackGroupActivityMapOpened, editingEvent = event) { body, completed -> viewModel.updatePlannedEvent(event, body, completed) }
     if (inviting) PersonPickerDialog(stringResource(R.string.social_invite), state.home.connections, { inviting = false }) { person ->
         viewModel.inviteToEvent(event, person); inviting = false
     }
@@ -538,7 +543,7 @@ private fun connectionFeedbackResource(value: ConnectionFeedback) = when (value)
     val activeConnections = acceptedConnections.filter(SocialPerson::isActive)
     val incomingRequests = state.home.connections.filter { it.relationship == "pending" && it.connectionDirection == "incoming" }
     val groupInvitations = state.home.invitations.filter { it.kind == "group" }
-    val groupAttention = groupInvitations.size + state.home.groups.sumOf { it.unreadNoticeCount }
+    val groupAttention = groupInvitations.count { it.status == "pending" } + state.home.groups.sumOf { it.unreadNoticeCount + it.pendingRequestCount }
     LaunchedEffect(selectedTab, activeConnections.size) {
         if (selectedTab == SocialFeatureTab.FEED && activeConnections.isNotEmpty() && !trackedActiveNowExposure) {
             trackedActiveNowExposure = true
@@ -1991,7 +1996,10 @@ private fun SocialEventDetailScreen(
     groupRunJoining: Boolean,
     onToggleActivityLiveMap: () -> Unit,
     onStartActivity: () -> Unit,
+    onEdit: () -> Unit,
+    onCancel: (String) -> Unit,
 ) {
+    var cancelConfirmation by rememberSaveable(event.id) { mutableStateOf(false) }
     var attendanceChoice by rememberSaveable(event.id) { mutableStateOf(false) }
     val context = LocalContext.current
     LaunchedEffect(event.id, event.status) {
@@ -2010,6 +2018,21 @@ private fun SocialEventDetailScreen(
         start?.let { java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date.from(it)) }
             ?: event.startsAt
     }
+    if (cancelConfirmation) AlertDialog(
+        onDismissRequest = { cancelConfirmation = false },
+        title = { Text(stringResource(R.string.group_repeat_cancel_title)) },
+        text = { Text(stringResource(R.string.group_repeat_cancel_help)) },
+        confirmButton = {
+            Column {
+                TextButton({ cancelConfirmation = false; onCancel("this") }) { Text(stringResource(R.string.group_repeat_cancel_this)) }
+                if (event.seriesId != null) {
+                    TextButton({ cancelConfirmation = false; onCancel("following") }) { Text(stringResource(R.string.group_repeat_cancel_following)) }
+                    TextButton({ cancelConfirmation = false; onCancel("series") }) { Text(stringResource(R.string.group_repeat_cancel_series)) }
+                }
+            }
+        },
+        dismissButton = { TextButton({ cancelConfirmation = false }) { Text(stringResource(R.string.social_cancel)) } },
+    )
     Box(Modifier.fillMaxSize()) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Scaffold(
@@ -2046,6 +2069,15 @@ private fun SocialEventDetailScreen(
                             HorizontalDivider()
                             EventDetailRow(stringResource(R.string.group_event_created_by), event.creator?.displayName ?: stringResource(R.string.group_event_organizer))
                             EventDetailRow(stringResource(R.string.group_event_when), dateTime)
+                            event.recurrence?.let { rule ->
+                                val cadence = stringResource(when(rule.intervalWeeks) { 2 -> R.string.group_repeat_every_2_weeks; 3 -> R.string.group_repeat_every_3_weeks; 4 -> R.string.group_repeat_every_4_weeks; else -> R.string.group_repeat_every_week })
+                                val days = rule.weekdays.filter { it in 1..7 }.joinToString(", ") { java.time.DayOfWeek.of(it).getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault()) }
+                                EventDetailRow(stringResource(R.string.group_repeat_title), "$cadence · $days · ${rule.timeZone}")
+                            }
+                            if (event.currentUserRole == "owner" && event.status == "scheduled" && event.startedCount == 0 && start?.isAfter(java.time.Instant.now()) == true) {
+                                OutlinedButton(onEdit, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_repeat_edit)) }
+                                TextButton({ cancelConfirmation = true }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_repeat_cancel)) }
+                            }
                             end?.let {
                                 EventDetailRow(stringResource(R.string.group_event_duration), durationText(start, it, context.resources))
                                 EventDetailRow(stringResource(R.string.group_event_scheduled_end), java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date.from(it)))

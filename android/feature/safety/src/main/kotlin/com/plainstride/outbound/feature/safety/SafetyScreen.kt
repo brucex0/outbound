@@ -330,7 +330,7 @@ fun NotificationInbox(
                                 )
                                 Spacer(Modifier.width(12.dp))
                                 Column(Modifier.weight(1f)) {
-                                    Text(item.primary.message, fontWeight = if (item.unread) FontWeight.SemiBold else FontWeight.Normal)
+                                    Text(localizedMembershipNotification(item.primary), fontWeight = if (item.unread) FontWeight.SemiBold else FontWeight.Normal)
                                     if (item.additionalCount > 0) {
                                         Text(
                                             stringResource(R.string.inbox_additional_count, item.additionalCount),
@@ -364,7 +364,7 @@ fun NotificationDetail(notification: InboxNotification?) {
                 fontWeight = FontWeight.Bold,
             )
         }
-        item { Text(notification?.message.orEmpty(), style = MaterialTheme.typography.bodyLarge) }
+        item { Text(localizedMembershipNotification(notification), style = MaterialTheme.typography.bodyLarge) }
     }
 }
 
@@ -436,4 +436,12 @@ internal fun GroupRunDetailScreen(group: GroupRun?, loading: Boolean, retry: () 
             }
         }
     }
+}
+
+@Composable
+private fun localizedMembershipNotification(notification: InboxNotification?): String = when(notification?.type) {
+    "groupJoinRequest" -> stringResource(R.string.group_membership_notification_request)
+    "groupJoinRequestApproved" -> stringResource(R.string.group_membership_notification_approved)
+    "groupJoinRequestDenied" -> stringResource(R.string.group_membership_notification_denied)
+    else -> notification?.message.orEmpty()
 }

@@ -1,0 +1,5 @@
+<resources>
+    <string name="group_membership_notification_request">有新的入群申请待审批。</string>
+    <string name="group_membership_notification_approved">你的入群申请已获批准。</string>
+    <string name="group_membership_notification_denied">你的入群申请未获批准。</string>
+</resources>

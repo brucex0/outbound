@@ -1,0 +1,5 @@
+<resources>
+    <string name="group_membership_notification_request">Hay una solicitud de ingreso al grupo pendiente de revisión.</string>
+    <string name="group_membership_notification_approved">Tu solicitud de ingreso al grupo fue aprobada.</string>
+    <string name="group_membership_notification_denied">Tu solicitud de ingreso al grupo fue rechazada.</string>
+</resources>
