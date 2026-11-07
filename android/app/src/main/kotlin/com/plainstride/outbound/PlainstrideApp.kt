@@ -8,7 +8,6 @@ import androidx.navigation.navArgument
 import androidx.navigation.NavType
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -36,14 +35,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.blur
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Icon
@@ -81,7 +73,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
@@ -95,6 +86,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.window.Dialog
@@ -130,8 +122,6 @@ import com.plainstride.outbound.auth.AuthViewModel
 import com.plainstride.outbound.connectivity.ConnectivityViewModel
 import com.plainstride.outbound.connectivity.ConnectivityUiState
 import com.plainstride.outbound.core.auth.SessionState
-import com.plainstride.outbound.core.designsystem.PlainstrideFloatingAction
-import com.plainstride.outbound.core.designsystem.PlainstrideFloatingActionStyle
 import com.plainstride.outbound.core.designsystem.LocalPlainstrideThemeColors
 import com.plainstride.outbound.core.designsystem.PrimaryBottomToolbarClearance
 import com.plainstride.outbound.feature.activity.ActivityDetailDestination
@@ -217,7 +207,6 @@ import android.provider.Settings
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.coroutineScope
 import com.plainstride.outbound.reminders.ReminderViewModel
 
 private enum class TopLevelDestination(
@@ -341,7 +330,6 @@ private fun SignedInApp(
     var assistantEntryDestination by remember { mutableStateOf("me") }
     var settingsRequest by remember { mutableStateOf(0) }
     var trackedAssistantExposure by remember { mutableStateOf(false) }
-    var trackedAssistantAnimation by remember { mutableStateOf(false) }
     var cheerPickerVisible by remember { mutableStateOf(false) }
     var addShoeSheetVisible by remember { mutableStateOf(false) }
     val recordingViewModel: RecordingViewModel = hiltViewModel()
@@ -661,53 +649,14 @@ private fun SignedInApp(
                 val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsStateWithLifecycle(
                     minActiveState = Lifecycle.State.CREATED,
                 )
-                val launcherScale = remember { Animatable(1f) }
-                val launcherRotation = remember { Animatable(0f) }
-                val launcherShimmer = remember { Animatable(0f) }
-                val launcherRingScale = remember { Animatable(0.72f) }
-                val launcherRingOpacity = remember { Animatable(0f) }
-                LaunchedEffect(primaryDestination) {
-                    if (!trackedAssistantExposure) {
+                val windowFocused = LocalWindowInfo.current.isWindowFocused
+                val companionEligible = lifecycleState.isAtLeast(Lifecycle.State.RESUMED) && windowFocused &&
+                    !hasActiveSession && !showNotificationPermissionPrimer && !cheerPickerVisible &&
+                    !addShoeSheetVisible && planBuilderSource == null
+                LaunchedEffect(companionEligible) {
+                    if (companionEligible && !trackedAssistantExposure) {
                         integrationViewModel.trackAssistantLauncherEligibleExposure(primaryDestination.route)
                         trackedAssistantExposure = true
-                    }
-                    if (!trackedAssistantAnimation) {
-                        delay(500)
-                        integrationViewModel.trackAssistantLauncherAnimationShown(primaryDestination.route)
-                        trackedAssistantAnimation = true
-                    }
-                }
-                LaunchedEffect(primaryDestination, lifecycleState) {
-                    if (!lifecycleState.isAtLeast(Lifecycle.State.RESUMED)) {
-                        launcherScale.snapTo(1f)
-                        launcherRotation.snapTo(0f)
-                        launcherShimmer.snapTo(0f)
-                        launcherRingScale.snapTo(0.72f)
-                        launcherRingOpacity.snapTo(0f)
-                        return@LaunchedEffect
-                    }
-
-                    delay(500)
-                    while (true) {
-                        coroutineScope {
-                            launch { launcherScale.animateTo(1.17f, tween(320, easing = LinearOutSlowInEasing)) }
-                            launch { launcherRotation.animateTo(-10f, tween(320, easing = LinearOutSlowInEasing)) }
-                            launch { launcherShimmer.animateTo(0.9f, tween(320, easing = LinearOutSlowInEasing)) }
-                            launch { launcherRingScale.animateTo(0.94f, tween(320, easing = LinearOutSlowInEasing)) }
-                            launch { launcherRingOpacity.animateTo(0.82f, tween(320, easing = LinearOutSlowInEasing)) }
-                        }
-
-                        val returnSpring = spring<Float>(dampingRatio = 0.48f, stiffness = Spring.StiffnessMedium)
-                        coroutineScope {
-                            launch { launcherScale.animateTo(1f, returnSpring) }
-                            launch { launcherRotation.animateTo(0f, returnSpring) }
-                            launch { launcherShimmer.animateTo(0f, returnSpring) }
-                            launch { launcherRingScale.animateTo(1.55f, returnSpring) }
-                            launch { launcherRingOpacity.animateTo(0f, returnSpring) }
-                        }
-
-                        launcherRingScale.snapTo(0.72f)
-                        delay(2_800)
                     }
                 }
                 Row(
@@ -719,57 +668,24 @@ private fun SignedInApp(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
-                        Canvas(
-                            Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    scaleX = launcherRingScale.value
-                                    scaleY = launcherRingScale.value
-                                    alpha = launcherRingOpacity.value
-                                },
-                        ) {
-                            drawCircle(
-                                color = Color.White,
-                                radius = size.minDimension / 2f,
-                                style = Stroke(width = 2.dp.toPx()),
-                            )
-                        }
-                        PlainstrideFloatingAction(
-                            modifier = Modifier.graphicsLayer {
-                                scaleX = launcherScale.value
-                                scaleY = launcherScale.value
-                            },
-                            style = PlainstrideFloatingActionStyle.Accent,
-                            actionSize = 56.dp,
-                            onClick = {
+                    key(accountId) {
+                        FoxCompanionLauncher(
+                            eligible = companionEligible,
+                            notifications = integration.notifications.takeIf { integration.notificationAccountId == accountId }.orEmpty(),
+                            claimDelivery = integrationViewModel::claimCompanionDelivery,
+                            onPresence = integrationViewModel::trackCompanionPresence,
+                            onAction = integrationViewModel::trackCompanionAction,
+                            onOpenAssistant = {
                                 assistantEntryDestination = primaryDestination.route
                                 integrationViewModel.trackAssistantOpened(primaryDestination.route)
                                 navController.navigate(ASSISTANT_ROUTE) { launchSingleTop = true }
                             },
-                        ) {
-                            Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
-                                Image(
-                                    painter = painterResource(R.drawable.plainstride_fox_assistant_head),
-                                    contentDescription = stringResource(R.string.tab_assistant),
-                                    modifier = Modifier.size(50.dp).graphicsLayer { rotationZ = launcherRotation.value },
-                                )
-                                Icon(
-                                    Icons.Default.AutoAwesome,
-                                    null,
-                                    Modifier
-                                        .align(Alignment.TopEnd)
-                                        .offset(x = (-4).dp, y = 4.dp)
-                                        .size(13.dp)
-                                        .blur(0.8.dp)
-                                        .graphicsLayer {
-                                            scaleX = 1.12f
-                                            scaleY = 1.12f
-                                            alpha = launcherShimmer.value
-                                        },
-                                )
-                            }
-                        }
+                            onOpenInbox = { navController.navigate(NOTIFICATIONS_ROUTE) { launchSingleTop = true } },
+                            onOpenNotification = { item ->
+                                integrationViewModel.openNotification(item)
+                                navController.navigate(notificationRoute(item)) { launchSingleTop = true }
+                            },
+                        )
                     }
                     Spacer(Modifier.width(10.dp))
                     val contextualStart = primaryDestination == TopLevelDestination.Today && !hasActiveSession
@@ -1456,17 +1372,7 @@ private fun SignedInApp(
                 LaunchedEffect(Unit) { integrationViewModel.openInbox() }
                 NotificationInbox(integration.notifications, onBack = { navController.popBackStack() }) { item ->
                     integrationViewModel.openNotification(item)
-                    val route = when (val destination = item.presentation.destination) {
-                        NotificationDestination.Connections -> AppDetailRoutes.connections("notification")
-                        is NotificationDestination.Activity -> AppDetailRoutes.activity(destination.id, "notification")
-                        is NotificationDestination.Post -> AppDetailRoutes.post(destination.id)
-                        is NotificationDestination.Event -> AppDetailRoutes.event(destination.id, "notification")
-                        is NotificationDestination.Invitation -> AppDetailRoutes.invitation(destination.id)
-                        is NotificationDestination.Group -> AppDetailRoutes.group(destination.id, "notification")
-                        is NotificationDestination.GroupRun -> AppDetailRoutes.safety("group", destination.id, "notification")
-                        is NotificationDestination.Live -> AppDetailRoutes.safety("live", destination.id, "notification")
-                        NotificationDestination.Inbox -> AppDetailRoutes.notification(item.primary.id)
-                    }
+                    val route = notificationRoute(item)
                     navController.navigate(route) { launchSingleTop = true }
                 }
             }
@@ -2022,4 +1928,16 @@ private tailrec fun android.content.Context.findActivity(): android.app.Activity
     is android.app.Activity -> this
     is android.content.ContextWrapper -> baseContext.findActivity()
     else -> null
+}
+
+private fun notificationRoute(item: NotificationCenterItem): String = when (val destination = item.presentation.destination) {
+    NotificationDestination.Connections -> AppDetailRoutes.connections("notification")
+    is NotificationDestination.Activity -> AppDetailRoutes.activity(destination.id, "notification")
+    is NotificationDestination.Post -> AppDetailRoutes.post(destination.id)
+    is NotificationDestination.Event -> AppDetailRoutes.event(destination.id, "notification")
+    is NotificationDestination.Invitation -> AppDetailRoutes.invitation(destination.id)
+    is NotificationDestination.Group -> AppDetailRoutes.group(destination.id, "notification")
+    is NotificationDestination.GroupRun -> AppDetailRoutes.safety("group", destination.id, "notification")
+    is NotificationDestination.Live -> AppDetailRoutes.safety("live", destination.id, "notification")
+    NotificationDestination.Inbox -> AppDetailRoutes.notification(item.primary.id)
 }

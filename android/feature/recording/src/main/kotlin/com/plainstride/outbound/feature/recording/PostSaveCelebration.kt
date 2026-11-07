@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -23,6 +25,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +41,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -43,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
+import com.plainstride.outbound.core.designsystem.R as DesignSystemR
 
 private val PostcardBackdrop = Color(0xFFFFF0DB)
 private val PostcardPaper = Color(0xFFFFFCF2)
@@ -75,15 +87,48 @@ fun PostSaveCelebration(
         )
 
         Spacer(Modifier.height(22.dp))
-        Text(
-            text = stringResource(R.string.recording_post_save_message),
+        PostSaveCompanionMessage(
+            sessionKey = sessionKey,
+            style = TextStyle(fontSize = 20.sp, lineHeight = 26.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
             color = PostcardNavy,
-            fontSize = 20.sp,
-            lineHeight = 26.sp,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
         )
         Spacer(Modifier.height(22.dp))
         PostSaveActivityActions(onShare = onShare, onDone = onDone)
+    }
+}
+
+/** Only composed by the successful-save surfaces, never by history or imports. */
+@Composable
+internal fun PostSaveCompanionMessage(sessionKey: String, style: TextStyle, color: Color = Color.Unspecified) {
+    val reducedMotion = remember { !ValueAnimator.areAnimatorsEnabled() }
+    val focused = LocalWindowInfo.current.isWindowFocused
+    var didCelebrate by rememberSaveable(sessionKey) { mutableStateOf(false) }
+    val scale = remember(sessionKey) { Animatable(1f) }
+    val rotation = remember(sessionKey) { Animatable(0f) }
+    LaunchedEffect(sessionKey, focused) {
+        scale.snapTo(1f)
+        rotation.snapTo(0f)
+        if (!focused || didCelebrate) return@LaunchedEffect
+        didCelebrate = true
+        if (!reducedMotion) {
+            scale.animateTo(1.1f, tween(220))
+            rotation.animateTo(-8f, tween(180))
+            rotation.animateTo(6f, tween(220))
+            rotation.animateTo(0f, tween(180))
+            scale.animateTo(1f, tween(220))
+        }
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Image(
+            painterResource(DesignSystemR.drawable.plainstride_fox_assistant_head),
+            contentDescription = null,
+            modifier = Modifier.size(42.dp).testTag("fox-companion-celebration").graphicsLayer {
+                scaleX = scale.value
+                scaleY = scale.value
+                rotationZ = rotation.value
+            },
+        )
+        Text(stringResource(R.string.recording_post_save_message), style = style, color = color)
     }
 }
 

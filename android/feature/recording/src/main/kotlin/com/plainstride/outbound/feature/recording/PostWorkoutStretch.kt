@@ -61,7 +61,7 @@ fun PostWorkoutStretchRoute(
         voiceProfileId = voiceProfileId,
         header = { finish ->
             PostSaveCelebrationCard(track = track, sessionKey = sessionKey, modifier = Modifier.fillMaxWidth().height(205.dp))
-            Text(stringResource(R.string.recording_post_save_message), style = MaterialTheme.typography.titleMedium)
+            PostSaveCompanionMessage(sessionKey = sessionKey, style = MaterialTheme.typography.titleMedium)
             PostSaveActivityActions(onShare = onShare, onDone = finish)
         },
     )

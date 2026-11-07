@@ -542,6 +542,10 @@ class RecordingViewModel @Inject constructor(
         analytics.record(AnalyticsEvent("feature_exposed", mapOf(
             AnalyticsProperty.Feature to "activity_post_save_celebration",
         )))
+        analytics.record(AnalyticsEvent("feature_exposed", mapOf(
+            AnalyticsProperty.Feature to "fox_companion_presence",
+            AnalyticsProperty.Result to "celebration",
+        )))
     }
     fun trackMotionAuthorization(result: String?) = analytics.record(AnalyticsEvent(
         if (result == null) "motion_authorization_requested" else "motion_authorization_completed",

@@ -1,5 +1,7 @@
 package com.plainstride.outbound.auth
 
+import com.plainstride.outbound.FoxCompanionAttention
+
 import android.os.Build
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -124,7 +126,17 @@ class AuthViewModel @Inject constructor(
                 ?: (sessions.state.value as? SessionState.Refreshing)?.accountId
             unregisterPush()
             google.identityToken(activityContext).fold(
-                onSuccess = { token -> repository.deleteAccount(token).also { result -> if (result is ApiResult.Success && accountId != null) accountData.clearAccount(accountId) } },
+                onSuccess = { token ->
+                    repository.deleteAccount(token).also { result ->
+                        if (result is ApiResult.Success && accountId != null) {
+                            accountData.clearAccount(accountId)
+                            // Presentation receipts are device-local state, not Room data.
+                            FoxCompanionAttention(
+                                activityContext.getSharedPreferences(FoxCompanionAttention.PREFERENCES, Context.MODE_PRIVATE)
+                            ).clearAccount(accountId)
+                        }
+                    }
+                },
                 onFailure = { credentialFailure(it) },
             )
         }

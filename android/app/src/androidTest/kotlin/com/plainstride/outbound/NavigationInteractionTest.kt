@@ -23,6 +23,7 @@ import androidx.lifecycle.ViewModelProvider
 import okhttp3.mockwebserver.*
 import org.junit.*
 import java.net.InetAddress
+import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -71,6 +72,7 @@ class NavigationInteractionTest {
             }
         }
         server.start(InetAddress.getByName("127.0.0.1"), 18787)
+        context.getSharedPreferences("fox_companion_attention", 0).edit().clear().commit()
         context.getSharedPreferences("notification_permission", 0).edit().putBoolean("primer_shown", true).putBoolean("requested", true).commit()
         context.getSharedPreferences("motion_permission", 0).edit().putBoolean("requested", true).commit()
         runBlocking {
@@ -104,6 +106,54 @@ class NavigationInteractionTest {
         ui.onNodeWithContentDescription("Me").performClick(); shown("Roster")
     }
     private fun back() { InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK); ui.mainClock.advanceTimeBy(1000); ui.waitForIdle() }
+
+    private val companionInboxFixture get() = """{"notifications":[""" +
+        """{"id":"fixture-companion-request","type":"connectionRequest","objectId":"fixture-connection","message":"Fixture Contact wants to connect.","readAt":null,"createdAt":"${Instant.now().minusSeconds(300)}","actor":null},""" +
+        """{"id":"fixture-companion-cheer","type":"cheer","objectId":"fixture-post","message":"Roster Contact cheered your activity.","readAt":null,"createdAt":"${Instant.now().minusSeconds(600)}","actor":null}""" +
+        "]}"
+
+    private fun waitForTag(tag: String, timeout: Long = 20_000) =
+        ui.waitUntil(timeout) { ui.mainClock.advanceTimeBy(500); ui.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
+
+    @Test fun companionLauncherIsOneControlAndPreviewOpensRealDestination() {
+        responses["/v1/social/notifications"] = companionInboxFixture
+        launch(); waitForTag("fox-companion-launcher")
+        Assert.assertEquals(1, ui.onAllNodesWithTag("fox-companion-launcher").fetchSemanticsNodes().size)
+        waitForTag("fox-companion-envelope")
+        waitForTag("fox-companion-preview")
+        // The actionable connection request outranks the newer-than-nothing cheer.
+        ui.onNodeWithTag("fox-companion-preview-open").assertTextContains("Fixture Contact wants to connect.")
+        Assert.assertEquals(1, ui.onAllNodesWithTag("fox-companion-launcher").fetchSemanticsNodes().size)
+        ui.onNodeWithTag("fox-companion-preview-open").performClick()
+        shown("Connections")
+        // The shell intentionally renders the dock only on exact primary routes, so a
+        // detail destination has no launcher; it returns with the caller.
+        Assert.assertTrue(ui.onAllNodesWithTag("fox-companion-launcher").fetchSemanticsNodes().isEmpty())
+        back(); waitForTag("fox-companion-launcher")
+    }
+
+    @Test fun companionEnvelopeOpensExistingInbox() {
+        responses["/v1/social/notifications"] = companionInboxFixture
+        launch(); waitForTag("fox-companion-envelope")
+        ui.onNodeWithTag("fox-companion-envelope").performClick()
+        ui.waitUntil(20_000) { ui.mainClock.advanceTimeBy(500); ui.onAllNodesWithText("Fixture Contact wants to connect.", substring = false).fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test fun dismissedCompanionPreviewStaysDismissedAfterRecreate() {
+        responses["/v1/social/notifications"] = companionInboxFixture
+        launch(); waitForTag("fox-companion-preview")
+        ui.onNodeWithTag("fox-companion-preview-dismiss").performClick()
+        ui.waitUntil(10_000) { ui.mainClock.advanceTimeBy(500); ui.onAllNodesWithTag("fox-companion-preview").fetchSemanticsNodes().isEmpty() }
+        scenario!!.recreate()
+        waitForTag("fox-companion-launcher")
+        ui.mainClock.advanceTimeBy(5_000); ui.waitForIdle()
+        Assert.assertTrue(
+            "A dismissed preview must not replay after process recreation",
+            ui.onAllNodesWithTag("fox-companion-preview").fetchSemanticsNodes().isEmpty(),
+        )
+        // The durable inbox item and its separate envelope control remain reachable.
+        waitForTag("fox-companion-envelope")
+    }
 
     @Test fun meConnectionsBackKeepsTabsResponsive() {
         launch(); me(); click("All"); shown("Connections")
@@ -157,7 +207,7 @@ class NavigationInteractionTest {
         back(); ui.onNodeWithContentDescription("Me").assertExists()
     }
     @Test fun eventShowsCacheBeforeHttpThenFreshDataAndBack() {
-        val cached = SocialEvent("fixture-event", "Cached Event", "2026-11-10T08:00:00Z")
+        val cached = SocialEvent(id = "fixture-event", name = "Cached Event", startsAt = "2026-11-10T08:00:00Z")
         runBlocking { dependencies.details().saveEvent("fixture-self", cached) }
         gatedPath = "/v1/social/activity-events/fixture-event"; gate = CountDownLatch(1)
         responses[gatedPath!!] = PlainstrideJson.encodeToString(cached.copy(name = "Fresh Event"))
@@ -169,7 +219,7 @@ class NavigationInteractionTest {
     }
 
     @Test fun uncachedGroupLinkResolvesOnceAndNestedEventBackRestoresGroup() {
-        val event = SocialEvent("fixture-event", "Nested Event", "2026-11-10T08:00:00Z")
+        val event = SocialEvent(id = "fixture-event", name = "Nested Event", startsAt = "2026-11-10T08:00:00Z")
         val group = GroupSummary("fixture-group", "Fixture Group", "active", upcomingActivities = listOf(GroupActivitySummary(event.id, event.name, event.startsAt)))
         responses["/invite/group/fixture-token/consume"] = PlainstrideJson.encodeToString(group)
         responses["/v1/social/groups/fixture-group"] = PlainstrideJson.encodeToString(group)
@@ -250,7 +300,7 @@ class NavigationInteractionTest {
 
     @Test fun socialSnapshotsRemainIsolatedByAccountAndGroupInvitation() {
         runBlocking {
-            val event=SocialEvent("same-id", "Account Event", "2026-11-10T08:00:00Z")
+            val event=SocialEvent(id = "same-id", name = "Account Event", startsAt = "2026-11-10T08:00:00Z")
             val group=GroupSummary("same-id", "Invitation Group", "active")
             dependencies.details().saveEvent("fixture-self", event)
             dependencies.details().saveGroup("fixture-self", group, "invitation-one")
@@ -299,7 +349,7 @@ class NavigationInteractionTest {
     }
 
     @Test fun deniedEventDiscardsCachedContentAndKeepsBackAndRetry() {
-        val event=SocialEvent("fixture-event", "Revoked Event", "2026-11-10T08:00:00Z")
+        val event=SocialEvent(id = "fixture-event", name = "Revoked Event", startsAt = "2026-11-10T08:00:00Z")
         runBlocking { dependencies.details().saveEvent("fixture-self",event) }
         gatedPath="/v1/social/activity-events/fixture-event"; gate=CountDownLatch(1)
         responses[gatedPath!!]="{}"; statuses[gatedPath!!]=403
@@ -418,7 +468,7 @@ class NavigationInteractionTest {
     }
 
     @Test fun warmEventNotificationPreservesMeAsItsActualCaller() {
-        responses["/v1/social/activity-events/fixture-event"]=PlainstrideJson.encodeToString(SocialEvent("fixture-event","Warm Event","2026-11-10T08:00:00Z"))
+        responses["/v1/social/activity-events/fixture-event"]=PlainstrideJson.encodeToString(SocialEvent(id = "fixture-event", name = "Warm Event", startsAt = "2026-11-10T08:00:00Z"))
         launch(); me()
         context.startActivity(Intent(context,MainActivity::class.java).setData(Uri.parse("plainstride://notification/event?id=fixture-event")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))
         shown("Warm Event"); back(); shown("Roster")

@@ -50,6 +50,7 @@ data class P0IntegrationState(
     val routes: RouteLibrary = RouteLibrary(), val routeScope: RouteScope = RouteScope.DISCOVERY, val routeQuery: String = "",
     val selectedCommunityRoute: CommunityRoute? = null, val communityRouteLoading: Boolean = false,
     val notifications: List<InboxNotification> = emptyList(),
+    val notificationAccountId: String? = null,
     val progress: ProgressScreenState = ProgressScreenState(ProgressStatsEngine.snapshot(emptyList())),
     val completedToday: Boolean = false,
     val coachingReferencePace: Double? = null,
@@ -74,6 +75,7 @@ data class P0IntegrationState(
     private val analytics: ProductAnalytics,
     @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
+    private val companionAttention = FoxCompanionAttention(context.getSharedPreferences(FoxCompanionAttention.PREFERENCES, Context.MODE_PRIVATE))
     private val mutable = MutableStateFlow(P0IntegrationState(pushEnabled=context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES,Context.MODE_PRIVATE).getBoolean(PUSH_ENABLED,true))); val state = mutable.asStateFlow()
     private var socialObservation: Job? = null
     private var activityObservation: Job? = null
@@ -108,6 +110,7 @@ data class P0IntegrationState(
     }
     fun start(accountId: String, locale: String) {
         if (this.accountId == accountId && this.locale == locale) return
+        if (this.accountId != accountId) mutable.update { it.copy(notifications = emptyList(), notificationAccountId = accountId) }
         this.accountId = accountId
         this.locale = locale
         serverStatistics = null
@@ -410,6 +413,20 @@ data class P0IntegrationState(
             AnalyticsProperty.CountBucket to notificationCountBucket(item.notifications.size),
         )))
     }
+    fun claimCompanionDelivery(): NotificationCenterItem? = accountId?.let {
+        companionAttention.claim(it, mutable.value.notifications)
+    }
+    fun trackCompanionPresence(result: String) {
+        if (result !in setOf("idle", "delivery", "celebration")) return
+        analytics.record(AnalyticsEvent("feature_exposed", mapOf(
+            AnalyticsProperty.Feature to "fox_companion_presence",
+            AnalyticsProperty.Result to result,
+        )))
+    }
+    fun trackCompanionAction(selection: String) {
+        if (selection !in setOf("notification_preview", "notification_dismissed", "envelope_opened")) return
+        analytics.record(AnalyticsEvent("fox_companion_action_selected", mapOf(AnalyticsProperty.SelectionType to selection)))
+    }
     fun completePlannedWorkout(launch: RecordingLaunchConfiguration, review: RecordedActivityReview) { val id=accountId?:return; val workoutId=launch.plannedWorkoutId?:return; viewModelScope.launch { today.completeWorkout(id,locale,workoutId,PlannedWorkoutCompletionRequest(completedAt=Instant.now().toString(),durationSeconds=review.snapshot.elapsedSeconds.toInt(),distanceMeters=review.snapshot.distanceMeters,completionQuality="completed")) } }
     private fun observeRoutes(){val id=accountId?:return;routeObservation?.cancel();routeObservation=viewModelScope.launch{routes.observe(id,locale,mutable.value.routeScope).collect{value->mutable.update{s->s.copy(routes=value)}}}}
     private fun registerPush()=viewModelScope.launch(Dispatchers.IO){val preferences=context.getSharedPreferences(PlainstrideMessagingService.PREFERENCES,Context.MODE_PRIVATE);if(!preferences.getBoolean(PUSH_ENABLED,true))return@launch;val cached=preferences.getString(PlainstrideMessagingService.TOKEN,null);val token=cached?:runCatching{Tasks.await(FirebaseMessaging.getInstance().token)}.getOrNull();if(token!=null)safety.registerToken(token,context.packageName,locale)}
@@ -439,10 +456,6 @@ data class P0IntegrationState(
     fun trackAssistantLauncherEligibleExposure(destination: String) = analytics.record(AnalyticsEvent("assistant_launcher_eligible_exposure", mapOf(
         AnalyticsProperty.Destination to destination,
         AnalyticsProperty.EntrySource to "app_shell",
-    )))
-    fun trackAssistantLauncherAnimationShown(destination: String) = analytics.record(AnalyticsEvent("assistant_launcher_animation_shown", mapOf(
-        AnalyticsProperty.Destination to destination,
-        AnalyticsProperty.EntrySource to "foreground_loop",
     )))
     fun trackRouteImport(success: Boolean) = analytics.record(AnalyticsEvent("route_imported", mapOf(
         AnalyticsProperty.Result to if (success) "success" else "failure",
