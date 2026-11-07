@@ -73,7 +73,7 @@ struct SocialHomeView: View {
         var badges: [SocialFeatureTab: SocialTabBadge] = [:]
         if socialStore.hasUnseenFeedPosts { badges[.feed] = .dot }
         if incomingConnectionRequestCount > 0 { badges[.people] = .count(incomingConnectionRequestCount) }
-        let groupAttention = groupStore.invitations.count + groupStore.groups.reduce(0) { $0 + $1.unreadNoticeCount } + socialStore.discoverableGroups.reduce(0) { $0 + ($1.membershipRole == nil && $1.contextLabel == "pending" ? 1 : 0) }
+        let groupAttention = groupStore.invitations.filter { $0.status == "pending" }.count + groupStore.groups.reduce(0) { $0 + $1.unreadNoticeCount + $1.pendingRequestCount } + socialStore.discoverableGroups.reduce(0) { $0 + ($1.membershipRole == nil && $1.contextLabel == "pending" ? 1 : 0) }
         if groupAttention > 0 { badges[.groups] = .count(groupAttention) }
         return badges
     }
@@ -1768,6 +1768,7 @@ private struct SocialGroupsView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("group.invitation.open.\(invitation.id)")
                 .simultaneousGesture(TapGesture().onEnded {
                     Task { await analyticsManager?.track(.init(.groupOpened, properties: [
                         .entrySource: .string("invitation"),
@@ -1775,19 +1776,24 @@ private struct SocialGroupsView: View {
                     ])) }
                 })
                 HStack {
+                    if invitation.status != "awaiting_approval" {
                     Button(String(localized: "group.invitation.accept", defaultValue: "Accept")) {
                         Task {
-                            if await groupStore.accept(invitation),
-                               let joined = groupStore.groups.first(where: { $0.id == invitation.groupId }) {
+                            if await groupStore.accept(invitation) {
+                                let joined = groupStore.groups.first(where: { $0.id == invitation.groupId })
+                                if joined == nil { await analyticsManager?.track(.init(.groupMembershipRequestSubmitted, properties: [.sourceType: .string("member_invitation")])) }
                                 await analyticsManager?.track(.init(.groupInvitationAccepted, properties: [
                                     .entrySource: .string("social"),
-                                    .participantCountBucket: .string(ProductAnalyticsBucket.count(joined.memberCount))
+                                    .participantCountBucket: .string(ProductAnalyticsBucket.count(joined?.memberCount ?? 0))
                                 ]))
                             }
                         }
                     }
                     .buttonStyle(.borderedProminent)
-                    Button(String(localized: "group.invitation.decline", defaultValue: "Decline")) {
+                    } else {
+                        Text(String(localized: "Waiting for membership approval", table: "GroupMembership"))
+                    }
+                    Button(invitation.status == "awaiting_approval" ? String(localized: "Withdraw request", table: "GroupMembership") : String(localized: "group.invitation.decline", defaultValue: "Decline")) {
                         Task {
                             if await groupStore.decline(invitation) {
                                 await analyticsManager?.track(.init(.groupInvitationDeclined, properties: [.entrySource: .string("social")]))
@@ -1869,6 +1875,7 @@ struct ActivityEventDetailView: View {
     private var canCancelActivity: Bool {
         isCreator && (detail?.status ?? run.status) == "scheduled"
             && (detail?.startsAt ?? run.startsAt) > Date()
+            && (detail?.seriesId == nil || (detail?.startedCount ?? 0) == 0)
     }
 
     var body: some View {
@@ -1883,6 +1890,9 @@ struct ActivityEventDetailView: View {
             Section {
                 LabeledContent("Created by", value: run.creator.displayName)
                 LabeledContent("When", value: run.startsAt.formatted(date: .abbreviated, time: .shortened))
+                if let recurrence = detail?.recurrence {
+                    LabeledContent(String(localized: "Repeats", table: "GroupRecurrence"), value: groupRecurrenceSummary(recurrence))
+                }
                 if let eventEndsAt {
                     LabeledContent("Duration", value: activityDurationLabel(from: run.startsAt, to: eventEndsAt))
                     LabeledContent("Scheduled end", value: eventEndsAt.formatted(date: .abbreviated, time: .shortened))
@@ -2061,9 +2071,15 @@ struct ActivityEventDetailView: View {
             do { try await Task.sleep(for: .seconds(3)) } catch { return }
             cancellationToast = nil
         }
-        .alert(String(localized: "social.event.cancel.title", table: "ActivityCancellation"), isPresented: $isCancelConfirmationPresented) {
+        .confirmationDialog(String(localized: "social.event.cancel.title", table: "ActivityCancellation"), isPresented: $isCancelConfirmationPresented, titleVisibility: .visible) {
+            if detail?.seriesId != nil {
+                Button(String(localized: "Cancel this activity", table: "GroupRecurrence"), role: .destructive) { cancelActivity(scope: "this") }
+                Button(String(localized: "Cancel this and following activities", table: "GroupRecurrence"), role: .destructive) { cancelActivity(scope: "following") }
+                Button(String(localized: "Cancel entire series", table: "GroupRecurrence"), role: .destructive) { cancelActivity(scope: "series") }
+            } else {
             Button(String(localized: "social.event.cancel", table: "ActivityCancellation"), role: .destructive) {
                 cancelActivity()
+            }
             }
             Button(String(localized: "social.event.keep", table: "ActivityCancellation"), role: .cancel) {}
         } message: {
@@ -2385,11 +2401,12 @@ struct ActivityEventDetailView: View {
         }
     }
 
-    private func cancelActivity() {
+    private func cancelActivity(scope: String = "this") {
         guard !isCancelling else { return }
         isCancelling = true
         Task {
-            let updated = await socialStore.cancelActivityEvent(id: run.id)
+            let updated = await socialStore.cancelActivityEvent(id: run.id, scope: scope)
+            if detail?.seriesId != nil { await analyticsManager?.track(.init(.activityEventSeriesChanged, properties: [.selectionType: .string(scope), .result: .string(updated == nil ? "failure" : "success")])) }
             await analyticsManager?.track(.init(.activityEventCancellationResult, properties: [
                 .entrySource: .string(entrySource),
                 .groupRunEnabled: .boolean(run.group != nil),
@@ -4842,6 +4859,12 @@ private func localizedGroupNotificationMessage(_ notification: SocialNotificatio
         }
         // Preserve the original event information when an older envelope cannot be parsed.
         return notification.message
+    case "groupJoinRequest":
+        return String(localized: "A Group membership request is ready for review.", table: "GroupMembership")
+    case "groupJoinRequestApproved":
+        return String(localized: "Your Group membership request was approved.", table: "GroupMembership")
+    case "groupJoinRequestDenied":
+        return String(localized: "Your Group membership request was declined.", table: "GroupMembership")
     case "groupInvitation":
         return String(format: String(localized: "group.notification.invitation", defaultValue: "%@ invited you to a Group."), actorName)
     case "groupInvitationAccepted":

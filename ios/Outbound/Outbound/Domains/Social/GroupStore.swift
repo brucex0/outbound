@@ -29,7 +29,7 @@ final class GroupStore: ObservableObject {
 
     private let api: APIClient
     private let defaults: UserDefaults
-    private let cachePrefix = "group_store_v1_account_"
+    private let cachePrefix = "group_store_v2_account_"
     private var activeUserID: String?
     private var authGeneration = 0
     private var contributionObserver: AnyCancellable?
@@ -38,6 +38,10 @@ final class GroupStore: ObservableObject {
     init(api: APIClient? = nil, defaults: UserDefaults = .standard) {
         self.api = api ?? .shared
         self.defaults = defaults
+        // Remove obsolete snapshots rather than retain a reader for the old schema.
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("group_store_v1_account_") {
+            defaults.removeObject(forKey: key)
+        }
         contributionObserver = GroupContributionCenter.shared.$latest
             .compactMap { $0 }
             .sink { [weak self] receipt in
@@ -101,6 +105,7 @@ final class GroupStore: ObservableObject {
                 guard let detail = existingDetails[summary.id], detail.isDetailedPayload else { return summary }
                 var refreshedDetail = detail
                 refreshedDetail.unreadNoticeCount = summary.unreadNoticeCount
+                refreshedDetail.pendingRequestCount = summary.pendingRequestCount
                 return refreshedDetail
             })
             persistCurrentState()
@@ -140,6 +145,8 @@ final class GroupStore: ObservableObject {
             unavailableGroupIDs.remove(id)
             if group.invitationPreview {
                 invitationPreviews[id] = group
+                groups.removeAll { $0.id == id }
+                persistCurrentState()
             } else {
                 invitationPreviews.removeValue(forKey: id)
                 upsert(group)
@@ -173,12 +180,25 @@ final class GroupStore: ObservableObject {
     }
 
     func accept(_ invitation: GroupInvitationDTO) async -> Bool {
+        let generation = authGeneration
         do {
             let group = try await api.acceptGroupInvitation(id: invitation.id)
-            invitationPreviews.removeValue(forKey: invitation.groupId)
-            invitations.removeAll { $0.id == invitation.id }
-            upsert(group)
-            toastMessage = String(localized: "group.toast.joined", defaultValue: "You joined the Group.")
+            guard generation == authGeneration, activeUserID != nil else { return false }
+            if group.invitationPreview {
+                invitationPreviews[group.id] = group
+                groups.removeAll { $0.id == group.id }
+                persistCurrentState()
+                if let pending = group.pendingInvitation {
+                    invitations.removeAll { $0.id == invitation.id }
+                    invitations.append(pending)
+                }
+                toastMessage = String(localized: "Waiting for membership approval", table: "GroupMembership")
+            } else {
+                invitationPreviews.removeValue(forKey: invitation.groupId)
+                invitations.removeAll { $0.id == invitation.id }
+                upsert(group)
+                toastMessage = String(localized: "group.toast.joined", defaultValue: "You joined the Group.")
+            }
             return true
         } catch { _ = fail(error, operation: "accept group invitation"); return false }
     }
@@ -191,6 +211,18 @@ final class GroupStore: ObservableObject {
             toastMessage = String(localized: "group.toast.declined", defaultValue: "Invitation declined.")
             return true
         } catch { _ = fail(error, operation: "decline group invitation"); return false }
+    }
+
+    func updateMembershipPolicy(group: GroupDTO, joinPolicy: String, approvalRequired: Bool) async -> GroupDTO? {
+        await mutate(success: String(localized: "group.toast.saved", defaultValue: "Group updated."), operationName: "update group membership policy") {
+            try await api.updateGroupMembershipPolicy(id: group.id, request: .init(joinPolicy: joinPolicy, memberInviteApprovalRequired: approvalRequired))
+        }
+    }
+
+    func reviewMembership(group: GroupDTO, requestID: String, approve: Bool) async -> GroupDTO? {
+        await mutate(success: String(localized: "Membership request updated", table: "GroupMembership"), operationName: "review group membership") {
+            try await api.reviewGroupMembership(id: group.id, requestID: requestID, approve: approve)
+        }
     }
 
     func updateName(group: GroupDTO, name: String) async -> GroupDTO? {
@@ -445,7 +477,10 @@ final class GroupStore: ObservableObject {
     }
 
     private var isUITestSeedData: Bool {
-        ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData")
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-OutboundGroupNetworkUITest") { return false }
+        #endif
+        return ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData")
     }
 
     private static func uiTestGroup(themeKey: String) -> GroupDTO {

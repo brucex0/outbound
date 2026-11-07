@@ -542,6 +542,16 @@ final class APIClient {
         try await patch("/social/groups/\(id)", body: GroupDetailsRequestDTO(name: name, city: city))
     }
 
+    func updateGroupMembershipPolicy(id: String, request: GroupMembershipPolicyDTO) async throws -> GroupDTO {
+        try await patch("/social/groups/\(id)", body: request)
+    }
+
+    func reviewGroupMembership(id: String, requestID: String, approve: Bool) async throws -> GroupDTO {
+        let decision = approve ? "approve" : "deny"
+        let response: GroupNoticeReadResponseDTO = try await post("/social/groups/\(id)/join-requests/\(requestID)/\(decision)", body: EmptyBody())
+        return response.group
+    }
+
     func createGroupNotice(id: String, request: GroupNoticeRequestDTO) async throws -> GroupDTO {
         let response: GroupNoticeMutationResponseDTO = try await post("/social/groups/\(id)/notices", body: request)
         return response.group
@@ -688,8 +698,8 @@ final class APIClient {
         try await post("/social/activity-events", body: request)
     }
 
-    func cancelActivityEvent(id: String) async throws -> ActivityEventDetailDTO {
-        try await post("/social/activity-events/\(id)/cancel", body: [String: String]())
+    func cancelActivityEvent(id: String, scope: String = "this") async throws -> ActivityEventDetailDTO {
+        try await post("/social/activity-events/\(id)/cancel?scope=\(scope)", body: [String: String]())
     }
 
     func updateActivityEvent(id: String, _ request: UpdateActivityEventRequestDTO) async throws -> ActivityEventDetailDTO {

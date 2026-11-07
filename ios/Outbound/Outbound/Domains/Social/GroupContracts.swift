@@ -37,6 +37,10 @@ struct GroupDTO: Codable, Identifiable, Sendable {
     var activityInterests: [String] = []
     var trustPolicy: String = "trusted_private"
     var visibility: String = "private"
+    var memberInviteApprovalRequired = true
+    var canInvite = false
+    var pendingRequestCount = 0
+    var joinRequests: [GroupJoinRequestDTO] = []
     var joinPolicy: String = "invite_only"
     var featured: Bool = false
     var organizationVerificationState: String = "unverified"
@@ -75,6 +79,7 @@ extension GroupDTO {
         case upcomingActivities
         case recentMoments
         case history
+        case memberInviteApprovalRequired, canInvite, pendingRequestCount, joinRequests
         case normalizedName, description, city, activityInterests, trustPolicy, visibility, joinPolicy, featured, organizationVerificationState, capabilities, notices, unreadNoticeCount, pendingRequest, invitationPreview, pendingInvitation, loadedDetailPayload
     }
 
@@ -110,6 +115,10 @@ extension GroupDTO {
         trustPolicy = try container.decodeIfPresent(String.self, forKey: .trustPolicy) ?? "trusted_private"
         visibility = try container.decodeIfPresent(String.self, forKey: .visibility) ?? "private"
         joinPolicy = try container.decodeIfPresent(String.self, forKey: .joinPolicy) ?? "invite_only"
+        memberInviteApprovalRequired = try container.decodeIfPresent(Bool.self, forKey: .memberInviteApprovalRequired) ?? true
+        canInvite = try container.decodeIfPresent(Bool.self, forKey: .canInvite) ?? false
+        pendingRequestCount = try container.decodeIfPresent(Int.self, forKey: .pendingRequestCount) ?? 0
+        joinRequests = try container.decodeIfPresent([GroupJoinRequestDTO].self, forKey: .joinRequests) ?? []
         featured = try container.decodeIfPresent(Bool.self, forKey: .featured) ?? false
         organizationVerificationState = try container.decodeIfPresent(String.self, forKey: .organizationVerificationState) ?? "unverified"
         capabilities = try container.decodeIfPresent(GroupCapabilitiesDTO.self, forKey: .capabilities) ?? .privateDefaults
@@ -268,6 +277,18 @@ struct GroupWeekHistoryDTO: Codable, Identifiable, Sendable {
     let state: String
 }
 
+struct GroupJoinRequestDTO: Codable, Identifiable, Sendable {
+    let id: String
+    let requester: GroupPersonDTO
+    let inviter: GroupPersonDTO?
+    let createdAt: Date
+}
+
+struct GroupMembershipPolicyDTO: Codable, Sendable {
+    let joinPolicy: String
+    let memberInviteApprovalRequired: Bool
+}
+
 struct GroupInvitationDTO: Codable, Identifiable, Sendable {
     let id: String
     let groupId: String
@@ -277,6 +298,7 @@ struct GroupInvitationDTO: Codable, Identifiable, Sendable {
     let status: String
     let createdAt: Date
     let expiresAt: Date?
+    var approvalRequired: Bool? = nil
 }
 
 struct GroupCheerDTO: Codable, Identifiable, Sendable {

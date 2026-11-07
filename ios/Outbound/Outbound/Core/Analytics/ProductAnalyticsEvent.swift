@@ -111,6 +111,11 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case groupTemplateSelected = "group_template_selected"
     case groupCreationCompleted = "group_creation_completed"
     case groupCreationFailed = "group_creation_failed"
+    case groupMembershipPolicyChanged = "group_membership_policy_changed"
+    case groupMembershipRequestSubmitted = "group_membership_request_submitted"
+    case groupMembershipRequestReviewed = "group_membership_request_reviewed"
+    case activityEventRecurrenceConfigured = "activity_event_recurrence_configured"
+    case activityEventSeriesChanged = "activity_event_series_changed"
     case groupInvitationSent = "group_invitation_sent"
     case groupInvitationAccepted = "group_invitation_accepted"
     case groupInvitationDeclined = "group_invitation_declined"
@@ -480,6 +485,11 @@ enum ProductAnalyticsSchema {
         .groupTemplateSelected: [.selectionType],
         .groupCreationCompleted: [.entrySource, .participantCountBucket],
         .groupCreationFailed: [.entrySource, .errorCategory],
+        .groupMembershipPolicyChanged: [.sourceType, .selectionType, .result],
+        .groupMembershipRequestSubmitted: [.sourceType],
+        .groupMembershipRequestReviewed: [.sourceType, .result],
+        .activityEventRecurrenceConfigured: [.selectionType, .sourceType],
+        .activityEventSeriesChanged: [.selectionType, .result],
         .groupInvitationSent: [.entrySource, .participantCountBucket, .result],
         .groupInvitationAccepted: [.entrySource, .participantCountBucket],
         .groupInvitationDeclined: [.entrySource],

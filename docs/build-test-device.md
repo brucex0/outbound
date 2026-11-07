@@ -497,3 +497,15 @@ xcodebuild -quiet -jobs 2 \
 - Verified on iPhone 17 Pro / iOS 26.5: one focused UI test passed, zero failures/skips. Freebuff assisted test authoring and execution; the regression exposed a live goal-eligibility dependency on mutable setup state, now replaced with the recorder's checkpointed goal mode.
 - The test toggles Voice Guide, automatic pause, and Pause at goal in the expanded dashboard, checks the sharing disclosure and Cancel flow, confirms recording stays active, and verifies toggle values after collapse/expand. It finishes/discards its synthetic recording afterward.
 - Debug simulator compilation also passed. Actual speech, GPS-triggered pause/resume, process-death recovery, Watch behavior, and cross-device invitation/removal delivery were not verified by this UI fixture.
+
+## Focused Group Membership And Recurrence UI Tests
+
+Run only when UI tests are requested:
+
+```sh
+./scripts/run-group-improvements-ui-test.sh
+# Optional fresh result directory:
+./scripts/run-group-improvements-ui-test.sh /tmp/outbound-group-improvements-results
+```
+
+The runner creates/removes a dedicated iPhone simulator and uses its own package cache. It runs only `GroupImprovementsUITests` against a stateful loopback HTTP fixture. Debug-only `-OutboundGroupNetworkUITest` keeps test authentication but routes Group/Social stores through their real networking paths. Coverage includes owner policy saving and approve/deny, ordinary-member invitation submission, acceptance waiting for review and withdrawal, and weekly creation retaining its draft/idempotency key after a rejected save. Screenshots are retained in `GroupImprovements.xcresult`. This fixture does not prove backend authorization, push delivery, or cross-device behavior; backend API checks are separate in `docs/social-qa.md`.

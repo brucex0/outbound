@@ -123,13 +123,22 @@ private struct GroupInvitationPreviewView: View {
                 }
                 Text(String(localized: "group.invitation.title", defaultValue: "You’re invited to a Group")).font(.headline)
                 Text(String(format: String(localized: "group.invitation.from", defaultValue: "%@ invited you to %@"), invitation.sender.displayName, group.name))
-                Text(String(localized: "group.invitation.preview.detail", defaultValue: "Accept to join this Group and see the details available to members."))
+                Text(invitation.status == "awaiting_approval"
+                    ? String(localized: "You accepted this invitation. An owner or admin must approve your membership before you can see Group details.", table: "GroupMembership")
+                    : invitation.approvalRequired == true
+                        ? String(localized: "Accept this invitation to request membership. An owner or admin will review your request.", table: "GroupMembership")
+                        : String(localized: "group.invitation.preview.detail", defaultValue: "Accept to join this Group and see the details available to members."))
                     .font(.subheadline).foregroundStyle(.secondary)
                 HStack {
+                    if invitation.status == "awaiting_approval" {
+                        Text(String(localized: "Waiting for membership approval", table: "GroupMembership"))
+                            .accessibilityIdentifier("group.membership.pending")
+                    } else {
                     Button(String(localized: "group.invitation.accept", defaultValue: "Accept")) { respond(accept: true) }
                         .buttonStyle(.borderedProminent)
                         .accessibilityIdentifier("group.invitation.preview.accept")
-                    Button(String(localized: "group.invitation.decline", defaultValue: "Decline")) { respond(accept: false) }
+                    }
+                    Button(invitation.status == "awaiting_approval" ? String(localized: "Withdraw request", table: "GroupMembership") : String(localized: "group.invitation.decline", defaultValue: "Decline")) { respond(accept: false) }
                         .buttonStyle(.bordered)
                         .accessibilityIdentifier("group.invitation.preview.decline")
                     if responding { ProgressView() }
@@ -154,9 +163,12 @@ private struct GroupInvitationPreviewView: View {
             responding = false
             if succeeded {
                 showFeedback(accept
-                    ? String(localized: "group.toast.joined", defaultValue: "You joined the Group.")
+                    ? (groupStore.invitationPreviews[group.id]?.pendingInvitation?.status == "awaiting_approval" ? String(localized: "Waiting for membership approval", table: "GroupMembership") : String(localized: "group.toast.joined", defaultValue: "You joined the Group."))
                     : String(localized: "group.toast.declined", defaultValue: "Invitation declined."))
                 if accept {
+                    if groupStore.invitationPreviews[group.id]?.pendingInvitation?.status == "awaiting_approval" {
+                        await analyticsManager?.track(.init(.groupMembershipRequestSubmitted, properties: [.sourceType: .string("member_invitation")]))
+                    }
                     let count = groupStore.groups.first(where: { $0.id == group.id })?.memberCount ?? group.memberCount
                     await analyticsManager?.track(.init(.groupInvitationAccepted, properties: [
                         .entrySource: .string("group_invitation_preview"),
@@ -842,10 +854,11 @@ struct GroupDetailView: View {
         }
         .buttonStyle(.borderedProminent)
         .tint(OutboundPalette.companion)
+        .accessibilityIdentifier("group.plan.activity")
     }
 
     private var canInviteMembers: Bool {
-        (current.role == "owner" || current.role == "admin") && current.lifecycle != "archived"
+        current.canInvite && current.lifecycle != "archived"
     }
 
     private var inviteMembersIconButton: some View {
@@ -872,6 +885,7 @@ struct GroupDetailView: View {
                     Task {
                         let joining = current.joinPolicy == "open"
                         let succeeded = await groupStore.requestMembership(in: current)
+                        if succeeded && !joining { track(.groupMembershipRequestSubmitted, [.sourceType: .string("self_join")]) }
                         track(.groupMembershipChanged, [
                             .entrySource: .string("group_detail"),
                             .selectionType: .string(joining ? "join" : "request"),
@@ -1240,7 +1254,7 @@ struct GroupDetailView: View {
                                 .font(.headline)
                         }
                         Spacer()
-                        Text(String(localized: "group.invitation.status.pending", defaultValue: "Invited"))
+                        Text(invitation.status == "awaiting_approval" ? String(localized: "Waiting for membership approval", table: "GroupMembership") : String(localized: "group.invitation.status.pending", defaultValue: "Invited"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -1747,6 +1761,15 @@ struct GroupManagementView: View {
             }
 
             if current.role == "owner" || current.role == "admin" {
+                Section {
+                    NavigationLink {
+                        GroupMembershipSettingsView(group: current)
+                    } label: {
+                        Label(String(localized: "Membership and invitations", table: "GroupMembership"), systemImage: "person.badge.key")
+                        if current.pendingRequestCount > 0 { Text(current.pendingRequestCount.formatted()).badge(current.pendingRequestCount) }
+                    }
+                    .accessibilityIdentifier("group.membership.settings")
+                }
                 Section(String(localized: "group.management.owner", defaultValue: "Owner controls")) {
                     TextField(String(localized: "group.create.name", defaultValue: "Name"), text: $name)
                         .focused($focusedInput, equals: "name")

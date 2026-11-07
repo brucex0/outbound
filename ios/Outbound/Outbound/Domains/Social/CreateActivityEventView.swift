@@ -10,6 +10,15 @@ struct CreateActivityEventView: View {
 
     @StateObject private var locationSearch = ActivityEventLocationSearchModel()
 
+    @State private var repeatsWeekly: Bool
+    @State private var intervalWeeks: Int
+    @State private var repeatWeekdays: Set<Int>
+    @State private var hasRepeatEnd: Bool
+    @State private var repeatEnd: Date
+    @State private var editScope = "this"
+    @State private var creationKey = UUID().uuidString
+    @State private var submissionFeedback: String?
+    private let seriesTimeZone: TimeZone
     @State private var title = ""
     @State private var activityType = ActivityType.running.rawValue
     @State private var startsAt = Date().addingTimeInterval(86_400)
@@ -35,6 +44,23 @@ struct CreateActivityEventView: View {
         self.sourceGroupID = sourceGroupID
         self.editingActivity = editingActivity
         self.onCompleted = onCompleted
+        let recurrence = editingActivity?.recurrence
+        let zone = recurrence.flatMap { TimeZone(identifier: $0.timeZone) } ?? .current
+        seriesTimeZone = zone
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        let firstDate = editingActivity?.startsAt ?? Date().addingTimeInterval(86_400)
+        let weekday = ((calendar.component(.weekday, from: firstDate) + 5) % 7) + 1
+        _repeatsWeekly = State(initialValue: recurrence != nil)
+        _intervalWeeks = State(initialValue: recurrence?.intervalWeeks ?? 1)
+        _repeatWeekdays = State(initialValue: Set(recurrence?.weekdays ?? [weekday]))
+        _hasRepeatEnd = State(initialValue: recurrence?.untilDate != nil)
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = zone
+        formatter.dateFormat = "yyyy-MM-dd"
+        _repeatEnd = State(initialValue: recurrence?.untilDate.flatMap { formatter.date(from: $0) } ?? firstDate.addingTimeInterval(90 * 86_400))
         _title = State(initialValue: editingActivity?.title ?? "")
         _activityType = State(initialValue: editingActivity?.activityType ?? ActivityType.running.rawValue)
         _startsAt = State(initialValue: editingActivity?.startsAt ?? Date().addingTimeInterval(86_400))
@@ -65,6 +91,17 @@ struct CreateActivityEventView: View {
                     Button(String(localized: "common.close", defaultValue: "Close")) { dismiss() }
                 }
             }
+        }
+        .overlay(alignment: .bottom) {
+            if let submissionFeedback {
+                Text(submissionFeedback).font(.subheadline).padding().background(.regularMaterial, in: Capsule()).padding()
+            }
+        }
+        .task(id: submissionFeedback) {
+            guard submissionFeedback != nil else { return }
+            // Replacing feedback or leaving the composer normally cancels this task.
+            do { try await Task.sleep(for: .seconds(3)) } catch { return }
+            submissionFeedback = nil
         }
         .task {
             await analyticsManager?.track(.init(.featureExposed, properties: [
@@ -110,6 +147,8 @@ struct CreateActivityEventView: View {
 
             Section(String(localized: "social.event.date_time", defaultValue: "Date and time")) {
                 DatePicker(String(localized: "social.event.starts", defaultValue: "Starts"), selection: $startsAt, in: Date()..., displayedComponents: [.date, .hourAndMinute])
+                    .environment(\.timeZone, seriesTimeZone)
+                    .accessibilityIdentifier("group.activity.starts_at")
                 Picker(String(localized: "social.event.duration", defaultValue: "Duration (optional)"), selection: $durationMinutes) {
                     Text("Default · 1 hr").tag(0)
                     Text("30 min").tag(30)
@@ -119,6 +158,22 @@ struct CreateActivityEventView: View {
                     Text("2 hr").tag(120)
                     Text("3 hr").tag(180)
                     Text("4 hr").tag(240)
+                }
+            }
+
+            if sourceGroupID != nil || editingActivity?.seriesId != nil {
+                if editingActivity?.seriesId != nil {
+                    Section {
+                        Picker(String(localized: "Apply changes to", table: "GroupRecurrence"), selection: $editScope) {
+                            Text(String(localized: "This activity", table: "GroupRecurrence")).tag("this")
+                            Text(String(localized: "This and following activities", table: "GroupRecurrence")).tag("following")
+                            Text(String(localized: "Entire series", table: "GroupRecurrence")).tag("series")
+                        }
+                        .accessibilityIdentifier("group.activity.edit_scope")
+                    }
+                }
+                if editingActivity?.seriesId == nil || editScope != "this" {
+                    GroupRecurrenceFields(repeats: $repeatsWeekly, intervalWeeks: $intervalWeeks, weekdays: $repeatWeekdays, hasEnd: $hasRepeatEnd, endDate: $repeatEnd, firstDate: startsAt, timeZone: seriesTimeZone)
                 }
             }
 
@@ -229,7 +284,8 @@ struct CreateActivityEventView: View {
                         Spacer()
                     }
                 }
-                .disabled(isSubmitting || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(isSubmitting || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (repeatsWeekly && repeatWeekdays.isEmpty))
+                .accessibilityIdentifier("group.activity.save")
             }
         }
         .onChange(of: locationName) { _, query in
@@ -331,17 +387,25 @@ struct CreateActivityEventView: View {
         defer { isSubmitting = false }
         let request = UpdateActivityEventRequestDTO(
             title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+            activityType: activityType,
             startsAt: startsAt,
             locationName: locationName.locationNameForSubmission,
             latitude: selectedLocationCoordinate?.latitude,
             longitude: selectedLocationCoordinate?.longitude,
             note: note.nilIfBlank,
             durationMinutes: durationMinutes == 0 ? ActivityEventTiming.defaultDurationMinutes : durationMinutes,
-            participationMode: joinVirtually ? "hybrid" : "in_person"
+            participationMode: joinVirtually ? "hybrid" : "in_person",
+            recurrence: editScope == "this" ? nil : recurrenceRequest,
+            scope: editScope,
+            stopRepeating: activity.seriesId != nil && editScope != "this" && !repeatsWeekly
         )
         if await socialStore.updateActivityEvent(id: activity.id, request: request) != nil {
+            if activity.seriesId != nil { await analyticsManager?.track(.init(.activityEventSeriesChanged, properties: [.selectionType: .string(editScope), .result: .string("success")])) }
             onCompleted()
             dismiss()
+        } else {
+            submissionFeedback = String(localized: "Activity could not be saved. Try again.", table: "GroupRecurrence")
+            if activity.seriesId != nil { await analyticsManager?.track(.init(.activityEventSeriesChanged, properties: [.selectionType: .string(editScope), .result: .string("failure")])) }
         }
     }
 
@@ -358,12 +422,26 @@ struct CreateActivityEventView: View {
             note: note.nilIfBlank,
             durationMinutes: durationMinutes == 0 ? ActivityEventTiming.defaultDurationMinutes : durationMinutes,
             groupId: sourceGroupID,
-            participationMode: joinVirtually ? "hybrid" : "in_person"
+            participationMode: joinVirtually ? "hybrid" : "in_person",
+            recurrence: recurrenceRequest,
+            idempotencyKey: creationKey
         ))
+        if created == nil { submissionFeedback = String(localized: "Activity could not be saved. Try again.", table: "GroupRecurrence") }
         if created != nil, sourceGroupID != nil {
+            if repeatsWeekly { await analyticsManager?.track(.init(.activityEventRecurrenceConfigured, properties: [.selectionType: .string("weekly"), .sourceType: .string("group_activity")])) }
             onCompleted()
             dismiss()
         }
+    }
+
+    private var recurrenceRequest: ActivityEventRecurrenceDTO? {
+        guard repeatsWeekly, sourceGroupID != nil || editingActivity?.seriesId != nil else { return nil }
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = seriesTimeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+        return .init(timeZone: seriesTimeZone.identifier, intervalWeeks: intervalWeeks, weekdays: repeatWeekdays.sorted(), untilDate: hasRepeatEnd ? formatter.string(from: repeatEnd) : nil)
     }
 
     private var planningTitle: String {

@@ -339,6 +339,7 @@ final class TogetherStore: ObservableObject {
             errorMessage = nil
             return created
         } catch {
+            Self.logger.error("Social activity creation failed (\(Self.networkErrorCode(error), privacy: .public))")
             errorMessage = error.localizedDescription
             return nil
         }
@@ -897,7 +898,10 @@ final class TogetherStore: ObservableObject {
     }
 
     private var isUITestSeedData: Bool {
-        ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData")
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-OutboundGroupNetworkUITest") { return false }
+        #endif
+        return ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData")
     }
 
     private func viewedFeedPostKey(for userID: String) -> String {
@@ -1102,10 +1106,10 @@ final class TogetherStore: ObservableObject {
         }
     }
 
-    func cancelActivityEvent(id: String) async -> ActivityEventDetailDTO? {
+    func cancelActivityEvent(id: String, scope: String = "this") async -> ActivityEventDetailDTO? {
         let generation = authGeneration
         do {
-            let updated = try await api.cancelActivityEvent(id: id)
+            let updated = try await api.cancelActivityEvent(id: id, scope: scope)
             guard generation == authGeneration, activeUserID != nil else { return nil }
             var pastEvents = state.pastEvents.filter { $0.id != id }
             if var event = state.upcomingRuns.first(where: { $0.id == id }) {
@@ -1135,6 +1139,7 @@ final class TogetherStore: ObservableObject {
             errorMessage = nil
             return updated
         } catch {
+            Self.logger.error("Social activity update failed (\(Self.networkErrorCode(error), privacy: .public))")
             errorMessage = error.localizedDescription
             return nil
         }

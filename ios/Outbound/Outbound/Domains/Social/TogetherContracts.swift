@@ -253,8 +253,17 @@ extension SessionIntent {
     }
 }
 
+struct ActivityEventRecurrenceDTO: Codable, Sendable {
+    let timeZone: String
+    let intervalWeeks: Int
+    let weekdays: [Int]
+    let untilDate: String?
+}
+
 struct ActivityEventDetailDTO: Codable, Identifiable, Sendable {
     let id: String
+    var seriesId: String? = nil
+    var recurrence: ActivityEventRecurrenceDTO? = nil
 
     var meetupCoordinate: CLLocationCoordinate2D? {
         guard let latitude, let longitude,
@@ -326,6 +335,8 @@ struct CreateActivityEventRequestDTO: Codable, Sendable {
     var durationMinutes: Int = ActivityEventTiming.defaultDurationMinutes
     var groupId: String? = nil
     var participationMode: String = "hybrid"
+    var recurrence: ActivityEventRecurrenceDTO? = nil
+    var idempotencyKey: String? = nil
 }
 
 struct UpdateActivityEventRequestDTO: Codable, Sendable {
@@ -338,6 +349,9 @@ struct UpdateActivityEventRequestDTO: Codable, Sendable {
     let note: String?
     let durationMinutes: Int
     var participationMode: String = "hybrid"
+    var recurrence: ActivityEventRecurrenceDTO? = nil
+    var scope: String = "this"
+    var stopRepeating = false
 }
 
 struct ActivityEventInvitationBatchRequestDTO: Codable, Sendable {
