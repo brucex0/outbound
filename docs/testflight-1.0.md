@@ -1,4 +1,4 @@
-# TestFlight and App Store 1.7.11 Submission Sheet
+# TestFlight and App Store 1.7.12 Submission Sheet
 
 Open this for the current TestFlight upload and public App Store release. Product behavior and release mechanics remain in `docs/app-store-release.md`.
 
@@ -7,8 +7,8 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - App Store name: `Plainstride: AI Running Coach`.
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
-- Version: `1.7.11`
-- Build: `65`
+- Version: `1.7.12`
+- Build: `66`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -20,11 +20,11 @@ Open this for the current TestFlight upload and public App Store release. Produc
 
 ## Submission Status
 
-- Version 1.7.11 (65) passed unsigned Release compilation, signed archive/export, packaged-bundle preflight, upload, and Apple processing on November 3, 2026. Assigned to internal TestFlight group `Plainstride Team` with English beta release notes.
-- The App Store draft includes build 65, the existing eight screenshots, updated release notes, and automatic release after approval. Bruce confirmed he submitted the version; final App Review state was not independently rechecked after that confirmation. Public availability is not yet confirmed.
-- No tests or physical-device acceptance run were performed for this release. Production health and privacy/support endpoints returned HTTP 200.
-- Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.11-65/`; upload ID `ab8a3250-3975-48a2-b1e7-f6847a28aa29`; IPA SHA-256 `ba3ec961257a61a82c82f3d7603a5c14e73841fd710dbb017f87987ca48caa6d`. A transient broken pipe on chunk 10 recovered through the existing retry. Do not rebuild or re-upload to finish distribution setup.
-- Previous public version 1.7.10 (64) was shown as Ready for Distribution during preparation.
+- Version 1.7.12 (66) completed Release compilation, signed archive/export, packaged-bundle preflight, upload, and Apple processing on November 6, 2026. Assigned to internal TestFlight group `Plainstride Team` with English beta release notes.
+- Submitted through App Store Connect at 9:30 PM Pacific with automatic release after approval. Independently confirmed **Waiting for Review** for 1.7.12 (66). Submission ID: `00db5898-b72c-40bf-84c9-3e7bbb9815e1`.
+- Previous version 1.7.11 was confirmed Ready for Distribution. Public availability of 1.7.12 awaits Apple approval.
+- No tests or physical-device acceptance run were performed. Xcode emitted existing warnings and a contradictory SwiftCompile diagnostic with exit code zero; signed export and Apple's processing nevertheless succeeded.
+- Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.12-66/`; upload ID `0d2dae44-42df-4ae7-942f-dbb807a88498`. Do not rebuild or re-upload to finish distribution setup.
 
 ## App Store Positioning Experiment
 
@@ -73,18 +73,18 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- [iOS] Smooth live map motion and follow selected group runners
-- [iOS] Separate AI Coach from Voice in setup and live workout options
-- [iOS] Include started group runners and focus locations from roster rows
-- [iOS] Add live workout options and recipient management
-- [iOS] Recover live group rosters and separate simulated sharing time
-- Plus 29 more fixes and improvements
+- [iOS] Simplify group membership controls and member management
+- [BE] Unify community join approval and gate member invites
+- [iOS] Show member invite control based on membership
+- [iOS] Give the fox playful presence and meaningful notification delivery
+- [iOS] Add group recurrence and membership review controls
+- Plus 4 more fixes and improvements
 
 ### App Store What's New
 
-- Smoother live maps and easier tracking of friends during group workouts.
-- Improved live sharing, participant lists, and recording recovery.
-- Clearer AI Coach and Voice controls before and during workouts.
+- Easier group membership and member management.
+- Improved recurring group activities and invitation controls.
+- A more playful fox companion and improved notification delivery.
 - Additional reliability and interface improvements.
 
 ### How to Report Feedback
@@ -200,6 +200,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.7.11 (65)`, validate, and upload from Xcode Organizer.
+- Archive `1.7.12 (66)`, validate, and upload from Xcode Organizer.
 - After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.
