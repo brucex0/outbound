@@ -142,6 +142,13 @@ Data is not sold. Social publishing, live sharing, Health Connect, microphone, n
 - Production health and both platforms’ privacy/support endpoints returned HTTP 200. The Android association endpoint at `https://plainstride.ai/.well-known/assetlinks.json` returned HTTP 404; app-link handling remains unverified. No tests or device runtime acceptance checks were performed.
 - Evidence is retained under ignored `artifacts/play-store/release-1.0.3-6/`: signed AAB, mapping, SHA-256, source SHA, product changes, and submission state. Existing Android unreleased-policy instructions remain in force until Bruce explicitly confirms release.
 
+### November 6 Open Testing Submission
+
+- Bruce requested a new public test release. Signed `1.0.4` (7) was built from committed main `24829e74` in an isolated worktree, excluding unrelated local files.
+- Open testing was active in the existing two countries. Version 7 was uploaded with ReTrace mapping and submitted at 100%; Publishing overview confirms **Changes in review**, with quick checks running. Managed publishing is off, so approval publishes automatically. Availability is not yet confirmed.
+- Signed bundle build, release configuration checks, vital lint, R8, and signature verification passed. Device support counts are unchanged; only the existing optional native-debug-symbol warning remains. No tests or device runtime checks were run.
+- Changes include group invitations/member controls, recurring group events, coaching voice selection, and countdown playback. AAB, mapping, and source SHA are retained under ignored `artifacts/play-store/release-1.0.4-7/`.
+
 ## Dependencies And Notices
 
 - Generate the release dependency graph with `./gradlew :app:dependencies --configuration releaseRuntimeClasspath` and archive it with the release.
