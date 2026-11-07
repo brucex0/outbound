@@ -20,6 +20,7 @@ Read this after `AGENTS.md`. Open only the route needed for the current task.
 | Firebase configuration and remaining services | `docs/firebase.md` |
 | Localization and translation | `docs/localization.md` |
 | Analytics events and privacy | `docs/product-analytics.md` |
+| Any iOS or Android UI change | `docs/design-system.md` — design contracts, review checklist, automated checks |
 | Activity launch dock and live recording UX | `docs/activity-launch-live-ux.md` |
 | Onboarding and plan setup | `docs/new-user-onboarding.md` |
 | Guidance plans and adaptation | `docs/guidance-plans.md`, `docs/adaptive-planning-engine.md` |

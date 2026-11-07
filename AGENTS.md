@@ -53,6 +53,11 @@ When user ask questions or brain storm, always answer in concise bullet points
 
 Outbound has shipped publicly but with very few users. Do not spend implementation effort preserving backward compatibility for training plans, seed data, local files, caches, or local/backend database rows unless the user explicitly requests it. Prefer the cleanest current model even when adopting it requires destructive migration or data loss. It is acceptable to reset, reseed, or rebuild the local/backend database when schemas, plan IDs, template shape, or seed content changes, as long as the change is documented and the required rebuild command is clear.
 
+## Design System
+
+- Before any iOS or Android UI change, read `docs/design-system.md` and its review checklist. Follow the linked theme and feature contracts.
+- Run `python3 scripts/check-design-system.py --base <base-commit>` before merging UI changes. Review every exception and report visual checks that were not performed.
+
 ## UI Feedback
 
 - Launch dock options/settings use text-only pills; sport-type selectors use icons only with localized accessibility labels. Follow `docs/activity-launch-live-ux.md` when changing these controls.
