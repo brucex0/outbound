@@ -858,7 +858,7 @@ struct GroupDetailView: View {
     }
 
     private var canInviteMembers: Bool {
-        current.canInvite && current.lifecycle != "archived"
+        (current.role != nil || current.members.contains(where: \.isCurrentUser)) && current.lifecycle != "archived"
     }
 
     private var inviteMembersIconButton: some View {

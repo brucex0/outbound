@@ -145,7 +145,7 @@ Every detail screen shares:
 4. Members and management/reporting entry points.
 
 Group settings and weekly themes use an explicit Save action. Group managers can edit the Group's base location alongside its name and group-week settings. Keep editors open when saving fails or when unsaved changes remain; show a distinct next-week theme when it differs from the current week. Location analytics record only that the location changed, never the location text.
-All active members can invite connections directly from Group detail. Owners/admins also have member management and a membership-review queue in settings.
+All active members can invite connections from the icon in the Members section header or expanded Members page when the Group is active and has room. Owners/admins also have member management and a membership-review queue in settings.
 
 Trusted-private detail leads with:
 
