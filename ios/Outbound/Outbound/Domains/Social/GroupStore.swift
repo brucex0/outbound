@@ -213,9 +213,9 @@ final class GroupStore: ObservableObject {
         } catch { _ = fail(error, operation: "decline group invitation"); return false }
     }
 
-    func updateMembershipPolicy(group: GroupDTO, joinPolicy: String, approvalRequired: Bool) async -> GroupDTO? {
+    func updateMembershipPolicy(group: GroupDTO, joinPolicy: String, approvalRequired: Bool, memberInvitesAllowed: Bool) async -> GroupDTO? {
         await mutate(success: String(localized: "group.toast.saved", defaultValue: "Group updated."), operationName: "update group membership policy") {
-            try await api.updateGroupMembershipPolicy(id: group.id, request: .init(joinPolicy: joinPolicy, memberInviteApprovalRequired: approvalRequired))
+            try await api.updateGroupMembershipPolicy(id: group.id, request: .init(joinPolicy: joinPolicy, memberInviteApprovalRequired: approvalRequired, memberInvitesAllowed: memberInvitesAllowed))
         }
     }
 
@@ -489,7 +489,7 @@ final class GroupStore: ObservableObject {
         let bruce = GroupPersonDTO(id: "ui-test-bruce", displayName: "Bruce Xia", avatarUrl: nil)
         let daniel = GroupPersonDTO(id: "ui-test-daniel", displayName: "Daniel Runner", avatarUrl: nil)
         let rina = GroupPersonDTO(id: "ui-test-rina", displayName: "Rina Runner", avatarUrl: nil)
-        return GroupDTO(
+        var fixture = GroupDTO(
             id: "ui-test-weekend-crew", name: "Bruce, Daniel, Rina's Group", lifecycle: "active", role: "owner",
             owner: bruce, resetWeekday: 1, timeZone: "America/Los_Angeles", memberLimit: 500,
             memberCount: 3, eligibleForToday: true,
@@ -521,6 +521,8 @@ final class GroupStore: ObservableObject {
             recentMoments: [.init(id: "ui-test-moment", type: "cheer", createdAt: now.addingTimeInterval(-3_600), title: "encouragement")],
             history: []
         )
+        fixture.canInvite = true
+        return fixture
     }
 
     private func contributionMessage(_ receipt: GroupContributionReceipt) -> String {

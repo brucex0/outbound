@@ -4,39 +4,36 @@ struct GroupMembershipSettingsView: View {
     @EnvironmentObject private var groupStore: GroupStore
     @Environment(\.analyticsManager) private var analyticsManager
     let group: GroupDTO
-    @State private var joinPolicy: String
+    @State private var memberInvitesAllowed: Bool
     @State private var approvalRequired: Bool
-    @State private var savedJoinPolicy: String
+    @State private var savedMemberInvitesAllowed: Bool
     @State private var savedApprovalRequired: Bool
     @State private var saving = false
     @State private var reviewing: Set<String> = []
 
     init(group: GroupDTO) {
         self.group = group
-        _joinPolicy = State(initialValue: group.joinPolicy)
-        _approvalRequired = State(initialValue: group.memberInviteApprovalRequired)
-        _savedJoinPolicy = State(initialValue: group.joinPolicy)
-        _savedApprovalRequired = State(initialValue: group.memberInviteApprovalRequired)
+        let required = group.trustPolicy == "community" ? group.joinPolicy != "open" : group.memberInviteApprovalRequired
+        _memberInvitesAllowed = State(initialValue: group.memberInvitesAllowed)
+        _approvalRequired = State(initialValue: required)
+        _savedMemberInvitesAllowed = State(initialValue: group.memberInvitesAllowed)
+        _savedApprovalRequired = State(initialValue: required)
     }
 
     private var current: GroupDTO { groupStore.groups.first(where: { $0.id == group.id }) ?? group }
-    private var dirty: Bool { joinPolicy != savedJoinPolicy || approvalRequired != savedApprovalRequired }
+    private var dirty: Bool { memberInvitesAllowed != savedMemberInvitesAllowed || approvalRequired != savedApprovalRequired }
 
     var body: some View {
         Form {
             if current.role == "owner" {
                 Section {
-                    if current.trustPolicy == "community" {
-                        Picker(String(localized: "Who can join", table: "GroupMembership"), selection: $joinPolicy) {
-                            Text(String(localized: "Anyone can join", table: "GroupMembership")).tag("open")
-                            Text(String(localized: "Approval required", table: "GroupMembership")).tag("request")
-                            Text(String(localized: "Invitation only", table: "GroupMembership")).tag("invite_only")
-                        }
-                        .accessibilityIdentifier("group.membership.join_policy")
-                    }
-                    Toggle(String(localized: "Approve member invitations", table: "GroupMembership"), isOn: $approvalRequired)
+                    Toggle(String(localized: "Allow members to invite friends", table: "GroupMembership"), isOn: $memberInvitesAllowed)
+                        .accessibilityIdentifier("group.membership.member_invites_allowed")
+                    Toggle(String(localized: "Require approval to join", table: "GroupMembership"), isOn: $approvalRequired)
                         .accessibilityIdentifier("group.membership.approval_required")
-                    Text(String(localized: "Members can invite their connections. When approval is required, invitees must accept before an owner or admin reviews their membership. Invitations from owners and admins are pre-approved.", table: "GroupMembership"))
+                    Text(current.trustPolicy == "community"
+                        ? String(localized: "Community Groups remain open to joining. Approval applies to discovery and member invitations; invitations from owners and admins are pre-approved.", table: "GroupMembership")
+                        : String(localized: "Private Groups require an invitation. Approval applies to member invitations; owner and admin invitations are pre-approved.", table: "GroupMembership"))
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 .disabled(saving || current.lifecycle == "archived")
@@ -90,14 +87,15 @@ struct GroupMembershipSettingsView: View {
 
     private func save() {
         saving = true
-        let policy = joinPolicy, required = approvalRequired
+        let allowed = memberInvitesAllowed, required = approvalRequired
+        let policy = current.trustPolicy == "community" ? (required ? "request" : "open") : "invite_only"
         Task { @MainActor in
-            let updated = await groupStore.updateMembershipPolicy(group: current, joinPolicy: policy, approvalRequired: required)
+            let updated = await groupStore.updateMembershipPolicy(group: current, joinPolicy: policy, approvalRequired: required, memberInvitesAllowed: allowed)
             if updated != nil {
-                savedJoinPolicy = policy
+                savedMemberInvitesAllowed = allowed
                 savedApprovalRequired = required
             }
-            await analyticsManager?.track(.init(.groupMembershipPolicyChanged, properties: [.sourceType: .string(policy), .selectionType: .string(required ? "approval_required" : "direct"), .result: .string(updated == nil ? "failure" : "success")]))
+            await analyticsManager?.track(.init(.groupMembershipPolicyChanged, properties: [.sourceType: .string(policy), .selectionType: .string(required ? "approval_required" : "direct"), .changeType: .string(allowed ? "member_invites_on" : "member_invites_off"), .result: .string(updated == nil ? "failure" : "success")]))
             saving = false
         }
     }

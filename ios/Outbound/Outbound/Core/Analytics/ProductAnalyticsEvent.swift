@@ -486,7 +486,7 @@ enum ProductAnalyticsSchema {
         .groupTemplateSelected: [.selectionType],
         .groupCreationCompleted: [.entrySource, .participantCountBucket],
         .groupCreationFailed: [.entrySource, .errorCategory],
-        .groupMembershipPolicyChanged: [.sourceType, .selectionType, .result],
+        .groupMembershipPolicyChanged: [.sourceType, .selectionType, .changeType, .result],
         .groupMembershipRequestSubmitted: [.sourceType],
         .groupMembershipRequestReviewed: [.sourceType, .result],
         .activityEventRecurrenceConfigured: [.selectionType, .sourceType],

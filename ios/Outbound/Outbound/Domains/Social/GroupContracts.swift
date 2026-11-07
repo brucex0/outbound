@@ -38,6 +38,7 @@ struct GroupDTO: Codable, Identifiable, Sendable {
     var trustPolicy: String = "trusted_private"
     var visibility: String = "private"
     var memberInviteApprovalRequired = true
+    var memberInvitesAllowed = true
     var canInvite = false
     var pendingRequestCount = 0
     var joinRequests: [GroupJoinRequestDTO] = []
@@ -79,7 +80,7 @@ extension GroupDTO {
         case upcomingActivities
         case recentMoments
         case history
-        case memberInviteApprovalRequired, canInvite, pendingRequestCount, joinRequests
+        case memberInviteApprovalRequired, memberInvitesAllowed, canInvite, pendingRequestCount, joinRequests
         case normalizedName, description, city, activityInterests, trustPolicy, visibility, joinPolicy, featured, organizationVerificationState, capabilities, notices, unreadNoticeCount, pendingRequest, invitationPreview, pendingInvitation, loadedDetailPayload
     }
 
@@ -116,6 +117,7 @@ extension GroupDTO {
         visibility = try container.decodeIfPresent(String.self, forKey: .visibility) ?? "private"
         joinPolicy = try container.decodeIfPresent(String.self, forKey: .joinPolicy) ?? "invite_only"
         memberInviteApprovalRequired = try container.decodeIfPresent(Bool.self, forKey: .memberInviteApprovalRequired) ?? true
+        memberInvitesAllowed = try container.decodeIfPresent(Bool.self, forKey: .memberInvitesAllowed) ?? true
         canInvite = try container.decodeIfPresent(Bool.self, forKey: .canInvite) ?? false
         pendingRequestCount = try container.decodeIfPresent(Int.self, forKey: .pendingRequestCount) ?? 0
         joinRequests = try container.decodeIfPresent([GroupJoinRequestDTO].self, forKey: .joinRequests) ?? []
@@ -287,6 +289,7 @@ struct GroupJoinRequestDTO: Codable, Identifiable, Sendable {
 struct GroupMembershipPolicyDTO: Codable, Sendable {
     let joinPolicy: String
     let memberInviteApprovalRequired: Bool
+    let memberInvitesAllowed: Bool
 }
 
 struct GroupInvitationDTO: Codable, Identifiable, Sendable {

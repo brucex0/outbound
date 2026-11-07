@@ -769,7 +769,6 @@ struct GroupDetailView: View {
                     if !current.invitations.isEmpty { pendingInvitationsSection }
                     planActivityButton
                     if !current.recentMoments.isEmpty { momentsSection }
-                    if let history = current.history, !history.isEmpty { historySection(history) }
                 }
             }
             .padding(OutboundSpacing.screen)
@@ -858,7 +857,7 @@ struct GroupDetailView: View {
     }
 
     private var canInviteMembers: Bool {
-        (current.role != nil || current.members.contains(where: \.isCurrentUser)) && current.lifecycle != "archived"
+        current.canInvite && current.lifecycle != "archived" && current.memberCount + current.invitations.count < current.memberLimit
     }
 
     private var inviteMembersIconButton: some View {
@@ -870,7 +869,6 @@ struct GroupDetailView: View {
         .buttonStyle(.plain)
         .accessibilityLabel(String(localized: "group.invite.more", defaultValue: "Invite connections"))
         .accessibilityIdentifier("group.invite.members")
-        .disabled(current.memberCount + current.invitations.count >= current.memberLimit)
         .sheet(isPresented: $showsInvite) {
             GroupInviteView(group: current, entrySource: "group_detail")
         }
@@ -1018,8 +1016,20 @@ struct GroupDetailView: View {
                         if current.trustPolicy != "community", !member.isCurrentUser {
                             memberCheerMenu(member)
                         }
-                        if canInviteMembers && canRemove(member) {
+                        if current.lifecycle != "archived" && canRemove(member) {
                             Menu {
+                                if current.role == "owner" {
+                                    Button(member.role == "admin" ? String(localized: "group.role.demote", defaultValue: "Make member") : String(localized: "group.role.promote", defaultValue: "Make admin")) {
+                                        Task { _ = await groupStore.setRole(member.role == "admin" ? "member" : "admin", for: member, in: current) }
+                                    }
+                                    Button(String(localized: "group.transfer", defaultValue: "Transfer ownership")) {
+                                        Task {
+                                            if await groupStore.transferOwnership(of: current, to: member) != nil {
+                                                track(.groupOwnershipTransferred, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))])
+                                            }
+                                        }
+                                    }
+                                }
                                 Button(String(localized: "group.remove_member", defaultValue: "Remove member"), role: .destructive) {
                                     memberPendingRemoval = member
                                 }
@@ -1031,6 +1041,23 @@ struct GroupDetailView: View {
                     }
                     .padding(.vertical, 4)
                     .listRowBackground(OutboundPalette.background)
+                }
+                if !current.invitations.isEmpty {
+                    Section(String(localized: "group.invitations.pending", defaultValue: "Pending invitations")) {
+                        ForEach(current.invitations) { invitation in
+                            HStack {
+                                Text(invitation.recipient?.displayName ?? String(localized: "group.invitation.pending_person", defaultValue: "Invited person"))
+                                Spacer()
+                                Button(String(localized: "group.invitation.cancel", defaultValue: "Cancel"), role: .destructive) {
+                                    Task {
+                                        if await groupStore.cancel(invitation, in: current) != nil {
+                                            track(.groupInvitationCancelled, [.entrySource: .string("group_members")])
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
             .listStyle(.plain)
@@ -1044,7 +1071,6 @@ struct GroupDetailView: View {
                             Image(systemName: "person.badge.plus").frame(width: 44, height: 44)
                         }
                         .accessibilityLabel(String(localized: "group.invite.more", defaultValue: "Invite connections"))
-                            .disabled(current.memberCount + current.invitations.count >= current.memberLimit)
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -1339,27 +1365,6 @@ struct GroupDetailView: View {
         }
         parts.append(String(localized: "group.activity.going_count", defaultValue: "\(activity.attendeeCount) going"))
         return parts.joined(separator: " · ")
-    }
-
-    private func historySection(_ history: [GroupWeekHistoryDTO]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(String(localized: "group.history", defaultValue: "HISTORY")).socialSectionLabel()
-            OutboundCard {
-                ForEach(history.prefix(6)) { week in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(week.startsAt.formatted(date: .abbreviated, time: .omitted))
-                            if let title = GroupThemeCatalog.displayTitle(key: week.themeKey, customTitle: week.themeTitle) {
-                                Text(title).font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                        Spacer()
-                        Text(week.state == "completed" ? String(localized: "group.completed", defaultValue: "Completed") : String(localized: "group.week.recorded", defaultValue: "Week recorded")).foregroundStyle(.secondary)
-                    }
-                    .frame(minHeight: 44)
-                }
-            }
-        }
     }
 
     private func memberStatus(_ member: GroupMemberDTO) -> String {
@@ -1716,7 +1721,6 @@ struct GroupManagementView: View {
     @FocusState private var focusedInput: String?
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var groupStore: GroupStore
-    @EnvironmentObject private var socialStore: TogetherStore
     @Environment(\.dismiss) private var dismiss
     let group: GroupDTO
     @State private var name: String
@@ -1725,7 +1729,7 @@ struct GroupManagementView: View {
     @State private var timeZone: String
     @State private var calendarApply = "next_week"
     @State private var notificationMuted: Bool
-    @State private var showsInvite = false
+    @State private var showsArchiveConfirmation = false
     @State private var savedName: String
     @State private var savedCity: String
     @State private var savedResetWeekday: Int
@@ -1781,24 +1785,6 @@ struct GroupManagementView: View {
                         .submitLabel(.done)
                         .inputSubmissionAnalytics(.groups)
                         .onSubmit { focusedInput = nil }
-                    if current.lifecycle != "archived" { Button(String(localized: "group.invite.more", defaultValue: "Invite connections")) { showsInvite = true } }
-                }
-                if !current.invitations.isEmpty {
-                    Section(String(localized: "group.invitations.pending", defaultValue: "Pending invitations")) {
-                        ForEach(current.invitations) { invitation in
-                            HStack {
-                                Text(invitation.recipient?.displayName ?? String(localized: "group.invitation.pending_person", defaultValue: "Invited person"))
-                                Spacer()
-                                Button(String(localized: "group.invitation.cancel", defaultValue: "Cancel"), role: .destructive) {
-                                    Task {
-                                        if await groupStore.cancel(invitation, in: current) != nil {
-                                            track(.groupInvitationCancelled, [.entrySource: .string("group_settings")])
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
                 Section(String(localized: "group.week.settings", defaultValue: "Group week")) {
                     Picker(String(localized: "group.reset_day", defaultValue: "Reset day"), selection: $resetWeekday) {
@@ -1814,8 +1800,15 @@ struct GroupManagementView: View {
                         Text(String(localized: "group.apply.next", defaultValue: "Next week")).tag("next_week")
                     }
                 }
-                Section(String(localized: "group.members.manage", defaultValue: "Members")) { ForEach(current.members.filter { !$0.isCurrentUser }) { member in Menu { if current.role == "owner" { Button(member.role == "admin" ? String(localized: "group.role.demote", defaultValue: "Make member") : String(localized: "group.role.promote", defaultValue: "Make admin")) { Task { _ = await groupStore.setRole(member.role == "admin" ? "member" : "admin", for: member, in: current) } }; Button(String(localized: "group.transfer", defaultValue: "Transfer ownership")) { Task { if await groupStore.transferOwnership(of: current, to: member) != nil { track(.groupOwnershipTransferred, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } } }; Button(String(localized: "group.remove_member", defaultValue: "Remove member"), role: .destructive) { Task { if await groupStore.removeMember(member, from: current) != nil { track(.groupMemberRemoved, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } } } label: { HStack { Text(member.user.displayName); Spacer(); Image(systemName: "ellipsis").frame(width: 44, height: 44) } } } }
-                Section { if current.lifecycle == "archived" { Button(String(localized: "group.reactivate", defaultValue: "Reactivate Group")) { Task { if await groupStore.reactivate(current) != nil { track(.groupReactivated, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } } } else { Button(String(localized: "group.archive", defaultValue: "Archive Group"), role: .destructive) { Task { if await groupStore.archive(current) { track(.groupArchived, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } } } } }
+                Section {
+                    if current.lifecycle == "archived" {
+                        Button(String(localized: "group.reactivate", defaultValue: "Reactivate Group")) {
+                            Task { if await groupStore.reactivate(current) != nil { track(.groupReactivated, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } }
+                        }
+                    } else {
+                        Button(String(localized: "group.archive", defaultValue: "Archive Group"), role: .destructive) { showsArchiveConfirmation = true }
+                    }
+                }
             } else if current.role == "member" {
                 Section { Button(String(localized: "group.leave", defaultValue: "Leave Group"), role: .destructive) { Task { if await groupStore.leave(current) { track(.groupMemberLeft, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]); dismiss() } } } }
             }
@@ -1829,7 +1822,14 @@ struct GroupManagementView: View {
                 .disabled(isSaving || !hasUnsavedChanges)
             }
         }
-        .sheet(isPresented: $showsInvite) { GroupInviteView(group: current) }
+        .confirmationDialog(String(localized: "Archive this Group?", table: "GroupMembership"), isPresented: $showsArchiveConfirmation, titleVisibility: .visible) {
+            Button(String(localized: "group.archive", defaultValue: "Archive Group"), role: .destructive) {
+                Task { if await groupStore.archive(current) { track(.groupArchived, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]) } }
+            }
+            Button(String(localized: "common.cancel", defaultValue: "Cancel"), role: .cancel) { }
+        } message: {
+            Text(String(localized: "Archiving stops new invitations, updates, and activities. You can reactivate this Group later.", table: "GroupMembership"))
+        }
         .interactiveDismissDisabled(hasUnsavedChanges || isSaving)
     }
 
