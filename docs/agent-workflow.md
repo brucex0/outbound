@@ -38,6 +38,42 @@ service_tier = "default"
 
 Profile syntax: [official Codex configuration](https://learn.chatgpt.com/docs/config-file/config-advanced). Freebuff discovery: [project instructions](https://www.codebuff.com/docs/help/faq).
 
+## Automatic Routing
+
+The routing criteria and worker ownership rules live in `AGENTS.md`. Instructions request model-specific execution; they do not change the desktop model selector.
+
+### Desktop
+
+1. Open this repository in the app and start a new chat so the updated project instructions load.
+2. Leave GPT-6.1 Sol selected as coordinator (Medium reasoning and Standard speed are a reasonable starting point).
+3. Submit tasks normally. The coordinator requests a Luna/Low worker for simple repository tasks and a Sol/High worker for complex tasks, or executes directly when already using the required model and effort.
+4. Inspect the worker activity to confirm the requested model was used. If the runtime disallows delegation or lacks model access, it must report the limitation. A higher-priority runtime restriction can override this project policy.
+
+The coordinator still consumes tokens. Short conversational answers stay in the main chat to avoid worker overhead. Current chats may retain earlier instructions; this is an instruction-driven workflow, not guaranteed product-level automatic routing.
+
+### Terminal launcher
+
+From the repository root:
+
+```sh
+./scripts/codex-auto.py "Fix the typo in the setup instructions"
+./scripts/codex-auto.py "Investigate why offline sessions fail to sync"
+./scripts/codex-auto.py --task-file /path/to/task.txt
+```
+
+- Requires Python 3 and the signed-in Codex CLI on `PATH`. Existing account model access and usage limits apply; no separate API key is added.
+- A tool-disabled, read-only, ephemeral Luna call classifies the task text outside the repository. It adds a small model call before execution. It does not inspect source or carry this chat's history, so include necessary context in the task.
+- The launcher prints the route and opens interactive Codex with an explicit model, reasoning effort, and Standard service. Existing authentication and permission settings remain in force. Repository worktree/commit rules still apply.
+- Classification failures, invalid output, or a 60-second timeout fall back to Sol with a diagnostic. An unavailable execution model is reported by Codex; the launcher does not silently substitute another model.
+- Routing happens once per launch. Follow-ups remain in that interactive session. If scope grows, the project delegation policy requests a Sol handoff; this is not an automatic change to the primary session's model.
+- To inspect a decision without executing the task: `./scripts/codex-auto.py --route-only "your task"` (still makes the classification call).
+- To bypass classification explicitly: `./scripts/codex-auto.py --route simple "your task"` or `--route complex`.
+- Use `codex resume` for an existing CLI conversation. Run the launcher again for a new, independently routed task.
+
+The launcher uses the same model settings as the personal presets but passes them explicitly, so it works without installing profile files.
+
+Official reference: [model-specific subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents#choosing-models-and-reasoning).
+
 ## Task Brief
 
 ```text

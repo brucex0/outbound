@@ -15,6 +15,15 @@ When user ask questions or brain storm, always answer in concise bullet points
 - Always review the scoped diff and perform the required verification. Reserve an additional model review for consequential changes or unresolved concerns.
 - Read `docs/agent-workflow.md` when choosing a tool or reasoning preset, preparing a handoff, or defining a task brief.
 
+## Automatic Model Routing
+
+- For substantive repository tasks, use GPT-6 Luna (`gpt-6-luna`, Low reasoning) for small, well-defined edits, documentation, repetitive changes, and focused discovery. Use GPT-6.1 Sol (`gpt-6.1-sol`, High reasoning) for ambiguous bugs, architecture, authentication, persistence, cross-platform contracts, publishing, and consequential review. Treat uncertain scope as complex.
+- In desktop chats, delegate execution to one worker with the appropriate explicit model and reasoning settings when the coordinator differs from the required model or reasoning effort. If already running the appropriate model and effort, execute directly. Keep brief conversational answers in the main chat; do not spawn workers just to acknowledge or classify a request.
+- This section requests model-specific delegation for future project tasks. Higher-priority restrictions and explicit user instructions take precedence. If model-specific delegation is unavailable, state that limitation; do not claim the model switched.
+- Keep one editing owner per worktree. The coordinator must not edit while a worker owns execution. Workers must not recursively delegate for model routing.
+- If Luna discovers complex scope or fails one correction cycle, stop its edits and return a compact handoff. The coordinator then assigns one Sol worker to continue in the same worktree after Luna relinquishes ownership; preserve the diff and verification evidence.
+- The desktop selector remains the coordinator's model, and coordination consumes tokens. See `docs/agent-workflow.md` for desktop setup and the automatic CLI launcher.
+
 ## Scope And Behavior Preservation
 
 - Keep changes within the user's requested scope. Do not bundle unrelated fixes, cleanup, or behavior changes into the task.
