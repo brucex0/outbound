@@ -51,10 +51,9 @@ Run the repository helper from a clean tracked worktree:
 
 The helper keeps the iPhone app, Live Activity extension, and embedded Watch app on the same version and build number, generates brief release notes from product commits after the last change to the submission sheet’s build identity, saves them in `docs/testflight-1.0.md`, runs the unsigned Release compile check, commits the verified metadata, creates a signed archive in Xcode Organizer's standard archive folder, and uploads it to App Store Connect with external TestFlight eligibility. It then waits for Apple to process the build, copies the generated notes into the English (U.S.) **What to Test** field, and assigns the build to the app's sole internal TestFlight group. It stops before upload if another commit lands during archiving. It does not run tests, and its default mode does not publish the app publicly.
 
-Release notes use the newest five commit subjects that touch `ios/Outbound`,
-`backend`, or `Package.swift`. When more changes exist, the final bullet reports
+Release notes use the newest five commit subjects that touch `ios/Outbound` only. When more changes exist, the final bullet reports
 the remaining count. Documentation and release-tooling-only commits are omitted,
-and publishing stops when no product commits exist since the last release. Use
+and publishing stops when no iOS product commits exist since the last release. Use
 `--dry-run` to preview the exact generated notes. Upload retries that specify the
 current prepared build number, and `--beta-setup-only` retries, reuse the notes
 already saved for that build.

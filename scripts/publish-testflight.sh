@@ -381,9 +381,9 @@ else
   release_subjects="$(git log \
     --format='%s' \
     "${last_release_commit}..HEAD" \
-    -- ios/Outbound backend Package.swift)"
+    -- ios/Outbound)"
   [[ -n "$release_subjects" ]] || \
-    fail "no product commits found since the previous TestFlight release"
+    fail "no iOS product commits found since the previous TestFlight release"
 
   release_notes="$({ RELEASE_SUBJECTS="$release_subjects" MAX_ITEMS="$MAX_RELEASE_NOTE_ITEMS" ruby <<'RUBY'
 subjects = ENV.fetch("RELEASE_SUBJECTS").lines.map(&:strip).reject(&:empty?)
