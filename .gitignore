@@ -15,8 +15,10 @@ backend/config/dev-auth-*.pem
 
 # Agent metadata
 .claude/
+.Codex/
 .codex/
 ios/.codex/
+worktrees/
 .superpowers/
 backend/.local/
 

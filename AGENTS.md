@@ -6,6 +6,15 @@ Do not run the test suite unless the user explicitly asks. A build-only compile 
 
 When user ask questions or brain storm, always answer in concise bullet points
 
+## Efficient Execution
+
+- Use one editing owner per worktree. Keep each task focused on one coherent outcome.
+- Search with `rg` first, batch independent reads, and keep command output bounded. Load only the relevant docs and source sections; summarize long diagnostics instead of repeatedly loading full logs.
+- For straightforward changes, implement directly with a brief plan. For ambiguous or consequential changes, establish acceptance criteria and behavior to preserve before editing.
+- After one unsuccessful correction cycle, reassess the cause. When handing work to another tool, provide the diff, failure, attempted fix, and remaining uncertainty instead of replaying the whole conversation.
+- Always review the scoped diff and perform the required verification. Reserve an additional model review for consequential changes or unresolved concerns.
+- Read `docs/agent-workflow.md` when choosing a tool or reasoning preset, preparing a handoff, or defining a task brief.
+
 ## Scope And Behavior Preservation
 
 - Keep changes within the user's requested scope. Do not bundle unrelated fixes, cleanup, or behavior changes into the task.
@@ -21,6 +30,7 @@ When user ask questions or brain storm, always answer in concise bullet points
 - After completing repository changes, run a basic verification appropriate to the affected scope without running the test suite unless the user explicitly requested tests.
 - If the basic verification succeeds, commit the completed changes before handing the task back to the user.
 - Keep unrelated user files, generated artifacts, temporary directories, and agent metadata out of the commit.
+- Split changes to `backend/`, `android/`, and `ios/` into separate focused commits. Prefix their titles with `[BE]`, `[Droid]`, or `[iOS]` respectively; never combine these scopes in one commit.
 - If verification or committing is blocked, report the blocker instead of claiming the task is complete.
 
 ## Android Release Status And Compatibility
@@ -85,4 +95,4 @@ Treat documents like code:
 - `Package.swift`: exposes only the session-analysis subset as `OutboundSessionAnalysis` for lightweight package testing outside the full iOS app target.
 - `docs/`: task-routed project documentation. Start with `docs/INDEX.md`.
 - `scripts/build-install-bruce-main.sh`: builds and installs the app on Bruce main, with `--build-only` and `--launch` options.
-Local `.Codex/`, `.codex/`, and `ios/.codex/` worktree directories are agent metadata. Do not commit them.
+Local `.claude/`, `.Codex/`, `.codex/`, and `ios/.codex/` worktree directories are agent metadata. Do not commit them.

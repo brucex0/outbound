@@ -1,132 +1,48 @@
 # Documentation Index
 
-Read this after `CLAUDE.md`. Open only the detail docs needed for the current task.
+Read this after `AGENTS.md`. Open only the route needed for the current task.
 
-## Current Product Shape
+## Common Routes
 
-Plainstride (internally still named Outbound in targets and source paths) is an iOS fitness recording app. Login uses native Sign in with Apple verified by the Plainstride backend; Firebase is used for Analytics and Messaging when the app has a local `GoogleService-Info.plist`.
+| Task | Open |
+| --- | --- |
+| Coding workflow, Codex presets, Freebuff, handoffs, task template | `docs/agent-workflow.md` |
+| Current product flow and terminology | `docs/product-overview.md` |
+| iOS source layout, recording, camera, persistence, guide | `docs/ios-architecture.md` |
+| iOS build, signing, simulator, device install | `docs/build-test-device.md` |
+| iOS publishing, upload retry or stalled delivery | `docs/app-store-release.md` — read before every release/recovery |
+| Android architecture, parity, release gates | `docs/android-port.md` |
+| Android build, toolchain, variants | `docs/android-build.md` |
+| Android navigation and Back behavior | `docs/android-navigation.md` |
+| Backend architecture and boundaries | `docs/backend-architecture.md` |
+| Backend deployment and Cloud Run | `docs/backend-deploy.md` |
+| Production logs and database diagnostics | `docs/production-diagnostics.md` |
+| Firebase configuration and remaining services | `docs/firebase.md` |
+| Localization and translation | `docs/localization.md` |
+| Analytics events and privacy | `docs/product-analytics.md` |
+| Activity launch dock and live recording UX | `docs/activity-launch-live-ux.md` |
+| Onboarding and plan setup | `docs/new-user-onboarding.md` |
+| Guidance plans and adaptation | `docs/guidance-plans.md`, `docs/adaptive-planning-engine.md` |
+| Live coaching operations and audio | `docs/live-coach-operations.md` |
+| Stretch catalog, editor, generation | `docs/stretch-routines.md` |
+| Groups and Social | `docs/run-groups.md`, `docs/social.md` |
+| Account preferences and statistics | `docs/account-preferences.md`, `docs/account-statistics.md` |
+| Git transport problems | `docs/git-transport.md` |
+| Any other feature, historical plan, prototype, or handoff | Search `docs/reference-map.md` |
 
-Primary flow:
+## Find a Specific Route
 
-1. App launches into the production `Social · Today · Me` shell, centered on Today.
-2. New authenticated accounts see the simplified runner intake, editable understanding, calibration, and first-plan onboarding; completed accounts skip it.
-3. Today combines an inspirational spark, one AI-adjusted workout, vertical workout detail, readiness, Quick Start, and a Together invitation.
-4. Me includes a cached, server-authoritative Progress entry with matched week/month/28-day comparisons, sport-specific multi-range trends, grounded companion insights, PR history, race predictions, and recent activity stat highlights.
-5. Me launches suggested sessions directly, while the bottom-row activity button quick-starts into the shared freestyle start page and returns to live sessions when one is already active.
-6. During an activity, the camera/map experience uses a compact bottom status card with Pause while active, then Resume and Finish once paused; runners can invite accepted connections in app to follow precise live location, pace, distance, and heart rate and send short original voice cheers that play through the guide audio path.
-7. GPS is recorded in activity/photo metadata but is not displayed in the overlay.
-8. Finish stops recording and presents a motivation reflection above Save Activity. Closing the review requires confirmation before the unsaved activity is discarded, then returns to Me.
-9. Save writes the activity manifest, source/gear/indoor metadata, track points, photo metadata, and JPEG files locally through `LocalActivityStore`.
-10. Social is always available through authenticated, share-safe connections, groups, group runs, invitations, and activity posts; private plan and health causes remain outside social responses.
-11. Me consolidates plan progress, weekly totals, learned runner insights, history, measurement settings, and optional cycle-aware guidance.
+The detailed map retains all feature routes and descriptions. Search it before opening a matching document; do not load the whole map by default.
 
-## Open Docs By Task
+```sh
+rg -n -i 'route|subscription|notification' docs/reference-map.md
+```
 
-| Task | Open | Contains |
-| --- | --- | --- |
-| Git push corruption, SSH upload pacing, and local transport configuration | `docs/git-transport.md` | Verified upload workaround, setup, throughput tradeoff, and removal |
-| iOS text input, keyboard submission, focus, and dismissal | `docs/ios-inputs.md` | Native keyboard policy, audited surfaces, and manual verification checklist |
-| App flow, Swift files, recording, camera, persistence, guide analysis | `docs/ios-architecture.md` | Source layout, module responsibilities, current recording and AI guide shape |
-| Android public-release port, parity contract, platform substitutions, phases, and release gates | `docs/android-port.md` | Full-scope Kotlin/Compose architecture, cross-platform contract strategy, phase deliverables, verification gates, and release definition of done |
-| Android destination ownership, direct links, Back behavior, and navigation verification | `docs/android-navigation.md` | Canonical ID-based routes, explicit modal exceptions, destination-scoped state, and manual verification matrix |
-| Android shell connectivity status and offline/reconnect UI parity | `android/app/IOS_PARITY.md` | iOS connectivity authority, Android monitor and banners, pending sync behavior, accessibility, and reference scenarios |
-| Android toolchain, variants, build-only checks, lint, and local SDK setup | `docs/android-build.md` | Copy-pasteable phone/Wear build commands, environment requirements, and release-safe variant rules |
-| Android fixed voice preparation, persistent downloads, offline readiness, countdowns, and ticks | `docs/android-voice-audio.md` | Selected language/voice preparation, integrity checks, nonblocking start, bundled cue refresh, and verification |
-| Android Play release, signing, privacy, store metadata, monitoring, and rollback | `docs/android-release.md` | Secret-backed bundle commands, Data safety inputs, asset checklist, licenses, 100% production rollout policy, kill switches, and rollback runbook |
-| App themes, palette contract, theme picker, discovery tip | `docs/themes.md` | Nine theme definitions, adaptive colors, reactive application rules, and extension checklist |
-| Coordinated iOS discovery tooltips, scheduling, limits, and extension | `docs/tooltips.md` | Shared tooltip policy, integration API, analytics, and add-a-tooltip checklist |
-| App localization, translations, formatting, backend locale, speech | `docs/localization.md` | English, Simplified Chinese, and Spanish localization architecture, rollout, and acceptance criteria |
-| Future mainland China launch, login availability, backend reachability, Android push channels | `docs/mainland-china-readiness.md` | Deferred-market decision, authentication findings, infrastructure risks, notification-provider strategy, and revisit sequence |
-| Rendered localization QA findings and release blockers | `docs/localization-qa.md` | Screen coverage, mixed-language defects, terminology issues, and remaining verification matrix |
-| New user onboarding, durable skip, reusable plan setup, no-plan behavior | `docs/new-user-onboarding.md` | Canonical first-launch choice, plan-builder flow, objectives, multi-activity inputs, persistence, and entry points |
-| Android onboarding parity sources, transitions, analytics, accessibility, and reference scenarios | `android/feature/onboarding/IOS_PARITY.md` | Focused handoff for keeping the Compose onboarding and reusable plan builder aligned with iOS |
-| Onboarding and plan-setup implementation handoff | `docs/onboarding-plan-setup-implementation-prompt.md` | Copy-ready backend/iOS implementation prompt, affected areas, analytics, localization, verification, and acceptance criteria |
-| Legacy signup and onboarding prototype | `docs/prototypes/outbound-onboarding-flow.html` | Earlier visual reference; use `docs/new-user-onboarding.md` rather than this prototype for current product behavior |
-| In-app AI assistant UX, prompt flows, and local response strategy | `docs/assistant.md` | Assistant goals, file map, persistence, capabilities, and extension ideas |
-| Coherent AI companion architecture, memory, context budgets, situational signals, and permissioned actions | `docs/superpowers/specs/2026-08-09-coherent-ai-running-companion-design.md` | Approved design for the unified companion kernel, Context Compiler, runner model, decision policies, cross-surface behavior, and delivery slices |
-| Coherent AI companion implementation sequence | `docs/superpowers/plans/2026-08-09-coherent-ai-running-companion.md` | File-level plan for companion persistence, context compilation, actions, iOS integration, build verification, and deployment |
-| AI model reliability, retries, fallback qualification, and alerts | `docs/ai-reliability.md` | Request budgets, synthetic runtime benchmark, qualification gates, and operational monitoring |
-| Backend deployment, Cloud Run setup, and assistant-server rollout | `docs/backend-deploy.md` | GCP project, required APIs, deploy command, and app base-URL wiring |
-| Production Cloud Run logs, private Cloud SQL diagnostics, required credentials, and safe user/session correlation | `docs/production-diagnostics.md` | Read-only incident workflow, IAM, secret handling, scratch job commands, and live-coach field interpretation |
-| Backend public-release readiness and estimated operating costs | `docs/backend-release-readiness.md` | Current infrastructure assessment, recommended launch setup, scaling path, and monthly cost ranges |
-| Backend architecture, server boundaries, auth model, and implementation sequencing | `docs/backend-architecture.md` | Current server assessment, target modular-monolith design, domain ownership, and phased implementation plan |
-| Guidance plans, multi-sport personalization, backend/client split, rollout plan | `docs/guidance-plans.md` | Product spec for adaptive plans, activity suggestions, plan APIs, domain model, and phased implementation |
-| Adaptive planning engine, activity suggestions, generated workouts, plan adjustment tables, sport adapters | `docs/adaptive-planning-engine.md` | Smart-planner architecture, activity-suggestion endpoint design, table design, adaptation loop, and multi-sport scalability model |
-| Activity-aware planning v2, plan-fit evidence, AI boundaries, and proactive client states | `docs/activity-aware-planning-v2.md` | Implemented near-term activity/load assessment, evidence-based explanations, bounded AI behavior, client contract, and verification scenarios |
-| Personalized runner intake, calibration, feedback, runner model, and adaptation delivery | `docs/personalized-running-companion.md` | Product learning loop plus coordinated client/backend slices, contracts, data model, and acceptance criteria |
-| Menstrual-cycle logging, symptom-led workout adaptations, privacy, and health safeguards | `docs/cycle-aware-guidance.md` | Product and data rules for optional cycle-aware guidance without universal phase-based programming |
-| Cycle-aware guidance flow prototype | `docs/prototypes/outbound-cycle-aware-flow.html` | Clickable setup, logging, Today adjustment, learned-pattern, and weekly-plan wireframe |
-| Active-session voice commands, spoken guide Q&A, and workout conversation scope | `docs/session-voice-control.md` | Product and implementation spec for tap-to-talk commands, live stats Q&A, and guide replies during activities |
-| Provider-agnostic AI live coaching audio, personas, access control, configuration, routing, Alibaba adapter, fixed voice packs, and playback | `docs/superpowers/plans/2026-08-27-provider-agnostic-live-coaching-audio.md` | Full file-level handoff for server-generated audio, separate coach/voice identities, free-beta-to-subscription entitlements, fail-closed rollout modes, and market-, latency-, health-, and cost-aware provider selection |
-| Live-coach planning, streaming Google live-coach TTS, planned/fixed audio, trust, and rollout | `docs/live-coach-operations.md` | Approved two-voice route, purpose-built fixed cues, HTTP/2/gRPC audio path, 1.5 s fallback, prewarming, review workflow, Google ADC, and rollout semantics |
-| Live-coach planner, device, backend, and TTS data boundaries | `docs/live-coach-data-boundaries.md` | Exact session/profile/history/location/weather fields sent to the configured planner, exact-text TTS boundary, caching, retention, and logging rules |
-| Spoken-cue usefulness, full fixed-script audit, and recording-review status | `docs/live-cue-review.md` | Semantic acceptance rules, all 40 cue decisions, runtime wording, and listening limits |
-| Live coaching moment definitions, target bands, signal gates, safety policy, and wearable/form roadmap | `docs/live-coaching-moments.md` | Current canonical taxonomy and thresholds plus researched future coaching jobs and required signals |
-| Keep competitor device probe and plan UX opportunities | `docs/keep-device-research.md` | Observed feature inventory, screenshot evidence, plan controls, limits, and prioritized Plainstride hypotheses; follow [Sport and Me deep probe](keep-sport-me-research.md) for recording, audio, metrics and privacy; [workout transitions](keep-workout-transition-research.md) compares warm-up/stretch UX |
-| Product strategy, competitor scan, feature gaps, roadmap priorities | `docs/product-strategy.md` | Category landscape, Outbound strengths/weaknesses, recommended feature set, and phased roadmap |
-| Teen endurance-team growth hypothesis and coach-led practice pilot UX/API | `docs/team-practice-pilot.md` | Proposed iOS/Android first pilot, exact team/practice flow, API additions, privacy rules, validation plan, and owner decisions required before coding |
-| Growth, free access, earned Plus, subscriptions, sponsorships, commerce, and advertising | `docs/growth-revenue-strategy.md` | Growth-first hybrid revenue decision, access model, commercial guardrails, rollout stages, and scorecard |
-| Zero-budget public launch, early-runner recruitment, outreach copy, and launch measurement | `docs/zero-budget-launch.md` | Positioning, first-30-day actions, relationship-calibrated messages, interview prompts, scorecard, and funding gate |
-| Simplified product UX, primary navigation, AI role, plan presentation, and social model | `docs/simplified-product-ux.md` | Target direction for Together, Today, Me, guidance behavior, workout flows, and recent activity cards |
-| iOS activity-flow refactor, presentation/state boundaries, map ownership, and verification | `docs/activity-flow-architecture.md` | Refactor plan, invariants, current entry-point limits, and acceptance matrix |
-| Activity launch dock, contextual Today/Start decision, goal defaults, countdown, and live-run behavior | `docs/activity-launch-live-ux.md` | Implemented map-first launch flow, flat dock contract, goal editing, and recording transition |
-| Dog companion activity context, UX, data, coaching, privacy, and acceptance rules | `docs/dog-companion-activities.md` | Canonical `With dog` behavior for Run, Walk, Hike, and Bike without creating a separate sport |
-| Dog companion implementation handoff | `docs/dog-companion-activities-implementation-prompt.md` | Copy-ready backend, iOS, and Android prompt covering persistence, sync, recovery, analytics, localization, and verification |
-| Engineering handoff for simplified product, onboarding, and cycle-aware UI | `docs/product-ui-engineering-handoff.md` | Shared SwiftUI component contracts, screen states, accessibility, privacy, analytics, and acceptance criteria |
-| Product behavior, feature adoption, event taxonomy, analytics privacy, and provider selection | `docs/product-analytics.md` | Core and feature funnels, framework evaluation, provider-neutral event contract, migration strategy, and rollout sequence |
-| Personal invitation rewards, contribution codes, Plus capabilities, qualification, and redemption | `docs/invitation-entitlements.md` | Paid-feature gates, referral rules, grant composition, reward APIs, and database rebuild |
-| RevenueCat subscriptions, platform keys, products, webhooks, entitlement reconciliation, and launch checklist | `docs/subscriptions.md` | Shared iOS/Android purchase setup and backend-authoritative Plus access |
-| Rewards administrator portal, Google web sign-in, deployment, operations, and security | `docs/rewards-admin-portal.md` | Portal URL, required OAuth and allowlist configuration, workflows, privacy, and verification |
-| Client/backend replacement strategy and vertical migration sequence | `docs/simplified-product-refactor-plan.md` | Keep/replace/delete decisions, target modules and APIs, database reset, effort, risks, and cutover plan |
-| Simplified product flow prototype | `docs/prototypes/outbound-major-flow.html` | Clickable wireframe for Today, quick-run goals, readiness, workout detail, live run, feedback, learned insights, Together, club runs, and Me |
-| Activity start and live-run prototype | `docs/prototypes/activity-start-live-wireframe.html` | Clickable flat launch dock with peer goal modes, card-triggered compact goal chooser, contextual Today/Start control, icon-led setup, countdown, goal-specific live metrics, and expandable map |
-| Social MVP wireframe | `docs/prototypes/social-mvp-wireframe.html` | Focused Social tab, connections entry, groups, notifications, and feed wireframe captured before implementation |
-| Apple Workout coexistence, phone-free Watch recording, running parity, and remaining acceptance checks | `docs/apple-watch-running-parity.md` | P0/P1 behavior, recording ownership, import/reconciliation, Watch controls, and deferred roadmap |
-| Device, wearable, HealthKit, and third-party app integration planning | `docs/device-integration.md` | Feasible integration paths, vendor/app coverage, current signing constraints, and recommended rollout order |
-| Safety, trusted contacts, live location sharing, and route privacy | `docs/safety-live-tracking.md` | Product scope, privacy rules, backend shape, iOS modules, and rollout plan for live tracking |
-| Runner utilities, gear, PRs, race predictions, indoor/manual sessions, and source attribution | `docs/runner-utilities.md` | Practical runner feature sequencing, data model direction, UX surfaces, and metric rules |
-| Strava history import, accepted activity files, ZIP/gzip reading, and deduplication | `docs/strava-import.md` | User-driven export flow, supported formats, distance-unit inference, file map, and known gaps |
-| Account preferences, cross-phone stretch/launch restoration, revisions, offline outbox, and schema deployment | `docs/account-preferences.md` | Synced configuration contract, conflict/reset policy, client ownership, and rollout checks |
-| Account-wide statistics ownership, snapshot contract, offline cache, paged history, import identity, and rollout | `docs/account-statistics.md` | Server-authoritative statistics independent of client history completeness, revisions, derived facts, and additive backfill |
-| Progress comparisons, trend ranges, training load, insight eligibility, and grounded explanations | `docs/progress-insights.md` | V1-V4 Progress contract, thresholds, privacy boundaries, and extension rules |
-| Apple Music, Spotify, playback UX, and music-provider rollout planning | `docs/music-integration.md` | Concrete music integration plan, provider constraints, Swift module boundaries, plist/auth changes, and phased delivery |
-| Motivation UX, daily guide loops, comeback flows, and home-screen engagement | `docs/motivation-ux.md` | UX spec for daily spark, compact `Now` action, momentum states, and post-activity reflection |
-| Post-save activity celebration, route animation, stretch choices, timing, and cross-platform parity | `docs/activity-post-save-celebration.md` | Persistent iOS-first post-save page with stretch program choices and the Android parity target |
-| Stretch catalog, reusable entry points, customization, generation and verification | `docs/stretch-routines.md` | Shared movement/template source, local editor persistence, independent screen APIs and manual checks |
-| Complete orange illustration pack and reference run routines | `artifacts/stretch-illustrations/index.html` | Offline 78-exercise SVG/PNG catalog, source guide/prompts, instructions and four run sequences; not the app’s full movement catalog |
-| Historical post-save stretching implementation prompt | `docs/post-workout-stretch-implementation-prompt.md` | Legacy implementation checklist; the current routine and post-save product contract is in `docs/activity-post-save-celebration.md` |
-| Badge strategy, recognition UX, unlock rules, and reward system rollout | `docs/recognition-rewards.md` | Product spec for Outbound's recognition layer, V1 badge families, unlock logic, and Me/post-run/Social placement |
-| Goal setting, weekly progress, and guide-led focus flows | `docs/goals-progress.md` | Product and implementation spec for local-first goals, progress tracking, and conversational setup |
-| Community route discovery, owner publishing, bookmarks, import/export, route privacy | `docs/route-saving-sharing.md` | Public route-library UX, backend model/API, safety trimming, GPX/GeoJSON preparation, and route-guided recording |
-| Recorded route storage, sampling normalization, compact encoding, and migration | `docs/route-storage-optimization.md` | Versioned route blob design, post-recording resampling, precision policy, local/backend boundaries, and verification |
-| Activity detail page, maps, elevation, splits, route controls | `docs/activity-detail.md` | Current activity-detail layout, data model needs, elevation-profile behavior, and rollout notes |
-| Social tab, feed, clubs, relays, challenges, rivalry loops | `docs/social.md` | Social product loops, current local UI shape, future backend contracts |
-| Android Social feature-parity implementation prompt | `docs/android-social-parity-prompt.md` | Historical parity reference; the implemented Android contract is documented in `docs/run-groups.md` and `docs/android-port.md` |
-| Consolidated activity-generic Groups, creation, trust policies, Weekly Themes, names, UX, data, APIs, migration, and rollout | `docs/run-groups.md` | Canonical implemented contract for one Group product, server-enforced workout privacy, and Group containers kept off Today |
-| Implementation record for consolidated Groups | `docs/run-groups-handoff.md` | Completed cutover, rebuild command, verification, and focused pointers; canonical rules remain in `docs/run-groups.md` |
-| Historical private motivation behavior | `docs/your-circle.md` | Archived pre-consolidation reference only; use `docs/run-groups.md` for the implemented Group product |
-| Activity-event creation, invitations, discovery, recording, and results | `docs/social.md` | Durable event model, lifecycle, owner/participant behavior, personal activity links, and rollout |
-| Original activity-event interaction wireframe | `docs/prototypes/future-activities-e2e.html` | Early organizer and invitee flow; use as a reference rather than a naming or data-model contract |
-| Social regression status and defect log | `docs/social-qa.md` | Latest seeded UI and real-server Social test coverage, findings, and remaining gaps |
-| In-app inbox, push delivery, device registration, payloads, routing, rollout | `docs/notifications.md` | Shared backend/iOS notification contract, configuration, privacy rules, and deferred scope |
-| Live group run sharing with friend pins on the in-session map | `docs/superpowers/specs/2026-06-20-live-group-run-sharing-design.md` | Product and architecture design for invite-link mutual group sharing, participant presence, map overlays, and rollout |
-| Live group run sharing implementation steps | `docs/superpowers/plans/2026-06-20-live-group-run-sharing.md` | Scoped implementation plan for backend live group sessions, iOS group store, setup controls, and map overlays |
-| Activity start screen polish, goal chips, setup card hierarchy | `docs/superpowers/specs/2026-05-30-start-activity-polish-design.md` | Focused design for fixing wrapped goal chips and tightening the start activity setup UI |
-| Activity start screen polish implementation steps | `docs/superpowers/plans/2026-05-30-start-activity-polish.md` | Scoped plan for the selected start activity polish pass in `RecordView` |
-| Live guide announcement cadence and moment direction | `docs/superpowers/specs/2026-05-30-guide-moment-director-design.md` | Lightweight design for making spoken live guide nudges feel high-presence without repetitive stat recaps |
-| Guide moment director implementation steps | `docs/superpowers/plans/2026-05-30-guide-moment-director.md` | Scoped plan for the in-place `VirtualGuide` moment-direction pass |
-| Remaining Firebase services and legacy-auth migration | `docs/firebase.md` | Analytics, Messaging, storage, plist, legacy bearer toggle, debug personas |
-| First-party Apple authentication and sessions | `docs/superpowers/specs/2026-08-20-first-party-auth-sessions-design.md` | Approved identity, token, refresh, migration, and iOS security contract |
-| First-party auth implementation steps | `docs/superpowers/plans/2026-08-20-first-party-auth-sessions.md` | Backend, iOS, tooling, documentation, and verification tasks |
-| Builds, tests, device install, signing, simulator IDs | `docs/build-test-device.md` | Build-only checks, named terminal UI flows, test commands, device IDs, entitlement constraints |
-| Repeatable iOS demo video capture and exports | `docs/ios-demo-capture.md` | Harvest Half Marathon UI-test story, Simulator recording, privacy controls, and raw/social/loop outputs |
-| App Store screenshot recapture, populated live-sharing example, and framed exports | `artifacts/app-store-screenshots/README.md` | Current synthetic capture package, simulator-only routing, build/capture/compose commands, and review limits |
-| iOS publishing, upload retries/stalls, TestFlight, App Store submission | `docs/app-store-release.md` | Required release runbook: resumable uploader, saved IPA/checkpoints, safe recovery, key roles, retained incident lessons, and submission verification |
-| Current TestFlight and App Store submission copy and owner fill-ins | `docs/testflight-1.0.md` | Copy-ready beta description, public-release notes, test instructions, review notes, privacy draft, and upload checklist |
+Replace the example keywords with the task's terms. If a route is missing, use `rg --files docs` to locate a specific file.
 
 ## Documentation Rules
 
-- Keep this index short enough to scan quickly.
-- Add new docs only when a topic is large or frequently reused.
-- Do not move volatile implementation details into multiple docs. Link to one source of truth instead.
-- For command output, document the command and expected result, not a full transcript.
+- Add new documents here with when to open them and what they contain; use the detailed map for less common routes.
+- Keep this entry point concise. Keep product facts and implementation detail in their focused documents.
+- Update docs with code when behavior, commands, setup, architecture, or ownership changes.
+- Document commands and expected results instead of pasted logs.
