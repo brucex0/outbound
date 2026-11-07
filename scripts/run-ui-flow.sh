@@ -61,7 +61,7 @@ else
   build_options+=(CODE_SIGNING_ALLOWED=NO)
 fi
 
-if [[ "$flow" == activity-photos ]]; then
+if [[ "$flow" == activity-photos || "$flow" == companion ]]; then
   # Retain XCTest results/screenshots without a potentially stalled sysdiagnose.
   build_options+=(-collect-test-diagnostics never)
 fi
