@@ -138,13 +138,13 @@ fun GroupDetailScreen(
             .map { it.value }
     }
     val canManage = group.currentUserRole in setOf("owner", "admin") && group.lifecycle != "archived"
-    val canInviteMore = group.canInvite && group.lifecycle != "archived" && group.memberCount + group.invitations.count { it.status in setOf("pending", "awaiting_approval") } < group.memberLimit
+    val isMember = group.currentUserRole != null || orderedMembers.any { it.isCurrentUser }
+    val canInviteMore = isMember && group.lifecycle != "archived" && group.memberCount + group.invitations.count { it.status in setOf("pending", "awaiting_approval") } < group.memberLimit
     fun memberCanBeRemoved(member: GroupMember) = canManage && !member.isCurrentUser && member.role != "owner" &&
         (group.currentUserRole == "owner" || member.role == "member")
 
     val context = LocalContext.current
     val isCommunity = group.trustPolicy == "community"
-    val isMember = group.currentUserRole != null || orderedMembers.any { it.isCurrentUser }
     val dateFormatter = remember(context) { java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT, context.resources.configuration.locales[0]) }
 
     group.recentMoments.firstOrNull { it.id == selectedMomentID }?.let { moment ->
