@@ -6,7 +6,7 @@ Use this for tool selection, Codex reasoning presets, task briefs, and handoffs.
 
 | Work | Starting tool |
 | --- | --- |
-| Small, well-defined edits, documentation, repetitive changes, focused code discovery | Freebuff, or Codex Routine when keeping an existing task's context is useful |
+| Small, well-defined edits, documentation, repetitive changes, focused code discovery | Codex Simple (GPT-6 Luna), or Freebuff |
 | Routine implementation with clear acceptance criteria | Codex Routine |
 | Ambiguous bugs, architecture, authentication, persistence, cross-platform contracts, consequential review | Codex Deep |
 | Unresolved reasoning-heavy investigation | Codex Deep with Extra High override |
@@ -20,17 +20,19 @@ Use this for tool selection, Codex reasoning presets, task briefs, and handoffs.
 
 The user config keeps `gpt-6.1-sol` and defaults to Medium reasoning with Standard service. The installed CLI uses separate profile files:
 
-- `~/.codex/routine.config.toml`: Medium reasoning, Standard service.
+- `~/.codex/simple.config.toml`: GPT-6 Luna, Low reasoning, Standard service; use for small, well-defined tasks.
+- `~/.codex/routine.config.toml`: GPT-6.1 Sol, Medium reasoning, Standard service.
 - `~/.codex/deep.config.toml`: High reasoning, Standard service.
-- CLI: `codex --profile routine` or `codex --profile deep` from the project directory.
+- CLI: `codex --profile simple`, `codex --profile routine`, or `codex --profile deep` from the project directory.
+- Start simple tasks with Simple; move to Routine or Deep when scope or uncertainty grows, or after one unsuccessful correction cycle.
 - For an unusually demanding task: `codex --profile deep -c 'model_reasoning_effort="xhigh"'`.
 - In the desktop app, select the equivalent model, reasoning, and Standard speed in the chat controls. Existing chats may retain their settings; CLI profiles are not desktop preset buttons.
 
 These personal settings are outside Git. Other contributors can create equivalent profile files using:
 
 ```toml
-model = "gpt-6.1-sol"
-model_reasoning_effort = "medium" # Use "high" for deep.config.toml.
+model = "gpt-6-luna" # Use "gpt-6.1-sol" for routine/deep.
+model_reasoning_effort = "low" # Use "medium" for routine, "high" for deep.
 service_tier = "default"
 ```
 
