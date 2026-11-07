@@ -17,20 +17,20 @@ final class LiveLocationFreshnessUITests: XCTestCase {
         // Settle first-install permissions before arming the group fixture.
         let app = launchFixtureApp(extraArguments: baseArguments)
         app.terminate()
-        app.launchArguments.append("-OutboundGroupRecoveryUITestSetup")
+        app.launchArguments += ["-OutboundGroupRecoveryUITestSetup", "-OutboundUITestLiveLocationSingleFix"]
         app.launch()
         dismissFixturePermissionAlerts(app)
-
-        let joined = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            fixture.count("POST", "/live/group-runs/activity-events/\(LiveLocationFixture.eventID)") == 1
-        }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [joined], timeout: 10), .completed,
-                       "The recording start must join the live group session")
 
         let start = app.buttons["tab.start"]
         XCTAssertTrue(start.waitForExistence(timeout: 20), app.debugDescription)
         start.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         XCTAssertTrue(app.buttons["Pause activity"].waitForExistence(timeout: 20), app.debugDescription)
+
+        let joined = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            fixture.count("POST", "/live/group-runs/activity-events/\(LiveLocationFixture.eventID)") == 1
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [joined], timeout: 10), .completed,
+                       "The recording start must join the live group session exactly once; got \(fixture.count("POST", "/live/group-runs/activity-events/\(LiveLocationFixture.eventID)"))")
 
         let alice = app.buttons["live.group.participant.person-2"]
         XCTAssertTrue(alice.waitForExistence(timeout: 20), app.debugDescription)
@@ -44,6 +44,10 @@ final class LiveLocationFreshnessUITests: XCTestCase {
         }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [checkpointed], timeout: 15), .completed,
                        "Recording must publish a recovery checkpoint")
+        XCTAssertEqual(
+            fixture.count("PATCH", "/live/group-runs/\(LiveLocationFixture.sessionID)/participants/me/location"), 1,
+            "The single measured fix must produce exactly one recovery checkpoint"
+        )
 
         let aliceValue = alice.value as? String ?? ""
         XCTAssertTrue(aliceValue.hasPrefix("Sharing location"), aliceValue)

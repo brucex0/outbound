@@ -271,6 +271,21 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     func startTracking(activityType: ActivityType = .running) {
+#if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.arguments.contains("-OutboundUITestSeedData"),
+           ProcessInfo.processInfo.arguments.contains("-OutboundUITestLiveLocationSingleFix") {
+            // Exercise real recorder snapshots/checkpoints without depending on
+            // Simulator GPS. Keep physical callbacks suppressed after this fix
+            // so the freshness UI must age out using its display clock alone.
+            startSimulatedTracking(activityType: activityType)
+            ingestSimulatedLocation(CLLocation(
+                coordinate: CLLocationCoordinate2D(latitude: 47.670, longitude: -122.120),
+                altitude: 12, horizontalAccuracy: 5, verticalAccuracy: 5,
+                timestamp: Date()
+            ))
+            return
+        }
+#endif
 #if DEBUG
         clearTestOverrides()
         isSimulatingLocations = false

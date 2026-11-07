@@ -233,6 +233,13 @@ extension ActivityFlowCoordinator {
             selectedIntent.activityEvent = ActivityFlowStore.shared.selectedEventForStart(in: self.dependencies.socialStore.state.upcomingRuns)
             recordingIntent = selectedIntent
         }
+#if DEBUG && targetEnvironment(simulator)
+        if self.singleFixGroupRecoveryUITestRequested {
+            // Today can replace setup intent after appearance. Pin this explicit
+            // fixture's event at the start boundary, without a scheduling delay.
+            recordingIntent = self.groupRecoveryUITestIntent
+        }
+#endif
         let intent = recordingIntent
         if let activityEventID = intent?.activityEvent?.id {
             self.dependencies.socialStore.prepareToRecord(activityEventID: activityEventID)
@@ -392,6 +399,26 @@ extension ActivityFlowCoordinator {
     }
 
 #if DEBUG
+    private var groupRecoveryUITestIntent: SessionIntent {
+        SessionIntent(
+            id: "ui-recovery-event", sport: .run, title: "Recovery group run",
+            detail: "Synthetic UI recovery fixture", guideLine: "", startLabel: "Start recovery run",
+            activityEvent: ActivityEventLaunchContext(
+                id: "ui-recovery-event", title: "Recovery group run", role: "organizer",
+                attendanceMode: "remote", organizerName: "Fixture runner"
+            )
+        )
+    }
+
+#if targetEnvironment(simulator)
+    private var singleFixGroupRecoveryUITestRequested: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("-OutboundUITestSeedData")
+            && arguments.contains("-OutboundGroupRecoveryUITestSetup")
+            && arguments.contains("-OutboundUITestLiveLocationSingleFix")
+    }
+#endif
+
     func configureRequestedGroupRecoveryTestIfNeeded() {
         guard self.host.isVisible, self.recorder.state == .idle, !self.didConfigureRequestedGroupRecoveryTest,
               ProcessInfo.processInfo.arguments.contains("-OutboundGroupRecoveryUITestSetup")
@@ -399,16 +426,17 @@ extension ActivityFlowCoordinator {
         self.didConfigureRequestedGroupRecoveryTest = true
         self.setup.isIndoorSession = true
         if ProcessInfo.processInfo.arguments.contains("-OutboundTodayGroupJoinUITest") { return }
+#if targetEnvironment(simulator)
+        if self.singleFixGroupRecoveryUITestRequested {
+            // Anchor the freshness roster after countdown, rather than letting
+            // first-start UI work consume its 15-second freshness window.
+            self.setup.plannedIntent = self.groupRecoveryUITestIntent
+            return
+        }
+#endif
         Task {
             await self.dependencies.liveGroupStore.joinActivityEvent("ui-recovery-event")
-            self.setup.plannedIntent = SessionIntent(
-                id: "ui-recovery-event", sport: .run, title: "Recovery group run",
-                detail: "Synthetic UI recovery fixture", guideLine: "", startLabel: "Start recovery run",
-                activityEvent: ActivityEventLaunchContext(
-                    id: "ui-recovery-event", title: "Recovery group run", role: "organizer",
-                    attendanceMode: "remote", organizerName: "Fixture runner"
-                )
-            )
+            self.setup.plannedIntent = self.groupRecoveryUITestIntent
         }
     }
 #endif
@@ -654,6 +682,15 @@ extension ActivityFlowCoordinator {
             liveGroupSessionID: self.dependencies.liveGroupStore.isSharing ? self.dependencies.liveGroupStore.activeSession?.id : nil
         )
         self.dependencies.phoneWorkoutCoordinator.markPhoneRecorderStarted()
+#if DEBUG && targetEnvironment(simulator)
+        if self.singleFixGroupRecoveryUITestRequested,
+           let eventID = self.activeIntent?.activityEvent?.id {
+            // The recorder retains its single measured fix for subsequent
+            // timer snapshots. Ingest cannot checkpoint until join applies the
+            // fresh roster, so the first older PATCH response exercises merging.
+            Task { await self.dependencies.liveGroupStore.joinActivityEvent(eventID) }
+        }
+#endif
     }
 
     func updateLiveActivity(
