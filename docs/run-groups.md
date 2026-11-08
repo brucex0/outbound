@@ -425,3 +425,9 @@ Use `npm run db:rebuild` only for an explicitly disposable local database. Mobil
 - Existing activity-start/save analytics count event-linked recordings as group activity even without location sharing. No names, event IDs, or coordinates are added to analytics.
 - Schema rollout: from `backend/`, run `npm run db:generate`, `npm run build`, then `npm run db:push` before deploying the server. Existing events have no actual-start timestamp until a new start or saved upload reconciles them; no historical backfill is required.
 - Android uses the same server capability, actual-start timestamp, expiring recording presence, attribution/privacy contract, and localized phrases as iOS. Missing capability in older cached responses falls back to known owner/RSVP authorization; explicit server denial wins.
+
+## iOS non-owner leave (iteration 1)
+
+- Group detail’s overflow menu offers **Leave group** to members and admins, with confirmation. Owners do not see it. Success returns to Groups with the existing toast and refreshes Social.
+- The backend transaction rechecks the active non-owner membership, withdraws going RSVPs for group events that have not started, ends the caller’s event-linked live-map memberships, and clears their server location snapshots. Other participants and personal recordings remain intact.
+- Existing `group_member_left` analytics retain only the participant-count bucket. Android UI is unchanged.

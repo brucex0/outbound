@@ -853,6 +853,10 @@ final class APIClient {
         try await post("/social/activity-events/\(id)/rsvp", body: ActivityEventAttendanceRequestDTO(attendanceMode: attendanceMode))
     }
 
+    func setActivityEventArrival(id: String, arrived: Bool) async throws -> SocialConnectionMutationDTO {
+        try await post("/social/activity-events/\(id)/arrival", body: ["arrived": arrived])
+    }
+
     func leaveActivityEvent(id: String) async throws -> SocialConnectionMutationDTO {
         try await delete("/social/activity-events/\(id)/rsvp")
     }

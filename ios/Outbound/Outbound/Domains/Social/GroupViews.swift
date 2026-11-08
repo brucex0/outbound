@@ -734,6 +734,10 @@ private struct GroupCreatedView: View {
 }
 
 struct GroupDetailView: View {
+    @EnvironmentObject private var liveGroupStore: LiveGroupStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var showsLeaveConfirmation = false
+    @State private var isLeaving = false
     @Environment(\.analyticsManager) private var analyticsManager
     @EnvironmentObject private var groupStore: GroupStore
     @EnvironmentObject private var socialStore: TogetherStore
@@ -777,10 +781,40 @@ struct GroupDetailView: View {
         .navigationTitle(current.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            if current.role == "member" || current.role == "admin" {
+                Menu {
+                    Button(String(localized: "Leave group", table: "GroupArrival"), role: .destructive) { showsLeaveConfirmation = true }
+                } label: { Image(systemName: "ellipsis") }
+                .accessibilityLabel(String(localized: "Group options", table: "GroupArrival"))
+                .disabled(isLeaving)
+            }
             if current.role == "owner" || current.role == "admin" {
                 NavigationLink { GroupManagementView(group: current) } label: { Image(systemName: "gearshape") }
                     .accessibilityLabel(String(localized: "group.management", defaultValue: "Group settings"))
             }
+        }
+        .confirmationDialog(String(localized: "Leave this group?", table: "GroupArrival"), isPresented: $showsLeaveConfirmation, titleVisibility: .visible) {
+            Button(String(localized: "Leave group", table: "GroupArrival"), role: .destructive) {
+                guard !isLeaving else { return }
+                isLeaving = true
+                Task {
+                    defer { isLeaving = false }
+                    let sharedEvent = if let eventID = liveGroupStore.activeSession?.activityEventId {
+                        await socialStore.activityEventDetail(id: eventID)
+                    } else { nil as ActivityEventDetailDTO? }
+                    if await groupStore.leave(current) {
+                        track(.groupMemberLeft, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))])
+                        if sharedEvent?.group?.id == current.id {
+                            liveGroupStore.leave()
+                        }
+                        await socialStore.refresh()
+                        dismiss()
+                    }
+                }
+            }
+            Button(String(localized: "Cancel", table: "GroupArrival"), role: .cancel) {}
+        } message: {
+            Text(String(localized: "You’ll lose access to group content and leave upcoming group activities. Your personal recordings will be kept.", table: "GroupArrival"))
         }
         .sheet(isPresented: $showsPlanActivity, onDismiss: refreshAfterPlanning) {
             CreateActivityEventView(
@@ -1819,8 +1853,6 @@ struct GroupManagementView: View {
                         Button(String(localized: "group.archive", defaultValue: "Archive Group"), role: .destructive) { showsArchiveConfirmation = true }
                     }
                 }
-            } else if current.role == "member" {
-                Section { Button(String(localized: "group.leave", defaultValue: "Leave Group"), role: .destructive) { Task { if await groupStore.leave(current) { track(.groupMemberLeft, [.participantCountBucket: .string(ProductAnalyticsBucket.count(current.memberCount))]); dismiss() } } } }
             }
         }
         .navigationTitle(String(localized: "group.management", defaultValue: "Group settings"))

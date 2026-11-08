@@ -446,3 +446,5 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - Android post-run guidance feedback mirrors iOS `live_guidance_feedback_submitted`: bounded `selection_type=helpful|too_much|too_generic|bad_timing` and `cue_count_bucket`. Counts persist locally; analytics excludes coaching text and workout/activity identifiers.
 
 - Bundled countdown playback continues to report `activity_voice_enqueue` with `source_type=bundled_audio` and success/failed results; playback failure shows one transient unavailable notice per countdown, independently of full coaching-pack readiness.
+
+- Arrival check-in (iOS): `activity_event_arrival_changed` records bounded `selection_type=arrive|undo` and `result=success|failure`, separately from RSVP, recording, and live-map sharing. No location, arrival timestamp, or participant/event identifiers are collected.

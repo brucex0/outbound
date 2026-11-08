@@ -1145,6 +1145,21 @@ final class TogetherStore: ObservableObject {
         }
     }
 
+    func setActivityEventArrival(id: String, arrived: Bool) async -> ActivityEventDetailDTO? {
+        guard activeUserID != nil else { return nil }
+        let generation = authGeneration
+        do {
+            _ = try await api.setActivityEventArrival(id: id, arrived: arrived)
+            let detail = try await api.fetchActivityEvent(id: id)
+            guard generation == authGeneration, activeUserID != nil else { return nil }
+            return detail
+        } catch {
+            if error is CancellationError { return nil }
+            Self.logger.error("Activity arrival update failed (\(Self.networkErrorCode(error), privacy: .public))")
+            return nil
+        }
+    }
+
     func activityEventDetail(id: String) async -> ActivityEventDetailDTO? {
         guard isUITestSeedData || activeUserID != nil else { return nil }
         let generation = authGeneration
@@ -1159,6 +1174,9 @@ final class TogetherStore: ObservableObject {
             return detail
         } catch {
             guard generation == authGeneration else { return nil }
+            if !(error is CancellationError) {
+                Self.logger.error("Activity detail fetch failed (\(Self.networkErrorCode(error), privacy: .public))")
+            }
             errorMessage = error.localizedDescription
             return nil
         }

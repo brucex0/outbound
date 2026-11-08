@@ -1855,6 +1855,7 @@ struct ActivityEventDetailView: View {
     @State private var isCancelling = false
     @State private var cancellationToast: String?
     @State private var isUpdatingAttendance = false
+    @State private var isUpdatingArrival = false
     @StateObject private var startLocationManager = LocationManager()
     @State private var showAllParticipants = false
     private var results: ActivityEventResultDTO? { socialStore.resultsByActivityEventID[run.id] }
@@ -1943,6 +1944,23 @@ struct ActivityEventDetailView: View {
                     }
                 }
             }
+            if let detail, detail.currentUserGoing, detail.currentUserAttendanceMode == "in_person", !isCancelled {
+                TimelineView(.periodic(from: .now, by: 15)) { context in
+                    let available = context.date >= detail.startsAt.addingTimeInterval(-1800)
+                        && context.date < (detail.endsAt ?? detail.startsAt.addingTimeInterval(3600))
+                        && ["scheduled", "active"].contains(detail.status ?? "scheduled")
+                    Section {
+                        if detail.currentUserArrivedAt != nil {
+                            Label(String(localized: "Arrived", table: "GroupArrival"), systemImage: "checkmark.circle.fill")
+                        }
+                        Button(String(localized: detail.currentUserArrivedAt == nil ? "Check in" : "Undo check-in", table: "GroupArrival")) {
+                            updateArrival(arrived: detail.currentUserArrivedAt == nil)
+                        }
+                        .disabled(!available || isUpdatingArrival || isUpdatingAttendance)
+                        .accessibilityIdentifier("activity.arrival.checkin")
+                    }
+                }
+            }
             if canManageActivityLiveMap {
                 Section(String(localized: "record.setup.run_options", defaultValue: "Run options")) {
                     Toggle(String(localized: "group.activity.share_location", table: "GroupActivity"),
@@ -1976,7 +1994,10 @@ struct ActivityEventDetailView: View {
                     }
                 } header: {
                     HStack {
-                        Text(String(format: String(localized: "group.activity.counts", table: "GroupActivity"), detail?.attendeeCount ?? 0, detail?.startedCount ?? 0, participants.filter { $0.outcome == "completed" || $0.outcome == "no_recording" }.count))
+                        VStack(alignment: .leading) {
+                            Text(String(format: String(localized: "%lld of %lld arrived", table: "GroupArrival"), participants.filter { $0.arrivedAt != nil && $0.status == "going" }.count, detail?.attendeeCount ?? 0))
+                            Text(String(format: String(localized: "group.activity.counts", table: "GroupActivity"), detail?.attendeeCount ?? 0, detail?.startedCount ?? 0, participants.filter { $0.outcome == "completed" || $0.outcome == "no_recording" }.count))
+                        }
                         Spacer()
                         if participants.count > 3 {
                             Button(showAllParticipants ? "Less" : "More") {
@@ -2337,6 +2358,10 @@ struct ActivityEventDetailView: View {
             SocialAvatar(name: participant.person.displayName, avatarURL: participant.person.avatarUrl)
             VStack(alignment: .leading, spacing: 2) {
                 Text(participant.person.displayName)
+                if participant.arrivedAt != nil {
+                    Label(String(localized: "Arrived", table: "GroupArrival"), systemImage: "checkmark.circle")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 Text(participant.outcome == "completed" || participant.outcome == "no_recording"
                      ? String(localized: "group.activity.finished", table: "GroupActivity")
                      : participant.isRecording == true ? String(localized: "group.activity.recording", table: "GroupActivity") : participant.startedAt != nil ? String(localized: "group.activity.started", table: "GroupActivity") : String(localized: "group.activity.not_started", table: "GroupActivity"))
@@ -2377,6 +2402,22 @@ struct ActivityEventDetailView: View {
 
     private func join(attendanceMode: String) {
         updateAttendance(attendanceMode: attendanceMode)
+    }
+
+    private func updateArrival(arrived: Bool) {
+        guard !isUpdatingArrival else { return }
+        isUpdatingArrival = true
+        Task {
+            defer { isUpdatingArrival = false }
+            let updated = await socialStore.setActivityEventArrival(id: run.id, arrived: arrived)
+            if let updated { detail = updated }
+            cancellationToast = updated == nil
+                ? String(localized: "Could not update check-in. Try again.", table: "GroupArrival")
+                : String(localized: arrived ? "You’re checked in." : "Check-in undone.", table: "GroupArrival")
+            await analyticsManager?.track(.init(.activityEventArrivalChanged, properties: [
+                .selectionType: .string(arrived ? "arrive" : "undo"), .result: .string(updated == nil ? "failure" : "success")
+            ]))
+        }
     }
 
     private func updateAttendance(attendanceMode: String?) {
