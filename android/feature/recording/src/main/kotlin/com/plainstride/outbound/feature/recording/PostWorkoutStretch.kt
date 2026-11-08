@@ -84,20 +84,16 @@ fun StretchSessionRoute(
     val context = androidx.compose.ui.platform.LocalContext.current
     var routines by remember(kind, launch.entryPoint) { mutableStateOf(StretchCatalog.routines(context, kind, launch.entryPoint)) }
     val initialRoutine = remember(kind, isIndoor, launch.entryPoint) {
-        val remembered = AccountConfigurationStore.record(if (isIndoor) "stretch/last" else "stretch/standing")?.value?.selection
-        routines.firstOrNull { it.preferenceId == remembered && (isIndoor || it.isStanding) }
-            ?: routines.firstOrNull { it.preferenceId == (if (kind == ActivityKind.SWIMMING) "upper_body" else "standing_quick") && (isIndoor || it.isStanding) }
-            ?: routines.firstOrNull { isIndoor || it.isStanding }
-            ?: StretchCatalog.outdoorFallback()
+        StretchCatalog.initial(
+            routines, isIndoor,
+            AccountConfigurationStore.record("stretch/last")?.value?.selection,
+            AccountConfigurationStore.record("stretch/standing")?.value?.selection,
+            kind, launch.entryPoint,
+        )
     }
-    if (initialRoutine == null) {
-        LaunchedEffect(Unit) { onDone() }
-        return
-    }
-
-    var didChooseRoutine by remember { mutableStateOf(false) }
+    var didChooseRoutine by remember(launch.entryPoint) { mutableStateOf(false) }
     val configurationRevision by AccountConfigurationStore.changes.collectAsState()
-    var selectedRoutine by remember(kind) { mutableStateOf(initialRoutine) }
+    var selectedRoutine by remember(kind, launch.entryPoint) { mutableStateOf(initialRoutine) }
     var editing by remember { mutableStateOf(false) }
     var chosen by remember { mutableStateOf(false) }
     var movementIndex by remember { mutableIntStateOf(0) }
@@ -120,10 +116,12 @@ fun StretchSessionRoute(
         if (!chosen && !editing) {
             routines = StretchCatalog.routines(context, kind, launch.entryPoint)
             if (!didChooseRoutine) {
-                val remembered = AccountConfigurationStore.record(if (isIndoor) "stretch/last" else "stretch/standing")?.value?.selection
-                selectedRoutine = routines.firstOrNull { it.preferenceId == remembered && (isIndoor || it.isStanding) }
-                    ?: routines.firstOrNull { it.preferenceId == (if (kind == ActivityKind.SWIMMING) "upper_body" else "standing_quick") && (isIndoor || it.isStanding) }
-                    ?: routines.firstOrNull { isIndoor || it.isStanding } ?: StretchCatalog.outdoorFallback()
+                selectedRoutine = StretchCatalog.initial(
+                    routines, isIndoor,
+                    AccountConfigurationStore.record("stretch/last")?.value?.selection,
+                    AccountConfigurationStore.record("stretch/standing")?.value?.selection,
+                    kind, launch.entryPoint,
+                )
                 movementIndex = 0
             }
         }

@@ -55,6 +55,23 @@ internal object StretchCatalog {
         val template = StretchCatalogData.templates.first()
         return StretchRoutine("stretch_outdoor_reset_v1", template.id, template.title, template.entries, false)
     }
+    fun initial(routines: List<StretchRoutine>, isIndoor: Boolean, last: String?, lastStanding: String?, kind: ActivityKind?, entryPoint: StretchEntryPoint): StretchRoutine {
+        val contextualDefault = when (entryPoint) {
+            StretchEntryPoint.TODAY -> "pre_run"
+            StretchEntryPoint.POST_SAVE -> "standing_standard"
+            StretchEntryPoint.STANDALONE -> null
+        }
+        if (contextualDefault != null) {
+            routines.firstOrNull { it.preferenceId == contextualDefault && (isIndoor || it.isStanding) }?.let { return it }
+        }
+        val remembered = if (entryPoint == StretchEntryPoint.STANDALONE) {
+            if (isIndoor) last else lastStanding
+        } else null
+        return routines.firstOrNull { it.preferenceId == remembered && (isIndoor || it.isStanding) }
+            ?: routines.firstOrNull { it.preferenceId == (if (kind == ActivityKind.SWIMMING) "upper_body" else "standing_quick") && (isIndoor || it.isStanding) }
+            ?: routines.firstOrNull { isIndoor || it.isStanding }
+            ?: outdoorFallback()
+    }
     fun routines(context: Context, kind: ActivityKind?, entryPoint: StretchEntryPoint = StretchEntryPoint.STANDALONE): List<StretchRoutine> = StretchCatalogData.templates.filter { entryPoint != StretchEntryPoint.POST_SAVE || it.id != "pre_run" }.map { template ->
         val saved = StretchCustomizationStore(context).load(template.id)
         val suffix = template.wireSuffix
