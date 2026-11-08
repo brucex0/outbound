@@ -1408,7 +1408,7 @@ model SocialGroup {
   presetCheersEnabled    Boolean            @default(false)
   noticesEnabled         Boolean            @default(false)
   scheduledActivitiesEnabled Boolean         @default(true)
-  memberActivityCreation Boolean            @default(false)
+  memberActivityCreation Boolean            @default(true)
   memberLimit            Int                @default(500)
   resetWeekday           Int                @default(1) // ISO weekday, 1 = Monday
   timeZone               String             @default("UTC")

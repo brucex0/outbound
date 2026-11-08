@@ -145,7 +145,7 @@ export async function createActivitySeries(creatorId: string, groupId: string, v
   try {
     return await seriesTransaction(async (tx) => {
     const { group, member } = await assertSeriesManager(tx, { groupId }, creatorId, true);
-    if (!["owner", "admin"].includes(member.role) && !(group.trustPolicy === "trusted_private" && group.memberActivityCreation)) throw new SeriesError(403, "Group activity creation is not available to this member.");
+    if (!["owner", "admin"].includes(member.role) && !group.memberActivityCreation) throw new SeriesError(403, "Group activity creation is not available to this member.");
     const retried = await tx.groupActivitySeries.findUnique({ where: { creationKey: key }, include: { events: { orderBy: { startsAt: "asc" }, take: 1 } } });
     if (retried?.events[0]) return retried.events[0].id;
     const series = await tx.groupActivitySeries.create({ data: { creatorId, groupId, visibility, creationKey: key, ...seriesDefinition(input, recurrence) } });
@@ -249,12 +249,15 @@ async function assertSeriesManager(db: Database, series: Pick<GroupActivitySerie
 export async function cancelActivitySeries(eventId: string, actorId: string, scope: "this" | "following" | "series") {
   await seriesTransaction(async (tx) => {
     const selected = await tx.activityEvent.findUnique({ where: { id: eventId } });
-    if (!selected?.seriesId || selected.creatorId !== actorId) throw new SeriesError(403, "Only the organizer can cancel this activity.");
+    if (!selected?.seriesId) throw new SeriesError(403, "Only the organizer or a Group manager can cancel this activity.");
     if (selected.status === "cancelled" && scope === "this") return;
     if (!["scheduled", "cancelled"].includes(selected.status) || selected.startsAt <= new Date()) throw new SeriesError(409, "Only future activities can be cancelled.");
     if (await tx.activityEventParticipant.findFirst({ where: { activityEventId: selected.id, startedAt: { not: null } }, select: { id: true } })) throw new SeriesError(409, "Activities with recorded participation cannot be cancelled.");
     const series = await tx.groupActivitySeries.findUniqueOrThrow({ where: { id: selected.seriesId } });
-    await assertSeriesManager(tx, series, actorId);
+    const { member } = await assertSeriesManager(tx, series, actorId);
+    if (selected.creatorId !== actorId && !["owner", "admin"].includes(member.role)) {
+      throw new SeriesError(403, "Only the organizer or a Group manager can cancel this activity.");
+    }
     if (scope === "this") {
       await tx.activityEvent.update({ where: { id: eventId }, data: { seriesException: true } });
       await cancelActivityEvents(tx, [selected], actorId);

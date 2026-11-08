@@ -752,7 +752,7 @@ router.post("/activity-events", zValidator("json", createActivityEventSchema), a
     const group = await getPrismaClient().socialGroup.findUnique({ where: { id: input.groupId } });
     if (!group || group.lifecycle === "archived" || !group.scheduledActivitiesEnabled) return c.json({ error: "Group activities are not available." }, 422);
     const membership = await assertGroupMember(input.groupId, user.id);
-    const canCreate = membership?.role === "owner" || membership?.role === "admin" || (group.trustPolicy === "trusted_private" && group.memberActivityCreation);
+    const canCreate = membership?.role === "owner" || membership?.role === "admin" || group.memberActivityCreation;
     if (!canCreate) return c.json({ error: "Group activity creation is not available to this member." }, 403);
     groupId = input.groupId;
     groupTrustPolicy = group.trustPolicy;
@@ -856,11 +856,16 @@ router.post("/activity-events/:id/cancel", async (c) => {
     } catch (error) { return seriesError(c, error, "cancel activity series"); }
   }
   const outcome = await prisma.$transaction(async (tx) => {
-    const event = await tx.activityEvent.findFirst({ where: { id, creatorId: user.id } });
+    const event = await tx.activityEvent.findUnique({ where: { id }, select: { id: true, creatorId: true, groupId: true, status: true } });
     if (!event) return "not_found";
+    const groupRole = event.groupId
+      ? (await tx.groupMember.findUnique({ where: { groupId_userId: { groupId: event.groupId, userId: user.id } }, select: { role: true, status: true } }))
+      : null;
+    const canCancel = event.creatorId === user.id || (groupRole?.status === "active" && ["owner", "admin"].includes(groupRole.role));
+    if (!canCancel) return "not_found";
     if (event.status === "cancelled") return "cancelled";
     const changed = await tx.activityEvent.updateMany({
-      where: { id, creatorId: user.id, status: "scheduled", startsAt: { gt: new Date() } },
+      where: { id, status: "scheduled", startsAt: { gt: new Date() } },
       data: { status: "cancelled" },
     });
     if (!changed.count) {
@@ -1734,7 +1739,7 @@ async function visiblePost(postId: string, userId: string) {
 function activityEventInclude(_currentUserId: string) {
   return {
     series: { select: { timeZone: true, intervalWeeks: true, weekdays: true, untilDate: true } },
-    group: { select: { id: true, name: true, trustPolicy: true, members: { where: { userId: _currentUserId, status: "active" }, select: { userId: true } } } },
+    group: { select: { id: true, name: true, trustPolicy: true, members: { where: { userId: _currentUserId, status: "active" }, select: { userId: true, role: true } } } },
     creator: { select: socialPersonSelect },
     options: { orderBy: { sortOrder: "asc" as const } },
     participants: {
@@ -1824,6 +1829,7 @@ function activityEventPayload(activity: any, currentUserId: string, connectionId
     currentUserOutcome: currentParticipant?.outcome ?? null,
     currentUserAttendanceMode: currentParticipant?.attendanceMode ?? null,
     currentUserRole: activity.creatorId === currentUserId ? "owner" : currentParticipant?.status === "going" || currentParticipant?.startedAt ? "participant" : "viewer",
+    currentUserCanCancel: activity.creatorId === currentUserId || activity.group?.members?.some((member: any) => member.userId === currentUserId && ["owner", "admin"].includes(member.role)) === true,
     compatibility: shareSafeCompatibility(activity.options),
   };
   if (includeParticipants) {

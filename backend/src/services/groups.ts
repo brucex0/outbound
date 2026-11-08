@@ -128,7 +128,7 @@ export async function createGroup(ownerId: string, input: GroupInput) {
         presetCheersEnabled: template === "motivation",
         noticesEnabled: template === "activities",
         scheduledActivitiesEnabled: true,
-        memberActivityCreation: template === "motivation",
+        memberActivityCreation: true,
         defaultFocusMode: template === "motivation" ? "personal_targets" : "none",
         resetWeekday, timeZone,
         members: { create: { userId: ownerId, role: "owner", displayNameSnapshot: owner.displayName, avatarUrlSnapshot: owner.avatarUrl } },
@@ -381,6 +381,7 @@ export async function groupPayload(groupId: string, viewerId: string, includeHis
     joinPolicy: socialGroup.joinPolicy,
     memberInviteApprovalRequired: socialGroup.trustPolicy === "community" ? socialGroup.joinPolicy !== "open" : socialGroup.memberInviteApprovalRequired,
     memberInvitesAllowed: socialGroup.memberInvitesAllowed,
+    memberActivityCreation: socialGroup.memberActivityCreation,
     canInvite: socialGroup.lifecycle !== "archived" && socialGroup.members.some((m) => m.userId === viewerId && (m.role !== "member" || socialGroup.memberInvitesAllowed)),
     ...membership,
     featured: socialGroup.featured,
@@ -434,6 +435,7 @@ export async function groupPayload(groupId: string, viewerId: string, includeHis
           : event.participants.some((participant) => participant.userId === viewerId)
             ? "participant"
             : "viewer",
+        currentUserCanCancel: event.creatorId === viewerId || socialGroup.members.some((member) => member.userId === viewerId && ["owner", "admin"].includes(member.role)),
       })),
     recentMoments: [
       ...(week.state === "completed" && week.completedAt ? [{ id: `completion:${week.id}`, type: "weekly_completion", createdAt: week.completedAt, title: null }] : []),
@@ -490,6 +492,7 @@ async function communityGroupPayload(group: any, viewerId: string) {
     joinPolicy: group.joinPolicy === "invite_only" ? "request" : group.joinPolicy,
     memberInviteApprovalRequired: group.joinPolicy !== "open",
     memberInvitesAllowed: group.memberInvitesAllowed,
+    memberActivityCreation: group.memberActivityCreation,
     canInvite: Boolean(viewerMember && (viewerMember.role !== "member" || group.memberInvitesAllowed)) && group.lifecycle !== "archived",
     lifecycle: group.lifecycle,
     featured: group.featured,
@@ -513,7 +516,7 @@ async function communityGroupPayload(group: any, viewerId: string) {
     pendingRequest,
     members: viewerMember ? group.members.map((member: any) => ({ id: member.id, user: compactPerson(member.user), role: member.role, isCurrentUser: member.userId === viewerId })) : [],
     notices,
-    upcomingActivities: activities.map((event: any) => ({ id: event.id, title: event.title, startsAt: event.startsAt, endsAt: event.endsAt, locationName: event.locationName, status: event.status, activityType: event.activityType, attendeeCount: event.participants.length, currentUserGoing: event.participants.some((participant: any) => participant.userId === viewerId) })),
+    upcomingActivities: activities.map((event: any) => ({ id: event.id, title: event.title, startsAt: event.startsAt, endsAt: event.endsAt, locationName: event.locationName, status: event.status, activityType: event.activityType, attendeeCount: event.participants.length, currentUserGoing: event.participants.some((participant: any) => participant.userId === viewerId), currentUserCanCancel: event.creatorId === viewerId || ["owner", "admin"].includes(viewerMember?.role) })),
     recentMoments: [],
   };
 }
