@@ -215,7 +215,7 @@ class RecordingCoordinator internal constructor(
         _events.emit(RecordingEvent.CommandApplied(commandId, RecordingStatus.ACTIVE))
     }
 
-    suspend fun updateLiveOptions(commandId: String, autoPause: Boolean?, voice: Boolean?, pauseAtGoal: Boolean?, goalHandled: Boolean?) = serialized(commandId) {
+    suspend fun updateLiveOptions(commandId: String, autoPause: Boolean?, voice: Boolean?, pauseAtGoal: Boolean?, goalHandled: Boolean?, aiCoach: Boolean? = null) = serialized(commandId) {
         val current = _snapshot.value
         if (current.status !in setOf(RecordingStatus.ACTIVE, RecordingStatus.PAUSED)) return@serialized
         if (autoPause != null) {
@@ -226,6 +226,7 @@ class RecordingCoordinator internal constructor(
             revision = current.revision + 1,
             autoPauseEnabled = autoPause ?: current.autoPauseEnabled,
             liveVoiceGuideEnabled = voice ?: current.liveVoiceGuideEnabled,
+            liveAICoachEnabled = aiCoach ?: current.liveAICoachEnabled,
             livePauseAtGoalEnabled = pauseAtGoal ?: current.livePauseAtGoalEnabled,
             goalPauseHandled = goalHandled ?: current.goalPauseHandled,
         )

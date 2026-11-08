@@ -155,7 +155,7 @@ class RecordingViewModel @Inject constructor(
     private var presentationUnitSystem = MeasurementUnitSystem.metric
     val voiceListening: StateFlow<Boolean> = voice.listening
     init {
-        voice.observe(viewModelScope, snapshot = { snapshot.value }, ::pause, ::resume, ::requestFinish)
+        voice.observe(viewModelScope, snapshot = { snapshot.value }, ::pause, ::resume, ::requestFinish, speechEnabled = { snapshot.value.liveVoiceGuideEnabled ?: mutableState.value.launch.voiceGuideEnabled })
         viewModelScope.launch {
             var registeredSession: String? = null
             var rememberedSession: String? = null
@@ -237,7 +237,10 @@ class RecordingViewModel @Inject constructor(
             else restored?.takeIf { it.activityKind == configuration.activityKind } ?: configuration
         val autoPauseEnabled = context.getSharedPreferences(LAUNCH_PREFERENCES, Context.MODE_PRIVATE)
             .getBoolean(autoPauseKey(base.activityKind), AutoPauseDefaults.enabled(base.activityKind))
+        val audioPreferences = com.plainstride.outbound.core.model.activity.ActivityAudioPreferences(context)
         val effective = base.copy(
+            voiceGuideEnabled = audioPreferences.voiceEnabled,
+            aiCoachEnabled = audioPreferences.aiCoachEnabled,
             autoPauseEnabled = autoPauseEnabled,
             autoStopAtGoal = configuration.autoStopAtGoal ?: base.autoStopAtGoal,
             // This is a navigation-time decision from Today, not a persisted setup preference.
@@ -324,6 +327,7 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.Permission to permission.name.lowercase(),
             AnalyticsProperty.GroupRunEnabled to startedWithGroup,
             AnalyticsProperty.VoiceGuideEnabled to launch.voiceGuideEnabled,
+            AnalyticsProperty.AICoachEnabled to (launch.activityKind == ActivityKind.RUNNING && launch.aiCoachEnabled),
             AnalyticsProperty.AutoPauseEnabled to (launch.autoPauseEnabled ?: AutoPauseDefaults.enabled(launch.activityKind)),
             AnalyticsProperty.AutoStopAtGoal to (launch.autoStopAtGoal ?: false),
             AnalyticsProperty.DogCompanionEnabled to (launch.companionType != null),
@@ -350,9 +354,12 @@ class RecordingViewModel @Inject constructor(
         )))
     }
     fun setLiveOption(option: String, enabled: Boolean, goalAlreadyReached: Boolean = false) {
+        if (option == "ai_coach") com.plainstride.outbound.core.model.activity.ActivityAudioPreferences(context).aiCoachEnabled = enabled
+        if (option == "voice_guide" && !enabled) voice.stopSpeech()
         client.updateLiveOptions(newCommandId(),
             autoPause = enabled.takeIf { option == "auto_pause" },
             voice = enabled.takeIf { option == "voice_guide" },
+            aiCoach = enabled.takeIf { option == "ai_coach" },
             goal = enabled.takeIf { option == "auto_stop_at_goal" },
             handled = true.takeIf { option == "auto_stop_at_goal" && enabled && goalAlreadyReached },
         )

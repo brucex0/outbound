@@ -45,8 +45,9 @@ class LiveCoachSchedule {
         goal: RecordingGoal,
         activityKind: ActivityKind,
         imperial: Boolean,
+        aiCoachEnabled: Boolean = true,
     ): ScheduleUpdate {
-        val workout = nextWorkoutCue(snapshot, guidancePlan)
+        val workout = nextWorkoutCue(snapshot, guidancePlan, aiCoachEnabled)
         val progress = nextGoalCue(snapshot, goal, guidancePlan?.progressPolicy, activityKind, imperial)
             ?: nextPeriodicProgress(snapshot, guidancePlan?.progressPolicy, activityKind, imperial)
         lastSnapshot = snapshot
@@ -66,7 +67,7 @@ class LiveCoachSchedule {
         lastGuideSpeechAt = elapsedSeconds
     }
 
-    private fun nextWorkoutCue(snapshot: RecordingSnapshot, plan: GuidancePlan?): ScheduledCue? {
+    private fun nextWorkoutCue(snapshot: RecordingSnapshot, plan: GuidancePlan?, aiCoachEnabled: Boolean): ScheduledCue? {
         for (cue in plan?.cues.orEmpty()) {
             if (cue.moment != LiveCoachMoment.WorkoutInstruction || cue.trigger == null || cue.id in processedWorkoutCueIds) continue
             when (triggerState(cue, lastSnapshot, snapshot)) {
@@ -77,6 +78,7 @@ class LiveCoachSchedule {
                 }
                 TriggerState.Due -> {
                     processedWorkoutCueIds += cue.id
+                    if (!aiCoachEnabled && (cue.instructionId ?: cue.id).startsWith("execution_coaching.")) continue
                     return ScheduledCue(
                         DetectedMoment(
                             moment = LiveCoachMoment.WorkoutInstruction,

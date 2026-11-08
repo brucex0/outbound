@@ -245,6 +245,8 @@ class LiveCoachPlaybackCoordinator @Inject constructor(
     private val output: CoachAudioOutput,
     private val analytics: ProductAnalytics,
 ) {
+    fun stop() = output.stop()
+
     private val reportingScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     suspend fun play(
@@ -259,6 +261,7 @@ class LiveCoachPlaybackCoordinator @Inject constructor(
         fallbackText: String,
         fixedCueKey: String? = FixedCueKeys.forMoment(request.moment),
         localOnly: Boolean = false,
+        onTranscript: (String) -> Unit = {},
     ): PlaybackResult {
         if (localOnly) {
             val audio = packs.cachedAudio(fixedCueKey.orEmpty(), selection, fallbackText)
@@ -304,6 +307,7 @@ class LiveCoachPlaybackCoordinator @Inject constructor(
                     check(metadata.cueRequestId == request.cueRequestId && metadata.moment == request.moment)
                     check(runCatching { Instant.parse(metadata.expiresAt).isAfter(Instant.now()) }.getOrDefault(false))
                     recordProvider(metadata, startedAtNanos, mode, accessReason)
+                    onTranscript(metadata.transcript)
                     // Never speak an older fixed script under the replacement text.
                     if (metadata.source == CueSource.Fixed || metadata.source == CueSource.Cached) {
                         check(metadata.transcript == fallbackText)

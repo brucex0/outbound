@@ -86,7 +86,8 @@
     <string name="today_up_next">Up next</string>
     <string name="today_updating">Updating today…</string>
     <string name="today_view_next">View next workout</string>
-    <string name="today_voice_guide">Voice Guide</string>
+    <string name="today_voice">Voice</string>
+    <string name="today_ai_coach">AI Coach</string>
     <string name="today_walk">Walk</string>
     <string name="today_weather">Weather</string>
     <string name="today_why">Why?</string>

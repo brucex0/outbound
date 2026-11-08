@@ -44,6 +44,7 @@ data class RecordingSnapshot(
     val autoPauseEnabled: Boolean? = null,
     val autoPaused: Boolean = false,
     val liveVoiceGuideEnabled: Boolean? = null,
+    val liveAICoachEnabled: Boolean? = null,
     val livePauseAtGoalEnabled: Boolean? = null,
     val goalPauseHandled: Boolean = false,
     val revision: Long = 0,

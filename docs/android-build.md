@@ -131,6 +131,17 @@ ANDROID_SERIAL=emulator-5554 ./gradlew :feature:recording:connectedDebugAndroidT
 - Verified on Pixel 10 / Android 17 emulator: two focused UI tests passed. They cover current-session toggle presentation/callbacks, unchanged launch defaults, paused/external state updates, explicit-goal eligibility, already-reached goal signaling, and the sharing action.
 - The full phone Debug build also passed. The UI fixture does not establish service-command delivery, actual speech/GPS auto-pause, process-death recovery, or server invitation/removal delivery; verify those separately on connected devices.
 
+### Voice and AI Coach manual acceptance
+
+- On Today select Run and confirm text-only `Voice` and `AI Coach` pills; select Walk, Hike, Bike, and a non-running Planned workout and confirm AI Coach is hidden. Confirm the run-only control returns with its remembered choice.
+- Exercise all four Voice/AI Coach combinations on a run: on/on speaks and displays advice; off/on displays adaptive advice silently; on/off keeps countdown, workout steps, progress and voice Cheers but suppresses adaptive advice and scheduled coaching tips; off/off stays silent and suppresses adaptive advice.
+- In active and paused Workout options, change each independently. Voice must stop ongoing speech/Cheers immediately; AI Coach must clear pending advice and stop its ongoing cue. Confirm spoken stats honor Voice. Live sharing and visual route guidance continue when Voice is off.
+- Relaunch/recover an interrupted recording and check both journaled overrides. Finish/discard and start again: live Voice is session-only, while live AI Coach also becomes the next launch choice. Launch choices default on and persist locally.
+- Inspect English, Spanish and Simplified Chinese, light/dark bright/dark themes, narrow width and large fonts; the settings row must scroll and the live options remain reachable.
+- `today_voice` is Android's current Voice resource. The older `today_voice_guide` annotation in the iOS catalog is historical metadata, is not imported by `scripts/import-android-localizations.mjs`, and must not replace the Android Voice copy.
+
+Build-only verification for this change: `:app:assembleDebug` and the design-system checker passed. Automated tests were not requested. Runtime speech/provider delivery, process-death recovery, and physical-device listening require the manual checks above; compilation does not verify them.
+
 ## Focused Group UI Regression
 
 When UI tests are requested, run on an available Android device/emulator:

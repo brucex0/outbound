@@ -99,6 +99,7 @@ class RecordingService : Service() {
                     if (intent.hasExtra("live_voice")) intent.getBooleanExtra("live_voice", false) else null,
                     if (intent.hasExtra("live_goal")) intent.getBooleanExtra("live_goal", false) else null,
                     if (intent.hasExtra("live_goal_handled")) intent.getBooleanExtra("live_goal_handled", false) else null,
+                    if (intent.hasExtra("live_ai_coach")) intent.getBooleanExtra("live_ai_coach", false) else null,
                 )
                 ACTION_PAUSE -> coordinator.pause(commandId)
                 ACTION_PAUSE_AT_GOAL -> coordinator.pauseAtGoal(
@@ -266,10 +267,11 @@ class RecordingService : Service() {
         }
 
         private const val ACTION_LIVE_OPTIONS = "recording.live_options"
-        fun updateLiveOptions(context: Context, commandId: String, autoPause: Boolean?, voice: Boolean?, goal: Boolean?, handled: Boolean?) =
+        fun updateLiveOptions(context: Context, commandId: String, autoPause: Boolean?, voice: Boolean?, goal: Boolean?, handled: Boolean?, aiCoach: Boolean? = null) =
             dispatch(context, ACTION_LIVE_OPTIONS, commandId) {
                 autoPause?.let { putExtra("live_auto_pause", it) }
                 voice?.let { putExtra("live_voice", it) }
+                aiCoach?.let { putExtra("live_ai_coach", it) }
                 goal?.let { putExtra("live_goal", it) }
                 handled?.let { putExtra("live_goal_handled", it) }
             }

@@ -36,11 +36,22 @@ import androidx.compose.runtime.mutableStateOf
 data class HeardLiveCheer(val shareId:String,val cheerId:String,val senderName:String)
 
 @HiltViewModel class RecordingSafetyViewModel @Inject constructor(val coordinator:LiveShareCoordinator,private val audio:LiveCheerAudioPlayer,private val analytics:com.plainstride.outbound.core.analytics.ProductAnalytics):ViewModel(){
+ private var voiceEnabled = true
+ private var cheerJob: kotlinx.coroutines.Job? = null
+ fun setVoiceEnabled(enabled: Boolean) {
+  voiceEnabled = enabled
+  if (!enabled) cheerJob?.cancel()
+ }
  private val mutableHeard=androidx.compose.runtime.mutableStateOf<HeardLiveCheer?>(null)
  val heard:HeardLiveCheer? get()=mutableHeard.value
- suspend fun receivePendingCheer(){
-  if(mutableHeard.value!=null)return
+ fun receivePendingCheer() {
+  if (!voiceEnabled || cheerJob?.isActive == true) return
+  cheerJob = viewModelScope.launch { receiveCheer() }
+ }
+ private suspend fun receiveCheer(){
+  if(!voiceEnabled || mutableHeard.value!=null)return
   val cheer=coordinator.pendingVoiceCheer().getOrNull()?:return
+  if (!voiceEnabled) return
   val bytes=runCatching{android.util.Base64.decode(cheer.audioBase64,android.util.Base64.DEFAULT)}.getOrNull()?:return
   if(audio.play(bytes)&&coordinator.markVoiceCheerPlayed(cheer).isSuccess){
    mutableHeard.value=HeardLiveCheer(coordinator.active.value?.id.orEmpty(),cheer.id,cheer.sender.displayName)
@@ -55,10 +66,12 @@ data class HeardLiveCheer(val shareId:String,val cheerId:String,val senderName:S
 fun RecordingSafetyEffect(
  snapshot:RecordingSnapshot,
  activityEventId:String?=null,
+ voiceEnabled:Boolean=true,
  onGroupRunState:(SharedLiveRun?)->Unit={},
  viewModel:RecordingSafetyViewModel=hiltViewModel(),
 ){
  val context=androidx.compose.ui.platform.LocalContext.current
+ androidx.compose.runtime.SideEffect { viewModel.setVoiceEnabled(voiceEnabled && snapshot.status == RecordingStatus.ACTIVE) }
  val coordinator=viewModel.coordinator;val prior=remember{mutableStateOf<RecordingStatus?>(null)};val heard=viewModel.heard
  LaunchedEffect(activityEventId) {
   coordinator.group.collect { group ->
@@ -75,10 +88,10 @@ fun RecordingSafetyEffect(
    RecordingStatus.IDLE->if(previous!=null&&previous!=RecordingStatus.IDLE){coordinator.recordingEnded();coordinator.finishRecordingGroupRun(snapshot.accountId)}
    else->Unit
   }
- if(snapshot.status==RecordingStatus.ACTIVE)viewModel.receivePendingCheer()
  }
- LaunchedEffect(snapshot.status,snapshot.sessionId){
-  if(snapshot.status!=RecordingStatus.ACTIVE)return@LaunchedEffect
+ LaunchedEffect(snapshot.status,snapshot.sessionId,voiceEnabled){
+  if(snapshot.status!=RecordingStatus.ACTIVE || !voiceEnabled)return@LaunchedEffect
+  viewModel.receivePendingCheer()
   coordinator.cheerSignals.collect{viewModel.receivePendingCheer()}
  }
  LaunchedEffect(snapshot.latestLocation?.capturedAtEpochMilliseconds,activityEventId){

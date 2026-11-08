@@ -103,10 +103,12 @@
     <string name="recording_elapsed_time">Elapsed Time</string>
     <string name="recording_recenter">Center on your location</string>
     <string name="live_workout_options">Workout options</string>
-    <string name="live_voice_guide">Voice guide</string>
+    <string name="live_voice_guide">Voice</string>
     <string name="live_auto_pause">Auto-pause when stopped</string>
     <string name="live_pause_at_goal">Pause at goal</string>
     <string name="live_sharing_on">On</string>
     <string name="live_sharing_off">Off</string>
     <string name="recording_countdown_voice_unavailable">Countdown voice is unavailable. Your activity will start normally.</string>
+    <string name="live_ai_coach">AI Coach</string>
+    <string name="live_ai_coach_detail">Get adaptive coaching. With Voice off, advice appears onscreen.</string>
 </resources>

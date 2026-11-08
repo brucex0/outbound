@@ -86,7 +86,8 @@
     <string name="today_up_next">A continuación</string>
     <string name="today_updating">Actualizando hoy…</string>
     <string name="today_view_next">Ver el próximo entrenamiento</string>
-    <string name="today_voice_guide">Guía de voz</string>
+    <string name="today_voice">Voz</string>
+    <string name="today_ai_coach">Entrenador IA</string>
     <string name="today_walk">Caminar</string>
     <string name="today_weather">Tiempo</string>
     <string name="today_why">¿Por qué?</string>

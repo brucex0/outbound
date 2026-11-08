@@ -51,12 +51,14 @@ class RecordingVoiceCoordinator @Inject constructor(
         pause: () -> Unit,
         resume: () -> Unit,
         requestFinish: () -> Unit,
+        speechEnabled: () -> Boolean = { true },
     ) {
         val handler = LiveVoiceCommandHandler(object : LiveWorkoutVoiceActions {
             override suspend fun pauseWorkout() = pause()
             override suspend fun resumeWorkout() = resume()
             override suspend fun requestFinishWorkout() = requestFinish()
             override suspend fun speakCurrentStats() {
+                if (!speechEnabled()) return
                 val current = snapshot()
                 val message = context.getString(
                     R.string.recording_spoken_stats,

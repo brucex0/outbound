@@ -86,7 +86,8 @@
     <string name="today_up_next">接下来</string>
     <string name="today_updating">正在更新今日内容…</string>
     <string name="today_view_next">查看下一项训练</string>
-    <string name="today_voice_guide">语音指导</string>
+    <string name="today_voice">语音</string>
+    <string name="today_ai_coach">AI 教练</string>
     <string name="today_walk">步行</string>
     <string name="today_weather">天气</string>
     <string name="today_why">为什么？</string>

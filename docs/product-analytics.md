@@ -128,15 +128,15 @@ Track:
 - `live_share_enabled`;
 - `indoor`;
 - `voice_guide_enabled`;
-- `ai_coach_enabled` (iOS).
+- `ai_coach_enabled` (iOS and Android; false for non-running Android activities).
 - `auto_pause_enabled`.
 - `auto_stop_at_goal`: whether a manual distance, time, or calorie goal is set to pause recording when reached.
 
-iOS AI Coach changes reuse `activity_configuration_changed` with `change_type=ai_coach` and `selection_type=enabled|disabled`; live changes include `source_type=live_workout` and canonical activity type. Voice keeps the existing `voice_guide` analytics identity. No speech or coaching content is collected.
+iOS and Android AI Coach changes reuse `activity_configuration_changed` with `change_type=ai_coach` and `selection_type=enabled|disabled`; live changes include `source_type=live_workout` and canonical activity type. Voice keeps the existing `voice_guide` analytics identity. No speech or coaching content is collected. Onscreen-only Android delivery advances local cue history without emitting speech events or increasing the spoken-cue count.
 
 Auto Pause setup changes use `activity_configuration_changed` with `change_type=auto_pause`, the enabled/disabled selection, and canonical activity type. The preference value is also captured on `activity_started`.
 Goal pause changes use `activity_configuration_changed` with `change_type=auto_stop_at_goal`, the enabled/disabled selection, and canonical activity type. The effective session value is also captured on `activity_started`. Do not include exact goal values in these events.
-Live dashboard changes reuse these events with `source_type=live_workout`, `change_type=voice_guide|auto_pause|auto_stop_at_goal`, enabled/disabled selection, and activity type. These changes apply only to the current session; recipient changes reuse `live_cheer_invitation_configured` with coarse participant counts.
+Live dashboard changes reuse these events with `source_type=live_workout`, `change_type=voice_guide|ai_coach|auto_pause|auto_stop_at_goal`, enabled/disabled selection, and activity type. Voice, auto-pause, and goal-pause changes apply only to the current session; AI Coach also updates its device-local launch preference. Recipient changes reuse `live_cheer_invitation_configured` with coarse participant counts.
 
 `activity_saved` may add coarse duration, distance, goal-completion, and photo-count buckets. Keep exact activity facts in the activity record, not general product analytics.
 

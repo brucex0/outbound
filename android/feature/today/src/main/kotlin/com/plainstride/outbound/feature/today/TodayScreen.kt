@@ -98,6 +98,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -156,11 +157,13 @@ data class TodayManualLaunch(
     val racePlan: TodayRacePlan? = null,
     val raceTitle: String? = null,
     val raceGuideline: String? = null,
+    val aiCoachEnabled: Boolean = true,
 )
 data class TodayLaunchOptions(
     val indoor: Boolean,
     val voiceGuideEnabled: Boolean,
     val companionType: com.plainstride.outbound.core.model.activity.ActivityCompanionType? = null,
+    val aiCoachEnabled: Boolean = true,
 )
 
 @Composable
@@ -370,7 +373,17 @@ fun TodayScreen(
     var activityChoice by rememberSaveable { mutableStateOf(TodayActivityChoice.PLANNED) }
     var goalChoice by rememberSaveable { mutableStateOf(TodayGoalChoice.FREE) }
     var indoor by rememberSaveable { mutableStateOf(false) }
-    var voiceGuideEnabled by rememberSaveable { mutableStateOf(true) }
+    val audioPreferences = remember(context) { com.plainstride.outbound.core.model.activity.ActivityAudioPreferences(context) }
+    var voiceGuideEnabled by remember { mutableStateOf(audioPreferences.voiceEnabled) }
+    var aiCoachEnabled by remember { mutableStateOf(audioPreferences.aiCoachEnabled) }
+    androidx.compose.runtime.DisposableEffect(audioPreferences) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+            voiceGuideEnabled = audioPreferences.voiceEnabled
+            aiCoachEnabled = audioPreferences.aiCoachEnabled
+        }
+        audioPreferences.storage.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { audioPreferences.storage.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
     var companionType by rememberSaveable { mutableStateOf<com.plainstride.outbound.core.model.activity.ActivityCompanionType?>(null) }
     var curatedWorkout by remember { mutableStateOf<StandaloneWorkout?>(null) }
     var distanceMeters by rememberSaveable { mutableStateOf(5_000.0) }
@@ -429,12 +442,12 @@ fun TodayScreen(
     val raceGuideline = racePlan?.let { raceExecution(it, unitSystem) }
     val launchPreparedActivity = launch@ {
         if (activityChoice == TodayActivityChoice.PLANNED) {
-            suggestion?.let { onStart(it, "today_planned", TodayLaunchOptions(indoor, voiceGuideEnabled, companionType)) }
-                ?: onStartFreestyle(TodayLaunchOptions(indoor, voiceGuideEnabled, companionType))
+            suggestion?.let { onStart(it, "today_planned", TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled)) }
+                ?: onStartFreestyle(TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled))
         } else {
             val catalogVersion = (state.catalog as? CachedResource.Available)?.value?.version
             if (goalChoice == TodayGoalChoice.RACE && racePlan == null) { showsRacePlanner = true; return@launch }
-            onStartManual(TodayManualLaunch(activityChoice, goalChoice, distanceMeters, durationSeconds, calories, indoor, voiceGuideEnabled, curatedWorkout, catalogVersion, companionType, autoStopAtGoal, racePlan.takeIf { goalChoice == TodayGoalChoice.RACE }, raceTitle.takeIf { goalChoice == TodayGoalChoice.RACE }, raceGuideline.takeIf { goalChoice == TodayGoalChoice.RACE }))
+            onStartManual(TodayManualLaunch(activityChoice, goalChoice, distanceMeters, durationSeconds, calories, indoor, voiceGuideEnabled, curatedWorkout, catalogVersion, companionType, autoStopAtGoal, racePlan.takeIf { goalChoice == TodayGoalChoice.RACE }, raceTitle.takeIf { goalChoice == TodayGoalChoice.RACE }, raceGuideline.takeIf { goalChoice == TodayGoalChoice.RACE }, aiCoachEnabled))
         }
     }
     LaunchedEffect(startRequest) {
@@ -521,7 +534,7 @@ fun TodayScreen(
                     )
                     state.hasNoCachedSuggestion -> NoSuggestionCard(
                         noPlan = (state.planning as? CachedResource.Available)?.value?.plan == null,
-                        onStartFreestyle = { onStartFreestyle(TodayLaunchOptions(indoor, voiceGuideEnabled, companionType)) },
+                        onStartFreestyle = { onStartFreestyle(TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled)) },
                         onSetUpPlan = onSetUpPlan,
                         onRefresh = onRefresh,
                     )
@@ -558,6 +571,7 @@ fun TodayScreen(
                 goalChoice = goalChoice,
                 indoor = indoor,
                 voiceGuideEnabled = voiceGuideEnabled,
+                aiCoachEnabled = aiCoachEnabled,
                 companionType = companionType,
                 onActivityChoice = { saveManualDraft(markEdited = false); activityChoice = it; if (it != TodayActivityChoice.RUN && goalChoice == TodayGoalChoice.RACE) goalChoice = TodayGoalChoice.FREE; onLaunchConfigurationChanged("activity_type", it.name.lowercase()) },
                 onGoalChoice = { choice ->
@@ -571,7 +585,8 @@ fun TodayScreen(
                     }
                 },
                 onIndoorChanged = { indoor = it; onLaunchConfigurationChanged("environment", if (it) "indoor" else "outdoor") },
-                onVoiceGuideChanged = { voiceGuideEnabled = it; onLaunchConfigurationChanged("voice_guide", if (it) "on" else "off") },
+                onVoiceGuideChanged = { voiceGuideEnabled = it; audioPreferences.voiceEnabled = it; onLaunchConfigurationChanged("voice_guide", if (it) "enabled" else "disabled") },
+                onAICoachChanged = { aiCoachEnabled = it; audioPreferences.aiCoachEnabled = it; onLaunchConfigurationChanged("ai_coach", if (it) "enabled" else "disabled") },
                 onCompanionChanged = { enabled ->
                     companionType = if (enabled) com.plainstride.outbound.core.model.activity.ActivityCompanionType.dog else null
                     onLaunchConfigurationChanged("companion", if (enabled) "on" else "off")
@@ -1009,11 +1024,13 @@ private fun ActivityLaunchDock(
     goalChoice: TodayGoalChoice,
     indoor: Boolean,
     voiceGuideEnabled: Boolean,
+    aiCoachEnabled: Boolean,
     companionType: com.plainstride.outbound.core.model.activity.ActivityCompanionType?,
     onActivityChoice: (TodayActivityChoice) -> Unit,
     onGoalChoice: (TodayGoalChoice) -> Unit,
     onIndoorChanged: (Boolean) -> Unit,
     onVoiceGuideChanged: (Boolean) -> Unit,
+    onAICoachChanged: (Boolean) -> Unit,
     onCompanionChanged: (Boolean) -> Unit,
     onReturnToSession: () -> Unit,
     onOpenDetails: () -> Unit,
@@ -1041,7 +1058,11 @@ private fun ActivityLaunchDock(
                 }
             }
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                UtilityButton(stringResource(R.string.today_voice_guide), onClick = { onVoiceGuideChanged(!voiceGuideEnabled) }, selected = voiceGuideEnabled)
+                UtilityButton(stringResource(R.string.today_voice), onClick = { onVoiceGuideChanged(!voiceGuideEnabled) }, selected = voiceGuideEnabled, toggle = true)
+                if (activityChoice == TodayActivityChoice.RUN ||
+                    (activityChoice == TodayActivityChoice.PLANNED && (suggestion == null || suggestion.modality == Modality.run))) {
+                    UtilityButton(stringResource(R.string.today_ai_coach), onClick = { onAICoachChanged(!aiCoachEnabled) }, selected = aiCoachEnabled, toggle = true)
+                }
                 if (activityChoice.isCompanionEligible(suggestion)) {
                     UtilityButton(
                         label = stringResource(R.string.today_companion_dog_title),
@@ -1096,9 +1117,15 @@ private fun GoalPill(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun UtilityButton(label: String, onClick: () -> Unit, selected: Boolean = false) {
+private fun UtilityButton(label: String, onClick: () -> Unit, selected: Boolean = false, toggle: Boolean = false) {
     Surface(
         onClick = onClick,
+        modifier = Modifier.heightIn(min = 48.dp).semantics {
+            if (toggle) {
+                role = Role.Switch
+                toggleableState = androidx.compose.ui.state.ToggleableState(selected)
+            }
+        },
         shape = CircleShape,
         color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
     ) {

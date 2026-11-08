@@ -192,6 +192,7 @@ fun RecordingRoute(
     sessionEffect: @Composable (RecordingSnapshot, RecordingLaunchConfiguration) -> Unit = { _, _ -> },
     stretchVoiceProfileId: String? = null,
     guidanceReport: WorkoutGuidanceReport = WorkoutGuidanceReport(),
+    coachingAdvice: String? = null,
     selectedGuidanceFeedback: WorkoutGuidanceFeedback? = null,
     onGuidanceFeedbackSelect: (WorkoutGuidanceFeedback) -> Unit = {},
     onGuidanceFeedbackSubmit: () -> Unit = {},
@@ -658,6 +659,7 @@ fun RecordingRoute(
             snapshot.status == RecordingStatus.ACTIVE || snapshot.status == RecordingStatus.PAUSED -> LiveRecordingScreen(
                 snapshot = snapshot,
                 configuration = ui.launch,
+                coachingAdvice = coachingAdvice,
                 groupRun = eventGroupRun,
                 participants = ui.participants,
                 liveMapBusy = groupRunJoining || otherActiveGroupRun != null,
@@ -805,7 +807,10 @@ fun RecordingRoute(
                 }
             }
         }
-        sessionEffect(snapshot, ui.launch.copy(voiceGuideEnabled = snapshot.liveVoiceGuideEnabled ?: ui.launch.voiceGuideEnabled))
+        sessionEffect(snapshot, ui.launch.copy(
+            voiceGuideEnabled = snapshot.liveVoiceGuideEnabled ?: ui.launch.voiceGuideEnabled,
+            aiCoachEnabled = snapshot.liveAICoachEnabled ?: ui.launch.aiCoachEnabled,
+        ))
     }
 
     if (showLocationEducation) LocationPermissionEducationDialog(
@@ -1119,6 +1124,7 @@ private fun LiveRecordingScreen(
     onSimulationAdvance: (Int) -> Unit,
     onStopActivityLiveMap: () -> Unit = {},
     routeGuidanceContent: @Composable () -> Unit,
+    coachingAdvice: String? = null,
 ) {
     val density = LocalDensity.current
     val context = LocalContext.current
@@ -1250,6 +1256,11 @@ private fun LiveRecordingScreen(
         Column(Modifier.align(Alignment.BottomCenter).onSizeChanged { bottomControlsHeight = with(density) { it.height.toDp() } }) {
             if (mode == RecordingSurfaceMode.MAP && !dashboardExpanded) {
                 Box(Modifier.padding(horizontal = 16.dp)) { routeGuidanceContent() }
+            }
+            if (!coachingAdvice.isNullOrBlank()) {
+                Surface(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                    Text(coachingAdvice, Modifier.padding(14.dp), style = MaterialTheme.typography.bodyMedium)
+                }
             }
             SessionDashboard(snapshot, configuration, unitSystem, energyKilocalories, dashboardExpanded, {
                 if (dashboardExpanded != it) {
@@ -2282,6 +2293,10 @@ internal fun LiveWorkoutOptions(
                 }
             }
             option(stringResource(R.string.live_voice_guide), snapshot.liveVoiceGuideEnabled ?: launch.voiceGuideEnabled, "voice_guide")
+            if (snapshot.activityKind == ActivityKind.RUNNING) {
+                option(stringResource(R.string.live_ai_coach), snapshot.liveAICoachEnabled ?: launch.aiCoachEnabled, "ai_coach")
+                Text(stringResource(R.string.live_ai_coach_detail), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             option(stringResource(R.string.live_auto_pause), snapshot.autoPauseEnabled ?: AutoPauseDefaults.enabled(snapshot.activityKind), "auto_pause")
             if (launch.goal.type in setOf(RecordingGoalType.DISTANCE, RecordingGoalType.TIME, RecordingGoalType.CALORIES)) {
                 val energy = WorkoutCalorieEstimator.liveEnergyKilocalories(snapshot.activityKind.toActivityType(), snapshot.distanceMeters, snapshot.elapsedSeconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), snapshot.elevationGainMeters, weightKilograms)

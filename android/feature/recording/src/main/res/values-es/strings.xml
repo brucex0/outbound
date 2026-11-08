@@ -103,10 +103,12 @@
     <string name="recording_elapsed_time">Tiempo total</string>
     <string name="recording_recenter">Centrar en tu ubicación</string>
     <string name="live_workout_options">Opciones del entrenamiento</string>
-    <string name="live_voice_guide">Guía por voz</string>
+    <string name="live_voice_guide">Voz</string>
     <string name="live_auto_pause">Pausar al detenerse</string>
     <string name="live_pause_at_goal">Pausar al alcanzar el objetivo</string>
     <string name="live_sharing_on">Activado</string>
     <string name="live_sharing_off">Desactivado</string>
     <string name="recording_countdown_voice_unavailable">La voz de la cuenta atrás no está disponible. Tu actividad empezará con normalidad.</string>
+    <string name="live_ai_coach">Entrenador IA</string>
+    <string name="live_ai_coach_detail">Recibe orientación adaptada a tu actividad. Con Voz desactivada, los consejos aparecen en pantalla.</string>
 </resources>

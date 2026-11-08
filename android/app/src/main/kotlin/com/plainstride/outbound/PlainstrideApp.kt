@@ -794,7 +794,7 @@ private fun SignedInApp(
                             },
                             completedToday = integration.completedToday,
                             onStartWorkout = { intent, options ->
-                                recordingLaunch = intent.toRecordingLaunch().copy(gearId = selectedTodayShoeIdForLaunch,privateTrainingSignal=cycleState.currentSignal.takeIf{cycleState.enabled&&it!=CycleTrainingSignal.NO_ADJUSTMENT}?.wireValue,startImmediately=true,indoor=options.indoor,voiceGuideEnabled=options.voiceGuideEnabled,companionType=options.companionType).withTodayRoute(todaySelectedRoute, todayRouteReversed)
+                                recordingLaunch = intent.toRecordingLaunch().copy(gearId = selectedTodayShoeIdForLaunch,privateTrainingSignal=cycleState.currentSignal.takeIf{cycleState.enabled&&it!=CycleTrainingSignal.NO_ADJUSTMENT}?.wireValue,startImmediately=true,indoor=options.indoor,voiceGuideEnabled=options.voiceGuideEnabled,aiCoachEnabled=options.aiCoachEnabled,companionType=options.companionType).withTodayRoute(todaySelectedRoute, todayRouteReversed)
                                 launchTodayRecording()
                             },
                             onStartFreestyle = { options ->
@@ -804,6 +804,7 @@ private fun SignedInApp(
                                     startImmediately = true,
                                     indoor = options.indoor,
                                     voiceGuideEnabled = options.voiceGuideEnabled,
+                                    aiCoachEnabled = options.aiCoachEnabled,
                                     companionType = options.companionType,
                                 ).withTodayRoute(todaySelectedRoute, todayRouteReversed)
                                 launchTodayRecording()
@@ -1228,10 +1229,12 @@ private fun SignedInApp(
             composable(RECORDING_ROUTE) {
                 val feedbackCoach: com.plainstride.outbound.feature.livecoach.LiveCoachViewModel = hiltViewModel()
                 val coachFeedback by feedbackCoach.feedback.collectAsStateWithLifecycle()
+                val coachAdvice by feedbackCoach.advice.collectAsStateWithLifecycle()
                 val stretchVoice by feedbackCoach.selectedVoiceProfileId.collectAsStateWithLifecycle(initialValue = null)
                 RecordingRoute(
                     stretchVoiceProfileId = stretchVoice,
                     guidanceReport = coachFeedback.report,
+                    coachingAdvice = coachAdvice,
                     selectedGuidanceFeedback = coachFeedback.selection,
                     onGuidanceFeedbackSelect = feedbackCoach::selectFeedback,
                     onGuidanceFeedbackSubmit = feedbackCoach::submitFeedback,
@@ -1281,7 +1284,7 @@ private fun SignedInApp(
                     onStopActivityLiveMap=stopActivityLiveMap,
                     sessionEffect = { snapshot, liveLaunch ->
                         LiveCoachRecordingEffect(liveLaunch, measurementUnitSystem, feedbackCoach)
-                        RecordingSafetyEffect(snapshot, liveLaunch.activityEventId)
+                        RecordingSafetyEffect(snapshot, liveLaunch.activityEventId, voiceEnabled = liveLaunch.voiceGuideEnabled)
                     },
                     saveActivityPhotosToAlbum = settingsState.preferences.saveActivityPhotosToAlbum,
                     onPhotoAlbumPermissionDenied = {
@@ -1684,6 +1687,7 @@ private fun TodayManualLaunch.toRecordingLaunch(defaultGearId: String?, athleteR
         gearId = defaultGearId,
         indoor = indoor,
         voiceGuideEnabled = voiceGuideEnabled,
+        aiCoachEnabled = aiCoachEnabled,
         startImmediately = true,
         companionType = companionType,
     )

@@ -119,6 +119,11 @@ class LiveCoachViewModel @Inject constructor(
 ) : ViewModel() {
     private data class PendingCue(val moment: DetectedMoment, val scheduled: ScheduledCue? = null)
 
+    private val mutableAdvice = MutableStateFlow<String?>(null)
+    val advice: StateFlow<String?> = mutableAdvice
+    private var adviceElapsedSeconds: Long? = null
+    private var lastAICoachEnabled: Boolean? = null
+    private var lastVoiceEnabled: Boolean? = null
     private val mutableFeedback = MutableStateFlow(LiveCoachFeedbackState())
     val feedback: StateFlow<LiveCoachFeedbackState> = mutableFeedback
 
@@ -232,6 +237,8 @@ class LiveCoachViewModel @Inject constructor(
 
     fun attachRecording(launch: RecordingLaunchConfiguration, unitSystem: MeasurementUnitSystem) {
         observer?.cancel()
+        // Launch/live changes cancel an in-flight cue before the replacement observer starts.
+        if (!launch.voiceGuideEnabled || !launch.aiCoachEnabled) playback.stop()
         observer = viewModelScope.launch {
             combine(merge(
                 client.snapshots.filter { it.runSimulation == null || it.status != RecordingStatus.ACTIVE },
@@ -243,9 +250,27 @@ class LiveCoachViewModel @Inject constructor(
 
     private suspend fun process(
         snapshot: RecordingSnapshot,
-        launch: RecordingLaunchConfiguration,
+        launchOptions: RecordingLaunchConfiguration,
         unitSystem: MeasurementUnitSystem,
     ) {
+        val launch = launchOptions.copy(
+            voiceGuideEnabled = snapshot.liveVoiceGuideEnabled ?: launchOptions.voiceGuideEnabled,
+            aiCoachEnabled = snapshot.liveAICoachEnabled ?: launchOptions.aiCoachEnabled,
+        )
+        if (lastAICoachEnabled != launch.aiCoachEnabled) {
+            pendingCues.clear()
+            policy.resetPaceEvidence()
+            mutableAdvice.value = null
+            adviceElapsedSeconds = null
+            playback.stop()
+        }
+        if (lastVoiceEnabled != launch.voiceGuideEnabled && !launch.voiceGuideEnabled) {
+            playback.stop()
+            stopService()
+        }
+        lastAICoachEnabled = launch.aiCoachEnabled
+        lastVoiceEnabled = launch.voiceGuideEnabled
+        if (adviceElapsedSeconds?.let { snapshot.elapsedSeconds - it >= 20 } == true) mutableAdvice.value = null
         val previousStatus = lastStatus
         if (previousStatus != snapshot.status) {
             policy.resetPaceEvidence()
@@ -256,14 +281,6 @@ class LiveCoachViewModel @Inject constructor(
         if (snapshot.status == RecordingStatus.IDLE) {
             if (previousStatus != RecordingStatus.IDLE) mutableFeedback.value = LiveCoachFeedbackState()
             prepareSelection(launch, unitSystem, prefs)
-        }
-        if (!launch.voiceGuideEnabled) {
-            // Mute immediately while retaining this workout's coaching session and cue history.
-            stopService()
-            if (activeClientSessionId != null && snapshot.status in setOf(RecordingStatus.IDLE, RecordingStatus.AWAITING_SAVE)) {
-                end(if (snapshot.status == RecordingStatus.AWAITING_SAVE) "completed" else "discarded")
-            }
-            return
         }
         if (!prefs.enabled) {
             if (activeClientSessionId != null) end("interrupted")
@@ -303,7 +320,9 @@ class LiveCoachViewModel @Inject constructor(
             stopService()
             return
         }
-        if (!serviceStarted) {
+        if (!launch.voiceGuideEnabled) {
+            stopService()
+        } else if (!serviceStarted) {
             ContextCompat.startForegroundService(context, LiveCoachPlaybackService.startIntent(context))
             serviceStarted = true
         } else if (previousStatus == RecordingStatus.PAUSED) {
@@ -314,7 +333,7 @@ class LiveCoachViewModel @Inject constructor(
             analytics.record(AnalyticsEvent("live_guidance_moment_suppressed", mapOf(AnalyticsProperty.Result to reason)))
         }
         val coachSnapshot = snapshot.toCoachSnapshot(launch)
-        val policyUpdate = if (launch.activityKind == ActivityKind.RUNNING) {
+        val policyUpdate = if (launch.activityKind == ActivityKind.RUNNING && launch.aiCoachEnabled) {
             policy.ingest(coachSnapshot, prefs.contract)
         } else {
             null
@@ -336,6 +355,7 @@ class LiveCoachViewModel @Inject constructor(
             goal = launch.goal,
             activityKind = launch.activityKind,
             imperial = unitSystem == MeasurementUnitSystem.imperial,
+            aiCoachEnabled = launch.aiCoachEnabled,
         )
         scheduleUpdate.workoutCue?.let { enqueue(PendingCue(it.moment, it), priority = true, prefs.contract) }
         policyUpdate?.nextMoment?.let {
@@ -398,6 +418,8 @@ class LiveCoachViewModel @Inject constructor(
             phrase != null -> phrase.text
             else -> LocalizedFallbackPhrases.phrase(context, supportedLocale(), moment.moment)
         }
+        mutableAdvice.value = fallback
+        adviceElapsedSeconds = snapshot.elapsedSeconds
         val request = CueRequest(
             cueRequestId = UUID.randomUUID().toString(),
             moment = moment.moment,
@@ -418,6 +440,35 @@ class LiveCoachViewModel @Inject constructor(
             else -> session.effectiveMode
         }
         val token = if (session == null || moment.speedChangeDirection != null) null else tokens.validAccessToken()
+        if (!launch.voiceGuideEnabled) {
+            // Keep the same adaptive provider path without starting an audio output.
+            if (activeMode == LiveCoachMode.Dynamic && token != null && session != null) {
+                val response = kotlinx.coroutines.withTimeoutOrNull(2_000) {
+                    repository.requestCue(token, session.sessionId, request)
+                }
+                when (response) {
+                    is ApiResult.Success -> {
+                        val cue = response.value
+                        if (cue.cueRequestId == request.cueRequestId && cue.moment == moment.moment &&
+                            runCatching { Instant.parse(cue.expiresAt).isAfter(Instant.now()) }.getOrDefault(false) &&
+                            cue.transcript.isNotBlank()) {
+                            mutableAdvice.value = cue.transcript
+                        } else {
+                            Log.w("PlainstrideLiveCoach", "Visual cue rejected moment=${moment.moment.wireValue} reason=invalid_envelope")
+                        }
+                    }
+                    is ApiResult.Failure -> if (response.error.code != com.plainstride.outbound.core.network.ApiErrorCode.Cancelled) {
+                        Log.w("PlainstrideLiveCoach", "Visual cue request failed status=${response.error.httpStatus} code=${response.error.code}")
+                    }
+                    null -> Log.w("PlainstrideLiveCoach", "Visual cue request timed out moment=${moment.moment.wireValue}")
+                }
+            }
+            // Advance delivered-cue history; never count a visual delivery as spoken audio.
+            policy.recordSpoken(moment)
+            schedule.recordGuideSpeech(moment.detectedAtElapsedSeconds)
+            pending.scheduled?.let(schedule::recordSpoken)
+            return
+        }
         val result = playback.play(
             token = token,
             sessionId = session?.sessionId,
@@ -428,6 +479,7 @@ class LiveCoachViewModel @Inject constructor(
             accessReason = session?.access?.reason ?: "feature_disabled",
             selection = prefs.selection(),
             fallbackText = fallback,
+            onTranscript = { mutableAdvice.value = it },
             localOnly = moment.speedChangeDirection != null,
             fixedCueKey = when {
                 moment.speedChangeDirection != null -> if (moment.speedChangeDirection > 0) "coach.settle" else "coach.restore_rhythm"
@@ -612,7 +664,7 @@ class LiveCoachViewModel @Inject constructor(
 
     private fun prepareSelection(launch: RecordingLaunchConfiguration, units: MeasurementUnitSystem, prefs: LiveCoachPreferences) {
         val account = accountId()
-        val request = if (account != null && launch.voiceGuideEnabled && prefs.enabled &&
+        val request = if (account != null && (launch.voiceGuideEnabled || launch.aiCoachEnabled) && prefs.enabled &&
             prefs.contract != CoachingContract.Quiet && launch.activityKind == ActivityKind.RUNNING &&
             (launch.plannedWorkoutId != null || launch.standaloneWorkoutId != null || launch.workoutSteps.isNotEmpty())) {
             makeRequest(SELECTION_SESSION_ID, launch, units, prefs)
@@ -770,6 +822,8 @@ class LiveCoachViewModel @Inject constructor(
     }
 
     private suspend fun end(outcome: String) {
+        mutableAdvice.value = null
+        adviceElapsedSeconds = null
         if (outcome == "completed") {
             mutableFeedback.value = LiveCoachFeedbackState(report = WorkoutGuidanceReport(
                 spokenCueCount = spokenCount,
@@ -813,6 +867,8 @@ class LiveCoachViewModel @Inject constructor(
     }
 
     private fun resetForSession(clientSessionId: String) {
+        mutableAdvice.value = null
+        adviceElapsedSeconds = null
         activeClientSessionId = clientSessionId
         startAttemptedForSessionId = null
         serverSession = null

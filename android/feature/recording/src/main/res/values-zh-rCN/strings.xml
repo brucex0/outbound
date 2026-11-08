@@ -103,10 +103,12 @@
     <string name="recording_elapsed_time">总用时</string>
     <string name="recording_recenter">定位到当前位置</string>
     <string name="live_workout_options">运动选项</string>
-    <string name="live_voice_guide">语音指导</string>
+    <string name="live_voice_guide">语音</string>
     <string name="live_auto_pause">停止移动时自动暂停</string>
     <string name="live_pause_at_goal">达到目标时暂停</string>
     <string name="live_sharing_on">已开启</string>
     <string name="live_sharing_off">已关闭</string>
     <string name="recording_countdown_voice_unavailable">倒计时语音不可用，活动将正常开始。</string>
+    <string name="live_ai_coach">AI 教练</string>
+    <string name="live_ai_coach_detail">获取适时的运动指导。关闭语音后，建议仍会显示在屏幕上。</string>
 </resources>
