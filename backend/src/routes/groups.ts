@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { Prisma } from "@prisma/client";
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
@@ -596,8 +597,15 @@ router.post("/:id/leave", async (c) => {
   const user = await requireGroupUser(c);
   if (user instanceof Response) return user;
   const member = await assertGroupMember(c.req.param("id"), user.id);
-  if (member?.role === "owner") return c.json({ error: "Transfer ownership or archive the Group before leaving." }, 422);
-  await getPrismaClient().groupMember.update({ where: { groupId_userId: { groupId: c.req.param("id"), userId: user.id } }, data: { status: "left" } });
+  if (member?.role === "owner") return c.json({ error: "Transfer ownership before leaving." }, 422);
+  const groupId = c.req.param("id");
+  const now = new Date();
+  await getPrismaClient().$transaction(async (tx) => {
+    const changed = await tx.groupMember.updateMany({ where: { groupId, userId: user.id, status: "active", role: { not: "owner" } }, data: { status: "left" } });
+    if (!changed.count) throw new Error("Group membership changed during leave");
+    await tx.activityEventParticipant.updateMany({ where: { userId: user.id, status: "going", activityEvent: { groupId, startsAt: { gt: now } } }, data: { status: "left", arrivedAt: null } });
+    await tx.liveGroupParticipant.updateMany({ where: { userId: user.id, status: "active", session: { activityEvent: { groupId } } }, data: { status: "left", leftAt: now, lastLocationAt: null, lastLocation: Prisma.DbNull, lastActivitySnapshot: Prisma.DbNull } });
+  });
   await normalizeGroupAfterMembershipChange(c.req.param("id"), user.id);
   return c.json({ ok: true });
 });

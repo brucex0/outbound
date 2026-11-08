@@ -905,6 +905,34 @@ router.get("/activity-events/:id", async (c) => {
   return c.json(activityEventPayload(activity, user.id, connections, true));
 });
 
+router.post("/activity-events/:id/arrival", zValidator("json", z.object({ arrived: z.boolean() })), async (c) => {
+  const user = await requireSocialUser(c);
+  if (user instanceof Response) return user;
+  const connections = await acceptedConnectionIDs(user.id);
+  const activity = await visibleActivityEvent(user.id, connections, c.req.param("id"));
+  if (!activity) return c.json({ error: "Activity event not found." }, 404);
+  if (!(await eligibleActivityEvent(user.id, activity.id))) return c.json({ error: "Activity unavailable." }, 403);
+  const now = new Date();
+  const arrived = c.req.valid("json").arrived;
+  const accepted = await getPrismaClient().$transaction(async (tx) => {
+    // Serialize with cancellation, RSVP changes, and event reconciliation.
+    const gate = await tx.activityEvent.updateMany({
+      where: { id: activity.id, status: { in: ["scheduled", "active"] }, startsAt: { lte: new Date(now.getTime() + 30 * 60_000) }, endsAt: { gt: now } },
+      data: { updatedAt: now },
+    });
+    if (!gate.count) return false;
+    const participant = await tx.activityEventParticipant.findUnique({ where: { activityEventId_userId: { activityEventId: activity.id, userId: user.id } } });
+    if (!participant || participant.status !== "going" || participant.attendanceMode !== "in_person") return false;
+    await tx.activityEventParticipant.update({
+      where: { id: participant.id },
+      data: { arrivedAt: arrived ? participant.arrivedAt ?? now : null },
+    });
+    return true;
+  });
+  if (!accepted) return c.json({ error: "Arrival check-in is available to in-person participants from 30 minutes before the start until the scheduled end." }, 409);
+  return c.json({ ok: true });
+});
+
 router.post("/activity-events/:id/rsvp", zValidator("json", attendanceModeSchema), async (c) => {
   const user = await requireSocialUser(c);
   if (user instanceof Response) return user;
@@ -924,7 +952,7 @@ router.post("/activity-events/:id/rsvp", zValidator("json", attendanceModeSchema
     return tx.activityEventParticipant.upsert({
       where: { activityEventId_userId: { activityEventId: activity.id, userId: user.id } },
       create: { activityEventId: activity.id, userId: user.id, status: "going", attendanceMode },
-      update: { status: "going", attendanceMode },
+      update: { status: "going", attendanceMode, ...(attendanceMode === "virtual" ? { arrivedAt: null } : {}) },
     });
   });
   if (!participant) return c.json({ error: "Activity unavailable." }, 409);
@@ -945,7 +973,7 @@ router.delete("/activity-events/:id/rsvp", async (c) => {
   if (!activity || activity.creatorId === user.id) return c.json({ error: "The creator cannot leave this activity." }, 422);
   await getPrismaClient().activityEventParticipant.updateMany({
     where: { activityEventId: activity.id, userId: user.id },
-    data: { status: "left" },
+    data: { status: "left", arrivedAt: null },
   });
   return c.json({ ok: true });
 });
@@ -1048,7 +1076,7 @@ router.post("/invitations/:id/accept", zValidator("json", attendanceModeSchema),
       tx.activityEventParticipant.upsert({
         where: { activityEventId_userId: { activityEventId: eventId, userId: user.id } },
         create: { activityEventId: eventId, userId: user.id, status: "going", attendanceMode: c.req.valid("json").attendanceMode },
-        update: { status: "going", attendanceMode: c.req.valid("json").attendanceMode },
+        update: { status: "going", attendanceMode: c.req.valid("json").attendanceMode, ...(c.req.valid("json").attendanceMode === "virtual" ? { arrivedAt: null } : {}) },
       }),
     ]);
     return true;
@@ -1828,13 +1856,14 @@ function activityEventPayload(activity: any, currentUserId: string, connectionId
     currentUserGoing: currentParticipant?.status === "going",
     currentUserOutcome: currentParticipant?.outcome ?? null,
     currentUserAttendanceMode: currentParticipant?.attendanceMode ?? null,
+    currentUserArrivedAt: currentParticipant?.arrivedAt ?? null,
     currentUserRole: activity.creatorId === currentUserId ? "owner" : currentParticipant?.status === "going" || currentParticipant?.startedAt ? "participant" : "viewer",
     currentUserCanCancel: activity.creatorId === currentUserId || activity.group?.members?.some((member: any) => member.userId === currentUserId && ["owner", "admin"].includes(member.role)) === true,
     compatibility: shareSafeCompatibility(activity.options),
   };
   if (includeParticipants) {
     const goingUserIds = new Set(going.map((participant: any) => participant.userId));
-    if (!communityPublicView) payload.participants = roster.map((participant: any) => ({ person: compactPerson(participant.user), status: participant.status, outcome: participant.outcome, attendanceMode: participant.attendanceMode, startedAt: participant.startedAt, isRecording: Boolean(participant.startedAt && !participant.outcome && participant.user.activeWorkoutPresence?.expiresAt > new Date()) }));
+    if (!communityPublicView) payload.participants = roster.map((participant: any) => ({ person: compactPerson(participant.user), status: participant.status, outcome: participant.outcome, attendanceMode: participant.attendanceMode, arrivedAt: participant.arrivedAt, startedAt: participant.startedAt, isRecording: Boolean(participant.startedAt && !participant.outcome && participant.user.activeWorkoutPresence?.expiresAt > new Date()) }));
     if (activity.creatorId === currentUserId) {
       payload.invitedUserIds = activity.invitations
         .filter((invitation: any) => invitation.recipientId && ["pending", "accepted"].includes(invitation.status))

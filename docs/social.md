@@ -199,3 +199,12 @@ Production schema rollout uses the Cloud Run database job documented in `docs/ba
 
 - Default-selection analytics use `group_activity_recording_selection_changed` with `entry_source=today_rsvp_default`; manual selection retains `today`. No event, account, or location identifiers are added.
 - Default-behavior verification (2026-11-01): Android debug and iOS Simulator builds passed. Android update installed on the S22; existing Join/share-on state survived the update. No test suite was run. Fresh-RSVP initialization, opt-out/relaunch, and two-device location delivery were not replayed; iOS runtime behavior was not checked on a device.
+
+## Explicit arrival check-in (iOS iteration 1)
+
+- Going, in-person participants explicitly **Check in** on event details from 30 minutes before `startsAt` until `endsAt` (end exclusive). **Undo check-in** uses the same window. Remote participants have no control; cancelled, reconciling, and completed events reject changes.
+- The roster shows **Arrived** and an arrived/going count. Recording, GPS, and live-map consent never imply arrival. Arrival does not resolve participant outcomes or complete an event.
+- `POST /v1/social/activity-events/:id/arrival` accepts `{ "arrived": true | false }`, requiring current event eligibility and a going, in-person RSVP. Retrying preserves the original arrival timestamp. Leaving the RSVP or switching to remote clears arrival.
+- The nullable `ActivityEventParticipant.arrivedAt` is independent of `startedAt`. Detail responses expose participant `arrivedAt` and `currentUserArrivedAt`. Android UI is unchanged.
+- Before backend deployment, apply the additive schema change: `cd backend && npm run db:generate && npm run build && npm run db:push`. Production uses the schema job in `docs/backend-deploy.md`. No data reset is required. Deploy backend before shipping iOS.
+- Backend compilation, the arm64 iOS Simulator build (result bundle: `/tmp/outbound-arrival-final.xcresult`, succeeded with zero errors), and the design-system guard passed. No test suite was run. End-to-end API/device behavior and light/dark, large-text, and narrow-screen visual checks were not performed; a build does not establish them.
