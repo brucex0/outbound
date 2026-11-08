@@ -856,7 +856,7 @@ router.post("/activity-events/:id/cancel", async (c) => {
     } catch (error) { return seriesError(c, error, "cancel activity series"); }
   }
   const outcome = await prisma.$transaction(async (tx) => {
-    const event = await tx.activityEvent.findUnique({ where: { id }, select: { id: true, creatorId: true, groupId: true, status: true } });
+    const event = await tx.activityEvent.findUnique({ where: { id }, select: { id: true, creatorId: true, groupId: true, status: true, title: true } });
     if (!event) return "not_found";
     const groupRole = event.groupId
       ? (await tx.groupMember.findUnique({ where: { groupId_userId: { groupId: event.groupId, userId: user.id } }, select: { role: true, status: true } }))
