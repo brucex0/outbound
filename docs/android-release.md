@@ -149,6 +149,16 @@ Data is not sold. Social publishing, live sharing, Health Connect, microphone, n
 - Signed bundle build, release configuration checks, vital lint, R8, and signature verification passed. Device support counts are unchanged; only the existing optional native-debug-symbol warning remains. No tests or device runtime checks were run.
 - Changes include group invitations/member controls, recurring group events, coaching voice selection, and countdown playback. AAB, mapping, and source SHA are retained under ignored `artifacts/play-store/release-1.0.4-7/`.
 
+### November 8 Production Update
+
+- Bruce requested public Android and iOS releases. Android `1.0.5` (8) was built from committed source `6e48ecb1` in an isolated repository worktree, excluding unrelated local files. Freebuff prepared the signed bundle; release configuration checks, `:app:bundleRelease` (including vital lint and R8), and bundle signature verification passed.
+- Production `1.0.5` was submitted at **100%** across the existing two-country availability. Play Publishing overview confirms **Changes in review**; automated quick checks were still running. Managed publishing is off, so approval can publish automatically. Public availability of this update is not yet confirmed. Evidence: ignored `artifacts/play-store/release-1.0.5-8/submitted-for-review.jpg`.
+- Play accepted version 8 with ReTrace mapping attached, unchanged supported-device counts, no blocking errors, and only the existing optional native-debug-symbol warning.
+- Changes include contextual stretch defaults, separate Voice and AI Coach controls, weekly theme editing, clearer planned activity details, cancellation behavior, and group planning permissions.
+- Signed AAB, ReTrace mapping, merged manifest, dependency report, source/version inputs, release notes, and SHA-256 are preserved under ignored `artifacts/play-store/release-1.0.5-8/`. AAB SHA-256: `a2757550fd87788d68bf68901cf9d4c73c5075d9ca0ad7c48079a0958f8a128e`.
+- Production backend `/health` returned HTTP 200. The browser reached the public privacy policy from the configured `.ai` URL; command-line `.ai` legal/association requests returned HTTP 403, so link association is not confirmed.
+- No tests or device runtime acceptance checks were run. Existing Android unreleased-policy instructions remain in force until Bruce explicitly confirms release.
+
 ## Dependencies And Notices
 
 - Generate the release dependency graph with `./gradlew :app:dependencies --configuration releaseRuntimeClasspath` and archive it with the release.
