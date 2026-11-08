@@ -63,7 +63,7 @@ Core components:
 - `api`: Hono app serving versioned REST endpoints under `/v1`
 - `db`: Postgres via Prisma for durable product state
 - `media storage`: Google Cloud Storage for activity photos and future derived media
-- `jobs`: async workers for guide analysis, plan recompute, feed fanout, and notifications
+- `jobs`: async workers for plan recompute, feed fanout, and notifications
 - `auth`: Plainstride access-token verification, with temporary opt-in legacy Firebase verification
 
 This is still one product backend, but with explicit module boundaries:
@@ -465,7 +465,6 @@ Do not keep long-term product logic in request-time fire-and-forget closures.
 
 Move these into explicit jobs:
 
-- guide analysis after activity ingest
 - guide profile rebuild after activity ingest
 - plan adherence update after activity ingest
 - daily recommendation recompute after readiness check-in
@@ -519,7 +518,7 @@ Goal:
 Deliver:
 
 - explicit guide service layer
-- background jobs for post-activity analysis and profile rebuild
+- background jobs for guide profile rebuild
 - stable versioned guide payload contract
 - weekly review endpoint retained but moved off fragile inline assumptions
 

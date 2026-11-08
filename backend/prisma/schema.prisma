@@ -472,9 +472,6 @@ model Activity {
   followedRoute              Route?                    @relation("FollowedRouteActivities", fields: [followedRouteId], references: [id], onDelete: SetNull)
   routeCompletion            RouteCompletion?
 
-  // AI guide analysis generated after activity
-  guideAnalysis Json?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 

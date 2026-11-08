@@ -389,7 +389,7 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 - Android `live_guidance_reference_resolved` reports `source_type=server_statistics|unavailable` when starting a catalog workout that requests an athlete reference; it excludes pace, activity identifiers, and dates.
 - Guide-profile recovery emits `guide_profile_resolution` diagnostics with bounded source/outcome. Activity completion emits `activity_completion_task` with operation/outcome and safe failure metadata only; no user IDs, prompts, activity bodies, or provider error bodies are logged.
 
-- Activity analysis and weekly reviews use shared `ai_attempt` / `ai_generation` diagnostics with operations `activity_analysis` / `weekly_review`. These retain the existing metadata-only privacy contract; no new client event or runner identifier is added.
+- Weekly reviews use shared `ai_attempt` / `ai_generation` diagnostics with operation `weekly_review`. These retain the existing metadata-only privacy contract; no new client event or runner identifier is added.
 
 - iOS and Android `live_guidance_speed_change` record `source_type=increase|decrease` and `result=detected|spoken|audio_unavailable` (plus Android `stale` for dropped queued alerts) for independent local speed-change guidance. It excludes raw speed, pace, profile, locations, timestamps, and activity identifiers. The cue-wording and bundled-recording update retains these event names and bounded properties; preparation diagnostics log only ready/expected counts, never scripts or measurements.
 

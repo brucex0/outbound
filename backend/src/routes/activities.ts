@@ -2,7 +2,6 @@ import { eligibleActivityEvent, startEventParticipation } from "../services/acti
 import { Hono } from "hono";
 import { rebuildGuideProfile } from "../services/guideProfile.js";
 import { completeActivity } from "../services/activityCompletion.js";
-import { analyzeActivity } from "../services/ai.js";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { requireDatabase } from "../services/database.js";
@@ -596,11 +595,6 @@ router.post("/", zValidator("json", createSchema), async (c) => {
     await completeActivity({
       rebuildProfile: () => rebuildGuideProfile(resolvedUserId),
       enqueuePlanning: () => enqueueActivityCompletedEvent(resolvedUserId, activity.id),
-      analyze: async () => {
-        const guideProfile = await prisma.guideProfile.findUnique({ where: { userId: resolvedUserId } });
-        const analysis = await analyzeActivity(activity, guideProfile ?? {}, c.get("locale"));
-        await prisma.activity.update({ where: { id: activity.id }, data: { guideAnalysis: analysis } });
-      },
     });
     await qualifyReferralFromActivity(prisma, resolvedUserId, activity.durationSecs).catch((error) => {
       console.error("[rewards] referral qualification failed", { error });

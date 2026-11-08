@@ -7,7 +7,7 @@ Open this when deploying or reconfiguring the GCP backend for Outbound.
 - Backend source lives in `backend/`.
 - Runtime target is Google Cloud Run.
 - The backend is now built as a standard Node service from `backend/Dockerfile`.
-- Production assistant chat, activity analysis, weekly reviews, and live-coach planning use `gpt-6-luna` through the OpenAI Responses API, with `OPENAI_API_KEY` mounted from `outbound-openai-api-key`. The deploy helper preserves this production route; other environments default to Gemini. `APP_AI_MODEL` and `GEMINI_LIVE_COACH_PLANNER_MODEL` override the message and coaching workloads. Training-plan intake/adjustment stays on Gemini; Google TTS still uses runtime identity. Qualification and current revision: `docs/ai-reliability.md`.
+- Production assistant chat, weekly reviews, and live-coach planning use `gpt-6-luna` through the OpenAI Responses API, with `OPENAI_API_KEY` mounted from `outbound-openai-api-key`. The deploy helper preserves this production route; other environments default to Gemini. `APP_AI_MODEL` and `GEMINI_LIVE_COACH_PLANNER_MODEL` override the message and coaching workloads. Training-plan intake/adjustment stays on Gemini; Google TTS still uses runtime identity. Qualification and current revision: `docs/ai-reliability.md`.
 - Database-backed routes intentionally return `503` when `DATABASE_URL` is unset.
 - Repo-local npm installs should use the committed `.npmrc`, which points this repo at the public npm registry instead of a machine-level override.
 - Production Postgres lives on the dedicated, private Cloud SQL instance `outbound-494602:us-central1:outbound-db`.
@@ -451,7 +451,7 @@ Coaching preplanning adds `LiveCoachPreparation` and `LiveCoachSession.preparati
 ## Deterministic Guide Profile Recovery
 
 - Authenticated `GET /v1/guide/profile` creates a missing guide profile from the account’s saved running history; existing profiles are returned unchanged. No AI credential is needed. Deleted activities are excluded, and empty history yields a finite empty snapshot without an invented pace.
-- New activity saves await independent profile rebuilding and planning-event enqueueing before returning. Optional activity analysis remains best effort; missing provider credentials cannot skip profile creation or planning. A failed completion task logs only its operation, outcome, numeric status when available, and error type.
+- New activity saves await independent profile rebuilding and planning-event enqueueing before returning. A failed completion task logs only its operation, outcome, numeric status when available, and error type.
 - `guide_profile_resolution` reports missing-profile repair success/failure without account identifiers or activity data. Rebuild responses use the persisted profile, preserving preferred pace and existing customization.
 
 - Verified 2026-10-20 (America/Los_Angeles): revision `outbound-api-00235-dum` serves 100% of traffic; all prior environment/secret bindings were preserved, exact-image schema job `outbound-db-push-6m5fn` succeeded, planning maintenance uses the same image, and production `/health` returned 200. The affected missing profile was persisted with a usable pace reference.

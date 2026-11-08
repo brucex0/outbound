@@ -42,19 +42,6 @@ type AssistantResponse = {
   message: string;
 };
 
-export async function analyzeActivity(
-  activityData: object,
-  guideContext: object,
-  locale: SupportedLocale = "en"
-): Promise<string> {
-  const content = await generateMessageJSON(
-    `${GUIDE_SYSTEM_INSTRUCTION}\n${localeInstruction(locale)}\nReturn JSON only as {"message":"..."}.`,
-    `Analyze this activity and provide guidance insights.\n\nGuide context: ${JSON.stringify(guideContext)}\n\nActivity: ${JSON.stringify(activityData)}`,
-    1024, 0.3, "activity_analysis"
-  );
-  return (JSON.parse(content) as AssistantResponse).message.trim();
-}
-
 export async function generateWeeklyReview(
   userId: string,
   activities: object[],

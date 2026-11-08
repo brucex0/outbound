@@ -3,7 +3,6 @@
 export async function completeActivity(tasks: {
   rebuildProfile: () => Promise<unknown>;
   enqueuePlanning: () => Promise<unknown>;
-  analyze: () => Promise<unknown>;
 }): Promise<void> {
   const operations = ["guide_profile_rebuild", "planning_enqueue"] as const;
   const results = await Promise.allSettled([
@@ -11,12 +10,6 @@ export async function completeActivity(tasks: {
     Promise.resolve().then(tasks.enqueuePlanning),
   ]);
   results.forEach((result, index) => recordCompletion(operations[index], result));
-  // Analysis is optional and remains best effort; its failure cannot skip the
-  // profile or planning work and must not change the saved activity response.
-  void Promise.resolve().then(tasks.analyze).then(
-    () => recordCompletion("activity_analysis", { status: "fulfilled", value: undefined }),
-    (reason: unknown) => recordCompletion("activity_analysis", { status: "rejected", reason })
-  );
 }
 
 function recordCompletion(operation: string, result: PromiseSettledResult<unknown>): void {
