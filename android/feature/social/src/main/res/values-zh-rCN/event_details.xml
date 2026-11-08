@@ -1,0 +1,10 @@
+<resources>
+    <string name="group_event_run_options">活动选项</string>
+    <string name="group_event_more">更多</string>
+    <string name="group_event_less">收起</string>
+    <string name="group_event_invite_connections">邀请好友</string>
+    <string name="group_event_virtual">远程参加</string>
+    <string name="group_event_cancel_failed">未能取消活动，请重试。</string>
+    <string name="group_event_cancelled">活动已取消</string>
+    <string name="group_event_cancelled_detail">此活动已停止接受报名。</string>
+</resources>

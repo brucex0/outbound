@@ -21,6 +21,7 @@ sealed interface CachedSocialHome {
 
 interface SocialRepository {
     fun observeHome(accountId: String, localeTag: String): Flow<CachedSocialHome>
+    suspend fun removeCancelledEvent(accountId: String, localeTag: String, eventId: String)
     suspend fun refresh(accountId: String, localeTag: String, retainedConnections: SocialPage<SocialPerson> = SocialPage(emptyList())): Result<Unit>
     suspend fun refreshConnections(accountId: String, localeTag: String, retainedCount: Int): Result<SocialPage<SocialPerson>>
     suspend fun invitedLiveSessions(): Result<List<ActiveLiveSession>>
@@ -100,6 +101,16 @@ class OfflineFirstSocialRepository @Inject constructor(
     override fun observeHome(accountId: String, localeTag: String) = cache.observe(accountId, NAMESPACE, HOME, localeTag).map { entity ->
         val value = entity?.payloadJson?.let { runCatching { PlainstrideJson.decodeFromString<SocialHome>(it) }.getOrNull() }
         if (value == null) CachedSocialHome.Empty else CachedSocialHome.Available(value, entity.expiresAtEpochMs?.let { it <= System.currentTimeMillis() } == true)
+    }
+
+    override suspend fun removeCancelledEvent(accountId: String, localeTag: String, eventId: String) = mutex.withLock {
+        val row = cache.get(accountId, NAMESPACE, HOME, localeTag) ?: return@withLock
+        val home = PlainstrideJson.decodeFromString<SocialHome>(row.payloadJson)
+        val updated = home.copy(
+            upcomingRuns = home.upcomingRuns.filterNot { it.id == eventId },
+            groups = home.groups.map { group -> group.copy(upcomingActivities = group.upcomingActivities.filterNot { it.id == eventId }) },
+        )
+        cache.upsert(row.copy(payloadJson = PlainstrideJson.encodeToString(updated), updatedAtEpochMs = System.currentTimeMillis()))
     }
 
     override suspend fun refresh(accountId: String, localeTag: String, retainedConnections: SocialPage<SocialPerson>) = mutex.withLock {

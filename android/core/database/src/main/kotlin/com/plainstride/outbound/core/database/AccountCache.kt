@@ -52,6 +52,9 @@ interface AccountCacheDao {
         localeTag: String,
     ): AccountCacheEntity?
 
+    @Query("SELECT * FROM account_cache WHERE accountId = :accountId AND namespace = :namespace")
+    suspend fun entries(accountId: String, namespace: String): List<AccountCacheEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: AccountCacheEntity)
 

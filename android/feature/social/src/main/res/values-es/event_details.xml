@@ -1,0 +1,10 @@
+<resources>
+    <string name="group_event_run_options">Opciones de actividad</string>
+    <string name="group_event_more">Más</string>
+    <string name="group_event_less">Menos</string>
+    <string name="group_event_invite_connections">Invitar a contactos</string>
+    <string name="group_event_virtual">Participar a distancia</string>
+    <string name="group_event_cancel_failed">No se pudo cancelar la actividad. Inténtalo de nuevo.</string>
+    <string name="group_event_cancelled">Actividad cancelada</string>
+    <string name="group_event_cancelled_detail">Esta actividad ya no admite participantes.</string>
+</resources>

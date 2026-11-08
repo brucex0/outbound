@@ -38,6 +38,7 @@ data class SocialUiState(
     val activityDetailPhotosLoading: Boolean = false,
     val activityDetailPhotoBytes: Map<String, ByteArray> = emptyMap(),
     val selectedEvent:SocialEvent?=null,val selectedInvitation:SocialInvitation?=null,
+    val eventCancelling: Boolean = false,
     val feedCursor: String? = null, val feedLoading: Boolean = false,
     val feedLoadFailed: Boolean = false,
     val connectionRequestLoading: Boolean = false,
@@ -46,7 +47,7 @@ data class SocialUiState(
     val connectionProfileLoading: Boolean = false, val connectionProfileCode: String? = null,
     val connectionProfileIsSelf: Boolean = false,
 )
-enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED, GROUP_CREATED, GROUP_CREATION_FAILED, GROUP_SETTINGS_SAVED, GROUP_SETTINGS_FAILED, GROUP_JOINED, GROUP_MEMBERSHIP_PENDING, GROUP_DECLINED, GROUP_INVITATION_FAILED, EVENT_JOINED, EVENT_LEFT, EVENT_RSVP_FAILED }
+enum class SocialMessage { ACTION_COMPLETE, ACTION_FAILED, REPORTED, BLOCKED, GROUP_CREATED, GROUP_CREATION_FAILED, GROUP_SETTINGS_SAVED, GROUP_SETTINGS_FAILED, GROUP_JOINED, GROUP_MEMBERSHIP_PENDING, GROUP_DECLINED, GROUP_INVITATION_FAILED, EVENT_JOINED, EVENT_LEFT, EVENT_RSVP_FAILED, EVENT_CANCELLATION_FAILED }
 enum class ConnectionFeedback { REQUESTED, ALREADY_PENDING, INCOMING_PENDING, ALREADY_CONNECTED, SELF, UPDATED, REQUEST_FAILED, PROFILE_LOAD_FAILED, INVITE_LINK_FAILED }
 sealed interface ConnectionEffect {
     data class Feedback(val value: ConnectionFeedback, val closeScanner: Boolean) : ConnectionEffect
@@ -68,6 +69,7 @@ sealed interface ConnectionEffect {
     private var searchJob: Job? = null
     private var groupDirectoryJob: Job? = null
     private var groupLoadJob: Job? = null
+    private var groupCacheJob: Job? = null
     private var activityPhotoJob: Job? = null
     private var commentsLoadJob: Job? = null
     private var activityFeedLoadTracked = false
@@ -88,6 +90,7 @@ sealed interface ConnectionEffect {
         trackHomeExposure = trackOpen
         this.accountId = accountId; this.localeTag = localeTag
         groupLoadJob?.cancel()
+        groupCacheJob?.cancel()
         mutableState.update { it.copy(liveSessions = emptyList(), selectedGroupId = null, selectedGroupDetail = null, groupLoading = false, groupLoadFailed = false, groupUnavailable = false, groupInvitationResponding = false) }
         groupDirectoryJob?.cancel()
         mutableState.update { it.copy(groupDirectory = emptyList(), groupDirectoryQuery = "", groupDirectoryNextCursor = null, groupDirectoryLoading = false, groupDirectoryFailed = false) }
@@ -587,14 +590,22 @@ sealed interface ConnectionEffect {
     fun loadGroup(id: String, entrySource: String, invitationId: String? = null) {
         val targetInvitationId = invitationId ?: if (entrySource == "invitation") mutableState.value.home.invitations.firstOrNull { it.kind == "group" && it.objectId == id }?.id else null
         groupLoadJob?.cancel()
+        groupCacheJob?.cancel()
         mutableState.update { it.copy(selectedGroupId = id, selectedGroupInvitationId = targetInvitationId, selectedGroupDetail = null, groupLoading = true, groupLoadFailed = false, groupUnavailable = false) }
         groupLoadJob = viewModelScope.launch {
             val account = accountId
+            if (account != null) groupCacheJob = viewModelScope.launch {
+                destinations.observeGroup(account, id).collect { group ->
+                    if (group != null) mutableState.update { state ->
+                        if (state.selectedGroupId == id && !state.groupUnavailable && state.selectedGroupDetail?.invitationPreview == false) state.copy(selectedGroupDetail = group) else state
+                    }
+                }
+            }
             val cached = account?.let { destinations.group(it, id, targetInvitationId) }
                 ?: cachedHome()?.groups?.firstOrNull { it.id == id }
             if (cached != null && mutableState.value.selectedGroupId == id) mutableState.update { it.copy(selectedGroupDetail = cached) }
-            repository.group(id, targetInvitationId).onSuccess { group ->
-                if (account != null) destinations.saveGroup(account, group, targetInvitationId)
+            repository.group(id, targetInvitationId).onSuccess { incoming ->
+                val group = if (account != null) destinations.saveGroup(account, incoming, targetInvitationId) else incoming
                 if (mutableState.value.selectedGroupId != id) return@onSuccess
                 mutableState.update { it.copy(selectedGroupDetail = group, groupLoading = false) }
                 analytics.record(AnalyticsEvent("group_opened", mapOf(
@@ -608,6 +619,7 @@ sealed interface ConnectionEffect {
                 logGroupFailure("load group detail", error)
                 val unavailable = (error as? SocialException)?.reason in setOf(SocialError.FORBIDDEN, SocialError.NOT_FOUND, SocialError.CONFLICT)
                 mutableState.update { it.copy(selectedGroupDetail = if (unavailable) null else it.selectedGroupDetail, groupLoading = false, groupLoadFailed = true, groupUnavailable = unavailable) }
+                if (unavailable && account != null) destinations.removeGroup(account, id, targetInvitationId)
             }
         }
     }
@@ -665,7 +677,25 @@ sealed interface ConnectionEffect {
     fun consumeGroupInvite(token: String) = mutate("group_invite_link_consumed") { repository.consumeGroupInvite(token).getOrThrow().let { group -> mutableState.update { it.copy(selectedGroupDetail = group) } }; refresh() }
     fun closeGroup() {
         groupLoadJob?.cancel()
+        groupCacheJob?.cancel()
         mutableState.update { it.copy(selectedGroupId = null, selectedGroupInvitationId = null, selectedGroupDetail = null, groupLoading = false, groupLoadFailed = false, groupUnavailable = false) }
+    }
+    /** Refresh after a nested event returns, retaining the current page on transient failure. */
+    fun refreshSelectedGroup() = viewModelScope.launch {
+        val state = mutableState.value
+        val id = state.selectedGroupId ?: return@launch
+        val account = accountId ?: return@launch
+        runCatching { repository.group(id, state.selectedGroupInvitationId).getOrThrow() }.onSuccess { incoming ->
+            val group = destinations.saveGroup(account, incoming, state.selectedGroupInvitationId)
+            if (accountId == account && mutableState.value.selectedGroupId == id) mutableState.update { it.copy(selectedGroupDetail = group, groupLoading = false, groupLoadFailed = false, groupUnavailable = false) }
+        }.onFailure { error ->
+            if (error is CancellationException) throw error
+            logGroupFailure("group_return_refresh", error)
+            if ((error as? SocialException)?.reason in setOf(SocialError.FORBIDDEN, SocialError.NOT_FOUND)) {
+                destinations.removeGroup(account, id, state.selectedGroupInvitationId)
+                if (accountId == account && mutableState.value.selectedGroupId == id) mutableState.update { it.copy(selectedGroupDetail = null, groupUnavailable = true, groupLoadFailed = true) }
+            }
+        }
     }
     fun joinGroup(group: GroupSummary) = mutate("social_group_membership_changed") { repository.setGroupMembership(group.id, group.role == null).getOrThrow(); if(group.role == null && group.joinPolicy == "request") analytics.record(AnalyticsEvent("group_membership_request_submitted",mapOf(AnalyticsProperty.SourceType to "self_join"))); refresh(); refreshGroupDirectory() }
     fun reportPerson(person: SocialPerson, reason: ReportReason, feedback: (Boolean) -> Unit) = mutate("social_content_reported", SocialMessage.REPORTED, feedback) { repository.reportPerson(person.id, reason).getOrThrow() }
@@ -866,10 +896,40 @@ sealed interface ConnectionEffect {
         mutableState.update { if(it.selectedEvent?.id==event.id) it.copy(selectedEvent=updated) else it }
         refresh()
     }
-    fun cancelPlannedEvent(event:SocialEvent,scope:String)=mutate("activity_event_cancellation_result", properties=mapOf(AnalyticsProperty.EntrySource to eventEntrySource, AnalyticsProperty.GroupRunEnabled to (event.group != null))) {
-        val updated=repository.cancelEvent(event.id,scope).getOrThrow()
-        mutableState.update { if(it.selectedEvent?.id==event.id) it.copy(selectedEvent=updated) else it }
-        refresh()
+    fun cancelPlannedEvent(event: SocialEvent, scope: String, completed: (Boolean) -> Unit) {
+        if (mutableState.value.eventCancelling) return
+        val account = accountId ?: return
+        mutableState.update { it.copy(eventCancelling = true) }
+        viewModelScope.launch {
+            try {
+                val result = runCatching { repository.cancelEvent(event.id, scope).getOrThrow() }
+                result.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+                val properties = mapOf(AnalyticsProperty.EntrySource to eventEntrySource, AnalyticsProperty.GroupRunEnabled to (event.group != null), AnalyticsProperty.Result to if (result.isSuccess) "success" else "failure")
+                analytics.record(AnalyticsEvent("activity_event_cancellation_result", properties))
+                if (event.seriesId != null) analytics.record(AnalyticsEvent("activity_event_series_changed", mapOf(AnalyticsProperty.SelectionType to scope, AnalyticsProperty.Result to if (result.isSuccess) "success" else "failure")))
+                val updated = result.getOrElse { error ->
+                    if (error is CancellationException) throw error
+                    logGroupFailure("cancel_planned_event", error)
+                    messages.emit(SocialMessage.EVENT_CANCELLATION_FAILED)
+                    completed(false)
+                    return@launch
+                }
+                destinations.recordCancellation(account, updated)
+                try { repository.removeCancelledEvent(account, localeTag, event.id) }
+                catch (error: Exception) {
+                    if (error is CancellationException) throw error
+                    logGroupFailure("cancel_event_home_cache", error)
+                }
+                mutableState.update { if (it.selectedEvent?.id == event.id) it.copy(selectedEvent = updated) else it }
+                // Returning Group pages refresh the canonical list, including all edited
+                // recurrence segments. A refresh failure must never undo cancellation or
+                // keep this detail open after the server has accepted the mutation.
+                refresh()
+                completed(true)
+            } finally {
+                mutableState.update { it.copy(eventCancelling = false) }
+            }
+        }
     }
     fun setGroupArchived(group:GroupSummary,archived:Boolean)=mutate("group_lifecycle_changed"){repository.setGroupArchived(group.id,archived).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
     fun renameGroup(group:GroupSummary,name:String)=mutate("group_renamed"){repository.renameGroup(group.id,name).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}

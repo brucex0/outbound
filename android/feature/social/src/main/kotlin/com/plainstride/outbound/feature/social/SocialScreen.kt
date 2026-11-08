@@ -184,6 +184,7 @@ private fun SocialFeedback(viewModel: SocialViewModel) {
                 SocialMessage.EVENT_JOINED -> com.plainstride.outbound.core.designsystem.R.string.group_activity_joined
                 SocialMessage.EVENT_LEFT -> com.plainstride.outbound.core.designsystem.R.string.group_activity_left
                 SocialMessage.EVENT_RSVP_FAILED -> com.plainstride.outbound.core.designsystem.R.string.group_activity_rsvp_error
+                SocialMessage.EVENT_CANCELLATION_FAILED -> R.string.group_event_cancel_failed
                 SocialMessage.GROUP_JOINED -> R.string.group_toast_joined
                 SocialMessage.GROUP_MEMBERSHIP_PENDING -> R.string.group_membership_pending
                 SocialMessage.GROUP_DECLINED -> R.string.group_toast_declined
@@ -249,6 +250,14 @@ fun SocialGroupDestination(
     LaunchedEffect(accountId, localeTag, groupId, invitationId) {
         viewModel.start(accountId, localeTag, trackOpen = false)
         if (viewModel.state.value.selectedGroupId != groupId) viewModel.loadGroup(groupId, entrySource, invitationId)
+    }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var hasResumed by rememberSaveable(accountId, groupId) { mutableStateOf(false) }
+    LaunchedEffect(viewModel, lifecycleOwner, groupId) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            if (hasResumed) viewModel.refreshSelectedGroup() else hasResumed = true
+            kotlinx.coroutines.awaitCancellation()
+        }
     }
     LaunchedEffect(state.selectedGroupId) {
         if (state.selectedGroupId != null) opened = true else if (opened) onBack()
@@ -395,7 +404,8 @@ fun SocialActivityEventDestination(
     var editing by rememberSaveable(event.id) { mutableStateOf(false) }
     SocialEventDetailScreen(event, unitSystem, { viewModel.closeEvent(); onBack() },
         { going, mode -> viewModel.setEventRsvp(event, going, mode) }, { inviting = true },
-        { viewModel.refreshEvent(event.id) }, groupRun, groupRunJoining, onToggleActivityLiveMap, { onStartActivity(event) }, { editing = true }, { scope -> viewModel.cancelPlannedEvent(event, scope) })
+        { viewModel.refreshEvent(event.id) }, groupRun, groupRunJoining, onToggleActivityLiveMap, { onStartActivity(event) }, { editing = true }, state.eventCancelling,
+        { scope -> viewModel.cancelPlannedEvent(event, scope) { success -> if (success) { viewModel.closeEvent(); onBack() } } })
     if (editing) GroupActivityComposer(close = { editing = false }, locationSelected = viewModel::trackGroupActivityLocation, mapOpened = viewModel::trackGroupActivityMapOpened, editingEvent = event) { body, completed -> viewModel.updatePlannedEvent(event, body, completed) }
     if (inviting) PersonPickerDialog(stringResource(R.string.social_invite), state.home.connections, { inviting = false }) { person ->
         viewModel.inviteToEvent(event, person); inviting = false
@@ -1997,10 +2007,12 @@ private fun SocialEventDetailScreen(
     onToggleActivityLiveMap: () -> Unit,
     onStartActivity: () -> Unit,
     onEdit: () -> Unit,
+    cancelling: Boolean,
     onCancel: (String) -> Unit,
 ) {
     var cancelConfirmation by rememberSaveable(event.id) { mutableStateOf(false) }
     var attendanceChoice by rememberSaveable(event.id) { mutableStateOf(false) }
+    var showAllParticipants by rememberSaveable(event.id) { mutableStateOf(false) }
     val context = LocalContext.current
     LaunchedEffect(event.id, event.status) {
         if (event.status in setOf("scheduled", "active")) {
@@ -2014,6 +2026,7 @@ private fun SocialEventDetailScreen(
     val end = remember(event.endsAt) { event.endsAt?.let { runCatching { java.time.OffsetDateTime.parse(it).toInstant() }.getOrNull() } }
     val canStartActivity = (event.canParticipate ?: (event.currentUserRole == "owner" || event.joined)) && event.status in setOf("scheduled", "active") &&
         (event.status == "active" || start?.atZone(java.time.ZoneId.systemDefault())?.toLocalDate() == java.time.LocalDate.now())
+    val canManageFutureActivity = event.status == "scheduled" && event.startedCount == 0 && start?.isAfter(java.time.Instant.now()) == true
     val dateTime = remember(start) {
         start?.let { java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date.from(it)) }
             ?: event.startsAt
@@ -2024,10 +2037,10 @@ private fun SocialEventDetailScreen(
         text = { Text(stringResource(R.string.group_repeat_cancel_help)) },
         confirmButton = {
             Column {
-                TextButton({ cancelConfirmation = false; onCancel("this") }) { Text(stringResource(R.string.group_repeat_cancel_this)) }
+                TextButton({ cancelConfirmation = false; onCancel("this") }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.group_repeat_cancel_this)) }
                 if (event.seriesId != null) {
-                    TextButton({ cancelConfirmation = false; onCancel("following") }) { Text(stringResource(R.string.group_repeat_cancel_following)) }
-                    TextButton({ cancelConfirmation = false; onCancel("series") }) { Text(stringResource(R.string.group_repeat_cancel_series)) }
+                    TextButton({ cancelConfirmation = false; onCancel("following") }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.group_repeat_cancel_following)) }
+                    TextButton({ cancelConfirmation = false; onCancel("series") }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.group_repeat_cancel_series)) }
                 }
             }
         },
@@ -2039,20 +2052,23 @@ private fun SocialEventDetailScreen(
                 topBar = {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconButton(close) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.social_back)) }
-                        Text(event.name, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
-                        if (event.currentUserRole == "owner" && event.status == "scheduled") {
-                            IconButton(invite) { Icon(Icons.Outlined.PersonAddAlt, stringResource(R.string.social_invite)) }
+                        Text(event.name, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        if (event.currentUserRole == "owner" && canManageFutureActivity) {
+                            IconButton(onEdit, enabled = !cancelling) { Icon(Icons.Outlined.Edit, stringResource(R.string.group_repeat_edit)) }
                         }
                     }
                 },
                 bottomBar = {
-                    if (event.currentUserRole != "owner" && event.status in setOf("scheduled", "active")) {
+                    if (canStartActivity) {
                         Surface(tonalElevation = 3.dp) {
                             Button(
-                                onClick = { if (event.joined) rsvp(false, "in_person") else attendanceChoice = true },
+                                onClick = onStartActivity,
+                                enabled = !cancelling && !groupRunJoining,
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
                             ) {
-                                Text(stringResource(if (event.joined) R.string.social_leave else R.string.social_join))
+                                Icon(Icons.AutoMirrored.Outlined.DirectionsRun, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.group_event_live_map_start))
                             }
                         }
                     }
@@ -2062,23 +2078,21 @@ private fun SocialEventDetailScreen(
                     Modifier.fillMaxSize().padding(insets).verticalScroll(rememberScrollState()).padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(18.dp),
                 ) {
+                    if (event.status == "cancelled") ElevatedCard {
+                        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(stringResource(R.string.group_event_cancelled), style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.group_event_cancelled_detail), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                     ElevatedCard {
                         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text(event.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                             event.group?.name?.let { Text(stringResource(R.string.group_event_from, it), color = MaterialTheme.colorScheme.primary) }
-                            HorizontalDivider()
                             EventDetailRow(stringResource(R.string.group_event_created_by), event.creator?.displayName ?: stringResource(R.string.group_event_organizer))
                             EventDetailRow(stringResource(R.string.group_event_when), dateTime)
                             event.recurrence?.let { rule ->
                                 val cadence = stringResource(when(rule.intervalWeeks) { 2 -> R.string.group_repeat_every_2_weeks; 3 -> R.string.group_repeat_every_3_weeks; 4 -> R.string.group_repeat_every_4_weeks; else -> R.string.group_repeat_every_week })
                                 val days = rule.weekdays.filter { it in 1..7 }.joinToString(", ") { java.time.DayOfWeek.of(it).getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault()) }
                                 EventDetailRow(stringResource(R.string.group_repeat_title), "$cadence · $days · ${rule.timeZone}")
-                            }
-                            if (event.currentUserRole == "owner" && event.status == "scheduled" && event.startedCount == 0 && start?.isAfter(java.time.Instant.now()) == true) {
-                                OutlinedButton(onEdit, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_repeat_edit)) }
-                            }
-                            if (event.currentUserCanCancel && event.status == "scheduled" && event.startedCount == 0 && start?.isAfter(java.time.Instant.now()) == true) {
-                                TextButton({ cancelConfirmation = true }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_repeat_cancel)) }
                             }
                             end?.let {
                                 EventDetailRow(stringResource(R.string.group_event_duration), durationText(start, it, context.resources))
@@ -2100,11 +2114,28 @@ private fun SocialEventDetailScreen(
                             }
                         }
                     }
+                    if (event.locationName.isNullOrBlank() && event.participationMode == "hybrid") ElevatedCard {
+                        Row(Modifier.fillMaxWidth().padding(18.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Outlined.Wifi, null)
+                            Text(stringResource(R.string.group_event_virtual), style = MaterialTheme.typography.titleMedium)
+                        }
+                    }
                     event.compatibility?.let { fit ->
                         ElevatedCard {
                             Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(stringResource(R.string.group_event_fit), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                                 Text(fit.explanation, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                    if (event.options.isNotEmpty()) ElevatedCard {
+                        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(stringResource(R.string.group_event_options), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            event.options.forEach { option ->
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Text(option.label, Modifier.weight(1f), fontWeight = FontWeight.Medium)
+                                    option.distanceMeters?.let { Text(formatDistance(it, unitSystem), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                }
                             }
                         }
                     }
@@ -2120,7 +2151,7 @@ private fun SocialEventDetailScreen(
                         ElevatedCard {
                             Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
-                                    stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_share_location),
+                                    stringResource(R.string.group_event_run_options),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
                                 )
@@ -2132,33 +2163,28 @@ private fun SocialEventDetailScreen(
                                 groupRun?.takeIf { it.activityEventId == event.id }?.let { run ->
                                     Text(stringResource(R.string.group_event_live_map_runners, run.participants.count { it.status in setOf("active", "stale") }))
                                 }
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    val sharingLabel = stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_share_location)
+                                    Text(sharingLabel, Modifier.weight(1f))
                                     Switch(checked = sharing,
                                         onCheckedChange = { if (it != sharing) onToggleActivityLiveMap() },
-                                        enabled = !groupRunJoining && !sharingAnotherEvent)
-                                    Button(onClick = onStartActivity, enabled = canStartActivity && !groupRunJoining) {
-                                        Text(stringResource(R.string.group_event_live_map_start))
-                                    }
+                                        modifier = Modifier.semantics { contentDescription = sharingLabel },
+                                        enabled = !cancelling && !groupRunJoining && !sharingAnotherEvent)
                                 }
                                 if (groupRunJoining) LinearProgressIndicator(Modifier.fillMaxWidth())
                             }
                         }
                     }
-                    if (event.options.isNotEmpty()) ElevatedCard {
-                        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(stringResource(R.string.group_event_options), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            event.options.forEach { option ->
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Text(option.label, Modifier.weight(1f), fontWeight = FontWeight.Medium)
-                                    option.distanceMeters?.let { Text(formatDistance(it, unitSystem), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                                }
-                            }
-                        }
-                    }
                     ElevatedCard {
                         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_counts, event.attendeeCount, event.startedCount, event.participants.count { it.outcome in setOf("completed", "no_recording") }), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            (event.participants.map(SocialEventParticipant::person).ifEmpty { event.attendeePreview }).forEach { person ->
+                            val participants = event.participants.map(SocialEventParticipant::person).ifEmpty { event.attendeePreview }
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Text(stringResource(com.plainstride.outbound.core.designsystem.R.string.group_activity_counts, event.attendeeCount, event.startedCount, event.participants.count { it.outcome in setOf("completed", "no_recording") }), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                if (participants.size > 3) TextButton({ showAllParticipants = !showAllParticipants }) {
+                                    Text(stringResource(if (showAllParticipants) R.string.group_event_less else R.string.group_event_more))
+                                }
+                            }
+                            (if (showAllParticipants) participants else participants.take(3)).forEach { person ->
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     SocialAvatar(person)
                                     Column {
@@ -2171,6 +2197,32 @@ private fun SocialEventDetailScreen(
                                 }
                             }
                             if (event.participants.isEmpty() && event.attendeePreview.isEmpty()) Text(stringResource(R.string.group_event_no_participants), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    if (event.status in setOf("scheduled", "active") && (event.currentUserRole != "owner" || event.status == "scheduled")) ElevatedCard {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
+                            if (event.currentUserRole != "owner") TextButton(
+                                onClick = { if (event.joined) rsvp(false, "in_person") else attendanceChoice = true },
+                                enabled = !cancelling,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Icon(if (event.joined) Icons.Outlined.EventBusy else Icons.Outlined.EventAvailable, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(if (event.joined) R.string.social_leave else R.string.social_join))
+                            }
+                            if (event.currentUserRole == "owner" && event.status == "scheduled") TextButton(invite, Modifier.fillMaxWidth(), enabled = !cancelling) {
+                                Icon(Icons.Outlined.PersonAddAlt, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.group_event_invite_connections))
+                            }
+                        }
+                    }
+                    if (event.currentUserCanCancel && canManageFutureActivity) ElevatedCard {
+                        TextButton({ cancelConfirmation = true }, Modifier.fillMaxWidth().padding(8.dp), enabled = !cancelling,
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                            if (cancelling) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Icon(Icons.Outlined.EventBusy, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.group_repeat_cancel))
                         }
                     }
                 }

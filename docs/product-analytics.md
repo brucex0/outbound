@@ -363,6 +363,8 @@ Android `live_location_publish_result` records the first realtime publish acknow
 
 `activity_event_rsvp_result` records join/leave success or failure with only bounded `entry_source`, `selection_type`, and `result`. On iOS and Android, `group_participant_location_unavailable` records a participant selection without an available location, and `group_participant_focused` records a successful map focus with only `source_type=participant_pill|group_card`; participant IDs, names, and coordinates are excluded.
 
+Android planned-activity cancellation retains `activity_event_cancellation_result` with only bounded `entry_source`, `group_run_enabled`, and `result=success|failure`. Recurring cancellations also emit the existing `activity_event_series_changed` with `selection_type=this|following|series` and result. The result describes the server mutation independently of a subsequent Group refresh; IDs, titles, dates, and cancellation content are excluded.
+
 `feature_exposed` with `feature=group_activity_recovery` records restoration of durable event context. It contains no event ID, participant names, or location. Live-map reconnection emits safe recovery diagnostics and existing participant presence analytics.
 
 - iOS and Android running cadence use `feature_exposed` with only `feature=running_cadence_live` or `running_cadence_summary` when those surfaces appear. Recording quality reports availability only; cadence values, step counts, samples, timestamps, and activity IDs are excluded.

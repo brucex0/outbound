@@ -1,0 +1,10 @@
+<resources>
+    <string name="group_event_run_options">Run options</string>
+    <string name="group_event_more">More</string>
+    <string name="group_event_less">Less</string>
+    <string name="group_event_invite_connections">Invite connections</string>
+    <string name="group_event_virtual">Join virtually</string>
+    <string name="group_event_cancel_failed">Activity could not be cancelled. Try again.</string>
+    <string name="group_event_cancelled">Activity cancelled</string>
+    <string name="group_event_cancelled_detail">This activity is no longer accepting participants.</string>
+</resources>
