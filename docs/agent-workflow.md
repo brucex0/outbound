@@ -16,6 +16,19 @@ Use this for tool selection, Codex reasoning presets, task briefs, and handoffs.
 - Give a new tool the specific task and a compact handoff. After one failed correction cycle, reassess or escalate instead of repeating blind retries.
 - Use Standard service normally. Choose Fast explicitly when the saved waiting time justifies its additional usage.
 
+## Freebuff Discovery
+
+- Before reporting Freebuff unavailable, inspect both the connected tool inventory and the local CLI:
+
+  ```sh
+  command -v freebuff
+  freebuff --help
+  ```
+
+- Use `PATH` discovery rather than depending on a fixed installation path. A missing connected tool means no connector is exposed; it does not establish that the local CLI is absent.
+- A successful help command establishes that the CLI is installed and launches. It does not establish login, service access, or task execution readiness. Check the supported workflow before attempting a handoff, and report the specific limitation if execution cannot proceed.
+- Say a handoff occurred only after work was actually dispatched. Keep one editing owner; do not switch an active task merely to repeat discovery.
+
 ## Local Codex Presets
 
 The user config keeps `gpt-6.1-sol` and defaults to Medium reasoning with Standard service. The installed CLI uses separate profile files:
