@@ -106,8 +106,9 @@ enum StretchCatalog {
         case .postSave: "standing_standard"
         case .standalone: nil
         }
+        // Explicit entry-point defaults can include floor movements; do not apply preference-restoration filtering.
         if let contextualDefault,
-           let preferred = routines.first(where: { $0.preferenceID == contextualDefault && (isIndoor || $0.isStanding) }) {
+           let preferred = routines.first(where: { $0.preferenceID == contextualDefault }) {
             return preferred
         }
         let remembered = entryPoint == .standalone ? (isIndoor ? last : lastStanding) : nil
