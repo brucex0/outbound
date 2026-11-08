@@ -39,6 +39,7 @@ struct GroupDTO: Codable, Identifiable, Sendable {
     var visibility: String = "private"
     var memberInviteApprovalRequired = true
     var memberInvitesAllowed = true
+    var memberActivityCreation = true
     var canInvite = false
     var pendingRequestCount = 0
     var joinRequests: [GroupJoinRequestDTO] = []
@@ -80,7 +81,7 @@ extension GroupDTO {
         case upcomingActivities
         case recentMoments
         case history
-        case memberInviteApprovalRequired, memberInvitesAllowed, canInvite, pendingRequestCount, joinRequests
+        case memberInviteApprovalRequired, memberInvitesAllowed, memberActivityCreation, canInvite, pendingRequestCount, joinRequests
         case normalizedName, description, city, activityInterests, trustPolicy, visibility, joinPolicy, featured, organizationVerificationState, capabilities, notices, unreadNoticeCount, pendingRequest, invitationPreview, pendingInvitation, loadedDetailPayload
     }
 
@@ -118,6 +119,7 @@ extension GroupDTO {
         joinPolicy = try container.decodeIfPresent(String.self, forKey: .joinPolicy) ?? "invite_only"
         memberInviteApprovalRequired = try container.decodeIfPresent(Bool.self, forKey: .memberInviteApprovalRequired) ?? true
         memberInvitesAllowed = try container.decodeIfPresent(Bool.self, forKey: .memberInvitesAllowed) ?? true
+        memberActivityCreation = try container.decodeIfPresent(Bool.self, forKey: .memberActivityCreation) ?? true
         canInvite = try container.decodeIfPresent(Bool.self, forKey: .canInvite) ?? false
         pendingRequestCount = try container.decodeIfPresent(Int.self, forKey: .pendingRequestCount) ?? 0
         joinRequests = try container.decodeIfPresent([GroupJoinRequestDTO].self, forKey: .joinRequests) ?? []
@@ -331,12 +333,13 @@ struct GroupActivityEventDTO: Codable, Identifiable, Sendable {
     let attendeeCount: Int
     let currentUserGoing: Bool
     let currentUserRole: String
+    let currentUserCanCancel: Bool
 
-    init(id: String, title: String, startsAt: Date, endsAt: Date?, locationName: String?, paceNote: String?, status: String, creator: GroupPersonDTO, attendeeCount: Int, currentUserGoing: Bool, currentUserRole: String) {
-        self.id = id; self.title = title; self.startsAt = startsAt; self.endsAt = endsAt; self.locationName = locationName; self.paceNote = paceNote; self.status = status; self.creator = creator; self.attendeeCount = attendeeCount; self.currentUserGoing = currentUserGoing; self.currentUserRole = currentUserRole
+    init(id: String, title: String, startsAt: Date, endsAt: Date?, locationName: String?, paceNote: String?, status: String, creator: GroupPersonDTO, attendeeCount: Int, currentUserGoing: Bool, currentUserRole: String, currentUserCanCancel: Bool = false) {
+        self.id = id; self.title = title; self.startsAt = startsAt; self.endsAt = endsAt; self.locationName = locationName; self.paceNote = paceNote; self.status = status; self.creator = creator; self.attendeeCount = attendeeCount; self.currentUserGoing = currentUserGoing; self.currentUserRole = currentUserRole; self.currentUserCanCancel = currentUserCanCancel
     }
 
-    private enum CodingKeys: String, CodingKey { case id, title, startsAt, endsAt, locationName, paceNote, status, creator, attendeeCount, currentUserGoing, currentUserRole }
+    private enum CodingKeys: String, CodingKey { case id, title, startsAt, endsAt, locationName, paceNote, status, creator, attendeeCount, currentUserGoing, currentUserRole, currentUserCanCancel }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -351,6 +354,7 @@ struct GroupActivityEventDTO: Codable, Identifiable, Sendable {
         attendeeCount = try container.decodeIfPresent(Int.self, forKey: .attendeeCount) ?? 0
         currentUserGoing = try container.decodeIfPresent(Bool.self, forKey: .currentUserGoing) ?? false
         currentUserRole = try container.decodeIfPresent(String.self, forKey: .currentUserRole) ?? "viewer"
+        currentUserCanCancel = try container.decodeIfPresent(Bool.self, forKey: .currentUserCanCancel) ?? false
     }
 
     var activityEvent: ActivityEventDTO {
@@ -375,7 +379,8 @@ struct GroupActivityEventDTO: Codable, Identifiable, Sendable {
             currentUserGoing: currentUserGoing,
             status: status,
             participationMode: "hybrid",
-            currentUserRole: currentUserRole
+            currentUserRole: currentUserRole,
+            currentUserCanCancel: currentUserCanCancel
         )
     }
 }
@@ -489,6 +494,7 @@ struct GroupCalendarRequestDTO: Encodable, Sendable {
 struct GroupDetailsRequestDTO: Encodable, Sendable {
     let name: String?
     let city: String??
+    let memberActivityCreation: Bool?
 }
 
 struct GroupContributionDTO: Codable, Sendable {

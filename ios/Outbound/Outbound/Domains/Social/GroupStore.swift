@@ -229,9 +229,9 @@ final class GroupStore: ObservableObject {
         await mutate(success: String(localized: "group.toast.saved", defaultValue: "Group updated."), operationName: "update group name") { try await api.updateGroupName(id: group.id, name: name) }
     }
 
-    func updateDetails(group: GroupDTO, name: String?, city: String??) async -> GroupDTO? {
+    func updateDetails(group: GroupDTO, name: String?, city: String??, memberActivityCreation: Bool? = nil) async -> GroupDTO? {
         await mutate(success: String(localized: "group.toast.saved", defaultValue: "Group updated."), operationName: "update group details") {
-            try await api.updateGroupDetails(id: group.id, name: name, city: city)
+            try await api.updateGroupDetails(id: group.id, name: name, city: city, memberActivityCreation: memberActivityCreation)
         }
     }
 

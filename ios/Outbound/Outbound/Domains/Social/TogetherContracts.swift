@@ -202,6 +202,7 @@ struct ActivityEventDTO: Codable, Identifiable, Sendable {
     var status: String? = nil
     var participationMode: String? = nil
     var currentUserRole: String? = nil
+    var currentUserCanCancel: Bool? = nil
     var currentUserOutcome: String? = nil
     var currentUserAttendanceMode: String? = nil
 }
@@ -297,6 +298,7 @@ struct ActivityEventDetailDTO: Codable, Identifiable, Sendable {
     var invitedUserIds: [String]? = nil
     var pendingInvitations: [ActivityEventPendingInvitationDTO]? = nil
     var currentUserRole: String? = nil
+    var currentUserCanCancel: Bool? = nil
 }
 
 struct ActivityEventPendingInvitationDTO: Codable, Identifiable, Sendable {

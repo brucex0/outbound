@@ -8812,6 +8812,30 @@
         }
       }
     },
+    "group.allow_members_plan_activities": {
+      "comment": "[android:social] Owner/admin setting that lets Group members plan scheduled activities.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow Members to plan activities"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir que los miembros planifiquen actividades"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允许成员规划活动"
+          }
+        }
+      }
+    },
     "group.plan_activity": {
       "localizations": {
         "en": {

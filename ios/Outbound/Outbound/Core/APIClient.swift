@@ -538,8 +538,8 @@ final class APIClient {
         try await patch("/social/groups/\(id)", body: ["name": name])
     }
 
-    func updateGroupDetails(id: String, name: String?, city: String??) async throws -> GroupDTO {
-        try await patch("/social/groups/\(id)", body: GroupDetailsRequestDTO(name: name, city: city))
+    func updateGroupDetails(id: String, name: String?, city: String??, memberActivityCreation: Bool? = nil) async throws -> GroupDTO {
+        try await patch("/social/groups/\(id)", body: GroupDetailsRequestDTO(name: name, city: city, memberActivityCreation: memberActivityCreation))
     }
 
     func updateGroupMembershipPolicy(id: String, request: GroupMembershipPolicyDTO) async throws -> GroupDTO {

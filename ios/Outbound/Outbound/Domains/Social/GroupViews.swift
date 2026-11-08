@@ -767,7 +767,7 @@ struct GroupDetailView: View {
                     focusCard
                     membersSection
                     if !current.invitations.isEmpty { pendingInvitationsSection }
-                    planActivityButton
+                    if canPlanActivity { planActivityButton }
                     if !current.recentMoments.isEmpty { momentsSection }
                 }
             }
@@ -860,6 +860,11 @@ struct GroupDetailView: View {
         current.canInvite && current.lifecycle != "archived" && current.memberCount + current.invitations.count < current.memberLimit
     }
 
+    private var canPlanActivity: Bool {
+        current.lifecycle != "archived" && current.capabilities.scheduledActivities && current.role != nil &&
+            (current.role == "owner" || current.role == "admin" || current.memberActivityCreation)
+    }
+
     private var inviteMembersIconButton: some View {
         Button { showsInvite = true } label: {
             Image(systemName: "person.badge.plus")
@@ -946,7 +951,7 @@ struct GroupDetailView: View {
                 Button { showsNoticeComposer = true } label: { Label(String(localized: "group.notice.publish", defaultValue: "Post an update"), systemImage: "megaphone") }
                     .buttonStyle(.bordered)
             }
-            planActivityButton
+            if canPlanActivity { planActivityButton }
         }
     }
 
@@ -1729,6 +1734,7 @@ struct GroupManagementView: View {
     @State private var timeZone: String
     @State private var calendarApply = "next_week"
     @State private var notificationMuted: Bool
+    @State private var allowMembersToPlanActivities: Bool
     @State private var showsArchiveConfirmation = false
     @State private var savedName: String
     @State private var savedCity: String
@@ -1736,6 +1742,7 @@ struct GroupManagementView: View {
     @State private var savedTimeZone: String
     @State private var savedCalendarApply = "next_week"
     @State private var savedNotificationMuted: Bool
+    @State private var savedAllowMembersToPlanActivities: Bool
     @State private var isSaving = false
 
     init(group: GroupDTO) {
@@ -1745,11 +1752,13 @@ struct GroupManagementView: View {
         _resetWeekday = State(initialValue: group.resetWeekday)
         _timeZone = State(initialValue: group.timeZone)
         _notificationMuted = State(initialValue: group.currentUserMuted)
+        _allowMembersToPlanActivities = State(initialValue: group.memberActivityCreation)
         _savedName = State(initialValue: group.name)
         _savedCity = State(initialValue: group.city ?? "")
         _savedResetWeekday = State(initialValue: group.resetWeekday)
         _savedTimeZone = State(initialValue: group.timeZone)
         _savedNotificationMuted = State(initialValue: group.currentUserMuted)
+        _savedAllowMembersToPlanActivities = State(initialValue: group.memberActivityCreation)
     }
     private var current: GroupDTO { groupStore.groups.first(where: { $0.id == group.id }) ?? group }
 
@@ -1785,6 +1794,7 @@ struct GroupManagementView: View {
                         .submitLabel(.done)
                         .inputSubmissionAnalytics(.groups)
                         .onSubmit { focusedInput = nil }
+                    Toggle(String(localized: "group.allow_members_plan_activities", defaultValue: "Allow Members to plan activities"), isOn: $allowMembersToPlanActivities)
                 }
                 Section(String(localized: "group.week.settings", defaultValue: "Group week")) {
                     Picker(String(localized: "group.reset_day", defaultValue: "Reset day"), selection: $resetWeekday) {
@@ -1840,6 +1850,7 @@ struct GroupManagementView: View {
             timeZone.trimmingCharacters(in: .whitespacesAndNewlines) != savedTimeZone ||
             calendarApply != savedCalendarApply ||
             notificationMuted != savedNotificationMuted
+            || allowMembersToPlanActivities != savedAllowMembersToPlanActivities
     }
 
     @MainActor
@@ -1851,23 +1862,34 @@ struct GroupManagementView: View {
         let draftResetWeekday = resetWeekday
         let draftCalendarApply = calendarApply
         let draftNotificationMuted = notificationMuted
+        let draftAllowMembersToPlanActivities = allowMembersToPlanActivities
         let nameChanged = trimmedName != savedName
         let cityChanged = trimmedCity != savedCity
         let calendarChanged = draftResetWeekday != savedResetWeekday || trimmedTimeZone != savedTimeZone || draftCalendarApply != savedCalendarApply
         let notificationsChanged = draftNotificationMuted != savedNotificationMuted
-        guard nameChanged || cityChanged || calendarChanged || notificationsChanged, !isSaving else { return }
+        let memberActivityCreationChanged = draftAllowMembersToPlanActivities != savedAllowMembersToPlanActivities
+        guard nameChanged || cityChanged || calendarChanged || notificationsChanged || memberActivityCreationChanged, !isSaving else { return }
 
         let groupSnapshot = current
         isSaving = true
         defer { isSaving = false }
-        if (nameChanged || cityChanged), await groupStore.updateDetails(group: groupSnapshot, name: nameChanged ? trimmedName : nil, city: cityChanged ? .some(trimmedCity) : nil) != nil {
-            if cityChanged {
-                savedCity = trimmedCity
-                await analyticsManager?.track(.init(.groupLocationChanged))
+        if nameChanged || cityChanged || memberActivityCreationChanged {
+            let detailsUpdated = await groupStore.updateDetails(group: groupSnapshot, name: nameChanged ? trimmedName : nil, city: cityChanged ? .some(trimmedCity) : nil, memberActivityCreation: memberActivityCreationChanged ? draftAllowMembersToPlanActivities : nil)
+            if detailsUpdated != nil {
+                if cityChanged {
+                    savedCity = trimmedCity
+                    await analyticsManager?.track(.init(.groupLocationChanged))
+                }
+                if nameChanged {
+                    savedName = trimmedName
+                    await analyticsManager?.track(.init(.groupNameChanged))
+                }
+                if memberActivityCreationChanged {
+                    savedAllowMembersToPlanActivities = draftAllowMembersToPlanActivities
+                }
             }
-            if nameChanged {
-                savedName = trimmedName
-                await analyticsManager?.track(.init(.groupNameChanged))
+            if memberActivityCreationChanged {
+                await analyticsManager?.track(.init(.groupMembershipPolicyChanged, properties: [.sourceType: .string("group_settings"), .selectionType: .string(draftAllowMembersToPlanActivities ? "enabled" : "disabled"), .changeType: .string("member_activity_creation"), .result: .string(detailsUpdated == nil ? "failure" : "success")]))
             }
         }
         if calendarChanged, await groupStore.updateCalendar(group: groupSnapshot, resetWeekday: draftResetWeekday, timeZone: trimmedTimeZone, apply: draftCalendarApply) != nil {

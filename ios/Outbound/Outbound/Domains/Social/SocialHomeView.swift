@@ -1873,7 +1873,7 @@ struct ActivityEventDetailView: View {
 
     private var isCancelled: Bool { (detail?.status ?? run.status) == "cancelled" }
     private var canCancelActivity: Bool {
-        isCreator && (detail?.status ?? run.status) == "scheduled"
+        (detail?.currentUserCanCancel ?? run.currentUserCanCancel ?? isCreator) && (detail?.status ?? run.status) == "scheduled"
             && (detail?.startsAt ?? run.startsAt) > Date()
             && (detail?.seriesId == nil || (detail?.startedCount ?? 0) == 0)
     }
