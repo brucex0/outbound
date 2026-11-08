@@ -20,6 +20,7 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
     var currentBlockReason: (() -> CadencePacerBlockReason?)?
     private var player: AVAudioPlayer?
     private var isPlayingIntroduction = false
+    private var hasStartedIntroduction = false
     private var isHandingOff = false
     private var pausedForAnnouncement = false
     private var playbackCadence: Int?
@@ -59,6 +60,7 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
 
     func reset() {
         suspend()
+        hasStartedIntroduction = false
         lastPlaybackSeconds = nil
         lastReportedState = nil
     }
@@ -122,7 +124,7 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             return
         }
         if !snapshot.isSimulated,
-           snapshot.cadenceEvidenceTimestamp.map({ (-1...5).contains(Date().timeIntervalSince($0)) }) != true {
+           snapshot.cadenceEvidenceTimestamp.map({ RunningCadenceReading.isFresh(measuredAt: $0, now: Date()) }) != true {
             cancelResume(reason: "cadence_unavailable")
             return
         }
@@ -195,16 +197,15 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             reportState("inactive_or_unsupported")
             return
         }
-        guard let cadence = snapshot.cadenceStepsPerMinute,
-              let timestamp = snapshot.cadenceEvidenceTimestamp,
-              (100...220).contains(cadence),
-              (-1...5).contains(evidenceNow.timeIntervalSince(timestamp)) else {
+        if let reason = cadenceUnavailableReason(for: snapshot, at: evidenceNow) {
             observations = []
             stop()
-            reportState("cadence_unavailable")
+            reportState("cadence_unavailable", reason: reason)
             return
         }
-        if observations.last.map({ timestamp > $0.date }) ?? true {
+        if let cadence = snapshot.cadenceStepsPerMinute,
+           let timestamp = snapshot.cadenceEvidenceTimestamp,
+           observations.last.map({ timestamp > $0.date }) ?? true {
             observations.append((timestamp, cadence))
         }
         if let target = intent?.resolvedTargetDistanceMeters,
@@ -252,6 +253,8 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         if isHandingOff {
             isHandingOff = false
             play(cadence: cadenceTarget)
+        } else if hasStartedIntroduction {
+            play(cadence: cadenceTarget)
         } else if let introduction = introductionAudio?() {
             playIntroduction(introduction)
         } else {
@@ -260,6 +263,16 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             logger.notice("Cadence pacer introduction unavailable; continuing with beat")
             play(cadence: cadenceTarget)
         }
+    }
+
+    private func cadenceUnavailableReason(for snapshot: ActiveSessionSnapshot, at now: Date) -> String? {
+        guard let cadence = snapshot.cadenceStepsPerMinute else { return "missing_value" }
+        guard let timestamp = snapshot.cadenceEvidenceTimestamp else { return "missing_timestamp" }
+        guard (100...220).contains(cadence) else { return "out_of_range" }
+        guard RunningCadenceReading.isFresh(measuredAt: timestamp, now: now) else {
+            return timestamp > now ? "future_evidence" : "stale_evidence"
+        }
+        return nil
     }
 
     private func establishedCadence() -> Int? {
@@ -309,6 +322,9 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             }
             self.player = player
             isPlayingIntroduction = true
+            // Once the player accepts playback, even an interrupted explanation is
+            // consumed for this run. Pauses and later segments do not repeat it.
+            hasStartedIntroduction = true
             reportState("introduction_started")
             eventHandler?("introduction_started")
         } catch {
@@ -330,8 +346,8 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
             return
         }
         if !snapshot.isSimulated,
-           snapshot.cadenceEvidenceTimestamp.map({ (-1...5).contains(now.timeIntervalSince($0)) }) != true {
-            reportState("cadence_unavailable")
+           snapshot.cadenceEvidenceTimestamp.map({ RunningCadenceReading.isFresh(measuredAt: $0, now: now) }) != true {
+            reportState("cadence_unavailable", reason: "handoff_evidence_unavailable")
             finishSkippedHandoff()
             return
         }
@@ -445,11 +461,15 @@ final class CadencePacer: NSObject, AVAudioPlayerDelegate {
         eventHandler?("failed")
     }
 
-    private func reportState(_ state: String) {
+    private func reportState(_ state: String, reason: String? = nil) {
         guard state != lastReportedState else { return }
         lastReportedState = state
         // Closed technical states only; no cadence, timestamps, names or workout content.
-        logger.notice("Cadence pacer state=\(state, privacy: .public)")
+        if let reason {
+            logger.notice("Cadence pacer state=\(state, privacy: .public) reason=\(reason, privacy: .public)")
+        } else {
+            logger.notice("Cadence pacer state=\(state, privacy: .public)")
+        }
     }
 
     private func deactivateAudioSession() {

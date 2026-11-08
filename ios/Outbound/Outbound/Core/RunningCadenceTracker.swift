@@ -4,6 +4,12 @@ import Foundation
 nonisolated struct RunningCadenceReading {
     let stepsPerMinute: Double
     let measuredAt: Date
+
+    /// CMPedometer delivery can straddle the recorder's one-second updates.
+    /// Share the recorder's bounded sensor window with live cadence consumers.
+    static func isFresh(measuredAt: Date, now: Date) -> Bool {
+        (-1...10).contains(now.timeIntervalSince(measuredAt))
+    }
 }
 
 /// Persists measured coverage rather than treating missing readings as zero.
@@ -42,8 +48,7 @@ nonisolated struct RunningCadenceTracker: Codable, Sendable {
     mutating func update(reading: RunningCadenceReading?, elapsedSeconds: Int, now: Date) {
         guard let reading,
               reading.measuredAt >= segmentStartedAt,
-              now.timeIntervalSince(reading.measuredAt) >= -1,
-              now.timeIntervalSince(reading.measuredAt) <= 10,
+              RunningCadenceReading.isFresh(measuredAt: reading.measuredAt, now: now),
               reading.stepsPerMinute.isFinite,
               reading.stepsPerMinute > 0,
               reading.stepsPerMinute <= 300

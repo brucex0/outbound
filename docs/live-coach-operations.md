@@ -42,6 +42,13 @@ There is no TTS WebSocket and no LLM call in the live cue path. HTTP/2 is device
 - Treat a start log as an accepted playback request, not listening verification. Diagnose the actual suppression state before changing eligibility policy; do not infer a queue fault solely from sparse speech.
 - Bruce main accepted and completed a full 20-second segment through Speaker on 2026-10-22, but the user heard no beat. The original 150 Hz pulse at 0.32 gain was replaced with a stronger drum tap with midrange attack; this addresses a possible audibility issue, not a proven scheduling fault. Listening confirmation is still required on the phone, headphones, and with background music.
 
+### Device Diagnosis: Cadence Freshness During Introduction
+
+- On 2026-11-08, historical Bruce main app logs showed six introduction starts during the run. Each stopped after about five seconds with `introduction_interrupted` immediately followed by `cadence_unavailable`, then cooldown. No introduction completion or drum start was logged. This supports the reported silence after the cut; a music-mixing issue or audible coaching interruption is not needed to explain it.
+- The pacer's five-second sensor gate disagreed with the recorder's existing ten-second measured-cadence window. Start, ongoing playback, introduction handoff, and announcement resume now share the recorder's ten-second window. Snapshot freshness stays five seconds; measured-only cadence, distinct-reading stability, phase/finish gates, speech priority, and cooldown are preserved.
+- Older `cadence_unavailable` logs cannot distinguish absent/out-of-range values from stale timestamps. New device-only reasons identify `missing_value`, `missing_timestamp`, `out_of_range`, `future_evidence`, or `stale_evidence`; a failed handoff freshness check reports `handoff_evidence_unavailable`. No measurements or timestamps enter analytics. Existing playback result events are unchanged.
+- Verification is build-only. Confirm the complete introduction, ensuing beats, and announcement pause/resume on the physical phone before claiming listening verification.
+
 ### Countdown Lookup Contract And Regression Checks
 
 - Fixed start and segment countdowns select reviewed clips by cue key, locale, voice, and persona. Do not pass display digits as a transcript constraint: `3` differs from `Three.`, `Tres.`, and `三。`.
