@@ -100,8 +100,17 @@ enum StretchCatalog {
         let original = routine(template: StretchCatalogData.templates[0])
         return StretchRoutine(id: "stretch_outdoor_reset_v1", preferenceID: original.preferenceID, title: original.title, entries: original.entries, customized: false)
     }
-    static func initial(_ routines: [StretchRoutine], isIndoor: Bool, last: String?, lastStanding: String?, sport: ActivityType?) -> StretchRoutine {
-        let remembered = isIndoor ? last : lastStanding
+    static func initial(_ routines: [StretchRoutine], isIndoor: Bool, last: String?, lastStanding: String?, sport: ActivityType?, entryPoint: StretchEntryPoint = .standalone) -> StretchRoutine {
+        let contextualDefault: String? = switch entryPoint {
+        case .today: "pre_run"
+        case .postSave: "standing_standard"
+        case .standalone: nil
+        }
+        if let contextualDefault,
+           let preferred = routines.first(where: { $0.preferenceID == contextualDefault && (isIndoor || $0.isStanding) }) {
+            return preferred
+        }
+        let remembered = entryPoint == .standalone ? (isIndoor ? last : lastStanding) : nil
         return routines.first { $0.preferenceID == remembered && (isIndoor || $0.isStanding) }
             ?? routines.first { $0.preferenceID == (sport == .swimming ? "upper_body" : "standing_quick") && (isIndoor || $0.isStanding) }
             ?? routines.first { isIndoor || $0.isStanding }

@@ -166,7 +166,7 @@ struct StretchSessionView<Header: View>: View {
         let routines = StretchCatalog.routines(activityType: launch.activityType, entryPoint: launch.entryPoint)
         let initial = StretchCatalog.initial(routines, isIndoor: launch.isIndoor,
             last: AccountConfigurationStore.shared.record("stretch/last")?.value?.selection,
-            lastStanding: AccountConfigurationStore.shared.record("stretch/standing")?.value?.selection, sport: launch.activityType)
+            lastStanding: AccountConfigurationStore.shared.record("stretch/standing")?.value?.selection, sport: launch.activityType, entryPoint: launch.entryPoint)
         _routines = State(initialValue: routines)
         _timer = StateObject(wrappedValue: PostWorkoutStretchTimer(routine: initial))
         _narrator = StateObject(wrappedValue: StretchNarrator(voice: voiceProfileID))
@@ -237,7 +237,7 @@ struct StretchSessionView<Header: View>: View {
             guard !didChooseRoutine else { return }
             timer.select(StretchCatalog.initial(routines, isIndoor: launch.isIndoor,
                 last: AccountConfigurationStore.shared.record("stretch/last")?.value?.selection,
-                lastStanding: AccountConfigurationStore.shared.record("stretch/standing")?.value?.selection, sport: launch.activityType))
+                lastStanding: AccountConfigurationStore.shared.record("stretch/standing")?.value?.selection, sport: launch.activityType, entryPoint: launch.entryPoint))
         }
         .onChange(of: showingLibrary) { _, visible in if visible { track(.stretchInterfaceUsed, result: "routines_opened") } }
         .sheet(isPresented: $showingLibrary) {
