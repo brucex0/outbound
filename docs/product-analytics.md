@@ -419,7 +419,7 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 
 - Stretch starts and successful editor saves/resets include posture-count buckets (`one_to_three`, `four_to_six`, `seven_plus`) and estimated duration buckets (`under_3_min`, `3_to_6_min`, `6_plus_min`). Per-step/completion count buckets continue to mean held time.
 
-- Entry-point defaults do not add an analytics event or property. Existing stretch offer/start events continue to report the stable routine ID actually shown or started; Today defaults to `pre_run_v1`, while post-save defaults to `standing_standard_v1` when eligible.
+- Entry-point defaults do not add an analytics event or property. Existing stretch offer/start events continue to report the stable routine ID actually shown or started; Today defaults to `pre_run_v1`, while post-save defaults to `standing_standard_v1`, regardless of indoor/outdoor context or saved customization requirements.
 
 - iOS and Android `stretch_interface_used` records bounded `result=instructions_opened|options_opened|routines_opened|voice_enabled|voice_disabled|feedback_enabled|feedback_disabled`, stable `routine_id`, `source_type`, `stretch_customized`, and optional `activity_type`. Android also records `result=audio_ready|audio_unavailable` after preparing the selected voice’s routine clips, without voice IDs, transcripts, or audio. It contains no instruction text or user content. Today uses the existing offered/started/dismissed funnel with `source_type=today`.
 

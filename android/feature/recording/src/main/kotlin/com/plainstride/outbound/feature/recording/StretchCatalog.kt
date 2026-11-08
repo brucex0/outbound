@@ -62,7 +62,8 @@ internal object StretchCatalog {
             StretchEntryPoint.STANDALONE -> null
         }
         if (contextualDefault != null) {
-            routines.firstOrNull { it.preferenceId == contextualDefault && (isIndoor || it.isStanding) }?.let { return it }
+            // Explicit entry-point defaults can include floor movements; do not apply preference-restoration filtering.
+            routines.firstOrNull { it.preferenceId == contextualDefault }?.let { return it }
         }
         val remembered = if (entryPoint == StretchEntryPoint.STANDALONE) {
             if (isIndoor) last else lastStanding
