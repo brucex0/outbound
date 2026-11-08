@@ -699,7 +699,11 @@ final class APIClient {
     }
 
     func cancelActivityEvent(id: String, scope: String = "this") async throws -> ActivityEventDetailDTO {
-        try await post("/social/activity-events/\(id)/cancel?scope=\(scope)", body: [String: String]())
+        try await post(
+            "/social/activity-events/\(id)/cancel",
+            body: [String: String](),
+            queryItems: [URLQueryItem(name: "scope", value: scope)]
+        )
     }
 
     func updateActivityEvent(id: String, _ request: UpdateActivityEventRequestDTO) async throws -> ActivityEventDetailDTO {
@@ -1042,8 +1046,12 @@ final class APIClient {
         return try decoder.decode(T.self, from: data)
     }
 
-    private func post<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
-        var req = URLRequest(url: url(for: path))
+    private func post<T: Decodable, B: Encodable>(
+        _ path: String,
+        body: B,
+        queryItems: [URLQueryItem] = []
+    ) async throws -> T {
+        var req = URLRequest(url: url(for: path, queryItems: queryItems))
         req.httpMethod = "POST"
         configureLocale(on: &req)
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
