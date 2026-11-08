@@ -3,9 +3,9 @@ import type { LiveCoachGuidancePlan } from "./liveCoachTypes.js";
 
 type Phase = "warmup" | "easy" | "work" | "recovery" | "walk" | "cooldown" | "open";
 const pacerIntroductions: Record<SupportedAILocale, string> = {
-  en: "These beats match your current rhythm. Try one step per beat, keeping the effort comfortable.",
-  es: "Estos golpes siguen tu ritmo actual. Prueba a dar un paso con cada golpe, sin dejar de correr a gusto.",
-  "zh-Hans": "接下来的鼓点会跟随你现在的步频。试着每个鼓点迈一步，保持轻松舒适就好。",
+  en: "Match your steps to the beat, keeping the effort comfortable.",
+  es: "Acompaña cada golpe con un paso, manteniendo un esfuerzo cómodo.",
+  "zh-Hans": "跟着鼓点迈步，保持轻松舒适的强度。",
 };
 
 /** Opportunistic device playback only: deliberately has no scheduled trigger. */
