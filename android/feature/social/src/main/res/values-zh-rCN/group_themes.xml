@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="group_theme_build_consistency_detail">点滴行动也算数，继续动起来。</string>
+    <string name="group_theme_build_consistency_title">坚持成习惯</string>
+    <string name="group_theme_celebrate_every_effort_detail">看见每次运动，不只关注最耀眼的成绩。</string>
+    <string name="group_theme_celebrate_every_effort_title">每一次努力都值得庆祝</string>
+    <string name="group_theme_do_something_together_detail">留点时间，一起运动也一起相聚。</string>
+    <string name="group_theme_do_something_together_title">一起动起来</string>
+    <string name="group_theme_explore_somewhere_new_detail">让好奇心带你选择路线。</string>
+    <string name="group_theme_explore_somewhere_new_title">探索新地方</string>
+    <string name="group_theme_keep_the_rhythm_detail">把这份动力延续到新的一周。</string>
+    <string name="group_theme_keep_the_rhythm_title">保持节奏</string>
+    <string name="group_theme_move_for_your_mood_detail">选择让自己感觉更好的运动。</string>
+    <string name="group_theme_move_for_your_mood_title">为好心情而动</string>
+    <string name="group_theme_one_small_step_detail">让重新动起来变得轻松可行。</string>
+    <string name="group_theme_one_small_step_title">从小小一步开始</string>
+    <string name="group_theme_recover_and_recharge_detail">放慢一点，给身体足够的恢复空间。</string>
+    <string name="group_theme_recover_and_recharge_title">好好恢复，充充电</string>
+    <string name="group_theme_try_something_different_detail">跳出日常，发现运动的新方式。</string>
+    <string name="group_theme_try_something_different_title">换种方式动一动</string>
+    <string name="group_theme_recommended">为你的群组推荐</string>
+    <string name="group_theme_browse">更多主题</string>
+    <string name="group_theme_custom_action">自定义主题</string>
+    <string name="group_theme_custom_section">自定义主题</string>
+    <string name="group_theme_custom_title">主题标题</string>
+    <string name="group_theme_custom_note">补充说明 · 可选</string>
+    <string name="group_theme_custom_required">关闭前请填写一个简短标题。</string>
+    <string name="group_focus_apply">生效时间</string>
+    <string name="group_commitment_enable">设定个人运动承诺</string>
+    <string name="group_commitment_count">%1$d 次运动</string>
+    <string name="group_commitment_optional">这完全自愿，只属于你。</string>
+    <string name="group_focus_suggestions">推荐目标</string>
+    <string name="group_commitment_set">设定我的目标</string>
+    <string name="group_commitment_edit">编辑我的目标</string>
+    <string name="group_theme_back">返回</string>
+    <string name="group_commitment_decrease">减少运动次数</string>
+    <string name="group_commitment_increase">增加运动次数</string>
+    <string name="group_theme_discard_title">放弃更改？</string>
+    <string name="group_theme_discard">放弃更改</string>
+    <string name="group_theme_keep_editing">继续编辑</string>
+</resources>

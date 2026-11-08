@@ -872,7 +872,44 @@ sealed interface ConnectionEffect {
         AnalyticsProperty.Feature to "group_invite_picker",
     )))
     fun inviteToGroup(group:GroupSummary,members:List<SocialPerson>,idempotencyKey:String)=mutate("group_invitation_sent"){repository.inviteToGroup(group.id,members.map{it.id},idempotencyKey).getOrThrow();openGroup(group)}
-    fun setGroupFocus(group:GroupSummary,mode:String,target:Int?,nextWeek:Boolean)=mutate("group_focus_changed"){repository.setGroupFocus(group.id,mode,target,nextWeek).getOrThrow();openGroup(group)}
+    fun saveGroupTheme(group: GroupSummary, draft: GroupThemeDraft, completed: (Boolean) -> Unit) = viewModelScope.launch {
+        // A theme and a personal commitment are independent server mutations. Publish each
+        // accepted snapshot immediately, and retain the editor if either operation fails.
+        suspend fun save(event: String, properties: Map<AnalyticsProperty, Any>, operation: suspend () -> GroupSummary): Boolean {
+            return try {
+                val updated = operation()
+                mutableState.update { if (it.selectedGroupId == group.id) it.copy(selectedGroupDetail = updated) else it }
+                analytics.record(AnalyticsEvent(event, properties + (AnalyticsProperty.Result to "success")))
+                true
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                logGroupFailure(event, error)
+                analytics.record(AnalyticsEvent(event, properties + (AnalyticsProperty.Result to "failure")))
+                messages.emit(SocialMessage.ACTION_FAILED)
+                false
+            }
+        }
+        if (draft.focusChanged && !save("group_theme_changed", mapOf(
+                AnalyticsProperty.SelectionType to if (draft.themeKey == "custom") "custom" else "curated",
+                AnalyticsProperty.SourceType to draft.apply,
+            )) { repository.setGroupFocus(group.id, GroupFocusBody(draft.themeKey, draft.customTitle, draft.customNote, draft.apply)).getOrThrow() }) {
+            completed(false)
+            return@launch
+        }
+        if (draft.commitmentChanged && !save("group_target_changed", mapOf(
+                AnalyticsProperty.SelectionType to if (draft.hasCommitment) "target" else "cleared",
+                AnalyticsProperty.TargetBucket to countBucket(draft.target),
+                AnalyticsProperty.SourceType to "now",
+            )) { repository.setGroupCommitment(group.id, draft.target.takeIf { draft.hasCommitment }, false).getOrThrow() }) {
+            completed(false)
+            return@launch
+        }
+        completed(true)
+        if (draft.focusChanged || draft.commitmentChanged) {
+            messages.emit(SocialMessage.ACTION_COMPLETE)
+            refresh()
+        }
+    }
     fun trackGroupActivityMapOpened() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "activity_event_location_picker")))
 
     fun trackGroupActivityLocation(source: String) = analytics.record(AnalyticsEvent("activity_event_location_selected", mapOf(AnalyticsProperty.SourceType to source)))

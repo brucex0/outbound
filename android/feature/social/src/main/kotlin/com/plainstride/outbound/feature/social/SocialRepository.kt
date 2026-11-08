@@ -79,7 +79,7 @@ interface SocialRepository {
     suspend fun createGroup(template:String,name:String?,city:String?,memberIds:List<String>,timeZone:String?=null):Result<GroupSummary>
     suspend fun inviteToGroup(groupId:String,memberIds:List<String>,idempotencyKey:String):Result<GroupSummary>
     suspend fun consumeGroupInvite(token: String): Result<GroupSummary>
-    suspend fun setGroupFocus(groupId:String,mode:String,target:Int?,applyNextWeek:Boolean):Result<GroupSummary>
+    suspend fun setGroupFocus(groupId: String, body: GroupFocusBody): Result<GroupSummary>
     suspend fun setGroupArchived(groupId:String,archived:Boolean):Result<GroupSummary>
     suspend fun event(id:String):Result<SocialEvent>
     suspend fun createEvent(body:CreateEventBody):Result<SocialEvent>
@@ -269,7 +269,7 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun updateGroupMemberRole(id:String,userId:String,role:String)=authenticated{apiCall{api.updateGroupMemberRole(it,id,userId,GroupRoleBody(role))}}
     override suspend fun transferGroupOwnership(id:String,userId:String)=authenticated{apiCall{api.transferGroupOwnership(it,id,GroupTransferBody(userId))}}
     override suspend fun cancelGroupInvitation(id:String,invitationId:String)=authenticated{apiCall{api.cancelGroupInvitation(it,id,invitationId)}}.map{it.group}
-    override suspend fun setGroupCommitment(id:String,target:Int?,skipped:Boolean)=authenticated{apiCall{api.groupCommitment(it,id,GroupCommitmentBody(target,skipped))}}
+    override suspend fun setGroupCommitment(id:String,target:Int?,skipped:Boolean)=authenticated{apiCall{api.groupCommitment(it,id,GroupCommitmentBody(target,skipped,clear=target == null && !skipped))}}
     override suspend fun muteGroup(id:String,muted:Boolean)=authenticated{apiCall{api.muteGroup(it,id,GroupMuteBody(muted))}}
     override suspend fun leaveGroup(id:String)=authenticated{apiCall{api.leaveGroup(it,id)}}
     override suspend fun removeGroupMember(id:String,userId:String)=authenticated{apiCall{api.removeGroupMember(it,id,userId)}}
@@ -283,7 +283,7 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun createGroup(template:String,name:String?,city:String?,memberIds:List<String>,timeZone:String?)=authenticated{apiCall{api.createGroup(it,CreateGroupBody(template=template,name=name?.trim()?.takeIf(String::isNotEmpty),city=city?.trim()?.takeIf(String::isNotEmpty),memberUserIds=memberIds.distinct(),timeZone=timeZone))}}
     override suspend fun inviteToGroup(groupId:String,memberIds:List<String>,idempotencyKey:String)=authenticated{apiCall{api.inviteGroup(it,groupId,GroupInviteBody(memberIds.distinct(),idempotencyKey))}}.map{it.group}
     override suspend fun consumeGroupInvite(token: String)=authenticated{apiCall{api.consumeGroupInvite(it,token)}}
-    override suspend fun setGroupFocus(groupId:String,mode:String,target:Int?,applyNextWeek:Boolean)=authenticated{apiCall{api.focusGroup(it,groupId,GroupFocusBody(mode,target,if(applyNextWeek)"next_week" else "now"))}}
+    override suspend fun setGroupFocus(groupId: String, body: GroupFocusBody) = authenticated { apiCall { api.focusGroup(it, groupId, body) } }
     override suspend fun setGroupArchived(groupId:String,archived:Boolean)=authenticated{auth->apiCall{if(archived)api.archiveGroup(auth,groupId)else api.reactivateGroup(auth,groupId)}}
     override suspend fun createEvent(body:CreateEventBody)=authenticated{apiCall{api.createEvent(it,body)}}
     override suspend fun eventResults(id:String)=authenticated{apiCall{api.eventResults(it,id)}}

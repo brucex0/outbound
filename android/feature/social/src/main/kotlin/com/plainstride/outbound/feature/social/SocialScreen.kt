@@ -278,11 +278,10 @@ fun SocialGroupDestination(
         GroupDetailScreen(
             group = group,
             close = onBack,
-            focus = { mode, target, next -> viewModel.setGroupFocus(group, mode, target, next) },
+            saveTheme = { draft, completed -> viewModel.saveGroupTheme(group, draft, completed) },
             archive = { viewModel.setGroupArchived(group, group.lifecycle != "archived") },
             invite = { viewModel.trackGroupInvitePickerOpened(); inviteGroup = group },
             saveSettings = { name, city, day, zone, apply, muted, applyChanged, allowMembersToPlan -> viewModel.saveGroupSettings(group, name, city, day, zone, apply, muted, applyChanged, allowMembersToPlan) },
-            commitment = { target, skipped -> viewModel.setGroupCommitment(group, target, skipped) },
             leave = { viewModel.leaveGroup(group) },
             remove = { userId -> viewModel.removeGroupMember(group, userId) },
             cancelInvitation = { invitationId -> viewModel.cancelGroupInvitation(group, invitationId) },

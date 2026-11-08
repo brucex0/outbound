@@ -96,11 +96,10 @@ import androidx.compose.foundation.lazy.LazyListScope
 fun GroupDetailScreen(
     group: GroupSummary,
     close: () -> Unit,
-    focus: (String, Int?, Boolean) -> Unit,
+    saveTheme: (GroupThemeDraft, (Boolean) -> Unit) -> Unit,
     archive: () -> Unit,
     invite: () -> Unit,
     saveSettings: (String, String, Int, String, String, Boolean, Boolean, Boolean) -> Unit,
-    commitment: (Int?, Boolean) -> Unit,
     leave: () -> Unit,
     remove: (String) -> Unit,
     cancelInvitation: (String) -> Unit,
@@ -233,7 +232,6 @@ fun GroupDetailScreen(
             }
         }
     }
-    if (focusOpen) GroupFocusDialog(group, { focusOpen = false }, focus, commitment)
     if (settings) GroupSettingsDialog(
         group = group,
         close = { settings = false },
@@ -347,6 +345,7 @@ fun GroupDetailScreen(
             dismissButton = { TextButton({ pendingRemoval = null }) { Text(stringResource(R.string.social_cancel)) } },
         )
     }
+    if (focusOpen) GroupThemeEditor(group, { focusOpen = false }, saveTheme)
 }
 
 private fun LazyListScope.upcomingActivityItems(group: GroupSummary, dateFormat: java.text.DateFormat, openActivity: (String) -> Unit) {
@@ -399,19 +398,21 @@ private fun LazyListScope.memberSection(group: GroupSummary, members: List<Group
 @Composable private fun privateFocusCard(group: GroupSummary, focusOpen: () -> Unit) {
     val isOwner = group.currentUserRole == "owner"
     val commitment = group.members.firstOrNull { it.isCurrentUser }?.target
+    val themeTitle = groupThemeTitle(group.week.themeKey, group.week.themeTitle)
+    val themeDetail = groupThemeDetail(group.week.themeKey, group.week.themeNote)
     ElevatedCard {
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.group_weekly_theme), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 if (isOwner || (group.week.focusConfigured && group.focusMode in setOf("theme", "personal_targets"))) {
-                    TextButton(focusOpen) { Text(stringResource(if (!group.week.focusConfigured) R.string.group_focus_choose else R.string.group_edit)) }
+                    TextButton(focusOpen) { Text(stringResource(if (!isOwner) { if (commitment == null) R.string.group_commitment_set else R.string.group_commitment_edit } else if (!group.week.focusConfigured) R.string.group_focus_choose else R.string.group_edit)) }
                 }
             }
             when {
                 !group.week.focusConfigured -> Text(stringResource(if (isOwner) R.string.group_theme_unconfigured_owner else R.string.group_theme_unconfigured_member), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                group.week.themeTitle != null -> {
-                    Text(group.week.themeTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
-                    group.week.themeNote?.takeIf(String::isNotBlank)?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                themeTitle != null -> {
+                    Text(themeTitle, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                    themeDetail?.takeIf(String::isNotBlank)?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     Text(stringResource(R.string.group_theme_activity_count, group.completed), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     commitment?.let { Text(stringResource(R.string.group_commitment_progress, group.members.firstOrNull { m -> m.isCurrentUser }?.completed ?: 0, it), fontWeight = FontWeight.SemiBold) }
                 }
@@ -423,12 +424,14 @@ private fun LazyListScope.memberSection(group: GroupSummary, members: List<Group
                 else -> Text(stringResource(R.string.group_no_numeric_focus), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             val next = group.upcomingFocus
-            if (next.focusConfigured && (next.themeKey != group.week.themeKey || next.themeTitle != group.week.themeTitle) && !next.themeTitle.isNullOrBlank()) {
+            val nextTitle = groupThemeTitle(next.themeKey, next.themeTitle)
+            val nextDetail = groupThemeDetail(next.themeKey, next.themeNote)
+            if (next.focusConfigured && (next.themeKey != group.week.themeKey || next.themeTitle != group.week.themeTitle || next.themeNote != group.week.themeNote) && !nextTitle.isNullOrBlank()) {
                 HorizontalDivider()
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(stringResource(R.string.group_next_week), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(next.themeTitle, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
-                    next.themeNote?.takeIf(String::isNotBlank)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    Text(nextTitle, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                    nextDetail?.takeIf(String::isNotBlank)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
             }
         }
@@ -451,7 +454,6 @@ private fun LazyListScope.memberSection(group: GroupSummary, members: List<Group
     }
 }
 
-@Composable private fun GroupFocusDialog(group:GroupSummary,close:()->Unit,focus:(String,Int?,Boolean)->Unit,commitment:(Int?,Boolean)->Unit){var mode by remember{mutableStateOf(group.focusMode)};var target by remember{mutableIntStateOf(group.target?:3)};var next by remember{mutableStateOf(false)};AlertDialog(onDismissRequest=close,title={Text(stringResource(R.string.group_weekly_focus))},text={Column{listOf("personal_targets" to R.string.group_focus_personal,"shared_target" to R.string.group_focus_shared,"none" to R.string.group_focus_none).forEach{(value,label)->Row(verticalAlignment=Alignment.CenterVertically){RadioButton(mode==value,{mode=value});Text(stringResource(label))}};if(mode!="none")Row(verticalAlignment=Alignment.CenterVertically){IconButton({target=(target-1).coerceAtLeast(1)}){Icon(Icons.Outlined.Remove,null)};Text(target.toString());IconButton({target=(target+1).coerceAtMost(14)}){Icon(Icons.Outlined.Add,null)}};Row(verticalAlignment=Alignment.CenterVertically){Checkbox(next,{next=it});Text(stringResource(R.string.group_apply_next_week))};if(mode=="personal_targets")TextButton({commitment(null,true);close()}){Text(stringResource(R.string.group_skip_week))}}},confirmButton={TextButton({if(mode=="personal_targets")commitment(target,false) else focus(mode,target.takeIf{mode=="shared_target"},next);close()}){Text(stringResource(R.string.social_done))}},dismissButton={TextButton(close){Text(stringResource(R.string.social_decline))}})}
 
 @Composable private fun GroupSettingsDialog(
     group: GroupSummary,

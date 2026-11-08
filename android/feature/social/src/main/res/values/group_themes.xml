@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="group_theme_build_consistency_detail">Small efforts count. Keep showing up.</string>
+    <string name="group_theme_build_consistency_title">Build consistency</string>
+    <string name="group_theme_celebrate_every_effort_detail">Notice every activity, not just the biggest ones.</string>
+    <string name="group_theme_celebrate_every_effort_title">Celebrate every effort</string>
+    <string name="group_theme_do_something_together_detail">Make time to move and connect.</string>
+    <string name="group_theme_do_something_together_title">Do something together</string>
+    <string name="group_theme_explore_somewhere_new_detail">Let curiosity choose the route.</string>
+    <string name="group_theme_explore_somewhere_new_title">Explore somewhere new</string>
+    <string name="group_theme_keep_the_rhythm_detail">Carry the momentum into another week.</string>
+    <string name="group_theme_keep_the_rhythm_title">Keep the rhythm</string>
+    <string name="group_theme_move_for_your_mood_detail">Choose movement that helps you feel better.</string>
+    <string name="group_theme_move_for_your_mood_title">Move for your mood</string>
+    <string name="group_theme_one_small_step_detail">Make moving feel possible again.</string>
+    <string name="group_theme_one_small_step_title">One small step</string>
+    <string name="group_theme_recover_and_recharge_detail">Keep it gentle and give your body room to recover.</string>
+    <string name="group_theme_recover_and_recharge_title">Recover and recharge</string>
+    <string name="group_theme_try_something_different_detail">Change the routine and discover a new way to move.</string>
+    <string name="group_theme_try_something_different_title">Try something different</string>
+    <string name="group_theme_recommended">Recommended for your Group</string>
+    <string name="group_theme_browse">More themes</string>
+    <string name="group_theme_custom_action">Write your own</string>
+    <string name="group_theme_custom_section">Custom theme</string>
+    <string name="group_theme_custom_title">Theme title</string>
+    <string name="group_theme_custom_note">Supporting note · Optional</string>
+    <string name="group_theme_custom_required">Add a short title before closing.</string>
+    <string name="group_focus_apply">Apply</string>
+    <string name="group_commitment_enable">Set a personal commitment</string>
+    <string name="group_commitment_count">%1$d activities</string>
+    <string name="group_commitment_optional">This is optional and belongs only to you.</string>
+    <string name="group_focus_suggestions">Suggestions</string>
+    <string name="group_commitment_set">Set my goal</string>
+    <string name="group_commitment_edit">Edit my goal</string>
+    <string name="group_theme_back">Back</string>
+    <string name="group_commitment_decrease">Fewer activities</string>
+    <string name="group_commitment_increase">More activities</string>
+    <string name="group_theme_discard_title">Discard your changes?</string>
+    <string name="group_theme_discard">Discard changes</string>
+    <string name="group_theme_keep_editing">Keep editing</string>
+</resources>
