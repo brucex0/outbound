@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
+    <string name="group_allow_members_plan_activities">Permitir que los miembros planifiquen actividades</string>
     <string name="group_creation_failed">No se pudo crear el grupo. Inténtalo de nuevo.</string>
     <string name="group_event_attend_in_person">Quedar en persona</string>
     <string name="group_event_attend_virtual">Unirme virtualmente</string>

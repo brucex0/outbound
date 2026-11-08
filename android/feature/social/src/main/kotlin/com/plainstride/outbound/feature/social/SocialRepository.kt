@@ -56,7 +56,7 @@ interface SocialRepository {
     suspend fun markGroupNoticesRead(groupId:String):Result<GroupSummary>
     suspend fun cheerGroup(id: String, recipientId: String, preset: String): Result<Unit>
     suspend fun renameGroup(id:String,name:String):Result<GroupSummary>
-    suspend fun updateGroupDetails(id:String,name:String,city:String):Result<GroupSummary>
+    suspend fun updateGroupDetails(id:String,name:String,city:String,memberActivityCreation:Boolean?=null):Result<GroupSummary>
     suspend fun updateGroupMembershipPolicy(id:String,joinPolicy:String,approvalRequired:Boolean,memberInvitesAllowed:Boolean):Result<GroupSummary>
     suspend fun reviewGroupMembership(id:String,requestId:String,approve:Boolean):Result<GroupSummary>
     suspend fun updateEvent(id:String,body:CreateEventBody):Result<SocialEvent>
@@ -253,7 +253,7 @@ class OfflineFirstSocialRepository @Inject constructor(
     override suspend fun markGroupNoticesRead(groupId:String)=authenticated{apiCall{api.markGroupNoticesRead(it,groupId)}}.map{it.group}
     override suspend fun cheerGroup(id: String, recipientId: String, preset: String) = authenticated { apiCall { api.groupCheer(it, id, CheerBody(recipientId, preset)) } }
     override suspend fun renameGroup(id:String,name:String)=authenticated{apiCall{api.renameGroup(it,id,RenameGroupBody(name=name.trim()))}}
-    override suspend fun updateGroupDetails(id:String,name:String,city:String)=authenticated{apiCall{api.renameGroup(it,id,RenameGroupBody(name=name.trim().ifEmpty{null},city=city.trim()))}}
+    override suspend fun updateGroupDetails(id:String,name:String,city:String,memberActivityCreation:Boolean?)=authenticated{apiCall{api.renameGroup(it,id,RenameGroupBody(name=name.trim().ifEmpty{null},city=city.trim(),memberActivityCreation=memberActivityCreation))}}
     override suspend fun updateGroupCalendar(id:String,resetWeekday:Int,timeZone:String,apply:String)=authenticated{apiCall{api.updateGroupCalendar(it,id,GroupCalendarBody(resetWeekday,timeZone,apply))}}
     override suspend fun updateGroupMemberRole(id:String,userId:String,role:String)=authenticated{apiCall{api.updateGroupMemberRole(it,id,userId,GroupRoleBody(role))}}
     override suspend fun transferGroupOwnership(id:String,userId:String)=authenticated{apiCall{api.transferGroupOwnership(it,id,GroupTransferBody(userId))}}

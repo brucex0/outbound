@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
+    <string name="group_allow_members_plan_activities">允许成员规划活动</string>
     <string name="group_creation_failed">无法创建群组，请重试。</string>
     <string name="group_event_attend_in_person">线下集合</string>
     <string name="group_event_attend_virtual">云参与</string>

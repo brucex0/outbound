@@ -272,7 +272,7 @@ fun SocialGroupDestination(
             focus = { mode, target, next -> viewModel.setGroupFocus(group, mode, target, next) },
             archive = { viewModel.setGroupArchived(group, group.lifecycle != "archived") },
             invite = { viewModel.trackGroupInvitePickerOpened(); inviteGroup = group },
-            saveSettings = { name, city, day, zone, apply, muted, applyChanged -> viewModel.saveGroupSettings(group, name, city, day, zone, apply, muted, applyChanged) },
+            saveSettings = { name, city, day, zone, apply, muted, applyChanged, allowMembersToPlan -> viewModel.saveGroupSettings(group, name, city, day, zone, apply, muted, applyChanged, allowMembersToPlan) },
             commitment = { target, skipped -> viewModel.setGroupCommitment(group, target, skipped) },
             leave = { viewModel.leaveGroup(group) },
             remove = { userId -> viewModel.removeGroupMember(group, userId) },
@@ -2076,6 +2076,8 @@ private fun SocialEventDetailScreen(
                             }
                             if (event.currentUserRole == "owner" && event.status == "scheduled" && event.startedCount == 0 && start?.isAfter(java.time.Instant.now()) == true) {
                                 OutlinedButton(onEdit, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_repeat_edit)) }
+                            }
+                            if (event.currentUserCanCancel && event.status == "scheduled" && event.startedCount == 0 && start?.isAfter(java.time.Instant.now()) == true) {
                                 TextButton({ cancelConfirmation = true }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_repeat_cancel)) }
                             }
                             end?.let {

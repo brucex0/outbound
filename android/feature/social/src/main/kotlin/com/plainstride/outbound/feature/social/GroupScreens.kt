@@ -99,7 +99,7 @@ fun GroupDetailScreen(
     focus: (String, Int?, Boolean) -> Unit,
     archive: () -> Unit,
     invite: () -> Unit,
-    saveSettings: (String, String, Int, String, String, Boolean, Boolean) -> Unit,
+    saveSettings: (String, String, Int, String, String, Boolean, Boolean, Boolean) -> Unit,
     commitment: (Int?, Boolean) -> Unit,
     leave: () -> Unit,
     remove: (String) -> Unit,
@@ -141,6 +141,8 @@ fun GroupDetailScreen(
     }
     val canManage = group.currentUserRole in setOf("owner", "admin") && group.lifecycle != "archived"
     val isMember = group.currentUserRole != null || orderedMembers.any { it.isCurrentUser }
+    val canPlanActivity = group.lifecycle != "archived" && group.capabilities.scheduledActivities && isMember &&
+        (group.currentUserRole in setOf("owner", "admin") || group.memberActivityCreation)
     val canInviteMore = group.canInvite && group.lifecycle != "archived" && group.memberCount + group.invitations.count { it.status in setOf("pending", "awaiting_approval") } < group.memberLimit
     fun memberCanBeRemoved(member: GroupMember) = canManage && !member.isCurrentUser && member.role != "owner" &&
         (group.currentUserRole == "owner" || member.role == "member")
@@ -213,7 +215,7 @@ fun GroupDetailScreen(
                     upcomingActivityItems(group, dateFormatter, openActivity)
                     if (isMember) memberSection(group, orderedMembers, canInviteMore, invite, showMembers = { showMembers = true; trackMembersOpened(group.memberCount.takeIf { it > 0 } ?: group.members.size) })
                     if (canManage && group.capabilities.notices) item { OutlinedButton({ showNoticeComposer = true }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_post_update)) } }
-                    item { Button(planActivity, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_plan_activity)) } }
+                    if (canPlanActivity) item { Button(planActivity, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_plan_activity)) } }
                 } else {
                     upcomingActivityItems(group, dateFormatter, openActivity)
                     item { privateFocusCard(group, focusOpen = { focusOpen = true }) }
@@ -225,7 +227,7 @@ fun GroupDetailScreen(
                             Text(stringResource(if (invitation.status == "awaiting_approval") R.string.group_membership_pending else R.string.group_invited_status), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } }
                     }
-                    item { Button(planActivity, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_plan_activity)) } }
+                    if (canPlanActivity) item { Button(planActivity, Modifier.fillMaxWidth()) { Text(stringResource(R.string.group_plan_activity)) } }
                     if (group.recentMoments.isNotEmpty()) item { momentsCard(group) { selectedMomentID = it.id } }
                 }
             }
@@ -454,7 +456,7 @@ private fun LazyListScope.memberSection(group: GroupSummary, members: List<Group
 @Composable private fun GroupSettingsDialog(
     group: GroupSummary,
     close: () -> Unit,
-    save: (String, String, Int, String, String, Boolean, Boolean) -> Unit,
+    save: (String, String, Int, String, String, Boolean, Boolean, Boolean) -> Unit,
     openFocus: () -> Unit,
     openMembership: () -> Unit,
     archive: () -> Unit,
@@ -467,10 +469,11 @@ private fun LazyListScope.memberSection(group: GroupSummary, members: List<Group
     var calendarApply by remember(group.id) { mutableStateOf("next_week") }
     var savedCalendarApply by remember(group.id) { mutableStateOf("next_week") }
     var notificationsMuted by remember(group.id) { mutableStateOf(group.currentUserMuted) }
+    var allowMembersToPlan by remember(group.id) { mutableStateOf(group.memberActivityCreation) }
     var weekdayMenu by remember { mutableStateOf(false) }
     val hasUnsavedChanges = name.trim() != group.name || city.trim() != group.city.orEmpty() ||
         resetWeekday != group.resetWeekday || timeZone.trim() != group.timeZone ||
-        calendarApply != savedCalendarApply || notificationsMuted != group.currentUserMuted
+        calendarApply != savedCalendarApply || notificationsMuted != group.currentUserMuted || allowMembersToPlan != group.memberActivityCreation
     val canManage = group.currentUserRole in setOf("owner", "admin")
     val weekdays = java.text.DateFormatSymbols.getInstance().weekdays
 
@@ -481,7 +484,7 @@ private fun LazyListScope.memberSection(group: GroupSummary, members: List<Group
                     IconButton(close) { Icon(Icons.Outlined.ArrowBack, stringResource(R.string.social_done)) }
                     Text(stringResource(R.string.group_manage), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                     TextButton({
-                        save(name, city, resetWeekday, timeZone, calendarApply, notificationsMuted, calendarApply != savedCalendarApply)
+                        save(name, city, resetWeekday, timeZone, calendarApply, notificationsMuted, calendarApply != savedCalendarApply, allowMembersToPlan)
                         savedCalendarApply = calendarApply
                     }, enabled = hasUnsavedChanges) {
                         Text(stringResource(R.string.group_settings_save))
@@ -507,6 +510,10 @@ private fun LazyListScope.memberSection(group: GroupSummary, members: List<Group
                                 Text(stringResource(R.string.group_owner_controls), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                                 OutlinedTextField(name, { name = it.take(80) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.group_create_name)) }, singleLine = true)
                                 OutlinedTextField(city, { city = it.take(120) }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.group_base_location)) }, singleLine = true)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(stringResource(R.string.group_allow_members_plan_activities), Modifier.weight(1f))
+                                    Switch(allowMembersToPlan, { allowMembersToPlan = it })
+                                }
                             }
                         }
                         item {

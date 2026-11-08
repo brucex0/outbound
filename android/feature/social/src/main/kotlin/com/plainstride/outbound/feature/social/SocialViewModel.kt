@@ -866,20 +866,37 @@ sealed interface ConnectionEffect {
         mutableState.update { if(it.selectedEvent?.id==event.id) it.copy(selectedEvent=updated) else it }
         refresh()
     }
-    fun cancelPlannedEvent(event:SocialEvent,scope:String)=mutate("activity_event_series_changed", properties=mapOf(AnalyticsProperty.SelectionType to scope)) {
+    fun cancelPlannedEvent(event:SocialEvent,scope:String)=mutate("activity_event_cancellation_result", properties=mapOf(AnalyticsProperty.EntrySource to eventEntrySource, AnalyticsProperty.GroupRunEnabled to (event.group != null))) {
         val updated=repository.cancelEvent(event.id,scope).getOrThrow()
         mutableState.update { if(it.selectedEvent?.id==event.id) it.copy(selectedEvent=updated) else it }
         refresh()
     }
     fun setGroupArchived(group:GroupSummary,archived:Boolean)=mutate("group_lifecycle_changed"){repository.setGroupArchived(group.id,archived).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
     fun renameGroup(group:GroupSummary,name:String)=mutate("group_renamed"){repository.renameGroup(group.id,name).getOrThrow().let{updated->mutableState.update{it.copy(selectedGroupDetail=updated)}};refresh()}
-    fun saveGroupSettings(group:GroupSummary,name:String,city:String,resetWeekday:Int,timeZone:String,apply:String,muted:Boolean,applyChanged:Boolean)=viewModelScope.launch {
+    fun saveGroupSettings(group:GroupSummary,name:String,city:String,resetWeekday:Int,timeZone:String,apply:String,muted:Boolean,applyChanged:Boolean,allowMembersToPlan:Boolean)=viewModelScope.launch {
         runCatching {
             var updated = group
-            if (name.trim() != group.name || city.trim() != group.city.orEmpty()) {
-                updated = repository.updateGroupDetails(group.id, name, city).getOrThrow()
+            val detailsChanged = name.trim() != group.name || city.trim() != group.city.orEmpty()
+            val memberActivityCreationChanged = allowMembersToPlan != group.memberActivityCreation
+            if (detailsChanged || memberActivityCreationChanged) {
+                val detailsUpdate = repository.updateGroupDetails(group.id, name, city, allowMembersToPlan.takeIf { memberActivityCreationChanged })
+                if (memberActivityCreationChanged && detailsUpdate.isFailure) analytics.record(AnalyticsEvent("group_membership_policy_changed", mapOf(
+                    AnalyticsProperty.SourceType to "group_settings",
+                    AnalyticsProperty.SelectionType to if (allowMembersToPlan) "enabled" else "disabled",
+                    AnalyticsProperty.ChangeType to "member_activity_creation",
+                    AnalyticsProperty.Result to "failure",
+                )))
+                updated = detailsUpdate.getOrThrow()
                 if (name.trim() != group.name) analytics.record(AnalyticsEvent("group_name_changed"))
                 if (city.trim() != group.city.orEmpty()) analytics.record(AnalyticsEvent("group_location_changed"))
+                if (memberActivityCreationChanged) {
+                    analytics.record(AnalyticsEvent("group_membership_policy_changed", mapOf(
+                        AnalyticsProperty.SourceType to "group_settings",
+                        AnalyticsProperty.SelectionType to if (allowMembersToPlan) "enabled" else "disabled",
+                        AnalyticsProperty.ChangeType to "member_activity_creation",
+                        AnalyticsProperty.Result to "success",
+                    )))
+                }
             }
             if (resetWeekday != group.resetWeekday || timeZone.trim() != group.timeZone || applyChanged) {
                 updated = repository.updateGroupCalendar(group.id, resetWeekday, timeZone.trim(), apply).getOrThrow()
