@@ -1,4 +1,4 @@
-# TestFlight and App Store 1.7.12 Submission Sheet
+# TestFlight and App Store 1.7.13 Submission Sheet
 
 Open this for the current TestFlight upload and public App Store release. Product behavior and release mechanics remain in `docs/app-store-release.md`.
 
@@ -7,8 +7,8 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - App Store name: `Plainstride: AI Running Coach`.
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
-- Version: `1.7.12`
-- Build: `66`
+- Version: `1.7.13`
+- Build: `67`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -20,11 +20,12 @@ Open this for the current TestFlight upload and public App Store release. Produc
 
 ## Submission Status
 
-- Version 1.7.12 (66) completed Release compilation, signed archive/export, packaged-bundle preflight, upload, and Apple processing on November 6, 2026. Assigned to internal TestFlight group `Plainstride Team` with English beta release notes.
-- Submitted through App Store Connect at 9:30 PM Pacific with automatic release after approval. Independently confirmed **Waiting for Review** for 1.7.12 (66). Submission ID: `00db5898-b72c-40bf-84c9-3e7bbb9815e1`.
-- Previous version 1.7.11 was confirmed Ready for Distribution. Public availability of 1.7.12 awaits Apple approval.
-- No tests or physical-device acceptance run were performed. Xcode emitted existing warnings and a contradictory SwiftCompile diagnostic with exit code zero; signed export and Apple's processing nevertheless succeeded.
-- Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.12-66/`; upload ID `0d2dae44-42df-4ae7-942f-dbb807a88498`. Do not rebuild or re-upload to finish distribution setup.
+- Version 1.7.13 (67) completed unsigned Release compilation, signed archive/export, packaged-bundle preflight, upload, and Apple processing on November 8, 2026, from source `bc44c81e` (product source `6e48ecb1`). English beta notes were published and assignment to internal TestFlight group `Plainstride Team` was confirmed.
+- Submitted 1.7.13 (67) through App Store Connect at 9:08 AM Pacific on November 8. The App Review detail page independently confirms **Waiting for Review**, submission ID `dce56683-c2b3-4f5b-8f17-8c8e6ab5ce42`. Automatic release after approval and immediate availability to all users are configured.
+- Previous version 1.7.12 (66) is confirmed Ready for Distribution. Public availability of 1.7.13 awaits Apple approval.
+- No tests or physical-device acceptance run were performed. Existing compiler warnings remain; a successful build does not verify device behavior.
+- Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.13-67/`; upload ID `7553ea8b-8d77-4671-a67c-22d66fc61e49`; IPA SHA-256 `5dde7f1f98a3b0d17edad990aaa245b2c3928a03d6f1e0982794a9c771a1b86c`. The 71,631,430-byte IPA delivered in 14 chunks; one transient SSL failure recovered through the existing bounded retry. Do not rebuild or re-upload to finish distribution setup.
+- Production backend health returned HTTP 200. Public privacy, support, and Terms pages opened successfully in the browser from the configured `.ai` URLs; command-line requests returned HTTP 403, so association endpoints remain unverified.
 
 ## App Store Positioning Experiment
 
@@ -73,19 +74,19 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- [iOS] Simplify group membership controls and member management
-- [BE] Unify community join approval and gate member invites
-- [iOS] Show member invite control based on membership
-- [iOS] Give the fox playful presence and meaningful notification delivery
-- [iOS] Add group recurrence and membership review controls
-- Plus 4 more fixes and improvements
+- [iOS] Honor contextual stretch defaults with floor movements
+- [iOS] Default stretch by entry point
+- [iOS] Fix activity cancellation scope query encoding
+- [iOS] Add group overflow leave and arrival check-in
+- [iOS] Add Group member activity permission
+- Plus 1 more fixes and improvements
 
 ### App Store What's New
 
-- Easier group membership and member management.
-- Improved recurring group activities and invitation controls.
-- A more playful fox companion and improved notification delivery.
-- Additional reliability and interface improvements.
+- Stretch routines now match where you start them, including floor movements for Today stretches.
+- Easier group controls for leaving groups and marking arrival at activities.
+- Improved group member permissions and activity cancellation reliability.
+- Additional interface improvements.
 
 ### How to Report Feedback
 
@@ -200,6 +201,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.7.12 (66)`, validate, and upload from Xcode Organizer.
+- Archive `1.7.13 (67)`, validate, and upload from Xcode Organizer.
 - After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.
