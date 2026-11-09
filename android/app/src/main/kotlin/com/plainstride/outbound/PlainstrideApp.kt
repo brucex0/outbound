@@ -1921,6 +1921,8 @@ private fun todayMessageResource(message: TodayMessage) = when (message) {
     TodayMessage.CouldNotAdjust -> com.plainstride.outbound.feature.today.R.string.today_adjust_failed
     TodayMessage.AdjustmentApplied -> com.plainstride.outbound.feature.today.R.string.today_adjust_applied
     TodayMessage.OriginalKept -> com.plainstride.outbound.feature.today.R.string.today_original_kept
+    TodayMessage.PlanEnded -> com.plainstride.outbound.feature.today.R.string.plan_details_ended
+    TodayMessage.CouldNotEndPlan -> com.plainstride.outbound.feature.today.R.string.plan_details_end_failed
 }
 
 @StringRes

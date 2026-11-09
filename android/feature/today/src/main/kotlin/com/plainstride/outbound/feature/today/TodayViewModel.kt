@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ensureActive
 import com.plainstride.outbound.core.analytics.AnalyticsEvent
 import com.plainstride.outbound.core.analytics.AnalyticsProperty
 import com.plainstride.outbound.core.analytics.ProductAnalytics
@@ -67,6 +68,12 @@ data class TodayUiState(
     val activeSession: Boolean = false,
     val completedToday: Boolean = false,
 ) {
+    val planningSnapshot: PlanningState?
+        get() = when (planning) {
+            is CachedResource.Available -> planning.value
+            is CachedResource.Failed -> planning.cachedValue
+            CachedResource.Loading -> null
+        }
     val primarySuggestion: ActivitySuggestion?
         get() = (suggestion as? CachedResource.Available)?.value?.primary
     val pendingAdjustment: AdjustmentProposal?
@@ -95,6 +102,8 @@ sealed interface TodayMessage {
     data object CouldNotAdjust : TodayMessage
     data object AdjustmentApplied : TodayMessage
     data object OriginalKept : TodayMessage
+    data object PlanEnded : TodayMessage
+    data object CouldNotEndPlan : TodayMessage
 }
 
 @HiltViewModel
@@ -151,17 +160,66 @@ class TodayViewModel @Inject constructor(
         sessionState.value = active to completedToday
     }
 
-    fun openPlanPicker() {
+    fun openPlanPicker(entrySource: String = "today_planned_card_change") {
         mutablePlanPicker.value = PlanPickerUiState(open = true, loading = true)
         analytics.record(AnalyticsEvent("planning_surface_opened", mapOf(
             AnalyticsProperty.SourceType to "plan_picker",
-            AnalyticsProperty.EntrySource to "today_planned_card_change",
+            AnalyticsProperty.EntrySource to entrySource,
         )))
         viewModelScope.launch {
             repository.planRecommendations().fold(
                 onSuccess = { response -> mutablePlanPicker.value = mutablePlanPicker.value.copy(loading = false, recommendations = response.recommendations) },
                 onFailure = { mutablePlanPicker.value = mutablePlanPicker.value.copy(loading = false, error = true, loadingError = true) },
             )
+        }
+    }
+
+    fun trackPlanDetailsOpened(workoutCount: Int) = analytics.record(AnalyticsEvent("planning_surface_opened", mapOf(
+        AnalyticsProperty.SourceType to "plan_details",
+        AnalyticsProperty.EntrySource to "today_planned_card_plan",
+        AnalyticsProperty.CountBucket to when (workoutCount) {
+            0 -> "0"
+            1 -> "1"
+            in 2..3 -> "2_3"
+            in 4..7 -> "4_7"
+            else -> "8_plus"
+        },
+    )))
+
+    fun trackEndPlanConfirmation() = analytics.record(AnalyticsEvent("feature_exposed", mapOf(
+        AnalyticsProperty.Feature to "plan_end_confirmation",
+    )))
+
+    fun endPlan() {
+        if (mutationInFlight.value) return
+        viewModelScope.launch {
+            mutationInFlight.value = true
+            val (accountId, localeTag) = accountScope.value
+            try {
+                val result = try {
+                    repository.clearPlan(accountId, localeTag)
+                } catch (error: Exception) {
+                    if (error is kotlinx.coroutines.CancellationException) throw error
+                    Result.failure(error)
+                }
+                result.fold(
+                    onSuccess = {
+                        analytics.record(AnalyticsEvent("training_plan_ended", mapOf(AnalyticsProperty.EntrySource to "plan_details")))
+                        messages.emit(TodayMessage.PlanEnded)
+                        refresh()
+                    },
+                    onFailure = { error ->
+                        if (error is kotlinx.coroutines.CancellationException) throw error
+                        kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                        val category = (error as? TodayRepositoryException)?.dataError?.javaClass?.simpleName ?: error.javaClass.simpleName
+                        android.util.Log.w("PlainstridePlanning", "End plan failed category=$category")
+                        analytics.record(AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "plan_end_failed")))
+                        messages.emit(TodayMessage.CouldNotEndPlan)
+                    },
+                )
+            } finally {
+                mutationInFlight.value = false
+            }
         }
     }
 

@@ -252,7 +252,11 @@ fun TodayRoute(
         planPicker = planPicker,
         onWorkoutChangeOpened = viewModel::trackWorkoutChangeOpened,
         onDismissPlanPicker = viewModel::closePlanPicker,
-        onRetryPlanPicker = viewModel::openPlanPicker,
+        onRetryPlanPicker = { viewModel.openPlanPicker() },
+        onChangePlan = { viewModel.openPlanPicker("plan_details_change") },
+        onEndPlan = viewModel::endPlan,
+        onPlanDetailsOpened = viewModel::trackPlanDetailsOpened,
+        onEndPlanConfirmation = viewModel::trackEndPlanConfirmation,
         onSelectPlan = viewModel::selectPlanRecommendation,
         onUsePlan = { recommendation, replacing -> viewModel.confirmPlanRecommendation(recommendation, replacing) },
         onStartManual = { setup -> viewModel.trackManualWorkoutStarted(setup.activity, setup.goal); onStartManual(setup) },
@@ -318,6 +322,10 @@ fun TodayScreen(
     onSetUpPlan: () -> Unit,
     onBuildPlan: () -> Unit,
     planPicker: PlanPickerUiState = PlanPickerUiState(),
+    onChangePlan: () -> Unit = {},
+    onEndPlan: () -> Unit = {},
+    onPlanDetailsOpened: (Int) -> Unit = {},
+    onEndPlanConfirmation: () -> Unit = {},
     onWorkoutChangeOpened: () -> Unit = {},
     onDismissPlanPicker: () -> Unit = {},
     onRetryPlanPicker: () -> Unit = {},
@@ -358,6 +366,17 @@ fun TodayScreen(
     onRequestLocationAccess: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    var showsPlanDetails by rememberSaveable { mutableStateOf(false) }
+    val planning = state.planningSnapshot
+    val activePlan = planning?.plan
+    val hasPlanDetails = activePlan != null || (planning == null && (state.suggestion as? CachedResource.Available)?.value?.planContext != null)
+    val openPlanDetails = {
+        onPlanDetailsOpened(planning?.planWeekSnapshot()?.targetSessions ?: 0)
+        showsPlanDetails = true
+    }
+    LaunchedEffect(planning) {
+        if (planning != null && activePlan == null) showsPlanDetails = false
+    }
     var showsDetail by rememberSaveable { mutableStateOf(false) }
     var showsChange by rememberSaveable { mutableStateOf(false) }
     var showsWeather by rememberSaveable { mutableStateOf(false) }
@@ -531,6 +550,7 @@ fun TodayScreen(
                         },
                         onOpen = { onWorkoutDetailsOpened(); showsDetail = true },
                         onChange = { onWorkoutChangeOpened(); showsChange = true },
+                        onOpenPlan = openPlanDetails.takeIf { hasPlanDetails },
                     )
                     state.hasNoCachedSuggestion -> NoSuggestionCard(
                         noPlan = (state.planning as? CachedResource.Available)?.value?.plan == null,
@@ -538,6 +558,11 @@ fun TodayScreen(
                         onSetUpPlan = onSetUpPlan,
                         onRefresh = onRefresh,
                     )
+                }
+                if (hasPlanDetails && (suggestion == null || activityChoice != TodayActivityChoice.PLANNED || groupActivityContent != null)) {
+                    OutlinedButton(onClick = openPlanDetails, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text(stringResource(R.string.plan_details_title))
+                    }
                 }
                 if (activityChoice != TodayActivityChoice.PLANNED && goalChoice != TodayGoalChoice.FREE) {
                     ManualGoalCard(goalChoice, racePlan, unitSystem, curatedWorkout, distanceMeters, durationSeconds, calories,caloriePlan, autoStopAtGoal) {
@@ -600,6 +625,23 @@ fun TodayScreen(
                 onOpenLiveTrack = onOpenLiveTrack,
                 cheerRecipientsSelected = cheerRecipientsSelected,
             )
+    }
+
+    if (showsPlanDetails && planning != null && activePlan != null) {
+        ActivePlanDetailsSheet(
+            planning = planning,
+            busy = state.mutationInFlight,
+            stale = (state.planning as? CachedResource.Available)?.isStale == true || state.planning is CachedResource.Failed,
+            onDismiss = { showsPlanDetails = false },
+            onChangePlan = { showsPlanDetails = false; onChangePlan() },
+            onEndPlan = onEndPlan,
+            onEndConfirmation = onEndPlanConfirmation,
+            onRefresh = onRefresh,
+        )
+    }
+
+    if (showsPlanDetails && planning == null && hasPlanDetails) {
+        PlanDetailsSyncingSheet(onDismiss = { showsPlanDetails = false }, onRefresh = onRefresh)
     }
 
     if (planPicker.open) {
@@ -953,6 +995,7 @@ private fun WorkoutRecommendationCard(
     onToggleMinimized: () -> Unit,
     onOpen: () -> Unit,
     onChange: () -> Unit,
+    onOpenPlan: (() -> Unit)? = null,
 ) {
     val toggleDescription = stringResource(if (minimized) R.string.today_expand_card else R.string.today_collapse_card)
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .96f))) {
@@ -972,6 +1015,11 @@ private fun WorkoutRecommendationCard(
                     Text(if (minimized) "⌄" else "⌃", style = MaterialTheme.typography.titleLarge)
                 }
             }
+            if (minimized && onOpenPlan != null) {
+                TextButton(onClick = onOpenPlan, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.plan_details_title))
+                }
+            }
             if (!minimized) {
                 weather?.let {
                     Text("${it.headline} · ${it.detail}", style = MaterialTheme.typography.bodySmall, color = if (it.unsafe) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
@@ -984,10 +1032,10 @@ private fun WorkoutRecommendationCard(
                 )
                 HorizontalDivider()
                 Row(Modifier.fillMaxWidth()) {
-                    TextButton(onClick = onOpen, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                    TextButton(onClick = onOpenPlan ?: onOpen, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
                         Icon(Icons.Default.CalendarMonth, null)
                         Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.today_plan))
+                        Text(stringResource(if (onOpenPlan != null) R.string.plan_details_title else R.string.today_details))
                     }
                     TextButton(onClick = onChange, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
                         Icon(Icons.Default.Edit, null)

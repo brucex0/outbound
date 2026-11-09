@@ -104,7 +104,31 @@ class OfflineFirstTodayRepository @Inject constructor(
     override suspend fun submitPlanningReadiness(accountId: String, localeTag: String, request: PlanningReadinessRequest) = planningMutation(accountId, localeTag) { apiCall { api.submitPlanningReadiness(it, request) } }
     override suspend fun skipWorkout(accountId: String, localeTag: String, workoutId: String) = planningMutation(accountId, localeTag) { apiCall { api.skipWorkout(it, workoutId) } }
     override suspend fun completeWorkout(accountId: String, localeTag: String, workoutId: String, request: PlannedWorkoutCompletionRequest) = planningMutation(accountId, localeTag) { apiCall { api.completeWorkout(it, workoutId, request) } }
-    override suspend fun clearPlan(accountId: String, localeTag: String) = planningMutation(accountId, localeTag) { apiCall { api.clearPlan(it) } }
+    override suspend fun clearPlan(accountId: String, localeTag: String) = refreshMutex.withLock {
+        val endedPlanId = cache.get(accountId, PLANNING, DEFAULT_KEY, localeTag)?.let { entity ->
+            runCatching { PlainstrideJson.decodeFromString(PlanningState.serializer(), entity.payloadJson).plan?.id }
+                .onFailure { android.util.Log.w("PlainstridePlanning", "End plan cache lookup failed category=invalid_planning_cache") }
+                .getOrNull()
+        }
+        planningMutation(accountId, localeTag) { apiCall { api.clearPlan(it) } }.onSuccess {
+            // Serialize with refresh so an older response cannot resurrect the plan.
+            // Clear only this plan across locales; preserve unrelated freestyle suggestions.
+            if (endedPlanId != null) {
+                cache.entries(accountId, SUGGESTION).forEach { entity ->
+                    val envelope = runCatching { PlainstrideJson.decodeFromString(ActivitySuggestionEnvelope.serializer(), entity.payloadJson) }
+                        .onFailure { android.util.Log.w("PlainstridePlanning", "End plan cache lookup failed category=invalid_suggestion_cache") }
+                        .getOrNull()
+                    if (envelope?.planContext?.planId == endedPlanId) cache.delete(accountId, SUGGESTION, entity.cacheKey, entity.localeTag)
+                }
+                cache.entries(accountId, PLANNING).filter { it.localeTag != localeTag }.forEach { entity ->
+                    val cachedPlan = runCatching { PlainstrideJson.decodeFromString(PlanningState.serializer(), entity.payloadJson).plan }
+                        .onFailure { android.util.Log.w("PlainstridePlanning", "End plan cache lookup failed category=invalid_planning_cache") }
+                        .getOrNull()
+                    if (cachedPlan?.id == endedPlanId) cache.delete(accountId, PLANNING, entity.cacheKey, entity.localeTag)
+                }
+            }
+        }
+    }
     override suspend fun updateRunnerProfile(accountId: String, localeTag: String, request: RunnerProfileRequest) = personalizationMutation(accountId, localeTag) { apiCall { api.updateProfile(it, request) } }
     override suspend fun submitReadiness(accountId: String, localeTag: String, request: ReadinessCheckInRequest) = personalizationMutation(accountId, localeTag) { apiCall { api.submitReadiness(it, request) } }
     override suspend fun decideAdjustment(accountId: String, localeTag: String, adjustmentId: String, accept: Boolean): Result<Unit> =
@@ -161,7 +185,7 @@ class OfflineFirstTodayRepository @Inject constructor(
 
     private companion object {
         const val DEFAULT_KEY = "current"
-        const val PLANNING = "planning.state"
+        const val PLANNING = "planning.state.v2"
         const val SUGGESTION = "planning.suggestion"
         const val PERSONALIZATION = "personalization.snapshot"
         const val CATALOG = "planning.standalone_catalog"

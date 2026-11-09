@@ -59,6 +59,7 @@ data class TrainingGoal(
     val activities: List<Modality>,
     val baselineContext: String? = null,
     val targetDate: String? = null,
+    val reviewHorizonWeeks: Int? = null,
     val targetDistanceMeters: Double? = null,
     val targetEventName: String? = null,
     val priority: String? = null,
@@ -71,7 +72,7 @@ data class TrainingGoal(
     val createdAt: String? = null,
 )
 
-@Serializable data class TrainingPlan(val id: String, val currentPhase: String, val createdAt: String? = null)
+@Serializable data class TrainingPlan(val id: String, val currentPhase: String, val source: String, val createdAt: String? = null)
 @Serializable data class PlanVersion(val id: String? = null, val versionNumber: Int, val reason: String, val summary: String)
 @Serializable data class AthleteTrainingState(val fatigueRisk: String, val adherenceRate: Double, val consistencyScore: Double, val weeklyMinutes: Int, val weeklyDistanceMeters: Double)
 @Serializable data class PlanAdjustment(val id: String? = null, val message: String, val eventType: String, val createdAt: String? = null)
@@ -83,6 +84,7 @@ data class PlanningState(
     val currentVersion: PlanVersion? = null,
     val today: PlannedWorkout? = null,
     val upcoming: List<PlannedWorkout> = emptyList(),
+    val workouts: List<PlannedWorkout>,
     val athleteState: AthleteTrainingState? = null,
     val latestAdjustment: PlanAdjustment? = null,
     val planningStatus: PlanningStatus,
