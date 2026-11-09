@@ -41,6 +41,9 @@ import kotlin.math.ceil
 @OptIn(ExperimentalMaterial3Api::class)
 internal fun ActivePlanDetailsSheet(
     planning: PlanningState,
+    units: com.plainstride.outbound.core.model.activity.MeasurementUnitSystem,
+    onRaceGoalOpened: () -> Unit,
+    onUpdateRaceGoal: suspend (String, com.plainstride.outbound.core.network.RaceGoalUpdateRequest) -> Boolean,
     busy: Boolean,
     stale: Boolean,
     onDismiss: () -> Unit,
@@ -69,6 +72,7 @@ internal fun ActivePlanDetailsSheet(
                 "eventPreparation" -> R.string.plan_details_goal_event
                 else -> R.string.plan_details_active_plan
             }), style = MaterialTheme.typography.headlineSmall)
+            if (planning.goal?.type == "eventPreparation") RaceGoalCard(planning, units, onRaceGoalOpened, onUpdateRaceGoal)
             planning.currentVersion?.summary?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             if (stale) Text(stringResource(R.string.plan_details_cached), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
             if (week != null) {
@@ -117,6 +121,7 @@ internal fun ActivePlanDetailsSheet(
                             planningLogicalDate(workout.scheduledDate)?.let {
                                 Text(it.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)), style = MaterialTheme.typography.labelMedium)
                             }
+                            if (workout.prescription?.get("optional")?.toString() == "true") Text(stringResource(R.string.today_race_goal_optional), style = MaterialTheme.typography.labelSmall)
                             Text(workout.title, style = MaterialTheme.typography.titleSmall)
                             Text(stringResource(R.string.today_minutes, ceil(workout.durationSeconds / 60.0).toInt()), color = MaterialTheme.colorScheme.primary)
                             Text(stringResource(when (workout.status) {

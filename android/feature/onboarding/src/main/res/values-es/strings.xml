@@ -190,4 +190,11 @@
     <string name="plan_builder_event_date_answer">Fecha de la carrera: %1$s</string>
     <string name="plan_builder_event_intent_answer">Enfoque para la carrera: %1$s</string>
     <string name="plan_builder_target_time_answer">Tiempo objetivo: %1$d min</string>
+    <string name="plan_builder_race_cap">Duración máxima total: %1$d min</string>
+    <string name="plan_builder_race_duration_detail">La sesión incluye calentamiento y vuelta a la calma. Normalmente tendrás al menos 15 minutos de carrera o carrera y caminata en la parte principal.</string>
+    <string name="plan_builder_race_mobility">Añadir 10 minutos opcionales de movilidad</string>
+    <string name="plan_builder_race_mobility_detail">La movilidad es un extra opcional y no sustituye tus carreras semanales.</string>
+    <string name="plan_builder_race_optional">Opcional</string>
+    <string name="plan_builder_race_short">Prefiero sesiones más cortas</string>
+    <string name="plan_builder_race_short_detail">Permitir menos de 15 minutos de carrera principal cuando el tiempo total que elija sea corto.</string>
 </resources>

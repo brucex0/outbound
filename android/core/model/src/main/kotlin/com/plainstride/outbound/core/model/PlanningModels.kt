@@ -62,6 +62,10 @@ data class TrainingGoal(
     val reviewHorizonWeeks: Int? = null,
     val targetDistanceMeters: Double? = null,
     val targetEventName: String? = null,
+    val eventIntent: String? = null,
+    val targetTimeSeconds: Int? = null,
+    val shortRunSessions: Boolean = false,
+    val optionalMobility: Boolean = false,
     val priority: String? = null,
     val preferredDays: List<String> = emptyList(),
     val daysPerWeekTarget: Int? = null,
@@ -73,6 +77,8 @@ data class TrainingGoal(
 )
 
 @Serializable data class TrainingPlan(val id: String, val currentPhase: String, val source: String, val createdAt: String? = null)
+@Serializable data class RaceGoalPhase(val phase: String, val startDate: String, val endDate: String)
+@Serializable data class RaceGoalRoadmap(val currentPhase: String, val detailedFromDate: String? = null, val detailedThroughDate: String? = null, val phases: List<RaceGoalPhase> = emptyList())
 @Serializable data class PlanVersion(val id: String? = null, val versionNumber: Int, val reason: String, val summary: String)
 @Serializable data class AthleteTrainingState(val fatigueRisk: String, val adherenceRate: Double, val consistencyScore: Double, val weeklyMinutes: Int, val weeklyDistanceMeters: Double)
 @Serializable data class PlanAdjustment(val id: String? = null, val message: String, val eventType: String, val createdAt: String? = null)
@@ -85,6 +91,7 @@ data class PlanningState(
     val today: PlannedWorkout? = null,
     val upcoming: List<PlannedWorkout> = emptyList(),
     val workouts: List<PlannedWorkout>,
+    val roadmap: RaceGoalRoadmap? = null,
     val athleteState: AthleteTrainingState? = null,
     val latestAdjustment: PlanAdjustment? = null,
     val planningStatus: PlanningStatus,

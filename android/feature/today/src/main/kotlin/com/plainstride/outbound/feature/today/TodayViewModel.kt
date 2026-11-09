@@ -311,6 +311,20 @@ class TodayViewModel @Inject constructor(
         }
     }
 
+    suspend fun updateRaceGoal(goalId: String, request: com.plainstride.outbound.core.network.RaceGoalUpdateRequest): Boolean {
+        if (mutationInFlight.value) return false
+        mutationInFlight.value = true
+        val (accountId, localeTag) = accountScope.value
+        val result = repository.updateRaceGoal(accountId, localeTag, goalId, request)
+        mutationInFlight.value = false
+        analytics.record(AnalyticsEvent("race_goal_updated", mapOf(AnalyticsProperty.Result to if (result.isSuccess) "success" else "failure", AnalyticsProperty.SelectionType to if (request.shortRunSessions) "short" else "standard")))
+        if (result.isFailure) android.util.Log.e("Planning", "race_goal_update_failed category=${(result.exceptionOrNull() as? TodayRepositoryException)?.dataError?.javaClass?.simpleName ?: "unknown"}")
+        if (result.isSuccess) refresh()
+        return result.isSuccess
+    }
+
+    fun trackRaceGoalOpened() = analytics.record(AnalyticsEvent("planning_surface_opened", mapOf(AnalyticsProperty.SourceType to "race_goal_edit", AnalyticsProperty.EntrySource to "plan_details")))
+
     fun trackWorkoutStarted(source: String) = analytics.record(
         AnalyticsEvent("workout_started", mapOf(AnalyticsProperty.Source to source)),
     )

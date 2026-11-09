@@ -14,10 +14,11 @@ internal data class PlanWeekSnapshot(
     val totalWeeks: Int?,
     val workouts: List<PlannedWorkout>,
 ) {
-    val targetSessions: Int get() = workouts.size
-    val targetMinutes: Int get() = workouts.sumOf { ceil(it.durationSeconds / 60.0).toInt() }
-    val completedSessions: Int get() = workouts.count { it.status == "completed" }
-    val completedMinutes: Int get() = workouts.filter { it.status == "completed" }.sumOf { ceil(it.durationSeconds / 60.0).toInt() }
+    private val required: List<PlannedWorkout> get() = workouts.filter { it.prescription?.get("optional")?.toString() != "true" }
+    val targetSessions: Int get() = required.size
+    val targetMinutes: Int get() = required.sumOf { ceil(it.durationSeconds / 60.0).toInt() }
+    val completedSessions: Int get() = required.count { it.status == "completed" }
+    val completedMinutes: Int get() = required.filter { it.status == "completed" }.sumOf { ceil(it.durationSeconds / 60.0).toInt() }
     val progress: Float get() = max(
         completedSessions.toFloat() / targetSessions.coerceAtLeast(1),
         completedMinutes.toFloat() / targetMinutes.coerceAtLeast(1),

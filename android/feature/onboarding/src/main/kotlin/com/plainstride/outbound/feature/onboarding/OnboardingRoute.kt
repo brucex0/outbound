@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -63,6 +64,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -226,7 +229,7 @@ private fun OnboardingScreen(
                 OnboardingStep.Profile -> ProfileStep(
                     draft, state.healthImporting, state.healthConnected, state.recentHealthActivityCount, update, importHealth,
                 )
-                OnboardingStep.Review -> ReviewStep(draft)
+                OnboardingStep.Review -> ReviewStep(draft, update)
                 OnboardingStep.Result -> ResultStep(draft, state.plan, update)
                 OnboardingStep.Creating -> Unit
             }
@@ -420,9 +423,10 @@ private fun WeekStep(draft: OnboardingDraft, update: ((OnboardingDraft) -> Onboa
     NumberControl(R.string.plan_builder_week_sessions, draft.sessionsPerWeek, 1, 6, 1) { value ->
         update { it.copy(sessionsPerWeek = value, preferredDays = it.preferredDays.take(value)) }
     }
-    NumberControl(R.string.plan_builder_week_duration, draft.availableMinutes, 10, 120, 5) { value ->
+    NumberControl(R.string.plan_builder_race_cap, draft.availableMinutes, if (draft.shortRunSessions) 10 else 25, 120, 5) { value ->
         update { it.copy(availableMinutes = value) }
     }
+    PlanPreferences(draft, update)
     Text(stringResource(R.string.plan_builder_week_preferred_days), style = MaterialTheme.typography.titleSmall)
     WEEKDAYS.chunked(4).forEach { row ->
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -499,7 +503,7 @@ private fun ProfileStep(
 }
 
 @Composable
-private fun ReviewStep(draft: OnboardingDraft) {
+private fun ReviewStep(draft: OnboardingDraft, update: ((OnboardingDraft) -> OnboardingDraft) -> Unit) {
     val resources = LocalContext.current.resources
     CoachMessage(R.string.plan_builder_review_title, R.string.plan_builder_review_subtitle)
     SummaryCard(R.string.plan_builder_review_objective, stringResource(draft.objective.label))
@@ -520,6 +524,24 @@ private fun ReviewStep(draft: OnboardingDraft) {
         R.string.plan_builder_review_week,
         stringResource(R.string.plan_builder_review_week_value, draft.sessionsPerWeek, draft.availableMinutes),
     )
+    PlanPreferences(draft, update)
+}
+
+@Composable
+private fun PlanPreferences(draft: OnboardingDraft, update: ((OnboardingDraft) -> OnboardingDraft) -> Unit) {
+    val shortLabel = stringResource(R.string.plan_builder_race_short)
+    val mobilityLabel = stringResource(R.string.plan_builder_race_mobility)
+    Text(stringResource(R.string.plan_builder_race_duration_detail), style = MaterialTheme.typography.bodySmall)
+    Row(Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.plan_builder_race_short), Modifier.weight(1f))
+        Switch(modifier = Modifier.semantics { contentDescription = shortLabel }, checked = draft.shortRunSessions, onCheckedChange = { selected -> update { it.copy(shortRunSessions = selected, availableMinutes = it.availableMinutes.coerceAtLeast(if (selected) 10 else 25)) } })
+    }
+    Text(stringResource(R.string.plan_builder_race_short_detail), style = MaterialTheme.typography.bodySmall)
+    Row(Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.plan_builder_race_mobility), Modifier.weight(1f))
+        Switch(modifier = Modifier.semantics { contentDescription = mobilityLabel }, checked = draft.optionalMobility, onCheckedChange = { selected -> update { it.copy(optionalMobility = selected) } })
+    }
+    Text(stringResource(R.string.plan_builder_race_mobility_detail), style = MaterialTheme.typography.bodySmall)
 }
 
 @Composable
@@ -549,16 +571,16 @@ private fun ResultStep(
     SummaryCard(R.string.plan_builder_review_objective, stringResource(draft.objective.label))
     SummaryCard(R.string.plan_builder_review_activities, draft.activities.joinToString(" · ") { resources.getString(it.label) })
     Text(stringResource(R.string.plan_builder_result_week), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-    val weekStart = LocalDate.now().with(WeekFields.of(Locale.getDefault()).dayOfWeek(), 1)
+    val weekStart = plan?.planStartDate() ?: LocalDate.now()
     val weekEnd = weekStart.plusDays(7)
-    val workouts = plan?.upcoming.orEmpty().filter { workout ->
+    val workouts = plan?.workouts.orEmpty().filter { workout ->
         val day = runCatching { LocalDate.parse(workout.scheduledDate.take(10)) }.getOrNull()
         day != null && !day.isBefore(weekStart) && day.isBefore(weekEnd)
     }
     if (workouts.isNotEmpty()) {
         SummaryCard(
             R.string.plan_builder_result_total_time,
-            stringResource(R.string.plan_builder_result_total_time_value, workouts.sumOf { it.durationSeconds } / 60),
+            stringResource(R.string.plan_builder_result_total_time_value, workouts.filter { it.prescription?.get("optional")?.toString() != "true" }.sumOf { it.durationSeconds } / 60),
         )
         workouts.forEach { WorkoutRow(it) }
     }
@@ -575,6 +597,7 @@ private fun WorkoutRow(workout: PlannedWorkout) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             val day = runCatching { LocalDate.parse(workout.scheduledDate.take(10)).format(DateTimeFormatter.ofPattern("EEE", Locale.getDefault())) }
                 .getOrDefault(workout.scheduledDate)
+            if (workout.prescription?.get("optional")?.toString() == "true") Text(stringResource(R.string.plan_builder_race_optional), style = MaterialTheme.typography.labelSmall)
             Text("$day · ${workout.title}", style = MaterialTheme.typography.titleSmall)
             Text(
                 stringResource(R.string.plan_builder_result_total_time_value, workout.durationSeconds / 60),
@@ -941,3 +964,8 @@ private val FIRST_USE_STEPS = listOf(
     OnboardingStep.Week, OnboardingStep.Profile, OnboardingStep.Review,
 )
 private val BUILDER_STEPS = FIRST_USE_STEPS.drop(1)
+
+private fun com.plainstride.outbound.core.model.PlanningState.planStartDate(): LocalDate? =
+    (plan?.createdAt ?: goal?.createdAt)?.let { value ->
+        runCatching { java.time.Instant.parse(value).atZone(java.time.ZoneId.systemDefault()).toLocalDate() }.getOrNull()
+    }

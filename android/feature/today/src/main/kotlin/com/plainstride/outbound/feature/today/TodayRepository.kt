@@ -41,6 +41,7 @@ interface TodayRepository {
     fun observeStandaloneWorkouts(accountId: String, localeTag: String): Flow<CachedResource<StandaloneWorkoutCatalog>>
     suspend fun refresh(accountId: String, localeTag: String): TodayDataError?
     suspend fun createGoal(accountId: String, localeTag: String, request: CreateTrainingGoalRequest): Result<PlanningState>
+    suspend fun updateRaceGoal(accountId: String, localeTag: String, goalId: String, request: com.plainstride.outbound.core.network.RaceGoalUpdateRequest): Result<PlanningState>
     suspend fun planRecommendations(): Result<PlanRecommendationsResponse>
     suspend fun activatePlanRecommendation(accountId: String, localeTag: String, recommendation: PlanRecommendation): Result<PlanningState>
     suspend fun submitPlanningReadiness(accountId: String, localeTag: String, request: PlanningReadinessRequest): Result<PlanningState>

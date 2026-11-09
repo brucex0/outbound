@@ -101,6 +101,7 @@ class OfflineFirstTodayRepository @Inject constructor(
             constraints = mapOf("candidateID" to recommendation.id, "templateID" to (template["id"]?.jsonPrimitive?.contentOrNull ?: "")),
         ))
     }
+    override suspend fun updateRaceGoal(accountId: String, localeTag: String, goalId: String, request: com.plainstride.outbound.core.network.RaceGoalUpdateRequest) = planningMutation(accountId, localeTag) { apiCall { api.updateRaceGoal(it, goalId, request) } }
     override suspend fun submitPlanningReadiness(accountId: String, localeTag: String, request: PlanningReadinessRequest) = planningMutation(accountId, localeTag) { apiCall { api.submitPlanningReadiness(it, request) } }
     override suspend fun skipWorkout(accountId: String, localeTag: String, workoutId: String) = planningMutation(accountId, localeTag) { apiCall { api.skipWorkout(it, workoutId) } }
     override suspend fun completeWorkout(accountId: String, localeTag: String, workoutId: String, request: PlannedWorkoutCompletionRequest) = planningMutation(accountId, localeTag) { apiCall { api.completeWorkout(it, workoutId, request) } }

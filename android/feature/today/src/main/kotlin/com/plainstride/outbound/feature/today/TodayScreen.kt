@@ -250,6 +250,8 @@ fun TodayRoute(
         onSetUpPlan = onSetUpPlan,
         onBuildPlan = onBuildPlan,
         planPicker = planPicker,
+        onUpdateRaceGoal = viewModel::updateRaceGoal,
+        onRaceGoalOpened = viewModel::trackRaceGoalOpened,
         onWorkoutChangeOpened = viewModel::trackWorkoutChangeOpened,
         onDismissPlanPicker = viewModel::closePlanPicker,
         onRetryPlanPicker = { viewModel.openPlanPicker() },
@@ -326,6 +328,8 @@ fun TodayScreen(
     onEndPlan: () -> Unit = {},
     onPlanDetailsOpened: (Int) -> Unit = {},
     onEndPlanConfirmation: () -> Unit = {},
+    onUpdateRaceGoal: suspend (String, com.plainstride.outbound.core.network.RaceGoalUpdateRequest) -> Boolean = { _, _ -> false },
+    onRaceGoalOpened: () -> Unit = {},
     onWorkoutChangeOpened: () -> Unit = {},
     onDismissPlanPicker: () -> Unit = {},
     onRetryPlanPicker: () -> Unit = {},
@@ -533,6 +537,10 @@ fun TodayScreen(
                         onDirectionChanged = onRouteDirectionChanged,
                     )
                 }
+                val planningState = (state.planning as? CachedResource.Available)?.value
+                if (activityChoice == TodayActivityChoice.PLANNED && planningState?.goal?.type == "eventPreparation") {
+                    RaceGoalCard(planningState, unitSystem, onRaceGoalOpened, onUpdateRaceGoal)
+                }
                 when {
                     groupActivityContent != null -> groupActivityContent()
                     state.suggestion is CachedResource.Loading && state.refreshError == null -> TodaySkeleton()
@@ -629,6 +637,9 @@ fun TodayScreen(
 
     if (showsPlanDetails && planning != null && activePlan != null) {
         ActivePlanDetailsSheet(
+            units = unitSystem,
+            onRaceGoalOpened = onRaceGoalOpened,
+            onUpdateRaceGoal = onUpdateRaceGoal,
             planning = planning,
             busy = state.mutationInFlight,
             stale = (state.planning as? CachedResource.Available)?.isStale == true || state.planning is CachedResource.Failed,

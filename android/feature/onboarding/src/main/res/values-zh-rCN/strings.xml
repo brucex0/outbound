@@ -190,4 +190,11 @@
     <string name="plan_builder_event_date_answer">比赛日期：%1$s</string>
     <string name="plan_builder_event_intent_answer">比赛目标：%1$s</string>
     <string name="plan_builder_target_time_answer">目标完赛时间：%1$d 分钟</string>
+    <string name="plan_builder_race_cap">单次总时长上限：%1$d 分钟</string>
+    <string name="plan_builder_race_duration_detail">单次总时长包含热身和放松。跑步或跑走交替的主要训练通常至少为 15 分钟。</string>
+    <string name="plan_builder_race_mobility">添加可选的 10 分钟灵活性练习</string>
+    <string name="plan_builder_race_mobility_detail">灵活性练习是额外的可选项目，不会替代每周跑步。</string>
+    <string name="plan_builder_race_optional">可选</string>
+    <string name="plan_builder_race_short">我希望安排较短的训练</string>
+    <string name="plan_builder_race_short_detail">当我选择较短的总时长时，允许主要跑步训练少于 15 分钟。</string>
 </resources>

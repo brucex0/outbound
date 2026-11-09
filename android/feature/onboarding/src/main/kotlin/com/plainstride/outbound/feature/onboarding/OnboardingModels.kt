@@ -93,6 +93,8 @@ data class OnboardingDraft(
     val comfortableMinutes: Int = 30,
     val sessionsPerWeek: Int = 3,
     val availableMinutes: Int = 30,
+    val shortRunSessions: Boolean = false,
+    val optionalMobility: Boolean = false,
     val preferredDays: List<String> = emptyList(),
     val constraints: String = "",
     val birthDate: String = "",
@@ -139,6 +141,8 @@ data class PlanBuilderInput(
     val availableMinutes: Int,
     val preferredDays: List<String>,
     val constraints: String,
+    val shortRunSessions: Boolean = false,
+    val optionalMobility: Boolean = false,
 )
 
 data class ImportedHealthProfile(

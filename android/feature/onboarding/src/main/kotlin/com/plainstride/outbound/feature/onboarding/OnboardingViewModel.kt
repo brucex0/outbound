@@ -67,6 +67,8 @@ class OnboardingViewModel @Inject constructor(
     fun update(transform: (OnboardingDraft) -> OnboardingDraft) {
         val draft = mutableState.value.draft ?: return
         val updated = transform(draft).normalized()
+        if (updated.shortRunSessions != draft.shortRunSessions) analytics.record(AnalyticsEvent("plan_intake_answer_edited", mapOf(AnalyticsProperty.SelectionType to "short_sessions", AnalyticsProperty.SourceType to "conversation")))
+        if (updated.optionalMobility != draft.optionalMobility) analytics.record(AnalyticsEvent("plan_intake_answer_edited", mapOf(AnalyticsProperty.SelectionType to "optional_mobility", AnalyticsProperty.SourceType to "conversation")))
         mutableState.value = mutableState.value.copy(draft = updated)
         viewModelScope.launch { drafts.save(updated) }
     }
@@ -507,7 +509,7 @@ class OnboardingViewModel @Inject constructor(
         objective, activities, eventDistanceMeters,
         eventDate ?: defaultEventDate(), eventIntent, targetTimeSeconds, reviewHorizonWeeks,
         successSignal, goalDescription, intakeContextVersion, baselineContext, recentSessionsPerWeek,
-        comfortableMinutes, sessionsPerWeek, availableMinutes, preferredDays, constraints,
+        comfortableMinutes, sessionsPerWeek, availableMinutes, preferredDays, constraints, shortRunSessions, optionalMobility,
     )
 
     private fun OnboardingDraft.identityValid(needsEmail: Boolean): Boolean = displayName.isNotBlank() &&
@@ -519,7 +521,7 @@ class OnboardingViewModel @Inject constructor(
         recentSessionsPerWeek = recentSessionsPerWeek.coerceIn(0, 6),
         comfortableMinutes = comfortableMinutes.coerceIn(10, 120),
         sessionsPerWeek = sessionsPerWeek.coerceIn(1, 6),
-        availableMinutes = availableMinutes.coerceIn(10, 120),
+        availableMinutes = availableMinutes.coerceIn(if (shortRunSessions) 10 else 25, 120),
         preferredDays = preferredDays.distinct().take(sessionsPerWeek.coerceIn(1, 6)),
     )
 
@@ -581,7 +583,7 @@ private fun OnboardingDraft.withIntakeContext(context: PlanIntakeContext): Onboa
         activities = suggestedActivities.ifEmpty { inferredActivities.ifEmpty { activities } },
         baselineContext = suggested?.baselineContext?.toPlanBaselineContext() ?: baselineContext,
         sessionsPerWeek = suggested?.sessionsPerWeek?.coerceIn(1, 6) ?: context.previousSchedule?.sessionsPerWeek ?: sessionsPerWeek,
-        availableMinutes = suggested?.maxSessionMinutes?.coerceIn(10, 120) ?: context.previousSchedule?.maxSessionMinutes ?: availableMinutes,
+        availableMinutes = (suggested?.maxSessionMinutes ?: context.previousSchedule?.maxSessionMinutes ?: availableMinutes).coerceIn(if (shortRunSessions) 10 else 25, 120),
         preferredDays = suggested?.preferredDays ?: context.previousSchedule?.preferredDays ?: preferredDays,
     )
 }

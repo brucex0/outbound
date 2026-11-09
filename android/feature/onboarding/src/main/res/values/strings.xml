@@ -190,4 +190,11 @@
     <string name="plan_builder_event_date_answer">Event date: %1$s</string>
     <string name="plan_builder_event_intent_answer">Race approach: %1$s</string>
     <string name="plan_builder_target_time_answer">Target finish time: %1$d min</string>
+    <string name="plan_builder_race_cap">Maximum total session: %1$d min</string>
+    <string name="plan_builder_race_duration_detail">Session time includes warmup and cooldown. Runs normally include at least 15 minutes of main running or run-walk time.</string>
+    <string name="plan_builder_race_mobility">Add optional 10-minute mobility</string>
+    <string name="plan_builder_race_mobility_detail">Optional mobility is extra and does not replace your weekly runs.</string>
+    <string name="plan_builder_race_optional">Optional</string>
+    <string name="plan_builder_race_short">I prefer shorter sessions</string>
+    <string name="plan_builder_race_short_detail">Allow less than 15 minutes of main running when my selected total time is short.</string>
 </resources>

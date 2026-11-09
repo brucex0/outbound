@@ -93,6 +93,8 @@ class DefaultOnboardingRepository @Inject constructor(
                     maxSessionMinutes = input.availableMinutes,
                     riskTolerance = if (input.baselineContext == PlanBaselineContext.ReturningAfterBreak) "conservative" else "balanced",
                     constraints = buildMap {
+                        put("shortRunSessions", input.shortRunSessions.toString())
+                        put("optionalMobility", input.optionalMobility.toString())
                         input.constraints.takeIf(String::isNotBlank)?.let { put("notes", it) }
                     },
                 ),
