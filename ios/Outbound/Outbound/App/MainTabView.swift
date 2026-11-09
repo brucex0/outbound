@@ -68,6 +68,8 @@ struct MainTabView: View {
         }
         .animation(.easeInOut(duration: 0.22), value: connectivityStore.isOffline)
         .animation(.easeInOut(duration: 0.22), value: activityStore.failedActivityCount)
+        // First use belongs to OutboundApp's startup destination. This is the
+        // sole presenter for reusable setup, with completion owned by Today.
         .fullScreenCover(isPresented: onboardingPresentation) {
             SimplifiedOnboardingFlow { prepareTodayLaunchForCurrentPlan() }
             .environmentObject(onboardingStore)
@@ -458,8 +460,11 @@ struct MainTabView: View {
 
     private func prepareTodayLaunchForCurrentPlan() {
         guard !activityFlowStore.hasUnfinishedSession else { return }
+        selectedAppTab = .today
+        customizedTodayIntent = nil
         let intent = defaultTodayIntent
         activeLaunch = RecordLaunch(intent: intent)
+        preActivityRoute = intent?.preparedRoute
         launchGoalMode = trainingPlanStore.activePlan == nil ? .freestyle : .planned
         isActivityVisible = true
     }

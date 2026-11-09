@@ -622,7 +622,7 @@ enum ProductAnalyticsSchema {
         .onboardingTrainingProfileCompleted: [.result, .sourceType],
         .onboardingResolved: [.result],
         .planBuilderOpened: [.entrySource],
-        .planBuilderExited: [.stepName],
+        .planBuilderExited: [.stepName, .entrySource, .result],
         .planCreationCompleted: [.result, .latencyBucket, .goalType, .countBucket, .errorCategory],
         .planIntakeContextLoaded: [.sourceType],
         .planIntakeGoalInterpreted: [.result, .sourceType, .errorCategory],

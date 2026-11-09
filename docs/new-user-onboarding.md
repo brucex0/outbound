@@ -165,6 +165,8 @@ The result should show:
 - actions to make it easier, change days, or change activity mix
 - `Go to Today` as the final action
 
+On iOS, first-use onboarding belongs to the app's startup destination; reusable setup has one presenter in `MainTabView`. `Go to Today` closes that setup, selects Today, and prepares the current plan's suggestion in Planned mode, clearing any previous custom workout or route. An unfinished activity retains ownership of its recording/review state. Do not add another reusable-setup cover at the app root: two covers observing the same presentation flag can expose a fresh setup after completion.
+
 Do not describe the CTA as `Build my first week`. The plan is broader than one week even though only the starting week is committed in detail.
 
 ## Calibration
@@ -195,7 +197,7 @@ Add typed, bounded events for:
 
 - `onboarding_resolved`, emitted once with result `skipped` or `completed`
 - `plan_builder_opened`, with entry source `onboarding`, `planned_button`, or `all_plans`
-- `plan_builder_exited`, with a bounded step name
+- `plan_builder_exited`, with a bounded step name, entry source, and result `completed` for `Go to Today` or `finish_later` for an explicit exit
 - `plan_creation_completed`, with success/failure, a coarse latency bucket, and a bounded error category on failure
 - `plan_intake_context_loaded`, with the bounded data tier
 - `plan_intake_goal_interpreted`, with success/failure, bounded source `conversation_text` or `quick_reply`, and a bounded error category on failure

@@ -571,7 +571,10 @@ struct SimplifiedOnboardingFlow: View {
         case .welcome: step = .objective
         case .profile: Task { await saveTrainingProfileAndContinue() }
         case .review: createPlan()
-        case .result: onboardingStore.finishLater(); onComplete()
+        case .result:
+            trackBuilderExit(result: "completed")
+            onboardingStore.finishLater()
+            onComplete()
         default: advance()
         }
     }
@@ -850,7 +853,7 @@ struct SimplifiedOnboardingFlow: View {
 
     private func finishLater() {
         onboardingStore.savePlanBuilderDraft(draft)
-        track(.planBuilderExited, [.stepName: .string(step.analyticsValue)])
+        trackBuilderExit(result: "finish_later")
         guard isFirstUse else {
             onboardingStore.finishLater()
             return
@@ -870,6 +873,14 @@ struct SimplifiedOnboardingFlow: View {
             track(.onboardingResolved, [.result: .string("skipped")])
             onboardingStore.finishLater()
         }
+    }
+
+    private func trackBuilderExit(result: String) {
+        track(.planBuilderExited, [
+            .stepName: .string(step.analyticsValue),
+            .entrySource: .string(onboardingStore.presentationSource.rawValue),
+            .result: .string(result),
+        ])
     }
 
     private func trackCreation(result: String, errorCategory: String? = nil) {
