@@ -326,3 +326,17 @@ extension PersonalizationSnapshotDTO {
         pendingAdjustment: nil
     )
 }
+
+struct WorkoutAdjustmentApplyRequestDTO: Codable, Equatable {
+    let idempotencyKey: String
+    let workoutId: String
+    let suggestionId: String
+    let validForDate: String
+    let choice: ReadinessChoice
+    let minutes: Int
+    let note: String?
+}
+
+struct WorkoutAdjustmentApplyResponseDTO: Decodable {
+    let accepted: Bool
+}

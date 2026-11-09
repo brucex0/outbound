@@ -1000,6 +1000,9 @@ private struct SimplifiedTodayView: View {
     @State private var activityLaunchMapControlsHeight: CGFloat = 0
     @State private var showsSocialInbox = false
     @State private var presentedAdjustmentID: String?
+    @State private var isApplyingWorkoutChange = false
+    @State private var pendingWorkoutChange: WorkoutAdjustmentApplyRequestDTO?
+    @State private var workoutChangeToast: ProfileToast?
 
     var body: some View {
         NavigationStack {
@@ -1136,19 +1139,28 @@ private struct SimplifiedTodayView: View {
             plannedWorkoutDetailsSheet
                 .presentationDetents([.medium, .large])
         }
+        .overlay(alignment: .top) {
+            if let workoutChangeToast { ProfileToastView(toast: workoutChangeToast).padding(.top, OutboundSpacing.standard) }
+        }
+        .task(id: workoutChangeToast?.id) {
+            guard workoutChangeToast != nil else { return }
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            workoutChangeToast = nil
+        }
         .sheet(isPresented: $showsChangeSheet) {
             TodayChangeSheet(
                 originalTitle: "\(todayWorkoutName) · \(todayTotalDuration)",
                 pendingAdjustment: personalizationStore.snapshot.pendingAdjustment,
-                onApply: { reason, note, minutes, startsRun in
-                    Task { await personalizationStore.submitReadiness(reason, workoutID: todayWorkoutID, note: note) }
-                    showsChangeSheet = false
-                    if startsRun { onStartRun(changedRunIntent(minutes: minutes, reason: reason)) }
+                busy: isApplyingWorkoutChange,
+                onApply: { reason, note, minutes in
+                    applyWorkoutChange(reason: reason, note: note, minutes: minutes)
                 },
                 onDecision: { accept in
                     Task {
                         await analyticsManager?.track(.init(.todayAdjustmentDecided, properties: [
-                            .result: .string(accept ? "accepted" : "kept_original")
+                            .result: .string(accept ? "accepted" : "kept_original"),
+                            .sourceType: .string("workout_change")
                         ]))
                         await personalizationStore.decideAdjustment(accept: accept)
                         try? await trainingPlanStore.refetchAfterWorkoutMutation()
@@ -1157,6 +1169,49 @@ private struct SimplifiedTodayView: View {
                 }
             )
             .presentationDetents([.medium, .large])
+        }
+    }
+
+    private func applyWorkoutChange(reason: ReadinessChoice, note: String?, minutes: Int) {
+        guard !isApplyingWorkoutChange else { return }
+        showsChangeSheet = false
+        guard let envelope = trainingPlanStore.activitySuggestion, let primary = envelope.primary,
+              envelope.isValid() else {
+            workoutChangeToast = ProfileToast(text: String(localized: "today.change.failed", defaultValue: "Could not confirm the change. Refresh and try again."), style: .error)
+            return
+        }
+        let candidate = WorkoutAdjustmentApplyRequestDTO(
+            idempotencyKey: pendingWorkoutChange?.idempotencyKey ?? UUID().uuidString,
+            workoutId: primary.plannedWorkoutId ?? primary.id, suggestionId: primary.id,
+            validForDate: envelope.validForDate, choice: reason, minutes: minutes,
+            note: note.map { String($0.prefix(160)) }
+        )
+        let request = candidate == pendingWorkoutChange ? candidate : WorkoutAdjustmentApplyRequestDTO(
+            idempotencyKey: UUID().uuidString, workoutId: candidate.workoutId, suggestionId: candidate.suggestionId,
+            validForDate: candidate.validForDate, choice: reason, minutes: minutes, note: candidate.note
+        )
+        pendingWorkoutChange = request
+        isApplyingWorkoutChange = true
+        Task {
+            defer { isApplyingWorkoutChange = false }
+            await analyticsManager?.track(.init(.todayAdjustmentSelected, properties: [
+                .result: .string(reason == .shortOnTime ? "short_on_time" : reason.rawValue), .sourceType: .string("workout_change")
+            ]))
+            await analyticsManager?.track(.init(.todayAdjustmentDecided, properties: [
+                .result: .string("accepted"), .sourceType: .string("workout_change")
+            ]))
+            do {
+                try await trainingPlanStore.applyWorkoutChange(request)
+                customizedRunIntent = nil
+                pendingWorkoutChange = nil
+                workoutChangeToast = ProfileToast(text: String(localized: "today.change.applied", defaultValue: "Workout change applied"), style: .success)
+            } catch is CancellationError {
+                // Leaving the task retains its request key for an idempotent retry.
+            } catch {
+                let failure = error as NSError
+                print("[Planning] operation=apply_workout_change domain=\(failure.domain) code=\(failure.code)")
+                workoutChangeToast = ProfileToast(text: String(localized: "today.change.failed", defaultValue: "Could not confirm the change. Refresh and try again."), style: .error)
+            }
         }
     }
 
@@ -1321,6 +1376,15 @@ private struct SimplifiedTodayView: View {
         VStack(spacing: OutboundSpacing.compact) {
             if let activityEventToday {
                 activityEventCard(activityEventToday)
+            } else if launchGoalMode == .planned && trainingPlanStore.activitySuggestion?.status == "restRecommended" {
+                OutboundCard {
+                    VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                        Text(String(localized: "Rest today")).font(.headline)
+                        Text(String(localized: "Skipping one run is better than turning discomfort into an injury."))
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             } else if launchGoalMode == .planned {
                 plannedWorkoutCard
             }
@@ -2031,20 +2095,6 @@ private struct SimplifiedTodayView: View {
             ? "\(Int(kilometers)) km"
             : String(format: "%.1f km", kilometers)
     }
-
-    private func changedRunIntent(minutes: Int, reason: ReadinessChoice) -> SessionIntent {
-        SessionIntent(
-            id: "changed-\(reason.rawValue)-\(minutes)",
-            sport: .run,
-            title: "\(minutes) min easy run",
-            detail: "Run · \(minutes) min · very easy",
-            guideLine: reason == .sore
-                ? "Keep this very easy and stop if discomfort becomes pain."
-                : "Keep the effort easy. A shorter run still protects the habit.",
-            startLabel: "Start changed run",
-            targetDurationSeconds: minutes * 60
-        )
-    }
 }
 
 struct ThemeChooserView: View {
@@ -2309,7 +2359,8 @@ private struct TodayChangeSheet: View {
     @Environment(\.dismiss) private var dismiss
     let originalTitle: String
     let pendingAdjustment: AdjustmentProposalDTO?
-    let onApply: (ReadinessChoice, String?, Int, Bool) -> Void
+    let busy: Bool
+    let onApply: (ReadinessChoice, String?, Int) -> Void
     let onDecision: (Bool) -> Void
     @State private var reason: ReadinessChoice?
     @State private var note = ""
@@ -2361,10 +2412,11 @@ private struct TodayChangeSheet: View {
 
                     Spacer()
 
-                    OutboundPrimaryButton(title: primaryTitle(reason), systemImage: primaryIcon(reason)) {
+                    OutboundPrimaryButton(title: String(localized: "today.change.apply", defaultValue: "Apply"), systemImage: "checkmark") {
                         focusedInput = nil
-                        onApply(reason, cleanedNote, recommendedMinutes(reason), reason != .sore)
+                        onApply(reason, cleanedNote, recommendedMinutes(reason))
                     }
+                    .disabled(busy)
                     Button("Keep original") { dismiss() }
                         .frame(maxWidth: .infinity)
                 } else {
@@ -2416,10 +2468,6 @@ private struct TodayChangeSheet: View {
         case .good: String(localized: "The original workout still fits.")
         }
     }
-    private func primaryTitle(_ reason: ReadinessChoice) -> String {
-        reason == .sore ? String(localized: "Use rest day") : String(localized: "Start changed run")
-    }
-    private func primaryIcon(_ reason: ReadinessChoice) -> String { reason == .sore ? "bed.double" : "figure.run" }
 }
 
 private struct SimplifiedMeView: View {

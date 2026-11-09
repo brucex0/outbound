@@ -499,6 +499,14 @@ final class APIClient {
         try await post("/personalization/readiness", body: request)
     }
 
+    func applyWorkoutAdjustment(_ request: WorkoutAdjustmentApplyRequestDTO, readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
+        let _: WorkoutAdjustmentApplyResponseDTO = try await post("/personalization/adjustments/apply", body: request)
+        let state: PlanningAPIStateResponse = try await get("/planning/state")
+        // A successful mutation must not silently fall back to yesterday's/local recommendation.
+        let suggestion = try await fetchActivitySuggestion()
+        return state.trainingPlanState(readiness: readiness, activitySuggestion: suggestion)
+    }
+
     func submitWorkoutFeedback(_ request: WorkoutFeedbackRequestDTO) async throws -> PersonalizationMutationResponseDTO {
         try await post("/personalization/workouts/\(request.workoutId)/feedback", body: request)
     }
@@ -1437,6 +1445,8 @@ private extension PlanningAPIStateResponse {
         let todaySuggestion: TodayTrainingSuggestion?
         if let activityTodaySuggestion = activitySuggestion?.todayTrainingSuggestion() {
             todaySuggestion = activityTodaySuggestion
+        } else if activitySuggestion?.shouldSuppressLocalSuggestion == true {
+            todaySuggestion = nil
         } else if let apiWorkout {
             todaySuggestion = makeTodaySuggestion(
                 for: apiWorkout.trainingPlanWorkout(dayLabel: "Today"),
@@ -1984,6 +1994,7 @@ extension ActivitySuggestionResponse {
     /// Safety- and recovery-oriented suggestions are the canonical Today action,
     /// even while the runner still has calibration sessions to complete.
     var shouldSupersedeCalibration: Bool {
+        if status == "restRecommended" { return true }
         guard primary != nil else { return false }
         return ["optionalRecovery", "adjustedFromPlan"].contains(relationship)
     }

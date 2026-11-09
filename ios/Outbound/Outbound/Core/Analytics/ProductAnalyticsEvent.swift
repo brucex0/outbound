@@ -170,6 +170,7 @@ enum ProductEventName: String, Sendable, CaseIterable {
     case homeWidgetSetupGuideCompleted = "home_widget_setup_guide_completed"
     case homeWidgetAlreadyPresent = "home_widget_already_present"
     case todayCardDisplayChanged = "today_card_display_changed"
+    case todayAdjustmentSelected = "today_adjustment_selected"
     case todayAdjustmentDecided = "today_adjustment_decided"
     case planningSurfaceOpened = "planning_surface_opened"
     case raceGoalUpdated = "race_goal_updated"
@@ -547,6 +548,8 @@ enum ProductAnalyticsSchema {
         .homeWidgetSetupGuideCompleted: [.entrySource],
         .homeWidgetAlreadyPresent: [.result],
         .todayCardDisplayChanged: [.sourceType, .selectionType],
+        .todayAdjustmentSelected: [.result, .sourceType],
+        .todayAdjustmentDecided: [.result, .sourceType],
         .planningSurfaceOpened: [.sourceType, .entrySource, .countBucket],
         .raceGoalUpdated: [.result, .selectionType],
         .trainingPlanEnded: [.entrySource],
