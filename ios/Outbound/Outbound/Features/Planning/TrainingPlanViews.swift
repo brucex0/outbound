@@ -307,9 +307,18 @@ struct ActiveTrainingPlanDetailView: View {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                     activeStat("Plan length", value: "\(activePlan.durationWeeks) weeks")
                     activeStat("Current week", value: "\(week.currentWeekIndex) of \(week.totalWeeks)")
-                    activeStat("Weekly rhythm", value: "\(activePlan.sessionsPerWeek)x sessions")
-                    activeStat("Target time", value: "\(activePlan.targetWeeklyMinutes) min")
+                    activeStat(String(localized: "plan.details.scheduled_sessions", defaultValue: "Sessions this week"), value: week.targetSessions.formatted())
+                    activeStat(String(localized: "plan.details.scheduled_minutes", defaultValue: "Time this week"), value: String(format: String(localized: "plan.details.minute_count", defaultValue: "%d min"), week.targetMinutes))
                 }
+
+                if week.targetSessions != activePlan.sessionsPerWeek {
+                    Text(String(format: String(localized: "plan.details.preferred_rhythm", defaultValue: "Preferred weekly sessions: %d. The schedule adapts to missed workouts and recovery."), activePlan.sessionsPerWeek))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                TrainingPlanManagementActions(onChangePlan: onChangePlan, onEndPlan: onEndPlan)
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text("This week")
@@ -319,10 +328,12 @@ struct ActiveTrainingPlanDetailView: View {
                         .foregroundStyle(accentColor)
                     Text(week.summaryLine)
                         .font(.subheadline.weight(.semibold))
-                    Text(week.weekSummary)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    if week.weekSummary != activePlan.subtitle {
+                        Text(week.weekSummary)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     TrainingPlanProgressBar(progress: week.progressPercent, accentColor: accentColor)
                     Text(week.guideLine)
                         .font(.subheadline)
@@ -368,10 +379,6 @@ struct ActiveTrainingPlanDetailView: View {
                             .font(.headline)
                         Text("No session scheduled today")
                             .font(.title3.weight(.bold))
-                        Text("Use the week schedule below, or change/end the plan from Plan Details options.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(18)
                     .background(Color(.secondarySystemGroupedBackground))
@@ -418,21 +425,6 @@ struct ActiveTrainingPlanDetailView: View {
         }
         .navigationTitle("Plan Details")
         .toolbar {
-            if onChangePlan != nil || onEndPlan != nil {
-                ToolbarItem(placement: .topBarLeading) {
-                    Menu {
-                        if let onChangePlan {
-                            Button("Change plan", systemImage: "arrow.triangle.2.circlepath", action: onChangePlan)
-                        }
-                        if let onEndPlan {
-                            Button("End plan", systemImage: "calendar.badge.minus", role: .destructive, action: onEndPlan)
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                    .accessibilityLabel("Plan options")
-                }
-            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Done") {
                     dismiss()
@@ -456,11 +448,56 @@ struct ActiveTrainingPlanDetailView: View {
     }
 }
 
+private struct TrainingPlanManagementActions: View {
+    @Environment(\.analyticsManager) private var analyticsManager
+
+    let onChangePlan: (() -> Void)?
+    let onEndPlan: (() -> Void)?
+    @State private var confirmsEndPlan = false
+
+    var body: some View {
+        VStack(spacing: OutboundSpacing.compact) {
+            if let onChangePlan {
+                Button(action: onChangePlan) {
+                    Label("Change plan", systemImage: "arrow.triangle.2.circlepath")
+                        .frame(maxWidth: .infinity)
+                }
+                .accessibilityIdentifier("plan.details.change")
+            }
+            if onEndPlan != nil {
+                Button(role: .destructive) {
+                    confirmsEndPlan = true
+                    Task {
+                        await analyticsManager?.track(.init(.featureExposed, properties: [
+                            .feature: .string("plan_end_confirmation"),
+                        ]))
+                    }
+                } label: {
+                    Label("End plan", systemImage: "calendar.badge.minus")
+                        .frame(maxWidth: .infinity)
+                }
+                .tint(.red)
+                .accessibilityIdentifier("plan.details.end")
+            }
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.large)
+        .confirmationDialog(String(localized: "plan.details.end_title", defaultValue: "End this plan?"), isPresented: $confirmsEndPlan, titleVisibility: .visible) {
+            Button("End plan", role: .destructive) { onEndPlan?() }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text(String(localized: "plan.details.end_message", defaultValue: "This will remove the active plan and its upcoming workouts. Your saved activities will stay."))
+        }
+    }
+}
+
 struct ActiveTrainingPlanPendingDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     let activePlan: ActiveTrainingPlan
     let accentColor: Color
+    var onChangePlan: (() -> Void)? = nil
+    var onEndPlan: (() -> Void)? = nil
 
     var body: some View {
         ScrollView {
@@ -480,6 +517,8 @@ struct ActiveTrainingPlanPendingDetailView: View {
                     activeStat("Target time", value: "\(activePlan.targetWeeklyMinutes) min")
                     activeStat("Long session", value: "\(activePlan.longSessionMinutes) min")
                 }
+
+                TrainingPlanManagementActions(onChangePlan: onChangePlan, onEndPlan: onEndPlan)
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Plan details are loading")

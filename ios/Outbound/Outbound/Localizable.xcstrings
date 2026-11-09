@@ -1,6 +1,138 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "plan.details.scheduled_sessions": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessions this week"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesiones de esta semana"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本周训练次数"
+          }
+        }
+      }
+    },
+    "plan.details.scheduled_minutes": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time this week"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiempo de esta semana"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本周训练时间"
+          }
+        }
+      }
+    },
+    "plan.details.minute_count": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d min"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d min"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d 分钟"
+          }
+        }
+      }
+    },
+    "plan.details.preferred_rhythm": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preferred weekly sessions: %d. The schedule adapts to missed workouts and recovery."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesiones semanales preferidas: %d. El calendario se adapta a las sesiones omitidas y a la recuperación."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首选每周训练次数：%d。训练安排会根据缺席情况和恢复需要调整。"
+          }
+        }
+      }
+    },
+    "plan.details.end_title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End this plan?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Finalizar este plan?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "结束此计划？"
+          }
+        }
+      }
+    },
+    "plan.details.end_message": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This will remove the active plan and its upcoming workouts. Your saved activities will stay."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se eliminarán el plan activo y sus próximas sesiones. Tus actividades guardadas se conservarán."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这将移除当前计划及后续训练安排，已保存的运动记录会保留。"
+          }
+        }
+      }
+    },
     "fox.companion.notifications": {
       "comment": "[platform:ios] Accessibility label for the envelope beside the companion.",
       "extractionState": "manual",

@@ -1354,10 +1354,7 @@ private extension PlanningAPIStateResponse {
             calendar: calendar,
             planWorkouts: planWorkouts
         )
-        let plannedThisWeek = weekWorkouts.isEmpty
-            ? Array(upcoming.prefix(goal.daysPerWeekTarget ?? fallbackRecommendation?.sessionsPerWeek ?? 3))
-            : weekWorkouts
-        let scheduledWorkouts = plannedThisWeek.map { $0.trainingPlanWorkout() }
+        let scheduledWorkouts = weekWorkouts.map { $0.trainingPlanWorkout() }
         let notificationWorkouts = upcoming.compactMap { workout -> ScheduledWorkoutReminder? in
             guard !["completed", "cancelled", "canceled", "skipped", "rest"].contains(workout.status.lowercased()),
                   let scheduledDate = APIDateParser.planningDate(from: workout.scheduledDate) else { return nil }
@@ -1371,7 +1368,12 @@ private extension PlanningAPIStateResponse {
                 source: "planning_state"
             )
         }
+        let eventWeeks = goal.targetDate.flatMap { APIDateParser.planningDate(from: $0) }.map {
+            max(1, Int(ceil(Double((calendar.dateComponents([.day], from: calendar.startOfDay(for: createdAt), to: $0).day ?? 0) + 1) / 7.0)))
+        }
+        let goalDurationWeeks = plan.source == "generated" ? goal.reviewHorizonWeeks ?? eventWeeks : nil
         let durationWeeks = fallbackRecommendation?.durationWeeks
+            ?? goalDurationWeeks
             ?? Self.estimatedDurationWeeks(createdAt: createdAt, workouts: planWorkouts, calendar: calendar)
         let sessionsPerWeek = goal.daysPerWeekTarget
             ?? fallbackRecommendation?.sessionsPerWeek
@@ -1399,13 +1401,13 @@ private extension PlanningAPIStateResponse {
         let completedWorkouts = weekWorkouts.filter { $0.status == "completed" }
         let completedSessions = completedWorkouts.count
         let completedMinutes = completedWorkouts.reduce(0) { $0 + Int(ceil(Double($1.durationSeconds) / 60.0)) }
-        let targetMinutes = max(1, scheduledWorkouts.reduce(0) { $0 + $1.durationMinutesRounded })
-        let targetSessions = max(1, scheduledWorkouts.count)
+        let targetMinutes = scheduledWorkouts.reduce(0) { $0 + $1.durationMinutesRounded }
+        let targetSessions = scheduledWorkouts.count
         let progressPercent = min(
             1,
             max(
-                Double(completedSessions) / Double(targetSessions),
-                Double(completedMinutes) / Double(targetMinutes)
+                Double(completedSessions) / Double(max(1, targetSessions)),
+                Double(completedMinutes) / Double(max(1, targetMinutes))
             )
         )
         let weekSnapshot = TrainingPlanWeekSnapshot(
@@ -2334,6 +2336,8 @@ private struct PlanningAPIGoal: Decodable {
     let type: String
     let activities: [String]
     let targetDistanceMeters: Double?
+    let targetDate: String?
+    let reviewHorizonWeeks: Int?
     let daysPerWeekTarget: Int?
     let maxSessionMinutes: Int?
     let createdAt: String?
@@ -2341,6 +2345,7 @@ private struct PlanningAPIGoal: Decodable {
 
 private struct PlanningAPIPlan: Decodable {
     let id: String
+    let source: String
     let currentPhase: String
     let createdAt: String?
 }

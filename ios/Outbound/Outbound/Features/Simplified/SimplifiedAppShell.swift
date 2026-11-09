@@ -413,25 +413,16 @@ struct SimplifiedAppShell: View {
                             week: week,
                             todaySuggestion: trainingPlanStore.todaySuggestion,
                             accentColor: theme.accentColor,
-                            onChangePlan: {
-                                showsPlanDetails = false
-                                Task { @MainActor in
-                                    await Task.yield()
-                                    presentPlanPicker(from: "plan_details_change")
-                                }
-                            },
-                            onEndPlan: {
-                                trainingPlanStore.clearActivePlan()
-                                showsPlanDetails = false
-                                Task {
-                                    await analyticsManager?.track(.init(.trainingPlanEnded, properties: [
-                                        .entrySource: .string("plan_details"),
-                                    ]))
-                                }
-                            }
+                            onChangePlan: changePlanFromDetails,
+                            onEndPlan: endPlanFromDetails
                         )
                     } else {
-                        ActiveTrainingPlanPendingDetailView(activePlan: activePlan, accentColor: theme.accentColor)
+                        ActiveTrainingPlanPendingDetailView(
+                            activePlan: activePlan,
+                            accentColor: theme.accentColor,
+                            onChangePlan: changePlanFromDetails,
+                            onEndPlan: endPlanFromDetails
+                        )
                     }
                 } else {
                     ActiveTrainingPlanSyncingDetailView(accentColor: theme.accentColor)
@@ -861,6 +852,24 @@ struct SimplifiedAppShell: View {
         } else {
             trackPlanningSurfaceOpened("plan_details", entrySource: entrySource)
             showsPlanDetails = true
+        }
+    }
+
+    private func changePlanFromDetails() {
+        showsPlanDetails = false
+        Task { @MainActor in
+            await Task.yield()
+            presentPlanPicker(from: "plan_details_change")
+        }
+    }
+
+    private func endPlanFromDetails() {
+        trainingPlanStore.clearActivePlan()
+        showsPlanDetails = false
+        Task {
+            await analyticsManager?.track(.init(.trainingPlanEnded, properties: [
+                .entrySource: .string("plan_details"),
+            ]))
         }
     }
 
