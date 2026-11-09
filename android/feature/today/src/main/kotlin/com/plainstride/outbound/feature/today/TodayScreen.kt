@@ -381,7 +381,7 @@ fun TodayScreen(
     val planning = state.planningSnapshot
     val activePlan = planning?.plan
     val dailyRecommendation = state.currentRecommendationSnapshot
-    val confirmedNoPlan = state.hasConfirmedNoPlan && dailyRecommendation == null
+    val confirmedNoPlan = state.hasConfirmedNoPlan
     val hasPlanDetails = !confirmedNoPlan
     fun openPlanDetails(entrySource: String) {
         if (activePlan == null && dailyRecommendation != null) onDailyRecommendationDetailsOpened(entrySource)
@@ -639,14 +639,17 @@ fun TodayScreen(
                 aiCoachEnabled = aiCoachEnabled,
                 companionType = companionType,
                 onActivityChoice = {
-                    if (it == TodayActivityChoice.PLANNED && confirmedNoPlan) {
+                    if (it == activityChoice) {
+                        // Re-selecting the active choice must not reset its goal or setup draft.
+                    } else if (it == TodayActivityChoice.PLANNED && activePlan == null && state.hasConfirmedNoPlan) {
                         onSetUpPlan()
+                    } else if (it == TodayActivityChoice.PLANNED && activePlan == null) {
+                        onRefresh()
                     } else {
                         saveManualDraft(markEdited = false)
                         activityChoice = it
                         if (it != TodayActivityChoice.RUN && goalChoice == TodayGoalChoice.RACE) goalChoice = TodayGoalChoice.FREE
                         onLaunchConfigurationChanged("activity_type", it.name.lowercase())
-                        if (it == TodayActivityChoice.PLANNED) openPlanDetails("manual_mode_row")
                     }
                 },
                 onGoalChoice = { choice ->
