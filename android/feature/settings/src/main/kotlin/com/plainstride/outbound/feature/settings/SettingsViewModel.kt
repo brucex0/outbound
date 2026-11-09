@@ -129,6 +129,10 @@ class SettingsViewModel @Inject constructor(
         AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "me_weekly_run_goal"))
     )
 
+    fun trackDailyRecommendationFocus() = analytics.record(
+        AnalyticsEvent("feature_exposed", mapOf(AnalyticsProperty.Feature to "me_daily_recommendation_focus"))
+    )
+
     fun trackMeDestination(destination: String) = analytics.record(
         AnalyticsEvent("me_destination_opened", mapOf(AnalyticsProperty.Destination to destination, AnalyticsProperty.EntrySource to "me"))
     )

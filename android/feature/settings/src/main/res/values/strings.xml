@@ -31,6 +31,7 @@
     <string name="mode">Mode</string>
     <string name="no_active_plan">No active plan</string>
     <string name="no_active_plan_body">Set up a plan from Today when you’re ready.</string>
+    <string name="me_daily_recommendation_body">Today’s recommendation · No training plan is active.</string>
     <string name="me_plan_status_unavailable">Plan status unavailable</string>
     <string name="me_plan_status_unavailable_body">Refresh Today to check your current plan.</string>
     <string name="photos_save_activity">Save activity photos</string>

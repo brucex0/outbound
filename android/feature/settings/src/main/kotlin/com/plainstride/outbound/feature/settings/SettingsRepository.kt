@@ -39,6 +39,8 @@ data class MePlanSummary(
     val phase: String?,
     val consistencyPercent: Int?,
     val runGoalTarget: Int?,
+    val hasConfirmedNoPlan: Boolean = false,
+    val dailyRecommendationTitle: String? = null,
 )
 
 interface SettingsRepository {

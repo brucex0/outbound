@@ -171,6 +171,7 @@ fun MeRoute(
     weeklyRunGoal: com.plainstride.outbound.core.model.WeeklyRunGoal? = null,
     planSummary: MePlanSummary? = null,
     onRefreshStatistics: () -> Unit = {},
+    onRefreshToday: () -> Unit = {},
     statisticsAvailable: Boolean = false,
     statisticsCached: Boolean = false,
     onMyQrCode: () -> Unit = {},
@@ -198,13 +199,19 @@ fun MeRoute(
     LaunchedEffect(page) {
         if (page == MePage.Overview) {
             onRefreshStatistics()
+            onRefreshToday()
             viewModel.trackWeeklyRunGoal()
+        }
+    }
+    LaunchedEffect(page, planSummary?.dailyRecommendationTitle != null) {
+        if (page == MePage.Overview && planSummary?.dailyRecommendationTitle != null) {
+            viewModel.trackDailyRecommendationFocus()
         }
     }
     LaunchedEffect(settingsRequest) { if (settingsRequest > 0) page = MePage.Settings }
     when (page) {
         MePage.Overview -> MeOverview(
-            state, onSettings = { page = MePage.Settings }, onRefresh = { viewModel.refresh(); onRefreshStatistics() },
+            state, onSettings = { page = MePage.Settings }, onRefresh = { viewModel.refresh(); onRefreshStatistics(); onRefreshToday() },
             connections, insights, personalMilestones, planSummary,
             accountWeeklyMinutes, accountWeeklyDistanceMeters, weeklyRunGoal, statisticsAvailable, statisticsCached,
             onMyQrCode = onMyQrCode,
@@ -324,6 +331,8 @@ private fun MeOverview(
                         Text(
                             when {
                                 planSummary == null -> stringResource(R.string.me_plan_status_unavailable)
+                                planSummary.phase == null && !planSummary.hasConfirmedNoPlan && planSummary.dailyRecommendationTitle == null -> stringResource(R.string.me_plan_status_unavailable)
+                                planSummary.phase == null && planSummary.dailyRecommendationTitle != null -> planSummary.dailyRecommendationTitle
                                 planSummary.phase == null -> stringResource(R.string.no_active_plan)
                                 else -> planSummary.phase
                             },
@@ -332,6 +341,8 @@ private fun MeOverview(
                         Text(
                             stringResource(when {
                                 planSummary == null -> R.string.me_plan_status_unavailable_body
+                                planSummary.phase == null && planSummary.dailyRecommendationTitle != null -> R.string.me_daily_recommendation_body
+                                planSummary.phase == null && !planSummary.hasConfirmedNoPlan -> R.string.me_plan_status_unavailable_body
                                 planSummary.phase == null -> R.string.no_active_plan_body
                                 else -> R.string.plan_synced
                             }),

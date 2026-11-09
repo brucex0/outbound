@@ -31,6 +31,7 @@
     <string name="mode">模式</string>
     <string name="no_active_plan">暂无训练计划</string>
     <string name="no_active_plan_body">准备好后，可在“今天”中创建计划。</string>
+    <string name="me_daily_recommendation_body">今日建议 · 当前没有训练计划。</string>
     <string name="me_plan_status_unavailable">暂时无法获取计划状态</string>
     <string name="me_plan_status_unavailable_body">请刷新“今天”页面以查看当前计划。</string>
     <string name="photos_save_activity">保存运动照片</string>

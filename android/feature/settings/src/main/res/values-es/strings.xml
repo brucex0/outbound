@@ -31,6 +31,7 @@
     <string name="mode">Modo</string>
     <string name="no_active_plan">Sin plan activo</string>
     <string name="no_active_plan_body">Configura un plan desde Hoy cuando quieras.</string>
+    <string name="me_daily_recommendation_body">Recomendación de hoy · No hay ningún plan de entrenamiento activo.</string>
     <string name="me_plan_status_unavailable">Estado del plan no disponible</string>
     <string name="me_plan_status_unavailable_body">Actualiza Hoy para consultar tu plan actual.</string>
     <string name="photos_save_activity">Guardar fotos de las actividades</string>

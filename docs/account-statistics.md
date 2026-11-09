@@ -34,6 +34,7 @@ Open this when changing account totals, Progress, statistics caches, history syn
 - iOS and Android cache complete snapshots by account, algorithm version, timezone, and first weekday. Sign-out/account switches do not reuse another account's snapshot.
 - Progress, sport selectors, Me totals, weekly-focus progress, and gear mileage consume that snapshot independently of history cache size.
 - With no snapshot, show loading/unavailable with retry. A failed refresh retains the last complete snapshot and identifies it as cached.
+- Android Me refreshes the shared Today planning snapshot on entry and its refresh action. Its current-focus card distinguishes an active plan from a confirmed no-plan state; when there is no active plan, it may show a non-stale same-day Today recommendation with explicit wording. The bounded `feature_exposed` event uses `feature=me_daily_recommendation_focus` and includes no recommendation content. Weekly run targets remain unset unless the saved run-only goal supplies a target.
 - Pending local changes remain visible in activity history, with statistics explicitly pending until the server acknowledges and a complete snapshot refreshes. They are not added blindly to cached aggregates, so acknowledgement cannot double-count them.
 - Existing local-only iOS mode remains explicitly based on local data; it is not the source for authenticated account totals.
 

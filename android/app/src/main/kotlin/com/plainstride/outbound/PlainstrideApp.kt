@@ -770,6 +770,10 @@ private fun SignedInApp(
                 LaunchedEffect(accountId, groupLocale) { accountId?.let { todayViewModel.configure(it, groupLocale) } }
                 val todayState by todayViewModel.state.collectAsStateWithLifecycle()
                 val mePlanSummary = todayState.planningSnapshot?.let { planning ->
+                    val recommendation = (todayState.suggestion as? com.plainstride.outbound.feature.today.CachedResource.Available)
+                        ?.takeUnless { it.isStale }?.value
+                        ?.takeIf { it.validForDate == java.time.LocalDate.now().toString() && planning.plan == null }
+                        ?.primary
                     com.plainstride.outbound.feature.settings.MePlanSummary(
                         phase = planning.plan?.currentPhase,
                         consistencyPercent = planning.athleteState?.consistencyScore?.times(100)?.toInt()?.coerceIn(0, 100),
@@ -777,6 +781,8 @@ private fun SignedInApp(
                             ?.takeIf { it.activities == listOf(com.plainstride.outbound.core.model.Modality.run) }
                             ?.daysPerWeekTarget
                             ?.takeIf { it > 0 },
+                        hasConfirmedNoPlan = todayState.hasConfirmedNoPlan,
+                        dailyRecommendationTitle = recommendation?.title,
                     )
                 }
                 val destination = TopLevelDestination.entries.first { it.route == selectedTab }
@@ -906,6 +912,7 @@ private fun SignedInApp(
                                 && integration.statisticsWeekStart?.let { !java.time.Instant.now().isBefore(it) } == true
                                 && integration.statisticsWeekEnd?.let { java.time.Instant.now().isBefore(it) } == true,
                             onRefreshStatistics = integrationViewModel::refreshStatistics,
+                            onRefreshToday = todayViewModel::refresh,
                             statisticsCached = integration.progress.isCached,
                             onMyQrCode = { navController.navigate(MY_QR_ROUTE) { launchSingleTop = true } },
                             onConnections = {
