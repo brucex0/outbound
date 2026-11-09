@@ -82,6 +82,14 @@ Recommended layers:
 - Missing credentials, timeout, invalid output, or a disabled AI route falls back to the conservative deterministic selection without blocking planning.
 - Configure with `AI_PLANNING_ENABLED`, `AI_PLANNING_MODEL`, and `AI_PLANNING_DEADLINE_MILLISECONDS`. Vertex uses `GEMINI_VERTEX_PROJECT_ID` and `GEMINI_VERTEX_LOCATION`; credentials remain server-side.
 
+### Run-history duration balancing
+
+- Both initial generation and rolling replans read synced recent activities. Weekly volume starts from the last 28 days divided by four, then spreads across the requested weekly session count; increasing frequency can therefore shorten individual runs. The explicit session-time cap, adherence, fatigue, phase, and recovery adjustments still apply.
+- Established, currently active run-only plans can retain the median recent standalone-length run duration (at least 15 minutes) in one long-easy slot per seven-day window. Eligibility requires six qualifying runs across three active weeks, low fatigue, at least 75% adherence, and no conservative or taper setting. The added long-run minutes come only from easy runs above their 20-minute floor, keeping the generated weekly total unchanged. All shorter activities still contribute to weekly load; they do not lower the representative long-slot duration. One outlier cannot establish duration capacity.
+- The existing athlete-state JSON modality breakdown now includes running `typicalSessionMinutes`, `representativeSessions`, and `activeWeeks`. No database reset or schema migration is required. The next normal generation computes fresh evidence; existing prescriptions remain unchanged until replanning.
+- Persisted engine decisions include only the boolean `runHistoryLongSessionBalanced` for this decision path, alongside the existing planning inputs. It is not a client analytics metric.
+- Planning state retains up to 50 prior-version completed workouts from the same plan over the last seven days so a rolling replan does not erase current-week progress. Upcoming prescriptions continue to come from the latest version. Historical completion does not silently cancel a new prescription on the same date.
+
 The engine should not regenerate the entire future plan on every event.
 
 Use different adaptation speeds:

@@ -517,8 +517,28 @@ async function assemblePlanningState(
     }),
   ]);
   const version = plan?.versions[0] ?? null;
-  const workouts = version?.workouts ?? [];
   const now = startOfDay(new Date());
+  // A rolling replan replaces future prescriptions, not completed progress.
+  // Seven days covers any creation-anchored current week in the client.
+  const earlierCompletions = plan && version ? await prisma.plannedWorkout.findMany({
+    where: {
+      userId,
+      planVersion: { planId: plan.id },
+      planVersionId: { not: version.id },
+      status: "completed",
+      scheduledDate: { gte: addDays(now, -7), lt: addDays(now, 1) },
+    },
+    orderBy: { scheduledDate: "asc" },
+    take: 50,
+    include: {
+      blocks: {
+        orderBy: { sortOrder: "asc" },
+        include: { steps: { orderBy: { sortOrder: "asc" } } },
+      },
+    },
+  }) : [];
+  const workouts = [...earlierCompletions, ...(version?.workouts ?? [])]
+    .sort((left, right) => left.scheduledDate.getTime() - right.scheduledDate.getTime());
   const today =
     workouts.find((workout) => sameDay(workout.scheduledDate, now) && workout.status === "planned") ??
     workouts.find((workout) => workout.scheduledDate >= now && workout.status === "planned") ??
@@ -531,7 +551,7 @@ async function assemblePlanningState(
     currentVersion: version ? { ...version, workouts: undefined } : null,
     today,
     workouts,
-    upcoming: workouts.filter((workout) => workout.scheduledDate >= now).slice(0, 10),
+    upcoming: (version?.workouts ?? []).filter((workout) => workout.scheduledDate >= now).slice(0, 10),
     recommendations,
     athleteState,
     latestAdjustment,

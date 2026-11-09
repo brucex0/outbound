@@ -86,11 +86,14 @@ function generateWindow(input: GeneratePlanInput, summaryPrefix: string): PlanGe
     })
   );
 
+  const balancedWorkouts = preserveTypicalLongRun(workouts, input, now);
+
   return {
     summary: `${summaryPrefix}: ${workouts.length} sessions over the next two weeks.`,
     phase,
-    workouts,
+    workouts: balancedWorkouts,
     engineDecision: {
+      runHistoryLongSessionBalanced: balancedWorkouts !== workouts,
       reason: input.reason ?? "initial",
       horizonDays: 14,
       sessions: workouts.length,
@@ -108,6 +111,54 @@ function generateWindow(input: GeneratePlanInput, summaryPrefix: string): PlanGe
       reviewHorizonWeeks: input.goal.reviewHorizonWeeks ?? null,
     },
   };
+}
+
+/** Keep one representative run without increasing the generated weekly load. */
+function preserveTypicalLongRun(workouts: PlannedWorkoutDraft[], input: GeneratePlanInput, now: Date): PlannedWorkoutDraft[] {
+  if (input.goal.activities.length !== 1 || input.goal.activities[0] !== "run"
+      || input.goal.baselineContext !== "currentlyActive" || input.goal.riskTolerance === "conservative"
+      || input.athleteState.adherenceRate < 0.75
+      || input.athleteState.fatigueRisk !== "low" || phaseForGoal(input.goal, now) === "taper") return workouts;
+  const evidence = input.athleteState.modalityBreakdown.run;
+  if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) return workouts;
+  const run = evidence as Record<string, unknown>;
+  if (typeof run.representativeSessions !== "number" || run.representativeSessions < 6
+      || typeof run.activeWeeks !== "number" || run.activeWeeks < 3
+      || typeof run.typicalSessionMinutes !== "number" || !Number.isFinite(run.typicalSessionMinutes)) return workouts;
+  const target = Math.min(input.goal.maxSessionMinutes, run.typicalSessionMinutes);
+  const result = [...workouts];
+  let changed = false;
+  for (let offset = 0; offset < 14; offset += 7) {
+    const start = startOfDay(addDays(now, offset));
+    const end = startOfDay(addDays(start, 7));
+    const week = workouts.filter((workout) => workout.scheduledDate >= start && workout.scheduledDate < end);
+    const long = week.find((workout) => workout.modality === "run" && workout.stimulus === "longEndurance");
+    if (!long) continue;
+    const donors = week.filter((workout) => workout.modality === "run" && workout.stimulus === "easyAerobic" && workout.durationSeconds > 20 * 60);
+    const available = donors.reduce((sum, workout) => sum + workout.durationSeconds - 20 * 60, 0);
+    let extra = Math.min(Math.max(0, target * 60 - long.durationSeconds), available);
+    if (extra <= 0) continue;
+    result[workouts.indexOf(long)] = regenerateRunDuration(long, long.durationSeconds + extra, input.athleteState);
+    for (let index = 0; index < donors.length && extra > 0; index += 1) {
+      const donor = donors[index];
+      const share = Math.min(donor.durationSeconds - 20 * 60, Math.ceil(extra / (donors.length - index) / 60) * 60);
+      result[workouts.indexOf(donor)] = regenerateRunDuration(donor, donor.durationSeconds - share, input.athleteState);
+      extra -= share;
+    }
+    changed = true;
+  }
+  return changed ? result : workouts;
+}
+
+function regenerateRunDuration(workout: PlannedWorkoutDraft, seconds: number, athleteState: AthleteTrainingStateSnapshot): PlannedWorkoutDraft {
+  return adapterFor("run", workout.stimulus).generateWorkout({
+    scheduledDate: workout.scheduledDate,
+    modality: "run",
+    stimulus: workout.stimulus,
+    durationMinutes: seconds / 60,
+    isKeyWorkout: workout.isKeyWorkout,
+    athleteState,
+  });
 }
 
 function workoutForDate(params: {

@@ -143,7 +143,7 @@ function lastHardWorkoutAt(workouts: PlannedWorkoutForState[]): Date | null {
 }
 
 function modalityBreakdownFor(activities: ActivityForPlanning[]): Record<string, unknown> {
-  const breakdown: Record<string, { sessions: number; minutes: number; distanceMeters: number }> = {};
+  const breakdown: Record<string, { sessions: number; minutes: number; distanceMeters: number; typicalSessionMinutes?: number; activeWeeks?: number; representativeSessions?: number }> = {};
   for (const activity of activities) {
     const key = modalityForActivityType(activity.type);
     const current = breakdown[key] ?? { sessions: 0, minutes: 0, distanceMeters: 0 };
@@ -151,6 +151,16 @@ function modalityBreakdownFor(activities: ActivityForPlanning[]): Record<string,
     current.minutes += Math.round((activity.durationSecs ?? 0) / 60);
     current.distanceMeters += activity.distanceM ?? 0;
     breakdown[key] = current;
+  }
+  // Keep short activities in total load, but use standalone-length runs for the
+  // representative long-slot duration. One outlier must not set capacity.
+  const runs = activities.filter((activity) => modalityForActivityType(activity.type) === "run" && (activity.durationSecs ?? 0) >= 15 * 60);
+  const durations = runs.map((activity) => activity.durationSecs! / 60).sort((a, b) => a - b);
+  if (breakdown.run && durations.length > 0) {
+    breakdown.run.representativeSessions = durations.length;
+    const midpoint = Math.floor(durations.length / 2);
+    breakdown.run.typicalSessionMinutes = Math.round(durations.length % 2 ? durations[midpoint] : (durations[midpoint - 1] + durations[midpoint]) / 2);
+    breakdown.run.activeWeeks = new Set(runs.map((activity) => weekKey(activity.startedAt))).size;
   }
   return breakdown;
 }
