@@ -10,6 +10,7 @@ Use this for tool selection, Codex reasoning presets, task briefs, and handoffs.
 | Escalation after concrete complexity or an unsuccessful correction cycle | GPT-6.1 Sol at High reasoning, using a compact handoff from Luna |
 
 The root coordinator performs high-effort analysis and planning, then gives the worker an outcome, acceptance criteria, behavior to preserve, and permitted verification. Start every worker with Luna/Low regardless of initial ambiguity; initial classification never sends work directly to Sol.
+
 - Keep one editing owner per worktree. Do not send every task through every tool.
 - Freebuff and OpenCode use the root `AGENTS.md`; `CLAUDE.md` directs Claude-compatible tools to the same rules. OpenCode is optional; this setup adds no provider credentials or paid plan.
 - Give a new tool the specific task and a compact handoff. After one failed correction cycle, reassess or escalate instead of repeating blind retries.
@@ -32,11 +33,11 @@ The root coordinator performs high-effort analysis and planning, then gives the 
 
 The user config keeps `gpt-6.1-sol` and defaults to Medium reasoning with Standard service. The installed CLI uses separate profile files:
 
-- `~/.codex/simple.config.toml`: GPT-6 Luna, Low reasoning, Standard service; use for small, well-defined tasks.
-- `~/.codex/routine.config.toml`: GPT-6.1 Sol, Medium reasoning, Standard service.
-- `~/.codex/deep.config.toml`: High reasoning, Standard service.
+- `~/.codex/simple.config.toml`: GPT-6 Luna, Low reasoning, Standard service; use for every initial execution worker.
+- `~/.codex/routine.config.toml`: GPT-6.1 Sol, Medium reasoning, Standard service; reserve for coordinator work or planned escalation after concrete evidence warrants it.
+- `~/.codex/deep.config.toml`: High reasoning, Standard service; reserve for coordinator analysis or evidence-based escalation.
 - CLI: `codex --profile simple`, `codex --profile routine`, or `codex --profile deep` from the project directory.
-- Start simple tasks with Simple; move to Routine or Deep when scope or uncertainty grows, or after one unsuccessful correction cycle.
+- Start every initial execution worker with Simple, regardless of task ambiguity. Move execution to a Sol preset only after the Luna worker finds concrete complexity or an unsuccessful correction cycle and hands off its work.
 - For an unusually demanding task: `codex --profile deep -c 'model_reasoning_effort="xhigh"'`.
 - In the desktop app, select the equivalent model, reasoning, and Standard speed in the chat controls. Existing chats may retain their settings; CLI profiles are not desktop preset buttons.
 
@@ -68,9 +69,9 @@ The coordinator still consumes tokens. Short conversational answers stay in the 
 From the repository root:
 
 ```sh
-./scripts/codex-auto.py "Fix the typo in the setup instructions"
-./scripts/codex-auto.py "Investigate why offline sessions fail to sync"
-./scripts/codex-auto.py --task-file /path/to/task.txt
+./scripts/codex-auto.py --route simple "Fix the typo in the setup instructions"
+./scripts/codex-auto.py --route simple "Investigate why offline sessions fail to sync"
+./scripts/codex-auto.py --route simple --task-file /path/to/task.txt
 ```
 
 - Requires Python 3 and the signed-in Codex CLI. The launcher checks `PATH`, then the standard ChatGPT app CLI paths on macOS. Existing account model access and usage limits apply; no separate API key is added.

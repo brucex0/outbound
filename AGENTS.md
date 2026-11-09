@@ -23,7 +23,6 @@ When user ask questions or brain storm, always answer in concise bullet points
 - Keep brief conversational answers in the main chat; do not spawn workers just to acknowledge or classify a request.
 - Higher-priority runtime restrictions and explicit user instructions take precedence. If model-specific delegation is unavailable, state that limitation; do not claim the model switched.
 - Keep one editing owner per worktree. The coordinator must not edit while a worker owns execution. Workers must not recursively delegate for model routing.
-- If Luna discovers concrete complexity or fails one correction cycle, stop its edits and return a compact handoff. The coordinator then assigns a Sol worker to continue in the same worktree after Luna relinquishes ownership; preserve the diff and verification evidence.
 - The desktop selector remains the coordinator's model, and coordination consumes tokens. See `docs/agent-workflow.md` for desktop setup and the automatic CLI launcher.
 
 ## Scope And Behavior Preservation
