@@ -458,3 +458,10 @@ Android shared inbox/roster refresh emits `social_state_refresh_result` with onl
 - Bundled countdown playback continues to report `activity_voice_enqueue` with `source_type=bundled_audio` and success/failed results; playback failure shows one transient unavailable notice per countdown, independently of full coaching-pack readiness.
 
 - Arrival check-in (iOS): `activity_event_arrival_changed` records bounded `selection_type=arrive|undo` and `result=success|failure`, separately from RSVP, recording, and live-map sharing. No location, arrival timestamp, or participant/event identifiers are collected.
+
+### Race goal and planning window
+
+- Both clients emit `planning_surface_opened` with bounded `source_type=race_goal_edit`, `entry_source=plan_details` when opening the saved race editor.
+- `race_goal_updated` records only `result=success|failure` and `selection_type=short|standard`. Dates, distances, finish times, frequencies, goal/plan IDs, free text, and body measurements are excluded.
+- Initial short-session and optional-mobility edits reuse `plan_intake_answer_edited` with bounded `selection_type=short_sessions|optional_mobility`, `source_type=conversation`.
+- Backend operational `generated_window_refreshed` records bounded reason (`goal_updated|policy_updated|refill`), phase, and required-session count only. It is a privacy-safe service diagnostic, not a client analytics event.

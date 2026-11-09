@@ -2,11 +2,13 @@ import { Prisma } from "@prisma/client";
 import { buildActivitySuggestion } from "./activitySuggestion.js";
 import { computeAthleteTrainingState } from "./athleteState.js";
 import { enqueuePlanningEvent } from "./events.js";
-import { generateInitialPlan, normalizeGoalInput } from "./generator.js";
-import { createPlanVersionWithWorkouts, json } from "./persistence.js";
+import { allowsShortRuns, generateInitialPlan, normalizeGoalInput } from "./generator.js";
+import { createPlanVersionWithWorkouts, json, lockPlanningUser, isOptionalWorkout } from "./persistence.js";
 import { processDuePlanningEventsForUser, processPlanningEventById } from "./processor.js";
 import { applyCalorieTargets, resolveLearnedRunPace } from "./runGoalEstimator.js";
 import { getPlanIntakeContext } from "./planIntake.js";
+import { refreshGeneratedPlan, refreshGeneratedPlanInTransaction } from "./planRefresh.js";
+import { raceRoadmap } from "./raceRoadmap.js";
 import { getPrismaClient } from "../prisma.js";
 import { loadTrainingPlanCatalog } from "../trainingPlanCatalog.js";
 import { buildTrainingPlanState } from "../trainingPlans.js";
@@ -93,6 +95,9 @@ export async function createGoal(
     primaryMotivation: goalInput.primaryMotivation ?? profile?.primaryMotivation as CreateTrainingGoalInput["primaryMotivation"],
     preferredRunGoalType: goalInput.preferredRunGoalType ?? profile?.preferredRunGoalType as CreateTrainingGoalInput["preferredRunGoalType"],
   });
+  if (normalized.activities.includes("run") && normalized.maxSessionMinutes < 25 && !allowsShortRuns(normalized)) {
+    throw new Error("Choose short sessions explicitly for a total under 25 minutes, or select at least 25 minutes.");
+  }
   const athleteState = computeAthleteTrainingState({
     activities,
     plannedWorkouts,
@@ -122,6 +127,7 @@ export async function createGoal(
   };
 
   await prisma.$transaction(async (tx) => {
+    await lockPlanningUser(tx, userId);
     await tx.trainingPlan.updateMany({
       where: { userId, status: "active" },
       data: { status: "replaced", endedAt: new Date() },
@@ -220,13 +226,51 @@ export async function createGoal(
   return assemblePlanningState(userId, "updated");
 }
 
+export interface UpdateRaceGoalInput {
+  targetDate: string;
+  targetDistanceMeters: number;
+  eventIntent: "finish" | "perform" | "targetTime";
+  targetTimeSeconds?: number | null;
+  daysPerWeekTarget: number;
+  maxSessionMinutes: number;
+  shortRunSessions: boolean;
+  optionalMobility: boolean;
+}
+
+export async function updateRaceGoal(userId: string, goalId: string, input: UpdateRaceGoalInput): Promise<PlanningState> {
+  await getPrismaClient().$transaction(async (tx) => {
+    await lockPlanningUser(tx, userId);
+    const plan = await tx.trainingPlan.findFirst({ where: { userId, goalId, status: "active", source: "generated", goal: { type: "eventPreparation" } }, include: { goal: true } });
+    if (!plan) throw new Error("The active race goal changed. Refresh the plan before editing.");
+    const constraints = plan.goal.constraints as Record<string, unknown>;
+    const targetTime = input.eventIntent === "targetTime" ? input.targetTimeSeconds ?? null : null;
+    const unchanged = plan.goal.targetDate?.getTime() === new Date(input.targetDate).getTime()
+      && plan.goal.targetDistanceMeters === input.targetDistanceMeters && plan.goal.eventIntent === input.eventIntent
+      && plan.goal.targetTimeSeconds === targetTime && plan.goal.daysPerWeekTarget === input.daysPerWeekTarget
+      && plan.goal.maxSessionMinutes === input.maxSessionMinutes
+      && (constraints.shortRunSessions === "true") === input.shortRunSessions
+      && (constraints.optionalMobility === "true") === input.optionalMobility;
+    if (unchanged) return;
+    await tx.trainingGoal.update({ where: { id: goalId }, data: {
+      targetDate: new Date(input.targetDate), targetDistanceMeters: input.targetDistanceMeters,
+      eventIntent: input.eventIntent, targetTimeSeconds: input.eventIntent === "targetTime" ? input.targetTimeSeconds : null,
+      daysPerWeekTarget: input.daysPerWeekTarget, maxSessionMinutes: input.maxSessionMinutes,
+      constraints: json({ ...constraints, shortRunSessions: String(input.shortRunSessions), optionalMobility: String(input.optionalMobility) }),
+    } });
+    await refreshGeneratedPlanInTransaction(tx, userId, new Date(), true);
+  }, { timeout: 30_000 });
+  return assemblePlanningState(userId, "updated");
+}
+
 export async function getState(userId: string): Promise<PlanningState> {
   await processDueEvents(userId);
+  await refreshGeneratedPlan(userId);
   return assemblePlanningState(userId, "stable");
 }
 
 export async function getToday(userId: string): Promise<TodayPlanningResponse> {
   await processDueEvents(userId);
+  await refreshGeneratedPlan(userId);
   const state = await assemblePlanningState(userId, "stable");
   return {
     workout: state.today,
@@ -240,11 +284,13 @@ export async function getToday(userId: string): Promise<TodayPlanningResponse> {
 
 export async function getActivitySuggestion(userId: string): Promise<ActivitySuggestionResponse> {
   await processDueEvents(userId);
+  await refreshGeneratedPlan(userId);
   return buildActivitySuggestion(userId, "stable");
 }
 
 export async function getRecommendations(userId: string): Promise<PlanRecommendationsResponse> {
   await processDueEvents(userId);
+  await refreshGeneratedPlan(userId);
   const [plan, activities, catalog] = await Promise.all([
     activePlanForUser(userId),
     recentActivities(userId),
@@ -274,6 +320,7 @@ export async function clearPlan(userId: string): Promise<PlanningState> {
   const now = new Date();
 
   await prisma.$transaction(async (tx) => {
+    await lockPlanningUser(tx, userId);
     await tx.trainingPlan.updateMany({
       where: { userId, status: "active" },
       data: { status: "replaced", endedAt: now },
@@ -330,10 +377,18 @@ export async function skipWorkout(userId: string, workoutId: string): Promise<Pl
     throw new Error("Planned workout not found.");
   }
 
-  await prisma.plannedWorkout.update({
-    where: { id: workout.id },
-    data: { status: "skipped" },
+  const changed = await prisma.$transaction(async (tx) => {
+    await lockPlanningUser(tx, userId);
+    const current = await tx.plannedWorkout.findUniqueOrThrow({ where: { id: workout.id } });
+    if (current.status === "completed" || current.status === "skipped") return false;
+    await tx.plannedWorkout.update({ where: { id: workout.id }, data: { status: "skipped" } });
+    const replacements = await tx.plannedWorkout.findMany({
+      where: { userId, id: { not: workout.id }, planVersion: { planId: workout.planVersion.planId }, scheduledDate: workout.scheduledDate, status: "planned" }, select: { id: true, prescription: true },
+    });
+    await tx.plannedWorkout.updateMany({ where: { id: { in: replacements.filter((replacement) => isOptionalWorkout(replacement) === isOptionalWorkout(workout)).map((replacement) => replacement.id) }, status: "planned" }, data: { status: "superseded" } });
+    return true;
   });
+  if (!changed || isOptionalWorkout(workout)) return assemblePlanningState(userId, "stable");
   const event = await enqueuePlanningEvent({
     userId,
     planId: workout.planVersion.planId,
@@ -361,10 +416,23 @@ export async function completeWorkout(
     throw new Error("Planned workout not found.");
   }
 
-  await prisma.$transaction(async (tx) => {
+  const changed = await prisma.$transaction(async (tx) => {
+    await lockPlanningUser(tx, userId);
+    const current = await tx.plannedWorkout.findUniqueOrThrow({ where: { id: workout.id } });
+    if (current.status === "completed") return false;
     await tx.plannedWorkout.update({
       where: { id: workout.id },
       data: { status: "completed" },
+    });
+    // A device may finish an older cached prescription after a refill. Preserve
+    // that completion and retire any replacement on the same logical date.
+    const replacements = await tx.plannedWorkout.findMany({
+      where: { userId, id: { not: workout.id }, planVersion: { planId: workout.planVersion.planId }, scheduledDate: workout.scheduledDate, status: "planned" },
+      select: { id: true, prescription: true },
+    });
+    await tx.plannedWorkout.updateMany({
+      where: { id: { in: replacements.filter((replacement) => isOptionalWorkout(replacement) === isOptionalWorkout(workout)).map((replacement) => replacement.id) }, status: "planned" },
+      data: { status: "superseded" },
     });
     await tx.workoutCompletion.create({
       data: {
@@ -384,7 +452,9 @@ export async function completeWorkout(
         notes: input.notes ?? null,
       },
     });
+    return true;
   });
+  if (!changed || isOptionalWorkout(workout)) return assemblePlanningState(userId, "stable");
 
   const event = await enqueuePlanningEvent({
     userId,
@@ -526,7 +596,7 @@ async function assemblePlanningState(
       planVersion: { planId: plan.id },
       planVersionId: { not: version.id },
       status: "completed",
-      scheduledDate: { gte: addDays(now, -7), lt: addDays(now, 1) },
+      scheduledDate: { gte: addDays(now, -7), lt: addDays(now, 29) },
     },
     orderBy: { scheduledDate: "asc" },
     take: 50,
@@ -537,21 +607,22 @@ async function assemblePlanningState(
       },
     },
   }) : [];
-  const workouts = [...earlierCompletions, ...(version?.workouts ?? [])]
+  const workouts = [...earlierCompletions, ...(version?.workouts ?? []).filter((workout) => workout.status !== "superseded")]
     .sort((left, right) => left.scheduledDate.getTime() - right.scheduledDate.getTime());
   const today =
-    workouts.find((workout) => sameDay(workout.scheduledDate, now) && workout.status === "planned") ??
-    workouts.find((workout) => workout.scheduledDate >= now && workout.status === "planned") ??
+    workouts.find((workout) => sameDay(workout.scheduledDate, now) && workout.status === "planned" && !isOptionalWorkout(workout)) ??
+    workouts.find((workout) => workout.scheduledDate >= now && workout.status === "planned" && !isOptionalWorkout(workout)) ??
     null;
   const recommendations = plan ? [] : await trainingPlanRecommendationsForUser(userId);
 
   return {
-    goal,
+    goal: goal ? { ...goal, shortRunSessions: (goal.constraints as Record<string, unknown>).shortRunSessions === "true", optionalMobility: (goal.constraints as Record<string, unknown>).optionalMobility === "true" } : null,
     plan: plan ? { ...plan, versions: undefined } : null,
     currentVersion: version ? { ...version, workouts: undefined } : null,
     today,
     workouts,
-    upcoming: (version?.workouts ?? []).filter((workout) => workout.scheduledDate >= now).slice(0, 10),
+    upcoming: (version?.workouts ?? []).filter((workout) => workout.scheduledDate >= now && workout.status === "planned").slice(0, 20),
+    roadmap: goal && plan ? raceRoadmap(goal, plan.currentPhase, version?.workouts ?? []) : null,
     recommendations,
     athleteState,
     latestAdjustment,
@@ -563,7 +634,7 @@ async function processDueEvents(userId: string) {
   try {
     await processDuePlanningEventsForUser(userId);
   } catch (error) {
-    console.error("[planning] Failed to process due planning events", error);
+    console.error("[planning] due_event_processing_failed", { errorType: error instanceof Error ? error.name : "unknown" });
   }
 }
 
@@ -612,6 +683,7 @@ async function recentPlannedWorkouts(userId: string): Promise<PlannedWorkoutForS
       targetCalories: true,
       isKeyWorkout: true,
       status: true,
+      prescription: true,
     },
   }) as Promise<PlannedWorkoutForState[]>;
 }

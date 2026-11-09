@@ -1,3 +1,5 @@
+import { isOptionalWorkout } from "./persistence.js";
+import { refreshGeneratedPlan } from "./planRefresh.js";
 import { getPrismaClient } from "../prisma.js";
 import { enqueuePlanningEvent } from "./events.js";
 import { processDuePlanningEventsForUser } from "./processor.js";
@@ -29,7 +31,7 @@ export async function runPlanningMaintenance(now: Date = new Date()): Promise<Pl
       versions: {
         orderBy: { versionNumber: "desc" },
         take: 1,
-        select: { workouts: { where: { status: "planned", scheduledDate: { lt: today } }, select: { id: true } } },
+        select: { workouts: { where: { status: "planned", scheduledDate: { lt: today } }, select: { id: true, prescription: true } } },
       },
     },
   });
@@ -38,7 +40,7 @@ export async function runPlanningMaintenance(now: Date = new Date()): Promise<Pl
   let missedWorkoutsDetected = 0;
   let eventsProcessed = 0;
   for (const plan of plans) {
-    const missed = plan.versions[0]?.workouts ?? [];
+    const missed = (plan.versions[0]?.workouts ?? []).filter((workout) => !isOptionalWorkout(workout));
     if (missed.length > 0) {
       await prisma.plannedWorkout.updateMany({
         where: { id: { in: missed.map((workout) => workout.id) }, status: "planned" },
@@ -67,6 +69,7 @@ export async function runPlanningMaintenance(now: Date = new Date()): Promise<Pl
     }
     const results = await processDuePlanningEventsForUser(plan.userId, now);
     eventsProcessed += results.filter((result) => result.status === "completed").length;
+    await refreshGeneratedPlan(plan.userId, now);
   }
   return { activeUsersConsidered: plans.length, eventsEnqueued, missedWorkoutsDetected, eventsProcessed };
 }

@@ -119,13 +119,14 @@ export function applyCalorieTargets(input: {
       ...workout,
       targetCalories: estimate.targetCalories,
       distanceMeters: estimate.distanceMeters,
-      durationSeconds: estimate.durationSeconds,
+      // Calorie rounding is an estimate, not permission to shorten the timed prescription.
+      durationSeconds: workout.durationSeconds,
       prescription: {
         ...workout.prescription,
         runGoalType: "calories",
         targetCalories: estimate.targetCalories,
         estimatedDistanceMeters: estimate.distanceMeters,
-        estimatedDurationSeconds: estimate.durationSeconds,
+        estimatedDurationSeconds: workout.durationSeconds,
       },
     };
   });

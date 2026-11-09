@@ -18,9 +18,10 @@ export const runAdapter: ModalityAdapter = {
   },
 
   generateWorkout(input: WorkoutGenerationInput): PlannedWorkoutDraft {
-    const duration = Math.max(12, Math.round(input.durationMinutes));
-    const easyMinutes = Math.max(6, duration - 10);
-    const title = titleForStimulus(input.stimulus);
+    const duration = Math.max(input.allowShortSession ? 10 : 25, Math.round(input.durationMinutes));
+    const preparationMinutes = duration < 15 ? 2 : 5;
+    const easyMinutes = duration - 2 * preparationMinutes;
+    const title = input.runWalk ? "Easy run-walk" : titleForStimulus(input.stimulus);
     const isHard = input.stimulus === "threshold" || input.stimulus === "speed";
 
     return {
@@ -34,9 +35,9 @@ export const runAdapter: ModalityAdapter = {
       intensityTarget: { min: isHard ? 6 : 3, max: isHard ? 8 : 5 },
       prescription: {
         blocks: [
-          { type: "warmup", durationSeconds: 5 * 60 },
+          { type: "warmup", durationSeconds: preparationMinutes * 60 },
           { type: input.stimulus, durationSeconds: easyMinutes * 60 },
-          { type: "cooldown", durationSeconds: 5 * 60 },
+          { type: "cooldown", durationSeconds: preparationMinutes * 60 },
         ],
       },
       isKeyWorkout: input.isKeyWorkout ?? (input.stimulus === "longEndurance" || isHard),
@@ -45,13 +46,13 @@ export const runAdapter: ModalityAdapter = {
           blockType: "warmup",
           modality: "run",
           stimulus: "easyAerobic",
-          durationSeconds: 5 * 60,
+          durationSeconds: preparationMinutes * 60,
           metadata: {},
           steps: [
             {
               label: "Warm up jog",
               kind: "warmup",
-              durationSeconds: 5 * 60,
+              durationSeconds: preparationMinutes * 60,
               target: { rpe: 3 },
               detail: "Start easier than you think you need to.",
             },
@@ -65,11 +66,11 @@ export const runAdapter: ModalityAdapter = {
           metadata: { title },
           steps: [
             {
-              label: mainLabelForStimulus(input.stimulus),
+              label: input.runWalk ? "Comfortable run-walk" : mainLabelForStimulus(input.stimulus),
               kind: input.stimulus,
               durationSeconds: easyMinutes * 60,
               target: { rpe: isHard ? 7 : 4 },
-              detail: detailForStimulus(input.stimulus),
+              detail: input.runWalk ? "Alternate comfortable jogging and walking as needed; keep the whole main session easy." : detailForStimulus(input.stimulus),
             },
           ],
         },
@@ -77,13 +78,13 @@ export const runAdapter: ModalityAdapter = {
           blockType: "cooldown",
           modality: "run",
           stimulus: "recovery",
-          durationSeconds: 5 * 60,
+          durationSeconds: preparationMinutes * 60,
           metadata: {},
           steps: [
             {
               label: "Cooldown walk",
               kind: "cooldown",
-              durationSeconds: 5 * 60,
+              durationSeconds: preparationMinutes * 60,
               target: { rpe: 2 },
               detail: "Let your breathing settle before you stop.",
             },

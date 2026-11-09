@@ -223,3 +223,7 @@ Use `docs/onboarding-plan-setup-implementation-prompt.md` when revisiting the fu
 ## Debugging
 
 Debug builds should continue to expose a replay action. Replay opens plan setup without clearing activity history, account identity, guide settings, prior onboarding resolution, or an existing plan unless the developer explicitly chooses a destructive reset action.
+
+### Total session time and optional support
+
+Initial setup's weekly controls and final review both expose explicit short-session consent and optional ten-minute mobility. The default running total cannot be below 25 minutes (15 minutes main plus warmup/cooldown); choosing short sessions explicitly permits a smaller total. Turning the preference off raises a smaller total back to 25. Inferred schedules do not silently imply consent. The summary uses creation-anchored seven-day blocks and excludes optional support from promised running time/counts. Saved race goals are edited directly from Plan Details; identity and private-body onboarding are not repeated.

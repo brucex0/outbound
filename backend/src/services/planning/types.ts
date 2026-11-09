@@ -119,6 +119,7 @@ export interface ReadinessForPlanning {
 }
 
 export interface PlannedWorkoutForState {
+  prescription?: unknown;
   id: string;
   scheduledDate: Date;
   modality: string;
@@ -207,6 +208,8 @@ export interface WorkoutGenerationInput {
   modality: Modality;
   stimulus: TrainingStimulus;
   durationMinutes: number;
+  allowShortSession?: boolean;
+  runWalk?: boolean;
   distanceMeters?: number | null;
   targetCalories?: number | null;
   isKeyWorkout?: boolean;
@@ -246,6 +249,7 @@ export interface PlanningEventResult {
 }
 
 export interface PlanningState {
+  roadmap?: unknown | null;
   goal: unknown | null;
   plan: unknown | null;
   currentVersion: unknown | null;
@@ -293,6 +297,8 @@ export interface ActivitySuggestion {
   modality: Modality;
   stimulus: TrainingStimulus;
   durationMinutes: number;
+  allowShortSession?: boolean;
+  runWalk?: boolean;
   distanceMeters?: number | null;
   targetCalories?: number | null;
   effortLabel: string;

@@ -28,7 +28,7 @@ export function computeAthleteTrainingState(input: AthleteStateInput): AthleteTr
   const recentRunDistance7DaysMeters = distanceFor(runActivities(weekActivities));
   const consecutiveActiveDays = consecutiveActiveDayCount(recentActivities, now);
   const completedOrSkipped = input.plannedWorkouts.filter((workout) =>
-    ["completed", "skipped"].includes(workout.status)
+    ["completed", "skipped"].includes(workout.status) && !((workout.prescription as Record<string, unknown> | undefined)?.optional === true)
   );
   const completed = completedOrSkipped.filter((workout) => workout.status === "completed");
   const adherenceRate = completedOrSkipped.length > 0 ? completed.length / completedOrSkipped.length : 1;

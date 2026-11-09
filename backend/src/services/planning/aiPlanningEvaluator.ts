@@ -118,9 +118,11 @@ export async function evaluateAndProposePlanAdjustment(input: {
   const selection = validateSelection(generated ?? fallback, candidates, fallback);
   if (selection.candidateId === "maintain") return { status: "unchanged", provider: generated ? "gemini" : "fallback", candidateId: "maintain", explanation: selection.explanation };
 
+  const goal = await prisma.trainingGoal.findFirst({ where: { userId: input.userId, status: "active" }, select: { constraints: true } });
+  const shortRuns = (goal?.constraints as Record<string, unknown> | undefined)?.shortRunSessions === "true";
   const candidate = candidates.find((item) => item.id === selection.candidateId)!;
   const changes = workouts.slice(0, 3).map((workout) => {
-    const minutes = Math.max(15, Math.round((workout.durationSeconds / 60) * candidate.factor / 5) * 5);
+    const minutes = Math.max(workout.stimulus === "mobility" || shortRuns ? Math.min(10, workout.durationSeconds / 60) : 25, Math.round((workout.durationSeconds / 60) * candidate.factor / 5) * 5);
     return {
       workoutId: workout.id,
       beforeTitle: workout.title,

@@ -2,7 +2,7 @@ import type { PlanningEvent } from "@prisma/client";
 import { adaptPlan } from "./adaptationEngine.js";
 import { computeAthleteTrainingState } from "./athleteState.js";
 import { claimDuePlanningEvents, failPlanningEvent } from "./events.js";
-import { createPlanVersionWithWorkouts, json } from "./persistence.js";
+import { createPlanVersionWithWorkouts, json, lockPlanningUser } from "./persistence.js";
 import { getPrismaClient } from "../prisma.js";
 import { applyCalorieTargets, resolveLearnedRunPace } from "./runGoalEstimator.js";
 import { evaluationAdmission } from "./evaluationPolicy.js";
@@ -120,6 +120,7 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
           targetCalories: true,
           isKeyWorkout: true,
           status: true,
+      prescription: true,
         },
       }),
       prisma.readinessCheckIn.findMany({
@@ -170,6 +171,7 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
         eventIntent: plan.goal.eventIntent as "finish" | "perform" | "targetTime" | null,
         targetTimeSeconds: plan.goal.targetTimeSeconds,
         reviewHorizonWeeks: plan.goal.reviewHorizonWeeks as 4 | 8 | 12 | null,
+        constraints: plan.goal.constraints as Record<string, unknown>,
       },
       athleteState,
       latestReadiness,
@@ -228,6 +230,12 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
 
     const versionNumber = (activeVersion?.versionNumber ?? 0) + 1;
     const created = await prisma.$transaction(async (tx) => {
+      await lockPlanningUser(tx, event.userId);
+      const current = await tx.trainingPlan.findFirst({ where: { id: plan.id, status: "active" }, include: { versions: { orderBy: { versionNumber: "desc" }, take: 1 } } });
+      if (!current || current.versions[0]?.id !== activeVersion?.id || current.updatedAt.getTime() !== plan.updatedAt.getTime()) {
+        await tx.planningEvent.update({ where: { id: event.id }, data: { status: current ? "pending" : "ignored", runAfter: new Date() } });
+        return null;
+      }
       await tx.athleteTrainingState.create({
         data: {
           userId: event.userId,
@@ -291,7 +299,7 @@ async function processPlanningEvent(event: PlanningEvent): Promise<PlanningEvent
     return {
       eventId: event.id,
       status: "completed",
-      createdVersionId: created.id,
+      createdVersionId: created?.id,
       message: adaptation.adjustmentMessage,
     };
   } catch (error) {

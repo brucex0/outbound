@@ -7,6 +7,7 @@ import {
   clearPlan,
   completeWorkout,
   createGoal,
+  updateRaceGoal,
   getActivitySuggestion,
   getAdjustments,
   getRecommendations,
@@ -155,6 +156,29 @@ router.post("/intake/interpret", zValidator("json", planIntakeInterpretSchema), 
     return c.json({ error: "Planning context changed. Refresh the intake summary before continuing.", context: current }, 409);
   }
   return c.json(await interpretPlanIntake(c.req.valid("json"), c.get("locale"), current));
+});
+
+const raceGoalUpdateSchema = z.object({
+  targetDate: z.string().date().refine((value) => new Date(value) >= new Date(new Date().toISOString().slice(0, 10)), "Choose today or a future event date."),
+  targetDistanceMeters: z.number().positive().max(500_000),
+  eventIntent: z.enum(["finish", "perform", "targetTime"]),
+  targetTimeSeconds: z.number().int().positive().nullable().optional(),
+  daysPerWeekTarget: z.number().int().min(1).max(6),
+  maxSessionMinutes: z.number().int().min(10).max(180),
+  shortRunSessions: z.boolean(),
+  optionalMobility: z.boolean(),
+}).refine((input) => input.eventIntent !== "targetTime" || Boolean(input.targetTimeSeconds), "A target time is required.")
+  .refine((input) => input.shortRunSessions || input.maxSessionMinutes >= 25, "Choose short sessions explicitly for a total under 25 minutes.");
+
+router.patch("/goals/:id", zValidator("json", raceGoalUpdateSchema), async (c) => {
+  const user = await requirePlanningUser(c);
+  if (user instanceof Response) return user;
+  try {
+    return c.json(await updateRaceGoal(user.id, c.req.param("id"), c.req.valid("json")));
+  } catch (error) {
+    console.error("[planning] race_goal_update_failed", { errorType: error instanceof Error ? error.name : "unknown" });
+    return c.json({ error: "The race goal could not be updated. Refresh the plan and try again." }, 409);
+  }
 });
 
 router.post("/goals", zValidator("json", goalSchema), async (c) => {

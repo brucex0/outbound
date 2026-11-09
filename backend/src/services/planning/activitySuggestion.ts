@@ -115,10 +115,10 @@ export async function buildActivitySuggestion(
   const todayWorkout = workouts.find(
     (workout) =>
       sameDay(workout.scheduledDate, todayStart) &&
-      !["completed", "skipped", "replaced"].includes(workout.status)
+      workout.status === "planned" && !((workout.prescription as Record<string, unknown>)?.optional === true)
   );
   const upcomingWorkout =
-    workouts.find((workout) => workout.scheduledDate >= todayStart && workout.status === "planned") ?? null;
+    workouts.find((workout) => workout.scheduledDate >= todayStart && workout.status === "planned" && !((workout.prescription as Record<string, unknown>)?.optional === true)) ?? null;
   const base = baseResponse({
     now,
     planningStatus,
@@ -401,7 +401,7 @@ function plannedWorkoutSuggestion(
     startLabel: startLabelFor(workout.modality),
     plannedWorkoutId: workout.id,
     archetypeId: null,
-    optional: false,
+    optional: (workout.prescription as Record<string, unknown>)?.optional === true,
   };
 }
 
@@ -667,6 +667,7 @@ function recoveryArchetypeFor(modality: string): string {
 function plannedWorkoutForState(workout: PlannedWorkoutWithBlocks): PlannedWorkoutForState {
   return {
     id: workout.id,
+    prescription: workout.prescription,
     scheduledDate: workout.scheduledDate,
     modality: workout.modality,
     stimulus: workout.stimulus,
