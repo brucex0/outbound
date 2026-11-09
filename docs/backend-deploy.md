@@ -124,6 +124,14 @@ Adaptive planning uses Vertex AI through the runtime service account. Production
 - The pinned schema job completed without a reset. `outbound-planning-maintenance` was updated to the same immutable image; it was not executed during this rollout.
 - Verification and the owner bulk-approval exception are recorded in `docs/live-cue-review.md`.
 
+## Approved Planning Rollout — 2026-11-08
+
+- Built committed source `9da6d1f1`, including weekly running-goal statistics (`52113cb7`) and race-plan running time, separate optional support, and deterministic repair/refill (`7ec43318`). The previous production image lacked `weeklyRunGoal`.
+- Candidate revision: `outbound-api-00189-pg4`. Immutable image: `us-central1-docker.pkg.dev/outbound-494602/cloud-run-source-deploy/outbound-api@sha256:ac92a6f3f7202b6424094d4aa15e560877bb66e6797bec253e42c1b42d682836`.
+- Production's schema lacked the already approved Group arrival field required by the current image. Dedicated schema execution `outbound-db-push-gspc6` applied only `ALTER TABLE "ActivityEventParticipant" ADD COLUMN IF NOT EXISTS "arrivedAt" TIMESTAMP(3)` and verified a nullable timestamp with precision 3. It did not run Prisma schema push, template seeding, or a reset; the schema job's normal command remains unchanged.
+- Existing service environment values, Secret Manager bindings, runtime identity, VPC configuration, and limits were preserved. `outbound-planning-maintenance` uses the same immutable image with its previous configuration; its enabled daily schedule remains 02:15 `America/Los_Angeles`. Maintenance was not manually executed.
+- Revision `outbound-api-00189-pg4` now serves 100% of production traffic. Local TypeScript compilation, candidate `/health`, and production `/health` passed. A bounded read-only diagnostic (`outbound-db-query-once-2rc4g`) confirmed the deployed `weeklyRunGoal` response field, refill module, policy `race-main-15-v1`, and a pure weekly-progress calculation using an explicitly assumed calendar. No authenticated device response or visual check was performed; the test suite was not run. The initial post-rollout log check found no error-level entries or HTTP 5xx for the new revision.
+
 ## Daily Planning Maintenance
 
 The `outbound-planning-maintenance` Cloud Run Job uses the latest ready `outbound-api` image, the same runtime service account, Cloud SQL attachment, database secret, and adaptive-planning environment. Its container command is `npm run planning:maintenance`. Cloud Scheduler invokes it daily at 02:15 in `America/Los_Angeles` using the runtime service account's OAuth identity.
