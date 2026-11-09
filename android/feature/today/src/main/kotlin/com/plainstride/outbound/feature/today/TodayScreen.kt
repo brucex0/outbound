@@ -326,7 +326,7 @@ fun TodayScreen(
     planPicker: PlanPickerUiState = PlanPickerUiState(),
     onChangePlan: () -> Unit = {},
     onEndPlan: () -> Unit = {},
-    onPlanDetailsOpened: (Int) -> Unit = {},
+    onPlanDetailsOpened: (Int, String) -> Unit = { _, _ -> },
     onEndPlanConfirmation: () -> Unit = {},
     onUpdateRaceGoal: suspend (String, com.plainstride.outbound.core.network.RaceGoalUpdateRequest) -> Boolean = { _, _ -> false },
     onRaceGoalOpened: () -> Unit = {},
@@ -371,15 +371,24 @@ fun TodayScreen(
     modifier: Modifier = Modifier,
 ) {
     var showsPlanDetails by rememberSaveable { mutableStateOf(false) }
+    var resolvesPlanSetup by rememberSaveable { mutableStateOf(false) }
     val planning = state.planningSnapshot
     val activePlan = planning?.plan
-    val hasPlanDetails = activePlan != null || (planning == null && (state.suggestion as? CachedResource.Available)?.value?.planContext != null)
-    val openPlanDetails = {
-        onPlanDetailsOpened(planning?.planWeekSnapshot()?.targetSessions ?: 0)
+    val confirmedNoPlan = state.hasConfirmedNoPlan
+    val hasPlanDetails = !confirmedNoPlan
+    fun openPlanDetails(entrySource: String) {
+        onPlanDetailsOpened(planning?.planWeekSnapshot()?.targetSessions ?: 0, entrySource)
+        resolvesPlanSetup = activePlan == null
         showsPlanDetails = true
+        if (activePlan == null) onRefresh()
     }
-    LaunchedEffect(planning) {
-        if (planning != null && activePlan == null) showsPlanDetails = false
+    LaunchedEffect(showsPlanDetails, activePlan?.id, confirmedNoPlan) {
+        if (activePlan != null) resolvesPlanSetup = false
+        if (showsPlanDetails && confirmedNoPlan) {
+            showsPlanDetails = false
+            if (resolvesPlanSetup) onSetUpPlan()
+            resolvesPlanSetup = false
+        }
     }
     var showsDetail by rememberSaveable { mutableStateOf(false) }
     var showsChange by rememberSaveable { mutableStateOf(false) }
@@ -558,17 +567,17 @@ fun TodayScreen(
                         },
                         onOpen = { onWorkoutDetailsOpened(); showsDetail = true },
                         onChange = { onWorkoutChangeOpened(); showsChange = true },
-                        onOpenPlan = openPlanDetails.takeIf { hasPlanDetails },
+                        onOpenPlan = if (hasPlanDetails) ({ openPlanDetails("today_planned_card_plan") }) else null,
                     )
                     state.hasNoCachedSuggestion -> NoSuggestionCard(
-                        noPlan = (state.planning as? CachedResource.Available)?.value?.plan == null,
+                        noPlan = confirmedNoPlan,
                         onStartFreestyle = { onStartFreestyle(TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled)) },
                         onSetUpPlan = onSetUpPlan,
                         onRefresh = onRefresh,
                     )
                 }
                 if (hasPlanDetails && (suggestion == null || activityChoice != TodayActivityChoice.PLANNED || groupActivityContent != null)) {
-                    OutlinedButton(onClick = openPlanDetails, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    OutlinedButton(onClick = { openPlanDetails("today_planned_card_plan") }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                         Text(stringResource(R.string.plan_details_title))
                     }
                 }
@@ -607,13 +616,14 @@ fun TodayScreen(
                 aiCoachEnabled = aiCoachEnabled,
                 companionType = companionType,
                 onActivityChoice = {
-                    if (it == TodayActivityChoice.PLANNED && !hasPlanDetails) {
+                    if (it == TodayActivityChoice.PLANNED && confirmedNoPlan) {
                         onSetUpPlan()
                     } else {
                         saveManualDraft(markEdited = false)
                         activityChoice = it
                         if (it != TodayActivityChoice.RUN && goalChoice == TodayGoalChoice.RACE) goalChoice = TodayGoalChoice.FREE
                         onLaunchConfigurationChanged("activity_type", it.name.lowercase())
+                        if (it == TodayActivityChoice.PLANNED) openPlanDetails("manual_mode_row")
                     }
                 },
                 onGoalChoice = { choice ->
@@ -662,7 +672,7 @@ fun TodayScreen(
         )
     }
 
-    if (showsPlanDetails && planning == null && hasPlanDetails) {
+    if (showsPlanDetails && activePlan == null && !confirmedNoPlan) {
         PlanDetailsSyncingSheet(onDismiss = { showsPlanDetails = false }, onRefresh = onRefresh)
     }
 

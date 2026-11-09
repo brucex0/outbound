@@ -74,6 +74,19 @@ data class TodayUiState(
             is CachedResource.Failed -> planning.cachedValue
             CachedResource.Loading -> null
         }
+    val hasConfirmedNoPlan: Boolean
+        get() {
+            val snapshot = planning as? CachedResource.Available ?: return false
+            val planSuggestion = when (suggestion) {
+                is CachedResource.Available -> suggestion.value.takeUnless { suggestion.isStale }
+                is CachedResource.Failed -> suggestion.cachedValue
+                CachedResource.Loading -> null
+            }
+            val hasCurrentPlanSuggestion = planSuggestion?.planContext != null &&
+                planSuggestion.validForDate == java.time.LocalDate.now().toString()
+            return snapshot.value.plan == null && !snapshot.isStale && !refreshing &&
+                refreshError == null && !hasCurrentPlanSuggestion
+        }
     val primarySuggestion: ActivitySuggestion?
         get() = (suggestion as? CachedResource.Available)?.value?.primary
     val pendingAdjustment: AdjustmentProposal?
@@ -174,9 +187,9 @@ class TodayViewModel @Inject constructor(
         }
     }
 
-    fun trackPlanDetailsOpened(workoutCount: Int) = analytics.record(AnalyticsEvent("planning_surface_opened", mapOf(
+    fun trackPlanDetailsOpened(workoutCount: Int, entrySource: String) = analytics.record(AnalyticsEvent("planning_surface_opened", mapOf(
         AnalyticsProperty.SourceType to "plan_details",
-        AnalyticsProperty.EntrySource to "today_planned_card_plan",
+        AnalyticsProperty.EntrySource to entrySource,
         AnalyticsProperty.CountBucket to when (workoutCount) {
             0 -> "0"
             1 -> "1"
