@@ -2,7 +2,7 @@
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
     <string name="today_adjust_applied">Workout updated.</string>
-    <string name="today_adjust_failed">Couldn’t change the workout. Your planned workout is unchanged.</string>
+    <string name="today_adjust_failed">Couldn’t confirm the workout change. Refresh and try again.</string>
     <string name="today_apply_change">Apply update</string>
     <string name="today_bike">Bike</string>
     <string name="today_cached_at">Updated %1$s · you can start offline</string>
@@ -190,7 +190,7 @@
     <string name="today_change_rest_action">Use rest day</string>
     <string name="today_change_rest_body">Skipping one run is better than turning discomfort into an injury.</string>
     <string name="today_change_rest_heading">Rest today</string>
-    <string name="today_change_start_action">Start changed run</string>
+    <string name="today_change_start_action">Apply</string>
     <string name="today_change_time_body">Plainstride will keep this easy and end it at your selected time.</string>
     <string name="today_change_time_heading">Fit the time you have</string>
     <string name="today_changed_run_detail">Run · %1$d min · very easy</string>

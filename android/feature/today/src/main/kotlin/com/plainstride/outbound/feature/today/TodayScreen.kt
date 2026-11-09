@@ -386,7 +386,7 @@ fun TodayScreen(
     unitSystem: com.plainstride.outbound.core.model.activity.MeasurementUnitSystem = com.plainstride.outbound.core.model.activity.MeasurementUnitSystem.metric,
     useFahrenheit: Boolean = false,
     inboxCount: Int = 0,
-    onSubmitConstraint: (TodayConstraint, String, String?) -> Unit,
+    onSubmitConstraint: (TodayConstraint, ActivitySuggestion, String?, Int) -> Unit,
     onDecideAdjustment: (String, Boolean) -> Unit,
     onCardDisplayChanged: (Boolean) -> Unit = {},
     onWeatherDetailsOpened: () -> Unit = {},
@@ -520,6 +520,7 @@ fun TodayScreen(
     val raceGuideline = racePlan?.let { raceExecution(it, unitSystem) }
     val launchPreparedActivity = launch@ {
         if (activityChoice == TodayActivityChoice.PLANNED) {
+            if (state.restRecommended || state.mutationInFlight) return@launch
             suggestion?.let { onStart(it, "today_planned", TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled)) }
                 ?: onStartFreestyle(TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled))
         } else {
@@ -618,6 +619,12 @@ fun TodayScreen(
                         onChange = { onWorkoutChangeOpened(); showsChange = true },
                         onOpenPlan = if (hasPlanDetails) ({ openPlanDetails("today_planned_card_plan") }) else null,
                     )
+                    state.restRecommended && activityChoice == TodayActivityChoice.PLANNED -> Card {
+                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(stringResource(R.string.today_change_rest_heading), style = MaterialTheme.typography.titleLarge)
+                            Text(stringResource(R.string.today_change_rest_body), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                     state.hasNoCachedSuggestion -> NoSuggestionCard(
                         noPlan = confirmedNoPlan,
                         onStartFreestyle = { onStartFreestyle(TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled)) },
@@ -757,11 +764,8 @@ fun TodayScreen(
         busy = state.mutationInFlight,
         onDismiss = { showsChange = false },
         onApply = { reason, note, minutes ->
-            onSubmitConstraint(reason, changeSuggestion.plannedWorkoutId ?: changeSuggestion.id, note)
             showsChange = false
-            if (reason != TodayConstraint.Soreness) {
-                onStartChangedRun(reason, minutes, TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled))
-            }
+            onSubmitConstraint(reason, changeSuggestion, note, minutes)
         },
         onDecision = { id, accept -> showsChange = false; onDecideAdjustment(id, accept) },
     )
@@ -1468,9 +1472,9 @@ private fun ChangeWorkoutSheet(
                             focusManager.clearFocus()
                             onApply(reason, note.trim().takeIf(String::isNotEmpty), if (reason == TodayConstraint.LimitedTime) availableMinutes else 15)
                         }, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                            Icon(if (reason == TodayConstraint.Soreness) Icons.Default.Bedtime else Icons.Default.DirectionsRun, contentDescription = null)
+                            Icon(Icons.Default.Check, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text(stringResource(if (reason == TodayConstraint.Soreness) R.string.today_change_rest_action else R.string.today_change_start_action))
+                            Text(stringResource(R.string.today_change_start_action))
                         }
                         TextButton(onClick = onDismiss, Modifier.fillMaxWidth()) { Text(stringResource(R.string.today_keep_original)) }
                     }

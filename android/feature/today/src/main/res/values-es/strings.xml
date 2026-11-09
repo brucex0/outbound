@@ -2,7 +2,7 @@
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
     <string name="today_adjust_applied">Entrenamiento actualizado.</string>
-    <string name="today_adjust_failed">No se pudo cambiar el entrenamiento. El entrenamiento previsto no ha cambiado.</string>
+    <string name="today_adjust_failed">No se pudo confirmar el cambio del entrenamiento. Actualiza e inténtalo de nuevo.</string>
     <string name="today_apply_change">Aplicar actualización</string>
     <string name="today_bike">Bici</string>
     <string name="today_cached_at">Actualizado a las %1$s · puedes empezar sin conexión</string>
@@ -190,7 +190,7 @@
     <string name="today_change_rest_action">Tomar un día de descanso</string>
     <string name="today_change_rest_body">Es mejor saltarse una carrera que convertir una molestia en una lesión.</string>
     <string name="today_change_rest_heading">Descansa hoy</string>
-    <string name="today_change_start_action">Empezar la carrera ajustada</string>
+    <string name="today_change_start_action">Aplicar</string>
     <string name="today_change_time_body">Plainstride mantendrá un esfuerzo suave y terminará al cumplirse el tiempo que elijas.</string>
     <string name="today_change_time_heading">Aprovecha el tiempo que tienes</string>
     <string name="today_changed_run_detail">Correr · %1$d min · muy suave</string>

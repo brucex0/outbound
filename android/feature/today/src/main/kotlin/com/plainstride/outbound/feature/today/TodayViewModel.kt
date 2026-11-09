@@ -28,7 +28,7 @@ import com.plainstride.outbound.core.model.PersonalizationSnapshot
 import com.plainstride.outbound.core.model.PlanningState
 import com.plainstride.outbound.core.model.StandaloneWorkoutCatalog
 import com.plainstride.outbound.core.model.TrainingStimulus
-import com.plainstride.outbound.core.network.ReadinessCheckInRequest
+import com.plainstride.outbound.core.network.WorkoutAdjustmentApplyRequest
 import com.plainstride.outbound.core.network.PlanRecommendation
 import com.plainstride.outbound.core.data.ActivityRepository
 import com.plainstride.outbound.core.model.CalibrationStatus
@@ -86,6 +86,8 @@ data class TodayUiState(
                 it.primary != null && it.isCurrent()
             }
         }
+    val restRecommended: Boolean
+        get() = (suggestion as? CachedResource.Available)?.value?.let { it.isCurrent() && it.status == "restRecommended" } == true
     val hasConfirmedNoPlan: Boolean
         get() {
             val snapshot = planning as? CachedResource.Available ?: return false
@@ -314,27 +316,36 @@ class TodayViewModel @Inject constructor(
         source = source,
     )
 
-    fun submitConstraint(constraint: TodayConstraint, workoutId: String, note: String?) {
+    private var pendingWorkoutChange: WorkoutAdjustmentApplyRequest? = null
+
+    fun submitConstraint(constraint: TodayConstraint, suggestion: ActivitySuggestion, note: String?, minutes: Int) {
+        val envelope = (state.value.suggestion as? CachedResource.Available)?.value ?: return
+        if (!mutationInFlight.compareAndSet(false, true)) return
         val scope = accountScope.value
-        val request = ReadinessCheckInRequest(
-            idempotencyKey = UUID.randomUUID().toString(),
-            workoutId = workoutId,
-            recordedAt = Instant.now().toString(),
-            choice = constraint.wireValue,
-            note = note?.trim()?.takeIf(String::isNotEmpty),
+        val candidate = WorkoutAdjustmentApplyRequest(
+            idempotencyKey = pendingWorkoutChange?.idempotencyKey ?: UUID.randomUUID().toString(),
+            workoutId = suggestion.plannedWorkoutId ?: suggestion.id, suggestionId = suggestion.id,
+            validForDate = envelope.validForDate, choice = constraint.wireValue, minutes = minutes,
+            note = note?.trim()?.take(160)?.takeIf(String::isNotEmpty),
         )
+        val request = if (candidate == pendingWorkoutChange) candidate else candidate.copy(idempotencyKey = UUID.randomUUID().toString())
+        pendingWorkoutChange = request
         val analyticsChoice = if (constraint == TodayConstraint.LimitedTime) "short_on_time" else constraint.wireValue
         analytics.record(AnalyticsEvent("today_adjustment_selected", mapOf(AnalyticsProperty.Result to analyticsChoice, AnalyticsProperty.SourceType to "workout_change")))
-        // iOS dismisses and prepares its local easy run without waiting for the check-in.
-        // The repository persists failed requests for retry on refresh.
+        analytics.record(AnalyticsEvent("today_adjustment_decided", mapOf(AnalyticsProperty.Result to "accepted", AnalyticsProperty.SourceType to "workout_change")))
         viewModelScope.launch {
             try {
-                repository.submitReadiness(scope.first, scope.second, request).onFailure {
-                    if (accountScope.value == scope) reportWorkoutAdjustmentFailure("readiness", it, TodayMessage.ReadinessSavedOffline)
-                }
+                val result = repository.applyWorkoutAdjustment(scope.first, scope.second, request)
+                if (accountScope.value != scope) return@launch
+                if (result.isSuccess) {
+                    pendingWorkoutChange = null
+                    messages.emit(TodayMessage.AdjustmentApplied)
+                } else reportWorkoutAdjustmentFailure("apply", result.exceptionOrNull() ?: IllegalStateException())
             } catch (error: Exception) {
                 if (error is kotlinx.coroutines.CancellationException) throw error
-                if (accountScope.value == scope) reportWorkoutAdjustmentFailure("readiness", error)
+                if (accountScope.value == scope) reportWorkoutAdjustmentFailure("apply", error)
+            } finally {
+                mutationInFlight.value = false
             }
         }
     }

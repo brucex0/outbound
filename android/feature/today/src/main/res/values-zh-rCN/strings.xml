@@ -2,7 +2,7 @@
 <!-- Generated from ios/Outbound/Outbound/Localizable.xcstrings. Do not edit by hand. -->
 <resources>
     <string name="today_adjust_applied">训练已更新。</string>
-    <string name="today_adjust_failed">无法调整训练，原计划保持不变。</string>
+    <string name="today_adjust_failed">无法确认训练调整结果。请刷新后重试。</string>
     <string name="today_apply_change">应用调整</string>
     <string name="today_bike">骑行</string>
     <string name="today_cached_at">更新于 %1$s · 离线也能开始</string>
@@ -190,7 +190,7 @@
     <string name="today_change_rest_action">今天休息</string>
     <string name="today_change_rest_body">少跑一次，胜过让不适发展成伤病。</string>
     <string name="today_change_rest_heading">今天休息</string>
-    <string name="today_change_start_action">开始调整后的跑步</string>
+    <string name="today_change_start_action">应用</string>
     <string name="today_change_time_body">Plainstride 会安排轻松的强度，并在你选择的时间结束。</string>
     <string name="today_change_time_heading">按你的时间来</string>
     <string name="today_changed_run_detail">跑步 · %1$d 分钟 · 非常轻松</string>

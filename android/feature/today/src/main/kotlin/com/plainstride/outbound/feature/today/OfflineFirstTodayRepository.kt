@@ -161,6 +161,13 @@ class OfflineFirstTodayRepository @Inject constructor(
             cache.delete(accountId, READINESS_QUEUE, entry.cacheKey, entry.localeTag)
         }
     }
+    override suspend fun applyWorkoutAdjustment(accountId: String, localeTag: String, request: com.plainstride.outbound.core.network.WorkoutAdjustmentApplyRequest): Result<Unit> {
+        val result = refreshMutex.withLock { authenticated { apiCall { api.applyWorkoutAdjustment(it, request) } } }
+        if (result.isFailure) return Result.failure(result.exceptionOrNull()!!)
+        // Keep the same idempotency key if the mutation succeeded but refreshing failed.
+        val error = refresh(accountId, localeTag)
+        return if (error == null) Result.success(Unit) else Result.failure(TodayRepositoryException(error))
+    }
     override suspend fun previewWorkoutAdjustment(request: com.plainstride.outbound.core.network.WorkoutAdjustmentPreviewRequest) =
         authenticated { apiCall { api.previewWorkoutAdjustment(it, request) } }.map { it.adjustment }
     override suspend fun decideAdjustment(accountId: String, localeTag: String, adjustmentId: String, accept: Boolean): Result<Unit> =
