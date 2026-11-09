@@ -10,6 +10,7 @@ Read before changing iOS or Android UI. This is the entry point; [themes.md](the
 - Do not introduce literal RGB/hex colors in feature UI. Semantic chart, route, sport, safety, or asset colors can be exceptions with a specific reason; never recolor destructive/warning meaning to match a theme.
 - Preserve platform conventions and readable foreground/background pairings. Android has no shared spacing scale today; reuse existing shared components and keep feature dimensions consistent rather than inventing token APIs.
 - Localize display strings and accessibility labels. Use text-only launch option pills and icon-only sport selectors with localized labels. Transient API feedback uses toasts.
+- For paired contextual secondary actions beside a named item (such as Change plan and End plan), place a compact, leading-aligned text row directly below that item's name. Keep the actions text-only without pills, borders, or icons; use the theme accent for the neutral action and the semantic destructive color for destructive actions. Preserve at least 44 pt on iOS and 48 dp on Android touch targets. Let labels wrap and the row reflow naturally for large text, narrow screens, and longer translations. Reserve full width for a primary next step when the flow has one.
 
 ## UI review checklist
 
