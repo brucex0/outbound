@@ -1,4 +1,4 @@
-# TestFlight and App Store 1.7.13 Submission Sheet
+# TestFlight and App Store 1.7.14 Submission Sheet
 
 Open this for the current TestFlight upload and public App Store release. Product behavior and release mechanics remain in `docs/app-store-release.md`.
 
@@ -7,8 +7,8 @@ Open this for the current TestFlight upload and public App Store release. Produc
 - App Store name: `Plainstride: AI Running Coach`.
 - Developer: `Plainstride Labs Inc.`
 - Bundle ID: `plainstride.outbound`
-- Version: `1.7.13`
-- Build: `67`
+- Version: `1.7.14`
+- Build: `68`
 - SKU suggestion: `plainstride-outbound-ios`
 - Primary language: English (U.S.)
 - Primary category: Health & Fitness
@@ -20,11 +20,17 @@ Open this for the current TestFlight upload and public App Store release. Produc
 
 ## Submission Status
 
+- Version 1.7.14 (68) completed unsigned Release compilation, signed archive/export, packaged-bundle preflight, upload, and Apple processing on November 8, 2026 (Pacific), from source `5b837f2f82d91fa9be9769bda76bf8f1a765a233`. English beta notes were published and assignment to internal TestFlight group `Plainstride Team` was confirmed.
+- Submitted through App Store Connect on November 8, 2026 at 11:20 PM Pacific. The version is **Waiting for Review**, submission ID `544e83b4-acb6-48dc-9ef2-1b9346a85c95`, with automatic release after approval and immediate availability to all users configured.
+- Version 1.7.13 is confirmed **Ready for Distribution**. Its listing, screenshots, and existing release metadata were preserved.
+- Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.14-68/`; the 71,746,744-byte IPA SHA-256 is `164870945774542dbb03ece6e0d742144498234c6399c308a66f0bbb24187aa`; upload ID `fef02fad-345b-48c1-80fb-bf8a7230d389`. The first delivery stopped after chunk 9 when chunk 10 exhausted retries. Resuming the same preserved IPA completed chunks 10–14 successfully; do not rebuild or re-upload to finish distribution setup.
+- Production backend `/health` returned HTTP 200. No tests or physical-device acceptance were run. Release compilation succeeded with existing compiler warnings; it does not confirm device behavior.
+
+### Previous Release: 1.7.13 (67)
+
 - Version 1.7.13 (67) completed unsigned Release compilation, signed archive/export, packaged-bundle preflight, upload, and Apple processing on November 8, 2026, from source `bc44c81e` (product source `6e48ecb1`). English beta notes were published and assignment to internal TestFlight group `Plainstride Team` was confirmed.
-- Submitted 1.7.13 (67) through App Store Connect at 9:08 AM Pacific on November 8. The App Review detail page independently confirms **Waiting for Review**, submission ID `dce56683-c2b3-4f5b-8f17-8c8e6ab5ce42`. Automatic release after approval and immediate availability to all users are configured.
-- Previous version 1.7.12 (66) is confirmed Ready for Distribution. Public availability of 1.7.13 awaits Apple approval.
-- No tests or physical-device acceptance run were performed. Existing compiler warnings remain; a successful build does not verify device behavior.
-- Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.13-67/`; upload ID `7553ea8b-8d77-4671-a67c-22d66fc61e49`; IPA SHA-256 `5dde7f1f98a3b0d17edad990aaa245b2c3928a03d6f1e0982794a9c771a1b86c`. The 71,631,430-byte IPA delivered in 14 chunks; one transient SSL failure recovered through the existing bounded retry. Do not rebuild or re-upload to finish distribution setup.
+- Submitted 1.7.13 (67) through App Store Connect at 9:08 AM Pacific on November 8. It was later approved and is now Ready for Distribution.
+- Preserved IPA/checkpoint: `~/Library/Application Support/Plainstride/Releases/1.7.13-67/`; upload ID `7553ea8b-8d77-4671-a67c-22d66fc61e49`; IPA SHA-256 `5dde7f1f98a3b0d17edad990aaa245b2c3928a03d6f1e0982794a9c771a1b86c`.
 - Production backend health returned HTTP 200. Public privacy, support, and Terms pages opened successfully in the browser from the configured `.ai` URLs; command-line requests returned HTTP 403, so association endpoints remain unverified.
 
 ## App Store Positioning Experiment
@@ -74,18 +80,18 @@ For this build, pay extra attention to the redesigned activity launch flow:
 
 ### Beta Release Notes
 
-- [iOS] Honor contextual stretch defaults with floor movements
-- [iOS] Default stretch by entry point
-- [iOS] Fix activity cancellation scope query encoding
-- [iOS] Add group overflow leave and arrival check-in
-- [iOS] Add Group member activity permission
+- [iOS] Compact plan management actions
+- [iOS] Show and edit saved race goals with phase roadmap
+- [iOS] Complete rebuilt plan setup in Today without reopening
+- [iOS] Show personal weekly run goals on Me
+- [iOS] Clarify plan week targets and confirm visible end action
 - Plus 1 more fixes and improvements
 
 ### App Store What's New
 
-- Stretch routines now match where you start them, including floor movements for Today stretches.
-- Easier group controls for leaving groups and marking arrival at activities.
-- Improved group member permissions and activity cancellation reliability.
+- Manage plans faster and revisit saved race goals with a clear phase roadmap.
+- Finish rebuilt plan setup from Today and see your weekly running goal on Me.
+- Clearer plan week targets and more consistent cadence guidance during runs.
 - Additional interface improvements.
 
 ### How to Report Feedback
@@ -201,6 +207,6 @@ Expected purposes are App Functionality and, where the companion uses runner dat
 - Confirm App Store Connect app record, agreements, and capabilities.
 - Fill the support email, reviewer email, and reviewer phone above.
 - Run the physical-device acceptance list in `docs/app-store-release.md`.
-- Archive `1.7.13 (67)`, validate, and upload from Xcode Organizer.
+- Archive `1.7.14 (68)`, validate, and upload from Xcode Organizer.
 - After processing, confirm the publish script populated **What to Test** and added the build to the selected beta group.
 - For external testing, enter the prepared Test Information and submit the first build for TestFlight App Review; group assignment does not bypass that review.
