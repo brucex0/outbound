@@ -82,6 +82,13 @@ Recommended layers:
 - Missing credentials, timeout, invalid output, or a disabled AI route falls back to the conservative deterministic selection without blocking planning.
 - Configure with `AI_PLANNING_ENABLED`, `AI_PLANNING_MODEL`, and `AI_PLANNING_DEADLINE_MILLISECONDS`. Vertex uses `GEMINI_VERTEX_PROJECT_ID` and `GEMINI_VERTEX_LOCATION`; credentials remain server-side.
 
+### Running plan-fit assessment
+
+- Session count alone never marks overload. Compare the last seven days of running distance/time with the four-week weekly **running** baseline, excluding cycling and other sports. A greater-than-40% volume increase requires at least three prior runs across two earlier weekly windows; sparse history remains unknown rather than evidence of a spike.
+- A current running streak of four or more days favors recovery only when it exceeds the longest running streak in the preceding 21-day baseline. A streak ending before yesterday is no longer current. High fatigue, pain/illness, and adverse readiness remain independent recovery signals.
+- Today suggestions and AI planning share this assessment. AI reduction candidates require a recovery/fatigue signal, fresh explicit difficulty, or repeated partial completions. Difficulty evidence must be within seven days and after the latest applied/rejected adjustment so an old report cannot repeatedly shrink the plan or block progression. The existing immediate too-hard feedback proposal remains unchanged.
+- A low-fatigue fallback maintains the plan; a missed session alone does not reduce multiple later workouts. The deterministic missed/skipped-workout adaptation still softens the next session and avoids catch-up load. AI adjustment decisions use `ai-planning-v3`; plan-fit reasons add bounded running-duration/streak flags without adding raw activity data to analytics.
+
 ### Run-history duration balancing
 
 - Both initial generation and rolling replans read synced recent activities. Weekly volume starts from the last 28 days divided by four, then spreads across the requested weekly session count; increasing frequency can therefore shorten individual runs. The explicit session-time cap, adherence, fatigue, phase, and recovery adjustments still apply.

@@ -6,7 +6,7 @@ import type { ActivityForPlanning, AthleteTrainingStateSnapshot, PlanningEventTy
 import type { PlanFitAssessment } from "./planFit.js";
 import { hasActiveCapability } from "../entitlements.js";
 
-const POLICY_VERSION = "ai-planning-v2";
+const POLICY_VERSION = "ai-planning-v3";
 const candidateIds = ["maintain", "recover", "reduce", "progress"] as const;
 const outputSchema = z.object({
   candidateId: z.enum(candidateIds),
@@ -47,22 +47,40 @@ export async function evaluateAndProposePlanAdjustment(input: {
   });
   if (existing) return { status: "existing", provider: "fallback", candidateId: "existing", adjustmentId: existing.id, explanation: existing.explanation };
 
-  const [workouts, completions, feedback] = await Promise.all([
+  const [workouts, completions, feedback, lastDecision] = await Promise.all([
     latestUpcomingWorkouts(input.userId),
     prisma.workoutCompletion.findMany({
       where: { userId: input.userId, completedAt: { gte: addDays(new Date(), -28) } },
       orderBy: { completedAt: "desc" }, take: 12,
-      select: { durationSeconds: true, perceivedEffort: true, completionQuality: true, plannedWorkout: { select: { durationSeconds: true } } },
+      select: { completedAt: true, durationSeconds: true, perceivedEffort: true, completionQuality: true, plannedWorkout: { select: { durationSeconds: true } } },
     }),
     prisma.workoutFeedback.findMany({
       where: { userId: input.userId, recordedAt: { gte: addDays(new Date(), -28) } },
       orderBy: { recordedAt: "desc" }, take: 12,
-      select: { effort: true, continuationCapacity: true },
+      select: { recordedAt: true, effort: true, continuationCapacity: true },
+    }),
+    prisma.personalizationAdjustment.findFirst({
+      where: { userId: input.userId, status: { in: ["applied", "rejected"] }, decidedAt: { not: null } },
+      orderBy: { decidedAt: "desc" },
+      select: { decidedAt: true },
     }),
   ]);
   if (workouts.length === 0) return { status: "unchanged", provider: "fallback", candidateId: "maintain", explanation: "There are no upcoming planned workouts to recalibrate." };
 
-  const candidates = safeCandidates(input.athleteState, input.eventType);
+  const requiresRecovery = input.eventType === "painFlagged" || input.athleteState.fatigueRisk === "high" || input.planFit?.action === "recover";
+  // Do not reuse difficulty evidence already covered by an accepted/rejected
+  // adjustment, or carry one old hard workout forward indefinitely.
+  const evidenceAfter = new Date(Math.max(addDays(new Date(), -7).getTime(), lastDecision?.decidedAt?.getTime() ?? 0));
+  const freshFeedback = feedback.filter((item) => item.recordedAt > evidenceAfter);
+  const freshCompletions = completions.filter((item) => item.completedAt > evidenceAfter);
+  const reductionSupported = hasPlanReductionEvidence({
+    fatigueRisk: input.athleteState.fatigueRisk,
+    requiresRecovery,
+    explicitDifficulty: freshFeedback.some((item) => item.effort === "tooHard")
+      || freshCompletions.some((item) => item.completionQuality === "tooHard" || (item.perceivedEffort ?? 0) >= 8),
+    partialCompletions: freshCompletions.filter((item) => item.completionQuality === "partial").length,
+  });
+  const candidates = safeCandidates(input.athleteState, input.eventType, reductionSupported);
   const context = {
     trigger: input.eventType,
     athleteState: serializableState(input.athleteState),
@@ -96,7 +114,8 @@ export async function evaluateAndProposePlanAdjustment(input: {
 
   const aiPlanningAllowed = await hasActiveCapability(prisma, input.userId, "ai_planning_dynamic");
   const generated = aiPlanningAllowed ? await chooseWithGemini(context).catch(() => null) : null;
-  const selection = validateSelection(generated ?? fallbackSelection(input.eventType, input.athleteState), candidates, input.athleteState, input.eventType);
+  const fallback = fallbackSelection(input.eventType, input.athleteState, requiresRecovery);
+  const selection = validateSelection(generated ?? fallback, candidates, fallback);
   if (selection.candidateId === "maintain") return { status: "unchanged", provider: generated ? "gemini" : "fallback", candidateId: "maintain", explanation: selection.explanation };
 
   const candidate = candidates.find((item) => item.id === selection.candidateId)!;
@@ -137,13 +156,24 @@ async function latestUpcomingWorkouts(userId: string): Promise<UpcomingWorkout[]
   return plan?.versions[0]?.workouts ?? [];
 }
 
-function safeCandidates(state: AthleteTrainingStateSnapshot, eventType: PlanningEventType): Candidate[] {
+export function hasPlanReductionEvidence(input: {
+  fatigueRisk: AthleteTrainingStateSnapshot["fatigueRisk"];
+  requiresRecovery: boolean;
+  explicitDifficulty: boolean;
+  partialCompletions: number;
+}): boolean {
+  return input.requiresRecovery || input.fatigueRisk !== "low" || input.explicitDifficulty || input.partialCompletions >= 2;
+}
+
+function safeCandidates(state: AthleteTrainingStateSnapshot, eventType: PlanningEventType, reductionSupported: boolean): Candidate[] {
   const values: Candidate[] = [
     { id: "maintain", factor: 1, summary: "Keep the current schedule unchanged." },
+  ];
+  if (reductionSupported) values.push(
     { id: "recover", factor: 0.6, summary: "Reduce the next sessions substantially to prioritize recovery." },
     { id: "reduce", factor: 0.8, summary: "Reduce the next sessions moderately without adding missed load." },
-  ];
-  if (state.fatigueRisk === "low" && state.adherenceRate >= 0.8 && !["painFlagged", "workoutMissed", "workoutSkipped"].includes(eventType)) {
+  );
+  if (!reductionSupported && state.fatigueRisk === "low" && state.adherenceRate >= 0.8 && !["painFlagged", "workoutMissed", "workoutSkipped"].includes(eventType)) {
     values.push({ id: "progress", factor: 1.08, summary: "Progress the next sessions by no more than eight percent." });
   }
   return values;
@@ -163,7 +193,7 @@ async function chooseWithGemini(context: unknown): Promise<z.infer<typeof output
         evidenceRules: [
           "Use only supplied evidence; distinguish measured activity, runner-reported feedback, deterministic assessments, and inferred patterns.",
           "Current illness/pain or high fatigue rules out progress. Follow safetyFlags and the deterministic plan-fit action when they indicate recovery.",
-          "Prefer maintain when signals are sparse, stale, mixed, or within the runner's established range.",
+          "Prefer maintain when signals are sparse, stale, mixed, or within the runner's established range. Session count alone is not overload; compare running duration and distance with the supplied running baseline.",
           "Choose recover or reduce only when current readiness, repeated load, repeated difficulty, or deterministic plan fit supports it. A missed session alone is not proof of fatigue or poor fitness.",
           "Choose progress only when the candidate is explicitly available and repeated activity/adherence plus low fatigue support it; a single fast or long session is not enough.",
           "Keep the change within the listed candidate and explain why its bounded effect fits the next scheduled sessions. Never add missed load or invent a workout.",
@@ -182,17 +212,12 @@ async function chooseWithGemini(context: unknown): Promise<z.infer<typeof output
   return generated.value;
 }
 
-function validateSelection(selection: z.infer<typeof outputSchema>, candidates: Candidate[], state: AthleteTrainingStateSnapshot, eventType: PlanningEventType) {
-  const allowed = candidates.some((candidate) => candidate.id === selection.candidateId);
-  if (!allowed || ((state.fatigueRisk === "high" || eventType === "painFlagged") && selection.candidateId === "progress")) {
-    return fallbackSelection(eventType, state);
-  }
-  return selection;
+function validateSelection(selection: z.infer<typeof outputSchema>, candidates: Candidate[], fallback: z.infer<typeof outputSchema>) {
+  return candidates.some((candidate) => candidate.id === selection.candidateId) ? selection : fallback;
 }
 
-function fallbackSelection(eventType: PlanningEventType, state: AthleteTrainingStateSnapshot): z.infer<typeof outputSchema> {
-  if (eventType === "painFlagged" || state.fatigueRisk === "high") return { candidateId: "recover", confidence: "high", reasonCode: "soreness", explanation: "The safest useful change is to reduce near-term load while recovery signals are elevated.", evidenceSummary: ["Current safety signals favor recovery."] };
-  if (["workoutMissed", "workoutSkipped"].includes(eventType)) return { candidateId: "reduce", confidence: "medium", reasonCode: "missedWorkout", explanation: "A modest reduction keeps the plan moving without cramming missed work.", evidenceSummary: ["A planned session was missed or skipped."] };
+function fallbackSelection(eventType: PlanningEventType, state: AthleteTrainingStateSnapshot, requiresRecovery: boolean): z.infer<typeof outputSchema> {
+  if (requiresRecovery || eventType === "painFlagged" || state.fatigueRisk === "high") return { candidateId: "recover", confidence: "high", reasonCode: "soreness", explanation: "The safest useful change is to reduce near-term load while recovery signals are elevated.", evidenceSummary: ["Current safety signals favor recovery."] };
   if (state.fatigueRisk === "medium") return { candidateId: "reduce", confidence: "medium", reasonCode: "fatigue", explanation: "A modest reduction better matches the current recovery picture.", evidenceSummary: ["Recent load or readiness is above the usual comfort range."] };
   return { candidateId: "maintain", confidence: "medium", reasonCode: "improving", explanation: "The current plan remains appropriate.", evidenceSummary: ["No material plan-changing signal was found."] };
 }

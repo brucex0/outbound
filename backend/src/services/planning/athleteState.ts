@@ -16,7 +16,7 @@ export function computeAthleteTrainingState(input: AthleteStateInput): AthleteTr
   const now = input.now ?? new Date();
   const sevenDaysAgo = addDays(now, -7);
   const twentyEightDaysAgo = addDays(now, -28);
-  const recentActivities = normalizeActivities(input.activities);
+  const recentActivities = normalizeActivities(input.activities).filter((activity) => activity.startedAt <= now);
   const weekActivities = recentActivities.filter((activity) => activity.startedAt >= sevenDaysAgo);
   const fourWeekActivities = recentActivities.filter((activity) => activity.startedAt >= twentyEightDaysAgo);
   const weeklyMinutes = minutesFor(weekActivities);
@@ -92,7 +92,7 @@ function consecutiveActiveDayCount(activities: ActivityForPlanning[], now: Date)
   const latestActivity = activities
     .filter((activity) => activity.startedAt <= now)
     .sort((left, right) => right.startedAt.getTime() - left.startedAt.getTime())[0];
-  if (!latestActivity) return 0;
+  if (!latestActivity || startOfDay(latestActivity.startedAt) < addDays(startOfDay(now), -1)) return 0;
   let count = 0;
   let cursor = startOfDay(latestActivity.startedAt);
   while (activeDays.has(dayKey(cursor))) {
