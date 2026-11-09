@@ -650,6 +650,8 @@ fun TodayScreen(
             onRaceGoalOpened = onRaceGoalOpened,
             onUpdateRaceGoal = onUpdateRaceGoal,
             planning = planning,
+            suggestion = (state.suggestion as? CachedResource.Available)?.value,
+            suggestionStale = (state.suggestion as? CachedResource.Available)?.isStale == true || state.suggestion is CachedResource.Failed,
             busy = state.mutationInFlight,
             stale = (state.planning as? CachedResource.Available)?.isStale == true || state.planning is CachedResource.Failed,
             onDismiss = { showsPlanDetails = false },
