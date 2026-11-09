@@ -17,11 +17,13 @@ When user ask questions or brain storm, always answer in concise bullet points
 
 ## Automatic Model Routing
 
-- For substantive repository tasks, use GPT-6 Luna (`gpt-6-luna`, Low reasoning) for small, well-defined edits, documentation, repetitive changes, and focused discovery. Use GPT-6.1 Sol (`gpt-6.1-sol`, High reasoning) for ambiguous bugs, architecture, authentication, persistence, cross-platform contracts, publishing, and consequential review. Treat uncertain scope as complex.
-- In desktop chats, delegate execution to one worker with the appropriate explicit model and reasoning settings when the coordinator differs from the required model or reasoning effort. If already running the appropriate model and effort, execute directly. Keep brief conversational answers in the main chat; do not spawn workers just to acknowledge or classify a request.
-- This section requests model-specific delegation for future project tasks. Higher-priority restrictions and explicit user instructions take precedence. If model-specific delegation is unavailable, state that limitation; do not claim the model switched.
+- For substantive repository tasks, the root coordinator performs high-effort analysis and planning, then writes a clear worker brief with the outcome, acceptance criteria, affected scope, behavior to preserve, and permitted verification. The coordinator owns planning and review; one worker owns execution in the task worktree.
+- Start every worker with GPT-6 Luna (`gpt-6-luna`) at Low reasoning, even when the task initially appears ambiguous or consequential. Do not route a task directly to a Sol worker based only on initial classification. Prefer a supported Freebuff handoff when it can accept and execute the task; otherwise use the configured Luna worker. Report the specific limitation if neither is available, and never claim a handoff that did not occur.
+- Escalate only when the worker uncovers concrete complexity that warrants it or has an unsuccessful correction cycle. The Luna worker then stops editing and gives the coordinator a compact handoff describing the evidence, current diff, attempted correction, verification, and remaining uncertainty. The coordinator may assign a GPT-6.1 Sol (`gpt-6.1-sol`) worker at High reasoning to continue in the same worktree after Luna relinquishes ownership.
+- Keep brief conversational answers in the main chat; do not spawn workers just to acknowledge or classify a request.
+- Higher-priority runtime restrictions and explicit user instructions take precedence. If model-specific delegation is unavailable, state that limitation; do not claim the model switched.
 - Keep one editing owner per worktree. The coordinator must not edit while a worker owns execution. Workers must not recursively delegate for model routing.
-- If Luna discovers complex scope or fails one correction cycle, stop its edits and return a compact handoff. The coordinator then assigns one Sol worker to continue in the same worktree after Luna relinquishes ownership; preserve the diff and verification evidence.
+- If Luna discovers concrete complexity or fails one correction cycle, stop its edits and return a compact handoff. The coordinator then assigns a Sol worker to continue in the same worktree after Luna relinquishes ownership; preserve the diff and verification evidence.
 - The desktop selector remains the coordinator's model, and coordination consumes tokens. See `docs/agent-workflow.md` for desktop setup and the automatic CLI launcher.
 
 ## Scope And Behavior Preservation
