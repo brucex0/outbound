@@ -2,6 +2,7 @@ package com.plainstride.outbound.feature.today
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -72,6 +73,27 @@ internal fun ActivePlanDetailsSheet(
                 "eventPreparation" -> R.string.plan_details_goal_event
                 else -> R.string.plan_details_active_plan
             }), style = MaterialTheme.typography.headlineSmall)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                maxItemsInEachRow = 2,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+                TextButton(
+                    onClick = onChangePlan,
+                    enabled = !busy,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 0.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                ) { Text(stringResource(R.string.plan_details_change)) }
+                TextButton(
+                    onClick = { confirmsEnd = true; onEndConfirmation() },
+                    enabled = !busy,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 0.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) { Text(stringResource(R.string.plan_details_end)) }
+            }
             if (planning.goal?.type == "eventPreparation") RaceGoalCard(planning, units, onRaceGoalOpened, onUpdateRaceGoal)
             planning.currentVersion?.summary?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             if (stale) Text(stringResource(R.string.plan_details_cached), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary)
@@ -87,17 +109,6 @@ internal fun ActivePlanDetailsSheet(
                 planning.goal?.daysPerWeekTarget?.takeIf { it != week.targetSessions }?.let {
                     Text(stringResource(R.string.plan_details_preferred, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onChangePlan, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text(stringResource(R.string.plan_details_change))
-                }
-                OutlinedButton(
-                    onClick = { confirmsEnd = true; onEndConfirmation() },
-                    enabled = !busy,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                ) { Text(stringResource(R.string.plan_details_end)) }
             }
             if (week == null) {
                 Text(stringResource(R.string.plan_details_loading), color = MaterialTheme.colorScheme.onSurfaceVariant)
