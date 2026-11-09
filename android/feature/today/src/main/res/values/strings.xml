@@ -3,19 +3,19 @@
 <resources>
     <string name="today_adjust_applied">Workout updated.</string>
     <string name="today_adjust_failed">Couldn’t change the workout. Your planned workout is unchanged.</string>
-    <string name="today_apply_change">Apply change</string>
+    <string name="today_apply_change">Apply update</string>
     <string name="today_bike">Bike</string>
     <string name="today_cached_at">Updated %1$s · you can start offline</string>
     <string name="today_calories">Calories</string>
     <string name="today_calories_format">%1$d kcal</string>
     <string name="today_calories_value">300 kcal</string>
     <string name="today_change">Change</string>
-    <string name="today_change_body">What constraint should the alternative account for?</string>
+    <string name="today_change_body">What needs to change?</string>
     <string name="today_change_comparison">%1$s → %2$s</string>
     <string name="today_change_goal">Change goal</string>
     <string name="today_change_plan">Change plan</string>
     <string name="today_change_route">Change</string>
-    <string name="today_change_title">Change today’s workout</string>
+    <string name="today_change_title">Change today’s run</string>
     <string name="today_change_workout">Change workout</string>
     <string name="today_cheer">Cheer me on</string>
     <string name="today_choose_curated">Choose a curated workout</string>
@@ -42,9 +42,9 @@
     <string name="today_inbox">Notification Center</string>
     <string name="today_inbox_count">Notification Center · %1$d</string>
     <string name="today_indoor">Indoor</string>
-    <string name="today_keep_original">Keep planned workout</string>
+    <string name="today_keep_original">Keep original</string>
     <string name="today_launch_dock">Planned</string>
-    <string name="today_limited_time">Limited time</string>
+    <string name="today_limited_time">Less time</string>
     <string name="today_low_energy">Low energy</string>
     <string name="today_minutes">%1$d min</string>
     <string name="today_more">More setup options</string>
@@ -54,7 +54,7 @@
     <string name="today_no_plan_body">Start with a reviewed freestyle run, or set up a plan for personalized guidance.</string>
     <string name="today_offline_body">There is no saved recommendation on this device. You can still record a freestyle run.</string>
     <string name="today_offline_title">Today is offline</string>
-    <string name="today_optional_note">Optional note</string>
+    <string name="today_optional_note">Anything else? (optional)</string>
     <string name="today_original_kept">Planned workout kept.</string>
     <string name="today_outdoor">Outdoor</string>
     <string name="today_phases">Workout phases</string>
@@ -62,7 +62,7 @@
     <string name="today_planned">Planned</string>
     <string name="today_purpose">Why this workout?</string>
     <string name="today_quote">“The next step is the one that changes the day.”</string>
-    <string name="today_recommendation">Recommended change</string>
+    <string name="today_recommendation">Recommended plan update</string>
     <string name="today_refresh_failed">Couldn’t update Today. Saved workouts are still available.</string>
     <string name="today_remove_route">Remove route</string>
     <string name="today_retry">Try again</string>
@@ -75,7 +75,7 @@
     <string name="today_shoes">Shoes</string>
     <string name="today_shoes_new">New Shoe</string>
     <string name="today_show_alternative">Show one alternative</string>
-    <string name="today_soreness">Soreness</string>
+    <string name="today_soreness">Sore or uncomfortable</string>
     <string name="today_start">Start</string>
     <string name="today_start_workout">Start %1$s</string>
     <string name="today_stop_at_goal">Pause at goal</string>
@@ -182,4 +182,19 @@
     <string name="today_race_goal_target_time">Target a time</string>
     <string name="today_race_goal_title">Race goal</string>
     <string name="today_race_goal_window">Detailed sessions through %1$s</string>
+    <string name="today_change_close">Close</string>
+    <string name="today_change_energy_body">A short easy run keeps the rhythm without forcing the full workout.</string>
+    <string name="today_change_energy_heading">Try 15 minutes easy</string>
+    <string name="today_change_keep_plan">Keep original plan</string>
+    <string name="today_change_original">%1$s · %2$d min</string>
+    <string name="today_change_rest_action">Use rest day</string>
+    <string name="today_change_rest_body">Skipping one run is better than turning discomfort into an injury.</string>
+    <string name="today_change_rest_heading">Rest today</string>
+    <string name="today_change_start_action">Start changed run</string>
+    <string name="today_change_time_body">Plainstride will keep this easy and end it at your selected time.</string>
+    <string name="today_change_time_heading">Fit the time you have</string>
+    <string name="today_changed_run_detail">Run · %1$d min · very easy</string>
+    <string name="today_changed_run_guide">Keep the effort easy. A shorter run still protects the habit.</string>
+    <string name="today_changed_run_title">%1$d min easy run</string>
+    <string name="today_readiness_saved_offline">Saved offline. Plainstride will sync this check-in later.</string>
 </resources>

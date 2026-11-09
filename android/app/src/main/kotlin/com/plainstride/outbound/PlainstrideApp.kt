@@ -512,9 +512,10 @@ private fun SignedInApp(
     }
     fun launchTodayRecording() {
         if (todayStartJob?.isActive == true) return
+        val changedRun = recordingLaunch.entrySource == "today_changed_run"
         val configuration = recordingLaunch.copy(
-            activityEventId = todayGroupEvent?.id?.takeIf { it == selectedRecordingEventId },
-            activityEventTitle = todayGroupEvent?.name?.takeIf { todayGroupEvent.id == selectedRecordingEventId },
+            activityEventId = todayGroupEvent?.id?.takeIf { !changedRun && it == selectedRecordingEventId },
+            activityEventTitle = todayGroupEvent?.name?.takeIf { !changedRun && todayGroupEvent.id == selectedRecordingEventId },
         )
         todayStartJob = scope.launch {
             try {
@@ -526,7 +527,7 @@ private fun SignedInApp(
                     !context.getSharedPreferences("motion_permission", android.content.Context.MODE_PRIVATE).getBoolean("requested", false) &&
                     context.checkSelfPermission(android.Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED &&
                     context.getSystemService(android.hardware.SensorManager::class.java)?.getDefaultSensor(android.hardware.Sensor.TYPE_STEP_DETECTOR) != null
-                if (!needsMotion && hasPermission && (configuration.indoor || recordingViewModel.hasRecentStartLocation())) {
+                if (configuration.startImmediately && !needsMotion && hasPermission && (configuration.indoor || recordingViewModel.hasRecentStartLocation())) {
                     cheerPickerViewModel.applyTrustedContactDefault()
                     voicePreparation.preparation.activityWillStart(configuration.voiceGuideEnabled)
                     // Resolve recovery before a direct Walk/Hike start so entering
@@ -812,7 +813,8 @@ private fun SignedInApp(
                             },
                             completedToday = integration.completedToday,
                             onStartWorkout = { intent, options ->
-                                recordingLaunch = intent.toRecordingLaunch().copy(gearId = selectedTodayShoeIdForLaunch,privateTrainingSignal=cycleState.currentSignal.takeIf{cycleState.enabled&&it!=CycleTrainingSignal.NO_ADJUSTMENT}?.wireValue,startImmediately=true,indoor=options.indoor,voiceGuideEnabled=options.voiceGuideEnabled,aiCoachEnabled=options.aiCoachEnabled,companionType=options.companionType).withTodayRoute(todaySelectedRoute, todayRouteReversed)
+                                val launch = intent.toRecordingLaunch().copy(gearId = selectedTodayShoeIdForLaunch,privateTrainingSignal=cycleState.currentSignal.takeIf{cycleState.enabled&&it!=CycleTrainingSignal.NO_ADJUSTMENT}?.wireValue,startImmediately=true,indoor=options.indoor,voiceGuideEnabled=options.voiceGuideEnabled,aiCoachEnabled=options.aiCoachEnabled,companionType=options.companionType)
+                                recordingLaunch = if (intent.source == "today_changed_run") launch.copy(startImmediately = false, autoStopAtGoal = false) else launch.withTodayRoute(todaySelectedRoute, todayRouteReversed)
                                 launchTodayRecording()
                             },
                             onStartFreestyle = { options ->
@@ -1659,7 +1661,7 @@ private fun WorkoutLaunchIntent.toRecordingLaunch(): RecordingLaunchConfiguratio
         suggestionId = suggestionId,
         plannedWorkoutId = plannedWorkoutId,
         workoutDetail = effortLabel,
-        workoutGuideline = listOf(stimulus.name, intensityModel).filter(String::isNotBlank).joinToString(" · "),
+        workoutGuideline = guideLine ?: listOf(stimulus.name, intensityModel).filter(String::isNotBlank).joinToString(" · "),
     )
 }
 
@@ -1938,6 +1940,7 @@ private fun authMessageResource(message: AuthMessage) = when (message) {
 @StringRes
 private fun todayMessageResource(message: TodayMessage) = when (message) {
     TodayMessage.CouldNotRefresh -> com.plainstride.outbound.feature.today.R.string.today_refresh_failed
+    TodayMessage.ReadinessSavedOffline -> com.plainstride.outbound.feature.today.R.string.today_readiness_saved_offline
     TodayMessage.CouldNotAdjust -> com.plainstride.outbound.feature.today.R.string.today_adjust_failed
     TodayMessage.AdjustmentApplied -> com.plainstride.outbound.feature.today.R.string.today_adjust_applied
     TodayMessage.OriginalKept -> com.plainstride.outbound.feature.today.R.string.today_original_kept

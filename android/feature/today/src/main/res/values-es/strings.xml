@@ -3,19 +3,19 @@
 <resources>
     <string name="today_adjust_applied">Entrenamiento actualizado.</string>
     <string name="today_adjust_failed">No se pudo cambiar el entrenamiento. El entrenamiento previsto no ha cambiado.</string>
-    <string name="today_apply_change">Aplicar cambio</string>
+    <string name="today_apply_change">Aplicar actualización</string>
     <string name="today_bike">Bici</string>
     <string name="today_cached_at">Actualizado a las %1$s · puedes empezar sin conexión</string>
     <string name="today_calories">Calorías</string>
     <string name="today_calories_format">%1$d kcal</string>
     <string name="today_calories_value">300 kcal</string>
     <string name="today_change">Cambiar</string>
-    <string name="today_change_body">¿Qué limitación debe tener en cuenta la alternativa?</string>
+    <string name="today_change_body">¿Qué necesitas cambiar?</string>
     <string name="today_change_comparison">%1$s → %2$s</string>
     <string name="today_change_goal">Cambiar objetivo</string>
     <string name="today_change_plan">Cambiar plan</string>
     <string name="today_change_route">Cambiar</string>
-    <string name="today_change_title">Cambiar el entrenamiento de hoy</string>
+    <string name="today_change_title">Cambiar la carrera de hoy</string>
     <string name="today_change_workout">Cambiar entrenamiento</string>
     <string name="today_cheer">Anímame</string>
     <string name="today_choose_curated">Elige un entrenamiento guiado</string>
@@ -42,9 +42,9 @@
     <string name="today_inbox">Centro de notificaciones</string>
     <string name="today_inbox_count">Centro de notificaciones · %1$d</string>
     <string name="today_indoor">Interior</string>
-    <string name="today_keep_original">Mantener el entrenamiento previsto</string>
+    <string name="today_keep_original">Mantener el original</string>
     <string name="today_launch_dock">Planificado</string>
-    <string name="today_limited_time">Poco tiempo</string>
+    <string name="today_limited_time">Menos tiempo</string>
     <string name="today_low_energy">Poca energía</string>
     <string name="today_minutes">%1$d min</string>
     <string name="today_more">Más opciones de preparación</string>
@@ -54,7 +54,7 @@
     <string name="today_no_plan_body">Empieza con una carrera libre revisada o crea un plan para recibir orientación personalizada.</string>
     <string name="today_offline_body">No hay ninguna recomendación guardada en este dispositivo. Aun así, puedes registrar una carrera libre.</string>
     <string name="today_offline_title">Hoy no tiene conexión</string>
-    <string name="today_optional_note">Nota opcional</string>
+    <string name="today_optional_note">¿Algo más? (opcional)</string>
     <string name="today_original_kept">Se mantiene el entrenamiento previsto.</string>
     <string name="today_outdoor">Exterior</string>
     <string name="today_phases">Fases del entrenamiento</string>
@@ -62,7 +62,7 @@
     <string name="today_planned">Plan</string>
     <string name="today_purpose">¿Por qué este entrenamiento?</string>
     <string name="today_quote">«El siguiente paso es el que cambia el día».</string>
-    <string name="today_recommendation">Cambio recomendado</string>
+    <string name="today_recommendation">Actualización recomendada del plan</string>
     <string name="today_refresh_failed">No se pudo actualizar Hoy. Los entrenamientos guardados siguen disponibles.</string>
     <string name="today_remove_route">Quitar ruta</string>
     <string name="today_retry">Reintentar</string>
@@ -75,7 +75,7 @@
     <string name="today_shoes">Zapatillas</string>
     <string name="today_shoes_new">Nueva zapatilla</string>
     <string name="today_show_alternative">Mostrar una alternativa</string>
-    <string name="today_soreness">Molestias musculares</string>
+    <string name="today_soreness">Dolor muscular o molestias</string>
     <string name="today_start">Empezar</string>
     <string name="today_start_workout">Iniciar %1$s</string>
     <string name="today_stop_at_goal">Pausar al alcanzar la meta</string>
@@ -182,4 +182,19 @@
     <string name="today_race_goal_target_time">Buscar un tiempo</string>
     <string name="today_race_goal_title">Objetivo de carrera</string>
     <string name="today_race_goal_window">Sesiones detalladas hasta %1$s</string>
+    <string name="today_change_close">Cerrar</string>
+    <string name="today_change_energy_body">Una carrera corta y suave mantiene el ritmo sin exigirte completar todo el entrenamiento.</string>
+    <string name="today_change_energy_heading">Prueba 15 minutos suaves</string>
+    <string name="today_change_keep_plan">Mantener el plan original</string>
+    <string name="today_change_original">%1$s · %2$d min</string>
+    <string name="today_change_rest_action">Tomar un día de descanso</string>
+    <string name="today_change_rest_body">Es mejor saltarse una carrera que convertir una molestia en una lesión.</string>
+    <string name="today_change_rest_heading">Descansa hoy</string>
+    <string name="today_change_start_action">Empezar la carrera ajustada</string>
+    <string name="today_change_time_body">Plainstride mantendrá un esfuerzo suave y terminará al cumplirse el tiempo que elijas.</string>
+    <string name="today_change_time_heading">Aprovecha el tiempo que tienes</string>
+    <string name="today_changed_run_detail">Correr · %1$d min · muy suave</string>
+    <string name="today_changed_run_guide">Mantén un esfuerzo suave. Una carrera más corta también ayuda a mantener el hábito.</string>
+    <string name="today_changed_run_title">Carrera suave de %1$d min</string>
+    <string name="today_readiness_saved_offline">Guardado sin conexión. Plainstride sincronizará este registro más tarde.</string>
 </resources>

@@ -10,12 +10,12 @@
     <string name="today_calories_format">%1$d 千卡</string>
     <string name="today_calories_value">300 千卡</string>
     <string name="today_change">调整</string>
-    <string name="today_change_body">新的建议需要考虑哪种限制？</string>
+    <string name="today_change_body">想调整什么？</string>
     <string name="today_change_comparison">%1$s → %2$s</string>
     <string name="today_change_goal">更改目标</string>
     <string name="today_change_plan">更改计划</string>
     <string name="today_change_route">更改</string>
-    <string name="today_change_title">调整今日训练</string>
+    <string name="today_change_title">调整今天的跑步</string>
     <string name="today_change_workout">更改训练</string>
     <string name="today_cheer">为我加油</string>
     <string name="today_choose_curated">选择精选训练</string>
@@ -42,9 +42,9 @@
     <string name="today_inbox">通知中心</string>
     <string name="today_inbox_count">通知中心 · %1$d</string>
     <string name="today_indoor">室内</string>
-    <string name="today_keep_original">保留原计划</string>
+    <string name="today_keep_original">保持原样</string>
     <string name="today_launch_dock">计划训练</string>
-    <string name="today_limited_time">时间有限</string>
+    <string name="today_limited_time">时间不够</string>
     <string name="today_low_energy">精力不足</string>
     <string name="today_minutes">%1$d 分钟</string>
     <string name="today_more">更多训练设置</string>
@@ -54,7 +54,7 @@
     <string name="today_no_plan_body">可以先进行经过审核的自由跑，也可以创建计划，获得个性化指导。</string>
     <string name="today_offline_body">这台设备上没有保存的训练建议。你仍然可以记录自由跑。</string>
     <string name="today_offline_title">今日内容暂时离线</string>
-    <string name="today_optional_note">备注（选填）</string>
+    <string name="today_optional_note">还有其他情况吗？（选填）</string>
     <string name="today_original_kept">已保留原计划。</string>
     <string name="today_outdoor">户外</string>
     <string name="today_phases">训练阶段</string>
@@ -62,7 +62,7 @@
     <string name="today_planned">计划</string>
     <string name="today_purpose">为什么安排这次训练？</string>
     <string name="today_quote">“迈出下一步，今天就会不同。”</string>
-    <string name="today_recommendation">建议调整</string>
+    <string name="today_recommendation">建议的计划调整</string>
     <string name="today_refresh_failed">无法更新今日内容，已保存的训练仍可使用。</string>
     <string name="today_remove_route">移除路线</string>
     <string name="today_retry">重试</string>
@@ -75,7 +75,7 @@
     <string name="today_shoes">跑鞋</string>
     <string name="today_shoes_new">添加新跑鞋</string>
     <string name="today_show_alternative">查看一个替代方案</string>
-    <string name="today_soreness">肌肉酸痛</string>
+    <string name="today_soreness">酸痛或不适</string>
     <string name="today_start">开始</string>
     <string name="today_start_workout">开始%1$s</string>
     <string name="today_stop_at_goal">达到目标时暂停</string>
@@ -182,4 +182,19 @@
     <string name="today_race_goal_target_time">目标用时</string>
     <string name="today_race_goal_title">赛事目标</string>
     <string name="today_race_goal_window">详细训练安排至 %1$s</string>
+    <string name="today_change_close">关闭</string>
+    <string name="today_change_energy_body">短时间的轻松跑能保持运动节奏，不必勉强完成全部训练。</string>
+    <string name="today_change_energy_heading">试试轻松跑 15 分钟</string>
+    <string name="today_change_keep_plan">保留原计划</string>
+    <string name="today_change_original">%1$s · %2$d 分钟</string>
+    <string name="today_change_rest_action">今天休息</string>
+    <string name="today_change_rest_body">少跑一次，胜过让不适发展成伤病。</string>
+    <string name="today_change_rest_heading">今天休息</string>
+    <string name="today_change_start_action">开始调整后的跑步</string>
+    <string name="today_change_time_body">Plainstride 会安排轻松的强度，并在你选择的时间结束。</string>
+    <string name="today_change_time_heading">按你的时间来</string>
+    <string name="today_changed_run_detail">跑步 · %1$d 分钟 · 非常轻松</string>
+    <string name="today_changed_run_guide">保持轻松的强度。跑得短一点，也能延续运动习惯。</string>
+    <string name="today_changed_run_title">轻松跑 %1$d 分钟</string>
+    <string name="today_readiness_saved_offline">已离线保存。Plainstride 稍后会同步本次状态记录。</string>
 </resources>

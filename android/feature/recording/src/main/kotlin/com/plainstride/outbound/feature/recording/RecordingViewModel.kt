@@ -231,9 +231,12 @@ class RecordingViewModel @Inject constructor(
         val isDebugRouteTestLaunch = BuildConfig.DEBUG && RouteTestMode.enabled &&
             configuration.followedRoute != null
         val restored=context.getSharedPreferences(LAUNCH_PREFERENCES,Context.MODE_PRIVATE).getString(LAUNCH_KEY,null)?.let{runCatching{launchJson.decodeFromString<RecordingLaunchConfiguration>(it)}.getOrNull()}
-        // A direct or scheduled Group-event launch carries explicit activity choices; don't
-        // restore a stale launch over its event id or consent context.
-        val base = if (configuration.startImmediately || configuration.followedRoute != null || configuration.activityEventId != null) configuration
+        // Direct, Group-event, and Today changed-run launches carry explicit choices.
+        // A changed run prepares setup without starting yet; its easy time prescription
+        // must still win over saved intervals, race goals, routes, and calorie targets.
+        val carriesExplicitSetup = configuration.startImmediately || configuration.followedRoute != null ||
+            configuration.activityEventId != null || configuration.entrySource == "today_changed_run"
+        val base = if (carriesExplicitSetup) configuration
             else restored?.takeIf { it.activityKind == configuration.activityKind } ?: configuration
         val autoPauseEnabled = context.getSharedPreferences(LAUNCH_PREFERENCES, Context.MODE_PRIVATE)
             .getBoolean(autoPauseKey(base.activityKind), AutoPauseDefaults.enabled(base.activityKind))
@@ -256,7 +259,7 @@ class RecordingViewModel @Inject constructor(
             AnalyticsProperty.ChangeType to "route_test_mode",
             AnalyticsProperty.SelectionType to "enabled",
         )))
-        debugLog("configure source=${effective.entrySource} direct=${configuration.startImmediately} restoredApplied=${!configuration.startImmediately && restored?.activityKind == configuration.activityKind} requestedVoice=${configuration.voiceGuideEnabled} restoredVoice=${restored?.voiceGuideEnabled} effectiveVoice=${effective.voiceGuideEnabled}")
+        debugLog("configure source=${effective.entrySource} direct=${configuration.startImmediately} restoredApplied=${!carriesExplicitSetup && restored?.activityKind == configuration.activityKind} requestedVoice=${configuration.voiceGuideEnabled} restoredVoice=${restored?.voiceGuideEnabled} effectiveVoice=${effective.voiceGuideEnabled}")
         if (!effective.startImmediately) analytics.record(AnalyticsEvent("activity_setup_viewed", mapOf(
                 AnalyticsProperty.Source to effective.entrySource,
                 AnalyticsProperty.ActivityType to effective.activityKind.name.lowercase(),

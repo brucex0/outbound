@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -106,6 +107,16 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Battery2Bar
+import androidx.compose.material.icons.filled.Healing
+import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 
@@ -248,6 +259,25 @@ fun TodayRoute(
             viewModel.trackWorkoutStarted(source)
             onStartWorkout(viewModel.launchIntent(suggestion, source), options)
         },
+        onStartChangedRun = { reason, minutes, options ->
+            val source = "today_changed_run"
+            viewModel.trackWorkoutStarted(source)
+            onStartWorkout(WorkoutLaunchIntent(
+                suggestionId = "changed-${reason.wireValue}-$minutes",
+                plannedWorkoutId = null,
+                title = context.getString(R.string.today_changed_run_title, minutes),
+                modality = Modality.run,
+                stimulus = com.plainstride.outbound.core.model.TrainingStimulus.easyAerobic,
+                durationSeconds = minutes * 60,
+                distanceMeters = null,
+                targetCalories = null,
+                effortLabel = context.getString(R.string.today_changed_run_detail, minutes),
+                intensityModel = "veryEasy",
+                steps = emptyList(),
+                source = source,
+                guideLine = context.getString(R.string.today_changed_run_guide),
+            ), options)
+        },
         onStartFreestyle = onStartFreestyle,
         onReturnToSession = onReturnToSession,
         onSetUpPlan = onSetUpPlan,
@@ -256,7 +286,6 @@ fun TodayRoute(
         onUpdateRaceGoal = viewModel::updateRaceGoal,
         onRaceGoalOpened = viewModel::trackRaceGoalOpened,
         onWorkoutChangeOpened = viewModel::trackWorkoutChangeOpened,
-        onClearWorkoutPreview = viewModel::clearWorkoutPreview,
         onDismissPlanPicker = viewModel::closePlanPicker,
         onRetryPlanPicker = { viewModel.openPlanPicker() },
         onChangePlan = { viewModel.openPlanPicker("plan_details_change") },
@@ -323,6 +352,7 @@ fun TodayScreen(
     weather: WeatherGuidance?,
     onRefresh: () -> Unit,
     onStart: (ActivitySuggestion, String, TodayLaunchOptions) -> Unit,
+    onStartChangedRun: (TodayConstraint, Int, TodayLaunchOptions) -> Unit = { _, _, _ -> },
     onStartFreestyle: (TodayLaunchOptions) -> Unit,
     onReturnToSession: () -> Unit,
     onSetUpPlan: () -> Unit,
@@ -336,7 +366,6 @@ fun TodayScreen(
     onUpdateRaceGoal: suspend (String, com.plainstride.outbound.core.network.RaceGoalUpdateRequest) -> Boolean = { _, _ -> false },
     onRaceGoalOpened: () -> Unit = {},
     onWorkoutChangeOpened: () -> Unit = {},
-    onClearWorkoutPreview: () -> Unit = {},
     onDismissPlanPicker: () -> Unit = {},
     onRetryPlanPicker: () -> Unit = {},
     onSelectPlan: (com.plainstride.outbound.core.network.PlanRecommendation?) -> Unit = {},
@@ -409,9 +438,6 @@ fun TodayScreen(
         }
     }
     var showsChange by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(state.adjustmentDecisionVersion) {
-        if (state.adjustmentDecisionVersion > 0) showsChange = false
-    }
     var showsWeather by rememberSaveable { mutableStateOf(false) }
     var showsRacePlanner by rememberSaveable { mutableStateOf(false) }
     var racePlan by rememberSaveable(saver = androidx.compose.runtime.saveable.listSaver<androidx.compose.runtime.MutableState<TodayRacePlan?>, Any>(
@@ -730,9 +756,14 @@ fun TodayScreen(
         pending = state.pendingAdjustment,
         busy = state.mutationInFlight,
         onDismiss = { showsChange = false },
-        onSubmit = onSubmitConstraint,
-        onDecision = onDecideAdjustment,
-        onSelectionChanged = onClearWorkoutPreview,
+        onApply = { reason, note, minutes ->
+            onSubmitConstraint(reason, changeSuggestion.plannedWorkoutId ?: changeSuggestion.id, note)
+            showsChange = false
+            if (reason != TodayConstraint.Soreness) {
+                onStartChangedRun(reason, minutes, TodayLaunchOptions(indoor, voiceGuideEnabled, companionType, aiCoachEnabled))
+            }
+        },
+        onDecision = { id, accept -> showsChange = false; onDecideAdjustment(id, accept) },
     )
     if (showsWeather && weather != null) {
         val uriHandler = LocalUriHandler.current
@@ -1380,42 +1411,88 @@ private fun ChangeWorkoutSheet(
     pending: AdjustmentProposal?,
     busy: Boolean,
     onDismiss: () -> Unit,
-    onSubmit: (TodayConstraint, String, String?) -> Unit,
+    onApply: (TodayConstraint, String?, Int) -> Unit,
     onDecision: (String, Boolean) -> Unit,
-    onSelectionChanged: () -> Unit,
 ) {
     var selectedConstraint by rememberSaveable { mutableStateOf<TodayConstraint?>(null) }
     var note by rememberSaveable { mutableStateOf("") }
+    var availableMinutes by rememberSaveable { mutableStateOf(15) }
+    val focusManager = LocalFocusManager.current
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text(stringResource(R.string.today_change_title), Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
-            Text(stringResource(R.string.today_change_body), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            TodayConstraint.entries.forEach { choice ->
-                OutlinedButton(
-                    onClick = { selectedConstraint = choice; onSelectionChanged() },
-                    enabled = !busy,
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = if (selectedConstraint == choice) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-                        contentColor = if (selectedConstraint == choice) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
-                    ),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics { selected = selectedConstraint == choice },
-                ) { Text(stringResource(choice.labelResource())) }
-            }
-            OutlinedTextField(note, { note = it.take(160) }, Modifier.fillMaxWidth(), enabled = !busy, label = { Text(stringResource(R.string.today_optional_note)) }, maxLines = 3)
-            if (pending == null) {
-                Button(onClick = { selectedConstraint?.let { onSubmit(it, original.plannedWorkoutId ?: original.id, note.ifBlank { null }) } }, enabled = selectedConstraint != null && !busy, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.today_show_alternative))
+        BoxWithConstraints(Modifier.fillMaxWidth().fillMaxHeight(.85f)) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.today_change_title), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.today_change_close)) }
                 }
-                TextButton(onClick = onDismiss, Modifier.fillMaxWidth(), enabled = !busy) { Text(stringResource(R.string.today_keep_original)) }
-            } else {
-                HorizontalDivider()
-                Text(stringResource(R.string.today_recommendation), style = MaterialTheme.typography.titleMedium)
-                Text(pending.explanation)
-                pending.changes.forEach { Text(stringResource(R.string.today_change_comparison, it.beforeTitle, it.afterTitle), style = MaterialTheme.typography.bodyMedium) }
-                Button(onClick = { onDecision(pending.id, true) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.today_apply_change)) }
-                OutlinedButton(onClick = { onDecision(pending.id, false) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.today_keep_original)) }
+                val reason = selectedConstraint
+                when {
+                    pending != null -> {
+                        Text(stringResource(R.string.today_recommendation), Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
+                        Text(pending.explanation, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                        pending.changes.forEach { change ->
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(change.beforeTitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textDecoration = TextDecoration.LineThrough)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Sync, contentDescription = null)
+                                    Text(change.afterTitle, style = MaterialTheme.typography.titleSmall)
+                                }
+                            }
+                        }
+                        Spacer(Modifier.weight(1f).heightIn(min = 24.dp))
+                        Button(onClick = { onDecision(pending.id, true) }, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                            Icon(Icons.Default.Check, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.today_apply_change))
+                        }
+                        TextButton(onClick = { onDecision(pending.id, false) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.today_change_keep_plan)) }
+                    }
+                    reason != null -> {
+                        Text(stringResource(reason.headingResource()), Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
+                        Text(stringResource(reason.recommendationResource()), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                        if (reason == TodayConstraint.LimitedTime) {
+                            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                                listOf(10, 15, 20).forEachIndexed { index, minutes ->
+                                    SegmentedButton(
+                                        selected = availableMinutes == minutes,
+                                        onClick = { availableMinutes = minutes },
+                                        shape = SegmentedButtonDefaults.itemShape(index, 3),
+                                        modifier = Modifier.heightIn(min = 48.dp),
+                                    ) { Text(stringResource(R.string.today_minutes, minutes)) }
+                                }
+                            }
+                        }
+                        OutlinedTextField(note, { note = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.today_optional_note)) }, minLines = 2, maxLines = 3)
+                        Spacer(Modifier.weight(1f).heightIn(min = 24.dp))
+                        Button(onClick = {
+                            focusManager.clearFocus()
+                            onApply(reason, note.trim().takeIf(String::isNotEmpty), if (reason == TodayConstraint.LimitedTime) availableMinutes else 15)
+                        }, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                            Icon(if (reason == TodayConstraint.Soreness) Icons.Default.Bedtime else Icons.Default.DirectionsRun, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(if (reason == TodayConstraint.Soreness) R.string.today_change_rest_action else R.string.today_change_start_action))
+                        }
+                        TextButton(onClick = onDismiss, Modifier.fillMaxWidth()) { Text(stringResource(R.string.today_keep_original)) }
+                    }
+                    else -> {
+                        Text(stringResource(R.string.today_change_body), Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
+                        Text(stringResource(R.string.today_change_original, original.title, original.durationMinutes), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                        listOf(TodayConstraint.LimitedTime, TodayConstraint.LowEnergy, TodayConstraint.Soreness).forEach { choice ->
+                            OutlinedButton(onClick = { selectedConstraint = choice }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                                Icon(when (choice) {
+                                    TodayConstraint.LimitedTime -> Icons.Default.AccessTime
+                                    TodayConstraint.LowEnergy -> Icons.Default.Battery2Bar
+                                    TodayConstraint.Soreness -> Icons.Default.Healing
+                                }, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(choice.labelResource()), Modifier.weight(1f))
+                                Icon(Icons.Default.ChevronRight, contentDescription = null)
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(20.dp))
             }
-            Spacer(Modifier.height(20.dp))
         }
     }
 }
@@ -1424,5 +1501,16 @@ private fun TodayConstraint.labelResource() = when (this) {
     TodayConstraint.LowEnergy -> R.string.today_low_energy
     TodayConstraint.Soreness -> R.string.today_soreness
     TodayConstraint.LimitedTime -> R.string.today_limited_time
-    TodayConstraint.FeelingGood -> R.string.today_feeling_good
+}
+
+private fun TodayConstraint.headingResource() = when (this) {
+    TodayConstraint.LowEnergy -> R.string.today_change_energy_heading
+    TodayConstraint.Soreness -> R.string.today_change_rest_heading
+    TodayConstraint.LimitedTime -> R.string.today_change_time_heading
+}
+
+private fun TodayConstraint.recommendationResource() = when (this) {
+    TodayConstraint.LowEnergy -> R.string.today_change_energy_body
+    TodayConstraint.Soreness -> R.string.today_change_rest_body
+    TodayConstraint.LimitedTime -> R.string.today_change_time_body
 }

@@ -62,7 +62,10 @@ class OfflineFirstTodayRepository @Inject constructor(
                 persistResult(accountId, localeTag, SUGGESTION, suggestion.await(), ActivitySuggestionEnvelope.serializer(), FIVE_MINUTES),
                 persistResult(accountId, localeTag, PERSONALIZATION, personalization.await(), PersonalizationSnapshot.serializer(), FIVE_MINUTES),
                 persistResult(accountId, localeTag, CATALOG, catalog.await(), StandaloneWorkoutCatalog.serializer(), ONE_DAY),
-            ).firstOrNull { it != null }
+            ).firstOrNull { it != null }.also {
+                // Like iOS, retry queued check-ins after refreshing personalization.
+                flushReadiness(accountId, localeTag)
+            }
         }
     }
 
@@ -131,7 +134,33 @@ class OfflineFirstTodayRepository @Inject constructor(
         }
     }
     override suspend fun updateRunnerProfile(accountId: String, localeTag: String, request: RunnerProfileRequest) = personalizationMutation(accountId, localeTag) { apiCall { api.updateProfile(it, request) } }
-    override suspend fun submitReadiness(accountId: String, localeTag: String, request: ReadinessCheckInRequest) = personalizationMutation(accountId, localeTag) { apiCall { api.submitReadiness(it, request) } }
+    override suspend fun submitReadiness(accountId: String, localeTag: String, request: ReadinessCheckInRequest): Result<PersonalizationSnapshot> = refreshMutex.withLock {
+        // Persist before sending so a failed request or process interruption keeps its
+        // original idempotency key. Account cache cleanup also removes these on sign-out.
+        cache.upsert(AccountCacheEntity(accountId, READINESS_QUEUE, request.idempotencyKey, localeTag,
+            PlainstrideJson.encodeToString(ReadinessCheckInRequest.serializer(), request), null, System.currentTimeMillis(), null))
+        sendReadiness(accountId, localeTag, request).onSuccess {
+            cache.delete(accountId, READINESS_QUEUE, request.idempotencyKey, localeTag)
+        }
+    }
+
+    private suspend fun sendReadiness(accountId: String, localeTag: String, request: ReadinessCheckInRequest) =
+        personalizationMutation(accountId, localeTag) { apiCall { api.submitReadiness(it, request) } }
+
+    private suspend fun flushReadiness(accountId: String, localeTag: String) {
+        for (entry in cache.entries(accountId, READINESS_QUEUE).sortedBy { it.updatedAtEpochMs }) {
+            val request = runCatching { PlainstrideJson.decodeFromString(ReadinessCheckInRequest.serializer(), entry.payloadJson) }
+                .onFailure { android.util.Log.w("PlainstridePlanning", "Readiness retry failed category=invalid_queue_entry") }
+                .getOrNull() ?: break
+            val result = sendReadiness(accountId, localeTag, request)
+            if (result.isFailure) {
+                val category = (result.exceptionOrNull() as? TodayRepositoryException)?.dataError?.javaClass?.simpleName ?: "unknown"
+                android.util.Log.w("PlainstridePlanning", "Readiness retry failed category=$category")
+                break
+            }
+            cache.delete(accountId, READINESS_QUEUE, entry.cacheKey, entry.localeTag)
+        }
+    }
     override suspend fun previewWorkoutAdjustment(request: com.plainstride.outbound.core.network.WorkoutAdjustmentPreviewRequest) =
         authenticated { apiCall { api.previewWorkoutAdjustment(it, request) } }.map { it.adjustment }
     override suspend fun decideAdjustment(accountId: String, localeTag: String, adjustmentId: String, accept: Boolean): Result<Unit> =
@@ -143,7 +172,18 @@ class OfflineFirstTodayRepository @Inject constructor(
                     AdjustmentDecisionRequest(if (accept) "accept" else "reject"),
                 )
             }
-        }.map { Unit }.onSuccess { refresh(accountId, localeTag) }
+        }.map { Unit }.onSuccess {
+            // Clear the confirmed proposal before refetch, even if that refetch is offline.
+            cache.get(accountId, PERSONALIZATION, DEFAULT_KEY, localeTag)?.let { entry ->
+                val snapshot = runCatching { PlainstrideJson.decodeFromString(PersonalizationSnapshot.serializer(), entry.payloadJson) }
+                    .onFailure { android.util.Log.w("PlainstridePlanning", "Adjustment decision cache update failed category=invalid_personalization_cache") }
+                    .getOrNull()
+                if (snapshot?.pendingAdjustment?.id == adjustmentId) {
+                    persist(accountId, localeTag, PERSONALIZATION, snapshot.copy(pendingAdjustment = null), PersonalizationSnapshot.serializer(), FIVE_MINUTES)
+                }
+            }
+            refresh(accountId, localeTag)
+        }
     override suspend fun submitFeedback(accountId: String, localeTag: String, request: WorkoutFeedbackRequest) = personalizationMutation(accountId, localeTag) { apiCall { api.feedback(it, request.workoutId, request) } }
     override suspend fun trainingProfile() = authenticated { apiCall { api.trainingProfile(it) } }
     override suspend fun updateTrainingProfile(request: TrainingProfileRequest) = authenticated { apiCall { api.updateTrainingProfile(it, request) } }
@@ -153,7 +193,9 @@ class OfflineFirstTodayRepository @Inject constructor(
     }
 
     private suspend fun personalizationMutation(accountId: String, localeTag: String, call: suspend (String) -> ApiResult<PersonalizationMutationResponse>): Result<PersonalizationSnapshot> {
-        val result = authenticated(call).map { it.personalization }
+        val result = authenticated(call).map { response ->
+            response.personalization.copy(pendingAdjustment = response.adjustment ?: response.personalization.pendingAdjustment)
+        }
         result.onSuccess { persist(accountId, localeTag, PERSONALIZATION, it, PersonalizationSnapshot.serializer(), FIVE_MINUTES) }
         return result
     }
@@ -191,6 +233,7 @@ class OfflineFirstTodayRepository @Inject constructor(
         const val PLANNING = "planning.state.v2"
         const val SUGGESTION = "planning.suggestion"
         const val PERSONALIZATION = "personalization.snapshot"
+        const val READINESS_QUEUE = "personalization.readiness_queue"
         const val CATALOG = "planning.standalone_catalog"
         const val FIVE_MINUTES = 5 * 60 * 1_000L
         const val ONE_DAY = 24 * 60 * 60 * 1_000L
