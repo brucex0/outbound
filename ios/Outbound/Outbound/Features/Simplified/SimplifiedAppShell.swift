@@ -2548,24 +2548,43 @@ private struct SimplifiedMeView: View {
                                 }
                                 if AuthStore.currentUserId != nil && activityStore.accountStatistics == nil {
                                     AccountStatisticsStatus(store: activityStore)
+                                } else if AuthStore.currentUserId != nil && !hasCurrentWeekStatistics {
+                                    Text(String(localized: "me.week.statistics_unavailable", defaultValue: "Connect to load statistics for this week."))
+                                        .font(.subheadline).foregroundStyle(.secondary)
+                                    Button(String(localized: "common.retry", defaultValue: "Retry")) {
+                                        Task { await activityStore.refreshAccountStatistics() }
+                                    }
                                 } else {
                                 HStack {
-                                    meStat(measurementPreferences.unitSystem.distanceString(meters: weekDistance, fractionDigits: 1), String(localized: "Distance"))
+                                    meStat(measurementPreferences.unitSystem.distanceString(meters: weekDistance, fractionDigits: 1), String(localized: "me.week.total_distance", defaultValue: "Total distance"))
                                     meStat(weekDuration.formatted(), String(localized: "Time"))
                                 }
-                                HStack {
-                                    Text("Plan")
-                                        .foregroundStyle(.secondary)
-                                    Spacer()
-                                    Text(String(
-                                        localized: "plan.weekProgress",
-                                        defaultValue: "\(weekRuns) of \(weekTarget) completed"
-                                    ))
-                                        .font(.subheadline.weight(.semibold))
+                                VStack(alignment: .leading, spacing: OutboundSpacing.compact) {
+                                    HStack {
+                                        Text(String(localized: "me.week.run_goal", defaultValue: "Weekly run goal"))
+                                            .foregroundStyle(.secondary)
+                                        Spacer()
+                                        if let progress = weeklyRunProgress {
+                                            Text(progress.targetRuns.map { target in
+                                                String(format: String(localized: "me.week.run_progress", defaultValue: "%1$d of %2$d"), progress.completedRuns, target)
+                                            } ?? String(format: String(localized: "me.week.runs_logged", defaultValue: "Runs logged: %d"), progress.completedRuns))
+                                                .font(.subheadline.weight(.semibold))
+                                        }
+                                    }
+                                    if let progress = weeklyRunProgress, let target = progress.targetRuns {
+                                        ProgressView(value: Double(min(progress.completedRuns, target)), total: Double(target))
+                                            .tint(OutboundPalette.companion)
+                                        Text(weeklyRunDetail(progress))
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    } else {
+                                        Text(weeklyRunProgress == nil
+                                             ? String(localized: "me.week.run_goal_unavailable", defaultValue: "Run goal unavailable")
+                                             : String(localized: "me.week.no_run_goal", defaultValue: "No weekly run goal set."))
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
-                                ProgressView(value: Double(weekRuns), total: Double(max(1, weekTarget)))
-                                    .tint(OutboundPalette.companion)
-                                AIExplanationView(text: weekGuideLine)
                                     AccountStatisticsStatus(store: activityStore)
                                 }
                             }
@@ -2740,6 +2759,7 @@ private struct SimplifiedMeView: View {
             .onAppear {
                 handlePendingAssistantTarget(appNavigationStore.pendingAssistantTarget)
                 trackCalorieExposureIfNeeded()
+                Task { await activityStore.refreshAccountStatistics() }
             }
             .onChange(of: activityStore.activities) { _, _ in trackCalorieExposureIfNeeded() }
             .onChange(of: onboardingStore.latestWeightKilograms) { _, _ in trackCalorieExposureIfNeeded() }
@@ -2892,6 +2912,9 @@ private struct SimplifiedMeView: View {
         async let connectionsLoad: Void = loadConnectionsIfNeeded()
         async let featureControlsLoad: Void = loadFeatureControls()
         _ = await (profileLoad, trainingProfileLoad, connectionsLoad, featureControlsLoad)
+        await analyticsManager?.track(.init(.featureExposed, properties: [
+            .feature: .string("me_weekly_run_goal"),
+        ]))
         await analyticsManager?.track(.init(.featureExposed, properties: [
             .feature: .string("me_connections_preview"),
         ]))
@@ -3068,22 +3091,56 @@ private struct SimplifiedMeView: View {
         return String(localized: "\(plan.localizedTitle) · Week \(week) of \(plan.durationWeeks)")
     }
 
-    private var planDetail: String { String(localized: "\(weekTarget) runs per week") }
-    private var weekTarget: Int { trainingPlanStore.currentWeek?.targetSessions ?? trainingPlanStore.activePlan?.sessionsPerWeek ?? 3 }
-    private var weekRuns: Int { trainingPlanStore.currentWeek?.completedSessions ?? activityStore.accountStatistics?.currentWeek.activityCount ?? (AuthStore.currentUserId == nil ? currentWeekActivities.count : 0) }
+    private var planDetail: String {
+        guard let plan = trainingPlanStore.activePlan else { return String(localized: "Choose a plan") }
+        return String(format: String(localized: "me.plan.weekly_sessions", defaultValue: "Weekly sessions: %d"), plan.sessionsPerWeek)
+    }
+    private var hasCurrentWeekStatistics: Bool {
+        guard let snapshot = activityStore.accountStatistics else { return false }
+        let now = Date()
+        return snapshot.weekStart <= now && now < snapshot.weekEnd
+            && snapshot.timeZone == TimeZone.current.identifier
+            && snapshot.firstWeekday == Calendar.current.firstWeekday
+    }
+    private var weeklyRunProgress: AccountStatisticsSnapshot.WeeklyRunGoal? {
+        if AuthStore.currentUserId != nil { return activityStore.accountStatistics?.weeklyRunGoal }
+        let target = trainingPlanStore.activePlan.flatMap { $0.sport == .run ? $0.sessionsPerWeek : nil }
+        return .init(completedRuns: currentWeekActivities.filter {
+                         $0.activityType == .running && ActivitySaveEligibility.evaluate(durationSecs: $0.durationSecs, distanceM: $0.distanceM) == .eligible
+                     }.count,
+                     targetRuns: target, scheduledRunsByToday: nil)
+    }
     private var weekDistance: Double { activityStore.accountStatistics?.currentWeek.distanceMeters ?? (AuthStore.currentUserId == nil ? currentWeekActivities.reduce(0) { $0 + $1.distanceM } : 0) }
     private var weekDuration: Int { activityStore.accountStatistics?.currentWeek.durationSeconds ?? (AuthStore.currentUserId == nil ? currentWeekActivities.reduce(0) { $0 + $1.durationSecs } : 0) }
-    private var weekGuideLine: String {
-        if let line = trainingPlanStore.currentWeek?.guideLine { return line }
-        if weekRuns >= weekTarget { return String(localized: "You completed this week’s rhythm.") }
-        let remaining = max(0, weekTarget - weekRuns)
-        return remaining == 1
-            ? String(localized: "One comfortable run completes the week.")
-            : String(localized: "\(remaining) comfortable runs complete the week.")
+    private func weeklyRunDetail(_ progress: AccountStatisticsSnapshot.WeeklyRunGoal) -> String {
+        // Cached and pending snapshots keep their last complete counts, without a live schedule claim.
+        if AuthStore.currentUserId != nil && (activityStore.statisticsAreCached || activityStore.pendingActivityCount > 0
+            || activityStore.accountStatistics.map { !Calendar.current.isDateInToday($0.computedAt) } == true) {
+            return String(localized: "me.week.all_runs_count", defaultValue: "Runs count once they reach 5 min or 500 m.")
+        }
+        guard let target = progress.targetRuns else { return "" }
+        if progress.completedRuns > target {
+            return String(format: String(localized: "me.week.above_goal", defaultValue: "Above weekly run goal: %d"), progress.completedRuns - target)
+        }
+        if progress.completedRuns == target {
+            return String(localized: "me.week.goal_reached", defaultValue: "Weekly run goal reached.")
+        }
+        if let scheduled = progress.scheduledRunsByToday {
+            let difference = progress.completedRuns - scheduled
+            if difference > 0 {
+                return String(format: String(localized: "me.week.schedule_ahead", defaultValue: "%d ahead of your usual schedule"), difference)
+            }
+            if difference == 0 {
+                return String(localized: "me.week.schedule_on_track", defaultValue: "On your usual schedule")
+            }
+            return String(format: String(localized: "me.week.schedule_remaining", defaultValue: "%d more to match your usual schedule by today"), -difference)
+        }
+        return String(format: String(localized: "me.week.runs_remaining", defaultValue: "Remaining this week: %d"), target - progress.completedRuns)
     }
     private var currentWeekActivities: [SavedActivity] {
-        guard let interval = Calendar.current.dateInterval(of: .weekOfYear, for: Date()) else { return [] }
-        return activityStore.activities.filter { interval.contains($0.startedAt) }
+        let now = Date()
+        guard let interval = Calendar.current.dateInterval(of: .weekOfYear, for: now) else { return [] }
+        return activityStore.activities.filter { $0.startedAt >= interval.start && $0.startedAt < interval.end && $0.startedAt <= now }
     }
     private var recognitionSection: some View {
         NavigationLink {

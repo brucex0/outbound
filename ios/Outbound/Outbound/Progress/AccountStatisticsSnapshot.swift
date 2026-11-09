@@ -12,10 +12,17 @@ struct AccountStatisticsSnapshot: Codable {
     let sports: [String: ProgressStatsSnapshot]
     let lifetime: ProgressPeriodTotals
     let currentWeek: ProgressPeriodTotals
+    let weeklyRunGoal: WeeklyRunGoal?
     let weekStart: Date
     let weekEnd: Date
     let gear: [String: GearTotals]
     let outboundActivityCount: Int
+    struct WeeklyRunGoal: Codable {
+        let completedRuns: Int
+        let targetRuns: Int?
+        /// Chosen usual weekdays, not completion of prescribed workouts.
+        let scheduledRunsByToday: Int?
+    }
     struct GearTotals: Codable { let distanceMeters: Double; let lastUsedAt: Date? }
 }
 

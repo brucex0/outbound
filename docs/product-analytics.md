@@ -405,6 +405,8 @@ The Watch app toggle, automatic Plainstride Watch imports, and allowlisted lap/g
 
 ## Account Statistics
 
+- iOS and Android Me weekly summaries emit `feature_exposed` with only `feature=me_weekly_run_goal`. Goal frequency, activity counts, schedule differences, dates, source IDs, and health measurements are excluded. Existing server-statistics refresh and Progress-entry events remain unchanged.
+
 - Successful server snapshot refresh emits existing `feature_exposed` with `feature = server_statistics`. Existing Progress controls and insight exposure events retain their coarse/semantic properties. Snapshot metrics, evidence, account/activity/source IDs, routes, timestamps, and raw errors never enter analytics.
 
 ## iOS App Review

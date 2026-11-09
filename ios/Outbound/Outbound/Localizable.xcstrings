@@ -44742,6 +44742,344 @@
         }
       }
     },
+    "me.week.total_distance": {
+      "comment": "Me weekly account summary. Counts refer to saved runs, independently of prescribed workout completion.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total distance"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distancia total"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "总距离"
+          }
+        }
+      }
+    },
+    "me.week.run_goal": {
+      "comment": "Me weekly account summary. Counts refer to saved runs, independently of prescribed workout completion.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weekly run goal"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objetivo semanal de carrera"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每周跑步目标"
+          }
+        }
+      }
+    },
+    "me.week.run_progress": {
+      "comment": "Me weekly account summary. Counts refer to saved runs, independently of prescribed workout completion.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d of %2$d"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d de %2$d"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d / %2$d"
+          }
+        }
+      }
+    },
+    "me.week.run_goal_unavailable": {
+      "comment": "Me weekly account summary. Counts refer to saved runs, independently of prescribed workout completion.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run goal unavailable"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objetivo de carrera no disponible"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步目标暂不可用"
+          }
+        }
+      }
+    },
+    "me.week.no_run_goal": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No weekly run goal set."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay un objetivo semanal de carrera."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "尚未设置每周跑步目标。"
+          }
+        }
+      }
+    },
+    "me.week.all_runs_count": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runs count once they reach 5 min or 500 m."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las carreras cuentan a partir de 5 min o 500 m."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步达到 5 分钟或 500 米即可计入。"
+          }
+        }
+      }
+    },
+    "me.week.goal_reached": {
+      "comment": "Me weekly account summary. Counts refer to saved runs, independently of prescribed workout completion.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weekly run goal reached."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objetivo semanal de carrera cumplido."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已完成每周跑步目标。"
+          }
+        }
+      }
+    },
+    "me.week.runs_remaining": {
+      "comment": "Me weekly account summary. Counts refer to saved runs, independently of prescribed workout completion.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remaining this week: %d"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pendientes esta semana: %d"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本周还需：%d 次"
+          }
+        }
+      }
+    },
+    "me.plan.weekly_sessions": {
+      "comment": "Me weekly account summary. Counts refer to saved runs, independently of prescribed workout completion.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weekly sessions: %d"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesiones semanales: %d"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每周训练：%d 次"
+          }
+        }
+      }
+    },
+    "me.week.statistics_unavailable": {
+      "comment": "Me weekly account summary. Counts refer to saved runs, independently of prescribed workout completion.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect to load statistics for this week."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conéctate para cargar las estadísticas de esta semana."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请联网加载本周统计。"
+          }
+        }
+      }
+    },
+    "me.week.above_goal": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Above weekly run goal: %d"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Por encima del objetivo semanal: %d"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "超出每周跑步目标：%d 次"
+          }
+        }
+      }
+    },
+    "me.week.runs_logged": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runs logged: %d"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carreras registradas: %d"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已跑：%d 次"
+          }
+        }
+      }
+    },
+    "me.week.schedule_ahead": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d ahead of your usual schedule"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d por delante de tu horario habitual"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "比常用安排多跑 %d 次"
+          }
+        }
+      }
+    },
+    "me.week.schedule_on_track": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On your usual schedule"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Al día con tu horario habitual"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "与常用安排一致"
+          }
+        }
+      }
+    },
+    "me.week.schedule_remaining": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d more to match your usual schedule by today"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faltan %d para cumplir tu horario habitual hasta hoy"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "截至今天还需跑 %d 次以跟上常用安排"
+          }
+        }
+      }
+    },
     "me.recent.title": {
       "localizations": {
         "en": {
