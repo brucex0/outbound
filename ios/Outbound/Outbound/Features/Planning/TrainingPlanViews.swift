@@ -318,6 +318,8 @@ struct ActiveTrainingPlanDetailView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
+                if let goal = activePlan.raceGoal { RaceGoalCard(goal: goal, roadmap: activePlan.roadmap) }
+
                 TrainingPlanManagementActions(onChangePlan: onChangePlan, onEndPlan: onEndPlan)
 
                 VStack(alignment: .leading, spacing: 10) {
@@ -517,6 +519,8 @@ struct ActiveTrainingPlanPendingDetailView: View {
                     activeStat("Target time", value: "\(activePlan.targetWeeklyMinutes) min")
                     activeStat("Long session", value: "\(activePlan.longSessionMinutes) min")
                 }
+
+                if let goal = activePlan.raceGoal { RaceGoalCard(goal: goal, roadmap: activePlan.roadmap) }
 
                 TrainingPlanManagementActions(onChangePlan: onChangePlan, onEndPlan: onEndPlan)
 

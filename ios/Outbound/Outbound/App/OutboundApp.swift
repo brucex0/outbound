@@ -1002,6 +1002,9 @@ struct ActiveTrainingPlan: Codable, Identifiable, Equatable {
     let longSessionMinutes: Int
     let createdAt: Date
 
+    var raceGoal: SavedRaceGoal? = nil
+    var roadmap: RaceGoalRoadmap? = nil
+
     var localizedTitle: String {
         String(localized: String.LocalizationValue(titleKey))
     }
@@ -1221,6 +1224,13 @@ final class TrainingPlanStore: ObservableObject {
         let state = try await api.createPersonalizedTrainingPlan(request, readiness: lastReadiness)
         try Task.checkCancellation()
         applyServerState(state, now: now)
+    }
+
+    func updateRaceGoal(_ goal: SavedRaceGoal, request: RaceGoalUpdateRequest) async throws {
+        refreshTask?.cancel()
+        let state = try await api.updateRaceGoal(goalID: goal.id, request: request, readiness: lastReadiness)
+        try Task.checkCancellation()
+        applyServerState(state, now: Date())
     }
 
     func clearActivePlan(now: Date = Date()) {

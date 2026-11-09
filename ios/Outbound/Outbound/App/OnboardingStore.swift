@@ -81,6 +81,8 @@ struct PlanBuilderDraft: Codable, Equatable {
     var comfortableMinutes = 30
     var sessionsPerWeek = 3
     var availableMinutes = 30
+    var shortRunSessions: Bool?
+    var optionalMobility: Bool?
     var preferredDays: [String] = []
     var eventDistanceMeters: Double?
     var eventDistanceConfirmed: Bool?

@@ -357,8 +357,9 @@ struct SimplifiedOnboardingFlow: View {
                         draft.preferredDays = Array(draft.preferredDays.prefix(count))
                     }
                 }
-            Stepper(String(format: String(localized: "plan_builder.week.duration", defaultValue: "About %d min per session"), locale: .autoupdatingCurrent, draft.availableMinutes), value: $draft.availableMinutes, in: 10...120, step: 5)
+            Stepper(String(format: String(localized: "plan_builder.race_cap"), locale: .autoupdatingCurrent, draft.availableMinutes), value: $draft.availableMinutes, in: (draft.shortRunSessions == true ? 10 : 25)...120, step: 5)
                 .planBuilderCard()
+            planPreferences
             Text(String(localized: "plan_builder.week.preferred_days", defaultValue: "Preferred days (optional)"))
                 .font(.headline)
             LazyVGrid(columns: Self.dayColumns, alignment: .leading, spacing: 8) {
@@ -369,6 +370,16 @@ struct SimplifiedOnboardingFlow: View {
             TextField(String(localized: "plan_builder.week.constraints", defaultValue: "Injury, illness, travel, or schedule constraints (optional)"), text: $draft.constraints, axis: .vertical)
                 .focused($focusedInput, equals: "draft_constraints")
                 .textFieldStyle(.roundedBorder)
+        }
+    }
+
+    private var planPreferences: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(String(localized: "plan_builder.race_duration_detail")).font(.caption).foregroundStyle(.secondary)
+            Toggle(String(localized: "plan_builder.race_short"), isOn: Binding(get: { draft.shortRunSessions == true }, set: { draft.shortRunSessions = $0; trackAnswerEdit("short_sessions"); if !$0 { draft.availableMinutes = max(25, draft.availableMinutes) } }))
+            Text(String(localized: "plan_builder.race_short_detail")).font(.caption).foregroundStyle(.secondary)
+            Toggle(String(localized: "plan_builder.race_mobility"), isOn: Binding(get: { draft.optionalMobility == true }, set: { draft.optionalMobility = $0; trackAnswerEdit("optional_mobility") }))
+            Text(String(localized: "plan_builder.race_mobility_detail")).font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -474,6 +485,7 @@ struct SimplifiedOnboardingFlow: View {
             }
             summaryRow(String(localized: "plan_builder.review.activities", defaultValue: "Activity mix"), draft.activities.map(\.title).joined(separator: " · "))
             summaryRow(String(localized: "plan_builder.review.week", defaultValue: "Realistic week"), String(format: String(localized: "plan_builder.review.week_value", defaultValue: "%1$d sessions · about %2$d min each"), locale: .autoupdatingCurrent, draft.sessionsPerWeek, draft.availableMinutes))
+            planPreferences
         }
     }
 
@@ -496,7 +508,7 @@ struct SimplifiedOnboardingFlow: View {
             summaryRow(String(localized: "plan_builder.review.activities", defaultValue: "Activity mix"), draft.activities.map(\.title).joined(separator: " · "))
             Text(String(localized: "plan_builder.result.week", defaultValue: "Your starting week")).font(.title3.weight(.bold))
             if let week = trainingPlanStore.currentWeek {
-                let totalMinutes = week.scheduledWorkouts.reduce(0) { $0 + $1.durationMinutesRounded }
+                let totalMinutes = week.scheduledWorkouts.filter { !$0.isOptional }.reduce(0) { $0 + $1.durationMinutesRounded }
                 summaryRow(
                     String(localized: "plan_builder.result.total_time", defaultValue: "Starting-week time"),
                     String(format: String(localized: "plan_builder.result.total_time_value", defaultValue: "%d min"), locale: .autoupdatingCurrent, totalMinutes)
@@ -516,7 +528,7 @@ struct SimplifiedOnboardingFlow: View {
             VStack(alignment: .leading, spacing: 10) {
                 Button(String(localized: "plan_builder.result.easier", defaultValue: "Make it easier")) {
                     draft.sessionsPerWeek = max(1, draft.sessionsPerWeek - 1)
-                    draft.availableMinutes = max(10, draft.availableMinutes - 5)
+                    draft.availableMinutes = max(draft.shortRunSessions == true ? 10 : 25, draft.availableMinutes - 5)
                     step = .week
                 }
                 Button(String(localized: "plan_builder.result.change_days", defaultValue: "Change days")) { step = .week }
@@ -687,7 +699,7 @@ struct SimplifiedOnboardingFlow: View {
             daysPerWeekTarget: boundedSessionsPerWeek(draft.sessionsPerWeek),
             maxSessionMinutes: draft.availableMinutes,
             riskTolerance: draft.baselineContext == .returningAfterBreak ? "conservative" : "balanced",
-            constraints: ["notes": draft.constraints].filter { !$0.value.isEmpty }
+            constraints: ["notes": draft.constraints, "shortRunSessions": String(draft.shortRunSessions == true), "optionalMobility": String(draft.optionalMobility == true)].filter { !$0.value.isEmpty }
         )
     }
 
@@ -1438,7 +1450,7 @@ struct SimplifiedOnboardingFlow: View {
             let inferredSessionsPerWeek = boundedSessionsPerWeek(setup.sessionsPerWeek)
             draft.recentSessionsPerWeek = inferredSessionsPerWeek
             draft.sessionsPerWeek = inferredSessionsPerWeek
-            draft.availableMinutes = setup.maxSessionMinutes
+            draft.availableMinutes = max(draft.shortRunSessions == true ? 10 : 25, setup.maxSessionMinutes)
             draft.preferredDays = Array(setup.preferredDays.prefix(inferredSessionsPerWeek))
             if let comfortable = context.observedBaseline?.comfortableMinutes {
                 draft.comfortableMinutes = comfortable
@@ -1453,7 +1465,7 @@ struct SimplifiedOnboardingFlow: View {
         }
         if context.suggestedSetup == nil, let schedule = context.previousSchedule {
             draft.sessionsPerWeek = boundedSessionsPerWeek(schedule.sessionsPerWeek)
-            draft.availableMinutes = schedule.maxSessionMinutes
+            draft.availableMinutes = max(draft.shortRunSessions == true ? 10 : 25, schedule.maxSessionMinutes)
             draft.preferredDays = Array(schedule.preferredDays.prefix(draft.sessionsPerWeek))
         }
         if savedTrainingProfile == nil {

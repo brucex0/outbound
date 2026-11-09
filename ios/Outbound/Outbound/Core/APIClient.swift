@@ -456,6 +456,11 @@ final class APIClient {
         )
     }
 
+    func updateRaceGoal(goalID: String, request: RaceGoalUpdateRequest, readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
+        let state: PlanningAPIStateResponse = try await patch("/planning/goals/\(goalID)", body: request)
+        return state.trainingPlanState(readiness: readiness)
+    }
+
     func clearActiveTrainingPlan(readiness: DailyReadiness?) async throws -> TrainingPlanStateResponse {
         let state: PlanningAPIStateResponse = try await delete("/planning/plan")
         let activitySuggestion = try? await fetchActivitySuggestion()
@@ -1379,7 +1384,7 @@ private extension PlanningAPIStateResponse {
             ?? fallbackRecommendation?.sessionsPerWeek
             ?? max(1, scheduledWorkouts.count)
         let targetWeeklyMinutes = fallbackRecommendation?.targetWeeklyMinutes
-            ?? max(20, scheduledWorkouts.reduce(0) { $0 + $1.durationMinutesRounded })
+            ?? max(20, scheduledWorkouts.filter { !$0.isOptional }.reduce(0) { $0 + $1.durationMinutesRounded })
         let longSessionMinutes = goal.maxSessionMinutes
             ?? fallbackRecommendation?.longSessionMinutes
             ?? max(20, upcoming.map { Int(ceil(Double($0.durationSeconds) / 60.0)) }.max() ?? 30)
@@ -1395,14 +1400,16 @@ private extension PlanningAPIStateResponse {
             sessionsPerWeek: sessionsPerWeek,
             targetWeeklyMinutes: targetWeeklyMinutes,
             longSessionMinutes: longSessionMinutes,
-            createdAt: createdAt
+            createdAt: createdAt,
+            raceGoal: goal.type == "eventPreparation" ? SavedRaceGoal(id: goal.id, targetDate: goal.targetDate, targetDistanceMeters: goal.targetDistanceMeters, eventIntent: goal.eventIntent ?? "finish", targetTimeSeconds: goal.targetTimeSeconds, daysPerWeekTarget: sessionsPerWeek, maxSessionMinutes: longSessionMinutes, shortRunSessions: goal.shortRunSessions ?? false, optionalMobility: goal.optionalMobility ?? false, editable: plan.source == "generated") : nil,
+            roadmap: roadmap
         )
 
         let completedWorkouts = weekWorkouts.filter { $0.status == "completed" }
-        let completedSessions = completedWorkouts.count
-        let completedMinutes = completedWorkouts.reduce(0) { $0 + Int(ceil(Double($1.durationSeconds) / 60.0)) }
-        let targetMinutes = scheduledWorkouts.reduce(0) { $0 + $1.durationMinutesRounded }
-        let targetSessions = scheduledWorkouts.count
+        let completedSessions = completedWorkouts.filter { $0.prescription?.optional != true }.count
+        let completedMinutes = completedWorkouts.filter { $0.prescription?.optional != true }.reduce(0) { $0 + Int(ceil(Double($1.durationSeconds) / 60.0)) }
+        let targetMinutes = scheduledWorkouts.filter { !$0.isOptional }.reduce(0) { $0 + $1.durationMinutesRounded }
+        let targetSessions = scheduledWorkouts.filter { !$0.isOptional }.count
         let progressPercent = min(
             1,
             max(
@@ -1423,7 +1430,7 @@ private extension PlanningAPIStateResponse {
             focus: BuiltinWorkoutText.localized(plan.currentPhase.capitalized),
             weekSummary: currentVersion?.summary ?? "This week is being generated from your current training data.",
             scheduledWorkouts: scheduledWorkouts,
-            notes: latestAdjustment.map { [$0.message] } ?? []
+            notes: latestAdjustment.map { [String(localized: String.LocalizationValue($0.message))] } ?? []
         )
 
         let apiWorkout = today ?? upcoming.first
@@ -1491,16 +1498,14 @@ private extension PlanningAPIStateResponse {
         switch latestAdjustment.eventType {
         case "workoutMissed":
             return String(
-                localized: "plan.adjustment.missedWorkout",
-                defaultValue: "Missed workout moved forward—no catch-up needed."
+                localized: "today.race_goal.missed"
             )
         case "workoutSkipped":
             return String(
-                localized: "plan.adjustment.skippedWorkout",
-                defaultValue: "Skipped workout moved forward—no catch-up needed."
+                localized: "today.race_goal.missed"
             )
         default:
-            return latestAdjustment.message
+            return String(localized: String.LocalizationValue(latestAdjustment.message))
         }
     }
 
@@ -1597,10 +1602,12 @@ private extension PlanningAPIWorkout {
             distanceLabel: distanceMeters.map { APIDateParser.distanceLabel(meters: $0) },
             targetCalories: targetCalories,
             steps: targetCalories == nil ? steps : [],
-            isOptional: false
+            isOptional: prescription?.optional ?? false
         )
     }
 }
+
+private struct PlanningWorkoutPrescription: Decodable { let optional: Bool? }
 
 private extension PlanningAPIWorkoutBlock {
     func trainingPlanSteps(workoutID: String) -> [TrainingPlanWorkoutStep] {
@@ -2320,6 +2327,7 @@ private struct PlanningReadinessRequest: Encodable {
 
 private struct PlanningAPIStateResponse: Decodable {
     let goal: PlanningAPIGoal?
+    let roadmap: RaceGoalRoadmap?
     let plan: PlanningAPIPlan?
     let currentVersion: PlanningAPIVersion?
     let today: PlanningAPIWorkout?
@@ -2338,6 +2346,10 @@ private struct PlanningAPIGoal: Decodable {
     let targetDistanceMeters: Double?
     let targetDate: String?
     let reviewHorizonWeeks: Int?
+    let eventIntent: String?
+    let targetTimeSeconds: Int?
+    let shortRunSessions: Bool?
+    let optionalMobility: Bool?
     let daysPerWeekTarget: Int?
     let maxSessionMinutes: Int?
     let createdAt: String?
@@ -2367,6 +2379,7 @@ private struct PlanningAPIWorkout: Decodable {
     let targetCalories: Int?
     let isKeyWorkout: Bool
     let status: String
+    let prescription: PlanningWorkoutPrescription?
     let blocks: [PlanningAPIWorkoutBlock]
 }
 

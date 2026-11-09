@@ -69963,6 +69963,1179 @@
           }
         }
       }
+    },
+    "today.race_goal.title": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Race goal"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objetivo de carrera"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "赛事目标"
+          }
+        }
+      }
+    },
+    "today.race_goal.edit": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit goal"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar objetivo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "编辑目标"
+          }
+        }
+      }
+    },
+    "today.race_goal.save": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save goal"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar objetivo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存目标"
+          }
+        }
+      }
+    },
+    "today.race_goal.cancel": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取消"
+          }
+        }
+      }
+    },
+    "today.race_goal.distance": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Event distance"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distancia de la carrera"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "赛事距离"
+          }
+        }
+      }
+    },
+    "today.race_goal.date": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Event date"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fecha de la carrera"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "赛事日期"
+          }
+        }
+      }
+    },
+    "today.race_goal.finish": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finish comfortably"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminar con comodidad"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松完赛"
+          }
+        }
+      }
+    },
+    "today.race_goal.perform": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perform strongly"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rendir al máximo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "争取好成绩"
+          }
+        }
+      }
+    },
+    "today.race_goal.target_time": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target a time"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar un tiempo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标用时"
+          }
+        }
+      }
+    },
+    "today.race_goal.intent": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What matters most?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué es lo más importante?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最重要的目标是什么？"
+          }
+        }
+      }
+    },
+    "today.race_goal.finish_time": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target finish time"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiempo objetivo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标完赛用时"
+          }
+        }
+      }
+    },
+    "today.race_goal.days": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runs per week: %d"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carreras por semana: %d"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每周跑步：%d 次"
+          }
+        }
+      }
+    },
+    "today.race_goal.cap": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maximum total session: %d min"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duración máxima total: %d min"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单次总时长上限：%d 分钟"
+          }
+        }
+      }
+    },
+    "today.race_goal.duration_detail": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session time includes warmup and cooldown. Runs normally include at least 15 minutes of main running or run-walk time."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La sesión incluye calentamiento y vuelta a la calma. Normalmente tendrás al menos 15 minutos de carrera o carrera y caminata en la parte principal."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单次总时长包含热身和放松。跑步或跑走交替的主要训练通常至少为 15 分钟。"
+          }
+        }
+      }
+    },
+    "today.race_goal.short": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I prefer shorter sessions"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prefiero sesiones más cortas"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我希望安排较短的训练"
+          }
+        }
+      }
+    },
+    "today.race_goal.short_detail": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow less than 15 minutes of main running when my selected total time is short."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir menos de 15 minutos de carrera principal cuando el tiempo total que elija sea corto."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当我选择较短的总时长时，允许主要跑步训练少于 15 分钟。"
+          }
+        }
+      }
+    },
+    "today.race_goal.mobility": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add optional 10-minute mobility"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir 10 minutos opcionales de movilidad"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加可选的 10 分钟灵活性练习"
+          }
+        }
+      }
+    },
+    "today.race_goal.mobility_detail": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional mobility is extra and does not replace your weekly runs."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La movilidad es un extra opcional y no sustituye tus carreras semanales."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "灵活性练习是额外的可选项目，不会替代每周跑步。"
+          }
+        }
+      }
+    },
+    "today.race_goal.countdown": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d days to event"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faltan %d días para la carrera"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距离赛事还有 %d 天"
+          }
+        }
+      }
+    },
+    "today.race_goal.phase": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current phase: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fase actual: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前阶段：%@"
+          }
+        }
+      }
+    },
+    "today.race_goal.roadmap": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Road to race day"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camino al día de la carrera"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通往比赛日"
+          }
+        }
+      }
+    },
+    "today.race_goal.window": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detailed sessions through %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesiones detalladas hasta %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "详细训练安排至 %@"
+          }
+        }
+      }
+    },
+    "today.race_goal.rolling": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The overall phases lead to your event. Detailed sessions refill automatically as you train."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las fases generales te llevan hasta la carrera. Las sesiones detalladas se renuevan automáticamente mientras entrenas."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "整体训练阶段衔接到比赛日。详细训练会随着你的进展自动补充。"
+          }
+        }
+      }
+    },
+    "today.race_goal.base": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Base"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Base"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "基础期"
+          }
+        }
+      }
+    },
+    "today.race_goal.build": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Build"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desarrollo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提升期"
+          }
+        }
+      }
+    },
+    "today.race_goal.sharpen": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sharpen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afinamiento"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "专项强化期"
+          }
+        }
+      }
+    },
+    "today.race_goal.taper": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taper"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descarga"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "赛前减量期"
+          }
+        }
+      }
+    },
+    "today.race_goal.recovery": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recovery"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperación"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复期"
+          }
+        }
+      }
+    },
+    "today.race_goal.maintenance": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maintenance"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantenimiento"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "维持期"
+          }
+        }
+      }
+    },
+    "today.race_goal.saved": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Goal updated"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objetivo actualizado"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标已更新"
+          }
+        }
+      }
+    },
+    "today.race_goal.failed": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not update your goal. Refresh the plan and try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo actualizar tu objetivo. Actualiza el plan e inténtalo de nuevo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法更新目标。请刷新计划后重试。"
+          }
+        }
+      }
+    },
+    "today.race_goal.invalid": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose an event distance, a future date, and a valid finish time."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige una distancia, una fecha futura y un tiempo objetivo válido."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请选择赛事距离、未来日期和有效的目标用时。"
+          }
+        }
+      }
+    },
+    "today.race_goal.optional": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opcional"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可选"
+          }
+        }
+      }
+    },
+    "today.race_goal.km": {
+      "comment": "[android:today] Saved race goal and editor. Session cap includes preparation and cooldown.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distance in kilometers"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distancia en kilómetros"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距离（公里）"
+          }
+        }
+      }
+    },
+    "today.race_goal.decrease": {
+      "comment": "[android:today] Accessible adjustment label; placeholder is the field name and current value.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Decrease %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reducir %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "减少%@"
+          }
+        }
+      }
+    },
+    "today.race_goal.increase": {
+      "comment": "[android:today] Accessible adjustment label; placeholder is the field name and current value.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Increase %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aumentar %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "增加%@"
+          }
+        }
+      }
+    },
+    "plan_builder.race_short": {
+      "comment": "[android:onboarding] Explicit plan duration and optional mobility preference.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I prefer shorter sessions"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prefiero sesiones más cortas"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "我希望安排较短的训练"
+          }
+        }
+      }
+    },
+    "plan_builder.race_short_detail": {
+      "comment": "[android:onboarding] Explicit plan duration and optional mobility preference.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow less than 15 minutes of main running when my selected total time is short."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir menos de 15 minutos de carrera principal cuando el tiempo total que elija sea corto."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当我选择较短的总时长时，允许主要跑步训练少于 15 分钟。"
+          }
+        }
+      }
+    },
+    "plan_builder.race_mobility": {
+      "comment": "[android:onboarding] Explicit plan duration and optional mobility preference.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add optional 10-minute mobility"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir 10 minutos opcionales de movilidad"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加可选的 10 分钟灵活性练习"
+          }
+        }
+      }
+    },
+    "plan_builder.race_mobility_detail": {
+      "comment": "[android:onboarding] Explicit plan duration and optional mobility preference.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional mobility is extra and does not replace your weekly runs."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La movilidad es un extra opcional y no sustituye tus carreras semanales."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "灵活性练习是额外的可选项目，不会替代每周跑步。"
+          }
+        }
+      }
+    },
+    "plan_builder.race_duration_detail": {
+      "comment": "[android:onboarding] Explicit plan duration and optional mobility preference.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session time includes warmup and cooldown. Runs normally include at least 15 minutes of main running or run-walk time."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La sesión incluye calentamiento y vuelta a la calma. Normalmente tendrás al menos 15 minutos de carrera o carrera y caminata en la parte principal."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单次总时长包含热身和放松。跑步或跑走交替的主要训练通常至少为 15 分钟。"
+          }
+        }
+      }
+    },
+    "today.race_goal.finish_time_input": {
+      "comment": "[android:today] Race plan prescription and preferences.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target finish time (h:mm:ss)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiempo objetivo (h:mm:ss)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标完赛用时（时:分:秒）"
+          }
+        }
+      }
+    },
+    "today.race_goal.missed": {
+      "comment": "[android:today] Race plan prescription and preferences.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kept your running days and eased the next session without adding missed load. Complete the easy sessions to build back toward your goal."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantenemos tus días de carrera y suavizamos la próxima sesión sin acumular lo que faltó. Completa las sesiones suaves para volver a avanzar hacia tu objetivo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留每周跑步安排，并降低下一次训练的强度，不补做错过的训练。完成轻松训练后，再逐步向目标推进。"
+          }
+        }
+      }
+    },
+    "today.race_goal.policy_updated": {
+      "comment": "[android:today] Race plan prescription and preferences.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updated future runs to protect meaningful running time and your weekly running days. Complete the easy sessions to build toward your goal."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizamos las próximas carreras para mantener un tiempo de carrera útil y tus días semanales. Completa las sesiones suaves para avanzar hacia tu objetivo."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已更新未来跑步安排，保障有效训练时长和每周跑步次数。完成轻松训练，逐步向目标推进。"
+          }
+        }
+      }
+    },
+    "today.race_goal.goal_updated": {
+      "comment": "[android:today] Race plan prescription and preferences.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updated future sessions around your saved goal. Completed activities stay unchanged."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizamos las próximas sesiones según tu objetivo guardado. Las actividades completadas se mantienen."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已根据保存的目标更新未来训练。已完成的活动保持不变。"
+          }
+        }
+      }
+    },
+    "today.race_goal.refilled": {
+      "comment": "[android:today] Race plan prescription and preferences.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refreshed the detailed training window. The overall goal and phase progression stay in place."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renovamos las sesiones detalladas. El objetivo general y la progresión por fases se mantienen."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "详细训练安排已补充。整体目标与阶段进程保持不变。"
+          }
+        }
+      }
+    },
+    "plan_builder.race_optional": {
+      "comment": "[android:onboarding] Race plan prescription and preferences.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opcional"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "可选"
+          }
+        }
+      }
+    },
+    "plan_builder.race_cap": {
+      "comment": "[android:onboarding] Race plan prescription and preferences.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maximum total session: %d min"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duración máxima total: %d min"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "单次总时长上限：%d 分钟"
+          }
+        }
+      }
+    },
+    "Easy run-walk": {
+      "comment": "[platform:ios] Race plan prescription and preferences.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Easy run-walk"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carrera y caminata suaves"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑走交替"
+          }
+        }
+      }
+    },
+    "Comfortable run-walk": {
+      "comment": "[platform:ios] Race plan prescription and preferences.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comfortable run-walk"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carrera y caminata cómodas"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "舒适跑走交替"
+          }
+        }
+      }
+    },
+    "Alternate comfortable jogging and walking as needed; keep the whole main session easy.": {
+      "comment": "[platform:ios] Race plan prescription and preferences.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alternate comfortable jogging and walking as needed; keep the whole main session easy."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alterna trote cómodo y caminata según necesites; mantén suave toda la parte principal."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "根据需要交替慢跑和步行，主要训练全程保持轻松。"
+          }
+        }
+      }
     }
   },
   "version": "1.1"
