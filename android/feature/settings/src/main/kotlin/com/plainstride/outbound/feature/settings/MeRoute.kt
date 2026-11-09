@@ -169,6 +169,7 @@ fun MeRoute(
     accountWeeklyMinutes: Int = 0,
     accountWeeklyDistanceMeters: Double = 0.0,
     weeklyRunGoal: com.plainstride.outbound.core.model.WeeklyRunGoal? = null,
+    planSummary: MePlanSummary? = null,
     onRefreshStatistics: () -> Unit = {},
     statisticsAvailable: Boolean = false,
     statisticsCached: Boolean = false,
@@ -204,7 +205,7 @@ fun MeRoute(
     when (page) {
         MePage.Overview -> MeOverview(
             state, onSettings = { page = MePage.Settings }, onRefresh = { viewModel.refresh(); onRefreshStatistics() },
-            connections, insights, personalMilestones,
+            connections, insights, personalMilestones, planSummary,
             accountWeeklyMinutes, accountWeeklyDistanceMeters, weeklyRunGoal, statisticsAvailable, statisticsCached,
             onMyQrCode = onMyQrCode,
             onConnections = { onMeDestination("connections"); onConnections() },
@@ -250,6 +251,7 @@ private fun MeOverview(
     connections: List<SocialPerson>,
     insights: List<MeInsight>,
     milestones: List<PersonalMilestone>,
+    planSummary: MePlanSummary?,
     accountWeeklyMinutes: Int,
     accountWeeklyDistanceMeters: Double,
     weeklyRunGoal: com.plainstride.outbound.core.model.WeeklyRunGoal?,
@@ -319,8 +321,22 @@ private fun MeOverview(
             item {
                 OutlinedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(state.summary?.phase ?: stringResource(R.string.no_active_plan), style = MaterialTheme.typography.titleMedium)
-                        Text(stringResource(if (state.summary?.phase == null) R.string.no_active_plan_body else R.string.plan_synced), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            when {
+                                planSummary == null -> stringResource(R.string.me_plan_status_unavailable)
+                                planSummary.phase == null -> stringResource(R.string.no_active_plan)
+                                else -> planSummary.phase
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            stringResource(when {
+                                planSummary == null -> R.string.me_plan_status_unavailable_body
+                                planSummary.phase == null -> R.string.no_active_plan_body
+                                else -> R.string.plan_synced
+                            }),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }
@@ -368,7 +384,7 @@ private fun MeOverview(
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             SummaryStat(accountWeeklyMinutes.toString(), stringResource(R.string.minutes), Modifier.weight(1f))
                             SummaryStat(stringResource(if (state.preferences.measurement == MeasurementSystem.Metric) R.string.me_week_distance_value_km else R.string.me_week_distance_value_mi, formatWeeklyDistance(state, accountWeeklyDistanceMeters)), stringResource(R.string.me_week_total_distance), Modifier.weight(1f))
-                            state.summary?.consistencyPercent?.let { percent ->
+                            planSummary?.consistencyPercent?.let { percent ->
                                 SummaryStat("$percent%", stringResource(R.string.consistency), Modifier.weight(1f))
                             }
                         }
@@ -399,7 +415,13 @@ private fun MeOverview(
                                 }
                                 Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             } else {
-                                Text(stringResource(if (weeklyRunGoal == null) R.string.me_week_run_goal_unavailable else R.string.me_week_no_run_goal), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                val knownRunTarget = weeklyRunGoal?.targetRuns ?: planSummary?.runGoalTarget
+                                if (weeklyRunGoal == null && knownRunTarget != null) {
+                                    Text(stringResource(R.string.me_week_run_target_only, knownRunTarget), style = MaterialTheme.typography.bodyMedium)
+                                    Text(stringResource(R.string.me_week_run_count_unavailable), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                } else {
+                                    Text(stringResource(if (weeklyRunGoal == null) R.string.me_week_run_goal_unavailable else R.string.me_week_no_run_goal), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
                             }
                         }
                         }

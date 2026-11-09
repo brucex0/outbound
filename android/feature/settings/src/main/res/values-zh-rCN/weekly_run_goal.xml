@@ -4,6 +4,8 @@
     <string name="me_week_run_goal">每周跑步目标</string>
     <string name="me_week_run_progress">%1$d / %2$d</string>
     <string name="me_week_run_goal_unavailable">跑步目标暂不可用</string>
+    <string name="me_week_run_target_only">当前目标：每周跑步 %1$d 次</string>
+    <string name="me_week_run_count_unavailable">暂时无法获取本周跑步次数。</string>
     <string name="me_week_no_run_goal">尚未设置每周跑步目标。</string>
     <string name="me_week_all_runs_count">跑步达到 5 分钟或 500 米即可计入。</string>
     <string name="me_week_goal_reached">已完成每周跑步目标。</string>

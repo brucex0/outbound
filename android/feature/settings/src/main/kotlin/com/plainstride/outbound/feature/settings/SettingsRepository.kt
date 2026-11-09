@@ -16,11 +16,9 @@ import kotlinx.coroutines.sync.withLock
 import com.plainstride.outbound.core.auth.SessionCoordinator
 import com.plainstride.outbound.core.auth.SessionState
 import com.plainstride.outbound.core.designsystem.PlainstrideThemeId
-import com.plainstride.outbound.core.model.PlanningState
 import com.plainstride.outbound.core.network.AccountApiService
 import com.plainstride.outbound.core.network.AccountDto
 import com.plainstride.outbound.core.network.ApiResult
-import com.plainstride.outbound.core.network.PlanningApiService
 import com.plainstride.outbound.core.network.UpdateAccountRequest
 import com.plainstride.outbound.core.network.UserPreferencesDto
 import com.plainstride.outbound.core.network.apiCall
@@ -37,16 +35,15 @@ data class SettingsPreferences(
     val saveActivityPhotosToAlbum: Boolean = true,
 )
 
-data class MeSummary(
-    val phase: String? = null,
-    val weeklyMinutes: Int? = null,
-    val weeklyDistanceMeters: Double? = null,
-    val consistencyPercent: Int? = null,
+data class MePlanSummary(
+    val phase: String?,
+    val consistencyPercent: Int?,
+    val runGoalTarget: Int?,
 )
 
 interface SettingsRepository {
     val preferences: Flow<SettingsPreferences>
-    suspend fun refresh(): Result<Pair<AccountDto, MeSummary?>>
+    suspend fun refresh(): Result<AccountDto>
     suspend fun updateProfile(displayName: String, username: String?, contactEmail: String?): Result<AccountDto>
     suspend fun setMeasurement(value: MeasurementSystem): Result<Unit>
     suspend fun setTemperature(value: TemperatureUnit): Result<Unit>
@@ -59,7 +56,6 @@ interface SettingsRepository {
 class DefaultSettingsRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>,
     private val accountApi: AccountApiService,
-    private val planningApi: PlanningApiService,
     private val sessions: SessionCoordinator,
 ) : SettingsRepository {
     private val syncMutex = Mutex()
@@ -77,7 +73,7 @@ class DefaultSettingsRepository @Inject constructor(
         )
     }
 
-    override suspend fun refresh(): Result<Pair<AccountDto, MeSummary?>> {
+    override suspend fun refresh(): Result<AccountDto> {
         val accountId = sessions.state.value.accountId() ?: return Result.failure(SettingsException.SignedOut)
         if (cachedAccountId != accountId) {
             cachedAccountId = accountId
@@ -87,7 +83,6 @@ class DefaultSettingsRepository @Inject constructor(
         val token = sessions.validAccessToken() ?: return Result.failure(SettingsException.SignedOut)
         val account = apiCall { accountApi.currentAccount("Bearer $token") }
         val remotePreferences = apiCall { accountApi.preferences("Bearer $token") }
-        val planning = apiCall { planningApi.state("Bearer $token") }
         if (remotePreferences is ApiResult.Success) {
             syncMutex.withLock {
                 val localDirty = dataStore.data.first()[DirtyKey] == true
@@ -105,7 +100,7 @@ class DefaultSettingsRepository @Inject constructor(
                     return Result.failure(SettingsException.SignedOut)
                 }
                 cachedAccount = account.value
-                Result.success(account.value to (planning as? ApiResult.Success)?.value?.toSummary())
+                Result.success(account.value)
             }
             is ApiResult.Failure -> Result.failure(SettingsException.RequestFailed)
         }
@@ -182,13 +177,6 @@ class DefaultSettingsRepository @Inject constructor(
             it[ThemeKey] = value.guideSelection.theme
         }
     }
-
-    private fun PlanningState.toSummary() = MeSummary(
-        phase = plan?.currentPhase,
-        weeklyMinutes = athleteState?.weeklyMinutes,
-        weeklyDistanceMeters = athleteState?.weeklyDistanceMeters,
-        consistencyPercent = athleteState?.consistencyScore?.times(100)?.toInt()?.coerceIn(0, 100),
-    )
 
     private fun deviceMeasurement() = if (Locale.getDefault().country in setOf("US", "LR", "MM")) MeasurementSystem.Imperial else MeasurementSystem.Metric
     private fun deviceTemperature() = if (Locale.getDefault().country in setOf("US", "BS", "BZ", "KY", "PW")) TemperatureUnit.Fahrenheit else TemperatureUnit.Celsius

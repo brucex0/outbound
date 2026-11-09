@@ -766,10 +766,22 @@ private fun SignedInApp(
             modifier = Modifier.fillMaxWidth().weight(1f),
         ) {
             composable(APP_SHELL_ROUTE) {
+                val todayViewModel: TodayViewModel = hiltViewModel()
+                LaunchedEffect(accountId, groupLocale) { accountId?.let { todayViewModel.configure(it, groupLocale) } }
+                val todayState by todayViewModel.state.collectAsStateWithLifecycle()
+                val mePlanSummary = todayState.planningSnapshot?.let { planning ->
+                    com.plainstride.outbound.feature.settings.MePlanSummary(
+                        phase = planning.plan?.currentPhase,
+                        consistencyPercent = planning.athleteState?.consistencyScore?.times(100)?.toInt()?.coerceIn(0, 100),
+                        runGoalTarget = planning.goal
+                            ?.takeIf { it.activities == listOf(com.plainstride.outbound.core.model.Modality.run) }
+                            ?.daysPerWeekTarget
+                            ?.takeIf { it > 0 },
+                    )
+                }
                 val destination = TopLevelDestination.entries.first { it.route == selectedTab }
                 tabStateHolder.SaveableStateProvider(destination.route) {
                     if (destination == TopLevelDestination.Today) {
-                        val todayViewModel: TodayViewModel = hiltViewModel()
                         ActivityStartWarmup(recordingViewModel)
                         val startLocation by recordingViewModel.startLocationUpdates.collectAsStateWithLifecycle()
                         TodayRoute(
@@ -889,6 +901,7 @@ private fun SignedInApp(
                             accountWeeklyMinutes = (integration.progress.accountWeek?.durationSeconds ?: 0) / 60,
                             accountWeeklyDistanceMeters = integration.progress.accountWeek?.distanceMeters ?: 0.0,
                             weeklyRunGoal = integration.weeklyRunGoal,
+                            planSummary = mePlanSummary,
                             statisticsAvailable = integration.progress.isAvailable
                                 && integration.statisticsWeekStart?.let { !java.time.Instant.now().isBefore(it) } == true
                                 && integration.statisticsWeekEnd?.let { java.time.Instant.now().isBefore(it) } == true,

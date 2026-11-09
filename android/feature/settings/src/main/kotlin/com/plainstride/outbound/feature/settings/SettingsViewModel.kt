@@ -21,7 +21,6 @@ import com.plainstride.outbound.core.network.AccountDto
 data class SettingsUiState(
     val preferences: SettingsPreferences = SettingsPreferences(MeasurementSystem.Metric, TemperatureUnit.Celsius, AppearanceMode.System, PlainstrideThemeId.VictoryGold),
     val account: AccountDto? = null,
-    val summary: MeSummary? = null,
     val loading: Boolean = true,
     val saving: Boolean = false,
 )
@@ -35,13 +34,14 @@ class SettingsViewModel @Inject constructor(
     private val sessions: SessionCoordinator,
 ) : ViewModel() {
     private val account = MutableStateFlow<AccountDto?>(null)
-    private val summary = MutableStateFlow<MeSummary?>(null)
     private val loading = MutableStateFlow(true)
     private val saving = MutableStateFlow(false)
     private var activeAccountId: String? = null
     val messages = MutableSharedFlow<SettingsMessage>(extraBufferCapacity = 2)
 
-    val state = combine(repository.preferences, account, summary, loading, saving, ::SettingsUiState)
+    val state = combine(repository.preferences, account, loading, saving) { preferences, account, loading, saving ->
+        SettingsUiState(preferences, account, loading, saving)
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
     init {
@@ -57,7 +57,6 @@ class SettingsViewModel @Inject constructor(
 
                 activeAccountId = accountId
                 account.value = null
-                summary.value = null
                 if (accountId == null) {
                     loading.value = false
                 } else {
@@ -82,9 +81,8 @@ class SettingsViewModel @Inject constructor(
             }
             result.fold(
                 onSuccess = {
-                    if (it.first.id != expectedAccountId) return@fold
-                    account.value = it.first
-                    summary.value = it.second
+                    if (it.id != expectedAccountId) return@fold
+                    account.value = it
                     if (showSuccess) messages.emit(SettingsMessage.Refreshed)
                 },
                 onFailure = { messages.emit(SettingsMessage.RefreshFailed) },

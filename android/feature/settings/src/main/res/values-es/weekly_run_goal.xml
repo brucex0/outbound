@@ -4,6 +4,8 @@
     <string name="me_week_run_goal">Objetivo semanal de carrera</string>
     <string name="me_week_run_progress">%1$d de %2$d</string>
     <string name="me_week_run_goal_unavailable">Objetivo de carrera no disponible</string>
+    <string name="me_week_run_target_only">Tu objetivo actual: %1$d carreras por semana</string>
+    <string name="me_week_run_count_unavailable">No está disponible el recuento semanal de carreras.</string>
     <string name="me_week_no_run_goal">No hay un objetivo semanal de carrera.</string>
     <string name="me_week_all_runs_count">Las carreras cuentan a partir de 5 min o 500 m.</string>
     <string name="me_week_goal_reached">Objetivo semanal de carrera cumplido.</string>
