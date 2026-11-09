@@ -87,6 +87,11 @@ export const workoutAdjustmentPreviewRequestSchema = z.object({
   note: z.string().max(160).nullable().optional(),
 });
 export type WorkoutAdjustmentPreviewRequest = z.infer<typeof workoutAdjustmentPreviewRequestSchema>;
+export const workoutAdjustmentApplyRequestSchema = workoutAdjustmentPreviewRequestSchema.extend({
+  idempotencyKey: z.string().uuid(),
+  minutes: z.union([z.literal(10), z.literal(15), z.literal(20)]),
+});
+export type WorkoutAdjustmentApplyRequest = z.infer<typeof workoutAdjustmentApplyRequestSchema>;
 export const readinessCheckInRequestSchema = z.object({
   idempotencyKey: z.string().min(1),
   workoutId: z.string().min(1),

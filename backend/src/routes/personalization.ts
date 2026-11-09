@@ -10,6 +10,7 @@ import {
   trainingProfileInputSchema,
   workoutFeedbackRequestSchema,
   workoutAdjustmentPreviewRequestSchema,
+  workoutAdjustmentApplyRequestSchema,
 } from "../services/personalization/contracts.js";
 import {
   decideAdjustment,
@@ -18,6 +19,7 @@ import {
   submitWorkoutFeedback,
   upsertRunnerProfile,
   previewWorkoutAdjustment,
+  applyWorkoutAdjustment,
   WorkoutAdjustmentError,
 } from "../services/personalization/personalizationService.js";
 import type { AppEnv } from "../types/hono.js";
@@ -85,6 +87,18 @@ router.post("/readiness", zValidator("json", readinessCheckInRequestSchema), asy
   const user = await requireUser(c);
   if (user instanceof Response) return user;
   return c.json(await submitReadinessCheckIn(user.id, c.req.valid("json")));
+});
+
+router.post("/adjustments/apply", zValidator("json", workoutAdjustmentApplyRequestSchema), async (c) => {
+  const user = await requireUser(c);
+  if (user instanceof Response) return user;
+  try {
+    return c.json(await applyWorkoutAdjustment(user.id, c.req.valid("json")));
+  } catch (error) {
+    const status = error instanceof WorkoutAdjustmentError ? error.status : 503;
+    console.warn(`[personalization] operation=apply_workout_adjustment status=${status} category=${error instanceof Error ? error.name : "unknown"}`);
+    return c.json({ error: error instanceof WorkoutAdjustmentError ? error.message : "Unable to apply the workout change." }, status);
+  }
 });
 
 router.post("/adjustments/preview", zValidator("json", workoutAdjustmentPreviewRequestSchema), async (c) => {

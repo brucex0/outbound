@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { refreshGeneratedPlanInTransaction } from "../planning/planRefresh.js";
+import { lockPlanningUser, isOptionalWorkout } from "../planning/persistence.js";
 import { Prisma } from "@prisma/client";
 import { getPrismaClient } from "../prisma.js";
 import type {
@@ -7,10 +10,11 @@ import type {
   RunnerProfileInput,
   WorkoutFeedbackRequest,
   WorkoutAdjustmentPreviewRequest,
+  WorkoutAdjustmentApplyRequest,
 } from "./contracts.js";
 import { calibrationWorkouts } from "./calibrationTemplates.js";
 import { buildBaseActivitySuggestion, dailyConstraintAlternative } from "../planning/activitySuggestion.js";
-import { applyDailyWorkoutAdjustment, latestReadinessId, suggestionFingerprint, workoutPreviewPolicy, WorkoutAdjustmentError, type DailyPreviewChange } from "./workoutAdjustmentPolicy.js";
+import { applyDailyWorkoutAdjustment, latestReadinessId, suggestionFingerprint, workoutPreviewPolicy, WorkoutAdjustmentError, type DailyPreviewChange, workoutApplyPolicy, restFingerprint } from "./workoutAdjustmentPolicy.js";
 export { WorkoutAdjustmentError } from "./workoutAdjustmentPolicy.js";
 import {
   recordFeedbackEvidence,
@@ -80,6 +84,59 @@ export async function previewWorkoutAdjustment(userId: string, input: WorkoutAdj
     requiresConfirmation: true, changes: [change], policyVersion: workoutPreviewPolicy,
   } });
   return { adjustment: adjustmentRecordToDTO(proposal) };
+}
+
+/** Explicit user-approved one-day change; never writes readiness or touches an unrelated proposal. */
+export async function applyWorkoutAdjustment(userId: string, input: WorkoutAdjustmentApplyRequest) {
+  const prisma = getPrismaClient();
+  const id = `workout-apply-${createHash("sha256").update(`${userId}:${input.idempotencyKey}`).digest("hex")}`;
+  await prisma.$transaction(async (tx) => {
+    await lockPlanningUser(tx, userId);
+    if (await tx.personalizationAdjustment.findFirst({ where: { id, userId, status: "applied" } })) return;
+    await refreshGeneratedPlanInTransaction(tx, userId, new Date());
+    const baseline = await buildBaseActivitySuggestion(userId, "stable", new Date(), tx);
+    const current = await applyDailyWorkoutAdjustment(tx, userId, baseline);
+    const primary = current.primary;
+    if (!primary || primary.id !== input.suggestionId || (primary.plannedWorkoutId ?? primary.id) !== input.workoutId
+      || current.validForDate !== input.validForDate || baseline.decision.safetyFlags.length > 0) {
+      throw new WorkoutAdjustmentError(409, "The recommendation changed. Refresh before applying a change.");
+    }
+    if (input.choice === "good") throw new WorkoutAdjustmentError(409, "Choose a workout change first.");
+    const rest = input.choice === "sore";
+    const minutes = input.choice === "shortOnTime" ? input.minutes : 15;
+    const movement = primary.modality === "bike" ? "ride" : primary.modality;
+    const title = rest ? "Rest today" : `${minutes} min easy ${movement}`;
+    const explanation = rest ? "Rest today. Return to activity when comfortable." : "Keep the effort easy and stop at the selected time.";
+    if (primary.plannedWorkoutId) {
+      const workout = await currentPreviewWorkout(tx, userId, primary.plannedWorkoutId, baseline.validForDate);
+      if (rest) {
+        await tx.plannedWorkout.update({ where: { id: workout.id }, data: { status: "skipped" } });
+      } else {
+        // This replaces the hard prescription, including repeats and distance/calorie targets.
+        // A one-off explicit 10/15 minute choice is not a change to the plan's weekly short-run preference.
+        await tx.workoutBlock.deleteMany({ where: { plannedWorkoutId: workout.id } });
+        await tx.plannedWorkout.update({ where: { id: workout.id }, data: {
+          title, durationSeconds: minutes * 60, distanceMeters: null, targetCalories: null,
+          stimulus: "recovery", intensityModel: "rpe", intensityTarget: { min: 1, max: 2 }, isKeyWorkout: false,
+          prescription: { optional: isOptionalWorkout(workout), source: "explicitWorkoutChange", allowShortSession: true },
+          blocks: { create: { sortOrder: 0, blockType: "main", modality: workout.modality, stimulus: "recovery", durationSeconds: minutes * 60,
+            steps: { create: { sortOrder: 0, kind: "recovery", label: title, durationSeconds: minutes * 60, target: { rpe: [1, 2] } } } } },
+        } });
+      }
+    }
+    const nextBaseline = await buildBaseActivitySuggestion(userId, "stable", new Date(), tx);
+    const afterSuggestion = { ...primary, id: primary.plannedWorkoutId ? primary.id : `changed-${input.idempotencyKey}`,
+      title, durationMinutes: minutes, distanceMeters: null, targetCalories: null, stimulus: "recovery" as const,
+      intensityModel: "rpe" as const, intensityTarget: { min: 1, max: 2 }, effortLabel: "Very easy",
+      steps: [title], why: explanation, allowShortSession: true, runWalk: false, archetypeId: null };
+    await tx.personalizationAdjustment.create({ data: {
+      id, userId, status: "applied", requiresConfirmation: false, decidedAt: new Date(), policyVersion: workoutApplyPolicy,
+      reasonCode: rest ? "soreness" : input.choice === "shortOnTime" ? "timeConstraint" : "fatigue", explanation,
+      changes: [{ kind: "daily", rest, note: input.note?.trim() || null, workoutId: primary.id, beforeTitle: primary.title, afterTitle: title,
+        date: baseline.validForDate, baselineFingerprint: rest ? restFingerprint(nextBaseline) : suggestionFingerprint(nextBaseline), readinessId: await latestReadinessId(tx, userId), afterSuggestion }] as unknown as Prisma.InputJsonValue,
+    } });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30_000 });
+  return { accepted: true };
 }
 
 async function currentPreviewWorkout(prisma: Prisma.TransactionClient, userId: string, workoutId: string, date: string) {
