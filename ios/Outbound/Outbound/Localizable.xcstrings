@@ -59708,19 +59708,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Change today’s workout"
+            "value": "Change today’s run"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cambiar el entrenamiento de hoy"
+            "value": "Cambiar la carrera de hoy"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "调整今日训练"
+            "value": "调整今天的跑步"
           }
         }
       }
@@ -59731,19 +59731,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "What constraint should the alternative account for?"
+            "value": "What needs to change?"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¿Qué limitación debe tener en cuenta la alternativa?"
+            "value": "¿Qué necesitas cambiar?"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "新的建议需要考虑哪种限制？"
+            "value": "想调整什么？"
           }
         }
       }
@@ -59777,19 +59777,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Soreness"
+            "value": "Sore or uncomfortable"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Molestias musculares"
+            "value": "Dolor muscular o molestias"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "肌肉酸痛"
+            "value": "酸痛或不适"
           }
         }
       }
@@ -59800,19 +59800,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Limited time"
+            "value": "Less time"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Poco tiempo"
+            "value": "Menos tiempo"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "时间有限"
+            "value": "时间不够"
           }
         }
       }
@@ -59846,19 +59846,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Optional note"
+            "value": "Anything else? (optional)"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nota opcional"
+            "value": "¿Algo más? (opcional)"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "备注（选填）"
+            "value": "还有其他情况吗？（选填）"
           }
         }
       }
@@ -59892,19 +59892,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keep planned workout"
+            "value": "Keep original"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mantener el entrenamiento previsto"
+            "value": "Mantener el original"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保留原计划"
+            "value": "保持原样"
           }
         }
       }
@@ -59915,19 +59915,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Recommended change"
+            "value": "Recommended plan update"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cambio recomendado"
+            "value": "Actualización recomendada del plan"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "建议调整"
+            "value": "建议的计划调整"
           }
         }
       }
@@ -59961,13 +59961,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apply change"
+            "value": "Apply update"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aplicar cambio"
+            "value": "Aplicar actualización"
           }
         },
         "zh-Hans": {
@@ -71133,6 +71133,351 @@
           "stringUnit": {
             "state": "translated",
             "value": "根据需要交替慢跑和步行，主要训练全程保持轻松。"
+          }
+        }
+      }
+    },
+    "today.change.close": {
+      "comment": "[android:today] Android Today Change flow. Generated Android name: today_change_close.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭"
+          }
+        }
+      }
+    },
+    "today.change.keep.plan": {
+      "comment": "[android:today] Android Today Change flow. Generated Android name: today_change_keep_plan.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep original plan"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantener el plan original"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留原计划"
+          }
+        }
+      }
+    },
+    "today.change.original": {
+      "comment": "[android:today] Android Today Change flow. Generated Android name: today_change_original.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$d min"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$d min"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$d 分钟"
+          }
+        }
+      }
+    },
+    "today.change.energy.heading": {
+      "comment": "[android:today] Android Today Change flow. Generated Android name: today_change_energy_heading.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try 15 minutes easy"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prueba 15 minutos suaves"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "试试轻松跑 15 分钟"
+          }
+        }
+      }
+    },
+    "today.change.energy.body": {
+      "comment": "[android:today] Android Today Change flow. Generated Android name: today_change_energy_body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A short easy run keeps the rhythm without forcing the full workout."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una carrera corta y suave mantiene el ritmo sin exigirte completar todo el entrenamiento."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "短时间的轻松跑能保持运动节奏，不必勉强完成全部训练。"
+          }
+        }
+      }
+    },
+    "today.change.rest.heading": {
+      "comment": "[android:today] Android Today Change flow. Generated Android name: today_change_rest_heading.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rest today"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descansa hoy"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天休息"
+          }
+        }
+      }
+    },
+    "today.change.rest.body": {
+      "comment": "[android:today] Android Today Change flow. Generated Android name: today_change_rest_body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skipping one run is better than turning discomfort into an injury."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es mejor saltarse una carrera que convertir una molestia en una lesión."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "少跑一次，胜过让不适发展成伤病。"
+          }
+        }
+      }
+    },
+    "today.change.time.heading": {
+      "comment": "[android:today] Android Today Change flow. Generated Android name: today_change_time_heading.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fit the time you have"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aprovecha el tiempo que tienes"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按你的时间来"
+          }
+        }
+      }
+    },
+    "today.change.time.body": {
+      "comment": "[android:today] Android Today Change flow. Generated Android name: today_change_time_body.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plainstride will keep this easy and end it at your selected time."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plainstride mantendrá un esfuerzo suave y terminará al cumplirse el tiempo que elijas."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plainstride 会安排轻松的强度，并在你选择的时间结束。"
+          }
+        }
+      }
+    },
+    "today.change.rest.action": {
+      "comment": "[android:today] Android Today Change flow. Generated Android name: today_change_rest_action.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use rest day"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tomar un día de descanso"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今天休息"
+          }
+        }
+      }
+    },
+    "today.change.start.action": {
+      "comment": "[android:today] Android Today Change flow. Generated Android name: today_change_start_action.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start changed run"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empezar la carrera ajustada"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始调整后的跑步"
+          }
+        }
+      }
+    },
+    "today.changed.run.title": {
+      "comment": "[android:today] Android Today Change flow. Generated Android name: today_changed_run_title.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d min easy run"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carrera suave de %d min"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "轻松跑 %d 分钟"
+          }
+        }
+      }
+    },
+    "today.changed.run.detail": {
+      "comment": "[android:today] Android Today Change flow. Generated Android name: today_changed_run_detail.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run · %d min · very easy"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Correr · %d min · muy suave"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "跑步 · %d 分钟 · 非常轻松"
+          }
+        }
+      }
+    },
+    "today.changed.run.guide": {
+      "comment": "[android:today] Android Today Change flow. Generated Android name: today_changed_run_guide.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep the effort easy. A shorter run still protects the habit."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén un esfuerzo suave. Una carrera más corta también ayuda a mantener el hábito."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保持轻松的强度。跑得短一点，也能延续运动习惯。"
+          }
+        }
+      }
+    },
+    "today.readiness.saved.offline": {
+      "comment": "[android:today] Android Today Change flow. Generated Android name: today_readiness_saved_offline.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved offline. Plainstride will sync this check-in later."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardado sin conexión. Plainstride sincronizará este registro más tarde."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已离线保存。Plainstride 稍后会同步本次状态记录。"
           }
         }
       }
