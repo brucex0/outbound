@@ -132,6 +132,14 @@ Adaptive planning uses Vertex AI through the runtime service account. Production
 - Existing service environment values, Secret Manager bindings, runtime identity, VPC configuration, and limits were preserved. `outbound-planning-maintenance` uses the same immutable image with its previous configuration; its enabled daily schedule remains 02:15 `America/Los_Angeles`. Maintenance was not manually executed.
 - Revision `outbound-api-00189-pg4` now serves 100% of production traffic. Local TypeScript compilation, candidate `/health`, and production `/health` passed. A bounded read-only diagnostic (`outbound-db-query-once-2rc4g`) confirmed the deployed `weeklyRunGoal` response field, refill module, policy `race-main-15-v1`, and a pure weekly-progress calculation using an explicitly assumed calendar. No authenticated device response or visual check was performed; the test suite was not run. The initial post-rollout log check found no error-level entries or HTTP 5xx for the new revision.
 
+## Atomic Workout Apply Rollout — 2026-11-09
+
+- Deployed committed source `780d0d4d`, including backend change `7ff30038` for atomic workout Apply, as revision `outbound-api-00191-gfd`.
+- Immutable image: `us-central1-docker.pkg.dev/outbound-494602/cloud-run-source-deploy/outbound-api@sha256:537e6060b2b5ec177e47145205eb2a3af72bd61c4d460f126ca15d97f285f559`.
+- Existing environment values and Secret Manager bindings, runtime service account, CPU/memory, concurrency, Cloud SQL attachment, VPC egress, network/subnet, and autoscaling settings were preserved. No Prisma schema change was present, so no schema job or data maintenance ran.
+- The candidate `/health` returned `ok`; a synthetic unauthenticated request to `POST /v1/personalization/adjustments/apply` returned `401`. Production `/health` returned `ok` after promotion, and the route continued to return `401` without authentication.
+- Revision `outbound-api-00191-gfd` serves 100% of production traffic. `outbound-planning-maintenance` was pinned to the same immutable image and was not executed. TypeScript compilation passed; the test suite and authenticated account behavior were not exercised.
+
 ## Daily Planning Maintenance
 
 The `outbound-planning-maintenance` Cloud Run Job uses the latest ready `outbound-api` image, the same runtime service account, Cloud SQL attachment, database secret, and adaptive-planning environment. Its container command is `npm run planning:maintenance`. Cloud Scheduler invokes it daily at 02:15 in `America/Los_Angeles` using the runtime service account's OAuth identity.
