@@ -606,7 +606,16 @@ fun TodayScreen(
                 voiceGuideEnabled = voiceGuideEnabled,
                 aiCoachEnabled = aiCoachEnabled,
                 companionType = companionType,
-                onActivityChoice = { saveManualDraft(markEdited = false); activityChoice = it; if (it != TodayActivityChoice.RUN && goalChoice == TodayGoalChoice.RACE) goalChoice = TodayGoalChoice.FREE; onLaunchConfigurationChanged("activity_type", it.name.lowercase()) },
+                onActivityChoice = {
+                    if (it == TodayActivityChoice.PLANNED && !hasPlanDetails) {
+                        onSetUpPlan()
+                    } else {
+                        saveManualDraft(markEdited = false)
+                        activityChoice = it
+                        if (it != TodayActivityChoice.RUN && goalChoice == TodayGoalChoice.RACE) goalChoice = TodayGoalChoice.FREE
+                        onLaunchConfigurationChanged("activity_type", it.name.lowercase())
+                    }
+                },
                 onGoalChoice = { choice ->
                     if (choice == TodayGoalChoice.RACE) {
                         showsRacePlanner = true

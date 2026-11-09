@@ -25,6 +25,7 @@
 - Manual calorie goals show estimated distance and duration when the training profile has enough data, using the shared calorie estimator and learned run pace.
 - Distance, Time, and Calories goal dialogs replace their title with the localized `Pause at goal` checkmark option. The entire checkmark row owns one accessible touch target at least 48 dp tall. Like iOS, toggling saves the off-by-default preference immediately; Done also closes the editor without requiring a custom target. Reopening restores the checkmark, and the collapsed goal card shows the pause hint. The choice travels with the session and pauses once when the target is reached; Freestyle, Curated, Planned, and Race are ineligible. The runner may resume or finish.
 - Embedded Today sport choices are 52-point circular icon-only controls with accessible sport names. Setup options (Voice Guide, With dog, Cheer, Shoes, and Indoor/Outdoor) are text-only pills. The Music pill is temporarily hidden while Android music UX is evaluated; the existing music destination remains available from Settings.
+- Selecting Planned with no active plan opens the reusable plan builder with `planned_button` attribution. When a plan exists, Planned keeps the current suggestion selection and start flow.
 - With dog is available for eligible manual sports and eligible planned run, walk, or bike workouts; its context is passed into recording for both launch paths.
 
 ## States Covered
